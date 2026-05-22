@@ -29,7 +29,10 @@ React + Supabase collaborative travel planner with Google login, owner-approved 
    http://localhost:5173
    http://127.0.0.1:5173
    https://your-vercel-domain.vercel.app
+   https://your-custom-domain.example.com
    ```
+
+   Also set the Supabase "Site URL" to your primary production domain (custom domain if you use one).
 
 5. Start development:
 

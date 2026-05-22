@@ -272,7 +272,9 @@ export default function App() {
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.href },
+      // Using `origin` avoids accumulating query params (e.g. invite tokens) and
+      // prevents redirect loops when using custom domains + OAuth allowlists.
+      options: { redirectTo: window.location.origin },
     });
     if (error) setNotice(error.message);
   }
