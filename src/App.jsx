@@ -99,7 +99,9 @@ export default function App() {
   );
   const activeMembership = activeTrip?.membership;
   const isOwner = activeMembership?.role === "owner" && activeMembership?.status === "approved";
-  const canEdit = activeMembership?.status === "approved";
+  const canEdit =
+    activeMembership?.status === "approved" &&
+    (activeMembership?.role === "owner" || activeMembership?.role === "editor");
   const isPending = activeMembership?.status === "pending";
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
 
@@ -122,7 +124,7 @@ export default function App() {
       const { data, error } = await supabase
         .from("trip_members")
         .select(
-          "role,status,trip_id,trips(id,title,destination,start_date,end_date,owner_id,updated_at)",
+          "role,status,trip_id,trips(id,title,name,status,destination,start_date,end_date,owner_id,updated_at)",
         )
         .eq("user_id", session.user.id);
 
@@ -136,6 +138,8 @@ export default function App() {
         .filter((row) => row.trips)
         .map((row) => ({
           ...row.trips,
+          title: row.trips.title || row.trips.name,
+          name: row.trips.name || row.trips.title,
           membership: {
             role: row.role,
             status: row.status,
@@ -292,9 +296,11 @@ export default function App() {
     const { error: tripError } = await supabase.from("trips").insert({
       id: tripId,
       title: tripForm.title.trim(),
+      name: tripForm.title.trim(),
       destination: tripForm.destination.trim(),
       start_date: tripForm.start_date,
       end_date: safeEndDate,
+      status: "planning",
       owner_id: user.id,
     });
 
@@ -333,6 +339,9 @@ export default function App() {
   async function updateTrip(patch) {
     if (!activeTrip || !isOwner) return;
     const nextPatch = { ...patch };
+    if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
+      nextPatch.name = nextPatch.title;
+    }
     if (nextPatch.start_date && activeTrip.end_date < nextPatch.start_date) {
       nextPatch.end_date = nextPatch.start_date;
     }
