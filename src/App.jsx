@@ -1,6 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 
+const desktopNavItems = [
+  { id: "today", label: "今日 / 總覽", shortLabel: "今日" },
+  { id: "timeline", label: "時間軸", shortLabel: "軸" },
+  { id: "budget", label: "預算", shortLabel: "錢" },
+  { id: "accommodation", label: "住宿", shortLabel: "宿" },
+  { id: "todo", label: "待辦", shortLabel: "辦" },
+  { id: "luggage", label: "行李", shortLabel: "李" },
+  { id: "settlement", label: "結算", shortLabel: "結" },
+  { id: "settings", label: "設定", shortLabel: "設" },
+];
+
+const mobileNavItems = [
+  { id: "today", label: "今日" },
+  { id: "timeline", label: "時間軸" },
+  { id: "budget", label: "預算" },
+  { id: "luggage", label: "行李" },
+  { id: "settings", label: "更多" },
+];
+
 const typeLabels = {
   attraction: "景點",
   food: "餐飲",
@@ -86,6 +105,8 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("today");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
     destination: "京都, 日本",
@@ -493,22 +514,46 @@ function exportTrip() {
   }
 
   return (
-    <Shell>
-      <aside className="sidebar">
+    <Shell collapsed={isSidebarCollapsed}>
+      <aside className={`sidebar${isSidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand">
           <div className="brand-mark">TP</div>
-          <div>
+          <div className="brand-copy">
             <h1>旅程規劃室</h1>
             <p>{trips.length} 個旅程</p>
           </div>
+          <button
+            className="mini-button sidebar-toggle"
+            type="button"
+            title={isSidebarCollapsed ? "展開側欄" : "收合側欄"}
+            onClick={() => setIsSidebarCollapsed((value) => !value)}
+          >
+            {isSidebarCollapsed ? ">" : "<"}
+          </button>
         </div>
-        <button className="primary-button" type="button" onClick={() => setIsTripDialogOpen(true)}>
+        <button className="primary-button create-trip-button" type="button" onClick={() => setIsTripDialogOpen(true)}>
           <span aria-hidden="true">+</span>
           新增旅程
         </button>
+        <nav className="section-nav" aria-label="功能導覽">
+          {desktopNavItems.map((item) => (
+            <button
+              className={`section-nav-button${activeSection === item.id ? " active" : ""}`}
+              key={item.id}
+              type="button"
+              title={item.label}
+              onClick={() => setActiveSection(item.id)}
+            >
+              <span className="section-nav-icon" aria-hidden="true">
+                {item.shortLabel}
+              </span>
+              <span className="nav-label">{item.label}</span>
+            </button>
+          ))}
+        </nav>
         <TripList trips={trips} activeTripId={activeTripId} onSelect={setActiveTripId} />
         <div className="user-box">
-          <strong>{session.user.user_metadata?.full_name || session.user.email}</strong>
+          <strong className="nav-label">{session.user.user_metadata?.full_name || session.user.email}</strong>
           <button className="ghost-button" type="button" onClick={signOut}>
             登出
           </button>
@@ -580,6 +625,19 @@ function exportTrip() {
         ) : null}
       </main>
 
+      <nav className="bottom-nav" aria-label="手機功能導覽">
+        {mobileNavItems.map((item) => (
+          <button
+            className={`bottom-nav-button${activeSection === item.id ? " active" : ""}`}
+            key={item.id}
+            type="button"
+            onClick={() => setActiveSection(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
       {isTripDialogOpen ? (
         <TripDialog
           form={tripForm}
@@ -604,8 +662,8 @@ function normalizeItemPayload(payload) {
   };
 }
 
-function Shell({ children }) {
-  return <div className="app-shell">{children}</div>;
+function Shell({ children, collapsed = false }) {
+  return <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
 }
 
 function ConfigMissing() {

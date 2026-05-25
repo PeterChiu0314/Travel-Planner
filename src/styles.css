@@ -68,6 +68,10 @@ code {
   min-height: 100vh;
 }
 
+.app-shell.sidebar-collapsed {
+  grid-template-columns: 84px minmax(0, 1fr);
+}
+
 .login-view {
   display: grid;
   grid-column: 1 / -1;
@@ -97,10 +101,20 @@ code {
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px);
   padding: 24px;
+}
+
+.sidebar.collapsed {
+  align-items: center;
+  padding: 18px 12px;
 }
 
 .brand {
@@ -108,6 +122,12 @@ code {
   align-items: center;
   gap: 12px;
   margin-bottom: 24px;
+}
+
+.sidebar.collapsed .brand {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
 }
 
 .brand-mark {
@@ -123,6 +143,96 @@ code {
 
 .brand h1 {
   font-size: 20px;
+}
+
+.sidebar-toggle {
+  margin-left: auto;
+}
+
+.sidebar.collapsed .brand-copy,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .trip-card span,
+.sidebar.collapsed .trip-card em {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+  margin-left: 0;
+}
+
+.section-nav {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 10px;
+}
+
+.section-nav-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 800;
+}
+
+.section-nav-button.active {
+  border-color: rgba(47, 143, 114, 0.26);
+  background: #eef6f1;
+  color: var(--mint-dark);
+}
+
+.section-nav-icon {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  background: #edf3ef;
+  color: var(--mint-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.sidebar.collapsed .section-nav,
+.sidebar.collapsed .trip-list,
+.sidebar.collapsed .user-box,
+.sidebar.collapsed .create-trip-button {
+  width: 100%;
+}
+
+.sidebar.collapsed .section-nav-button,
+.sidebar.collapsed .create-trip-button,
+.sidebar.collapsed .user-box .ghost-button {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.sidebar.collapsed .trip-card {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  padding: 8px;
+  text-align: center;
+}
+
+.sidebar.collapsed .trip-card strong {
+  max-width: 42px;
+  margin-bottom: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-nav {
+  display: none;
 }
 
 .brand p,
@@ -740,13 +850,45 @@ textarea {
 }
 
 @media (max-width: 1100px) {
-  .app-shell {
+  .app-shell,
+  .app-shell.sidebar-collapsed {
     grid-template-columns: 1fr;
   }
 
   .sidebar {
+    position: static;
+    min-height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .sidebar.collapsed {
+    align-items: stretch;
+    padding: 18px;
+  }
+
+  .sidebar.collapsed .brand {
+    display: flex;
+    justify-items: initial;
+  }
+
+  .sidebar.collapsed .brand-copy,
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .trip-card span,
+  .sidebar.collapsed .trip-card em {
+    display: block;
+  }
+
+  .sidebar-toggle {
+    display: none;
+  }
+
+  .section-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .section-nav-button {
+    justify-content: flex-start;
   }
 
   .trip-list {
@@ -763,9 +905,33 @@ textarea {
 }
 
 @media (max-width: 720px) {
+  body {
+    padding-bottom: 74px;
+  }
+
   .workspace,
   .sidebar {
     padding: 16px;
+  }
+
+  .sidebar {
+    display: block;
+  }
+
+  .brand {
+    margin-bottom: 14px;
+  }
+
+  .section-nav {
+    display: none;
+  }
+
+  .trip-list {
+    grid-template-columns: 1fr;
+  }
+
+  .user-box {
+    margin-top: 14px;
   }
 
   .topbar {
@@ -795,5 +961,34 @@ textarea {
   .item-actions,
   .member-actions {
     justify-content: flex-end;
+  }
+
+  .bottom-nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    border-top: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.96);
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    z-index: 15;
+  }
+
+  .bottom-nav-button {
+    min-height: 46px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .bottom-nav-button.active {
+    background: #eef6f1;
+    color: var(--mint-dark);
   }
 }
