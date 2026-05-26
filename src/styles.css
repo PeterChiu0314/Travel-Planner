@@ -1196,6 +1196,75 @@ textarea {
   font-weight: 900;
 }
 
+.luggage-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.luggage-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.48fr) minmax(0, 0.52fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.luggage-column,
+.assigned-shared-list {
+  display: grid;
+  gap: 12px;
+}
+
+.luggage-list {
+  display: grid;
+  gap: 10px;
+}
+
+.shared-luggage-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr) minmax(150px, 0.9fr) auto;
+  gap: 8px;
+}
+
+.luggage-row,
+.shared-luggage-row {
+  display: grid;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.luggage-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.shared-luggage-row {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+
+.luggage-row input {
+  width: auto;
+  min-height: auto;
+}
+
+.luggage-row span,
+.shared-luggage-row span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.luggage-row.packed strong {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.shared-assigned {
+  background: #fbfcfa;
+}
+
 .budget-overview {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1503,7 +1572,8 @@ textarea {
   .settlement-grid,
   .settlement-expense,
   .accommodation-layout,
-  .todo-guide-layout {
+  .todo-guide-layout,
+  .luggage-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1661,12 +1731,20 @@ textarea {
     display: none;
   }
 
-  .todo-guide-column.active {
+  .todo-guide-column.active,
+  .luggage-column.active {
     display: block;
   }
 
+  .luggage-column {
+    display: none;
+  }
+
   .todo-row,
-  .guide-card {
+  .guide-card,
+  .luggage-row,
+  .shared-luggage-row,
+  .shared-luggage-form {
     grid-template-columns: 1fr;
   }
 

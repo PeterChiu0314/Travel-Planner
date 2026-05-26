@@ -107,6 +107,17 @@ const emptyTodoForm = {
   guide_id: "",
 };
 
+const emptyLuggageForm = {
+  title: "",
+  category: "",
+};
+
+const emptySharedLuggageForm = {
+  title: "",
+  category: "",
+  assigned_to: "",
+};
+
 function todayInput(offset = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offset);
@@ -248,6 +259,8 @@ export default function App() {
   const [accommodations, setAccommodations] = useState([]);
   const [guideItems, setGuideItems] = useState([]);
   const [todoItems, setTodoItems] = useState([]);
+  const [luggageItems, setLuggageItems] = useState([]);
+  const [sharedLuggageItems, setSharedLuggageItems] = useState([]);
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -337,6 +350,8 @@ export default function App() {
       setAccommodations([]);
       setGuideItems([]);
       setTodoItems([]);
+      setLuggageItems([]);
+      setSharedLuggageItems([]);
       setItineraryBudgetLinks([]);
       setPackItems([]);
       setMembers([]);
@@ -353,6 +368,8 @@ export default function App() {
       accommodationsResult,
       guideResult,
       todoResult,
+      luggageResult,
+      sharedLuggageResult,
       budgetLinksResult,
       packResult,
       membersResult,
@@ -366,6 +383,8 @@ export default function App() {
       supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
       supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
+      supabase.from("luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
+      supabase.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("itinerary_budget_items").select("*"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase
@@ -385,6 +404,8 @@ export default function App() {
       accommodationsResult.error ||
       guideResult.error ||
       todoResult.error ||
+      luggageResult.error ||
+      sharedLuggageResult.error ||
       budgetLinksResult.error ||
       packResult.error ||
       membersResult.error;
@@ -413,6 +434,8 @@ export default function App() {
     setAccommodations(accommodationsResult.data || []);
     setGuideItems(guideResult.data || []);
     setTodoItems(todoResult.data || []);
+    setLuggageItems(luggageResult.data || []);
+    setSharedLuggageItems(sharedLuggageResult.data || []);
     setItineraryBudgetLinks(
       (budgetLinksResult.data || []).filter(
         (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
@@ -530,6 +553,16 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "todo_items", filter: `trip_id=eq.${activeTripId}` },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "luggage_items", filter: `trip_id=eq.${activeTripId}` },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "shared_luggage_items", filter: `trip_id=eq.${activeTripId}` },
         () => loadTripData(activeTripId),
       )
       .on(
@@ -959,6 +992,65 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
+  async function saveLuggageItem(payload, editingId) {
+    if (!activeTrip || !session?.user) return;
+    const nextPayload = {
+      trip_id: activeTrip.id,
+      owner_id: session.user.id,
+      title: payload.title.trim(),
+      category: payload.category.trim() || null,
+      is_shared_assigned_item: false,
+    };
+    const result = editingId
+      ? await supabase.from("luggage_items").update(nextPayload).eq("id", editingId)
+      : await supabase.from("luggage_items").insert(nextPayload);
+    if (result.error) setNotice(result.error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function toggleLuggageItem(item) {
+    if (!session?.user) return;
+    const { error } = await supabase.from("luggage_items").update({ packed: !item.packed }).eq("id", item.id);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function deleteLuggageItem(itemId) {
+    if (!session?.user) return;
+    const { error } = await supabase.from("luggage_items").delete().eq("id", itemId);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function saveSharedLuggageItem(payload, editingId) {
+    if (!activeTrip || !canEdit) return;
+    const nextPayload = {
+      trip_id: activeTrip.id,
+      title: payload.title.trim(),
+      category: payload.category.trim() || null,
+      assigned_to: payload.assigned_to || null,
+    };
+    const result = editingId
+      ? await supabase.from("shared_luggage_items").update(nextPayload).eq("id", editingId)
+      : await supabase.from("shared_luggage_items").insert(nextPayload);
+    if (result.error) setNotice(result.error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function updateSharedLuggageItem(itemId, patch) {
+    if (!activeTrip || !session?.user) return;
+    const { error } = await supabase.from("shared_luggage_items").update(patch).eq("id", itemId);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function deleteSharedLuggageItem(itemId) {
+    if (!canEdit) return;
+    const { error } = await supabase.from("shared_luggage_items").delete().eq("id", itemId);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
   async function deleteItem(itemId) {
     if (!canEdit) return;
     const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId);
@@ -1172,8 +1264,11 @@ function exportTrip() {
             items={items}
             itineraryBudgetLinks={itineraryBudgetLinks}
             guideItems={guideItems}
+            currentUserId={session.user.id}
+            luggageItems={luggageItems}
             members={members}
             packItems={packItems}
+            sharedLuggageItems={sharedLuggageItems}
             todayDayIndex={todayDayIndex}
             todayItems={todayItems}
             todoItems={todoItems}
@@ -1188,7 +1283,9 @@ function exportTrip() {
             onDeleteBudget={deleteBudget}
             onDeleteGuide={deleteGuide}
             onDeleteItem={deleteItem}
+            onDeleteLuggageItem={deleteLuggageItem}
             onDeletePackItem={deletePackItem}
+            onDeleteSharedLuggageItem={deleteSharedLuggageItem}
             onDeleteTodo={deleteTodo}
             onRejectMember={rejectMember}
             onReorderItem={reorderItem}
@@ -1198,10 +1295,14 @@ function exportTrip() {
             onSaveBudget={saveBudget}
             onSaveGuide={saveGuide}
             onSaveItem={saveItem}
+            onSaveLuggageItem={saveLuggageItem}
+            onSaveSharedLuggageItem={saveSharedLuggageItem}
             onSaveTodo={saveTodo}
             onSectionChange={setActiveSection}
+            onToggleLuggageItem={toggleLuggageItem}
             onToggleTodo={toggleTodo}
             onTogglePackItem={togglePackItem}
+            onUpdateSharedLuggageItem={updateSharedLuggageItem}
             onUpdateTrip={updateTrip}
           />
         ) : null}
@@ -1345,8 +1446,11 @@ function TripWorkspace(props) {
     items,
     itineraryBudgetLinks,
     guideItems,
+    currentUserId,
+    luggageItems,
     members,
     packItems,
+    sharedLuggageItems,
     todayDayIndex,
     todayItems,
     todoItems,
@@ -1361,7 +1465,9 @@ function TripWorkspace(props) {
     onDeleteBudget,
     onDeleteGuide,
     onDeleteItem,
+    onDeleteLuggageItem,
     onDeletePackItem,
+    onDeleteSharedLuggageItem,
     onDeleteTodo,
     onRejectMember,
     onReorderItem,
@@ -1371,16 +1477,21 @@ function TripWorkspace(props) {
     onSaveBudget,
     onSaveGuide,
     onSaveItem,
+    onSaveLuggageItem,
+    onSaveSharedLuggageItem,
     onSaveTodo,
     onSectionChange,
+    onToggleLuggageItem,
     onToggleTodo,
     onTogglePackItem,
+    onUpdateSharedLuggageItem,
     onUpdateTrip,
   } = props;
   const isTodayMode = activeSection === "today";
   const isBudgetMode = activeSection === "budget";
   const isAccommodationMode = activeSection === "accommodation";
   const isTodoMode = activeSection === "todo";
+  const isLuggageMode = activeSection === "luggage";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
   const alternativesByItem = useMemo(() => {
@@ -1425,7 +1536,9 @@ function TripWorkspace(props) {
 
       <div
         className={`field-group trip-fields${
-          isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isSettlementMode ? " hidden-section" : ""
+          isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode
+            ? " hidden-section"
+            : ""
         }`}
       >
         <label>
@@ -1466,7 +1579,7 @@ function TripWorkspace(props) {
         </label>
       </div>
 
-      {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isSettlementMode ? null : (
+      {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
         <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />
       )}
 
@@ -1513,6 +1626,23 @@ function TripWorkspace(props) {
         />
       ) : null}
 
+      {isLuggageMode ? (
+        <LuggagePanel
+          canEdit={canEdit}
+          currentUserId={currentUserId}
+          isOwner={isOwner}
+          luggageItems={luggageItems}
+          members={members}
+          sharedLuggageItems={sharedLuggageItems}
+          onDeletePersonal={onDeleteLuggageItem}
+          onDeleteShared={onDeleteSharedLuggageItem}
+          onSavePersonal={onSaveLuggageItem}
+          onSaveShared={onSaveSharedLuggageItem}
+          onTogglePersonal={onToggleLuggageItem}
+          onUpdateShared={onUpdateSharedLuggageItem}
+        />
+      ) : null}
+
       {isSettlementMode ? (
         <SettlementPanel
           actualExpenses={actualExpenses}
@@ -1524,7 +1654,9 @@ function TripWorkspace(props) {
 
       <div
         className={`content-grid${
-          isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isSettlementMode ? " hidden-section" : ""
+          isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode
+            ? " hidden-section"
+            : ""
         }`}
       >
         <section className="panel itinerary-panel">
@@ -3372,6 +3504,244 @@ function GuidePanel({ canEdit, guideItems, onDelete, onSave }) {
         ) : (
           <div className="timeline-empty">尚未建立指南</div>
         )}
+      </div>
+    </section>
+  );
+}
+
+function LuggagePanel({
+  canEdit,
+  currentUserId,
+  isOwner,
+  luggageItems,
+  members,
+  sharedLuggageItems,
+  onDeletePersonal,
+  onDeleteShared,
+  onSavePersonal,
+  onSaveShared,
+  onTogglePersonal,
+  onUpdateShared,
+}) {
+  const [activeTab, setActiveTab] = useState("personal");
+  const [personalForm, setPersonalForm] = useState(emptyLuggageForm);
+  const [sharedForm, setSharedForm] = useState(emptySharedLuggageForm);
+  const [editingPersonalId, setEditingPersonalId] = useState(null);
+  const [editingSharedId, setEditingSharedId] = useState(null);
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
+  const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
+
+  async function submitPersonal(event) {
+    event.preventDefault();
+    await onSavePersonal(personalForm, editingPersonalId);
+    setPersonalForm(emptyLuggageForm);
+    setEditingPersonalId(null);
+  }
+
+  async function submitShared(event) {
+    event.preventDefault();
+    await onSaveShared(sharedForm, editingSharedId);
+    setSharedForm(emptySharedLuggageForm);
+    setEditingSharedId(null);
+  }
+
+  function editPersonal(item) {
+    setPersonalForm({ title: item.title || "", category: item.category || "" });
+    setEditingPersonalId(item.id);
+  }
+
+  function editShared(item) {
+    setSharedForm({
+      title: item.title || "",
+      category: item.category || "",
+      assigned_to: item.assigned_to || "",
+    });
+    setEditingSharedId(item.id);
+  }
+
+  return (
+    <section className="panel luggage-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Luggage</p>
+          <h3>行李</h3>
+        </div>
+      </div>
+      <div className="mobile-tabs">
+        <button
+          className={activeTab === "personal" ? "active" : ""}
+          type="button"
+          onClick={() => setActiveTab("personal")}
+        >
+          私物
+        </button>
+        <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => setActiveTab("shared")}>
+          公物
+        </button>
+      </div>
+
+      <div className="luggage-layout">
+        <section className={`luggage-column${activeTab === "personal" ? " active" : ""}`}>
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">Personal</p>
+              <h3>私物</h3>
+            </div>
+            <span className="pill">{luggageItems.filter((item) => item.packed).length}/{luggageItems.length}</span>
+          </div>
+          <form className="inline-form" onSubmit={submitPersonal}>
+            <input
+              placeholder="新增個人行李"
+              value={personalForm.title}
+              onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
+            />
+            <input
+              placeholder="分類"
+              value={personalForm.category}
+              onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
+            />
+            <button className="icon-button small" type="submit" disabled={!personalForm.title.trim()}>
+              {editingPersonalId ? "S" : "+"}
+            </button>
+          </form>
+          <div className="luggage-list">
+            {luggageItems.length ? (
+              luggageItems.map((item) => (
+                <article className={`luggage-row${item.packed ? " packed" : ""}`} key={item.id}>
+                  <input checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.category || "未分類"}</span>
+                  </div>
+                  <div className="member-actions">
+                    <button className="mini-button" type="button" onClick={() => editPersonal(item)}>
+                      E
+                    </button>
+                    <button className="mini-button" type="button" onClick={() => onDeletePersonal(item.id)}>
+                      X
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="timeline-empty">尚未建立個人行李</div>
+            )}
+          </div>
+
+          <div className="assigned-shared-list">
+            <div className="panel-heading tight">
+              <div>
+                <p className="eyebrow">Assigned</p>
+                <h3>指派給我的公物</h3>
+              </div>
+            </div>
+            {assignedSharedItems.length ? (
+              assignedSharedItems.map((item) => (
+                <article className="luggage-row shared-assigned" key={item.id}>
+                  <input
+                    checked={item.packed_by_assignee}
+                    type="checkbox"
+                    onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
+                  />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.category || "未分類"}</span>
+                  </div>
+                  <span className="pill">{item.confirmed_by_owner ? "總召已確認" : "待總召確認"}</span>
+                </article>
+              ))
+            ) : (
+              <div className="timeline-empty">目前沒有指派公物</div>
+            )}
+          </div>
+        </section>
+
+        <section className={`luggage-column${activeTab === "shared" ? " active" : ""}`}>
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">Team</p>
+              <h3>公物</h3>
+            </div>
+            <span className="pill">{sharedLuggageItems.length} 件</span>
+          </div>
+          <form className="shared-luggage-form" onSubmit={submitShared}>
+            <input
+              disabled={!canEdit}
+              placeholder="新增團隊公物"
+              value={sharedForm.title}
+              onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
+            />
+            <input
+              disabled={!canEdit}
+              placeholder="分類"
+              value={sharedForm.category}
+              onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
+            />
+            <select
+              disabled={!canEdit}
+              value={sharedForm.assigned_to}
+              onChange={(event) => setSharedForm({ ...sharedForm, assigned_to: event.target.value })}
+            >
+              <option value="">未指派</option>
+              {approvedMembers.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {memberName(member)}
+                </option>
+              ))}
+            </select>
+            <button className="icon-button small" disabled={!canEdit || !sharedForm.title.trim()} type="submit">
+              {editingSharedId ? "S" : "+"}
+            </button>
+          </form>
+          <div className="luggage-list">
+            {sharedLuggageItems.length ? (
+              sharedLuggageItems.map((item) => {
+                const assignee = memberById.get(item.assigned_to);
+                const canToggleAssigned = item.assigned_to === currentUserId || canEdit;
+                return (
+                  <article className="shared-luggage-row" key={item.id}>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>
+                        {item.category || "未分類"} · 指派：
+                        {assignee ? memberName(assignee) : "未指派"}
+                      </span>
+                    </div>
+                    <label className="checkbox-label">
+                      <input
+                        checked={item.packed_by_assignee}
+                        disabled={!canToggleAssigned}
+                        type="checkbox"
+                        onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
+                      />
+                      已打包
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        checked={item.confirmed_by_owner}
+                        disabled={!isOwner}
+                        type="checkbox"
+                        onChange={() => onUpdateShared(item.id, { confirmed_by_owner: !item.confirmed_by_owner })}
+                      />
+                      總召確認
+                    </label>
+                    <div className="member-actions">
+                      <button className="mini-button" disabled={!canEdit} type="button" onClick={() => editShared(item)}>
+                        E
+                      </button>
+                      <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDeleteShared(item.id)}>
+                        X
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="timeline-empty">尚未建立團隊公物</div>
+            )}
+          </div>
+        </section>
       </div>
     </section>
   );
