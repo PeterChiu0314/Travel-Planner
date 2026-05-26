@@ -116,6 +116,47 @@ function sortScheduleItems(items) {
   });
 }
 
+function memberName(member) {
+  return member?.display_name || member?.email || member?.user_id || "未指定";
+}
+
+function buildParticipantsMap(participants, foreignKey) {
+  const next = {};
+  participants.forEach((participant) => {
+    next[participant[foreignKey]] = [...(next[participant[foreignKey]] || []), participant.user_id];
+  });
+  return next;
+}
+
+function simplifyTransfers(balances) {
+  const debtors = balances
+    .filter((entry) => entry.balance < -0.5)
+    .map((entry) => ({ ...entry, amount: Math.abs(entry.balance) }))
+    .sort((a, b) => b.amount - a.amount);
+  const creditors = balances
+    .filter((entry) => entry.balance > 0.5)
+    .map((entry) => ({ ...entry, amount: entry.balance }))
+    .sort((a, b) => b.amount - a.amount);
+  const transfers = [];
+  let debtorIndex = 0;
+  let creditorIndex = 0;
+
+  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+    const debtor = debtors[debtorIndex];
+    const creditor = creditors[creditorIndex];
+    const amount = Math.min(debtor.amount, creditor.amount);
+    if (amount > 0.5) {
+      transfers.push({ from: debtor.user_id, to: creditor.user_id, amount: Math.round(amount) });
+    }
+    debtor.amount -= amount;
+    creditor.amount -= amount;
+    if (debtor.amount <= 0.5) debtorIndex += 1;
+    if (creditor.amount <= 0.5) creditorIndex += 1;
+  }
+
+  return transfers;
+}
+
 function tripTodayIndex(trip) {
   const days = tripDays(trip);
   if (!days.length) return 0;
@@ -1170,6 +1211,7 @@ function TripWorkspace(props) {
   } = props;
   const isTodayMode = activeSection === "today";
   const isBudgetMode = activeSection === "budget";
+  const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
   const alternativesByItem = useMemo(() => {
     const next = {};
@@ -1211,7 +1253,7 @@ function TripWorkspace(props) {
         />
       ) : null}
 
-      <div className={`field-group trip-fields${isTodayMode || isBudgetMode ? " hidden-section" : ""}`}>
+      <div className={`field-group trip-fields${isTodayMode || isBudgetMode || isSettlementMode ? " hidden-section" : ""}`}>
         <label>
           旅程名稱
           <input
@@ -1250,7 +1292,9 @@ function TripWorkspace(props) {
         </label>
       </div>
 
-      {isTodayMode || isBudgetMode ? null : <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />}
+      {isTodayMode || isBudgetMode || isSettlementMode ? null : (
+        <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />
+      )}
 
       {isBudgetMode ? (
         <BudgetPanel
@@ -1270,7 +1314,16 @@ function TripWorkspace(props) {
         />
       ) : null}
 
-      <div className={`content-grid${isTodayMode || isBudgetMode ? " hidden-section" : ""}`}>
+      {isSettlementMode ? (
+        <SettlementPanel
+          actualExpenses={actualExpenses}
+          actualParticipants={actualParticipants}
+          budgetItems={budgetItems}
+          members={members}
+        />
+      ) : null}
+
+      <div className={`content-grid${isTodayMode || isBudgetMode || isSettlementMode ? " hidden-section" : ""}`}>
         <section className="panel itinerary-panel">
           <ItineraryTimeline
                 activeDay={activeDay}
@@ -2390,6 +2443,186 @@ function ActualExpensePanel({ actualExpenses, actualParticipants, budgetItems, c
           <div className="timeline-empty">尚未建立實付</div>
         )}
       </div>
+    </section>
+  );
+}
+
+function SettlementPanel({ actualExpenses, actualParticipants, budgetItems, members }) {
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
+  const participantsByExpense = useMemo(
+    () => buildParticipantsMap(actualParticipants, "actual_expense_id"),
+    [actualParticipants],
+  );
+  const actualBudgetIds = new Set(actualExpenses.map((expense) => expense.budget_item_id).filter(Boolean));
+  const pendingBudgetItems = budgetItems.filter((budget) => !actualBudgetIds.has(budget.id));
+  const plannedTotal = budgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0);
+  const actualTotal = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
+  const balances = approvedMembers.map((member) => {
+    let shouldPay = 0;
+    let paid = 0;
+    actualExpenses.forEach((expense) => {
+      const amount = Number(expense.twd_amount || 0);
+      if (expense.payer_id === member.user_id) paid += amount;
+      const participants = participantsByExpense[expense.id]?.length
+        ? participantsByExpense[expense.id]
+        : approvedMembers.map((entry) => entry.user_id);
+      if (participants.includes(member.user_id) && participants.length) {
+        shouldPay += amount / participants.length;
+      }
+    });
+    return {
+      user_id: member.user_id,
+      name: memberName(member),
+      shouldPay,
+      paid,
+      balance: paid - shouldPay,
+    };
+  });
+  const transfers = simplifyTransfers(balances);
+
+  return (
+    <section className="panel settlement-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Settlement</p>
+          <h3>結算</h3>
+        </div>
+      </div>
+
+      <div className="budget-overview">
+        <div>
+          <span>規劃金額</span>
+          <strong>{formatMoney(plannedTotal)}</strong>
+        </div>
+        <div>
+          <span>實際金額</span>
+          <strong>{formatMoney(actualTotal)}</strong>
+        </div>
+        <div>
+          <span>尚未轉實付</span>
+          <strong>{formatMoney(pendingBudgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0))}</strong>
+        </div>
+        <div>
+          <span>差額</span>
+          <strong>{formatMoney(actualTotal - plannedTotal)}</strong>
+        </div>
+      </div>
+
+      <div className="settlement-grid">
+        <section className="settlement-section">
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">People</p>
+              <h3>每人差額</h3>
+            </div>
+          </div>
+          <div className="settlement-table">
+            <div className="settlement-row settlement-header">
+              <span>成員</span>
+              <span>應付</span>
+              <span>已付</span>
+              <span>差額</span>
+            </div>
+            {balances.map((entry) => (
+              <div className="settlement-row" key={entry.user_id}>
+                <strong>{entry.name}</strong>
+                <span>{formatMoney(entry.shouldPay)}</span>
+                <span>{formatMoney(entry.paid)}</span>
+                <span className={entry.balance >= 0 ? "positive-balance" : "negative-balance"}>
+                  {formatMoney(entry.balance)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="settlement-section">
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">Transfers</p>
+              <h3>付款路徑</h3>
+            </div>
+          </div>
+          <div className="transfer-list">
+            {transfers.length ? (
+              transfers.map((transfer, index) => (
+                <div className="transfer-row" key={`${transfer.from}-${transfer.to}-${index}`}>
+                  <strong>{memberName(memberById.get(transfer.from))}</strong>
+                  <span>付給</span>
+                  <strong>{memberName(memberById.get(transfer.to))}</strong>
+                  <span>{formatMoney(transfer.amount)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="timeline-empty">目前沒有需要互相付款的差額</div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <section className="settlement-section">
+        <div className="panel-heading tight">
+          <div>
+            <p className="eyebrow">Actual Expenses</p>
+            <h3>實付明細</h3>
+          </div>
+        </div>
+        <div className="budget-cards">
+          {actualExpenses.length ? (
+            actualExpenses.map((expense) => {
+              const payer = memberById.get(expense.payer_id);
+              const participants = participantsByExpense[expense.id] || [];
+              return (
+                <article className="settlement-expense" key={expense.id}>
+                  <div>
+                    <strong>{expense.title}</strong>
+                    <span>{expense.paid_at ? new Date(expense.paid_at).toLocaleDateString("zh-TW") : "未設定日期"}</span>
+                  </div>
+                  <span>{formatMoney(expense.twd_amount)}</span>
+                  <span>付款人：{memberName(payer)}</span>
+                  <span>
+                    分攤：
+                    {participants.length
+                      ? participants.map((userId) => memberName(memberById.get(userId))).join("、")
+                      : "全部成員"}
+                  </span>
+                </article>
+              );
+            })
+          ) : (
+            <div className="timeline-empty">尚未建立實付，結算會在有實付後開始計算</div>
+          )}
+        </div>
+      </section>
+
+      <section className="settlement-section">
+        <div className="panel-heading tight">
+          <div>
+            <p className="eyebrow">Pending Budget</p>
+            <h3>尚未轉實付的預算</h3>
+          </div>
+        </div>
+        <div className="budget-cards">
+          {pendingBudgetItems.length ? (
+            pendingBudgetItems.map((budget) => (
+              <article className="settlement-expense" key={budget.id}>
+                <div>
+                  <strong>{budget.title}</strong>
+                  <span>
+                    {budget.category}
+                    {budget.subcategory ? `｜${budget.subcategory}` : ""}
+                  </span>
+                </div>
+                <span>{formatMoney(budget.twd_amount)}</span>
+                <span>{budget.is_fixed ? "固定費用" : "預估費用"}</span>
+              </article>
+            ))
+          ) : (
+            <div className="timeline-empty">所有預算都已轉入實付或沒有待處理預算</div>
+          )}
+        </div>
+      </section>
     </section>
   );
 }
