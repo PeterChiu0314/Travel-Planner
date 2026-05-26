@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
+import { clearDraft, clearDraftsForEntity, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 
@@ -4402,9 +4402,10 @@ function LuggagePanel({
 
   async function submitPersonal(event) {
     event.preventDefault();
+    if (!personalForm.title.trim()) return;
     const result = await onSavePersonal(personalForm, editingPersonalId, { baseUpdatedAt: personalUpdatedAt });
     if (!result?.ok) return;
-    clearDraft(personalDraft.draftKey);
+    clearDraftsForEntity({ entityType: "luggage_item", tripId: activeTrip?.id, userId: currentUserId });
     personalDraft.resetDraft(emptyLuggageForm);
     setPersonalSeed(emptyLuggageForm);
     setPersonalUpdatedAt(null);
@@ -4424,22 +4425,42 @@ function LuggagePanel({
 
   async function editPersonal(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (editingPersonalId && editingPersonalId !== item.id) {
+      await releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
+    }
     const lockResult = await acquireEditLock({ record: item, supabase, table: "luggage_items", userId: currentUserId });
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
-    setPersonalSeed({ title: item.title || "", category: item.category || "" });
+    const nextForm = { title: item.title || "", category: item.category || "" };
+    setPersonalSeed(nextForm);
+    personalDraft.replaceForm(nextForm, { dirty: false });
     setPersonalUpdatedAt(lockResult.data?.updated_at || item.updated_at || null);
     setEditingPersonalId(item.id);
   }
 
+  async function cancelPersonalEdit() {
+    if (editingPersonalId) {
+      await releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
+    }
+    personalDraft.resetDraft(emptyLuggageForm);
+    setPersonalSeed(emptyLuggageForm);
+    setPersonalUpdatedAt(null);
+    setEditingPersonalId(null);
+  }
+
   async function editShared(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (editingSharedId && editingSharedId !== item.id) {
+      await releaseEditLock({ recordId: editingSharedId, supabase, table: "shared_luggage_items", userId: currentUserId });
+    }
     const lockResult = await acquireEditLock({ record: item, supabase, table: "shared_luggage_items", userId: currentUserId });
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
-    setSharedSeed({
+    const nextForm = {
       title: item.title || "",
       category: item.category || "",
       assigned_to: item.assigned_to || "",
-    });
+    };
+    setSharedSeed(nextForm);
+    sharedDraft.replaceForm(nextForm, { dirty: false });
     setSharedUpdatedAt(lockResult.data?.updated_at || item.updated_at || null);
     setEditingSharedId(item.id);
   }
@@ -4488,6 +4509,11 @@ function LuggagePanel({
             <button className="icon-button small" type="submit" disabled={!personalForm.title.trim()}>
               {editingPersonalId ? "S" : "+"}
             </button>
+            {editingPersonalId ? (
+              <button className="mini-button" type="button" onClick={cancelPersonalEdit}>
+                取消
+              </button>
+            ) : null}
           </form>
           <div className="luggage-list">
             {luggageItems.length ? (

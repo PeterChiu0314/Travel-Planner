@@ -63,6 +63,20 @@ export function loadLatestDraftForEntity({ entityType, tripId, userId }) {
   return latest;
 }
 
+export function clearDraftsForEntity({ entityType, tripId, userId }) {
+  const prefix = [draftPrefix, userId || "anonymous", tripId || "no-trip", entityType, ""].join(":");
+  try {
+    const keys = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(prefix)) keys.push(key);
+    }
+    keys.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // Nothing to clear when local storage is unavailable.
+  }
+}
+
 export function isDraftNewerThanServer(draft, serverUpdatedAt) {
   if (!draft?.savedAt) return false;
   if (!serverUpdatedAt) return true;
@@ -173,6 +187,14 @@ export function useDraftAutosave({
     setHasUnsavedChanges(false);
   }
 
+  function replaceForm(nextForm, { dirty = false } = {}) {
+    suppressFlushRef.current = !dirty;
+    hasUnsavedRef.current = dirty;
+    latestRef.current = nextForm;
+    setForm(nextForm);
+    setHasUnsavedChanges(dirty);
+  }
+
   function flushDraft() {
     if (hasUnsavedRef.current && !suppressFlushRef.current) {
       saveDraft(draftKey, { form: latestRef.current, serverUpdatedAt });
@@ -184,6 +206,7 @@ export function useDraftAutosave({
     form,
     flushDraft,
     hasUnsavedChanges,
+    replaceForm,
     resetDraft,
     setForm: updateForm,
   };
