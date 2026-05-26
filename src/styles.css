@@ -1113,6 +1113,89 @@ textarea {
   font-weight: 900;
 }
 
+.todo-guide-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.todo-guide-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.6fr) minmax(280px, 0.4fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.todo-panel,
+.guide-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.mobile-tabs {
+  display: none;
+}
+
+.todo-list,
+.guide-list {
+  display: grid;
+  gap: 10px;
+}
+
+.todo-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.todo-row input {
+  width: auto;
+  min-height: auto;
+  margin-top: 4px;
+}
+
+.todo-row.completed {
+  background: #fbfcfa;
+}
+
+.todo-row.completed strong {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.todo-row p,
+.guide-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.guide-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.guide-card div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.guide-card a {
+  color: var(--mint-dark);
+  font-weight: 900;
+}
+
 .budget-overview {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1419,7 +1502,8 @@ textarea {
 
   .settlement-grid,
   .settlement-expense,
-  .accommodation-layout {
+  .accommodation-layout,
+  .todo-guide-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1549,6 +1633,40 @@ textarea {
   }
 
   .accommodation-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .mobile-tabs button {
+    min-height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--muted);
+    font-weight: 900;
+  }
+
+  .mobile-tabs button.active {
+    border-color: rgba(47, 143, 114, 0.28);
+    background: #eef6f1;
+    color: var(--mint-dark);
+  }
+
+  .todo-guide-column {
+    display: none;
+  }
+
+  .todo-guide-column.active {
+    display: block;
+  }
+
+  .todo-row,
+  .guide-card {
     grid-template-columns: 1fr;
   }
 

@@ -93,6 +93,20 @@ const emptyAccommodationForm = {
   custom_notes: "",
 };
 
+const emptyGuideForm = {
+  title: "",
+  description: "",
+  url: "",
+};
+
+const emptyTodoForm = {
+  title: "",
+  description: "",
+  due_date: "",
+  assignee_id: "",
+  guide_id: "",
+};
+
 function todayInput(offset = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offset);
@@ -232,6 +246,8 @@ export default function App() {
   const [actualExpenses, setActualExpenses] = useState([]);
   const [actualParticipants, setActualParticipants] = useState([]);
   const [accommodations, setAccommodations] = useState([]);
+  const [guideItems, setGuideItems] = useState([]);
+  const [todoItems, setTodoItems] = useState([]);
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -319,6 +335,8 @@ export default function App() {
       setActualExpenses([]);
       setActualParticipants([]);
       setAccommodations([]);
+      setGuideItems([]);
+      setTodoItems([]);
       setItineraryBudgetLinks([]);
       setPackItems([]);
       setMembers([]);
@@ -333,6 +351,8 @@ export default function App() {
       actualResult,
       actualParticipantsResult,
       accommodationsResult,
+      guideResult,
+      todoResult,
       budgetLinksResult,
       packResult,
       membersResult,
@@ -344,6 +364,8 @@ export default function App() {
       supabase.from("actual_expenses").select("*").eq("trip_id", tripId),
       supabase.from("actual_expense_participants").select("*"),
       supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
+      supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
+      supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
       supabase.from("itinerary_budget_items").select("*"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase
@@ -361,6 +383,8 @@ export default function App() {
       actualResult.error ||
       actualParticipantsResult.error ||
       accommodationsResult.error ||
+      guideResult.error ||
+      todoResult.error ||
       budgetLinksResult.error ||
       packResult.error ||
       membersResult.error;
@@ -387,6 +411,8 @@ export default function App() {
       ),
     );
     setAccommodations(accommodationsResult.data || []);
+    setGuideItems(guideResult.data || []);
+    setTodoItems(todoResult.data || []);
     setItineraryBudgetLinks(
       (budgetLinksResult.data || []).filter(
         (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
@@ -494,6 +520,16 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "accommodations", filter: `trip_id=eq.${activeTripId}` },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "guide_items", filter: `trip_id=eq.${activeTripId}` },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "todo_items", filter: `trip_id=eq.${activeTripId}` },
         () => loadTripData(activeTripId),
       )
       .on(
@@ -870,6 +906,59 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
+  async function saveGuide(payload, editingId) {
+    if (!activeTrip || !canEdit) return;
+    const nextPayload = {
+      trip_id: activeTrip.id,
+      title: payload.title.trim(),
+      description: payload.description.trim() || null,
+      url: payload.url.trim() || null,
+    };
+    const result = editingId
+      ? await supabase.from("guide_items").update(nextPayload).eq("id", editingId)
+      : await supabase.from("guide_items").insert(nextPayload);
+    if (result.error) setNotice(result.error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function deleteGuide(guideId) {
+    if (!activeTrip || !canEdit) return;
+    const { error } = await supabase.from("guide_items").delete().eq("id", guideId);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function saveTodo(payload, editingId) {
+    if (!activeTrip || !canEdit) return;
+    const nextPayload = {
+      trip_id: activeTrip.id,
+      title: payload.title.trim(),
+      description: payload.description.trim() || null,
+      due_date: payload.due_date || null,
+      assignee_id: payload.assignee_id || null,
+      guide_id: payload.guide_id || null,
+    };
+    const result = editingId
+      ? await supabase.from("todo_items").update(nextPayload).eq("id", editingId)
+      : await supabase.from("todo_items").insert(nextPayload);
+    if (result.error) setNotice(result.error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function toggleTodo(todo) {
+    if (!canEdit) return;
+    const { error } = await supabase.from("todo_items").update({ completed: !todo.completed }).eq("id", todo.id);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function deleteTodo(todoId) {
+    if (!activeTrip || !canEdit) return;
+    const { error } = await supabase.from("todo_items").delete().eq("id", todoId);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
   async function deleteItem(itemId) {
     if (!canEdit) return;
     const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId);
@@ -1082,10 +1171,12 @@ function exportTrip() {
             isPending={isPending}
             items={items}
             itineraryBudgetLinks={itineraryBudgetLinks}
+            guideItems={guideItems}
             members={members}
             packItems={packItems}
             todayDayIndex={todayDayIndex}
             todayItems={todayItems}
+            todoItems={todoItems}
             onActiveDay={setActiveDay}
             onAddPackItem={addPackItem}
             onApplyAlternative={applyAlternative}
@@ -1095,16 +1186,21 @@ function exportTrip() {
             onDeleteActualExpense={deleteActualExpense}
             onDeleteAccommodation={deleteAccommodation}
             onDeleteBudget={deleteBudget}
+            onDeleteGuide={deleteGuide}
             onDeleteItem={deleteItem}
             onDeletePackItem={deletePackItem}
+            onDeleteTodo={deleteTodo}
             onRejectMember={rejectMember}
             onReorderItem={reorderItem}
             onSaveAlternative={saveAlternative}
             onSaveActualExpense={saveActualExpense}
             onSaveAccommodation={saveAccommodation}
             onSaveBudget={saveBudget}
+            onSaveGuide={saveGuide}
             onSaveItem={saveItem}
+            onSaveTodo={saveTodo}
             onSectionChange={setActiveSection}
+            onToggleTodo={toggleTodo}
             onTogglePackItem={togglePackItem}
             onUpdateTrip={updateTrip}
           />
@@ -1248,10 +1344,12 @@ function TripWorkspace(props) {
     isPending,
     items,
     itineraryBudgetLinks,
+    guideItems,
     members,
     packItems,
     todayDayIndex,
     todayItems,
+    todoItems,
     onActiveDay,
     onAddPackItem,
     onApplyAlternative,
@@ -1261,22 +1359,28 @@ function TripWorkspace(props) {
     onDeleteActualExpense,
     onDeleteAccommodation,
     onDeleteBudget,
+    onDeleteGuide,
     onDeleteItem,
     onDeletePackItem,
+    onDeleteTodo,
     onRejectMember,
     onReorderItem,
     onSaveAlternative,
     onSaveActualExpense,
     onSaveAccommodation,
     onSaveBudget,
+    onSaveGuide,
     onSaveItem,
+    onSaveTodo,
     onSectionChange,
+    onToggleTodo,
     onTogglePackItem,
     onUpdateTrip,
   } = props;
   const isTodayMode = activeSection === "today";
   const isBudgetMode = activeSection === "budget";
   const isAccommodationMode = activeSection === "accommodation";
+  const isTodoMode = activeSection === "todo";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
   const alternativesByItem = useMemo(() => {
@@ -1321,7 +1425,7 @@ function TripWorkspace(props) {
 
       <div
         className={`field-group trip-fields${
-          isTodayMode || isBudgetMode || isAccommodationMode || isSettlementMode ? " hidden-section" : ""
+          isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isSettlementMode ? " hidden-section" : ""
         }`}
       >
         <label>
@@ -1362,7 +1466,7 @@ function TripWorkspace(props) {
         </label>
       </div>
 
-      {isTodayMode || isBudgetMode || isAccommodationMode || isSettlementMode ? null : (
+      {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isSettlementMode ? null : (
         <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />
       )}
 
@@ -1395,6 +1499,20 @@ function TripWorkspace(props) {
         />
       ) : null}
 
+      {isTodoMode ? (
+        <TodoGuidePanel
+          canEdit={canEdit}
+          guideItems={guideItems}
+          members={members}
+          todoItems={todoItems}
+          onDeleteGuide={onDeleteGuide}
+          onDeleteTodo={onDeleteTodo}
+          onSaveGuide={onSaveGuide}
+          onSaveTodo={onSaveTodo}
+          onToggleTodo={onToggleTodo}
+        />
+      ) : null}
+
       {isSettlementMode ? (
         <SettlementPanel
           actualExpenses={actualExpenses}
@@ -1406,7 +1524,7 @@ function TripWorkspace(props) {
 
       <div
         className={`content-grid${
-          isTodayMode || isBudgetMode || isAccommodationMode || isSettlementMode ? " hidden-section" : ""
+          isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isSettlementMode ? " hidden-section" : ""
         }`}
       >
         <section className="panel itinerary-panel">
@@ -2960,6 +3078,300 @@ function AccommodationPanel({ accommodations, budgetItems, canEdit, trip, onDele
             <div className="timeline-empty">選擇一筆住宿查看詳細資料</div>
           )}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function TodoGuidePanel({
+  canEdit,
+  guideItems,
+  members,
+  todoItems,
+  onDeleteGuide,
+  onDeleteTodo,
+  onSaveGuide,
+  onSaveTodo,
+  onToggleTodo,
+}) {
+  const [activeTab, setActiveTab] = useState("todo");
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  return (
+    <section className="panel todo-guide-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Todo / Guide</p>
+          <h3>待辦與指南</h3>
+        </div>
+      </div>
+      <div className="mobile-tabs">
+        <button className={activeTab === "todo" ? "active" : ""} type="button" onClick={() => setActiveTab("todo")}>
+          待辦
+        </button>
+        <button className={activeTab === "guide" ? "active" : ""} type="button" onClick={() => setActiveTab("guide")}>
+          指南
+        </button>
+      </div>
+      <div className="todo-guide-layout">
+        <div className={`todo-guide-column${activeTab === "todo" ? " active" : ""}`}>
+          <TodoPanel
+            canEdit={canEdit}
+            guideItems={guideItems}
+            members={approvedMembers}
+            todoItems={todoItems}
+            onDelete={onDeleteTodo}
+            onSave={onSaveTodo}
+            onToggle={onToggleTodo}
+          />
+        </div>
+        <div className={`todo-guide-column${activeTab === "guide" ? " active" : ""}`}>
+          <GuidePanel canEdit={canEdit} guideItems={guideItems} onDelete={onDeleteGuide} onSave={onSaveGuide} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TodoPanel({ canEdit, guideItems, members, todoItems, onDelete, onSave, onToggle }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyTodoForm);
+  const memberById = new Map(members.map((member) => [member.user_id, member]));
+  const guideById = new Map(guideItems.map((guide) => [guide.id, guide]));
+  const pendingCount = todoItems.filter((item) => !item.completed).length;
+
+  function openNewTodo() {
+    setForm(emptyTodoForm);
+    setEditingId(null);
+    setIsOpen(true);
+  }
+
+  function openEditTodo(item) {
+    setForm({
+      title: item.title || "",
+      description: item.description || "",
+      due_date: item.due_date || "",
+      assignee_id: item.assignee_id || "",
+      guide_id: item.guide_id || "",
+    });
+    setEditingId(item.id);
+    setIsOpen(true);
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await onSave(form, editingId);
+    setIsOpen(false);
+    setEditingId(null);
+    setForm(emptyTodoForm);
+  }
+
+  return (
+    <section className="todo-panel">
+      <div className="panel-heading tight">
+        <div>
+          <p className="eyebrow">Todo</p>
+          <h3>待辦</h3>
+        </div>
+        <div className="member-actions">
+          <span className="pill">{pendingCount} 未完成</span>
+          <button className="icon-button small" disabled={!canEdit} type="button" title="新增待辦" onClick={openNewTodo}>
+            +
+          </button>
+        </div>
+      </div>
+
+      {isOpen ? (
+        <form className="item-form" onSubmit={submit}>
+          <div className="field-group form-grid wide">
+            <label>
+              標題
+              <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+            </label>
+            <label>
+              截止日
+              <input
+                type="date"
+                value={form.due_date}
+                onChange={(event) => setForm({ ...form, due_date: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="field-group form-grid wide">
+            <label>
+              負責人
+              <select value={form.assignee_id} onChange={(event) => setForm({ ...form, assignee_id: event.target.value })}>
+                <option value="">未指定</option>
+                {members.map((member) => (
+                  <option key={member.user_id} value={member.user_id}>
+                    {memberName(member)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              連結指南
+              <select value={form.guide_id} onChange={(event) => setForm({ ...form, guide_id: event.target.value })}>
+                <option value="">未連結</option>
+                {guideItems.map((guide) => (
+                  <option key={guide.id} value={guide.id}>
+                    {guide.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="full-label">
+            說明
+            <textarea
+              rows="3"
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+            />
+          </label>
+          <div className="form-actions">
+            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+              取消
+            </button>
+            <button className="primary-button compact" type="submit">
+              儲存
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <div className="todo-list">
+        {todoItems.length ? (
+          todoItems.map((item) => {
+            const assignee = memberById.get(item.assignee_id);
+            const guide = guideById.get(item.guide_id);
+            return (
+              <article className={`todo-row${item.completed ? " completed" : ""}`} key={item.id}>
+                <input checked={item.completed} disabled={!canEdit} type="checkbox" onChange={() => onToggle(item)} />
+                <div>
+                  <strong>{item.title}</strong>
+                  {item.description ? <p>{item.description}</p> : null}
+                  <div className="item-meta">
+                    {item.due_date ? <span className="pill">{item.due_date}</span> : null}
+                    <span className="pill">{assignee ? memberName(assignee) : "未指定負責人"}</span>
+                    {guide ? <span className="pill">指南：{guide.title}</span> : null}
+                  </div>
+                </div>
+                <div className="member-actions">
+                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditTodo(item)}>
+                    E
+                  </button>
+                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(item.id)}>
+                    X
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        ) : (
+          <div className="timeline-empty">尚未建立待辦</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function GuidePanel({ canEdit, guideItems, onDelete, onSave }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyGuideForm);
+
+  function openNewGuide() {
+    setForm(emptyGuideForm);
+    setEditingId(null);
+    setIsOpen(true);
+  }
+
+  function openEditGuide(item) {
+    setForm({
+      title: item.title || "",
+      description: item.description || "",
+      url: item.url || "",
+    });
+    setEditingId(item.id);
+    setIsOpen(true);
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await onSave(form, editingId);
+    setIsOpen(false);
+    setEditingId(null);
+    setForm(emptyGuideForm);
+  }
+
+  return (
+    <section className="guide-panel">
+      <div className="panel-heading tight">
+        <div>
+          <p className="eyebrow">Guide</p>
+          <h3>指南</h3>
+        </div>
+        <button className="icon-button small" disabled={!canEdit} type="button" title="新增指南" onClick={openNewGuide}>
+          +
+        </button>
+      </div>
+
+      {isOpen ? (
+        <form className="item-form" onSubmit={submit}>
+          <label>
+            標題
+            <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+          </label>
+          <label className="full-label">
+            URL
+            <input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} />
+          </label>
+          <label className="full-label">
+            說明
+            <textarea
+              rows="3"
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+            />
+          </label>
+          <div className="form-actions">
+            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+              取消
+            </button>
+            <button className="primary-button compact" type="submit">
+              儲存
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <div className="guide-list">
+        {guideItems.length ? (
+          guideItems.map((item) => (
+            <article className="guide-card" key={item.id}>
+              <div>
+                <strong>{item.title}</strong>
+                {item.description ? <p>{item.description}</p> : null}
+                {item.url ? (
+                  <a href={item.url} rel="noreferrer" target="_blank">
+                    開啟連結
+                  </a>
+                ) : null}
+              </div>
+              <div className="member-actions">
+                <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditGuide(item)}>
+                  E
+                </button>
+                <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(item.id)}>
+                  X
+                </button>
+              </div>
+            </article>
+          ))
+        ) : (
+          <div className="timeline-empty">尚未建立指南</div>
+        )}
       </div>
     </section>
   );
