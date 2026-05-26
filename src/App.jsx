@@ -79,6 +79,20 @@ const emptyActualForm = {
   participantIds: [],
 };
 
+const emptyAccommodationForm = {
+  name: "",
+  check_in_date: "",
+  check_out_date: "",
+  check_in_time: "",
+  check_out_time: "",
+  address: "",
+  map_url: "",
+  booking_code: "",
+  payment_status: "unpaid",
+  budget_item_id: "",
+  custom_notes: "",
+};
+
 function todayInput(offset = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offset);
@@ -217,6 +231,7 @@ export default function App() {
   const [budgetParticipants, setBudgetParticipants] = useState([]);
   const [actualExpenses, setActualExpenses] = useState([]);
   const [actualParticipants, setActualParticipants] = useState([]);
+  const [accommodations, setAccommodations] = useState([]);
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -303,6 +318,7 @@ export default function App() {
       setBudgetParticipants([]);
       setActualExpenses([]);
       setActualParticipants([]);
+      setAccommodations([]);
       setItineraryBudgetLinks([]);
       setPackItems([]);
       setMembers([]);
@@ -316,6 +332,7 @@ export default function App() {
       budgetParticipantsResult,
       actualResult,
       actualParticipantsResult,
+      accommodationsResult,
       budgetLinksResult,
       packResult,
       membersResult,
@@ -326,6 +343,7 @@ export default function App() {
       supabase.from("budget_item_participants").select("*"),
       supabase.from("actual_expenses").select("*").eq("trip_id", tripId),
       supabase.from("actual_expense_participants").select("*"),
+      supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
       supabase.from("itinerary_budget_items").select("*"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase
@@ -342,6 +360,7 @@ export default function App() {
       budgetParticipantsResult.error ||
       actualResult.error ||
       actualParticipantsResult.error ||
+      accommodationsResult.error ||
       budgetLinksResult.error ||
       packResult.error ||
       membersResult.error;
@@ -367,6 +386,7 @@ export default function App() {
         actualIds.has(participant.actual_expense_id),
       ),
     );
+    setAccommodations(accommodationsResult.data || []);
     setItineraryBudgetLinks(
       (budgetLinksResult.data || []).filter(
         (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
@@ -469,6 +489,11 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "actual_expense_participants" },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "accommodations", filter: `trip_id=eq.${activeTripId}` },
         () => loadTripData(activeTripId),
       )
       .on(
@@ -811,6 +836,40 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
+  async function saveAccommodation(payload, editingId) {
+    if (!activeTrip || !canEdit) return;
+    const safeCheckOut =
+      payload.check_out_date && payload.check_out_date < payload.check_in_date
+        ? payload.check_in_date
+        : payload.check_out_date;
+    const nextPayload = {
+      trip_id: activeTrip.id,
+      name: payload.name.trim(),
+      check_in_date: payload.check_in_date || activeTrip.start_date,
+      check_out_date: safeCheckOut || payload.check_in_date || activeTrip.start_date,
+      check_in_time: payload.check_in_time || null,
+      check_out_time: payload.check_out_time || null,
+      address: payload.address.trim() || null,
+      map_url: payload.map_url.trim() || null,
+      booking_code: payload.booking_code.trim() || null,
+      payment_status: payload.payment_status || "unpaid",
+      budget_item_id: payload.budget_item_id || null,
+      custom_notes: payload.custom_notes.trim() || null,
+    };
+    const result = editingId
+      ? await supabase.from("accommodations").update(nextPayload).eq("id", editingId)
+      : await supabase.from("accommodations").insert(nextPayload);
+    if (result.error) setNotice(result.error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function deleteAccommodation(accommodationId) {
+    if (!activeTrip || !canEdit) return;
+    const { error } = await supabase.from("accommodations").delete().eq("id", accommodationId);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
   async function deleteItem(itemId) {
     if (!canEdit) return;
     const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId);
@@ -1012,6 +1071,7 @@ function exportTrip() {
             activeSection={activeSection}
             actualExpenses={actualExpenses}
             actualParticipants={actualParticipants}
+            accommodations={accommodations}
             alternatives={alternatives}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
@@ -1033,6 +1093,7 @@ function exportTrip() {
             onApproveMember={approveMember}
             onDeleteAlternative={deleteAlternative}
             onDeleteActualExpense={deleteActualExpense}
+            onDeleteAccommodation={deleteAccommodation}
             onDeleteBudget={deleteBudget}
             onDeleteItem={deleteItem}
             onDeletePackItem={deletePackItem}
@@ -1040,6 +1101,7 @@ function exportTrip() {
             onReorderItem={reorderItem}
             onSaveAlternative={saveAlternative}
             onSaveActualExpense={saveActualExpense}
+            onSaveAccommodation={saveAccommodation}
             onSaveBudget={saveBudget}
             onSaveItem={saveItem}
             onSectionChange={setActiveSection}
@@ -1175,6 +1237,7 @@ function TripWorkspace(props) {
     activeSection,
     actualExpenses,
     actualParticipants,
+    accommodations,
     alternatives,
     budgetItems,
     budgetParticipants,
@@ -1196,6 +1259,7 @@ function TripWorkspace(props) {
     onApproveMember,
     onDeleteAlternative,
     onDeleteActualExpense,
+    onDeleteAccommodation,
     onDeleteBudget,
     onDeleteItem,
     onDeletePackItem,
@@ -1203,6 +1267,7 @@ function TripWorkspace(props) {
     onReorderItem,
     onSaveAlternative,
     onSaveActualExpense,
+    onSaveAccommodation,
     onSaveBudget,
     onSaveItem,
     onSectionChange,
@@ -1211,6 +1276,7 @@ function TripWorkspace(props) {
   } = props;
   const isTodayMode = activeSection === "today";
   const isBudgetMode = activeSection === "budget";
+  const isAccommodationMode = activeSection === "accommodation";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
   const alternativesByItem = useMemo(() => {
@@ -1253,7 +1319,11 @@ function TripWorkspace(props) {
         />
       ) : null}
 
-      <div className={`field-group trip-fields${isTodayMode || isBudgetMode || isSettlementMode ? " hidden-section" : ""}`}>
+      <div
+        className={`field-group trip-fields${
+          isTodayMode || isBudgetMode || isAccommodationMode || isSettlementMode ? " hidden-section" : ""
+        }`}
+      >
         <label>
           旅程名稱
           <input
@@ -1292,7 +1362,7 @@ function TripWorkspace(props) {
         </label>
       </div>
 
-      {isTodayMode || isBudgetMode || isSettlementMode ? null : (
+      {isTodayMode || isBudgetMode || isAccommodationMode || isSettlementMode ? null : (
         <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />
       )}
 
@@ -1314,6 +1384,17 @@ function TripWorkspace(props) {
         />
       ) : null}
 
+      {isAccommodationMode ? (
+        <AccommodationPanel
+          accommodations={accommodations}
+          budgetItems={budgetItems}
+          canEdit={canEdit}
+          trip={activeTrip}
+          onDelete={onDeleteAccommodation}
+          onSave={onSaveAccommodation}
+        />
+      ) : null}
+
       {isSettlementMode ? (
         <SettlementPanel
           actualExpenses={actualExpenses}
@@ -1323,7 +1404,11 @@ function TripWorkspace(props) {
         />
       ) : null}
 
-      <div className={`content-grid${isTodayMode || isBudgetMode || isSettlementMode ? " hidden-section" : ""}`}>
+      <div
+        className={`content-grid${
+          isTodayMode || isBudgetMode || isAccommodationMode || isSettlementMode ? " hidden-section" : ""
+        }`}
+      >
         <section className="panel itinerary-panel">
           <ItineraryTimeline
                 activeDay={activeDay}
@@ -2623,6 +2708,259 @@ function SettlementPanel({ actualExpenses, actualParticipants, budgetItems, memb
           )}
         </div>
       </section>
+    </section>
+  );
+}
+
+function AccommodationPanel({ accommodations, budgetItems, canEdit, trip, onDelete, onSave }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [selectedId, setSelectedId] = useState(accommodations[0]?.id || null);
+  const [form, setForm] = useState(emptyAccommodationForm);
+  const selected = accommodations.find((item) => item.id === selectedId) || accommodations[0] || null;
+
+  function openNewAccommodation() {
+    setForm({
+      ...emptyAccommodationForm,
+      check_in_date: trip.start_date || todayInput(),
+      check_out_date: trip.start_date || todayInput(),
+    });
+    setEditingId(null);
+    setIsOpen(true);
+  }
+
+  function openEditAccommodation(item) {
+    setForm({
+      name: item.name || "",
+      check_in_date: item.check_in_date || trip.start_date || todayInput(),
+      check_out_date: item.check_out_date || item.check_in_date || trip.start_date || todayInput(),
+      check_in_time: item.check_in_time || "",
+      check_out_time: item.check_out_time || "",
+      address: item.address || "",
+      map_url: item.map_url || "",
+      booking_code: item.booking_code || "",
+      payment_status: item.payment_status || "unpaid",
+      budget_item_id: item.budget_item_id || "",
+      custom_notes: item.custom_notes || "",
+    });
+    setEditingId(item.id);
+    setIsOpen(true);
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await onSave(form, editingId);
+    setIsOpen(false);
+    setEditingId(null);
+    setForm(emptyAccommodationForm);
+  }
+
+  return (
+    <section className="panel accommodation-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Accommodation</p>
+          <h3>住宿</h3>
+        </div>
+        <button className="icon-button" disabled={!canEdit} type="button" title="新增住宿" onClick={openNewAccommodation}>
+          +
+        </button>
+      </div>
+
+      {isOpen ? (
+        <form className="item-form accommodation-form" onSubmit={submit}>
+          <div className="field-group form-grid wide">
+            <label>
+              住宿名稱
+              <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+            </label>
+            <label>
+              預約代碼
+              <input
+                value={form.booking_code}
+                onChange={(event) => setForm({ ...form, booking_code: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="field-group form-grid">
+            <label>
+              入住日期
+              <input
+                required
+                type="date"
+                value={form.check_in_date}
+                onChange={(event) => setForm({ ...form, check_in_date: event.target.value })}
+              />
+            </label>
+            <label>
+              退房日期
+              <input
+                required
+                type="date"
+                value={form.check_out_date}
+                onChange={(event) => setForm({ ...form, check_out_date: event.target.value })}
+              />
+            </label>
+            <label>
+              入住時間
+              <input
+                type="time"
+                value={form.check_in_time}
+                onChange={(event) => setForm({ ...form, check_in_time: event.target.value })}
+              />
+            </label>
+            <label>
+              退房時間
+              <input
+                type="time"
+                value={form.check_out_time}
+                onChange={(event) => setForm({ ...form, check_out_time: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="field-group form-grid wide">
+            <label>
+              地址
+              <input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
+            </label>
+            <label>
+              Map URL
+              <input value={form.map_url} onChange={(event) => setForm({ ...form, map_url: event.target.value })} />
+            </label>
+          </div>
+          <div className="field-group form-grid wide">
+            <label>
+              付款狀態
+              <select
+                value={form.payment_status}
+                onChange={(event) => setForm({ ...form, payment_status: event.target.value })}
+              >
+                <option value="unpaid">未付款</option>
+                <option value="partial">部分付款</option>
+                <option value="paid">已付款</option>
+              </select>
+            </label>
+            <label>
+              連動預算
+              <select
+                value={form.budget_item_id}
+                onChange={(event) => setForm({ ...form, budget_item_id: event.target.value })}
+              >
+                <option value="">未連動</option>
+                {budgetItems.map((budget) => (
+                  <option key={budget.id} value={budget.id}>
+                    {budget.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="full-label">
+            自訂備註
+            <textarea
+              rows="3"
+              value={form.custom_notes}
+              onChange={(event) => setForm({ ...form, custom_notes: event.target.value })}
+            />
+          </label>
+          <div className="form-actions">
+            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+              取消
+            </button>
+            <button className="primary-button compact" type="submit">
+              儲存
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <div className="accommodation-layout">
+        <div className="accommodation-list">
+          {accommodations.length ? (
+            accommodations.map((item) => (
+              <button
+                className={`accommodation-list-item${selected?.id === item.id ? " active" : ""}`}
+                key={item.id}
+                type="button"
+                onClick={() => setSelectedId(item.id)}
+              >
+                <strong>{item.name}</strong>
+                <span>
+                  {item.check_in_date} → {item.check_out_date}
+                </span>
+                <span>{item.payment_status === "paid" ? "已付款" : item.payment_status === "partial" ? "部分付款" : "未付款"}</span>
+              </button>
+            ))
+          ) : (
+            <div className="timeline-empty">尚未建立住宿</div>
+          )}
+        </div>
+
+        <div className="accommodation-detail">
+          {selected ? (
+            <>
+              <div className="panel-heading tight">
+                <div>
+                  <p className="eyebrow">Stay</p>
+                  <h3>{selected.name}</h3>
+                </div>
+                <div className="member-actions">
+                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditAccommodation(selected)}>
+                    E
+                  </button>
+                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(selected.id)}>
+                    X
+                  </button>
+                </div>
+              </div>
+              <div className="accommodation-facts">
+                <div>
+                  <span>入住</span>
+                  <strong>
+                    {selected.check_in_date} {selected.check_in_time || ""}
+                  </strong>
+                </div>
+                <div>
+                  <span>退房</span>
+                  <strong>
+                    {selected.check_out_date} {selected.check_out_time || ""}
+                  </strong>
+                </div>
+                <div>
+                  <span>付款狀態</span>
+                  <strong>
+                    {selected.payment_status === "paid"
+                      ? "已付款"
+                      : selected.payment_status === "partial"
+                        ? "部分付款"
+                        : "未付款"}
+                  </strong>
+                </div>
+                <div>
+                  <span>預約代碼</span>
+                  <strong>{selected.booking_code || "未填寫"}</strong>
+                </div>
+              </div>
+              <div className="accommodation-notes">
+                {selected.address ? <p>地址：{selected.address}</p> : null}
+                {selected.map_url ? (
+                  <a href={selected.map_url} rel="noreferrer" target="_blank">
+                    開啟地圖
+                  </a>
+                ) : null}
+                {selected.budget_item_id ? (
+                  <p>連動預算：{budgetItems.find((budget) => budget.id === selected.budget_item_id)?.title || "已連動"}</p>
+                ) : (
+                  <p>尚未連動預算</p>
+                )}
+                {selected.custom_notes ? <p>{selected.custom_notes}</p> : null}
+              </div>
+            </>
+          ) : (
+            <div className="timeline-empty">選擇一筆住宿查看詳細資料</div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
