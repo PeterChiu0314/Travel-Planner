@@ -53,6 +53,20 @@ const emptyItemForm = {
   cost: 0,
 };
 
+const emptyBudgetForm = {
+  category: "餐飲",
+  subcategory: "",
+  title: "",
+  amount: 0,
+  currency: "TWD",
+  exchange_rate: 1,
+  payer_id: "",
+  is_fixed: false,
+  note: "",
+  participantIds: [],
+  linkedItemIds: [],
+};
+
 function todayInput(offset = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offset);
@@ -138,6 +152,7 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [alternatives, setAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
+  const [budgetParticipants, setBudgetParticipants] = useState([]);
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -221,16 +236,26 @@ export default function App() {
       setItems([]);
       setAlternatives([]);
       setBudgetItems([]);
+      setBudgetParticipants([]);
       setItineraryBudgetLinks([]);
       setPackItems([]);
       setMembers([]);
       return;
     }
 
-    const [itemsResult, alternativesResult, budgetResult, budgetLinksResult, packResult, membersResult] = await Promise.all([
+    const [
+      itemsResult,
+      alternativesResult,
+      budgetResult,
+      budgetParticipantsResult,
+      budgetLinksResult,
+      packResult,
+      membersResult,
+    ] = await Promise.all([
       supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
       supabase.from("itinerary_alternatives").select("*"),
       supabase.from("budget_items").select("*").eq("trip_id", tripId),
+      supabase.from("budget_item_participants").select("*"),
       supabase.from("itinerary_budget_items").select("*"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase
@@ -244,6 +269,7 @@ export default function App() {
       itemsResult.error ||
       alternativesResult.error ||
       budgetResult.error ||
+      budgetParticipantsResult.error ||
       budgetLinksResult.error ||
       packResult.error ||
       membersResult.error;
@@ -259,6 +285,9 @@ export default function App() {
     setItems(nextItems);
     setAlternatives((alternativesResult.data || []).filter((alternative) => itemIds.has(alternative.itinerary_item_id)));
     setBudgetItems(budgetResult.data || []);
+    setBudgetParticipants(
+      (budgetParticipantsResult.data || []).filter((participant) => budgetIds.has(participant.budget_item_id)),
+    );
     setItineraryBudgetLinks(
       (budgetLinksResult.data || []).filter(
         (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
@@ -346,6 +375,11 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "budget_items", filter: `trip_id=eq.${activeTripId}` },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "budget_item_participants" },
         () => loadTripData(activeTripId),
       )
       .on(
@@ -535,6 +569,67 @@ export default function App() {
         }),
       )
       .eq("id", item.id);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function saveBudget(payload, editingId) {
+    if (!activeTrip || !canEdit) return;
+    const amount = Number(payload.amount || 0);
+    const exchangeRate = payload.currency === "TWD" ? 1 : Number(payload.exchange_rate || 1);
+    const twdAmount = Math.round(amount * exchangeRate);
+    const participantIds = payload.participantIds?.length
+      ? payload.participantIds
+      : members.filter((member) => member.status === "approved").map((member) => member.user_id);
+    const budgetPayload = {
+      trip_id: activeTrip.id,
+      category: payload.category.trim() || "其他",
+      subcategory: payload.subcategory.trim() || null,
+      title: payload.title.trim(),
+      amount,
+      currency: payload.currency.trim() || "TWD",
+      exchange_rate: payload.currency === "TWD" ? null : exchangeRate,
+      twd_amount: twdAmount,
+      payer_id: payload.payer_id || null,
+      split_type: "equal",
+      is_fixed: Boolean(payload.is_fixed),
+      note: payload.note.trim() || null,
+    };
+
+    const result = editingId
+      ? await supabase.from("budget_items").update(budgetPayload).eq("id", editingId).select("id").single()
+      : await supabase.from("budget_items").insert(budgetPayload).select("id").single();
+
+    if (result.error) {
+      setNotice(result.error.message);
+      return;
+    }
+
+    const budgetId = result.data.id;
+    await Promise.all([
+      supabase.from("budget_item_participants").delete().eq("budget_item_id", budgetId),
+      supabase.from("itinerary_budget_items").delete().eq("budget_item_id", budgetId),
+    ]);
+
+    const participantRows = participantIds.map((userId) => ({ budget_item_id: budgetId, user_id: userId }));
+    const linkRows = (payload.linkedItemIds || []).map((itemId) => ({
+      budget_item_id: budgetId,
+      itinerary_item_id: itemId,
+    }));
+    const [participantsResult, linksResult] = await Promise.all([
+      participantRows.length
+        ? supabase.from("budget_item_participants").insert(participantRows)
+        : Promise.resolve({ error: null }),
+      linkRows.length ? supabase.from("itinerary_budget_items").insert(linkRows) : Promise.resolve({ error: null }),
+    ]);
+    const error = participantsResult.error || linksResult.error;
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function deleteBudget(budgetId) {
+    if (!activeTrip || !canEdit) return;
+    const { error } = await supabase.from("budget_items").delete().eq("id", budgetId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
@@ -740,6 +835,7 @@ function exportTrip() {
             activeSection={activeSection}
             alternatives={alternatives}
             budgetItems={budgetItems}
+            budgetParticipants={budgetParticipants}
             canEdit={canEdit}
             dayItems={dayItems}
             days={days}
@@ -756,11 +852,13 @@ function exportTrip() {
             onApplyAlternative={applyAlternative}
             onApproveMember={approveMember}
             onDeleteAlternative={deleteAlternative}
+            onDeleteBudget={deleteBudget}
             onDeleteItem={deleteItem}
             onDeletePackItem={deletePackItem}
             onRejectMember={rejectMember}
             onReorderItem={reorderItem}
             onSaveAlternative={saveAlternative}
+            onSaveBudget={saveBudget}
             onSaveItem={saveItem}
             onSectionChange={setActiveSection}
             onTogglePackItem={togglePackItem}
@@ -895,6 +993,7 @@ function TripWorkspace(props) {
     activeSection,
     alternatives,
     budgetItems,
+    budgetParticipants,
     canEdit,
     dayItems,
     days,
@@ -911,17 +1010,20 @@ function TripWorkspace(props) {
     onApplyAlternative,
     onApproveMember,
     onDeleteAlternative,
+    onDeleteBudget,
     onDeleteItem,
     onDeletePackItem,
     onRejectMember,
     onReorderItem,
     onSaveAlternative,
+    onSaveBudget,
     onSaveItem,
     onSectionChange,
     onTogglePackItem,
     onUpdateTrip,
   } = props;
   const isTodayMode = activeSection === "today";
+  const isBudgetMode = activeSection === "budget";
   const [focusedItemId, setFocusedItemId] = useState(null);
   const alternativesByItem = useMemo(() => {
     const next = {};
@@ -963,7 +1065,7 @@ function TripWorkspace(props) {
         />
       ) : null}
 
-      <div className={`field-group trip-fields${isTodayMode ? " hidden-section" : ""}`}>
+      <div className={`field-group trip-fields${isTodayMode || isBudgetMode ? " hidden-section" : ""}`}>
         <label>
           旅程名稱
           <input
@@ -1002,9 +1104,22 @@ function TripWorkspace(props) {
         </label>
       </div>
 
-      {isTodayMode ? null : <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />}
+      {isTodayMode || isBudgetMode ? null : <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />}
 
-      <div className={`content-grid${isTodayMode ? " hidden-section" : ""}`}>
+      {isBudgetMode ? (
+        <BudgetPanel
+          budgetItems={budgetItems}
+          budgetParticipants={budgetParticipants}
+          canEdit={canEdit}
+          itineraryBudgetLinks={itineraryBudgetLinks}
+          items={items}
+          members={members}
+          onDelete={onDeleteBudget}
+          onSave={onSaveBudget}
+        />
+      ) : null}
+
+      <div className={`content-grid${isTodayMode || isBudgetMode ? " hidden-section" : ""}`}>
         <section className="panel itinerary-panel">
           <ItineraryTimeline
                 activeDay={activeDay}
@@ -1026,7 +1141,7 @@ function TripWorkspace(props) {
 
             <aside className="side-panels">
               <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
-          <BudgetPanel items={items} />
+          <BudgetSummaryPanel budgetItems={budgetItems} items={items} />
           <PackList
             canEdit={canEdit}
             items={packItems}
@@ -1531,15 +1646,22 @@ function RoutePanel({ dayItems, focusedItemId, onFocusItem }) {
   );
 }
 
-function BudgetPanel({ items }) {
+function BudgetSummaryPanel({ budgetItems, items }) {
   const totals = useMemo(() => {
     const next = {};
+    if (budgetItems.length) {
+      budgetItems.forEach((item) => {
+        next[item.category] = (next[item.category] || 0) + Number(item.twd_amount || 0);
+      });
+      return next;
+    }
     items.forEach((item) => {
-      next[item.type] = (next[item.type] || 0) + Number(item.cost || 0);
+      next[typeLabels[item.type] || item.type] = (next[typeLabels[item.type] || item.type] || 0) + Number(item.cost || 0);
     });
     return next;
-  }, [items]);
+  }, [budgetItems, items]);
   const total = Object.values(totals).reduce((sum, value) => sum + value, 0);
+  const labels = Object.keys(totals);
 
   return (
     <section className="panel">
@@ -1551,19 +1673,308 @@ function BudgetPanel({ items }) {
       </div>
       <div className="budget-total">{formatMoney(total)}</div>
       <div className="budget-list">
-        {Object.keys(typeLabels).map((type) => {
-          const amount = totals[type] || 0;
+        {labels.length ? (
+          labels.map((label) => {
+          const amount = totals[label] || 0;
           const percent = total ? Math.round((amount / total) * 100) : 0;
           return (
-            <div className="budget-row" key={type}>
-              <strong>{typeLabels[type]}</strong>
+            <div className="budget-row" key={label}>
+              <strong>{label}</strong>
               <div className="budget-bar">
-                <span style={{ width: `${percent}%`, background: typeColors[type] }} />
+                <span style={{ width: `${percent}%`, background: "var(--mint)" }} />
               </div>
               <span>{formatMoney(amount)}</span>
             </div>
           );
-        })}
+        })
+        ) : (
+          <span className="muted-text">尚未建立預算</span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function BudgetPanel({
+  budgetItems,
+  budgetParticipants,
+  canEdit,
+  itineraryBudgetLinks,
+  items,
+  members,
+  onDelete,
+  onSave,
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyBudgetForm);
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  const participantsByBudget = useMemo(() => {
+    const next = {};
+    budgetParticipants.forEach((participant) => {
+      next[participant.budget_item_id] = [...(next[participant.budget_item_id] || []), participant.user_id];
+    });
+    return next;
+  }, [budgetParticipants]);
+  const linksByBudget = useMemo(() => {
+    const next = {};
+    itineraryBudgetLinks.forEach((link) => {
+      next[link.budget_item_id] = [...(next[link.budget_item_id] || []), link.itinerary_item_id];
+    });
+    return next;
+  }, [itineraryBudgetLinks]);
+  const total = budgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0);
+  const categoryTotals = useMemo(() => {
+    const next = {};
+    budgetItems.forEach((item) => {
+      next[item.category] = (next[item.category] || 0) + Number(item.twd_amount || 0);
+    });
+    return next;
+  }, [budgetItems]);
+
+  function openNewBudget() {
+    setForm({
+      ...emptyBudgetForm,
+      participantIds: approvedMembers.map((member) => member.user_id),
+    });
+    setEditingId(null);
+    setIsOpen(true);
+  }
+
+  function openEditBudget(item) {
+    setForm({
+      category: item.category || "其他",
+      subcategory: item.subcategory || "",
+      title: item.title || "",
+      amount: item.amount || 0,
+      currency: item.currency || "TWD",
+      exchange_rate: item.exchange_rate || 1,
+      payer_id: item.payer_id || "",
+      is_fixed: Boolean(item.is_fixed),
+      note: item.note || "",
+      participantIds: participantsByBudget[item.id] || approvedMembers.map((member) => member.user_id),
+      linkedItemIds: linksByBudget[item.id] || [],
+    });
+    setEditingId(item.id);
+    setIsOpen(true);
+  }
+
+  function toggleListValue(key, value) {
+    const current = form[key] || [];
+    setForm({
+      ...form,
+      [key]: current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
+    });
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await onSave(form, editingId);
+    setIsOpen(false);
+    setEditingId(null);
+    setForm(emptyBudgetForm);
+  }
+
+  return (
+    <section className="panel budget-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Budget</p>
+          <h3>預算</h3>
+        </div>
+        <button className="icon-button" disabled={!canEdit} type="button" title="新增預算" onClick={openNewBudget}>
+          +
+        </button>
+      </div>
+
+      <div className="budget-overview">
+        <div>
+          <span>總預算</span>
+          <strong>{formatMoney(total)}</strong>
+        </div>
+        {Object.entries(categoryTotals).map(([category, amount]) => (
+          <div key={category}>
+            <span>{category}</span>
+            <strong>{formatMoney(amount)}</strong>
+          </div>
+        ))}
+      </div>
+
+      {isOpen ? (
+        <form className="item-form budget-form" onSubmit={submit}>
+          <div className="field-group form-grid">
+            <label>
+              大項
+              <input
+                required
+                value={form.category}
+                onChange={(event) => setForm({ ...form, category: event.target.value })}
+              />
+            </label>
+            <label>
+              細項
+              <input
+                value={form.subcategory}
+                onChange={(event) => setForm({ ...form, subcategory: event.target.value })}
+              />
+            </label>
+            <label>
+              金額
+              <input
+                min="0"
+                step="1"
+                type="number"
+                value={form.amount}
+                onChange={(event) => setForm({ ...form, amount: event.target.value })}
+              />
+            </label>
+            <label>
+              幣別
+              <input
+                value={form.currency}
+                onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })}
+              />
+            </label>
+          </div>
+          <div className="field-group form-grid wide">
+            <label>
+              標題
+              <input
+                required
+                value={form.title}
+                onChange={(event) => setForm({ ...form, title: event.target.value })}
+              />
+            </label>
+            <label>
+              匯率
+              <input
+                min="0"
+                step="0.0001"
+                type="number"
+                value={form.exchange_rate}
+                onChange={(event) => setForm({ ...form, exchange_rate: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="field-group form-grid wide">
+            <label>
+              付款人
+              <select value={form.payer_id} onChange={(event) => setForm({ ...form, payer_id: event.target.value })}>
+                <option value="">未指定</option>
+                {approvedMembers.map((member) => (
+                  <option key={member.user_id} value={member.user_id}>
+                    {member.display_name || member.email || member.user_id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              備註
+              <input value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
+            </label>
+          </div>
+          <label className="checkbox-label">
+            <input
+              checked={form.is_fixed}
+              type="checkbox"
+              onChange={(event) => setForm({ ...form, is_fixed: event.target.checked })}
+            />
+            固定費用
+          </label>
+
+          <div className="budget-picker">
+            <strong>分攤成員（equal split）</strong>
+            <div>
+              {approvedMembers.map((member) => (
+                <label className="checkbox-chip" key={member.user_id}>
+                  <input
+                    checked={form.participantIds.includes(member.user_id)}
+                    type="checkbox"
+                    onChange={() => toggleListValue("participantIds", member.user_id)}
+                  />
+                  {member.display_name || member.email || member.user_id}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="budget-picker">
+            <strong>連動行程</strong>
+            <div>
+              {items.map((item) => (
+                <label className="checkbox-chip" key={item.id}>
+                  <input
+                    checked={form.linkedItemIds.includes(item.id)}
+                    type="checkbox"
+                    onChange={() => toggleListValue("linkedItemIds", item.id)}
+                  />
+                  {item.title}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+              取消
+            </button>
+            <button className="primary-button compact" type="submit">
+              儲存
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <div className="budget-cards">
+        {budgetItems.length ? (
+          budgetItems.map((item) => {
+            const participantIds = participantsByBudget[item.id] || [];
+            const linkedItemIds = linksByBudget[item.id] || [];
+            const participantNames = participantIds
+              .map((userId) => approvedMembers.find((member) => member.user_id === userId))
+              .filter(Boolean)
+              .map((member) => member.display_name || member.email || member.user_id);
+            const linkedNames = linkedItemIds
+              .map((itemId) => items.find((itineraryItem) => itineraryItem.id === itemId)?.title)
+              .filter(Boolean);
+            const payer = approvedMembers.find((member) => member.user_id === item.payer_id);
+            return (
+              <article className="budget-card" key={item.id}>
+                <div>
+                  <span>
+                    {item.category}
+                    {item.subcategory ? `｜${item.subcategory}` : ""}
+                  </span>
+                  <h4>{item.title}</h4>
+                </div>
+                <strong>
+                  {item.currency} {Number(item.amount || 0).toLocaleString("zh-TW")} → {formatMoney(item.twd_amount)}
+                </strong>
+                <p>付款人：{payer?.display_name || payer?.email || "未指定"}</p>
+                <p>分攤：{participantNames.length ? participantNames.join("、") : "未指定"}</p>
+                <p>連動行程：{linkedNames.length ? linkedNames.join("、") : "未連動"}</p>
+                {item.note ? <p>備註：{item.note}</p> : null}
+                <div className="item-meta">
+                  <span className="pill">{item.split_type === "equal" ? "均分" : "自訂"}</span>
+                  {item.is_fixed ? <span className="pill">固定費用</span> : null}
+                </div>
+                <div className="budget-actions">
+                  <button className="ghost-button compact" disabled type="button">
+                    轉實付
+                  </button>
+                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditBudget(item)}>
+                    E
+                  </button>
+                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(item.id)}>
+                    X
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        ) : (
+          <div className="timeline-empty">尚未建立預算</div>
+        )}
       </div>
     </section>
   );

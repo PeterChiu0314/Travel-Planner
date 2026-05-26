@@ -930,6 +930,117 @@ textarea {
   border-radius: inherit;
 }
 
+.budget-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.budget-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.budget-overview div {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 12px;
+}
+
+.budget-overview span,
+.budget-card span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.budget-overview strong {
+  overflow-wrap: anywhere;
+  font-size: 18px;
+}
+
+.checkbox-label,
+.checkbox-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-label {
+  color: var(--ink);
+}
+
+.checkbox-label input,
+.checkbox-chip input {
+  width: auto;
+  min-height: auto;
+}
+
+.budget-picker {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.budget-picker > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.checkbox-chip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.budget-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.budget-card {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 190px minmax(220px, 1.2fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.budget-card h4 {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.budget-card > strong {
+  overflow-wrap: anywhere;
+  font-size: 18px;
+}
+
+.budget-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.budget-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .inline-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1120,6 +1231,18 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .budget-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .budget-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .budget-actions {
+    justify-content: flex-start;
+  }
+
   .trip-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1213,6 +1336,19 @@ textarea {
   .alternative-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .budget-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-card {
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .budget-card > strong {
+    font-size: 17px;
   }
 
   .bottom-nav {
