@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { clearDraft, useDraftAutosave } from "./lib/draftAutosave.js";
+import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 
@@ -600,10 +600,12 @@ export default function App() {
       setAuthReady(true);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
-      setTrips([]);
-      setActiveTripId(null);
+      if (event === "SIGNED_OUT" || !nextSession) {
+        setTrips([]);
+        setActiveTripId(null);
+      }
     });
 
     return () => data.subscription.unsubscribe();
@@ -2175,6 +2177,23 @@ function ItineraryTimeline({
   });
   const memberById = new Map((members || []).map((member) => [member.user_id, member]));
 
+  useEffect(() => {
+    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    const latest = loadLatestDraftForEntity({
+      entityType: "itinerary_item",
+      tripId: activeTrip.id,
+      userId: currentUserId,
+    });
+    if (!latest) return;
+    const matchingItem = dayItems.find((item) => item.id === latest.entityId);
+    if (latest.entityId !== "new" && !matchingItem) return;
+    setFormSeed(latest.draft.form);
+    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setConflict(false);
+    setEditingId(latest.entityId === "new" ? null : latest.entityId);
+    setIsOpen(true);
+  }, [activeTrip?.id, currentUserId, dayItems, isOpen]);
+
   function openNewItem() {
     setFormSeed(emptyItemForm);
     setBaseUpdatedAt(null);
@@ -2684,6 +2703,23 @@ function BudgetPanel({
     return next;
   }, [budgetItems]);
 
+  useEffect(() => {
+    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    const latest = loadLatestDraftForEntity({
+      entityType: "budget_item",
+      tripId: activeTrip.id,
+      userId: currentUserId,
+    });
+    if (!latest) return;
+    const matchingItem = budgetItems.find((item) => item.id === latest.entityId);
+    if (latest.entityId !== "new" && !matchingItem) return;
+    setFormSeed(latest.draft.form);
+    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setConflict(false);
+    setEditingId(latest.entityId === "new" ? null : latest.entityId);
+    setIsOpen(true);
+  }, [activeTrip?.id, budgetItems, currentUserId, isOpen]);
+
   function openNewBudget() {
     setFormSeed({
       ...emptyBudgetForm,
@@ -3025,6 +3061,23 @@ function ActualExpensePanel({
     return next;
   }, [actualParticipants]);
   const total = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
+
+  useEffect(() => {
+    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    const latest = loadLatestDraftForEntity({
+      entityType: "actual_expense",
+      tripId: activeTrip.id,
+      userId: currentUserId,
+    });
+    if (!latest) return;
+    const matchingExpense = actualExpenses.find((expense) => expense.id === latest.entityId);
+    if (latest.entityId !== "new" && !matchingExpense) return;
+    setFormSeed(latest.draft.form);
+    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingExpense?.updated_at || null);
+    setConflict(false);
+    setEditingId(latest.entityId === "new" ? null : latest.entityId);
+    setIsOpen(true);
+  }, [activeTrip?.id, actualExpenses, currentUserId, isOpen]);
 
   function openNewExpense() {
     setFormSeed({
@@ -3548,6 +3601,23 @@ function AccommodationPanel({
   });
   const selected = accommodations.find((item) => item.id === selectedId) || accommodations[0] || null;
 
+  useEffect(() => {
+    if (isOpen || !(activeTrip?.id || trip?.id) || !currentUserId) return;
+    const latest = loadLatestDraftForEntity({
+      entityType: "accommodation",
+      tripId: activeTrip?.id || trip?.id,
+      userId: currentUserId,
+    });
+    if (!latest) return;
+    const matchingItem = accommodations.find((item) => item.id === latest.entityId);
+    if (latest.entityId !== "new" && !matchingItem) return;
+    setFormSeed(latest.draft.form);
+    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setConflict(false);
+    setEditingId(latest.entityId === "new" ? null : latest.entityId);
+    setIsOpen(true);
+  }, [accommodations, activeTrip?.id, currentUserId, isOpen, trip?.id]);
+
   function openNewAccommodation() {
     setFormSeed({
       ...emptyAccommodationForm,
@@ -3837,7 +3907,9 @@ function AccommodationPanel({
 }
 
 function TodoGuidePanel({
+  activeTrip,
   canEdit,
+  currentUserId,
   guideItems,
   members,
   todoItems,
@@ -3905,6 +3977,23 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
   const memberById = new Map(members.map((member) => [member.user_id, member]));
   const guideById = new Map(guideItems.map((guide) => [guide.id, guide]));
   const pendingCount = todoItems.filter((item) => !item.completed).length;
+
+  useEffect(() => {
+    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    const latest = loadLatestDraftForEntity({
+      entityType: "todo_item",
+      tripId: activeTrip.id,
+      userId: currentUserId,
+    });
+    if (!latest) return;
+    const matchingItem = todoItems.find((item) => item.id === latest.entityId);
+    if (latest.entityId !== "new" && !matchingItem) return;
+    setFormSeed(latest.draft.form);
+    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setConflict(false);
+    setEditingId(latest.entityId === "new" ? null : latest.entityId);
+    setIsOpen(true);
+  }, [activeTrip?.id, currentUserId, isOpen, todoItems]);
 
   function openNewTodo() {
     setFormSeed(emptyTodoForm);
@@ -4089,6 +4178,23 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     userId: currentUserId,
   });
 
+  useEffect(() => {
+    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    const latest = loadLatestDraftForEntity({
+      entityType: "guide_item",
+      tripId: activeTrip.id,
+      userId: currentUserId,
+    });
+    if (!latest) return;
+    const matchingItem = guideItems.find((item) => item.id === latest.entityId);
+    if (latest.entityId !== "new" && !matchingItem) return;
+    setFormSeed(latest.draft.form);
+    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setConflict(false);
+    setEditingId(latest.entityId === "new" ? null : latest.entityId);
+    setIsOpen(true);
+  }, [activeTrip?.id, currentUserId, guideItems, isOpen]);
+
   function openNewGuide() {
     setFormSeed(emptyGuideForm);
     setBaseUpdatedAt(null);
@@ -4217,6 +4323,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
 }
 
 function LuggagePanel({
+  activeTrip,
   canEdit,
   currentUserId,
   isOwner,
@@ -4262,6 +4369,36 @@ function LuggagePanel({
   const approvedMembers = members.filter((member) => member.status === "approved");
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
+
+  useEffect(() => {
+    if (!activeTrip?.id || !currentUserId || editingPersonalId) return;
+    const latest = loadLatestDraftForEntity({
+      entityType: "luggage_item",
+      tripId: activeTrip.id,
+      userId: currentUserId,
+    });
+    if (!latest) return;
+    const matchingItem = luggageItems.find((item) => item.id === latest.entityId);
+    if (latest.entityId !== "new" && !matchingItem) return;
+    setPersonalSeed(latest.draft.form);
+    setPersonalUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setEditingPersonalId(latest.entityId === "new" ? null : latest.entityId);
+  }, [activeTrip?.id, currentUserId, editingPersonalId, luggageItems]);
+
+  useEffect(() => {
+    if (!activeTrip?.id || !currentUserId || editingSharedId) return;
+    const latest = loadLatestDraftForEntity({
+      entityType: "shared_luggage_item",
+      tripId: activeTrip.id,
+      userId: currentUserId,
+    });
+    if (!latest) return;
+    const matchingItem = sharedLuggageItems.find((item) => item.id === latest.entityId);
+    if (latest.entityId !== "new" && !matchingItem) return;
+    setSharedSeed(latest.draft.form);
+    setSharedUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setEditingSharedId(latest.entityId === "new" ? null : latest.entityId);
+  }, [activeTrip?.id, currentUserId, editingSharedId, sharedLuggageItems]);
 
   async function submitPersonal(event) {
     event.preventDefault();

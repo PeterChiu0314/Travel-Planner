@@ -40,6 +40,29 @@ export function clearDraft(key) {
   }
 }
 
+export function loadLatestDraftForEntity({ entityType, tripId, userId }) {
+  const prefix = [draftPrefix, userId || "anonymous", tripId || "no-trip", entityType, ""].join(":");
+  let latest = null;
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith(prefix)) continue;
+      const draft = loadDraft(key);
+      if (!draft?.form || !draft.savedAt) continue;
+      if (!latest || new Date(draft.savedAt).getTime() > new Date(latest.draft.savedAt).getTime()) {
+        latest = {
+          draft,
+          entityId: key.slice(prefix.length) || "new",
+          key,
+        };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return latest;
+}
+
 export function isDraftNewerThanServer(draft, serverUpdatedAt) {
   if (!draft?.savedAt) return false;
   if (!serverUpdatedAt) return true;
