@@ -160,6 +160,136 @@ code {
   margin-left: 0;
 }
 
+.share-view {
+  grid-column: 1 / -1;
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 34px 0 56px;
+}
+
+.share-hero {
+  display: grid;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  padding: 26px 0 22px;
+}
+
+.share-hero h1 {
+  font-size: clamp(30px, 6vw, 56px);
+}
+
+.share-hero p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.share-content,
+.share-section,
+.share-day,
+.share-link-list {
+  display: grid;
+  gap: 16px;
+}
+
+.share-content {
+  margin-top: 24px;
+}
+
+.share-section {
+  border-bottom: 1px solid var(--line);
+  padding: 0 0 24px;
+}
+
+.share-day h3 {
+  color: var(--mint-dark);
+  font-size: 18px;
+}
+
+.share-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 16px;
+}
+
+.share-card.vertical {
+  grid-template-columns: 1fr;
+}
+
+.share-card h4 {
+  font-size: 18px;
+}
+
+.share-card p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.share-card a {
+  color: var(--mint-dark);
+  font-weight: 900;
+}
+
+.share-time {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  color: var(--mint-dark);
+}
+
+.share-time span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.share-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.share-center {
+  grid-column: 1 / -1;
+}
+
+.share-dialog p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.share-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.share-link-row div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.share-link-row span {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.share-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .section-nav {
   display: grid;
   gap: 8px;
@@ -1715,6 +1845,24 @@ textarea {
   }
 
   .topbar-actions button {
+    flex: 1;
+  }
+
+  .share-view {
+    width: min(100% - 24px, 1120px);
+    padding: 20px 0 40px;
+  }
+
+  .share-card,
+  .share-link-row {
+    grid-template-columns: 1fr;
+  }
+
+  .share-link-actions {
+    justify-content: stretch;
+  }
+
+  .share-link-actions button {
     flex: 1;
   }
 

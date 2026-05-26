@@ -255,6 +255,58 @@ function clearInviteTokenFromUrl() {
   window.history.replaceState({}, "", url.toString());
 }
 
+function shareTokenFromUrl() {
+  return new URLSearchParams(window.location.search).get("share");
+}
+
+function offlineTripKey(tripId) {
+  return `travel-planner-offline-${tripId}`;
+}
+
+function offlineTripsKey(userId) {
+  return `travel-planner-offline-trips-${userId}`;
+}
+
+function readOfflineTrips(userId) {
+  try {
+    const raw = localStorage.getItem(offlineTripsKey(userId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeOfflineTrips(userId, payload) {
+  try {
+    localStorage.setItem(offlineTripsKey(userId), JSON.stringify(payload));
+  } catch {
+    // Offline read is best effort; storage can be unavailable in private windows.
+  }
+}
+
+function readOfflineTripData(tripId) {
+  try {
+    const raw = localStorage.getItem(offlineTripKey(tripId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeOfflineTripData(tripId, payload) {
+  try {
+    localStorage.setItem(
+      offlineTripKey(tripId),
+      JSON.stringify({
+        ...payload,
+        cached_at: new Date().toISOString(),
+      }),
+    );
+  } catch {
+    // Offline read is best effort; storage can be unavailable in private windows.
+  }
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -280,6 +332,11 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [shareLinks, setShareLinks] = useState([]);
+  const [shareSnapshot, setShareSnapshot] = useState(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState("");
   const [activeSection, setActiveSection] = useState("today");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [tripForm, setTripForm] = useState({
@@ -324,6 +381,19 @@ export default function App() {
         .eq("user_id", session.user.id);
 
       if (error) {
+        const cachedTrips = readOfflineTrips(session.user.id);
+        if (cachedTrips?.trips?.length) {
+          setTrips(cachedTrips.trips);
+          const nextActive =
+            cachedTrips.trips.find((trip) => trip.id === preferredTripId)?.id ||
+            cachedTrips.activeTripId ||
+            cachedTrips.trips[0]?.id ||
+            null;
+          setActiveTripId(nextActive);
+          setNotice("目前使用已快取的離線旅程清單；重新連線後會自動更新。");
+          setLoading(false);
+          return;
+        }
         setNotice(error.message);
         setLoading(false);
         return;
@@ -346,6 +416,7 @@ export default function App() {
       const nextActive =
         nextTrips.find((trip) => trip.id === preferredTripId)?.id || nextTrips[0]?.id || null;
       setActiveTripId(nextActive);
+      writeOfflineTrips(session.user.id, { trips: nextTrips, activeTripId: nextActive });
       setLoading(false);
     },
     [activeTripId, session?.user],
@@ -426,6 +497,26 @@ export default function App() {
       packResult.error ||
       membersResult.error;
     if (error) {
+      const cached = readOfflineTripData(tripId);
+      if (cached) {
+        setItems(cached.items || []);
+        setAlternatives(cached.alternatives || []);
+        setBudgetItems(cached.budgetItems || []);
+        setBudgetParticipants(cached.budgetParticipants || []);
+        setActualExpenses(cached.actualExpenses || []);
+        setActualParticipants(cached.actualParticipants || []);
+        setAccommodations(cached.accommodations || []);
+        setGuideItems(cached.guideItems || []);
+        setTodoItems(cached.todoItems || []);
+        setLuggageItems(cached.luggageItems || []);
+        setSharedLuggageItems(cached.sharedLuggageItems || []);
+        setAttachments(cached.attachments || []);
+        setItineraryBudgetLinks(cached.itineraryBudgetLinks || []);
+        setPackItems(cached.packItems || []);
+        setMembers(cached.members || []);
+        setNotice("目前使用已快取的離線資料；重新連線後會自動更新。");
+        return;
+      }
       setNotice(error.message);
       return;
     }
@@ -434,32 +525,66 @@ export default function App() {
     const itemIds = new Set(nextItems.map((item) => item.id));
     const budgetIds = new Set((budgetResult.data || []).map((budget) => budget.id));
     const actualIds = new Set((actualResult.data || []).map((expense) => expense.id));
+    const nextAlternatives = (alternativesResult.data || []).filter((alternative) =>
+      itemIds.has(alternative.itinerary_item_id),
+    );
+    const nextBudgetParticipants = (budgetParticipantsResult.data || []).filter((participant) =>
+      budgetIds.has(participant.budget_item_id),
+    );
+    const nextActualParticipants = (actualParticipantsResult.data || []).filter((participant) =>
+      actualIds.has(participant.actual_expense_id),
+    );
+    const nextItineraryBudgetLinks = (budgetLinksResult.data || []).filter(
+      (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
+    );
 
     setItems(nextItems);
-    setAlternatives((alternativesResult.data || []).filter((alternative) => itemIds.has(alternative.itinerary_item_id)));
+    setAlternatives(nextAlternatives);
     setBudgetItems(budgetResult.data || []);
-    setBudgetParticipants(
-      (budgetParticipantsResult.data || []).filter((participant) => budgetIds.has(participant.budget_item_id)),
-    );
+    setBudgetParticipants(nextBudgetParticipants);
     setActualExpenses(actualResult.data || []);
-    setActualParticipants(
-      (actualParticipantsResult.data || []).filter((participant) =>
-        actualIds.has(participant.actual_expense_id),
-      ),
-    );
+    setActualParticipants(nextActualParticipants);
     setAccommodations(accommodationsResult.data || []);
     setGuideItems(guideResult.data || []);
     setTodoItems(todoResult.data || []);
     setLuggageItems(luggageResult.data || []);
     setSharedLuggageItems(sharedLuggageResult.data || []);
     setAttachments(attachmentsResult.data || []);
-    setItineraryBudgetLinks(
-      (budgetLinksResult.data || []).filter(
-        (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
-      ),
-    );
+    setItineraryBudgetLinks(nextItineraryBudgetLinks);
     setPackItems(packResult.data || []);
     setMembers(membersResult.data || []);
+    writeOfflineTripData(tripId, {
+      items: nextItems,
+      alternatives: nextAlternatives,
+      budgetItems: budgetResult.data || [],
+      budgetParticipants: nextBudgetParticipants,
+      actualExpenses: actualResult.data || [],
+      actualParticipants: nextActualParticipants,
+      accommodations: accommodationsResult.data || [],
+      guideItems: guideResult.data || [],
+      todoItems: todoResult.data || [],
+      luggageItems: luggageResult.data || [],
+      sharedLuggageItems: sharedLuggageResult.data || [],
+      attachments: attachmentsResult.data || [],
+      itineraryBudgetLinks: nextItineraryBudgetLinks,
+      packItems: packResult.data || [],
+      members: membersResult.data || [],
+    });
+  }, []);
+
+  const loadShareLinks = useCallback(async (tripId) => {
+    if (!tripId) {
+      setShareLinks([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("share_links")
+      .select("*")
+      .eq("trip_id", tripId)
+      .order("created_at", { ascending: false });
+
+    if (!error) setShareLinks(data || []);
   }, []);
 
   useEffect(() => {
@@ -480,6 +605,30 @@ export default function App() {
     });
 
     return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!hasSupabaseConfig) return;
+    const token = shareTokenFromUrl();
+    if (!token) return;
+
+    async function loadShareSnapshot() {
+      setShareLoading(true);
+      setShareError("");
+      const { data, error } = await supabase.rpc("get_share_snapshot", { share_token: token });
+      if (error) {
+        setShareError(error.message);
+        setShareSnapshot(null);
+      } else if (!data) {
+        setShareError("這個分享連結已停用、過期，或不存在。");
+        setShareSnapshot(null);
+      } else {
+        setShareSnapshot(data);
+      }
+      setShareLoading(false);
+    }
+
+    loadShareSnapshot();
   }, []);
 
   useEffect(() => {
@@ -517,6 +666,14 @@ export default function App() {
     setActiveDay(todayDayIndex);
     loadTripData(activeTripId);
   }, [activeTripId, loadTripData, todayDayIndex]);
+
+  useEffect(() => {
+    if (activeTripId && isOwner) {
+      loadShareLinks(activeTripId);
+    } else {
+      setShareLinks([]);
+    }
+  }, [activeTripId, isOwner, loadShareLinks]);
 
   useEffect(() => {
     if (!activeTripId || !session?.user) return undefined;
@@ -1216,6 +1373,14 @@ function exportTrip() {
     );
   }
 
+  if (shareTokenFromUrl()) {
+    return (
+      <Shell>
+        <ShareView error={shareError} loading={shareLoading} snapshot={shareSnapshot} />
+      </Shell>
+    );
+  }
+
   if (!authReady) {
     return (
       <Shell>
@@ -1296,6 +1461,14 @@ function exportTrip() {
               onClick={() => setIsInviteDialogOpen(true)}
             >
               邀請朋友
+            </button>
+            <button
+              className="ghost-button"
+              type="button"
+              disabled={!isOwner}
+              onClick={() => setIsShareDialogOpen(true)}
+            >
+              唯讀分享
             </button>
             <button className="ghost-button danger" type="button" disabled={!isOwner} onClick={deleteTrip}>
               刪除旅程
@@ -1409,6 +1582,15 @@ function exportTrip() {
 
       {isInviteDialogOpen && activeTrip ? (
         <InviteDialog trip={activeTrip} onClose={() => setIsInviteDialogOpen(false)} />
+      ) : null}
+
+      {isShareDialogOpen && activeTrip ? (
+        <ShareDialog
+          links={shareLinks}
+          onClose={() => setIsShareDialogOpen(false)}
+          onRefresh={() => loadShareLinks(activeTrip.id)}
+          trip={activeTrip}
+        />
       ) : null}
     </Shell>
   );
@@ -4105,5 +4287,231 @@ function InviteDialog({ trip, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ShareDialog({ links, onClose, onRefresh, trip }) {
+  const [busy, setBusy] = useState(false);
+  const [copiedId, setCopiedId] = useState("");
+
+  async function copyShareUrl(token, id) {
+    const url = `${window.location.origin}?share=${token}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedId(id);
+  }
+
+  async function createShareLink() {
+    setBusy(true);
+    const token = crypto.randomUUID();
+    const { error } = await supabase.from("share_links").insert({
+      trip_id: trip.id,
+      token,
+      is_active: true,
+    });
+    setBusy(false);
+
+    if (error) {
+      window.alert(error.message);
+      return;
+    }
+
+    await onRefresh();
+    await copyShareUrl(token, token);
+  }
+
+  async function toggleShareLink(link) {
+    setBusy(true);
+    const { error } = await supabase
+      .from("share_links")
+      .update({ is_active: !link.is_active })
+      .eq("id", link.id);
+    setBusy(false);
+
+    if (error) {
+      window.alert(error.message);
+      return;
+    }
+
+    await onRefresh();
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <div className="dialog-card share-dialog">
+        <h2>唯讀分享</h2>
+        <p>分享頁不需要登入，只會顯示時間軸、住宿與指南；預算、實付、結算、行李與成員資料不會公開。</p>
+        <div className="share-link-list">
+          {links.length ? (
+            links.map((link) => {
+              const shareUrl = `${window.location.origin}?share=${link.token}`;
+              return (
+                <div className="share-link-row" key={link.id}>
+                  <div>
+                    <strong>{link.is_active ? "啟用中" : "已停用"}</strong>
+                    <span>{shareUrl}</span>
+                  </div>
+                  <div className="share-link-actions">
+                    <button className="mini-button" type="button" onClick={() => copyShareUrl(link.token, link.id)}>
+                      {copiedId === link.id ? "已複製" : "複製"}
+                    </button>
+                    <button className="mini-button" type="button" disabled={busy} onClick={() => toggleShareLink(link)}>
+                      {link.is_active ? "停用" : "啟用"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="empty-inline">尚未建立唯讀分享連結。</div>
+          )}
+        </div>
+        <div className="form-actions">
+          <button className="ghost-button" type="button" onClick={onClose}>
+            關閉
+          </button>
+          <button className="primary-button compact" type="button" disabled={busy} onClick={createShareLink}>
+            建立並複製連結
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShareView({ error, loading, snapshot }) {
+  const trip = snapshot?.trip;
+  const itineraryItems = snapshot?.itinerary_items || [];
+  const accommodations = snapshot?.accommodations || [];
+  const guideItems = snapshot?.guide_items || [];
+
+  const groupedItems = itineraryItems.reduce((groups, item) => {
+    const key = item.date || `Day ${Number(item.day_index || 0) + 1}`;
+    groups[key] = [...(groups[key] || []), item];
+    return groups;
+  }, {});
+
+  if (loading || (!snapshot && !error)) {
+    return <div className="center-state share-center">載入分享行程中...</div>;
+  }
+
+  if (error) {
+    return (
+      <section className="share-view">
+        <div className="share-hero">
+          <p className="eyebrow">Shared Travel Plan</p>
+          <h1>無法開啟分享頁</h1>
+          <p>{error}</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="share-view">
+      <div className="share-hero">
+        <p className="eyebrow">Shared Travel Plan</p>
+        <h1>{trip?.title || trip?.name || "旅程分享"}</h1>
+        <p>
+          {[trip?.destination, trip?.start_date && trip?.end_date ? `${trip.start_date} - ${trip.end_date}` : ""]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      </div>
+
+      <div className="share-content">
+        <section className="share-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Timeline</p>
+              <h2>時間軸</h2>
+            </div>
+          </div>
+          {Object.entries(groupedItems).length ? (
+            Object.entries(groupedItems).map(([date, dayItemsForShare]) => (
+              <div className="share-day" key={date}>
+                <h3>{date.includes("-") ? formatDate(new Date(`${date}T00:00:00`)) : date}</h3>
+                {dayItemsForShare.map((item) => (
+                  <article className="share-card" key={item.id}>
+                    <div className="share-time">
+                      <strong>{item.start_time || "--:--"}</strong>
+                      {item.end_time ? <span>{item.end_time}</span> : null}
+                    </div>
+                    <div>
+                      <h4>{item.title}</h4>
+                      {item.location_name ? <p>{item.location_name}</p> : null}
+                      {item.transportation_note ? <p>{item.transportation_note}</p> : null}
+                      {item.description ? <p>{item.description}</p> : null}
+                      {item.map_url ? (
+                        <a href={item.map_url} rel="noreferrer" target="_blank">
+                          開啟地圖
+                        </a>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ))
+          ) : (
+            <div className="empty-inline">尚未建立公開行程。</div>
+          )}
+        </section>
+
+        <section className="share-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Accommodation</p>
+              <h2>住宿</h2>
+            </div>
+          </div>
+          <div className="share-card-grid">
+            {accommodations.length ? (
+              accommodations.map((stay) => (
+                <article className="share-card vertical" key={stay.id}>
+                  <h4>{stay.name}</h4>
+                  <p>
+                    {stay.check_in_date} - {stay.check_out_date}
+                  </p>
+                  {stay.address ? <p>{stay.address}</p> : null}
+                  {stay.custom_notes ? <p>{stay.custom_notes}</p> : null}
+                  {stay.map_url ? (
+                    <a href={stay.map_url} rel="noreferrer" target="_blank">
+                      開啟地圖
+                    </a>
+                  ) : null}
+                </article>
+              ))
+            ) : (
+              <div className="empty-inline">尚未建立公開住宿。</div>
+            )}
+          </div>
+        </section>
+
+        <section className="share-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Guide</p>
+              <h2>指南</h2>
+            </div>
+          </div>
+          <div className="share-card-grid">
+            {guideItems.length ? (
+              guideItems.map((guide) => (
+                <article className="share-card vertical" key={guide.id}>
+                  <h4>{guide.title}</h4>
+                  {guide.description ? <p>{guide.description}</p> : null}
+                  {guide.url ? (
+                    <a href={guide.url} rel="noreferrer" target="_blank">
+                      開啟連結
+                    </a>
+                  ) : null}
+                </article>
+              ))
+            ) : (
+              <div className="empty-inline">尚未建立公開指南。</div>
+            )}
+          </div>
+        </section>
+      </div>
+    </section>
   );
 }
