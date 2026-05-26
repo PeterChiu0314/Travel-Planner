@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { clearDraft, useDraftAutosave } from "./lib/draftAutosave.js";
+import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 
 const attachmentBucket = "trip-attachments";
@@ -856,16 +858,24 @@ export default function App() {
     else await loadTrips();
   }
 
-  async function saveItem(payload, editingId) {
+  async function updateWithConflictCheck(table, payload, editingId, meta = {}) {
+    let query = supabase.from(table).update(payload).eq("id", editingId);
+    if (meta.baseUpdatedAt) query = query.eq("updated_at", meta.baseUpdatedAt);
+    const result = await query.select("id").maybeSingle();
+    if (result.error) return { ok: false, error: result.error };
+    if (!result.data) return { ok: false, conflict: true };
+    await releaseEditLock({ recordId: editingId, supabase, table, userId: session?.user?.id });
+    return { ok: true };
+  }
+
+  async function saveItem(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     if (editingId) {
-      const { error } = await supabase
-        .from("itinerary_items")
-        .update(normalizeItemPayload(payload))
-        .eq("id", editingId);
-      if (error) setNotice(error.message);
+      const result = await updateWithConflictCheck("itinerary_items", normalizeItemPayload(payload), editingId, meta);
+      if (result.error) setNotice(result.error.message);
+      else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
       else await loadTripData(activeTrip.id);
-      return;
+      return result;
     }
 
     const { error } = await supabase.from("itinerary_items").insert({
@@ -877,6 +887,7 @@ export default function App() {
     });
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
+    return { ok: !error, error };
   }
 
   async function saveAlternative(itemId, payload, editingId) {
@@ -935,7 +946,7 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function saveBudget(payload, editingId) {
+  async function saveBudget(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     const amount = Number(payload.amount || 0);
     const exchangeRate = payload.currency === "TWD" ? 1 : Number(payload.exchange_rate || 1);
@@ -959,19 +970,25 @@ export default function App() {
     };
 
     const result = editingId
-      ? await supabase.from("budget_items").update(budgetPayload).eq("id", editingId).select("id").single()
+      ? await updateWithConflictCheck("budget_items", budgetPayload, editingId, meta)
       : await supabase.from("budget_items").insert(budgetPayload).select("id").single();
 
-    if (result.error) {
-      setNotice(result.error.message);
-      return;
+    if (result.error || result.conflict) {
+      if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
+      else setNotice(result.error.message);
+      return result;
     }
 
-    const budgetId = result.data.id;
-    await Promise.all([
+    const budgetId = editingId || result.data.id;
+    const [clearParticipantsResult, clearLinksResult] = await Promise.all([
       supabase.from("budget_item_participants").delete().eq("budget_item_id", budgetId),
       supabase.from("itinerary_budget_items").delete().eq("budget_item_id", budgetId),
     ]);
+    const clearError = clearParticipantsResult.error || clearLinksResult.error;
+    if (clearError) {
+      setNotice(clearError.message);
+      return { ok: false, error: clearError };
+    }
 
     const participantRows = participantIds.map((userId) => ({ budget_item_id: budgetId, user_id: userId }));
     const linkRows = (payload.linkedItemIds || []).map((itemId) => ({
@@ -985,8 +1002,12 @@ export default function App() {
       linkRows.length ? supabase.from("itinerary_budget_items").insert(linkRows) : Promise.resolve({ error: null }),
     ]);
     const error = participantsResult.error || linksResult.error;
-    if (error) setNotice(error.message);
-    else await loadTripData(activeTrip.id);
+    if (error) {
+      setNotice(error.message);
+      return { ok: false, error };
+    }
+    await loadTripData(activeTrip.id);
+    return { ok: true };
   }
 
   async function deleteBudget(budgetId) {
@@ -996,7 +1017,7 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function saveActualExpense(payload, editingId) {
+  async function saveActualExpense(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     const amount = Number(payload.amount || 0);
     const exchangeRate = payload.currency === "TWD" ? 1 : Number(payload.exchange_rate || 1);
@@ -1018,22 +1039,31 @@ export default function App() {
     };
 
     const result = editingId
-      ? await supabase.from("actual_expenses").update(expensePayload).eq("id", editingId).select("id").single()
+      ? await updateWithConflictCheck("actual_expenses", expensePayload, editingId, meta)
       : await supabase.from("actual_expenses").insert(expensePayload).select("id").single();
 
-    if (result.error) {
-      setNotice(result.error.message);
-      return;
+    if (result.error || result.conflict) {
+      if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
+      else setNotice(result.error.message);
+      return result;
     }
 
-    const actualExpenseId = result.data.id;
-    await supabase.from("actual_expense_participants").delete().eq("actual_expense_id", actualExpenseId);
+    const actualExpenseId = editingId || result.data.id;
+    const clearResult = await supabase.from("actual_expense_participants").delete().eq("actual_expense_id", actualExpenseId);
+    if (clearResult.error) {
+      setNotice(clearResult.error.message);
+      return { ok: false, error: clearResult.error };
+    }
     const participantRows = participantIds.map((userId) => ({ actual_expense_id: actualExpenseId, user_id: userId }));
     const participantsResult = participantRows.length
       ? await supabase.from("actual_expense_participants").insert(participantRows)
       : { error: null };
-    if (participantsResult.error) setNotice(participantsResult.error.message);
-    else await loadTripData(activeTrip.id);
+    if (participantsResult.error) {
+      setNotice(participantsResult.error.message);
+      return { ok: false, error: participantsResult.error };
+    }
+    await loadTripData(activeTrip.id);
+    return { ok: true };
   }
 
   async function convertBudgetToActual(budget) {
@@ -1084,7 +1114,7 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function saveAccommodation(payload, editingId) {
+  async function saveAccommodation(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     const safeCheckOut =
       payload.check_out_date && payload.check_out_date < payload.check_in_date
@@ -1105,10 +1135,12 @@ export default function App() {
       custom_notes: payload.custom_notes.trim() || null,
     };
     const result = editingId
-      ? await supabase.from("accommodations").update(nextPayload).eq("id", editingId)
+      ? await updateWithConflictCheck("accommodations", nextPayload, editingId, meta)
       : await supabase.from("accommodations").insert(nextPayload);
     if (result.error) setNotice(result.error.message);
+    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
+    return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
   }
 
   async function deleteAccommodation(accommodationId) {
@@ -1118,7 +1150,7 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function saveGuide(payload, editingId) {
+  async function saveGuide(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     const nextPayload = {
       trip_id: activeTrip.id,
@@ -1127,10 +1159,12 @@ export default function App() {
       url: payload.url.trim() || null,
     };
     const result = editingId
-      ? await supabase.from("guide_items").update(nextPayload).eq("id", editingId)
+      ? await updateWithConflictCheck("guide_items", nextPayload, editingId, meta)
       : await supabase.from("guide_items").insert(nextPayload);
     if (result.error) setNotice(result.error.message);
+    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
+    return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
   }
 
   async function deleteGuide(guideId) {
@@ -1140,7 +1174,7 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function saveTodo(payload, editingId) {
+  async function saveTodo(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     const nextPayload = {
       trip_id: activeTrip.id,
@@ -1151,10 +1185,12 @@ export default function App() {
       guide_id: payload.guide_id || null,
     };
     const result = editingId
-      ? await supabase.from("todo_items").update(nextPayload).eq("id", editingId)
+      ? await updateWithConflictCheck("todo_items", nextPayload, editingId, meta)
       : await supabase.from("todo_items").insert(nextPayload);
     if (result.error) setNotice(result.error.message);
+    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
+    return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
   }
 
   async function toggleTodo(todo) {
@@ -1171,7 +1207,7 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function saveLuggageItem(payload, editingId) {
+  async function saveLuggageItem(payload, editingId, meta = {}) {
     if (!activeTrip || !session?.user) return;
     const nextPayload = {
       trip_id: activeTrip.id,
@@ -1181,10 +1217,12 @@ export default function App() {
       is_shared_assigned_item: false,
     };
     const result = editingId
-      ? await supabase.from("luggage_items").update(nextPayload).eq("id", editingId)
+      ? await updateWithConflictCheck("luggage_items", nextPayload, editingId, meta)
       : await supabase.from("luggage_items").insert(nextPayload);
     if (result.error) setNotice(result.error.message);
+    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
+    return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
   }
 
   async function toggleLuggageItem(item) {
@@ -1201,7 +1239,7 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function saveSharedLuggageItem(payload, editingId) {
+  async function saveSharedLuggageItem(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     const nextPayload = {
       trip_id: activeTrip.id,
@@ -1210,10 +1248,12 @@ export default function App() {
       assigned_to: payload.assigned_to || null,
     };
     const result = editingId
-      ? await supabase.from("shared_luggage_items").update(nextPayload).eq("id", editingId)
+      ? await updateWithConflictCheck("shared_luggage_items", nextPayload, editingId, meta)
       : await supabase.from("shared_luggage_items").insert(nextPayload);
     if (result.error) setNotice(result.error.message);
+    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
+    return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
   }
 
   async function updateSharedLuggageItem(itemId, patch) {
@@ -1617,6 +1657,23 @@ function Shell({ children, collapsed = false }) {
   return <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
 }
 
+function ConflictNotice({ onKeep, onLatest }) {
+  return (
+    <div className="draft-conflict" role="alert">
+      <strong>此資料在你編輯期間已被其他人更新。</strong>
+      <span>你可以保留目前草稿，或查看最新版本。</span>
+      <div className="conflict-actions">
+        <button className="mini-button" type="button" onClick={onKeep}>
+          保留我的草稿
+        </button>
+        <button className="mini-button" type="button" onClick={onLatest}>
+          查看最新版本
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ConfigMissing() {
   return (
     <section className="login-view">
@@ -1848,6 +1905,7 @@ function TripWorkspace(props) {
 
       {isBudgetMode ? (
         <BudgetPanel
+          activeTrip={activeTrip}
           budgetItems={budgetItems}
           budgetParticipants={budgetParticipants}
           canEdit={canEdit}
@@ -1857,6 +1915,7 @@ function TripWorkspace(props) {
           itineraryBudgetLinks={itineraryBudgetLinks}
           items={items}
           members={members}
+          currentUserId={currentUserId}
           onConvertToActual={onConvertBudgetToActual}
           onDeleteActual={onDeleteActualExpense}
           onDeleteAttachment={onDeleteAttachment}
@@ -1870,10 +1929,12 @@ function TripWorkspace(props) {
 
       {isAccommodationMode ? (
         <AccommodationPanel
+          activeTrip={activeTrip}
           accommodations={accommodations}
           attachments={attachments}
           budgetItems={budgetItems}
           canEdit={canEdit}
+          currentUserId={currentUserId}
           trip={activeTrip}
           onDeleteAttachment={onDeleteAttachment}
           onDelete={onDeleteAccommodation}
@@ -1885,7 +1946,9 @@ function TripWorkspace(props) {
 
       {isTodoMode ? (
         <TodoGuidePanel
+          activeTrip={activeTrip}
           canEdit={canEdit}
+          currentUserId={currentUserId}
           guideItems={guideItems}
           members={members}
           todoItems={todoItems}
@@ -1899,6 +1962,7 @@ function TripWorkspace(props) {
 
       {isLuggageMode ? (
         <LuggagePanel
+          activeTrip={activeTrip}
           canEdit={canEdit}
           currentUserId={currentUserId}
           isOwner={isOwner}
@@ -1932,10 +1996,13 @@ function TripWorkspace(props) {
       >
         <section className="panel itinerary-panel">
           <ItineraryTimeline
+                activeTrip={activeTrip}
                 activeDay={activeDay}
                 alternativesByItem={alternativesByItem}
                 budgetsByItem={budgetsByItem}
                 canEdit={canEdit}
+                currentUserId={currentUserId}
+                members={members}
                 dayItems={dayItems}
                 dayLabel={days[activeDay] ? `Day ${activeDay + 1} · ${formatDate(days[activeDay])}` : ""}
                 focusedItemId={focusedItemId}
@@ -2074,12 +2141,15 @@ function DayTabs({ activeDay, days, onActiveDay }) {
 }
 
 function ItineraryTimeline({
+  activeTrip,
   alternativesByItem,
   budgetsByItem,
   canEdit,
+  currentUserId,
   dayItems,
   dayLabel,
   focusedItemId,
+  members,
   onApplyAlternative,
   onDeleteAlternative,
   onDeleteItem,
@@ -2090,17 +2160,36 @@ function ItineraryTimeline({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyItemForm);
+  const [formSeed, setFormSeed] = useState(emptyItemForm);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
+  const [conflict, setConflict] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+    defaultForm: formSeed,
+    editingId,
+    entityType: "itinerary_item",
+    isOpen,
+    serverUpdatedAt: baseUpdatedAt,
+    tripId: activeTrip?.id,
+    userId: currentUserId,
+  });
+  const memberById = new Map((members || []).map((member) => [member.user_id, member]));
 
   function openNewItem() {
-    setForm(emptyItemForm);
+    setFormSeed(emptyItemForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setEditingId(null);
     setIsOpen(true);
   }
 
-  function openEditItem(item) {
-    setForm({
+  async function openEditItem(item) {
+    if (isLockedByAnotherUser(item, currentUserId)) return;
+    const lockResult = await acquireEditLock({ record: item, supabase, table: "itinerary_items", userId: currentUserId });
+    if (lockResult.error) return;
+    if (lockResult.lockedByAnotherUser) return;
+    const lockedItem = lockResult.data || item;
+    setFormSeed({
       type: item.type,
       start_time: item.start_time || "",
       end_time: item.end_time || "",
@@ -2114,13 +2203,27 @@ function ItineraryTimeline({
       transportation_note: item.transportation_note || "",
       cost: item.cost || 0,
     });
+    setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
+    setConflict(false);
     setEditingId(item.id);
     setIsOpen(true);
   }
 
+  async function closeEditor(force = false) {
+    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "itinerary_items", userId: currentUserId });
+    clearDraft(draftKey);
+    resetDraft(emptyItemForm);
+    setFormSeed(emptyItemForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
+    setEditingId(null);
+    setIsOpen(false);
+  }
+
   async function submit(event) {
     event.preventDefault();
-    await onSaveItem(
+    const result = await onSaveItem(
       {
         ...form,
         title: form.title.trim(),
@@ -2134,8 +2237,17 @@ function ItineraryTimeline({
         cost: Number(form.cost || 0),
       },
       editingId,
+      { baseUpdatedAt },
     );
-    setForm(emptyItemForm);
+    if (!result?.ok) {
+      if (result?.conflict) setConflict(true);
+      return;
+    }
+    clearDraft(draftKey);
+    resetDraft(emptyItemForm);
+    setFormSeed(emptyItemForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setEditingId(null);
     setIsOpen(false);
   }
@@ -2154,6 +2266,9 @@ function ItineraryTimeline({
 
       {isOpen ? (
         <form className="item-form" onSubmit={submit}>
+          {conflict ? (
+            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
+          ) : null}
           <div className="field-group form-grid">
             <label>
               類型
@@ -2243,7 +2358,7 @@ function ItineraryTimeline({
             />
           </label>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+            <button className="ghost-button" type="button" onClick={closeEditor}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -2255,7 +2370,10 @@ function ItineraryTimeline({
 
       <div className="timeline">
         {dayItems.length ? (
-          dayItems.map((item) => (
+          dayItems.map((item) => {
+            const lockedByOther = isLockedByAnotherUser(item, currentUserId);
+            const locker = memberById.get(item.locked_by);
+            return (
             <article
               className={`timeline-item${focusedItemId === item.id ? " focused" : ""}`}
               key={item.id}
@@ -2289,6 +2407,7 @@ function ItineraryTimeline({
                     <span className="pill">{(alternativesByItem[item.id] || []).length} 個備案</span>
                   ) : null}
                 </div>
+                {lockedByOther ? <div className="lock-note">{memberName(locker)} 正在編輯這筆資料</div> : null}
                 <button
                   className="ghost-button compact detail-toggle"
                   type="button"
@@ -2336,7 +2455,7 @@ function ItineraryTimeline({
               <div className="item-actions">
                 <button
                   className="mini-button"
-                  disabled={!canEdit}
+                  disabled={!canEdit || lockedByOther}
                   type="button"
                   title="編輯"
                   onClick={() => openEditItem(item)}
@@ -2354,7 +2473,8 @@ function ItineraryTimeline({
                 </button>
               </div>
             </article>
-          ))
+            );
+          })
         ) : (
           <div className="timeline-empty">這一天還沒有行程</div>
         )}
@@ -2506,12 +2626,14 @@ function BudgetSummaryPanel({ budgetItems, items }) {
 }
 
 function BudgetPanel({
+  activeTrip,
   actualExpenses,
   actualParticipants,
   attachments,
   budgetItems,
   budgetParticipants,
   canEdit,
+  currentUserId,
   itineraryBudgetLinks,
   items,
   members,
@@ -2526,7 +2648,18 @@ function BudgetPanel({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyBudgetForm);
+  const [formSeed, setFormSeed] = useState(emptyBudgetForm);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
+  const [conflict, setConflict] = useState(false);
+  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+    defaultForm: formSeed,
+    editingId,
+    entityType: "budget_item",
+    isOpen,
+    serverUpdatedAt: baseUpdatedAt,
+    tripId: activeTrip?.id,
+    userId: currentUserId,
+  });
   const approvedMembers = members.filter((member) => member.status === "approved");
   const participantsByBudget = useMemo(() => {
     const next = {};
@@ -2552,16 +2685,22 @@ function BudgetPanel({
   }, [budgetItems]);
 
   function openNewBudget() {
-    setForm({
+    setFormSeed({
       ...emptyBudgetForm,
       participantIds: approvedMembers.map((member) => member.user_id),
     });
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setEditingId(null);
     setIsOpen(true);
   }
 
-  function openEditBudget(item) {
-    setForm({
+  async function openEditBudget(item) {
+    if (isLockedByAnotherUser(item, currentUserId)) return;
+    const lockResult = await acquireEditLock({ record: item, supabase, table: "budget_items", userId: currentUserId });
+    if (lockResult.error || lockResult.lockedByAnotherUser) return;
+    const lockedItem = lockResult.data || item;
+    setFormSeed({
       category: item.category || "其他",
       subcategory: item.subcategory || "",
       title: item.title || "",
@@ -2574,6 +2713,8 @@ function BudgetPanel({
       participantIds: participantsByBudget[item.id] || approvedMembers.map((member) => member.user_id),
       linkedItemIds: linksByBudget[item.id] || [],
     });
+    setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
+    setConflict(false);
     setEditingId(item.id);
     setIsOpen(true);
   }
@@ -2588,10 +2729,30 @@ function BudgetPanel({
 
   async function submit(event) {
     event.preventDefault();
-    await onSave(form, editingId);
+    const result = await onSave(form, editingId, { baseUpdatedAt });
+    if (!result?.ok) {
+      if (result?.conflict) setConflict(true);
+      return;
+    }
+    clearDraft(draftKey);
+    resetDraft(emptyBudgetForm);
+    setFormSeed(emptyBudgetForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setIsOpen(false);
     setEditingId(null);
-    setForm(emptyBudgetForm);
+  }
+
+  async function closeBudgetForm(force = false) {
+    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "budget_items", userId: currentUserId });
+    clearDraft(draftKey);
+    resetDraft(emptyBudgetForm);
+    setFormSeed(emptyBudgetForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
+    setIsOpen(false);
+    setEditingId(null);
   }
 
   return (
@@ -2621,6 +2782,9 @@ function BudgetPanel({
 
       {isOpen ? (
         <form className="item-form budget-form" onSubmit={submit}>
+          {conflict ? (
+            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeBudgetForm(true)} />
+          ) : null}
           <div className="field-group form-grid">
             <label>
               大項
@@ -2734,7 +2898,7 @@ function BudgetPanel({
           </div>
 
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+            <button className="ghost-button" type="button" onClick={closeBudgetForm}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -2747,6 +2911,8 @@ function BudgetPanel({
       <div className="budget-cards">
         {budgetItems.length ? (
           budgetItems.map((item) => {
+            const lockedByOther = isLockedByAnotherUser(item, currentUserId);
+            const locker = approvedMembers.find((member) => member.user_id === item.locked_by);
             const participantIds = participantsByBudget[item.id] || [];
             const linkedItemIds = linksByBudget[item.id] || [];
             const participantNames = participantIds
@@ -2787,7 +2953,7 @@ function BudgetPanel({
                   >
                     轉實付
                   </button>
-                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditBudget(item)}>
+                  <button className="mini-button" disabled={!canEdit || lockedByOther} type="button" onClick={() => openEditBudget(item)}>
                     E
                   </button>
                   <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(item.id)}>
@@ -2803,11 +2969,13 @@ function BudgetPanel({
       </div>
 
       <ActualExpensePanel
+        activeTrip={activeTrip}
         actualExpenses={actualExpenses}
         actualParticipants={actualParticipants}
         attachments={attachments}
         budgetItems={budgetItems}
         canEdit={canEdit}
+        currentUserId={currentUserId}
         members={members}
         onDeleteAttachment={onDeleteAttachment}
         onDelete={onDeleteActual}
@@ -2820,11 +2988,13 @@ function BudgetPanel({
 }
 
 function ActualExpensePanel({
+  activeTrip,
   actualExpenses,
   actualParticipants,
   attachments,
   budgetItems,
   canEdit,
+  currentUserId,
   members,
   onDelete,
   onDeleteAttachment,
@@ -2834,7 +3004,18 @@ function ActualExpensePanel({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyActualForm);
+  const [formSeed, setFormSeed] = useState(emptyActualForm);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
+  const [conflict, setConflict] = useState(false);
+  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+    defaultForm: formSeed,
+    editingId,
+    entityType: "actual_expense",
+    isOpen,
+    serverUpdatedAt: baseUpdatedAt,
+    tripId: activeTrip?.id,
+    userId: currentUserId,
+  });
   const approvedMembers = members.filter((member) => member.status === "approved");
   const participantsByExpense = useMemo(() => {
     const next = {};
@@ -2846,18 +3027,24 @@ function ActualExpensePanel({
   const total = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
 
   function openNewExpense() {
-    setForm({
+    setFormSeed({
       ...emptyActualForm,
       paid_at: dateTimeLocalInput(),
       participantIds: approvedMembers.map((member) => member.user_id),
     });
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setEditingId(null);
     setIsOpen(true);
   }
 
-  function openEditExpense(expense) {
+  async function openEditExpense(expense) {
+    if (isLockedByAnotherUser(expense, currentUserId)) return;
+    const lockResult = await acquireEditLock({ record: expense, supabase, table: "actual_expenses", userId: currentUserId });
+    if (lockResult.error || lockResult.lockedByAnotherUser) return;
+    const lockedExpense = lockResult.data || expense;
     const paidAt = expense.paid_at ? dateTimeLocalInput(new Date(expense.paid_at)) : dateTimeLocalInput();
-    setForm({
+    setFormSeed({
       budget_item_id: expense.budget_item_id || "",
       title: expense.title || "",
       amount: expense.amount || 0,
@@ -2868,6 +3055,8 @@ function ActualExpensePanel({
       note: expense.note || "",
       participantIds: participantsByExpense[expense.id] || approvedMembers.map((member) => member.user_id),
     });
+    setBaseUpdatedAt(lockedExpense.updated_at || expense.updated_at || null);
+    setConflict(false);
     setEditingId(expense.id);
     setIsOpen(true);
   }
@@ -2900,10 +3089,30 @@ function ActualExpensePanel({
 
   async function submit(event) {
     event.preventDefault();
-    await onSave(form, editingId);
+    const result = await onSave(form, editingId, { baseUpdatedAt });
+    if (!result?.ok) {
+      if (result?.conflict) setConflict(true);
+      return;
+    }
+    clearDraft(draftKey);
+    resetDraft(emptyActualForm);
+    setFormSeed(emptyActualForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setIsOpen(false);
     setEditingId(null);
-    setForm(emptyActualForm);
+  }
+
+  async function closeExpenseForm(force = false) {
+    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "actual_expenses", userId: currentUserId });
+    clearDraft(draftKey);
+    resetDraft(emptyActualForm);
+    setFormSeed(emptyActualForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
+    setIsOpen(false);
+    setEditingId(null);
   }
 
   return (
@@ -2931,6 +3140,9 @@ function ActualExpensePanel({
 
       {isOpen ? (
         <form className="item-form budget-form" onSubmit={submit}>
+          {conflict ? (
+            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeExpenseForm(true)} />
+          ) : null}
           <div className="field-group form-grid wide">
             <label>
               來源預算
@@ -3018,7 +3230,7 @@ function ActualExpensePanel({
             </div>
           </div>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+            <button className="ghost-button" type="button" onClick={closeExpenseForm}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -3306,10 +3518,12 @@ function AttachmentList({ attachments, canEdit, targetId, targetType, onDelete, 
 }
 
 function AccommodationPanel({
+  activeTrip,
   accommodations,
   attachments,
   budgetItems,
   canEdit,
+  currentUserId,
   trip,
   onDelete,
   onDeleteAttachment,
@@ -3320,21 +3534,38 @@ function AccommodationPanel({
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedId, setSelectedId] = useState(accommodations[0]?.id || null);
-  const [form, setForm] = useState(emptyAccommodationForm);
+  const [formSeed, setFormSeed] = useState(emptyAccommodationForm);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
+  const [conflict, setConflict] = useState(false);
+  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+    defaultForm: formSeed,
+    editingId,
+    entityType: "accommodation",
+    isOpen,
+    serverUpdatedAt: baseUpdatedAt,
+    tripId: activeTrip?.id || trip?.id,
+    userId: currentUserId,
+  });
   const selected = accommodations.find((item) => item.id === selectedId) || accommodations[0] || null;
 
   function openNewAccommodation() {
-    setForm({
+    setFormSeed({
       ...emptyAccommodationForm,
       check_in_date: trip.start_date || todayInput(),
       check_out_date: trip.start_date || todayInput(),
     });
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setEditingId(null);
     setIsOpen(true);
   }
 
-  function openEditAccommodation(item) {
-    setForm({
+  async function openEditAccommodation(item) {
+    if (isLockedByAnotherUser(item, currentUserId)) return;
+    const lockResult = await acquireEditLock({ record: item, supabase, table: "accommodations", userId: currentUserId });
+    if (lockResult.error || lockResult.lockedByAnotherUser) return;
+    const lockedItem = lockResult.data || item;
+    setFormSeed({
       name: item.name || "",
       check_in_date: item.check_in_date || trip.start_date || todayInput(),
       check_out_date: item.check_out_date || item.check_in_date || trip.start_date || todayInput(),
@@ -3347,16 +3578,38 @@ function AccommodationPanel({
       budget_item_id: item.budget_item_id || "",
       custom_notes: item.custom_notes || "",
     });
+    setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
+    setConflict(false);
     setEditingId(item.id);
     setIsOpen(true);
   }
 
   async function submit(event) {
     event.preventDefault();
-    await onSave(form, editingId);
+    const result = await onSave(form, editingId, { baseUpdatedAt });
+    if (!result?.ok) {
+      if (result?.conflict) setConflict(true);
+      return;
+    }
+    clearDraft(draftKey);
+    resetDraft(emptyAccommodationForm);
+    setFormSeed(emptyAccommodationForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setIsOpen(false);
     setEditingId(null);
-    setForm(emptyAccommodationForm);
+  }
+
+  async function closeAccommodationForm(force = false) {
+    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "accommodations", userId: currentUserId });
+    clearDraft(draftKey);
+    resetDraft(emptyAccommodationForm);
+    setFormSeed(emptyAccommodationForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
+    setIsOpen(false);
+    setEditingId(null);
   }
 
   return (
@@ -3373,6 +3626,9 @@ function AccommodationPanel({
 
       {isOpen ? (
         <form className="item-form accommodation-form" onSubmit={submit}>
+          {conflict ? (
+            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeAccommodationForm(true)} />
+          ) : null}
           <div className="field-group form-grid wide">
             <label>
               住宿名稱
@@ -3468,7 +3724,7 @@ function AccommodationPanel({
             />
           </label>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+            <button className="ghost-button" type="button" onClick={closeAccommodationForm}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -3612,7 +3868,9 @@ function TodoGuidePanel({
       <div className="todo-guide-layout">
         <div className={`todo-guide-column${activeTab === "todo" ? " active" : ""}`}>
           <TodoPanel
+            activeTrip={activeTrip}
             canEdit={canEdit}
+            currentUserId={currentUserId}
             guideItems={guideItems}
             members={approvedMembers}
             todoItems={todoItems}
@@ -3622,45 +3880,84 @@ function TodoGuidePanel({
           />
         </div>
         <div className={`todo-guide-column${activeTab === "guide" ? " active" : ""}`}>
-          <GuidePanel canEdit={canEdit} guideItems={guideItems} onDelete={onDeleteGuide} onSave={onSaveGuide} />
+          <GuidePanel activeTrip={activeTrip} canEdit={canEdit} currentUserId={currentUserId} guideItems={guideItems} onDelete={onDeleteGuide} onSave={onSaveGuide} />
         </div>
       </div>
     </section>
   );
 }
 
-function TodoPanel({ canEdit, guideItems, members, todoItems, onDelete, onSave, onToggle }) {
+function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, todoItems, onDelete, onSave, onToggle }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyTodoForm);
+  const [formSeed, setFormSeed] = useState(emptyTodoForm);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
+  const [conflict, setConflict] = useState(false);
+  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+    defaultForm: formSeed,
+    editingId,
+    entityType: "todo_item",
+    isOpen,
+    serverUpdatedAt: baseUpdatedAt,
+    tripId: activeTrip?.id,
+    userId: currentUserId,
+  });
   const memberById = new Map(members.map((member) => [member.user_id, member]));
   const guideById = new Map(guideItems.map((guide) => [guide.id, guide]));
   const pendingCount = todoItems.filter((item) => !item.completed).length;
 
   function openNewTodo() {
-    setForm(emptyTodoForm);
+    setFormSeed(emptyTodoForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setEditingId(null);
     setIsOpen(true);
   }
 
-  function openEditTodo(item) {
-    setForm({
+  async function openEditTodo(item) {
+    if (isLockedByAnotherUser(item, currentUserId)) return;
+    const lockResult = await acquireEditLock({ record: item, supabase, table: "todo_items", userId: currentUserId });
+    if (lockResult.error || lockResult.lockedByAnotherUser) return;
+    const lockedItem = lockResult.data || item;
+    setFormSeed({
       title: item.title || "",
       description: item.description || "",
       due_date: item.due_date || "",
       assignee_id: item.assignee_id || "",
       guide_id: item.guide_id || "",
     });
+    setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
+    setConflict(false);
     setEditingId(item.id);
     setIsOpen(true);
   }
 
   async function submit(event) {
     event.preventDefault();
-    await onSave(form, editingId);
+    const result = await onSave(form, editingId, { baseUpdatedAt });
+    if (!result?.ok) {
+      if (result?.conflict) setConflict(true);
+      return;
+    }
+    clearDraft(draftKey);
+    resetDraft(emptyTodoForm);
+    setFormSeed(emptyTodoForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setIsOpen(false);
     setEditingId(null);
-    setForm(emptyTodoForm);
+  }
+
+  async function closeTodoForm(force = false) {
+    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "todo_items", userId: currentUserId });
+    clearDraft(draftKey);
+    resetDraft(emptyTodoForm);
+    setFormSeed(emptyTodoForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
+    setIsOpen(false);
+    setEditingId(null);
   }
 
   return (
@@ -3680,6 +3977,9 @@ function TodoPanel({ canEdit, guideItems, members, todoItems, onDelete, onSave, 
 
       {isOpen ? (
         <form className="item-form" onSubmit={submit}>
+          {conflict ? (
+            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeTodoForm(true)} />
+          ) : null}
           <div className="field-group form-grid wide">
             <label>
               標題
@@ -3727,7 +4027,7 @@ function TodoPanel({ canEdit, guideItems, members, todoItems, onDelete, onSave, 
             />
           </label>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+            <button className="ghost-button" type="button" onClick={closeTodoForm}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -3773,33 +4073,72 @@ function TodoPanel({ canEdit, guideItems, members, todoItems, onDelete, onSave, 
   );
 }
 
-function GuidePanel({ canEdit, guideItems, onDelete, onSave }) {
+function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, onSave }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyGuideForm);
+  const [formSeed, setFormSeed] = useState(emptyGuideForm);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
+  const [conflict, setConflict] = useState(false);
+  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+    defaultForm: formSeed,
+    editingId,
+    entityType: "guide_item",
+    isOpen,
+    serverUpdatedAt: baseUpdatedAt,
+    tripId: activeTrip?.id,
+    userId: currentUserId,
+  });
 
   function openNewGuide() {
-    setForm(emptyGuideForm);
+    setFormSeed(emptyGuideForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setEditingId(null);
     setIsOpen(true);
   }
 
-  function openEditGuide(item) {
-    setForm({
+  async function openEditGuide(item) {
+    if (isLockedByAnotherUser(item, currentUserId)) return;
+    const lockResult = await acquireEditLock({ record: item, supabase, table: "guide_items", userId: currentUserId });
+    if (lockResult.error || lockResult.lockedByAnotherUser) return;
+    const lockedItem = lockResult.data || item;
+    setFormSeed({
       title: item.title || "",
       description: item.description || "",
       url: item.url || "",
     });
+    setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
+    setConflict(false);
     setEditingId(item.id);
     setIsOpen(true);
   }
 
   async function submit(event) {
     event.preventDefault();
-    await onSave(form, editingId);
+    const result = await onSave(form, editingId, { baseUpdatedAt });
+    if (!result?.ok) {
+      if (result?.conflict) setConflict(true);
+      return;
+    }
+    clearDraft(draftKey);
+    resetDraft(emptyGuideForm);
+    setFormSeed(emptyGuideForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
     setIsOpen(false);
     setEditingId(null);
-    setForm(emptyGuideForm);
+  }
+
+  async function closeGuideForm(force = false) {
+    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "guide_items", userId: currentUserId });
+    clearDraft(draftKey);
+    resetDraft(emptyGuideForm);
+    setFormSeed(emptyGuideForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
+    setIsOpen(false);
+    setEditingId(null);
   }
 
   return (
@@ -3816,6 +4155,9 @@ function GuidePanel({ canEdit, guideItems, onDelete, onSave }) {
 
       {isOpen ? (
         <form className="item-form" onSubmit={submit}>
+          {conflict ? (
+            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeGuideForm(true)} />
+          ) : null}
           <label>
             標題
             <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
@@ -3833,7 +4175,7 @@ function GuidePanel({ canEdit, guideItems, onDelete, onSave }) {
             />
           </label>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+            <button className="ghost-button" type="button" onClick={closeGuideForm}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -3889,39 +4231,79 @@ function LuggagePanel({
   onUpdateShared,
 }) {
   const [activeTab, setActiveTab] = useState("personal");
-  const [personalForm, setPersonalForm] = useState(emptyLuggageForm);
-  const [sharedForm, setSharedForm] = useState(emptySharedLuggageForm);
+  const [personalSeed, setPersonalSeed] = useState(emptyLuggageForm);
+  const [sharedSeed, setSharedSeed] = useState(emptySharedLuggageForm);
   const [editingPersonalId, setEditingPersonalId] = useState(null);
   const [editingSharedId, setEditingSharedId] = useState(null);
+  const [personalUpdatedAt, setPersonalUpdatedAt] = useState(null);
+  const [sharedUpdatedAt, setSharedUpdatedAt] = useState(null);
+  const personalDraft = useDraftAutosave({
+    defaultForm: personalSeed,
+    editingId: editingPersonalId,
+    entityType: "luggage_item",
+    isOpen: true,
+    serverUpdatedAt: personalUpdatedAt,
+    tripId: activeTrip?.id,
+    userId: currentUserId,
+  });
+  const sharedDraft = useDraftAutosave({
+    defaultForm: sharedSeed,
+    editingId: editingSharedId,
+    entityType: "shared_luggage_item",
+    isOpen: true,
+    serverUpdatedAt: sharedUpdatedAt,
+    tripId: activeTrip?.id,
+    userId: currentUserId,
+  });
+  const personalForm = personalDraft.form;
+  const sharedForm = sharedDraft.form;
+  const setPersonalForm = personalDraft.setForm;
+  const setSharedForm = sharedDraft.setForm;
   const approvedMembers = members.filter((member) => member.status === "approved");
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
 
   async function submitPersonal(event) {
     event.preventDefault();
-    await onSavePersonal(personalForm, editingPersonalId);
-    setPersonalForm(emptyLuggageForm);
+    const result = await onSavePersonal(personalForm, editingPersonalId, { baseUpdatedAt: personalUpdatedAt });
+    if (!result?.ok) return;
+    clearDraft(personalDraft.draftKey);
+    personalDraft.resetDraft(emptyLuggageForm);
+    setPersonalSeed(emptyLuggageForm);
+    setPersonalUpdatedAt(null);
     setEditingPersonalId(null);
   }
 
   async function submitShared(event) {
     event.preventDefault();
-    await onSaveShared(sharedForm, editingSharedId);
-    setSharedForm(emptySharedLuggageForm);
+    const result = await onSaveShared(sharedForm, editingSharedId, { baseUpdatedAt: sharedUpdatedAt });
+    if (!result?.ok) return;
+    clearDraft(sharedDraft.draftKey);
+    sharedDraft.resetDraft(emptySharedLuggageForm);
+    setSharedSeed(emptySharedLuggageForm);
+    setSharedUpdatedAt(null);
     setEditingSharedId(null);
   }
 
-  function editPersonal(item) {
-    setPersonalForm({ title: item.title || "", category: item.category || "" });
+  async function editPersonal(item) {
+    if (isLockedByAnotherUser(item, currentUserId)) return;
+    const lockResult = await acquireEditLock({ record: item, supabase, table: "luggage_items", userId: currentUserId });
+    if (lockResult.error || lockResult.lockedByAnotherUser) return;
+    setPersonalSeed({ title: item.title || "", category: item.category || "" });
+    setPersonalUpdatedAt(lockResult.data?.updated_at || item.updated_at || null);
     setEditingPersonalId(item.id);
   }
 
-  function editShared(item) {
-    setSharedForm({
+  async function editShared(item) {
+    if (isLockedByAnotherUser(item, currentUserId)) return;
+    const lockResult = await acquireEditLock({ record: item, supabase, table: "shared_luggage_items", userId: currentUserId });
+    if (lockResult.error || lockResult.lockedByAnotherUser) return;
+    setSharedSeed({
       title: item.title || "",
       category: item.category || "",
       assigned_to: item.assigned_to || "",
     });
+    setSharedUpdatedAt(lockResult.data?.updated_at || item.updated_at || null);
     setEditingSharedId(item.id);
   }
 
