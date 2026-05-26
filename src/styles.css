@@ -696,14 +696,34 @@ textarea {
   padding: 14px;
 }
 
+.timeline-item.focused {
+  border-color: var(--mint);
+  box-shadow: inset 4px 0 0 var(--mint), var(--shadow);
+}
+
 .time-block {
+  border: 0;
+  background: transparent;
   color: var(--mint-dark);
   font-size: 14px;
   font-weight: 900;
+  padding: 0;
+  text-align: left;
 }
 
 .item-main {
   min-width: 0;
+}
+
+.timeline-title-button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
 }
 
 .item-main h4 {
@@ -719,11 +739,82 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.transport-note {
+  margin-top: 8px;
+}
+
 .item-meta {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 10px;
+}
+
+.detail-toggle {
+  margin-top: 10px;
+}
+
+.item-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.item-details a {
+  color: var(--mint-dark);
+  font-weight: 900;
+}
+
+.linked-budget-list,
+.alternative-list {
+  display: grid;
+  gap: 8px;
+}
+
+.linked-budget-list {
+  align-items: start;
+}
+
+.muted-text {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.alternative-heading,
+.alternative-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.alternative-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 10px;
+}
+
+.alternative-row div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.alternative-row span,
+.alternative-row p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.alternative-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .pill {
@@ -770,7 +861,20 @@ textarea {
   grid-template-columns: 34px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
   margin-bottom: 15px;
+}
+
+.route-stop.focused .route-dot {
+  background: var(--coral);
+}
+
+.route-stop.focused .route-name {
+  color: var(--mint-dark);
 }
 
 .route-dot {
@@ -1097,9 +1201,18 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .time-block {
+    display: inline-block;
+  }
+
   .item-actions,
   .member-actions {
     justify-content: flex-end;
+  }
+
+  .alternative-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .bottom-nav {
