@@ -2377,7 +2377,7 @@ function ItineraryTimeline({
             />
           </label>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={closeEditor}>
+            <button className="ghost-button" type="button" onClick={() => closeEditor()}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -2934,7 +2934,7 @@ function BudgetPanel({
           </div>
 
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={closeBudgetForm}>
+            <button className="ghost-button" type="button" onClick={() => closeBudgetForm()}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -3283,7 +3283,7 @@ function ActualExpensePanel({
             </div>
           </div>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={closeExpenseForm}>
+            <button className="ghost-button" type="button" onClick={() => closeExpenseForm()}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -3794,7 +3794,7 @@ function AccommodationPanel({
             />
           </label>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={closeAccommodationForm}>
+            <button className="ghost-button" type="button" onClick={() => closeAccommodationForm()}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -4116,7 +4116,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
             />
           </label>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={closeTodoForm}>
+            <button className="ghost-button" type="button" onClick={() => closeTodoForm()}>
               取消
             </button>
             <button className="primary-button compact" type="submit">
@@ -4281,7 +4281,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
             />
           </label>
           <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={closeGuideForm}>
+            <button className="ghost-button" type="button" onClick={() => closeGuideForm()}>
               取消
             </button>
             <button className="primary-button compact" type="submit">

@@ -94,11 +94,17 @@ export function useDraftAutosave({
   const [form, setForm] = useState(defaultForm);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const latestRef = useRef(defaultForm);
+  const hasUnsavedRef = useRef(false);
   const openedRef = useRef(false);
+  const suppressFlushRef = useRef(false);
 
   useEffect(() => {
     latestRef.current = form;
   }, [form]);
+
+  useEffect(() => {
+    hasUnsavedRef.current = hasUnsavedChanges;
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -109,6 +115,7 @@ export function useDraftAutosave({
 
     const draft = loadDraft(draftKey);
     if (isDraftNewerThanServer(draft, serverUpdatedAt)) {
+      suppressFlushRef.current = false;
       setForm(draft.form);
       setHasUnsavedChanges(true);
     } else {
@@ -121,7 +128,7 @@ export function useDraftAutosave({
   useEffect(() => {
     if (!isOpen || !hasUnsavedChanges) return undefined;
     const timeout = window.setTimeout(() => {
-      saveDraft(draftKey, { form: latestRef.current, serverUpdatedAt });
+      if (!suppressFlushRef.current) saveDraft(draftKey, { form: latestRef.current, serverUpdatedAt });
     }, debounceMs);
     return () => window.clearTimeout(timeout);
   }, [debounceMs, draftKey, hasUnsavedChanges, isOpen, form, serverUpdatedAt]);
@@ -130,7 +137,9 @@ export function useDraftAutosave({
     if (!isOpen) return undefined;
 
     function flushDraft() {
-      if (hasUnsavedChanges) saveDraft(draftKey, { form: latestRef.current, serverUpdatedAt });
+      if (hasUnsavedRef.current && !suppressFlushRef.current) {
+        saveDraft(draftKey, { form: latestRef.current, serverUpdatedAt });
+      }
     }
 
     function handleVisibilityChange() {
@@ -149,18 +158,25 @@ export function useDraftAutosave({
   }, [draftKey, hasUnsavedChanges, isOpen, serverUpdatedAt]);
 
   function updateForm(next) {
+    suppressFlushRef.current = false;
+    hasUnsavedRef.current = true;
     setHasUnsavedChanges(true);
     setForm((current) => (typeof next === "function" ? next(current) : next));
   }
 
   function resetDraft(nextForm = defaultForm) {
+    suppressFlushRef.current = true;
+    hasUnsavedRef.current = false;
     clearDraft(draftKey);
+    latestRef.current = nextForm;
     setForm(nextForm);
     setHasUnsavedChanges(false);
   }
 
   function flushDraft() {
-    if (hasUnsavedChanges) saveDraft(draftKey, { form: latestRef.current, serverUpdatedAt });
+    if (hasUnsavedRef.current && !suppressFlushRef.current) {
+      saveDraft(draftKey, { form: latestRef.current, serverUpdatedAt });
+    }
   }
 
   return {
