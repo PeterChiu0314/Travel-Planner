@@ -51,7 +51,39 @@ const emptyItemForm = {
 function todayInput(offset = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offset);
-  return date.toISOString().slice(0, 10);
+  return dateToInputValue(date);
+}
+
+function dateToInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function currentTimeInput() {
+  const date = new Date();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function sortScheduleItems(items) {
+  return [...items].sort((a, b) => {
+    const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
+    const timeSort = (a.start_time || "99:99").localeCompare(b.start_time || "99:99");
+    return orderSort || timeSort;
+  });
+}
+
+function tripTodayIndex(trip) {
+  const days = tripDays(trip);
+  if (!days.length) return 0;
+  const today = todayInput();
+  const index = days.findIndex((date) => dateToInputValue(date) === today);
+  if (index >= 0) return index;
+  if (today < dateToInputValue(days[0])) return 0;
+  return days.length - 1;
 }
 
 function formatDate(date) {
@@ -125,17 +157,16 @@ export default function App() {
     (activeMembership?.role === "owner" || activeMembership?.role === "editor");
   const isPending = activeMembership?.status === "pending";
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
+  const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
 
   const dayItems = useMemo(
-    () =>
-      items
-        .filter((item) => item.day_index === activeDay)
-        .sort((a, b) => {
-          const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
-          const timeSort = (a.start_time || "99:99").localeCompare(b.start_time || "99:99");
-          return orderSort || timeSort;
-        }),
+    () => sortScheduleItems(items.filter((item) => item.day_index === activeDay)),
     [activeDay, items],
+  );
+
+  const todayItems = useMemo(
+    () => sortScheduleItems(items.filter((item) => item.day_index === todayDayIndex)),
+    [items, todayDayIndex],
   );
 
   const loadTrips = useCallback(
@@ -258,9 +289,9 @@ export default function App() {
   }, [loadTrips, session]);
 
   useEffect(() => {
-    setActiveDay(0);
+    setActiveDay(todayDayIndex);
     loadTripData(activeTripId);
-  }, [activeTripId, loadTripData]);
+  }, [activeTripId, loadTripData, todayDayIndex]);
 
   useEffect(() => {
     if (!activeTripId || !session?.user) return undefined;
@@ -603,6 +634,7 @@ function exportTrip() {
           <TripWorkspace
             activeTrip={activeTrip}
             activeDay={activeDay}
+            activeSection={activeSection}
             canEdit={canEdit}
             dayItems={dayItems}
             days={days}
@@ -611,6 +643,8 @@ function exportTrip() {
             items={items}
             members={members}
             packItems={packItems}
+            todayDayIndex={todayDayIndex}
+            todayItems={todayItems}
             onActiveDay={setActiveDay}
             onAddPackItem={addPackItem}
             onApproveMember={approveMember}
@@ -619,6 +653,7 @@ function exportTrip() {
             onRejectMember={rejectMember}
             onReorderItem={reorderItem}
             onSaveItem={saveItem}
+            onSectionChange={setActiveSection}
             onTogglePackItem={togglePackItem}
             onUpdateTrip={updateTrip}
           />
@@ -739,6 +774,7 @@ function TripWorkspace(props) {
   const {
     activeTrip,
     activeDay,
+    activeSection,
     canEdit,
     dayItems,
     days,
@@ -747,6 +783,8 @@ function TripWorkspace(props) {
     items,
     members,
     packItems,
+    todayDayIndex,
+    todayItems,
     onActiveDay,
     onAddPackItem,
     onApproveMember,
@@ -755,9 +793,11 @@ function TripWorkspace(props) {
     onRejectMember,
     onReorderItem,
     onSaveItem,
+    onSectionChange,
     onTogglePackItem,
     onUpdateTrip,
   } = props;
+  const isTodayMode = activeSection === "today";
 
   return (
     <section className="trip-editor">
@@ -765,7 +805,23 @@ function TripWorkspace(props) {
         <div className="pending-banner">你已送出加入申請，旅程擁有者核准後即可共同編輯。</div>
       ) : null}
 
-      <div className="field-group trip-fields">
+      {isTodayMode ? (
+        <TodayMode
+          canEdit={canEdit}
+          dayIndex={todayDayIndex}
+          days={days}
+          items={todayItems}
+          packItems={packItems}
+          trip={activeTrip}
+          onGoBudget={() => onSectionChange("budget")}
+          onGoTimeline={() => {
+            onActiveDay(todayDayIndex);
+            onSectionChange("timeline");
+          }}
+        />
+      ) : null}
+
+      <div className={`field-group trip-fields${isTodayMode ? " hidden-section" : ""}`}>
         <label>
           旅程名稱
           <input
@@ -804,9 +860,9 @@ function TripWorkspace(props) {
         </label>
       </div>
 
-      <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />
+      {isTodayMode ? null : <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />}
 
-      <div className="content-grid">
+      <div className={`content-grid${isTodayMode ? " hidden-section" : ""}`}>
         <section className="panel itinerary-panel">
           <ItineraryTimeline
             activeDay={activeDay}
@@ -836,6 +892,91 @@ function TripWorkspace(props) {
             onReject={onRejectMember}
           />
         </aside>
+      </div>
+    </section>
+  );
+}
+
+function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget, onGoTimeline }) {
+  const day = days[dayIndex];
+  const currentTime = currentTimeInput();
+  const isCalendarToday = day ? dateToInputValue(day) === todayInput() : false;
+  const nextStop =
+    items.find((item) => !isCalendarToday || !item.start_time || item.start_time >= currentTime) || items[0] || null;
+  const hotelItem = [...items].reverse().find((item) => item.type === "hotel");
+  const todayBudget = items.reduce((sum, item) => sum + Number(item.cost || 0), 0);
+  const pendingPackItems = packItems.filter((item) => !item.done);
+  const packedCount = packItems.length - pendingPackItems.length;
+
+  return (
+    <section className="today-mode" aria-label="今日模式">
+      <div className="today-hero panel">
+        <div>
+          <p className="eyebrow">Today</p>
+          <h3>{day ? `Day ${dayIndex + 1} · ${formatDate(day)}` : trip.title}</h3>
+          <p>{trip.destination || "目的地未設定"}</p>
+        </div>
+        <button className="primary-button compact" type="button" onClick={onGoTimeline}>
+          看時間軸
+        </button>
+      </div>
+
+      <div className="today-grid">
+        <article className="today-card today-card-wide">
+          <div className="today-card-heading">
+            <span>今日行程</span>
+            <strong>{items.length}</strong>
+          </div>
+          {items.length ? (
+            <ol className="today-schedule">
+              {items.slice(0, 4).map((item) => (
+                <li key={item.id}>
+                  <time>{item.start_time || "--:--"}</time>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.location || "地點未設定"}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="today-empty">今天還沒有行程</p>
+          )}
+        </article>
+
+        <article className="today-card">
+          <span>下一站</span>
+          <strong>{nextStop?.title || "尚未安排"}</strong>
+          <p>{nextStop?.location || nextStop?.start_time || "新增行程後會顯示"}</p>
+        </article>
+
+        <article className="today-card">
+          <span>今日預算</span>
+          <strong>{formatMoney(todayBudget)}</strong>
+          <button className="ghost-button compact" disabled={!canEdit} type="button" onClick={onGoBudget}>
+            快速記帳
+          </button>
+        </article>
+
+        <article className="today-card">
+          <span>待辦提醒</span>
+          <strong>{pendingPackItems.length}</strong>
+          <p>{pendingPackItems[0]?.title || "目前沒有提醒"}</p>
+        </article>
+
+        <article className="today-card">
+          <span>今日住宿</span>
+          <strong>{hotelItem?.title || "尚未設定"}</strong>
+          <p>{hotelItem?.location || "可在時間軸加入住宿"}</p>
+        </article>
+
+        <article className="today-card">
+          <span>行李提醒</span>
+          <strong>
+            {packedCount}/{packItems.length}
+          </strong>
+          <p>{pendingPackItems[0] ? `未完成：${pendingPackItems[0].title}` : "行李已完成"}</p>
+        </article>
       </div>
     </section>
   );

@@ -468,6 +468,123 @@ textarea {
   resize: vertical;
 }
 
+.hidden-section {
+  display: none !important;
+}
+
+.today-mode {
+  display: grid;
+  gap: 14px;
+}
+
+.today-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.today-hero h3 {
+  margin-bottom: 4px;
+}
+
+.today-hero p:not(.eyebrow) {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.today-card {
+  display: grid;
+  gap: 9px;
+  min-height: 148px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.today-card-wide {
+  grid-column: span 2;
+}
+
+.today-card span,
+.today-empty {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.today-card strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.today-card p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.today-card .ghost-button {
+  align-self: end;
+  width: 100%;
+}
+
+.today-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.today-schedule {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.today-schedule li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.today-schedule li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.today-schedule time {
+  color: var(--mint-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.today-schedule div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.today-schedule strong {
+  font-size: 15px;
+}
+
 .day-tabs {
   display: flex;
   gap: 8px;
@@ -937,6 +1054,28 @@ textarea {
   .topbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .today-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .today-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .today-card {
+    min-height: 126px;
+    padding: 14px;
+  }
+
+  .today-card-wide {
+    grid-column: auto;
+  }
+
+  .today-card strong {
+    font-size: 21px;
   }
 
   .topbar-actions {
