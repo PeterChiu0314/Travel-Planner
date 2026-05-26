@@ -1113,6 +1113,69 @@ textarea {
   font-weight: 900;
 }
 
+.attachment-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.attachment-heading,
+.attachment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.attachment-upload {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--mint-dark);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.attachment-upload.disabled {
+  opacity: 0.58;
+}
+
+.attachment-upload input {
+  display: none;
+}
+
+.attachment-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfa;
+  padding: 8px;
+}
+
+.attachment-row button:first-child {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mint-dark);
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 900;
+}
+
+.attachment-row span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .todo-guide-panel {
   display: grid;
   gap: 16px;
@@ -1746,6 +1809,18 @@ textarea {
   .shared-luggage-row,
   .shared-luggage-form {
     grid-template-columns: 1fr;
+  }
+
+  .attachment-heading,
+  .attachment-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .attachment-upload,
+  .attachment-row .mini-button {
+    justify-content: center;
+    width: 100%;
   }
 
   .bottom-nav {

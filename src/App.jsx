@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 
+const attachmentBucket = "trip-attachments";
+
 const desktopNavItems = [
   { id: "today", label: "今日 / 總覽", shortLabel: "今日" },
   { id: "timeline", label: "時間軸", shortLabel: "軸" },
@@ -196,6 +198,15 @@ function simplifyTransfers(balances) {
   return transfers;
 }
 
+function safeFileName(name) {
+  return name
+    .normalize("NFKD")
+    .replace(/[^\w.-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 120);
+}
+
 function tripTodayIndex(trip) {
   const days = tripDays(trip);
   if (!days.length) return 0;
@@ -261,6 +272,7 @@ export default function App() {
   const [todoItems, setTodoItems] = useState([]);
   const [luggageItems, setLuggageItems] = useState([]);
   const [sharedLuggageItems, setSharedLuggageItems] = useState([]);
+  const [attachments, setAttachments] = useState([]);
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -352,6 +364,7 @@ export default function App() {
       setTodoItems([]);
       setLuggageItems([]);
       setSharedLuggageItems([]);
+      setAttachments([]);
       setItineraryBudgetLinks([]);
       setPackItems([]);
       setMembers([]);
@@ -370,6 +383,7 @@ export default function App() {
       todoResult,
       luggageResult,
       sharedLuggageResult,
+      attachmentsResult,
       budgetLinksResult,
       packResult,
       membersResult,
@@ -385,6 +399,7 @@ export default function App() {
       supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
       supabase.from("luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
+      supabase.from("attachments").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("itinerary_budget_items").select("*"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase
@@ -406,6 +421,7 @@ export default function App() {
       todoResult.error ||
       luggageResult.error ||
       sharedLuggageResult.error ||
+      attachmentsResult.error ||
       budgetLinksResult.error ||
       packResult.error ||
       membersResult.error;
@@ -436,6 +452,7 @@ export default function App() {
     setTodoItems(todoResult.data || []);
     setLuggageItems(luggageResult.data || []);
     setSharedLuggageItems(sharedLuggageResult.data || []);
+    setAttachments(attachmentsResult.data || []);
     setItineraryBudgetLinks(
       (budgetLinksResult.data || []).filter(
         (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
@@ -563,6 +580,11 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "shared_luggage_items", filter: `trip_id=eq.${activeTripId}` },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attachments", filter: `trip_id=eq.${activeTripId}` },
         () => loadTripData(activeTripId),
       )
       .on(
@@ -1051,6 +1073,57 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
+  async function uploadAttachment(targetType, targetId, file) {
+    if (!activeTrip || !canEdit || !file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setNotice("附件大小需小於 10MB");
+      return;
+    }
+    const fileName = safeFileName(file.name) || `attachment-${Date.now()}`;
+    const path = `trips/${activeTrip.id}/attachments/${targetType}/${targetId}/${Date.now()}-${fileName}`;
+    const uploadResult = await supabase.storage.from(attachmentBucket).upload(path, file, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+    if (uploadResult.error) {
+      setNotice(uploadResult.error.message);
+      return;
+    }
+    const { error } = await supabase.from("attachments").insert({
+      trip_id: activeTrip.id,
+      target_type: targetType,
+      target_id: targetId,
+      file_name: file.name,
+      file_url: path,
+      file_type: file.type || null,
+      file_size: file.size,
+      uploaded_by: session.user.id,
+    });
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function openAttachment(attachment) {
+    const { data, error } = await supabase.storage.from(attachmentBucket).createSignedUrl(attachment.file_url, 600);
+    if (error) {
+      setNotice(error.message);
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function deleteAttachment(attachment) {
+    if (!activeTrip || !canEdit) return;
+    const storageResult = await supabase.storage.from(attachmentBucket).remove([attachment.file_url]);
+    if (storageResult.error) {
+      setNotice(storageResult.error.message);
+      return;
+    }
+    const { error } = await supabase.from("attachments").delete().eq("id", attachment.id);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
   async function deleteItem(itemId) {
     if (!canEdit) return;
     const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId);
@@ -1254,6 +1327,7 @@ function exportTrip() {
             actualParticipants={actualParticipants}
             accommodations={accommodations}
             alternatives={alternatives}
+            attachments={attachments}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
             canEdit={canEdit}
@@ -1280,6 +1354,7 @@ function exportTrip() {
             onDeleteAlternative={deleteAlternative}
             onDeleteActualExpense={deleteActualExpense}
             onDeleteAccommodation={deleteAccommodation}
+            onDeleteAttachment={deleteAttachment}
             onDeleteBudget={deleteBudget}
             onDeleteGuide={deleteGuide}
             onDeleteItem={deleteItem}
@@ -1304,6 +1379,8 @@ function exportTrip() {
             onTogglePackItem={togglePackItem}
             onUpdateSharedLuggageItem={updateSharedLuggageItem}
             onUpdateTrip={updateTrip}
+            onOpenAttachment={openAttachment}
+            onUploadAttachment={uploadAttachment}
           />
         ) : null}
       </main>
@@ -1436,6 +1513,7 @@ function TripWorkspace(props) {
     actualParticipants,
     accommodations,
     alternatives,
+    attachments,
     budgetItems,
     budgetParticipants,
     canEdit,
@@ -1462,6 +1540,7 @@ function TripWorkspace(props) {
     onDeleteAlternative,
     onDeleteActualExpense,
     onDeleteAccommodation,
+    onDeleteAttachment,
     onDeleteBudget,
     onDeleteGuide,
     onDeleteItem,
@@ -1486,6 +1565,8 @@ function TripWorkspace(props) {
     onTogglePackItem,
     onUpdateSharedLuggageItem,
     onUpdateTrip,
+    onOpenAttachment,
+    onUploadAttachment,
   } = props;
   const isTodayMode = activeSection === "today";
   const isBudgetMode = activeSection === "budget";
@@ -1590,25 +1671,33 @@ function TripWorkspace(props) {
           canEdit={canEdit}
           actualExpenses={actualExpenses}
           actualParticipants={actualParticipants}
+          attachments={attachments}
           itineraryBudgetLinks={itineraryBudgetLinks}
           items={items}
           members={members}
           onConvertToActual={onConvertBudgetToActual}
           onDeleteActual={onDeleteActualExpense}
+          onDeleteAttachment={onDeleteAttachment}
           onDelete={onDeleteBudget}
+          onOpenAttachment={onOpenAttachment}
           onSaveActual={onSaveActualExpense}
           onSave={onSaveBudget}
+          onUploadAttachment={onUploadAttachment}
         />
       ) : null}
 
       {isAccommodationMode ? (
         <AccommodationPanel
           accommodations={accommodations}
+          attachments={attachments}
           budgetItems={budgetItems}
           canEdit={canEdit}
           trip={activeTrip}
+          onDeleteAttachment={onDeleteAttachment}
           onDelete={onDeleteAccommodation}
+          onOpenAttachment={onOpenAttachment}
           onSave={onSaveAccommodation}
+          onUploadAttachment={onUploadAttachment}
         />
       ) : null}
 
@@ -2237,6 +2326,7 @@ function BudgetSummaryPanel({ budgetItems, items }) {
 function BudgetPanel({
   actualExpenses,
   actualParticipants,
+  attachments,
   budgetItems,
   budgetParticipants,
   canEdit,
@@ -2246,8 +2336,11 @@ function BudgetPanel({
   onConvertToActual,
   onDelete,
   onDeleteActual,
+  onDeleteAttachment,
+  onOpenAttachment,
   onSave,
   onSaveActual,
+  onUploadAttachment,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -2530,17 +2623,33 @@ function BudgetPanel({
       <ActualExpensePanel
         actualExpenses={actualExpenses}
         actualParticipants={actualParticipants}
+        attachments={attachments}
         budgetItems={budgetItems}
         canEdit={canEdit}
         members={members}
+        onDeleteAttachment={onDeleteAttachment}
         onDelete={onDeleteActual}
+        onOpenAttachment={onOpenAttachment}
         onSave={onSaveActual}
+        onUploadAttachment={onUploadAttachment}
       />
     </section>
   );
 }
 
-function ActualExpensePanel({ actualExpenses, actualParticipants, budgetItems, canEdit, members, onDelete, onSave }) {
+function ActualExpensePanel({
+  actualExpenses,
+  actualParticipants,
+  attachments,
+  budgetItems,
+  canEdit,
+  members,
+  onDelete,
+  onDeleteAttachment,
+  onOpenAttachment,
+  onSave,
+  onUploadAttachment,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyActualForm);
@@ -2763,6 +2872,17 @@ function ActualExpensePanel({ actualExpenses, actualParticipants, budgetItems, c
                   <p>付款時間：{expense.paid_at ? new Date(expense.paid_at).toLocaleString("zh-TW") : "未設定"}</p>
                   {expense.note ? <p>備註：{expense.note}</p> : null}
                 </div>
+                <AttachmentList
+                  attachments={attachments.filter(
+                    (attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id,
+                  )}
+                  canEdit={canEdit}
+                  targetId={expense.id}
+                  targetType="actual_expense"
+                  onDelete={onDeleteAttachment}
+                  onOpen={onOpenAttachment}
+                  onUpload={onUploadAttachment}
+                />
                 <div className="budget-actions">
                   <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditExpense(expense)}>
                     E
@@ -2962,7 +3082,59 @@ function SettlementPanel({ actualExpenses, actualParticipants, budgetItems, memb
   );
 }
 
-function AccommodationPanel({ accommodations, budgetItems, canEdit, trip, onDelete, onSave }) {
+function AttachmentList({ attachments, canEdit, targetId, targetType, onDelete, onOpen, onUpload }) {
+  async function handleUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await onUpload(targetType, targetId, file);
+    event.target.value = "";
+  }
+
+  return (
+    <div className="attachment-list">
+      <div className="attachment-heading">
+        <strong>附件</strong>
+        <label className={`attachment-upload${!canEdit ? " disabled" : ""}`}>
+          上傳
+          <input
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            disabled={!canEdit}
+            type="file"
+            onChange={handleUpload}
+          />
+        </label>
+      </div>
+      {attachments.length ? (
+        attachments.map((attachment) => (
+          <div className="attachment-row" key={attachment.id}>
+            <button type="button" onClick={() => onOpen(attachment)}>
+              {attachment.file_name}
+            </button>
+            <span>{attachment.file_size ? `${Math.round(attachment.file_size / 1024)} KB` : ""}</span>
+            <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(attachment)}>
+              X
+            </button>
+          </div>
+        ))
+      ) : (
+        <span className="muted-text">尚未上傳附件</span>
+      )}
+    </div>
+  );
+}
+
+function AccommodationPanel({
+  accommodations,
+  attachments,
+  budgetItems,
+  canEdit,
+  trip,
+  onDelete,
+  onDeleteAttachment,
+  onOpenAttachment,
+  onSave,
+  onUploadAttachment,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedId, setSelectedId] = useState(accommodations[0]?.id || null);
@@ -3204,6 +3376,17 @@ function AccommodationPanel({ accommodations, budgetItems, canEdit, trip, onDele
                   <p>尚未連動預算</p>
                 )}
                 {selected.custom_notes ? <p>{selected.custom_notes}</p> : null}
+                <AttachmentList
+                  attachments={attachments.filter(
+                    (attachment) => attachment.target_type === "accommodation" && attachment.target_id === selected.id,
+                  )}
+                  canEdit={canEdit}
+                  targetId={selected.id}
+                  targetType="accommodation"
+                  onDelete={onDeleteAttachment}
+                  onOpen={onOpenAttachment}
+                  onUpload={onUploadAttachment}
+                />
               </div>
             </>
           ) : (
