@@ -935,6 +935,13 @@ textarea {
   gap: 16px;
 }
 
+.actual-panel {
+  display: grid;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
 .budget-overview {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

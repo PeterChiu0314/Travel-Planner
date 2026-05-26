@@ -67,6 +67,18 @@ const emptyBudgetForm = {
   linkedItemIds: [],
 };
 
+const emptyActualForm = {
+  budget_item_id: "",
+  title: "",
+  amount: 0,
+  currency: "TWD",
+  exchange_rate: 1,
+  payer_id: "",
+  paid_at: "",
+  note: "",
+  participantIds: [],
+};
+
 function todayInput(offset = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offset);
@@ -85,6 +97,15 @@ function currentTimeInput() {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+function dateTimeLocalInput(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function sortScheduleItems(items) {
@@ -153,6 +174,8 @@ export default function App() {
   const [alternatives, setAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
   const [budgetParticipants, setBudgetParticipants] = useState([]);
+  const [actualExpenses, setActualExpenses] = useState([]);
+  const [actualParticipants, setActualParticipants] = useState([]);
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -237,6 +260,8 @@ export default function App() {
       setAlternatives([]);
       setBudgetItems([]);
       setBudgetParticipants([]);
+      setActualExpenses([]);
+      setActualParticipants([]);
       setItineraryBudgetLinks([]);
       setPackItems([]);
       setMembers([]);
@@ -248,6 +273,8 @@ export default function App() {
       alternativesResult,
       budgetResult,
       budgetParticipantsResult,
+      actualResult,
+      actualParticipantsResult,
       budgetLinksResult,
       packResult,
       membersResult,
@@ -256,6 +283,8 @@ export default function App() {
       supabase.from("itinerary_alternatives").select("*"),
       supabase.from("budget_items").select("*").eq("trip_id", tripId),
       supabase.from("budget_item_participants").select("*"),
+      supabase.from("actual_expenses").select("*").eq("trip_id", tripId),
+      supabase.from("actual_expense_participants").select("*"),
       supabase.from("itinerary_budget_items").select("*"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase
@@ -270,6 +299,8 @@ export default function App() {
       alternativesResult.error ||
       budgetResult.error ||
       budgetParticipantsResult.error ||
+      actualResult.error ||
+      actualParticipantsResult.error ||
       budgetLinksResult.error ||
       packResult.error ||
       membersResult.error;
@@ -281,12 +312,19 @@ export default function App() {
     const nextItems = itemsResult.data || [];
     const itemIds = new Set(nextItems.map((item) => item.id));
     const budgetIds = new Set((budgetResult.data || []).map((budget) => budget.id));
+    const actualIds = new Set((actualResult.data || []).map((expense) => expense.id));
 
     setItems(nextItems);
     setAlternatives((alternativesResult.data || []).filter((alternative) => itemIds.has(alternative.itinerary_item_id)));
     setBudgetItems(budgetResult.data || []);
     setBudgetParticipants(
       (budgetParticipantsResult.data || []).filter((participant) => budgetIds.has(participant.budget_item_id)),
+    );
+    setActualExpenses(actualResult.data || []);
+    setActualParticipants(
+      (actualParticipantsResult.data || []).filter((participant) =>
+        actualIds.has(participant.actual_expense_id),
+      ),
     );
     setItineraryBudgetLinks(
       (budgetLinksResult.data || []).filter(
@@ -380,6 +418,16 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "budget_item_participants" },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "actual_expenses", filter: `trip_id=eq.${activeTripId}` },
+        () => loadTripData(activeTripId),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "actual_expense_participants" },
         () => loadTripData(activeTripId),
       )
       .on(
@@ -634,6 +682,94 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
+  async function saveActualExpense(payload, editingId) {
+    if (!activeTrip || !canEdit) return;
+    const amount = Number(payload.amount || 0);
+    const exchangeRate = payload.currency === "TWD" ? 1 : Number(payload.exchange_rate || 1);
+    const twdAmount = Math.round(amount * exchangeRate);
+    const participantIds = payload.participantIds?.length
+      ? payload.participantIds
+      : members.filter((member) => member.status === "approved").map((member) => member.user_id);
+    const expensePayload = {
+      trip_id: activeTrip.id,
+      budget_item_id: payload.budget_item_id || null,
+      title: payload.title.trim(),
+      amount,
+      currency: payload.currency.trim() || "TWD",
+      exchange_rate: payload.currency === "TWD" ? null : exchangeRate,
+      twd_amount: twdAmount,
+      payer_id: payload.payer_id || null,
+      paid_at: payload.paid_at ? new Date(payload.paid_at).toISOString() : new Date().toISOString(),
+      note: payload.note.trim() || null,
+    };
+
+    const result = editingId
+      ? await supabase.from("actual_expenses").update(expensePayload).eq("id", editingId).select("id").single()
+      : await supabase.from("actual_expenses").insert(expensePayload).select("id").single();
+
+    if (result.error) {
+      setNotice(result.error.message);
+      return;
+    }
+
+    const actualExpenseId = result.data.id;
+    await supabase.from("actual_expense_participants").delete().eq("actual_expense_id", actualExpenseId);
+    const participantRows = participantIds.map((userId) => ({ actual_expense_id: actualExpenseId, user_id: userId }));
+    const participantsResult = participantRows.length
+      ? await supabase.from("actual_expense_participants").insert(participantRows)
+      : { error: null };
+    if (participantsResult.error) setNotice(participantsResult.error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function convertBudgetToActual(budget) {
+    if (!activeTrip || !canEdit) return;
+    const participantIds = budgetParticipants
+      .filter((participant) => participant.budget_item_id === budget.id)
+      .map((participant) => participant.user_id);
+    const result = await supabase
+      .from("actual_expenses")
+      .insert({
+        trip_id: activeTrip.id,
+        budget_item_id: budget.id,
+        title: budget.title,
+        amount: budget.amount,
+        currency: budget.currency,
+        exchange_rate: budget.exchange_rate,
+        twd_amount: budget.twd_amount,
+        payer_id: budget.payer_id,
+        paid_at: new Date().toISOString(),
+        note: budget.note,
+      })
+      .select("id")
+      .single();
+    if (result.error) {
+      setNotice(result.error.message);
+      return;
+    }
+    const actualExpenseId = result.data.id;
+    const participantRows = participantIds.map((userId) => ({ actual_expense_id: actualExpenseId, user_id: userId }));
+    const [participantsResult, budgetResult] = await Promise.all([
+      participantRows.length
+        ? supabase.from("actual_expense_participants").insert(participantRows)
+        : Promise.resolve({ error: null }),
+      supabase
+        .from("budget_items")
+        .update({ auto_created_actual_expense_id: actualExpenseId })
+        .eq("id", budget.id),
+    ]);
+    const error = participantsResult.error || budgetResult.error;
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
+  async function deleteActualExpense(expenseId) {
+    if (!activeTrip || !canEdit) return;
+    const { error } = await supabase.from("actual_expenses").delete().eq("id", expenseId);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
   async function deleteItem(itemId) {
     if (!canEdit) return;
     const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId);
@@ -833,6 +969,8 @@ function exportTrip() {
             activeTrip={activeTrip}
             activeDay={activeDay}
             activeSection={activeSection}
+            actualExpenses={actualExpenses}
+            actualParticipants={actualParticipants}
             alternatives={alternatives}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
@@ -850,14 +988,17 @@ function exportTrip() {
             onActiveDay={setActiveDay}
             onAddPackItem={addPackItem}
             onApplyAlternative={applyAlternative}
+            onConvertBudgetToActual={convertBudgetToActual}
             onApproveMember={approveMember}
             onDeleteAlternative={deleteAlternative}
+            onDeleteActualExpense={deleteActualExpense}
             onDeleteBudget={deleteBudget}
             onDeleteItem={deleteItem}
             onDeletePackItem={deletePackItem}
             onRejectMember={rejectMember}
             onReorderItem={reorderItem}
             onSaveAlternative={saveAlternative}
+            onSaveActualExpense={saveActualExpense}
             onSaveBudget={saveBudget}
             onSaveItem={saveItem}
             onSectionChange={setActiveSection}
@@ -991,6 +1132,8 @@ function TripWorkspace(props) {
     activeTrip,
     activeDay,
     activeSection,
+    actualExpenses,
+    actualParticipants,
     alternatives,
     budgetItems,
     budgetParticipants,
@@ -1008,14 +1151,17 @@ function TripWorkspace(props) {
     onActiveDay,
     onAddPackItem,
     onApplyAlternative,
+    onConvertBudgetToActual,
     onApproveMember,
     onDeleteAlternative,
+    onDeleteActualExpense,
     onDeleteBudget,
     onDeleteItem,
     onDeletePackItem,
     onRejectMember,
     onReorderItem,
     onSaveAlternative,
+    onSaveActualExpense,
     onSaveBudget,
     onSaveItem,
     onSectionChange,
@@ -1111,10 +1257,15 @@ function TripWorkspace(props) {
           budgetItems={budgetItems}
           budgetParticipants={budgetParticipants}
           canEdit={canEdit}
+          actualExpenses={actualExpenses}
+          actualParticipants={actualParticipants}
           itineraryBudgetLinks={itineraryBudgetLinks}
           items={items}
           members={members}
+          onConvertToActual={onConvertBudgetToActual}
+          onDeleteActual={onDeleteActualExpense}
           onDelete={onDeleteBudget}
+          onSaveActual={onSaveActualExpense}
           onSave={onSaveBudget}
         />
       ) : null}
@@ -1696,14 +1847,19 @@ function BudgetSummaryPanel({ budgetItems, items }) {
 }
 
 function BudgetPanel({
+  actualExpenses,
+  actualParticipants,
   budgetItems,
   budgetParticipants,
   canEdit,
   itineraryBudgetLinks,
   items,
   members,
+  onConvertToActual,
   onDelete,
+  onDeleteActual,
   onSave,
+  onSaveActual,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -1957,9 +2113,15 @@ function BudgetPanel({
                 <div className="item-meta">
                   <span className="pill">{item.split_type === "equal" ? "均分" : "自訂"}</span>
                   {item.is_fixed ? <span className="pill">固定費用</span> : null}
+                  {item.auto_created_actual_expense_id ? <span className="pill">已轉實付</span> : null}
                 </div>
                 <div className="budget-actions">
-                  <button className="ghost-button compact" disabled type="button">
+                  <button
+                    className="ghost-button compact"
+                    disabled={!canEdit || Boolean(item.auto_created_actual_expense_id)}
+                    type="button"
+                    onClick={() => onConvertToActual(item)}
+                  >
                     轉實付
                   </button>
                   <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditBudget(item)}>
@@ -1974,6 +2136,258 @@ function BudgetPanel({
           })
         ) : (
           <div className="timeline-empty">尚未建立預算</div>
+        )}
+      </div>
+
+      <ActualExpensePanel
+        actualExpenses={actualExpenses}
+        actualParticipants={actualParticipants}
+        budgetItems={budgetItems}
+        canEdit={canEdit}
+        members={members}
+        onDelete={onDeleteActual}
+        onSave={onSaveActual}
+      />
+    </section>
+  );
+}
+
+function ActualExpensePanel({ actualExpenses, actualParticipants, budgetItems, canEdit, members, onDelete, onSave }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyActualForm);
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  const participantsByExpense = useMemo(() => {
+    const next = {};
+    actualParticipants.forEach((participant) => {
+      next[participant.actual_expense_id] = [...(next[participant.actual_expense_id] || []), participant.user_id];
+    });
+    return next;
+  }, [actualParticipants]);
+  const total = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
+
+  function openNewExpense() {
+    setForm({
+      ...emptyActualForm,
+      paid_at: dateTimeLocalInput(),
+      participantIds: approvedMembers.map((member) => member.user_id),
+    });
+    setEditingId(null);
+    setIsOpen(true);
+  }
+
+  function openEditExpense(expense) {
+    const paidAt = expense.paid_at ? dateTimeLocalInput(new Date(expense.paid_at)) : dateTimeLocalInput();
+    setForm({
+      budget_item_id: expense.budget_item_id || "",
+      title: expense.title || "",
+      amount: expense.amount || 0,
+      currency: expense.currency || "TWD",
+      exchange_rate: expense.exchange_rate || 1,
+      payer_id: expense.payer_id || "",
+      paid_at: paidAt,
+      note: expense.note || "",
+      participantIds: participantsByExpense[expense.id] || approvedMembers.map((member) => member.user_id),
+    });
+    setEditingId(expense.id);
+    setIsOpen(true);
+  }
+
+  function fillFromBudget(budgetId) {
+    const budget = budgetItems.find((item) => item.id === budgetId);
+    if (!budget) {
+      setForm({ ...form, budget_item_id: "" });
+      return;
+    }
+    setForm({
+      ...form,
+      budget_item_id: budget.id,
+      title: form.title || budget.title,
+      amount: budget.amount,
+      currency: budget.currency,
+      exchange_rate: budget.exchange_rate || 1,
+      payer_id: form.payer_id || budget.payer_id || "",
+      note: form.note || budget.note || "",
+    });
+  }
+
+  function toggleParticipant(userId) {
+    const current = form.participantIds || [];
+    setForm({
+      ...form,
+      participantIds: current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
+    });
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await onSave(form, editingId);
+    setIsOpen(false);
+    setEditingId(null);
+    setForm(emptyActualForm);
+  }
+
+  return (
+    <section className="actual-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Actual</p>
+          <h3>實付</h3>
+        </div>
+        <button className="icon-button" disabled={!canEdit} type="button" title="新增實付" onClick={openNewExpense}>
+          +
+        </button>
+      </div>
+
+      <div className="budget-overview">
+        <div>
+          <span>實付總額</span>
+          <strong>{formatMoney(total)}</strong>
+        </div>
+        <div>
+          <span>筆數</span>
+          <strong>{actualExpenses.length}</strong>
+        </div>
+      </div>
+
+      {isOpen ? (
+        <form className="item-form budget-form" onSubmit={submit}>
+          <div className="field-group form-grid wide">
+            <label>
+              來源預算
+              <select value={form.budget_item_id} onChange={(event) => fillFromBudget(event.target.value)}>
+                <option value="">直接新增</option>
+                {budgetItems.map((budget) => (
+                  <option key={budget.id} value={budget.id}>
+                    {budget.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              標題
+              <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+            </label>
+          </div>
+          <div className="field-group form-grid">
+            <label>
+              金額
+              <input
+                min="0"
+                step="1"
+                type="number"
+                value={form.amount}
+                onChange={(event) => setForm({ ...form, amount: event.target.value })}
+              />
+            </label>
+            <label>
+              幣別
+              <input
+                value={form.currency}
+                onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })}
+              />
+            </label>
+            <label>
+              匯率
+              <input
+                min="0"
+                step="0.0001"
+                type="number"
+                value={form.exchange_rate}
+                onChange={(event) => setForm({ ...form, exchange_rate: event.target.value })}
+              />
+            </label>
+            <label>
+              付款時間
+              <input
+                type="datetime-local"
+                value={form.paid_at}
+                onChange={(event) => setForm({ ...form, paid_at: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="field-group form-grid wide">
+            <label>
+              付款人
+              <select value={form.payer_id} onChange={(event) => setForm({ ...form, payer_id: event.target.value })}>
+                <option value="">未指定</option>
+                {approvedMembers.map((member) => (
+                  <option key={member.user_id} value={member.user_id}>
+                    {member.display_name || member.email || member.user_id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              備註
+              <input value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
+            </label>
+          </div>
+          <div className="budget-picker">
+            <strong>分攤成員（equal split）</strong>
+            <div>
+              {approvedMembers.map((member) => (
+                <label className="checkbox-chip" key={member.user_id}>
+                  <input
+                    checked={form.participantIds.includes(member.user_id)}
+                    type="checkbox"
+                    onChange={() => toggleParticipant(member.user_id)}
+                  />
+                  {member.display_name || member.email || member.user_id}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="form-actions">
+            <button className="ghost-button" type="button" onClick={() => setIsOpen(false)}>
+              取消
+            </button>
+            <button className="primary-button compact" type="submit">
+              儲存
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <div className="budget-cards">
+        {actualExpenses.length ? (
+          actualExpenses.map((expense) => {
+            const participantIds = participantsByExpense[expense.id] || [];
+            const participantNames = participantIds
+              .map((userId) => approvedMembers.find((member) => member.user_id === userId))
+              .filter(Boolean)
+              .map((member) => member.display_name || member.email || member.user_id);
+            const payer = approvedMembers.find((member) => member.user_id === expense.payer_id);
+            const budget = budgetItems.find((item) => item.id === expense.budget_item_id);
+            return (
+              <article className="budget-card" key={expense.id}>
+                <div>
+                  <span>{budget ? `來自預算｜${budget.category}` : "直接新增"}</span>
+                  <h4>{expense.title}</h4>
+                </div>
+                <strong>
+                  {expense.currency} {Number(expense.amount || 0).toLocaleString("zh-TW")} →{" "}
+                  {formatMoney(expense.twd_amount)}
+                </strong>
+                <div>
+                  <p>付款人：{payer?.display_name || payer?.email || "未指定"}</p>
+                  <p>分攤：{participantNames.length ? participantNames.join("、") : "未指定"}</p>
+                  <p>付款時間：{expense.paid_at ? new Date(expense.paid_at).toLocaleString("zh-TW") : "未設定"}</p>
+                  {expense.note ? <p>備註：{expense.note}</p> : null}
+                </div>
+                <div className="budget-actions">
+                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditExpense(expense)}>
+                    E
+                  </button>
+                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(expense.id)}>
+                    X
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        ) : (
+          <div className="timeline-empty">尚未建立實付</div>
         )}
       </div>
     </section>
