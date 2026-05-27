@@ -274,18 +274,26 @@ function demoId(prefix) {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
+function demoSectionLabel(section) {
+  return {
+    timeline: "時間軸",
+    budget: "預算",
+    luggage: "行李",
+  }[section] || section;
+}
+
 const demoTrip = {
   id: "demo-trip",
-  title: "Tokyo Family Demo",
-  destination: "Tokyo",
+  title: "東京家庭旅行 Demo",
+  destination: "東京",
   start_date: "2026-06-12",
   end_date: "2026-06-14",
 };
 
 const demoMembers = [
   { user_id: "demo-peter", display_name: "Peter", email: "peter@example.com", role: "owner", status: "approved" },
-  { user_id: "demo-a", display_name: "Ariel", email: "ariel@example.com", role: "editor", status: "approved" },
-  { user_id: "demo-b", display_name: "Ben", email: "ben@example.com", role: "viewer", status: "approved" },
+  { user_id: "demo-a", display_name: "小安", email: "ariel@example.com", role: "editor", status: "approved" },
+  { user_id: "demo-b", display_name: "阿班", email: "ben@example.com", role: "viewer", status: "approved" },
 ];
 
 function createDemoTimelineItems() {
@@ -296,13 +304,13 @@ function createDemoTimelineItems() {
       type: "transport",
       start_time: "09:10",
       end_time: "10:25",
-      title: "Narita Express to Shinjuku",
-      location: "Narita Airport",
-      location_name: "Narita Airport",
-      address: "1-1 Furugome, Narita",
+      title: "成田特快前往新宿",
+      location: "成田機場",
+      location_name: "成田機場",
+      address: "日本千葉縣成田市古込1-1",
       map_url: "https://maps.google.com/?q=Narita+Airport",
-      description: "Pick up IC cards before boarding.",
-      transportation_note: "NEX reserved seats, check platform 15 minutes early.",
+      description: "搭車前先領取 IC 卡，確認票券與座位。",
+      transportation_note: "NEX 指定席，建議提早 15 分鐘到月台。",
       cost: 9600,
       updated_at: "2026-05-20T08:00:00.000Z",
     },
@@ -312,13 +320,13 @@ function createDemoTimelineItems() {
       type: "food",
       start_time: "12:30",
       end_time: "13:30",
-      title: "Lunch near Shinjuku Station",
-      location: "Shinjuku",
-      location_name: "Shinjuku",
-      address: "Shinjuku City, Tokyo",
+      title: "新宿車站附近午餐",
+      location: "新宿",
+      location_name: "新宿",
+      address: "日本東京都新宿區",
       map_url: "https://maps.google.com/?q=Shinjuku+Tokyo",
-      description: "Keep this flexible depending on arrival time.",
-      transportation_note: "Walk from station east exit.",
+      description: "依抵達時間彈性調整餐廳。",
+      transportation_note: "從車站東口步行前往。",
       cost: 2400,
       updated_at: "2026-05-20T08:00:00.000Z",
     },
@@ -328,13 +336,13 @@ function createDemoTimelineItems() {
       type: "attraction",
       start_time: "10:00",
       end_time: "12:00",
-      title: "Meiji Shrine",
-      location: "Harajuku",
-      location_name: "Meiji Shrine",
-      address: "1-1 Yoyogikamizonocho, Shibuya City",
+      title: "明治神宮散步",
+      location: "原宿",
+      location_name: "明治神宮",
+      address: "日本東京都澀谷區代代木神園町1-1",
       map_url: "https://maps.google.com/?q=Meiji+Shrine",
-      description: "Morning walk and photos.",
-      transportation_note: "JR Yamanote Line to Harajuku.",
+      description: "早上散步與拍照，節奏放慢一點。",
+      transportation_note: "搭 JR 山手線到原宿站。",
       cost: 0,
       updated_at: "2026-05-20T08:00:00.000Z",
     },
@@ -346,9 +354,9 @@ function createDemoBudgetItems() {
     {
       id: "demo-budget-1",
       trip_id: demoTrip.id,
-      category: "Transport",
-      subcategory: "Airport",
-      title: "Narita Express",
+      category: "交通",
+      subcategory: "機場交通",
+      title: "成田特快",
       amount: 9600,
       currency: "JPY",
       exchange_rate: 0.22,
@@ -356,15 +364,15 @@ function createDemoBudgetItems() {
       payer_id: "demo-peter",
       is_fixed: true,
       auto_created_actual_expense_id: "demo-actual-1",
-      note: "Reserved seats for three people.",
+      note: "三人指定席，已預先估算。",
       updated_at: "2026-05-20T08:00:00.000Z",
     },
     {
       id: "demo-budget-2",
       trip_id: demoTrip.id,
-      category: "Food",
-      subcategory: "Lunch",
-      title: "Shinjuku lunch",
+      category: "餐飲",
+      subcategory: "午餐",
+      title: "新宿午餐",
       amount: 7200,
       currency: "JPY",
       exchange_rate: 0.22,
@@ -372,7 +380,7 @@ function createDemoBudgetItems() {
       payer_id: "demo-a",
       is_fixed: false,
       auto_created_actual_expense_id: null,
-      note: "Estimate, adjust after ordering.",
+      note: "先抓預算，現場點餐後可調整。",
       updated_at: "2026-05-20T08:00:00.000Z",
     },
   ];
@@ -394,14 +402,14 @@ function createDemoActualExpenses() {
       id: "demo-actual-1",
       trip_id: demoTrip.id,
       budget_item_id: "demo-budget-1",
-      title: "Narita Express",
+      title: "成田特快",
       amount: 9600,
       currency: "JPY",
       exchange_rate: 0.22,
       twd_amount: 2112,
       payer_id: "demo-peter",
       paid_at: "2026-06-12T09:00:00.000Z",
-      note: "Converted demo actual expense.",
+      note: "由 Demo 預算轉成實付。",
       updated_at: "2026-05-20T08:00:00.000Z",
     },
   ];
@@ -422,9 +430,9 @@ const demoItineraryBudgetLinks = [
 
 function createDemoLuggageItems() {
   return [
-    { id: "demo-luggage-1", title: "Passport", category: "Documents", packed: true },
-    { id: "demo-luggage-2", title: "Charger", category: "Electronics", packed: false },
-    { id: "demo-luggage-3", title: "Light jacket", category: "Clothes", packed: false },
+    { id: "demo-luggage-1", title: "護照", category: "證件", packed: true },
+    { id: "demo-luggage-2", title: "充電器", category: "電子用品", packed: false },
+    { id: "demo-luggage-3", title: "薄外套", category: "衣物", packed: false },
   ];
 }
 
@@ -432,16 +440,16 @@ function createDemoSharedLuggageItems() {
   return [
     {
       id: "demo-shared-luggage-1",
-      title: "Pocket Wi-Fi",
-      category: "Team gear",
+      title: "隨身 Wi-Fi",
+      category: "團隊公物",
       assigned_to: "demo-a",
       packed_by_assignee: true,
       confirmed_by_owner: false,
     },
     {
       id: "demo-shared-luggage-2",
-      title: "Medicine kit",
-      category: "Health",
+      title: "常備藥包",
+      category: "健康用品",
       assigned_to: "demo-peter",
       packed_by_assignee: false,
       confirmed_by_owner: false,
@@ -1931,7 +1939,7 @@ function DemoApp({ initialSection }) {
     const amount = Number(payload.amount || 0);
     const exchangeRate = Number(payload.exchange_rate || 1);
     const nextBudget = {
-      category: payload.category || "Other",
+      category: payload.category || "其他",
       subcategory: payload.subcategory || "",
       title: payload.title.trim(),
       amount,
@@ -2065,7 +2073,7 @@ function DemoApp({ initialSection }) {
         twd_amount: budget.twd_amount,
         payer_id: budget.payer_id,
         paid_at: new Date().toISOString(),
-        note: budget.note || "Converted from demo budget.",
+        note: budget.note || "由 Demo 預算轉成實付。",
         updated_at: new Date().toISOString(),
       },
     ]);
@@ -2113,11 +2121,11 @@ function DemoApp({ initialSection }) {
         <div className="brand">
           <div className="brand-mark">TP</div>
           <div className="brand-copy">
-            <h1>Travel Planner</h1>
-            <p>Demo Debug</p>
+            <h1>旅遊規劃</h1>
+            <p>展示模式</p>
           </div>
         </div>
-        <nav className="section-nav" aria-label="Demo navigation">
+        <nav className="section-nav" aria-label="Demo 導覽">
           {["timeline", "budget", "luggage"].map((section) => (
             <button
               className={`section-nav-button${activeSection === section ? " active" : ""}`}
@@ -2126,9 +2134,9 @@ function DemoApp({ initialSection }) {
               onClick={() => changeSection(section)}
             >
               <span className="section-nav-icon" aria-hidden="true">
-                {section === "timeline" ? "TL" : section === "budget" ? "$" : "LG"}
+                {section === "timeline" ? "時" : section === "budget" ? "$" : "李"}
               </span>
-              <span className="nav-label">{section[0].toUpperCase() + section.slice(1)}</span>
+              <span className="nav-label">{demoSectionLabel(section)}</span>
             </button>
           ))}
         </nav>
@@ -2137,13 +2145,13 @@ function DemoApp({ initialSection }) {
         <div className="demo-banner">Demo Mode：這是展示資料，操作不會永久保存。</div>
         <header className="topbar">
           <div>
-            <p className="eyebrow">Mock Debug Sandbox</p>
+            <p className="eyebrow">展示資料沙盒</p>
             <h2>{demoTrip.title}</h2>
           </div>
         </header>
         {activeSection === "timeline" ? (
           <>
-            <DayTabs activeDay={activeDay} days={days} onActiveDay={setActiveDay} />
+            <DayTabs activeDay={activeDay} dayPrefix="第" daySuffix="天" days={days} onActiveDay={setActiveDay} />
             <div className="content-grid">
               <section className="panel itinerary-panel">
                 <ItineraryTimeline
@@ -2153,9 +2161,10 @@ function DemoApp({ initialSection }) {
                   canEdit
                   currentUserId="demo-peter"
                   dayItems={dayItems}
-                  dayLabel={days[activeDay] ? `Day ${activeDay + 1} / ${formatDate(days[activeDay])}` : ""}
+                  dayLabel={days[activeDay] ? `第 ${activeDay + 1} 天 / ${formatDate(days[activeDay])}` : ""}
                   disableDraftAutosave
                   focusedItemId={focusedItemId}
+                  headingEyebrow="行程"
                   members={demoMembers}
                   onApplyAlternative={() => {}}
                   onDeleteAlternative={() => {}}
@@ -2172,8 +2181,8 @@ function DemoApp({ initialSection }) {
                 />
               </section>
               <aside className="side-panels">
-                <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
-                <BudgetSummaryPanel budgetItems={budgetItems} items={timelineItems} />
+                <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" onFocusItem={setFocusedItemId} />
+                <BudgetSummaryPanel budgetItems={budgetItems} headingEyebrow="預算" items={timelineItems} />
               </aside>
             </div>
           </>
@@ -2190,6 +2199,7 @@ function DemoApp({ initialSection }) {
             currentUserId="demo-peter"
             disableDraftAutosave
             enableAttachments={false}
+            headingEyebrow="預算"
             itineraryBudgetLinks={itineraryBudgetLinks}
             items={timelineItems}
             members={demoMembers}
@@ -2220,7 +2230,7 @@ function DemoApp({ initialSection }) {
           />
         ) : null}
         {activeSection === "luggage" ? (
-          <LuggageView
+          <DemoLuggageView
             currentUserId="demo-peter"
             luggageItems={luggageItems}
             members={demoMembers}
@@ -2244,7 +2254,7 @@ function DemoApp({ initialSection }) {
           />
         ) : null}
       </main>
-      <nav className="bottom-nav" aria-label="Demo mobile navigation">
+      <nav className="bottom-nav" aria-label="Demo 手機導覽">
         {["timeline", "budget", "luggage"].map((section) => (
           <button
             className={`bottom-nav-button${activeSection === section ? " active" : ""}`}
@@ -2252,10 +2262,240 @@ function DemoApp({ initialSection }) {
             type="button"
             onClick={() => changeSection(section)}
           >
-            {section === "timeline" ? "Timeline" : section === "budget" ? "Budget" : "Luggage"}
+            {demoSectionLabel(section)}
           </button>
         ))}
       </nav>
+    </section>
+  );
+}
+
+function DemoLuggageView({
+  currentUserId,
+  luggageItems,
+  members,
+  sharedLuggageItems,
+  onDeletePersonal,
+  onDeleteShared,
+  onSavePersonal,
+  onSaveShared,
+  onTogglePersonal,
+  onUpdateShared,
+}) {
+  const [activeTab, setActiveTab] = useState("personal");
+  const [editingPersonalId, setEditingPersonalId] = useState(null);
+  const [editingSharedId, setEditingSharedId] = useState(null);
+  const [personalForm, setPersonalForm] = useState(emptyLuggageForm);
+  const [sharedForm, setSharedForm] = useState(emptySharedLuggageForm);
+  const memberById = new Map(members.map((member) => [member.user_id, member]));
+  const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
+
+  function resetPersonal() {
+    setEditingPersonalId(null);
+    setPersonalForm(emptyLuggageForm);
+  }
+
+  function resetShared() {
+    setEditingSharedId(null);
+    setSharedForm(emptySharedLuggageForm);
+  }
+
+  function submitPersonal(event) {
+    event.preventDefault();
+    onSavePersonal(personalForm, editingPersonalId);
+    resetPersonal();
+  }
+
+  function submitShared(event) {
+    event.preventDefault();
+    onSaveShared(sharedForm, editingSharedId);
+    resetShared();
+  }
+
+  return (
+    <section className="panel luggage-panel demo-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">行李 Demo</p>
+          <h3>行李</h3>
+        </div>
+      </div>
+      <div className="mobile-tabs">
+        <button className={activeTab === "personal" ? "active" : ""} type="button" onClick={() => setActiveTab("personal")}>
+          個人行李
+        </button>
+        <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => setActiveTab("shared")}>
+          團隊公物
+        </button>
+      </div>
+      <div className="luggage-layout">
+        <section className={`luggage-column${activeTab === "personal" ? " active" : ""}`}>
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">個人</p>
+              <h3>個人行李</h3>
+            </div>
+            <span className="pill">
+              {luggageItems.filter((item) => item.packed).length}/{luggageItems.length}
+            </span>
+          </div>
+          <form className="inline-form" onSubmit={submitPersonal}>
+            <input
+              placeholder="新增個人行李"
+              value={personalForm.title}
+              onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
+            />
+            <input
+              placeholder="分類"
+              value={personalForm.category}
+              onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
+            />
+            <button className="icon-button small" disabled={!personalForm.title.trim()} type="submit">
+              {editingPersonalId ? "S" : "+"}
+            </button>
+            {editingPersonalId ? (
+              <button className="mini-button" type="button" onClick={resetPersonal}>
+                取消
+              </button>
+            ) : null}
+          </form>
+          <div className="luggage-list">
+            {luggageItems.map((item) => (
+              <article className={`luggage-row${item.packed ? " packed" : ""}`} key={item.id}>
+                <input checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.category || "未分類"}</span>
+                </div>
+                <div className="member-actions">
+                  <button
+                    className="mini-button"
+                    type="button"
+                    onClick={() => {
+                      setEditingPersonalId(item.id);
+                      setPersonalForm({ title: item.title || "", category: item.category || "" });
+                    }}
+                  >
+                    E
+                  </button>
+                  <button className="mini-button" type="button" onClick={() => onDeletePersonal(item.id)}>
+                    X
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="assigned-shared-list">
+            <div className="panel-heading tight">
+              <div>
+                <p className="eyebrow">指派</p>
+                <h3>指派給我的公物</h3>
+              </div>
+            </div>
+            {assignedSharedItems.map((item) => (
+              <article className="luggage-row shared-assigned" key={item.id}>
+                <input
+                  checked={item.packed_by_assignee}
+                  type="checkbox"
+                  onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
+                />
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.category || "未分類"}</span>
+                </div>
+                <span className="pill">{item.confirmed_by_owner ? "總召已確認" : "等待總召確認"}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className={`luggage-column${activeTab === "shared" ? " active" : ""}`}>
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">團隊</p>
+              <h3>團隊公物</h3>
+            </div>
+            <span className="pill">{sharedLuggageItems.length} 件</span>
+          </div>
+          <form className="shared-luggage-form" onSubmit={submitShared}>
+            <input
+              placeholder="新增團隊公物"
+              value={sharedForm.title}
+              onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
+            />
+            <input
+              placeholder="分類"
+              value={sharedForm.category}
+              onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
+            />
+            <select value={sharedForm.assigned_to} onChange={(event) => setSharedForm({ ...sharedForm, assigned_to: event.target.value })}>
+              <option value="">未指派</option>
+              {members.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {memberName(member)}
+                </option>
+              ))}
+            </select>
+            <button className="icon-button small" disabled={!sharedForm.title.trim()} type="submit">
+              {editingSharedId ? "S" : "+"}
+            </button>
+            {editingSharedId ? (
+              <button className="mini-button" type="button" onClick={resetShared}>
+                取消
+              </button>
+            ) : null}
+          </form>
+          <div className="luggage-list">
+            {sharedLuggageItems.map((item) => {
+              const assignee = memberById.get(item.assigned_to);
+              return (
+                <article className="shared-luggage-row" key={item.id}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.category || "未分類"} / {assignee ? memberName(assignee) : "未指派"}
+                    </span>
+                  </div>
+                  <label className="checkbox-label">
+                    <input
+                      checked={item.packed_by_assignee}
+                      type="checkbox"
+                      onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
+                    />
+                    已打包
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      checked={item.confirmed_by_owner}
+                      type="checkbox"
+                      onChange={() => onUpdateShared(item.id, { confirmed_by_owner: !item.confirmed_by_owner })}
+                    />
+                    總召確認
+                  </label>
+                  <div className="member-actions">
+                    <button
+                      className="mini-button"
+                      type="button"
+                      onClick={() => {
+                        setEditingSharedId(item.id);
+                        setSharedForm({
+                          title: item.title || "",
+                          category: item.category || "",
+                          assigned_to: item.assigned_to || "",
+                        });
+                      }}
+                    >
+                      E
+                    </button>
+                    <button className="mini-button" type="button" onClick={() => onDeleteShared(item.id)}>
+                      X
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </div>
     </section>
   );
 }
@@ -2306,24 +2546,24 @@ function LuggageView({
     <section className="panel luggage-panel demo-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Luggage Demo</p>
-          <h3>Luggage</h3>
+          <p className="eyebrow">行李 Demo</p>
+          <h3>行李</h3>
         </div>
       </div>
       <div className="mobile-tabs">
         <button className={activeTab === "personal" ? "active" : ""} type="button" onClick={() => setActiveTab("personal")}>
-          Personal
+          個人行李
         </button>
         <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => setActiveTab("shared")}>
-          Team
+          團隊公物
         </button>
       </div>
       <div className="luggage-layout">
         <section className={`luggage-column${activeTab === "personal" ? " active" : ""}`}>
           <div className="panel-heading tight">
             <div>
-              <p className="eyebrow">Personal</p>
-              <h3>Personal Items</h3>
+              <p className="eyebrow">個人</p>
+              <h3>個人行李</h3>
             </div>
             <span className="pill">
               {luggageItems.filter((item) => item.packed).length}/{luggageItems.length}
@@ -2336,7 +2576,7 @@ function LuggageView({
               onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
             />
             <input
-              placeholder="Category"
+              placeholder="分類"
               value={personalForm.category}
               onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
             />
@@ -2345,7 +2585,7 @@ function LuggageView({
             </button>
             {editingPersonalId ? (
               <button className="mini-button" type="button" onClick={resetPersonal}>
-                Cancel
+                取消
               </button>
             ) : null}
           </form>
@@ -2355,7 +2595,7 @@ function LuggageView({
                 <input checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
                 <div>
                   <strong>{item.title}</strong>
-                  <span>{item.category || "No category"}</span>
+                  <span>{item.category || "未分類"}</span>
                 </div>
                 <div className="member-actions">
                   <button
@@ -2378,8 +2618,8 @@ function LuggageView({
           <div className="assigned-shared-list">
             <div className="panel-heading tight">
               <div>
-                <p className="eyebrow">Assigned</p>
-                <h3>Assigned Team Items</h3>
+                <p className="eyebrow">指派</p>
+                <h3>指派給我的公物</h3>
               </div>
             </div>
             {assignedSharedItems.map((item) => (
@@ -2391,9 +2631,9 @@ function LuggageView({
                 />
                 <div>
                   <strong>{item.title}</strong>
-                  <span>{item.category || "No category"}</span>
+                  <span>{item.category || "未分類"}</span>
                 </div>
-                <span className="pill">{item.confirmed_by_owner ? "Owner confirmed" : "Waiting owner"}</span>
+                <span className="pill">{item.confirmed_by_owner ? "總召已確認" : "等待總召確認"}</span>
               </article>
             ))}
           </div>
@@ -2401,24 +2641,24 @@ function LuggageView({
         <section className={`luggage-column${activeTab === "shared" ? " active" : ""}`}>
           <div className="panel-heading tight">
             <div>
-              <p className="eyebrow">Team</p>
-              <h3>Shared Items</h3>
+              <p className="eyebrow">團隊</p>
+              <h3>團隊公物</h3>
             </div>
-            <span className="pill">{sharedLuggageItems.length} items</span>
+            <span className="pill">{sharedLuggageItems.length} 件</span>
           </div>
           <form className="shared-luggage-form" onSubmit={submitShared}>
             <input
-              placeholder="New team item"
+              placeholder="新增團隊公物"
               value={sharedForm.title}
               onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
             />
             <input
-              placeholder="Category"
+              placeholder="分類"
               value={sharedForm.category}
               onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
             />
             <select value={sharedForm.assigned_to} onChange={(event) => setSharedForm({ ...sharedForm, assigned_to: event.target.value })}>
-              <option value="">Unassigned</option>
+              <option value="">未指派</option>
               {members.map((member) => (
                 <option key={member.user_id} value={member.user_id}>
                   {memberName(member)}
@@ -2430,7 +2670,7 @@ function LuggageView({
             </button>
             {editingSharedId ? (
               <button className="mini-button" type="button" onClick={resetShared}>
-                Cancel
+                取消
               </button>
             ) : null}
           </form>
@@ -2442,7 +2682,7 @@ function LuggageView({
                   <div>
                     <strong>{item.title}</strong>
                     <span>
-                      {item.category || "No category"} / {assignee ? memberName(assignee) : "Unassigned"}
+                      {item.category || "未分類"} / {assignee ? memberName(assignee) : "未指派"}
                     </span>
                   </div>
                   <label className="checkbox-label">
@@ -2451,7 +2691,7 @@ function LuggageView({
                       type="checkbox"
                       onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
                     />
-                    Packed
+                    已打包
                   </label>
                   <label className="checkbox-label">
                     <input
@@ -2459,7 +2699,7 @@ function LuggageView({
                       type="checkbox"
                       onChange={() => onUpdateShared(item.id, { confirmed_by_owner: !item.confirmed_by_owner })}
                     />
-                    Owner confirmed
+                    總召確認
                   </label>
                   <div className="member-actions">
                     <button
@@ -2962,7 +3202,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
   );
 }
 
-function DayTabs({ activeDay, days, onActiveDay }) {
+function DayTabs({ activeDay, dayPrefix = "Day", daySuffix = "", days, onActiveDay }) {
   return (
     <nav className="day-tabs" aria-label="日期切換">
       {days.map((date, index) => (
@@ -2972,7 +3212,7 @@ function DayTabs({ activeDay, days, onActiveDay }) {
           type="button"
           onClick={() => onActiveDay(index)}
         >
-          Day {index + 1} {formatDate(date)}
+          {dayPrefix} {index + 1} {daySuffix} {formatDate(date)}
         </button>
       ))}
     </nav>
@@ -2989,6 +3229,7 @@ function ItineraryTimeline({
   dayLabel,
   disableDraftAutosave = false,
   focusedItemId,
+  headingEyebrow = "Schedule",
   members,
   onApplyAlternative,
   onDeleteAlternative,
@@ -3119,7 +3360,7 @@ function ItineraryTimeline({
     <>
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Schedule</p>
+          <p className="eyebrow">{headingEyebrow}</p>
           <h3>{dayLabel}</h3>
         </div>
         <button className="icon-button" disabled={!canEdit} type="button" title="新增行程" onClick={openNewItem}>
@@ -3407,13 +3648,13 @@ function AlternativeList({ alternatives, canEdit, item, onApply, onDelete, onSav
   );
 }
 
-function RoutePanel({ dayItems, focusedItemId, onFocusItem }) {
+function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
   const stops = dayItems.filter((item) => item.location_name || item.location || item.title);
   return (
     <section className="panel">
       <div className="panel-heading tight">
         <div>
-          <p className="eyebrow">Route</p>
+          <p className="eyebrow">{headingEyebrow}</p>
           <h3>路線</h3>
         </div>
       </div>
@@ -3439,7 +3680,7 @@ function RoutePanel({ dayItems, focusedItemId, onFocusItem }) {
   );
 }
 
-function BudgetSummaryPanel({ budgetItems, items }) {
+function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
   const totals = useMemo(() => {
     const next = {};
     if (budgetItems.length) {
@@ -3460,7 +3701,7 @@ function BudgetSummaryPanel({ budgetItems, items }) {
     <section className="panel">
       <div className="panel-heading tight">
         <div>
-          <p className="eyebrow">Budget</p>
+          <p className="eyebrow">{headingEyebrow}</p>
           <h3>預算</h3>
         </div>
       </div>
@@ -3499,6 +3740,7 @@ function BudgetPanel({
   currentUserId,
   disableDraftAutosave = false,
   enableAttachments = true,
+  headingEyebrow = "Budget",
   itineraryBudgetLinks,
   items,
   members,
@@ -3647,7 +3889,7 @@ function BudgetPanel({
     <section className="panel budget-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Budget</p>
+          <p className="eyebrow">{headingEyebrow}</p>
           <h3>預算</h3>
         </div>
         <button className="icon-button" disabled={!canEdit} type="button" title="新增預算" onClick={openNewBudget}>
@@ -3866,6 +4108,7 @@ function BudgetPanel({
         currentUserId={currentUserId}
         disableDraftAutosave={disableDraftAutosave}
         enableAttachments={enableAttachments}
+        headingEyebrow={headingEyebrow === "預算" ? "實付" : "Actual"}
         members={members}
         onDeleteAttachment={onDeleteAttachment}
         onDelete={onDeleteActual}
@@ -3889,6 +4132,7 @@ function ActualExpensePanel({
   currentUserId,
   disableDraftAutosave = false,
   enableAttachments = true,
+  headingEyebrow = "Actual",
   members,
   onDelete,
   onDeleteAttachment,
@@ -4036,7 +4280,7 @@ function ActualExpensePanel({
     <section className="actual-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Actual</p>
+          <p className="eyebrow">{headingEyebrow}</p>
           <h3>實付</h3>
         </div>
         <button className="icon-button" disabled={!canEdit} type="button" title="新增實付" onClick={openNewExpense}>
