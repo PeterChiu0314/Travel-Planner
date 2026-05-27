@@ -2713,6 +2713,12 @@ function LoginView({ onSignIn, notice }) {
         <button className="primary-button" type="button" onClick={onSignIn}>
           使用 Google 登入
         </button>
+        <div className="demo-login-entry">
+          <a className="ghost-button demo-login-link" href="/demo/timeline">
+            查看 Demo 頁面
+          </a>
+          <span>不需登入，使用展示資料。</span>
+        </div>
       </div>
     </section>
   );
