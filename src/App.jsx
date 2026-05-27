@@ -355,6 +355,7 @@ function createDemoBudgetItems() {
       twd_amount: 2112,
       payer_id: "demo-peter",
       is_fixed: true,
+      auto_created_actual_expense_id: "demo-actual-1",
       note: "Reserved seats for three people.",
       updated_at: "2026-05-20T08:00:00.000Z",
     },
@@ -370,6 +371,7 @@ function createDemoBudgetItems() {
       twd_amount: 1584,
       payer_id: "demo-a",
       is_fixed: false,
+      auto_created_actual_expense_id: null,
       note: "Estimate, adjust after ordering.",
       updated_at: "2026-05-20T08:00:00.000Z",
     },
@@ -383,6 +385,33 @@ function createDemoBudgetParticipants() {
     { id: "demo-budget-participant-3", budget_item_id: "demo-budget-1", user_id: "demo-b" },
     { id: "demo-budget-participant-4", budget_item_id: "demo-budget-2", user_id: "demo-peter" },
     { id: "demo-budget-participant-5", budget_item_id: "demo-budget-2", user_id: "demo-a" },
+  ];
+}
+
+function createDemoActualExpenses() {
+  return [
+    {
+      id: "demo-actual-1",
+      trip_id: demoTrip.id,
+      budget_item_id: "demo-budget-1",
+      title: "Narita Express",
+      amount: 9600,
+      currency: "JPY",
+      exchange_rate: 0.22,
+      twd_amount: 2112,
+      payer_id: "demo-peter",
+      paid_at: "2026-06-12T09:00:00.000Z",
+      note: "Converted demo actual expense.",
+      updated_at: "2026-05-20T08:00:00.000Z",
+    },
+  ];
+}
+
+function createDemoActualParticipants() {
+  return [
+    { id: "demo-actual-participant-1", actual_expense_id: "demo-actual-1", user_id: "demo-peter" },
+    { id: "demo-actual-participant-2", actual_expense_id: "demo-actual-1", user_id: "demo-a" },
+    { id: "demo-actual-participant-3", actual_expense_id: "demo-actual-1", user_id: "demo-b" },
   ];
 }
 
@@ -1836,13 +1865,27 @@ function DemoApp({ initialSection }) {
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
   const [budgetParticipants, setBudgetParticipants] = useState(() => createDemoBudgetParticipants());
+  const [actualExpenses, setActualExpenses] = useState(() => createDemoActualExpenses());
+  const [actualParticipants, setActualParticipants] = useState(() => createDemoActualParticipants());
+  const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState(() => demoItineraryBudgetLinks);
   const [luggageItems, setLuggageItems] = useState(() => createDemoLuggageItems());
   const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
+  const [focusedItemId, setFocusedItemId] = useState(null);
   const days = useMemo(() => tripDays(demoTrip), []);
   const dayItems = useMemo(
     () => sortScheduleItems(timelineItems.filter((item) => item.day_index === activeDay)),
     [activeDay, timelineItems],
   );
+  const budgetsByItem = useMemo(() => {
+    const byId = new Map(budgetItems.map((budget) => [budget.id, budget]));
+    const next = {};
+    itineraryBudgetLinks.forEach((link) => {
+      const budget = byId.get(link.budget_item_id);
+      if (!budget) return;
+      next[link.itinerary_item_id] = [...(next[link.itinerary_item_id] || []), budget];
+    });
+    return next;
+  }, [budgetItems, itineraryBudgetLinks]);
 
   function changeSection(section) {
     setActiveSection(section);
@@ -1865,7 +1908,7 @@ function DemoApp({ initialSection }) {
             : item,
         ),
       );
-      return;
+      return { ok: true };
     }
     setTimelineItems((current) => [
       ...current,
@@ -1879,6 +1922,7 @@ function DemoApp({ initialSection }) {
         updated_at: new Date().toISOString(),
       },
     ]);
+    return { ok: true };
   }
 
   function saveBudgetItem(payload, editingId) {
@@ -1910,7 +1954,15 @@ function DemoApp({ initialSection }) {
           user_id: userId,
         })),
       ]);
-      return;
+      setItineraryBudgetLinks((current) => [
+        ...current.filter((link) => link.budget_item_id !== editingId),
+        ...(payload.linkedItemIds || []).map((itemId) => ({
+          id: demoId("demo-link"),
+          itinerary_item_id: itemId,
+          budget_item_id: editingId,
+        })),
+      ]);
+      return { ok: true };
     }
 
     const budgetId = demoId("demo-budget");
@@ -1923,6 +1975,15 @@ function DemoApp({ initialSection }) {
         user_id: userId,
       })),
     ]);
+    setItineraryBudgetLinks((current) => [
+      ...current,
+      ...(payload.linkedItemIds || []).map((itemId) => ({
+        id: demoId("demo-link"),
+        itinerary_item_id: itemId,
+        budget_item_id: budgetId,
+      })),
+    ]);
+    return { ok: true };
   }
 
   function savePersonalLuggage(payload, editingId) {
@@ -1939,6 +2000,86 @@ function DemoApp({ initialSection }) {
       ...current,
       { id: demoId("demo-luggage"), title: payload.title.trim(), category: payload.category.trim(), packed: false },
     ]);
+  }
+
+  function saveActualExpense(payload, editingId) {
+    if (!payload.title.trim()) return { ok: false };
+    const participantIds = payload.participantIds?.length ? payload.participantIds : demoMembers.map((member) => member.user_id);
+    const amount = Number(payload.amount || 0);
+    const exchangeRate = Number(payload.exchange_rate || 1);
+    const nextExpense = {
+      trip_id: demoTrip.id,
+      budget_item_id: payload.budget_item_id || null,
+      title: payload.title.trim(),
+      amount,
+      currency: payload.currency || "TWD",
+      exchange_rate: exchangeRate,
+      twd_amount: Math.round(amount * exchangeRate),
+      payer_id: payload.payer_id || demoMembers[0].user_id,
+      paid_at: payload.paid_at ? new Date(payload.paid_at).toISOString() : new Date().toISOString(),
+      note: payload.note || "",
+      updated_at: new Date().toISOString(),
+    };
+
+    if (editingId) {
+      setActualExpenses((current) => current.map((expense) => (expense.id === editingId ? { ...expense, ...nextExpense } : expense)));
+      setActualParticipants((current) => [
+        ...current.filter((participant) => participant.actual_expense_id !== editingId),
+        ...participantIds.map((userId) => ({
+          id: demoId("demo-actual-participant"),
+          actual_expense_id: editingId,
+          user_id: userId,
+        })),
+      ]);
+      return { ok: true };
+    }
+
+    const expenseId = demoId("demo-actual");
+    setActualExpenses((current) => [...current, { ...nextExpense, id: expenseId }]);
+    setActualParticipants((current) => [
+      ...current,
+      ...participantIds.map((userId) => ({
+        id: demoId("demo-actual-participant"),
+        actual_expense_id: expenseId,
+        user_id: userId,
+      })),
+    ]);
+    return { ok: true };
+  }
+
+  function convertBudgetToActual(budget) {
+    const expenseId = demoId("demo-actual");
+    const participantIds = budgetParticipants
+      .filter((participant) => participant.budget_item_id === budget.id)
+      .map((participant) => participant.user_id);
+    setActualExpenses((current) => [
+      ...current,
+      {
+        id: expenseId,
+        trip_id: demoTrip.id,
+        budget_item_id: budget.id,
+        title: budget.title,
+        amount: budget.amount,
+        currency: budget.currency,
+        exchange_rate: budget.exchange_rate,
+        twd_amount: budget.twd_amount,
+        payer_id: budget.payer_id,
+        paid_at: new Date().toISOString(),
+        note: budget.note || "Converted from demo budget.",
+        updated_at: new Date().toISOString(),
+      },
+    ]);
+    setActualParticipants((current) => [
+      ...current,
+      ...(participantIds.length ? participantIds : demoMembers.map((member) => member.user_id)).map((userId) => ({
+        id: demoId("demo-actual-participant"),
+        actual_expense_id: expenseId,
+        user_id: userId,
+      })),
+    ]);
+    setBudgetItems((current) =>
+      current.map((item) => (item.id === budget.id ? { ...item, auto_created_actual_expense_id: expenseId } : item)),
+    );
   }
 
   function saveSharedLuggage(payload, editingId) {
@@ -2001,27 +2142,81 @@ function DemoApp({ initialSection }) {
           </div>
         </header>
         {activeSection === "timeline" ? (
-          <TimelineView
-            activeDay={activeDay}
-            budgetItems={budgetItems}
-            dayItems={dayItems}
-            days={days}
-            itineraryBudgetLinks={demoItineraryBudgetLinks}
-            onActiveDay={setActiveDay}
-            onDeleteItem={(itemId) => setTimelineItems((current) => current.filter((item) => item.id !== itemId))}
-            onSaveItem={saveTimelineItem}
-          />
+          <>
+            <DayTabs activeDay={activeDay} days={days} onActiveDay={setActiveDay} />
+            <div className="content-grid">
+              <section className="panel itinerary-panel">
+                <ItineraryTimeline
+                  activeTrip={demoTrip}
+                  alternativesByItem={{}}
+                  budgetsByItem={budgetsByItem}
+                  canEdit
+                  currentUserId="demo-peter"
+                  dayItems={dayItems}
+                  dayLabel={days[activeDay] ? `Day ${activeDay + 1} / ${formatDate(days[activeDay])}` : ""}
+                  disableDraftAutosave
+                  focusedItemId={focusedItemId}
+                  members={demoMembers}
+                  onApplyAlternative={() => {}}
+                  onDeleteAlternative={() => {}}
+                  onDeleteItem={(itemId) => {
+                    setTimelineItems((current) => current.filter((item) => item.id !== itemId));
+                    setItineraryBudgetLinks((current) => current.filter((link) => link.itinerary_item_id !== itemId));
+                  }}
+                  onFocusItem={setFocusedItemId}
+                  onReorderItem={() => {}}
+                  onSaveAlternative={() => ({ ok: true })}
+                  onSaveItem={saveTimelineItem}
+                  restoreDrafts={false}
+                  useEditLocks={false}
+                />
+              </section>
+              <aside className="side-panels">
+                <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
+                <BudgetSummaryPanel budgetItems={budgetItems} items={timelineItems} />
+              </aside>
+            </div>
+          </>
         ) : null}
         {activeSection === "budget" ? (
-          <BudgetView
+          <BudgetPanel
+            activeTrip={demoTrip}
+            actualExpenses={actualExpenses}
+            actualParticipants={actualParticipants}
+            attachments={[]}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
+            canEdit
+            currentUserId="demo-peter"
+            disableDraftAutosave
+            enableAttachments={false}
+            itineraryBudgetLinks={itineraryBudgetLinks}
+            items={timelineItems}
             members={demoMembers}
+            onConvertToActual={convertBudgetToActual}
             onDelete={(budgetId) => {
               setBudgetItems((current) => current.filter((item) => item.id !== budgetId));
               setBudgetParticipants((current) => current.filter((participant) => participant.budget_item_id !== budgetId));
+              setItineraryBudgetLinks((current) => current.filter((link) => link.budget_item_id !== budgetId));
             }}
+            onDeleteActual={(expenseId) => {
+              setActualExpenses((current) => current.filter((expense) => expense.id !== expenseId));
+              setActualParticipants((current) => current.filter((participant) => participant.actual_expense_id !== expenseId));
+              setBudgetItems((current) =>
+                current.map((item) =>
+                  item.auto_created_actual_expense_id === expenseId
+                    ? { ...item, auto_created_actual_expense_id: null }
+                    : item,
+                ),
+              );
+            }}
+            onDeleteAttachment={() => {}}
+            onOpenAttachment={() => {}}
             onSave={saveBudgetItem}
+            onSaveActual={saveActualExpense}
+            onUploadAttachment={() => {}}
+            restoreDrafts={false}
+            useEditLocks={false}
           />
         ) : null}
         {activeSection === "luggage" ? (
@@ -2061,381 +2256,6 @@ function DemoApp({ initialSection }) {
           </button>
         ))}
       </nav>
-    </section>
-  );
-}
-
-function TimelineView({ activeDay, budgetItems, dayItems, days, itineraryBudgetLinks, onActiveDay, onDeleteItem, onSaveItem }) {
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyItemForm);
-  const [expandedId, setExpandedId] = useState(null);
-  const budgetsByItem = useMemo(() => {
-    const byId = new Map(budgetItems.map((budget) => [budget.id, budget]));
-    const next = {};
-    itineraryBudgetLinks.forEach((link) => {
-      const budget = byId.get(link.budget_item_id);
-      if (!budget) return;
-      next[link.itinerary_item_id] = [...(next[link.itinerary_item_id] || []), budget];
-    });
-    return next;
-  }, [budgetItems, itineraryBudgetLinks]);
-
-  function resetForm() {
-    setEditingId(null);
-    setForm(emptyItemForm);
-  }
-
-  function editItem(item) {
-    setEditingId(item.id);
-    setForm({
-      type: item.type || "attraction",
-      start_time: item.start_time || "",
-      end_time: item.end_time || "",
-      title: item.title || "",
-      location: item.location_name || item.location || "",
-      location_name: item.location_name || item.location || "",
-      address: item.address || "",
-      map_url: item.map_url || "",
-      note: item.description || item.note || "",
-      description: item.description || item.note || "",
-      transportation_note: item.transportation_note || "",
-      cost: item.cost || 0,
-    });
-  }
-
-  function submit(event) {
-    event.preventDefault();
-    onSaveItem(
-      {
-        ...form,
-        title: form.title.trim(),
-        location: (form.location_name || form.location).trim(),
-        location_name: (form.location_name || form.location).trim(),
-        description: (form.description || form.note).trim(),
-        note: (form.description || form.note).trim(),
-        transportation_note: form.transportation_note.trim(),
-        address: form.address.trim(),
-        map_url: form.map_url.trim(),
-        cost: Number(form.cost || 0),
-      },
-      editingId,
-    );
-    resetForm();
-  }
-
-  return (
-    <section className="panel demo-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Timeline Demo</p>
-          <h3>Timeline</h3>
-        </div>
-      </div>
-      <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />
-      <form className="item-form" onSubmit={submit}>
-        <div className="field-group form-grid">
-          <label>
-            Type
-            <select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
-              {Object.keys(typeLabels).map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Start
-            <input type="time" value={form.start_time} onChange={(event) => setForm({ ...form, start_time: event.target.value })} />
-          </label>
-          <label>
-            End
-            <input type="time" value={form.end_time} onChange={(event) => setForm({ ...form, end_time: event.target.value })} />
-          </label>
-          <label>
-            Cost
-            <input type="number" value={form.cost} onChange={(event) => setForm({ ...form, cost: event.target.value })} />
-          </label>
-        </div>
-        <div className="field-group form-grid wide">
-          <label>
-            Title
-            <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-          </label>
-          <label>
-            Location
-            <input
-              value={form.location_name || form.location}
-              onChange={(event) => setForm({ ...form, location: event.target.value, location_name: event.target.value })}
-            />
-          </label>
-        </div>
-        <label className="full-label">
-          Note
-          <textarea
-            rows="2"
-            value={form.description || form.note}
-            onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
-          />
-        </label>
-        <div className="field-group form-grid wide">
-          <label>
-            Map URL
-            <input value={form.map_url} onChange={(event) => setForm({ ...form, map_url: event.target.value })} />
-          </label>
-          <label>
-            Transportation
-            <input
-              value={form.transportation_note}
-              onChange={(event) => setForm({ ...form, transportation_note: event.target.value })}
-            />
-          </label>
-        </div>
-        <div className="form-actions">
-          {editingId ? (
-            <button className="ghost-button" type="button" onClick={resetForm}>
-              Cancel
-            </button>
-          ) : null}
-          <button className="primary-button compact" disabled={!form.title.trim()} type="submit">
-            {editingId ? "Save" : "Add"}
-          </button>
-        </div>
-      </form>
-      <div className="timeline">
-        {dayItems.map((item) => (
-          <article className="timeline-item" key={item.id}>
-            <div className="time-block">
-              {item.start_time || "--:--"}
-              <br />
-              {item.end_time || ""}
-            </div>
-            <div className="item-main">
-              <h4>{item.title}</h4>
-              <p>{item.location_name || item.location || "No location"}</p>
-              <div className="item-meta">
-                <span className="pill">{item.type}</span>
-                <span className="pill">
-                  {formatMoney((budgetsByItem[item.id] || []).reduce((sum, budget) => sum + Number(budget.twd_amount || 0), 0) || item.cost)}
-                </span>
-              </div>
-              <button className="ghost-button compact detail-toggle" type="button" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
-                {expandedId === item.id ? "Hide" : "Details"}
-              </button>
-              {expandedId === item.id ? (
-                <div className="item-details">
-                  {item.description ? <p>{item.description}</p> : null}
-                  {item.transportation_note ? <p>{item.transportation_note}</p> : null}
-                  {item.map_url ? (
-                    <a href={item.map_url} rel="noreferrer" target="_blank">
-                      Open Map
-                    </a>
-                  ) : null}
-                  <div className="linked-budget-list">
-                    <strong>Linked budget</strong>
-                    {(budgetsByItem[item.id] || []).length ? (
-                      (budgetsByItem[item.id] || []).map((budget) => (
-                        <span className="pill" key={budget.id}>
-                          {budget.title} / {formatMoney(budget.twd_amount)}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="muted-text">No linked budget</span>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-            <div className="item-actions">
-              <button className="mini-button" type="button" onClick={() => editItem(item)}>
-                E
-              </button>
-              <button className="mini-button" type="button" onClick={() => onDeleteItem(item.id)}>
-                X
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function BudgetView({ budgetItems, budgetParticipants, members, onDelete, onSave }) {
-  const emptyDemoBudgetForm = {
-    ...emptyBudgetForm,
-    payer_id: members[0]?.user_id || "",
-    participantIds: members.map((member) => member.user_id),
-  };
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(emptyDemoBudgetForm);
-  const participantsByBudget = useMemo(() => {
-    const next = {};
-    budgetParticipants.forEach((participant) => {
-      next[participant.budget_item_id] = [...(next[participant.budget_item_id] || []), participant.user_id];
-    });
-    return next;
-  }, [budgetParticipants]);
-  const total = budgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0);
-  const categoryTotals = budgetItems.reduce((next, item) => {
-    next[item.category] = (next[item.category] || 0) + Number(item.twd_amount || 0);
-    return next;
-  }, {});
-
-  function resetForm() {
-    setEditingId(null);
-    setForm(emptyDemoBudgetForm);
-  }
-
-  function editBudget(item) {
-    setEditingId(item.id);
-    setForm({
-      category: item.category || "",
-      subcategory: item.subcategory || "",
-      title: item.title || "",
-      amount: item.amount || 0,
-      currency: item.currency || "TWD",
-      exchange_rate: item.exchange_rate || 1,
-      payer_id: item.payer_id || members[0]?.user_id || "",
-      is_fixed: Boolean(item.is_fixed),
-      note: item.note || "",
-      participantIds: participantsByBudget[item.id] || members.map((member) => member.user_id),
-      linkedItemIds: [],
-    });
-  }
-
-  function toggleParticipant(userId) {
-    const participantIds = form.participantIds || [];
-    setForm({
-      ...form,
-      participantIds: participantIds.includes(userId)
-        ? participantIds.filter((participantId) => participantId !== userId)
-        : [...participantIds, userId],
-    });
-  }
-
-  function submit(event) {
-    event.preventDefault();
-    onSave(form, editingId);
-    resetForm();
-  }
-
-  return (
-    <section className="panel budget-panel demo-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Budget Demo</p>
-          <h3>Budget</h3>
-        </div>
-      </div>
-      <div className="budget-overview">
-        <div>
-          <span>Total</span>
-          <strong>{formatMoney(total)}</strong>
-        </div>
-        {Object.entries(categoryTotals).map(([category, amount]) => (
-          <div key={category}>
-            <span>{category}</span>
-            <strong>{formatMoney(amount)}</strong>
-          </div>
-        ))}
-      </div>
-      <form className="item-form budget-form" onSubmit={submit}>
-        <div className="field-group form-grid">
-          <label>
-            Category
-            <input required value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} />
-          </label>
-          <label>
-            Subcategory
-            <input value={form.subcategory} onChange={(event) => setForm({ ...form, subcategory: event.target.value })} />
-          </label>
-          <label>
-            Amount
-            <input type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
-          </label>
-          <label>
-            Rate
-            <input type="number" value={form.exchange_rate} onChange={(event) => setForm({ ...form, exchange_rate: event.target.value })} />
-          </label>
-        </div>
-        <div className="field-group form-grid wide">
-          <label>
-            Title
-            <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-          </label>
-          <label>
-            Payer
-            <select value={form.payer_id} onChange={(event) => setForm({ ...form, payer_id: event.target.value })}>
-              {members.map((member) => (
-                <option key={member.user_id} value={member.user_id}>
-                  {memberName(member)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div className="participant-grid">
-          {members.map((member) => (
-            <label className="checkbox-label" key={member.user_id}>
-              <input
-                checked={(form.participantIds || []).includes(member.user_id)}
-                type="checkbox"
-                onChange={() => toggleParticipant(member.user_id)}
-              />
-              {memberName(member)}
-            </label>
-          ))}
-        </div>
-        <label className="full-label">
-          Note
-          <textarea rows="2" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
-        </label>
-        <div className="form-actions">
-          {editingId ? (
-            <button className="ghost-button" type="button" onClick={resetForm}>
-              Cancel
-            </button>
-          ) : null}
-          <button className="primary-button compact" disabled={!form.title.trim()} type="submit">
-            {editingId ? "Save" : "Add"}
-          </button>
-        </div>
-      </form>
-      <div className="budget-table">
-        {budgetItems.map((item) => (
-          <article className="budget-row" key={item.id}>
-            <div>
-              <strong>
-                {item.category} / {item.subcategory || "General"}
-              </strong>
-              <span>{item.title}</span>
-            </div>
-            <div>
-              <strong>{formatMoney(item.twd_amount)}</strong>
-              <span>
-                {item.currency} {item.amount}
-              </span>
-            </div>
-            <div>
-              <span>
-                Split:{" "}
-                {(participantsByBudget[item.id] || [])
-                  .map((userId) => memberName(members.find((member) => member.user_id === userId)))
-                  .join(", ")}
-              </span>
-            </div>
-            <div className="member-actions">
-              <button className="mini-button" type="button" onClick={() => editBudget(item)}>
-                E
-              </button>
-              <button className="mini-button" type="button" onClick={() => onDelete(item.id)}>
-                X
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
     </section>
   );
 }
@@ -3167,6 +2987,7 @@ function ItineraryTimeline({
   currentUserId,
   dayItems,
   dayLabel,
+  disableDraftAutosave = false,
   focusedItemId,
   members,
   onApplyAlternative,
@@ -3176,6 +2997,8 @@ function ItineraryTimeline({
   onReorderItem,
   onSaveAlternative,
   onSaveItem,
+  restoreDrafts = true,
+  useEditLocks = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -3185,6 +3008,7 @@ function ItineraryTimeline({
   const [expandedId, setExpandedId] = useState(null);
   const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
+    disabled: disableDraftAutosave,
     editingId,
     entityType: "itinerary_item",
     isOpen,
@@ -3195,7 +3019,7 @@ function ItineraryTimeline({
   const memberById = new Map((members || []).map((member) => [member.user_id, member]));
 
   useEffect(() => {
-    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "itinerary_item",
       tripId: activeTrip.id,
@@ -3209,7 +3033,7 @@ function ItineraryTimeline({
     setConflict(false);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setIsOpen(true);
-  }, [activeTrip?.id, currentUserId, dayItems, isOpen]);
+  }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
   function openNewItem() {
     setFormSeed(emptyItemForm);
@@ -3220,11 +3044,14 @@ function ItineraryTimeline({
   }
 
   async function openEditItem(item) {
-    if (isLockedByAnotherUser(item, currentUserId)) return;
-    const lockResult = await acquireEditLock({ record: item, supabase, table: "itinerary_items", userId: currentUserId });
-    if (lockResult.error) return;
-    if (lockResult.lockedByAnotherUser) return;
-    const lockedItem = lockResult.data || item;
+    if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
+    let lockedItem = item;
+    if (useEditLocks) {
+      const lockResult = await acquireEditLock({ record: item, supabase, table: "itinerary_items", userId: currentUserId });
+      if (lockResult.error) return;
+      if (lockResult.lockedByAnotherUser) return;
+      lockedItem = lockResult.data || item;
+    }
     setFormSeed({
       type: item.type,
       start_time: item.start_time || "",
@@ -3247,8 +3074,8 @@ function ItineraryTimeline({
 
   async function closeEditor(force = false) {
     if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
-    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "itinerary_items", userId: currentUserId });
-    clearDraft(draftKey);
+    if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "itinerary_items", userId: currentUserId });
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyItemForm);
     setFormSeed(emptyItemForm);
     setBaseUpdatedAt(null);
@@ -3279,7 +3106,7 @@ function ItineraryTimeline({
       if (result?.conflict) setConflict(true);
       return;
     }
-    clearDraft(draftKey);
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyItemForm);
     setFormSeed(emptyItemForm);
     setBaseUpdatedAt(null);
@@ -3407,7 +3234,7 @@ function ItineraryTimeline({
       <div className="timeline">
         {dayItems.length ? (
           dayItems.map((item) => {
-            const lockedByOther = isLockedByAnotherUser(item, currentUserId);
+            const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
             const locker = memberById.get(item.locked_by);
             return (
             <article
@@ -3670,6 +3497,8 @@ function BudgetPanel({
   budgetParticipants,
   canEdit,
   currentUserId,
+  disableDraftAutosave = false,
+  enableAttachments = true,
   itineraryBudgetLinks,
   items,
   members,
@@ -3681,6 +3510,8 @@ function BudgetPanel({
   onSave,
   onSaveActual,
   onUploadAttachment,
+  restoreDrafts = true,
+  useEditLocks = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -3689,6 +3520,7 @@ function BudgetPanel({
   const [conflict, setConflict] = useState(false);
   const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
+    disabled: disableDraftAutosave,
     editingId,
     entityType: "budget_item",
     isOpen,
@@ -3721,7 +3553,7 @@ function BudgetPanel({
   }, [budgetItems]);
 
   useEffect(() => {
-    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "budget_item",
       tripId: activeTrip.id,
@@ -3735,7 +3567,7 @@ function BudgetPanel({
     setConflict(false);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setIsOpen(true);
-  }, [activeTrip?.id, budgetItems, currentUserId, isOpen]);
+  }, [activeTrip?.id, budgetItems, currentUserId, isOpen, restoreDrafts]);
 
   function openNewBudget() {
     setFormSeed({
@@ -3749,10 +3581,13 @@ function BudgetPanel({
   }
 
   async function openEditBudget(item) {
-    if (isLockedByAnotherUser(item, currentUserId)) return;
-    const lockResult = await acquireEditLock({ record: item, supabase, table: "budget_items", userId: currentUserId });
-    if (lockResult.error || lockResult.lockedByAnotherUser) return;
-    const lockedItem = lockResult.data || item;
+    if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
+    let lockedItem = item;
+    if (useEditLocks) {
+      const lockResult = await acquireEditLock({ record: item, supabase, table: "budget_items", userId: currentUserId });
+      if (lockResult.error || lockResult.lockedByAnotherUser) return;
+      lockedItem = lockResult.data || item;
+    }
     setFormSeed({
       category: item.category || "其他",
       subcategory: item.subcategory || "",
@@ -3787,7 +3622,7 @@ function BudgetPanel({
       if (result?.conflict) setConflict(true);
       return;
     }
-    clearDraft(draftKey);
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyBudgetForm);
     setFormSeed(emptyBudgetForm);
     setBaseUpdatedAt(null);
@@ -3798,8 +3633,8 @@ function BudgetPanel({
 
   async function closeBudgetForm(force = false) {
     if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
-    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "budget_items", userId: currentUserId });
-    clearDraft(draftKey);
+    if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "budget_items", userId: currentUserId });
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyBudgetForm);
     setFormSeed(emptyBudgetForm);
     setBaseUpdatedAt(null);
@@ -3964,7 +3799,7 @@ function BudgetPanel({
       <div className="budget-cards">
         {budgetItems.length ? (
           budgetItems.map((item) => {
-            const lockedByOther = isLockedByAnotherUser(item, currentUserId);
+            const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
             const locker = approvedMembers.find((member) => member.user_id === item.locked_by);
             const participantIds = participantsByBudget[item.id] || [];
             const linkedItemIds = linksByBudget[item.id] || [];
@@ -4029,12 +3864,16 @@ function BudgetPanel({
         budgetItems={budgetItems}
         canEdit={canEdit}
         currentUserId={currentUserId}
+        disableDraftAutosave={disableDraftAutosave}
+        enableAttachments={enableAttachments}
         members={members}
         onDeleteAttachment={onDeleteAttachment}
         onDelete={onDeleteActual}
         onOpenAttachment={onOpenAttachment}
         onSave={onSaveActual}
         onUploadAttachment={onUploadAttachment}
+        restoreDrafts={restoreDrafts}
+        useEditLocks={useEditLocks}
       />
     </section>
   );
@@ -4048,12 +3887,16 @@ function ActualExpensePanel({
   budgetItems,
   canEdit,
   currentUserId,
+  disableDraftAutosave = false,
+  enableAttachments = true,
   members,
   onDelete,
   onDeleteAttachment,
   onOpenAttachment,
   onSave,
   onUploadAttachment,
+  restoreDrafts = true,
+  useEditLocks = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -4062,6 +3905,7 @@ function ActualExpensePanel({
   const [conflict, setConflict] = useState(false);
   const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
+    disabled: disableDraftAutosave,
     editingId,
     entityType: "actual_expense",
     isOpen,
@@ -4080,7 +3924,7 @@ function ActualExpensePanel({
   const total = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
 
   useEffect(() => {
-    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "actual_expense",
       tripId: activeTrip.id,
@@ -4094,7 +3938,7 @@ function ActualExpensePanel({
     setConflict(false);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setIsOpen(true);
-  }, [activeTrip?.id, actualExpenses, currentUserId, isOpen]);
+  }, [activeTrip?.id, actualExpenses, currentUserId, isOpen, restoreDrafts]);
 
   function openNewExpense() {
     setFormSeed({
@@ -4109,10 +3953,13 @@ function ActualExpensePanel({
   }
 
   async function openEditExpense(expense) {
-    if (isLockedByAnotherUser(expense, currentUserId)) return;
-    const lockResult = await acquireEditLock({ record: expense, supabase, table: "actual_expenses", userId: currentUserId });
-    if (lockResult.error || lockResult.lockedByAnotherUser) return;
-    const lockedExpense = lockResult.data || expense;
+    if (useEditLocks && isLockedByAnotherUser(expense, currentUserId)) return;
+    let lockedExpense = expense;
+    if (useEditLocks) {
+      const lockResult = await acquireEditLock({ record: expense, supabase, table: "actual_expenses", userId: currentUserId });
+      if (lockResult.error || lockResult.lockedByAnotherUser) return;
+      lockedExpense = lockResult.data || expense;
+    }
     const paidAt = expense.paid_at ? dateTimeLocalInput(new Date(expense.paid_at)) : dateTimeLocalInput();
     setFormSeed({
       budget_item_id: expense.budget_item_id || "",
@@ -4164,7 +4011,7 @@ function ActualExpensePanel({
       if (result?.conflict) setConflict(true);
       return;
     }
-    clearDraft(draftKey);
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyActualForm);
     setFormSeed(emptyActualForm);
     setBaseUpdatedAt(null);
@@ -4175,8 +4022,8 @@ function ActualExpensePanel({
 
   async function closeExpenseForm(force = false) {
     if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
-    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "actual_expenses", userId: currentUserId });
-    clearDraft(draftKey);
+    if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "actual_expenses", userId: currentUserId });
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyActualForm);
     setFormSeed(emptyActualForm);
     setBaseUpdatedAt(null);
@@ -4336,17 +4183,19 @@ function ActualExpensePanel({
                   <p>付款時間：{expense.paid_at ? new Date(expense.paid_at).toLocaleString("zh-TW") : "未設定"}</p>
                   {expense.note ? <p>備註：{expense.note}</p> : null}
                 </div>
-                <AttachmentList
-                  attachments={attachments.filter(
-                    (attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id,
-                  )}
-                  canEdit={canEdit}
-                  targetId={expense.id}
-                  targetType="actual_expense"
-                  onDelete={onDeleteAttachment}
-                  onOpen={onOpenAttachment}
-                  onUpload={onUploadAttachment}
-                />
+                {enableAttachments ? (
+                  <AttachmentList
+                    attachments={attachments.filter(
+                      (attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id,
+                    )}
+                    canEdit={canEdit}
+                    targetId={expense.id}
+                    targetType="actual_expense"
+                    onDelete={onDeleteAttachment}
+                    onOpen={onOpenAttachment}
+                    onUpload={onUploadAttachment}
+                  />
+                ) : null}
                 <div className="budget-actions">
                   <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditExpense(expense)}>
                     E
