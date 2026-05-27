@@ -290,6 +290,46 @@ code {
   justify-content: flex-end;
 }
 
+.demo-shell {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 300px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.demo-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  border-right: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
+  padding: 24px;
+}
+
+.demo-workspace {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.demo-banner {
+  border: 1px solid rgba(47, 143, 114, 0.28);
+  border-radius: 8px;
+  background: rgba(47, 143, 114, 0.1);
+  color: var(--mint-dark);
+  font-weight: 900;
+  line-height: 1.5;
+  padding: 12px 14px;
+}
+
+.demo-panel {
+  display: grid;
+  gap: 16px;
+}
+
 .section-nav {
   display: grid;
   gap: 8px;
@@ -1815,6 +1855,14 @@ textarea {
 @media (max-width: 720px) {
   body {
     padding-bottom: 74px;
+  }
+
+  .demo-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-sidebar {
+    display: none;
   }
 
   .workspace,

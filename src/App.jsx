@@ -261,6 +261,165 @@ function shareTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("share");
 }
 
+function demoSectionFromPath() {
+  const path = window.location.pathname.replace(/\/+$/, "");
+  if (path === "/demo" || path === "/demo/") return "timeline";
+  if (path === "/demo/timeline") return "timeline";
+  if (path === "/demo/budget") return "budget";
+  if (path === "/demo/luggage") return "luggage";
+  return null;
+}
+
+function demoId(prefix) {
+  return `${prefix}-${crypto.randomUUID()}`;
+}
+
+const demoTrip = {
+  id: "demo-trip",
+  title: "Tokyo Family Demo",
+  destination: "Tokyo",
+  start_date: "2026-06-12",
+  end_date: "2026-06-14",
+};
+
+const demoMembers = [
+  { user_id: "demo-peter", display_name: "Peter", email: "peter@example.com", role: "owner", status: "approved" },
+  { user_id: "demo-a", display_name: "Ariel", email: "ariel@example.com", role: "editor", status: "approved" },
+  { user_id: "demo-b", display_name: "Ben", email: "ben@example.com", role: "viewer", status: "approved" },
+];
+
+function createDemoTimelineItems() {
+  return [
+    {
+      id: "demo-itinerary-1",
+      day_index: 0,
+      type: "transport",
+      start_time: "09:10",
+      end_time: "10:25",
+      title: "Narita Express to Shinjuku",
+      location: "Narita Airport",
+      location_name: "Narita Airport",
+      address: "1-1 Furugome, Narita",
+      map_url: "https://maps.google.com/?q=Narita+Airport",
+      description: "Pick up IC cards before boarding.",
+      transportation_note: "NEX reserved seats, check platform 15 minutes early.",
+      cost: 9600,
+      updated_at: "2026-05-20T08:00:00.000Z",
+    },
+    {
+      id: "demo-itinerary-2",
+      day_index: 0,
+      type: "food",
+      start_time: "12:30",
+      end_time: "13:30",
+      title: "Lunch near Shinjuku Station",
+      location: "Shinjuku",
+      location_name: "Shinjuku",
+      address: "Shinjuku City, Tokyo",
+      map_url: "https://maps.google.com/?q=Shinjuku+Tokyo",
+      description: "Keep this flexible depending on arrival time.",
+      transportation_note: "Walk from station east exit.",
+      cost: 2400,
+      updated_at: "2026-05-20T08:00:00.000Z",
+    },
+    {
+      id: "demo-itinerary-3",
+      day_index: 1,
+      type: "attraction",
+      start_time: "10:00",
+      end_time: "12:00",
+      title: "Meiji Shrine",
+      location: "Harajuku",
+      location_name: "Meiji Shrine",
+      address: "1-1 Yoyogikamizonocho, Shibuya City",
+      map_url: "https://maps.google.com/?q=Meiji+Shrine",
+      description: "Morning walk and photos.",
+      transportation_note: "JR Yamanote Line to Harajuku.",
+      cost: 0,
+      updated_at: "2026-05-20T08:00:00.000Z",
+    },
+  ];
+}
+
+function createDemoBudgetItems() {
+  return [
+    {
+      id: "demo-budget-1",
+      trip_id: demoTrip.id,
+      category: "Transport",
+      subcategory: "Airport",
+      title: "Narita Express",
+      amount: 9600,
+      currency: "JPY",
+      exchange_rate: 0.22,
+      twd_amount: 2112,
+      payer_id: "demo-peter",
+      is_fixed: true,
+      note: "Reserved seats for three people.",
+      updated_at: "2026-05-20T08:00:00.000Z",
+    },
+    {
+      id: "demo-budget-2",
+      trip_id: demoTrip.id,
+      category: "Food",
+      subcategory: "Lunch",
+      title: "Shinjuku lunch",
+      amount: 7200,
+      currency: "JPY",
+      exchange_rate: 0.22,
+      twd_amount: 1584,
+      payer_id: "demo-a",
+      is_fixed: false,
+      note: "Estimate, adjust after ordering.",
+      updated_at: "2026-05-20T08:00:00.000Z",
+    },
+  ];
+}
+
+function createDemoBudgetParticipants() {
+  return [
+    { id: "demo-budget-participant-1", budget_item_id: "demo-budget-1", user_id: "demo-peter" },
+    { id: "demo-budget-participant-2", budget_item_id: "demo-budget-1", user_id: "demo-a" },
+    { id: "demo-budget-participant-3", budget_item_id: "demo-budget-1", user_id: "demo-b" },
+    { id: "demo-budget-participant-4", budget_item_id: "demo-budget-2", user_id: "demo-peter" },
+    { id: "demo-budget-participant-5", budget_item_id: "demo-budget-2", user_id: "demo-a" },
+  ];
+}
+
+const demoItineraryBudgetLinks = [
+  { id: "demo-link-1", itinerary_item_id: "demo-itinerary-1", budget_item_id: "demo-budget-1" },
+  { id: "demo-link-2", itinerary_item_id: "demo-itinerary-2", budget_item_id: "demo-budget-2" },
+];
+
+function createDemoLuggageItems() {
+  return [
+    { id: "demo-luggage-1", title: "Passport", category: "Documents", packed: true },
+    { id: "demo-luggage-2", title: "Charger", category: "Electronics", packed: false },
+    { id: "demo-luggage-3", title: "Light jacket", category: "Clothes", packed: false },
+  ];
+}
+
+function createDemoSharedLuggageItems() {
+  return [
+    {
+      id: "demo-shared-luggage-1",
+      title: "Pocket Wi-Fi",
+      category: "Team gear",
+      assigned_to: "demo-a",
+      packed_by_assignee: true,
+      confirmed_by_owner: false,
+    },
+    {
+      id: "demo-shared-luggage-2",
+      title: "Medicine kit",
+      category: "Health",
+      assigned_to: "demo-peter",
+      packed_by_assignee: false,
+      confirmed_by_owner: false,
+    },
+  ];
+}
+
 function offlineTripKey(tripId) {
   return `travel-planner-offline-${tripId}`;
 }
@@ -310,6 +469,8 @@ function writeOfflineTripData(tripId, payload) {
 }
 
 export default function App() {
+  const demoSection = demoSectionFromPath();
+  const isDemoMode = Boolean(demoSection);
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [trips, setTrips] = useState([]);
@@ -590,6 +751,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (isDemoMode) return;
     if (!hasSupabaseConfig) {
       setAuthReady(true);
       return;
@@ -609,9 +771,10 @@ export default function App() {
     });
 
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [isDemoMode]);
 
   useEffect(() => {
+    if (isDemoMode) return;
     if (!hasSupabaseConfig) return;
     const token = shareTokenFromUrl();
     if (!token) return;
@@ -633,7 +796,7 @@ export default function App() {
     }
 
     loadShareSnapshot();
-  }, []);
+  }, [isDemoMode]);
 
   useEffect(() => {
     if (session?.user) loadTrips();
@@ -1407,6 +1570,14 @@ function exportTrip() {
     URL.revokeObjectURL(url);
   }
 
+  if (isDemoMode) {
+    return (
+      <Shell>
+        <DemoApp initialSection={demoSection} />
+      </Shell>
+    );
+  }
+
   if (!hasSupabaseConfig) {
     return (
       <Shell>
@@ -1657,6 +1828,846 @@ function normalizeItemPayload(payload) {
 
 function Shell({ children, collapsed = false }) {
   return <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
+}
+
+function DemoApp({ initialSection }) {
+  const [activeSection, setActiveSection] = useState(initialSection || "timeline");
+  const [activeDay, setActiveDay] = useState(0);
+  const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
+  const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
+  const [budgetParticipants, setBudgetParticipants] = useState(() => createDemoBudgetParticipants());
+  const [luggageItems, setLuggageItems] = useState(() => createDemoLuggageItems());
+  const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
+  const days = useMemo(() => tripDays(demoTrip), []);
+  const dayItems = useMemo(
+    () => sortScheduleItems(timelineItems.filter((item) => item.day_index === activeDay)),
+    [activeDay, timelineItems],
+  );
+
+  function changeSection(section) {
+    setActiveSection(section);
+    window.history.pushState({}, "", `/demo/${section}`);
+  }
+
+  function saveTimelineItem(payload, editingId) {
+    if (!payload.title.trim()) return;
+    if (editingId) {
+      setTimelineItems((current) =>
+        current.map((item) =>
+          item.id === editingId
+            ? {
+                ...item,
+                ...payload,
+                location: payload.location_name || payload.location,
+                location_name: payload.location_name || payload.location,
+                updated_at: new Date().toISOString(),
+              }
+            : item,
+        ),
+      );
+      return;
+    }
+    setTimelineItems((current) => [
+      ...current,
+      {
+        ...emptyItemForm,
+        ...payload,
+        id: demoId("demo-itinerary"),
+        day_index: activeDay,
+        location: payload.location_name || payload.location,
+        location_name: payload.location_name || payload.location,
+        updated_at: new Date().toISOString(),
+      },
+    ]);
+  }
+
+  function saveBudgetItem(payload, editingId) {
+    if (!payload.title.trim()) return;
+    const participantIds = payload.participantIds?.length ? payload.participantIds : demoMembers.map((member) => member.user_id);
+    const amount = Number(payload.amount || 0);
+    const exchangeRate = Number(payload.exchange_rate || 1);
+    const nextBudget = {
+      category: payload.category || "Other",
+      subcategory: payload.subcategory || "",
+      title: payload.title.trim(),
+      amount,
+      currency: payload.currency || "TWD",
+      exchange_rate: exchangeRate,
+      twd_amount: Math.round(amount * exchangeRate),
+      payer_id: payload.payer_id || demoMembers[0].user_id,
+      is_fixed: Boolean(payload.is_fixed),
+      note: payload.note || "",
+      updated_at: new Date().toISOString(),
+    };
+
+    if (editingId) {
+      setBudgetItems((current) => current.map((item) => (item.id === editingId ? { ...item, ...nextBudget } : item)));
+      setBudgetParticipants((current) => [
+        ...current.filter((participant) => participant.budget_item_id !== editingId),
+        ...participantIds.map((userId) => ({
+          id: demoId("demo-budget-participant"),
+          budget_item_id: editingId,
+          user_id: userId,
+        })),
+      ]);
+      return;
+    }
+
+    const budgetId = demoId("demo-budget");
+    setBudgetItems((current) => [...current, { ...nextBudget, id: budgetId, trip_id: demoTrip.id }]);
+    setBudgetParticipants((current) => [
+      ...current,
+      ...participantIds.map((userId) => ({
+        id: demoId("demo-budget-participant"),
+        budget_item_id: budgetId,
+        user_id: userId,
+      })),
+    ]);
+  }
+
+  function savePersonalLuggage(payload, editingId) {
+    if (!payload.title.trim()) return;
+    if (editingId) {
+      setLuggageItems((current) =>
+        current.map((item) =>
+          item.id === editingId ? { ...item, title: payload.title.trim(), category: payload.category.trim() } : item,
+        ),
+      );
+      return;
+    }
+    setLuggageItems((current) => [
+      ...current,
+      { id: demoId("demo-luggage"), title: payload.title.trim(), category: payload.category.trim(), packed: false },
+    ]);
+  }
+
+  function saveSharedLuggage(payload, editingId) {
+    if (!payload.title.trim()) return;
+    if (editingId) {
+      setSharedLuggageItems((current) =>
+        current.map((item) =>
+          item.id === editingId
+            ? { ...item, title: payload.title.trim(), category: payload.category.trim(), assigned_to: payload.assigned_to }
+            : item,
+        ),
+      );
+      return;
+    }
+    setSharedLuggageItems((current) => [
+      ...current,
+      {
+        id: demoId("demo-shared-luggage"),
+        title: payload.title.trim(),
+        category: payload.category.trim(),
+        assigned_to: payload.assigned_to,
+        packed_by_assignee: false,
+        confirmed_by_owner: false,
+      },
+    ]);
+  }
+
+  return (
+    <section className="demo-shell">
+      <aside className="demo-sidebar">
+        <div className="brand">
+          <div className="brand-mark">TP</div>
+          <div className="brand-copy">
+            <h1>Travel Planner</h1>
+            <p>Demo Debug</p>
+          </div>
+        </div>
+        <nav className="section-nav" aria-label="Demo navigation">
+          {["timeline", "budget", "luggage"].map((section) => (
+            <button
+              className={`section-nav-button${activeSection === section ? " active" : ""}`}
+              key={section}
+              type="button"
+              onClick={() => changeSection(section)}
+            >
+              <span className="section-nav-icon" aria-hidden="true">
+                {section === "timeline" ? "TL" : section === "budget" ? "$" : "LG"}
+              </span>
+              <span className="nav-label">{section[0].toUpperCase() + section.slice(1)}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+      <main className="workspace demo-workspace">
+        <div className="demo-banner">Demo Mode：這是展示資料，操作不會永久保存。</div>
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">Mock Debug Sandbox</p>
+            <h2>{demoTrip.title}</h2>
+          </div>
+        </header>
+        {activeSection === "timeline" ? (
+          <TimelineView
+            activeDay={activeDay}
+            budgetItems={budgetItems}
+            dayItems={dayItems}
+            days={days}
+            itineraryBudgetLinks={demoItineraryBudgetLinks}
+            onActiveDay={setActiveDay}
+            onDeleteItem={(itemId) => setTimelineItems((current) => current.filter((item) => item.id !== itemId))}
+            onSaveItem={saveTimelineItem}
+          />
+        ) : null}
+        {activeSection === "budget" ? (
+          <BudgetView
+            budgetItems={budgetItems}
+            budgetParticipants={budgetParticipants}
+            members={demoMembers}
+            onDelete={(budgetId) => {
+              setBudgetItems((current) => current.filter((item) => item.id !== budgetId));
+              setBudgetParticipants((current) => current.filter((participant) => participant.budget_item_id !== budgetId));
+            }}
+            onSave={saveBudgetItem}
+          />
+        ) : null}
+        {activeSection === "luggage" ? (
+          <LuggageView
+            currentUserId="demo-peter"
+            luggageItems={luggageItems}
+            members={demoMembers}
+            sharedLuggageItems={sharedLuggageItems}
+            onDeletePersonal={(itemId) => setLuggageItems((current) => current.filter((item) => item.id !== itemId))}
+            onDeleteShared={(itemId) =>
+              setSharedLuggageItems((current) => current.filter((item) => item.id !== itemId))
+            }
+            onSavePersonal={savePersonalLuggage}
+            onSaveShared={saveSharedLuggage}
+            onTogglePersonal={(item) =>
+              setLuggageItems((current) =>
+                current.map((entry) => (entry.id === item.id ? { ...entry, packed: !entry.packed } : entry)),
+              )
+            }
+            onUpdateShared={(itemId, patch) =>
+              setSharedLuggageItems((current) =>
+                current.map((item) => (item.id === itemId ? { ...item, ...patch } : item)),
+              )
+            }
+          />
+        ) : null}
+      </main>
+      <nav className="bottom-nav" aria-label="Demo mobile navigation">
+        {["timeline", "budget", "luggage"].map((section) => (
+          <button
+            className={`bottom-nav-button${activeSection === section ? " active" : ""}`}
+            key={section}
+            type="button"
+            onClick={() => changeSection(section)}
+          >
+            {section === "timeline" ? "Timeline" : section === "budget" ? "Budget" : "Luggage"}
+          </button>
+        ))}
+      </nav>
+    </section>
+  );
+}
+
+function TimelineView({ activeDay, budgetItems, dayItems, days, itineraryBudgetLinks, onActiveDay, onDeleteItem, onSaveItem }) {
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyItemForm);
+  const [expandedId, setExpandedId] = useState(null);
+  const budgetsByItem = useMemo(() => {
+    const byId = new Map(budgetItems.map((budget) => [budget.id, budget]));
+    const next = {};
+    itineraryBudgetLinks.forEach((link) => {
+      const budget = byId.get(link.budget_item_id);
+      if (!budget) return;
+      next[link.itinerary_item_id] = [...(next[link.itinerary_item_id] || []), budget];
+    });
+    return next;
+  }, [budgetItems, itineraryBudgetLinks]);
+
+  function resetForm() {
+    setEditingId(null);
+    setForm(emptyItemForm);
+  }
+
+  function editItem(item) {
+    setEditingId(item.id);
+    setForm({
+      type: item.type || "attraction",
+      start_time: item.start_time || "",
+      end_time: item.end_time || "",
+      title: item.title || "",
+      location: item.location_name || item.location || "",
+      location_name: item.location_name || item.location || "",
+      address: item.address || "",
+      map_url: item.map_url || "",
+      note: item.description || item.note || "",
+      description: item.description || item.note || "",
+      transportation_note: item.transportation_note || "",
+      cost: item.cost || 0,
+    });
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    onSaveItem(
+      {
+        ...form,
+        title: form.title.trim(),
+        location: (form.location_name || form.location).trim(),
+        location_name: (form.location_name || form.location).trim(),
+        description: (form.description || form.note).trim(),
+        note: (form.description || form.note).trim(),
+        transportation_note: form.transportation_note.trim(),
+        address: form.address.trim(),
+        map_url: form.map_url.trim(),
+        cost: Number(form.cost || 0),
+      },
+      editingId,
+    );
+    resetForm();
+  }
+
+  return (
+    <section className="panel demo-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Timeline Demo</p>
+          <h3>Timeline</h3>
+        </div>
+      </div>
+      <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />
+      <form className="item-form" onSubmit={submit}>
+        <div className="field-group form-grid">
+          <label>
+            Type
+            <select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+              {Object.keys(typeLabels).map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Start
+            <input type="time" value={form.start_time} onChange={(event) => setForm({ ...form, start_time: event.target.value })} />
+          </label>
+          <label>
+            End
+            <input type="time" value={form.end_time} onChange={(event) => setForm({ ...form, end_time: event.target.value })} />
+          </label>
+          <label>
+            Cost
+            <input type="number" value={form.cost} onChange={(event) => setForm({ ...form, cost: event.target.value })} />
+          </label>
+        </div>
+        <div className="field-group form-grid wide">
+          <label>
+            Title
+            <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+          </label>
+          <label>
+            Location
+            <input
+              value={form.location_name || form.location}
+              onChange={(event) => setForm({ ...form, location: event.target.value, location_name: event.target.value })}
+            />
+          </label>
+        </div>
+        <label className="full-label">
+          Note
+          <textarea
+            rows="2"
+            value={form.description || form.note}
+            onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
+          />
+        </label>
+        <div className="field-group form-grid wide">
+          <label>
+            Map URL
+            <input value={form.map_url} onChange={(event) => setForm({ ...form, map_url: event.target.value })} />
+          </label>
+          <label>
+            Transportation
+            <input
+              value={form.transportation_note}
+              onChange={(event) => setForm({ ...form, transportation_note: event.target.value })}
+            />
+          </label>
+        </div>
+        <div className="form-actions">
+          {editingId ? (
+            <button className="ghost-button" type="button" onClick={resetForm}>
+              Cancel
+            </button>
+          ) : null}
+          <button className="primary-button compact" disabled={!form.title.trim()} type="submit">
+            {editingId ? "Save" : "Add"}
+          </button>
+        </div>
+      </form>
+      <div className="timeline">
+        {dayItems.map((item) => (
+          <article className="timeline-item" key={item.id}>
+            <div className="time-block">
+              {item.start_time || "--:--"}
+              <br />
+              {item.end_time || ""}
+            </div>
+            <div className="item-main">
+              <h4>{item.title}</h4>
+              <p>{item.location_name || item.location || "No location"}</p>
+              <div className="item-meta">
+                <span className="pill">{item.type}</span>
+                <span className="pill">
+                  {formatMoney((budgetsByItem[item.id] || []).reduce((sum, budget) => sum + Number(budget.twd_amount || 0), 0) || item.cost)}
+                </span>
+              </div>
+              <button className="ghost-button compact detail-toggle" type="button" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
+                {expandedId === item.id ? "Hide" : "Details"}
+              </button>
+              {expandedId === item.id ? (
+                <div className="item-details">
+                  {item.description ? <p>{item.description}</p> : null}
+                  {item.transportation_note ? <p>{item.transportation_note}</p> : null}
+                  {item.map_url ? (
+                    <a href={item.map_url} rel="noreferrer" target="_blank">
+                      Open Map
+                    </a>
+                  ) : null}
+                  <div className="linked-budget-list">
+                    <strong>Linked budget</strong>
+                    {(budgetsByItem[item.id] || []).length ? (
+                      (budgetsByItem[item.id] || []).map((budget) => (
+                        <span className="pill" key={budget.id}>
+                          {budget.title} / {formatMoney(budget.twd_amount)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="muted-text">No linked budget</span>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="item-actions">
+              <button className="mini-button" type="button" onClick={() => editItem(item)}>
+                E
+              </button>
+              <button className="mini-button" type="button" onClick={() => onDeleteItem(item.id)}>
+                X
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function BudgetView({ budgetItems, budgetParticipants, members, onDelete, onSave }) {
+  const emptyDemoBudgetForm = {
+    ...emptyBudgetForm,
+    payer_id: members[0]?.user_id || "",
+    participantIds: members.map((member) => member.user_id),
+  };
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(emptyDemoBudgetForm);
+  const participantsByBudget = useMemo(() => {
+    const next = {};
+    budgetParticipants.forEach((participant) => {
+      next[participant.budget_item_id] = [...(next[participant.budget_item_id] || []), participant.user_id];
+    });
+    return next;
+  }, [budgetParticipants]);
+  const total = budgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0);
+  const categoryTotals = budgetItems.reduce((next, item) => {
+    next[item.category] = (next[item.category] || 0) + Number(item.twd_amount || 0);
+    return next;
+  }, {});
+
+  function resetForm() {
+    setEditingId(null);
+    setForm(emptyDemoBudgetForm);
+  }
+
+  function editBudget(item) {
+    setEditingId(item.id);
+    setForm({
+      category: item.category || "",
+      subcategory: item.subcategory || "",
+      title: item.title || "",
+      amount: item.amount || 0,
+      currency: item.currency || "TWD",
+      exchange_rate: item.exchange_rate || 1,
+      payer_id: item.payer_id || members[0]?.user_id || "",
+      is_fixed: Boolean(item.is_fixed),
+      note: item.note || "",
+      participantIds: participantsByBudget[item.id] || members.map((member) => member.user_id),
+      linkedItemIds: [],
+    });
+  }
+
+  function toggleParticipant(userId) {
+    const participantIds = form.participantIds || [];
+    setForm({
+      ...form,
+      participantIds: participantIds.includes(userId)
+        ? participantIds.filter((participantId) => participantId !== userId)
+        : [...participantIds, userId],
+    });
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    onSave(form, editingId);
+    resetForm();
+  }
+
+  return (
+    <section className="panel budget-panel demo-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Budget Demo</p>
+          <h3>Budget</h3>
+        </div>
+      </div>
+      <div className="budget-overview">
+        <div>
+          <span>Total</span>
+          <strong>{formatMoney(total)}</strong>
+        </div>
+        {Object.entries(categoryTotals).map(([category, amount]) => (
+          <div key={category}>
+            <span>{category}</span>
+            <strong>{formatMoney(amount)}</strong>
+          </div>
+        ))}
+      </div>
+      <form className="item-form budget-form" onSubmit={submit}>
+        <div className="field-group form-grid">
+          <label>
+            Category
+            <input required value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} />
+          </label>
+          <label>
+            Subcategory
+            <input value={form.subcategory} onChange={(event) => setForm({ ...form, subcategory: event.target.value })} />
+          </label>
+          <label>
+            Amount
+            <input type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
+          </label>
+          <label>
+            Rate
+            <input type="number" value={form.exchange_rate} onChange={(event) => setForm({ ...form, exchange_rate: event.target.value })} />
+          </label>
+        </div>
+        <div className="field-group form-grid wide">
+          <label>
+            Title
+            <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+          </label>
+          <label>
+            Payer
+            <select value={form.payer_id} onChange={(event) => setForm({ ...form, payer_id: event.target.value })}>
+              {members.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {memberName(member)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="participant-grid">
+          {members.map((member) => (
+            <label className="checkbox-label" key={member.user_id}>
+              <input
+                checked={(form.participantIds || []).includes(member.user_id)}
+                type="checkbox"
+                onChange={() => toggleParticipant(member.user_id)}
+              />
+              {memberName(member)}
+            </label>
+          ))}
+        </div>
+        <label className="full-label">
+          Note
+          <textarea rows="2" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
+        </label>
+        <div className="form-actions">
+          {editingId ? (
+            <button className="ghost-button" type="button" onClick={resetForm}>
+              Cancel
+            </button>
+          ) : null}
+          <button className="primary-button compact" disabled={!form.title.trim()} type="submit">
+            {editingId ? "Save" : "Add"}
+          </button>
+        </div>
+      </form>
+      <div className="budget-table">
+        {budgetItems.map((item) => (
+          <article className="budget-row" key={item.id}>
+            <div>
+              <strong>
+                {item.category} / {item.subcategory || "General"}
+              </strong>
+              <span>{item.title}</span>
+            </div>
+            <div>
+              <strong>{formatMoney(item.twd_amount)}</strong>
+              <span>
+                {item.currency} {item.amount}
+              </span>
+            </div>
+            <div>
+              <span>
+                Split:{" "}
+                {(participantsByBudget[item.id] || [])
+                  .map((userId) => memberName(members.find((member) => member.user_id === userId)))
+                  .join(", ")}
+              </span>
+            </div>
+            <div className="member-actions">
+              <button className="mini-button" type="button" onClick={() => editBudget(item)}>
+                E
+              </button>
+              <button className="mini-button" type="button" onClick={() => onDelete(item.id)}>
+                X
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LuggageView({
+  currentUserId,
+  luggageItems,
+  members,
+  sharedLuggageItems,
+  onDeletePersonal,
+  onDeleteShared,
+  onSavePersonal,
+  onSaveShared,
+  onTogglePersonal,
+  onUpdateShared,
+}) {
+  const [activeTab, setActiveTab] = useState("personal");
+  const [editingPersonalId, setEditingPersonalId] = useState(null);
+  const [editingSharedId, setEditingSharedId] = useState(null);
+  const [personalForm, setPersonalForm] = useState(emptyLuggageForm);
+  const [sharedForm, setSharedForm] = useState(emptySharedLuggageForm);
+  const memberById = new Map(members.map((member) => [member.user_id, member]));
+  const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
+
+  function resetPersonal() {
+    setEditingPersonalId(null);
+    setPersonalForm(emptyLuggageForm);
+  }
+
+  function resetShared() {
+    setEditingSharedId(null);
+    setSharedForm(emptySharedLuggageForm);
+  }
+
+  function submitPersonal(event) {
+    event.preventDefault();
+    onSavePersonal(personalForm, editingPersonalId);
+    resetPersonal();
+  }
+
+  function submitShared(event) {
+    event.preventDefault();
+    onSaveShared(sharedForm, editingSharedId);
+    resetShared();
+  }
+
+  return (
+    <section className="panel luggage-panel demo-panel">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Luggage Demo</p>
+          <h3>Luggage</h3>
+        </div>
+      </div>
+      <div className="mobile-tabs">
+        <button className={activeTab === "personal" ? "active" : ""} type="button" onClick={() => setActiveTab("personal")}>
+          Personal
+        </button>
+        <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => setActiveTab("shared")}>
+          Team
+        </button>
+      </div>
+      <div className="luggage-layout">
+        <section className={`luggage-column${activeTab === "personal" ? " active" : ""}`}>
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">Personal</p>
+              <h3>Personal Items</h3>
+            </div>
+            <span className="pill">
+              {luggageItems.filter((item) => item.packed).length}/{luggageItems.length}
+            </span>
+          </div>
+          <form className="inline-form" onSubmit={submitPersonal}>
+            <input
+              placeholder="新增個人行李"
+              value={personalForm.title}
+              onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
+            />
+            <input
+              placeholder="Category"
+              value={personalForm.category}
+              onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
+            />
+            <button className="icon-button small" disabled={!personalForm.title.trim()} type="submit">
+              {editingPersonalId ? "S" : "+"}
+            </button>
+            {editingPersonalId ? (
+              <button className="mini-button" type="button" onClick={resetPersonal}>
+                Cancel
+              </button>
+            ) : null}
+          </form>
+          <div className="luggage-list">
+            {luggageItems.map((item) => (
+              <article className={`luggage-row${item.packed ? " packed" : ""}`} key={item.id}>
+                <input checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.category || "No category"}</span>
+                </div>
+                <div className="member-actions">
+                  <button
+                    className="mini-button"
+                    type="button"
+                    onClick={() => {
+                      setEditingPersonalId(item.id);
+                      setPersonalForm({ title: item.title || "", category: item.category || "" });
+                    }}
+                  >
+                    E
+                  </button>
+                  <button className="mini-button" type="button" onClick={() => onDeletePersonal(item.id)}>
+                    X
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="assigned-shared-list">
+            <div className="panel-heading tight">
+              <div>
+                <p className="eyebrow">Assigned</p>
+                <h3>Assigned Team Items</h3>
+              </div>
+            </div>
+            {assignedSharedItems.map((item) => (
+              <article className="luggage-row shared-assigned" key={item.id}>
+                <input
+                  checked={item.packed_by_assignee}
+                  type="checkbox"
+                  onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
+                />
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.category || "No category"}</span>
+                </div>
+                <span className="pill">{item.confirmed_by_owner ? "Owner confirmed" : "Waiting owner"}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className={`luggage-column${activeTab === "shared" ? " active" : ""}`}>
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">Team</p>
+              <h3>Shared Items</h3>
+            </div>
+            <span className="pill">{sharedLuggageItems.length} items</span>
+          </div>
+          <form className="shared-luggage-form" onSubmit={submitShared}>
+            <input
+              placeholder="New team item"
+              value={sharedForm.title}
+              onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
+            />
+            <input
+              placeholder="Category"
+              value={sharedForm.category}
+              onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
+            />
+            <select value={sharedForm.assigned_to} onChange={(event) => setSharedForm({ ...sharedForm, assigned_to: event.target.value })}>
+              <option value="">Unassigned</option>
+              {members.map((member) => (
+                <option key={member.user_id} value={member.user_id}>
+                  {memberName(member)}
+                </option>
+              ))}
+            </select>
+            <button className="icon-button small" disabled={!sharedForm.title.trim()} type="submit">
+              {editingSharedId ? "S" : "+"}
+            </button>
+            {editingSharedId ? (
+              <button className="mini-button" type="button" onClick={resetShared}>
+                Cancel
+              </button>
+            ) : null}
+          </form>
+          <div className="luggage-list">
+            {sharedLuggageItems.map((item) => {
+              const assignee = memberById.get(item.assigned_to);
+              return (
+                <article className="shared-luggage-row" key={item.id}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>
+                      {item.category || "No category"} / {assignee ? memberName(assignee) : "Unassigned"}
+                    </span>
+                  </div>
+                  <label className="checkbox-label">
+                    <input
+                      checked={item.packed_by_assignee}
+                      type="checkbox"
+                      onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
+                    />
+                    Packed
+                  </label>
+                  <label className="checkbox-label">
+                    <input
+                      checked={item.confirmed_by_owner}
+                      type="checkbox"
+                      onChange={() => onUpdateShared(item.id, { confirmed_by_owner: !item.confirmed_by_owner })}
+                    />
+                    Owner confirmed
+                  </label>
+                  <div className="member-actions">
+                    <button
+                      className="mini-button"
+                      type="button"
+                      onClick={() => {
+                        setEditingSharedId(item.id);
+                        setSharedForm({
+                          title: item.title || "",
+                          category: item.category || "",
+                          assigned_to: item.assigned_to || "",
+                        });
+                      }}
+                    >
+                      E
+                    </button>
+                    <button className="mini-button" type="button" onClick={() => onDeleteShared(item.id)}>
+                      X
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
 }
 
 function ConflictNotice({ onKeep, onLatest }) {
