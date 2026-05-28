@@ -1072,6 +1072,11 @@ export default function App() {
 
   async function saveItem(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
+    const invalidTimeRange = isInvalidTimeRange(payload.start_time, payload.end_time);
+    if (invalidTimeRange) {
+      setNotice("結束時間必須晚於開始時間。");
+      return { ok: false };
+    }
     if (editingId) {
       const result = await updateWithConflictCheck("itinerary_items", normalizeItemPayload(payload), editingId, meta);
       if (result.error) setNotice(result.error.message);
@@ -1127,22 +1132,26 @@ export default function App() {
 
   async function applyAlternative(item, alternative) {
     if (!activeTrip || !canEdit) return;
+    const nextPayload = normalizeItemPayload({
+      ...item,
+      title: alternative.title,
+      location: alternative.location_name || "",
+      location_name: alternative.location_name || "",
+      address: alternative.address || "",
+      map_url: alternative.map_url || "",
+      note: alternative.description || "",
+      description: alternative.description || "",
+      transportation_note: alternative.transportation_note || "",
+      cost: item.cost || 0,
+    });
+    const invalidTimeRange = isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time);
+    if (invalidTimeRange) {
+      setNotice("結束時間必須晚於開始時間。");
+      return;
+    }
     const { error } = await supabase
       .from("itinerary_items")
-      .update(
-        normalizeItemPayload({
-          ...item,
-          title: alternative.title,
-          location: alternative.location_name || "",
-          location_name: alternative.location_name || "",
-          address: alternative.address || "",
-          map_url: alternative.map_url || "",
-          note: alternative.description || "",
-          description: alternative.description || "",
-          transportation_note: alternative.transportation_note || "",
-          cost: item.cost || 0,
-        }),
-      )
+      .update(nextPayload)
       .eq("id", item.id);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
@@ -1538,6 +1547,11 @@ export default function App() {
     if (from < 0 || to < 0) return;
     const [dragged] = nextItems.splice(from, 1);
     nextItems.splice(to, 0, dragged);
+    const invalidItem = nextItems.find((item) => isInvalidTimeRange(item.start_time, item.end_time));
+    if (invalidItem) {
+      setNotice("結束時間必須晚於開始時間。");
+      return;
+    }
     const updates = nextItems.map((item, index) =>
       supabase.from("itinerary_items").update({ sort_order: index }).eq("id", item.id),
     );
@@ -1863,6 +1877,23 @@ function normalizeItemPayload(payload) {
   };
 }
 
+function timeToMinutes(value) {
+  if (!value) return null;
+  const [hours, minutes] = String(value).split(":");
+  const parsedHours = Number(hours);
+  const parsedMinutes = Number(minutes);
+  if (!Number.isFinite(parsedHours) || !Number.isFinite(parsedMinutes)) return null;
+  return parsedHours * 60 + parsedMinutes;
+}
+
+function isInvalidTimeRange(startTime, endTime) {
+  if (!startTime || !endTime) return false;
+  const start = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
+  if (start === null || end === null) return false;
+  return start >= end;
+}
+
 function Shell({ children, collapsed = false }) {
   return <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
 }
@@ -1902,6 +1933,8 @@ function DemoApp({ initialSection }) {
 
   function saveTimelineItem(payload, editingId) {
     if (!payload.title.trim()) return;
+    const invalidTimeRange = isInvalidTimeRange(payload.start_time, payload.end_time);
+    if (invalidTimeRange) return { ok: false };
     if (editingId) {
       setTimelineItems((current) =>
         current.map((item) =>
@@ -3246,6 +3279,7 @@ function ItineraryTimeline({
   const [formSeed, setFormSeed] = useState(emptyItemForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [conflict, setConflict] = useState(false);
+  const [timeError, setTimeError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
@@ -3272,6 +3306,7 @@ function ItineraryTimeline({
     setFormSeed(latest.draft.form);
     setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
     setConflict(false);
+    setTimeError("");
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
@@ -3280,6 +3315,7 @@ function ItineraryTimeline({
     setFormSeed(emptyItemForm);
     setBaseUpdatedAt(null);
     setConflict(false);
+    setTimeError("");
     setEditingId(null);
     setIsOpen(true);
   }
@@ -3309,6 +3345,7 @@ function ItineraryTimeline({
     });
     setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
     setConflict(false);
+    setTimeError("");
     setEditingId(item.id);
     setIsOpen(true);
   }
@@ -3321,24 +3358,40 @@ function ItineraryTimeline({
     setFormSeed(emptyItemForm);
     setBaseUpdatedAt(null);
     setConflict(false);
+    setTimeError("");
     setEditingId(null);
     setIsOpen(false);
   }
 
   async function submit(event) {
     event.preventDefault();
+    const timeInputs = event.currentTarget.querySelectorAll('input[type="time"]');
+    const submittedStartTime = timeInputs[0]?.value || form.start_time;
+    const submittedEndTime = timeInputs[1]?.value || form.end_time;
+    const submittedForm = {
+      ...form,
+      start_time: submittedStartTime,
+      end_time: submittedEndTime,
+    };
+    const invalidTimeRange = isInvalidTimeRange(submittedForm.start_time, submittedForm.end_time);
+    if (invalidTimeRange) {
+      setTimeError("結束時間必須晚於開始時間。");
+      setForm(submittedForm);
+      return;
+    }
+    setTimeError("");
     const result = await onSaveItem(
       {
-        ...form,
-        title: form.title.trim(),
-        location: (form.location_name || form.location).trim(),
-        location_name: (form.location_name || form.location).trim(),
-        address: form.address.trim(),
-        map_url: form.map_url.trim(),
-        note: (form.description || form.note).trim(),
-        description: (form.description || form.note).trim(),
-        transportation_note: form.transportation_note.trim(),
-        cost: Number(form.cost || 0),
+        ...submittedForm,
+        title: submittedForm.title.trim(),
+        location: (submittedForm.location_name || submittedForm.location).trim(),
+        location_name: (submittedForm.location_name || submittedForm.location).trim(),
+        address: submittedForm.address.trim(),
+        map_url: submittedForm.map_url.trim(),
+        note: (submittedForm.description || submittedForm.note).trim(),
+        description: (submittedForm.description || submittedForm.note).trim(),
+        transportation_note: submittedForm.transportation_note.trim(),
+        cost: Number(submittedForm.cost || 0),
       },
       editingId,
       { baseUpdatedAt },
@@ -3352,6 +3405,7 @@ function ItineraryTimeline({
     setFormSeed(emptyItemForm);
     setBaseUpdatedAt(null);
     setConflict(false);
+    setTimeError("");
     setEditingId(null);
     setIsOpen(false);
   }
@@ -3373,6 +3427,11 @@ function ItineraryTimeline({
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
           ) : null}
+          {timeError ? (
+            <div className="notice inline-error" role="alert">
+              <span>{timeError}</span>
+            </div>
+          ) : null}
           <div className="field-group form-grid">
             <label>
               類型
@@ -3389,7 +3448,10 @@ function ItineraryTimeline({
               <input
                 type="time"
                 value={form.start_time}
-                onChange={(event) => setForm({ ...form, start_time: event.target.value })}
+                onChange={(event) => {
+                  setTimeError("");
+                  setForm({ ...form, start_time: event.target.value });
+                }}
               />
             </label>
             <label>
@@ -3397,7 +3459,10 @@ function ItineraryTimeline({
               <input
                 type="time"
                 value={form.end_time}
-                onChange={(event) => setForm({ ...form, end_time: event.target.value })}
+                onChange={(event) => {
+                  setTimeError("");
+                  setForm({ ...form, end_time: event.target.value });
+                }}
               />
             </label>
             <label>
