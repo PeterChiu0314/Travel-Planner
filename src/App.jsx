@@ -7,7 +7,7 @@ const attachmentBucket = "trip-attachments";
 
 const desktopNavItems = [
   { id: "today", label: "今日 / 總覽", shortLabel: "今日" },
-  { id: "timeline", label: "時間軸", shortLabel: "軸" },
+  { id: "timeline", label: "行程", shortLabel: "程" },
   { id: "budget", label: "預算", shortLabel: "錢" },
   { id: "accommodation", label: "住宿", shortLabel: "宿" },
   { id: "todo", label: "待辦", shortLabel: "辦" },
@@ -18,7 +18,7 @@ const desktopNavItems = [
 
 const mobileNavItems = [
   { id: "today", label: "今日" },
-  { id: "timeline", label: "時間軸" },
+  { id: "timeline", label: "行程" },
   { id: "budget", label: "預算" },
   { id: "luggage", label: "行李" },
   { id: "settings", label: "更多" },
@@ -141,6 +141,25 @@ function currentTimeInput() {
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
+
+function formatTimeDisplay(value) {
+  if (!value) return "";
+  const [hours = "", minutes = ""] = String(value).split(":");
+  if (!hours || !minutes) return value;
+  return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+}
+
+function buildTimeOptions(stepMinutes = 5) {
+  const options = [];
+  for (let minutes = 0; minutes < 24 * 60; minutes += stepMinutes) {
+    const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const mins = String(minutes % 60).padStart(2, "0");
+    options.push(`${hours}:${mins}`);
+  }
+  return options;
+}
+
+const timelineTimeOptions = buildTimeOptions(5);
 
 function dateTimeLocalInput(date = new Date()) {
   const year = date.getFullYear();
@@ -276,7 +295,7 @@ function demoId(prefix) {
 
 function demoSectionLabel(section) {
   return {
-    timeline: "時間軸",
+    timeline: "行程",
     budget: "預算",
     luggage: "行李",
   }[section] || section;
@@ -1701,6 +1720,15 @@ function exportTrip() {
         </nav>
         <TripList trips={trips} activeTripId={activeTripId} onSelect={setActiveTripId} />
         <div className="user-box">
+          {activeTrip ? (
+            <MembersPanel
+              className="sidebar-members"
+              isOwner={isOwner}
+              members={members}
+              onApprove={approveMember}
+              onReject={rejectMember}
+            />
+          ) : null}
           <strong className="nav-label">{session.user.user_metadata?.full_name || session.user.email}</strong>
           <button className="ghost-button" type="button" onClick={signOut}>
             登出
@@ -2167,7 +2195,7 @@ function DemoApp({ initialSection }) {
               onClick={() => changeSection(section)}
             >
               <span className="section-nav-icon" aria-hidden="true">
-                {section === "timeline" ? "時" : section === "budget" ? "$" : "李"}
+                {section === "timeline" ? "程" : section === "budget" ? "$" : "李"}
               </span>
               <span className="nav-label">{demoSectionLabel(section)}</span>
             </button>
@@ -2215,7 +2243,6 @@ function DemoApp({ initialSection }) {
               </section>
               <aside className="side-panels">
                 <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" onFocusItem={setFocusedItemId} />
-                <BudgetSummaryPanel budgetItems={budgetItems} headingEyebrow="預算" items={timelineItems} />
               </aside>
             </div>
           </>
@@ -3130,20 +3157,6 @@ function TripWorkspace(props) {
 
             <aside className="side-panels">
               <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
-          <BudgetSummaryPanel budgetItems={budgetItems} items={items} />
-          <PackList
-            canEdit={canEdit}
-            items={packItems}
-            onAdd={onAddPackItem}
-            onDelete={onDeletePackItem}
-            onToggle={onTogglePackItem}
-          />
-          <MembersPanel
-            isOwner={isOwner}
-            members={members}
-            onApprove={onApproveMember}
-            onReject={onRejectMember}
-          />
         </aside>
       </div>
     </section>
@@ -3170,7 +3183,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
           <p>{trip.destination || "目的地未設定"}</p>
         </div>
         <button className="primary-button compact" type="button" onClick={onGoTimeline}>
-          看時間軸
+          看行程
         </button>
       </div>
 
@@ -3184,10 +3197,10 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
             <ol className="today-schedule">
               {items.slice(0, 4).map((item) => (
                 <li key={item.id}>
-                  <time>{item.start_time || "--:--"}</time>
+                  <time>{formatTimeDisplay(item.start_time) || "--:--"}</time>
                   <div>
                     <strong>{item.title}</strong>
-                    <span>{item.location || "地點未設定"}</span>
+                    {item.location ? <span>{item.location}</span> : null}
                   </div>
                 </li>
               ))}
@@ -3200,7 +3213,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
         <article className="today-card">
           <span>下一站</span>
           <strong>{nextStop?.title || "尚未安排"}</strong>
-          <p>{nextStop?.location || nextStop?.start_time || "新增行程後會顯示"}</p>
+          <p>{nextStop?.location || formatTimeDisplay(nextStop?.start_time) || "新增行程後會顯示"}</p>
         </article>
 
         <article className="today-card">
@@ -3220,7 +3233,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
         <article className="today-card">
           <span>今日住宿</span>
           <strong>{hotelItem?.title || "尚未設定"}</strong>
-          <p>{hotelItem?.location || "可在時間軸加入住宿"}</p>
+          <p>{hotelItem?.location || "可在行程加入住宿"}</p>
         </article>
 
         <article className="today-card">
@@ -3262,7 +3275,7 @@ function ItineraryTimeline({
   dayLabel,
   disableDraftAutosave = false,
   focusedItemId,
-  headingEyebrow = "Schedule",
+  headingEyebrow = "行程",
   members,
   onApplyAlternative,
   onDeleteAlternative,
@@ -3303,7 +3316,11 @@ function ItineraryTimeline({
     if (!latest) return;
     const matchingItem = dayItems.find((item) => item.id === latest.entityId);
     if (latest.entityId !== "new" && !matchingItem) return;
-    setFormSeed(latest.draft.form);
+    setFormSeed({
+      ...latest.draft.form,
+      start_time: formatTimeDisplay(latest.draft.form?.start_time),
+      end_time: formatTimeDisplay(latest.draft.form?.end_time),
+    });
     setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
     setConflict(false);
     setTimeError("");
@@ -3312,7 +3329,9 @@ function ItineraryTimeline({
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
   function openNewItem() {
-    setFormSeed(emptyItemForm);
+    const lastItem = dayItems[dayItems.length - 1];
+    const defaultStartTime = lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "";
+    setFormSeed({ ...emptyItemForm, start_time: defaultStartTime });
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
@@ -3331,8 +3350,8 @@ function ItineraryTimeline({
     }
     setFormSeed({
       type: item.type,
-      start_time: item.start_time || "",
-      end_time: item.end_time || "",
+      start_time: formatTimeDisplay(item.start_time),
+      end_time: formatTimeDisplay(item.end_time),
       title: item.title,
       location: item.location_name || item.location || "",
       location_name: item.location_name || item.location || "",
@@ -3365,9 +3384,9 @@ function ItineraryTimeline({
 
   async function submit(event) {
     event.preventDefault();
-    const timeInputs = event.currentTarget.querySelectorAll('input[type="time"]');
-    const submittedStartTime = timeInputs[0]?.value || form.start_time;
-    const submittedEndTime = timeInputs[1]?.value || form.end_time;
+    const formData = new FormData(event.currentTarget);
+    const submittedStartTime = String(formData.get("start_time") ?? form.start_time ?? "");
+    const submittedEndTime = String(formData.get("end_time") ?? form.end_time ?? "");
     const submittedForm = {
       ...form,
       start_time: submittedStartTime,
@@ -3445,25 +3464,39 @@ function ItineraryTimeline({
             </label>
             <label>
               開始
-              <input
-                type="time"
+              <select
+                name="start_time"
                 value={form.start_time}
                 onChange={(event) => {
                   setTimeError("");
                   setForm({ ...form, start_time: event.target.value });
                 }}
-              />
+              >
+                <option value="">未設定</option>
+                {timelineTimeOptions.map((time) => (
+                  <option key={time} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               結束
-              <input
-                type="time"
+              <select
+                name="end_time"
                 value={form.end_time}
                 onChange={(event) => {
                   setTimeError("");
                   setForm({ ...form, end_time: event.target.value });
                 }}
-              />
+              >
+                <option value="">未設定</option>
+                {timelineTimeOptions.map((time) => (
+                  <option key={time} value={time}>
+                    {time}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               費用
@@ -3486,8 +3519,9 @@ function ItineraryTimeline({
               />
             </label>
             <label>
-              地點
+              目的地
               <input
+                placeholder="目的地或店名"
                 value={form.location_name || form.location}
                 onChange={(event) => setForm({ ...form, location: event.target.value, location_name: event.target.value })}
               />
@@ -3542,6 +3576,12 @@ function ItineraryTimeline({
           dayItems.map((item) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
             const locker = memberById.get(item.locked_by);
+            const destination = item.location_name || item.location;
+            const linkedBudgetTotal = (budgetsByItem[item.id] || []).reduce(
+              (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
+              0,
+            );
+            const displayCost = linkedBudgetTotal || Number(item.cost || 0);
             return (
             <article
               className={`timeline-item${focusedItemId === item.id ? " focused" : ""}`}
@@ -3549,14 +3589,15 @@ function ItineraryTimeline({
               onClick={() => onFocusItem(item.id)}
             >
               <div className="time-block">
-                {item.start_time || "--:--"}
+                {formatTimeDisplay(item.start_time) || "--:--"}
                 <br />
-                {item.end_time || ""}
+                {formatTimeDisplay(item.end_time)}
               </div>
               <div className="item-main">
                 <h4>{item.title}</h4>
-                <p>{item.location || "未設定地點"}</p>
+                {destination ? <p>{destination}</p> : null}
                 {item.note ? <p>{item.note}</p> : null}
+                {item.transportation_note ? <p className="transport-note">{item.transportation_note}</p> : null}
                 <div className="item-meta">
                   <span
                     className="pill"
@@ -3564,14 +3605,7 @@ function ItineraryTimeline({
                   >
                     {typeLabels[item.type]}
                   </span>
-                  <span className="pill">
-                    {formatMoney(
-                      (budgetsByItem[item.id] || []).reduce(
-                        (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
-                        0,
-                      ) || item.cost,
-                    )}
-                  </span>
+                  {displayCost > 0 ? <span className="pill">{formatMoney(displayCost)}</span> : null}
                   {(alternativesByItem[item.id] || []).length ? (
                     <span className="pill">{(alternativesByItem[item.id] || []).length} 個備案</span>
                   ) : null}
@@ -3656,7 +3690,7 @@ function AlternativeList({ alternatives, canEdit, item, onApply, onDelete, onSav
   function promptAlternative(alternative = null) {
     const title = window.prompt("備案標題", alternative?.title || "");
     if (!title?.trim()) return;
-    const locationName = window.prompt("備案地點", alternative?.location_name || "") || "";
+    const locationName = window.prompt("備案目的地", alternative?.location_name || "") || "";
     const mapUrl = window.prompt("Map URL", alternative?.map_url || "") || "";
     onSave(
       item.id,
@@ -3685,7 +3719,9 @@ function AlternativeList({ alternatives, canEdit, item, onApply, onDelete, onSav
           <div className="alternative-row" key={alternative.id}>
             <div>
               <strong>{alternative.title}</strong>
-              <span>{alternative.location_name || alternative.address || "地點未設定"}</span>
+              {alternative.location_name || alternative.address ? (
+                <span>{alternative.location_name || alternative.address}</span>
+              ) : null}
               {alternative.description ? <p>{alternative.description}</p> : null}
             </div>
             <div className="alternative-actions">
@@ -3714,7 +3750,7 @@ function AlternativeList({ alternatives, canEdit, item, onApply, onDelete, onSav
 }
 
 function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
-  const stops = dayItems.filter((item) => item.location_name || item.location || item.title);
+  const stops = dayItems.filter((item) => item.location_name || item.location);
   return (
     <section className="panel">
       <div className="panel-heading tight">
@@ -3734,7 +3770,7 @@ function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocus
               onClick={() => onFocusItem(item.id)}
             >
               <span className="route-dot">{index + 1}</span>
-              <span className="route-name">{item.location_name || item.location || item.title}</span>
+              <span className="route-name">{item.location_name || item.location}</span>
             </button>
           ))
         ) : (
@@ -5875,14 +5911,30 @@ function PackList({ canEdit, items, onAdd, onDelete, onToggle }) {
   );
 }
 
-function MembersPanel({ isOwner, members, onApprove, onReject }) {
+function memberInitial(member) {
+  const source = member?.display_name || member?.email || member?.user_id || "?";
+  return source.trim().slice(0, 1).toUpperCase();
+}
+
+function MembersPanel({ className = "", isOwner, members, onApprove, onReject }) {
+  if (!members.length) return null;
+  const approvedCount = members.filter((member) => member.status === "approved").length;
   return (
-    <section className="panel">
+    <section className={`panel members-panel${className ? ` ${className}` : ""}`}>
       <div className="panel-heading tight">
         <div>
           <p className="eyebrow">Members</p>
           <h3>成員</h3>
         </div>
+        <span className="pill member-count">{approvedCount}/{members.length}</span>
+      </div>
+      <div className="member-summary" aria-label={`${members.length} 位成員`}>
+        {members.slice(0, 4).map((member) => (
+          <span className="member-avatar" key={member.id || member.user_id} title={memberName(member)}>
+            {memberInitial(member)}
+          </span>
+        ))}
+        {members.length > 4 ? <span className="member-avatar more">+{members.length - 4}</span> : null}
       </div>
       <div className="member-list">
         {members.map((member) => (
@@ -6059,7 +6111,7 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
     <div className="modal-backdrop">
       <div className="dialog-card share-dialog">
         <h2>唯讀分享</h2>
-        <p>分享頁不需要登入，只會顯示時間軸、住宿與指南；預算、實付、結算、行李與成員資料不會公開。</p>
+        <p>分享頁不需要登入，只會顯示行程、住宿與指南；預算、實付、結算、行李與成員資料不會公開。</p>
         <div className="share-link-list">
           {links.length ? (
             links.map((link) => {
@@ -6142,8 +6194,8 @@ function ShareView({ error, loading, snapshot }) {
         <section className="share-section">
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Timeline</p>
-              <h2>時間軸</h2>
+              <p className="eyebrow">Itinerary</p>
+              <h2>行程</h2>
             </div>
           </div>
           {Object.entries(groupedItems).length ? (
@@ -6153,8 +6205,8 @@ function ShareView({ error, loading, snapshot }) {
                 {dayItemsForShare.map((item) => (
                   <article className="share-card" key={item.id}>
                     <div className="share-time">
-                      <strong>{item.start_time || "--:--"}</strong>
-                      {item.end_time ? <span>{item.end_time}</span> : null}
+                      <strong>{formatTimeDisplay(item.start_time) || "--:--"}</strong>
+                      {item.end_time ? <span>{formatTimeDisplay(item.end_time)}</span> : null}
                     </div>
                     <div>
                       <h4>{item.title}</h4>
