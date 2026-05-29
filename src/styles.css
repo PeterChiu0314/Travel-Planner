@@ -912,7 +912,7 @@ textarea {
 
 .board-scroll-button {
   position: absolute;
-  top: 50%;
+  top: clamp(180px, 42vh, 360px);
   z-index: 5;
   display: grid;
   width: 38px;
@@ -976,6 +976,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
   padding: 12px;
 }
 
@@ -1024,7 +1025,9 @@ textarea {
 .timeline-preview-card strong,
 .timeline-preview-card em {
   display: block;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .timeline-preview-card em {
@@ -1053,6 +1056,10 @@ textarea {
 .form-grid.wide {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 12px;
+}
+
+.form-grid.wide.single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .full-label {
@@ -1089,6 +1096,7 @@ textarea {
   border-radius: 8px;
   background: #fff;
   padding: 14px;
+  cursor: pointer;
 }
 
 .timeline-item.focused {
@@ -1124,14 +1132,18 @@ textarea {
 .item-main h4 {
   margin: 0 0 6px;
   font-size: 17px;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .item-main p {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.45;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .transport-note {
@@ -1145,16 +1157,18 @@ textarea {
   margin-top: 10px;
 }
 
-.detail-toggle {
-  margin-top: 10px;
-}
-
 .item-details {
   display: grid;
   gap: 10px;
   margin-top: 12px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
+}
+
+.item-details p {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .item-details a {
@@ -2012,6 +2026,8 @@ textarea {
   }
 
   .timeline-workbench.route-collapsed .timeline-day-column.active {
+    flex-basis: 500px;
+    width: 500px;
     border: 1px solid var(--mint);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.78);
@@ -2033,6 +2049,48 @@ textarea {
     align-items: flex-start;
     min-height: 66px;
     margin-bottom: 12px;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .timeline {
+    gap: 8px;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .timeline-item {
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .timeline-item.expanded {
+    align-items: start;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .item-main h4 {
+    margin-bottom: 3px;
+    font-size: 15px;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .item-main p {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .item-meta {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .item-details {
+    margin-top: 10px;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .item-details p {
+    white-space: normal;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-day-column.active .time-block {
+    font-size: 13px;
   }
 }
 

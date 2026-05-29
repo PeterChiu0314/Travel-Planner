@@ -1959,6 +1959,7 @@ function normalizeItemPayload(payload) {
   const description = payload.description || payload.note;
   return {
     ...payload,
+    title: locationName || payload.title,
     location: locationName,
     location_name: locationName,
     note: description,
@@ -2301,7 +2302,7 @@ function DemoApp({ initialSection }) {
                   className="board-scroll-button left"
                   disabled={!dayBoardNavigation.scrollState.left}
                   type="button"
-                  aria-label="查看前一天"
+                  aria-label="前一天"
                   onClick={() => dayBoardNavigation.scrollByDirection(-1)}
                 >
                   ←
@@ -2352,7 +2353,7 @@ function DemoApp({ initialSection }) {
                   className="board-scroll-button right"
                   disabled={!dayBoardNavigation.scrollState.right}
                   type="button"
-                  aria-label="查看後一天"
+                  aria-label="後一天"
                   onClick={() => dayBoardNavigation.scrollByDirection(1)}
                 >
                   →
@@ -3273,7 +3274,7 @@ function TripWorkspace(props) {
             className="board-scroll-button left"
             disabled={!dayBoardNavigation.scrollState.left}
             type="button"
-            aria-label="查看前一天"
+            aria-label="前一天"
             onClick={() => dayBoardNavigation.scrollByDirection(-1)}
           >
             ←
@@ -3318,7 +3319,7 @@ function TripWorkspace(props) {
                 className="board-scroll-button right"
                 disabled={!dayBoardNavigation.scrollState.right}
                 type="button"
-                aria-label="查看後一天"
+                aria-label="後一天"
                 onClick={() => dayBoardNavigation.scrollByDirection(1)}
               >
                 →
@@ -3565,14 +3566,15 @@ function ItineraryTimeline({
   async function submit(event) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const destination = String(formData.get("location_name") ?? form.location_name ?? form.location ?? "").trim();
     const submittedForm = {
       ...form,
       type: String(formData.get("type") ?? form.type ?? ""),
       start_time: String(formData.get("start_time") ?? form.start_time ?? ""),
       end_time: String(formData.get("end_time") ?? form.end_time ?? ""),
-      title: String(formData.get("title") ?? form.title ?? ""),
-      location: String(formData.get("location") ?? form.location ?? ""),
-      location_name: String(formData.get("location_name") ?? form.location_name ?? form.location ?? ""),
+      title: destination || String(form.title ?? ""),
+      location: destination,
+      location_name: destination,
       address: String(formData.get("address") ?? form.address ?? ""),
       map_url: String(formData.get("map_url") ?? form.map_url ?? ""),
       note: String(formData.get("note") ?? form.note ?? form.description ?? ""),
@@ -3590,7 +3592,7 @@ function ItineraryTimeline({
     const result = await onSaveItem(
       {
         ...submittedForm,
-        title: submittedForm.title.trim(),
+        title: (submittedForm.location_name || submittedForm.location || submittedForm.title).trim(),
         location: (submittedForm.location_name || submittedForm.location).trim(),
         location_name: (submittedForm.location_name || submittedForm.location).trim(),
         address: submittedForm.address.trim(),
@@ -3698,23 +3700,17 @@ function ItineraryTimeline({
               />
             </label>
           </div>
-          <div className="field-group form-grid wide">
-            <label>
-              名稱
-              <input
-                name="title"
-                required
-                value={form.title}
-                onChange={(event) => setForm({ ...form, title: event.target.value })}
-              />
-            </label>
+          <div className="field-group form-grid wide single">
             <label>
               目的地
               <input
                 placeholder="目的地或店名"
                 name="location_name"
+                required
                 value={form.location_name || form.location}
-                onChange={(event) => setForm({ ...form, location: event.target.value, location_name: event.target.value })}
+                onChange={(event) =>
+                  setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })
+                }
               />
             </label>
           </div>
@@ -3771,7 +3767,8 @@ function ItineraryTimeline({
           dayItems.map((item) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
             const locker = memberById.get(item.locked_by);
-            const destination = item.location_name || item.location;
+            const destination = item.location_name || item.location || item.title;
+            const secondaryText = item.note || item.description || item.transportation_note;
             const linkedBudgetTotal = (budgetsByItem[item.id] || []).reduce(
               (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
               0,
@@ -3779,9 +3776,12 @@ function ItineraryTimeline({
             const displayCost = linkedBudgetTotal || Number(item.cost || 0);
             return (
             <article
-              className={`timeline-item${focusedItemId === item.id ? " focused" : ""}`}
+              className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${expandedId === item.id ? " expanded" : ""}`}
               key={item.id}
-              onClick={() => onFocusItem(item.id)}
+              onClick={() => {
+                setExpandedId(expandedId === item.id ? null : item.id);
+                onFocusItem(item.id);
+              }}
             >
               <div className="time-block">
                 {formatTimeDisplay(item.start_time) || "--:--"}
@@ -3789,10 +3789,8 @@ function ItineraryTimeline({
                 {formatTimeDisplay(item.end_time)}
               </div>
               <div className="item-main">
-                <h4>{item.title}</h4>
-                {destination ? <p>{destination}</p> : null}
-                {item.note ? <p>{item.note}</p> : null}
-                {item.transportation_note ? <p className="transport-note">{item.transportation_note}</p> : null}
+                <h4>{destination}</h4>
+                {secondaryText ? <p className="item-summary">{secondaryText}</p> : null}
                 <div className="item-meta">
                   <span
                     className="pill"
@@ -3806,17 +3804,6 @@ function ItineraryTimeline({
                   ) : null}
                 </div>
                 {lockedByOther ? <div className="lock-note">{memberName(locker)} 正在編輯這筆資料</div> : null}
-                <button
-                  className="ghost-button compact detail-toggle"
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setExpandedId(expandedId === item.id ? null : item.id);
-                    onFocusItem(item.id);
-                  }}
-                >
-                  {expandedId === item.id ? "收合" : "詳細"}
-                </button>
                 {expandedId === item.id ? (
                   <div className="item-details">
                     {item.description || item.note ? <p>{item.description || item.note}</p> : null}
@@ -3856,7 +3843,10 @@ function ItineraryTimeline({
                   disabled={!canEdit || lockedByOther}
                   type="button"
                   title="編輯"
-                  onClick={() => openEditItem(item)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openEditItem(item);
+                  }}
                 >
                   E
                 </button>
@@ -3865,7 +3855,10 @@ function ItineraryTimeline({
                   disabled={!canEdit}
                   type="button"
                   title="刪除"
-                  onClick={() => onDeleteItem(item.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDeleteItem(item.id);
+                  }}
                 >
                   X
                 </button>
@@ -3890,20 +3883,32 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
   return (
     <>
       {otherDays.map((day) => (
-        <section className="timeline-day-preview" data-day-index={day.index} key={day.date.toISOString()} style={{ order: day.index }}>
-            <div className="timeline-day-preview-heading timeline-column-header">
+        <section
+          className="timeline-day-preview"
+          data-day-index={day.index}
+          key={day.date.toISOString()}
+          role="button"
+          tabIndex={0}
+          style={{ order: day.index }}
+          onClick={() => onActiveDay(day.index)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onActiveDay(day.index);
+            }
+          }}
+        >
+          <div className="timeline-day-preview-heading timeline-column-header">
             <div>
               <p className="eyebrow">Day {day.index + 1}</p>
               <h4>{formatDate(day.date)}</h4>
             </div>
-            <button className="mini-button" type="button" onClick={() => onActiveDay(day.index)}>
-              查看
-            </button>
           </div>
           <div className="timeline-preview-list">
             {day.items.length ? (
               day.items.map((item) => {
-                const destination = item.location_name || item.location;
+                const destination = item.location_name || item.location || item.title;
+                const secondaryText = item.note || item.description || item.transportation_note;
                 return (
                   <button
                     className={`timeline-preview-card${focusedItemId === item.id ? " focused" : ""}`}
@@ -3916,8 +3921,8 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
                   >
                     <span className="time-block">{formatTimeDisplay(item.start_time) || "--:--"}</span>
                     <span>
-                      <strong>{item.title}</strong>
-                      {destination ? <em>{destination}</em> : null}
+                      <strong>{destination}</strong>
+                      {secondaryText ? <em>{secondaryText}</em> : null}
                     </span>
                   </button>
                 );
