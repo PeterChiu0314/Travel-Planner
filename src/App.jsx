@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearDraft, clearDraftsForEntity, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
@@ -252,6 +252,72 @@ function formatMoney(value) {
     currency: "TWD",
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
+}
+
+function useDayBoardNavigation(activeDay, isEnabled) {
+  const boardRef = useRef(null);
+  const [scrollState, setScrollState] = useState({ left: false, right: false });
+
+  const updateScrollState = useCallback(() => {
+    const board = boardRef.current;
+    if (!board || !isEnabled) {
+      setScrollState({ left: false, right: false });
+      return;
+    }
+    setScrollState({
+      left: board.scrollLeft > 4,
+      right: board.scrollLeft + board.clientWidth < board.scrollWidth - 4,
+    });
+  }, [isEnabled]);
+
+  const scrollToDay = useCallback(
+    (dayIndex) => {
+      if (!isEnabled) return;
+      requestAnimationFrame(() => {
+        const board = boardRef.current;
+        const column = board?.querySelector(`[data-day-index="${dayIndex}"]`);
+        if (!board || !column) return;
+        board.scrollTo({
+          left: column.offsetLeft - board.offsetLeft,
+          behavior: "smooth",
+        });
+        requestAnimationFrame(updateScrollState);
+      });
+    },
+    [isEnabled, updateScrollState],
+  );
+
+  const scrollByDirection = useCallback(
+    (direction) => {
+      const board = boardRef.current;
+      if (!board || !isEnabled) return;
+      const column = board.querySelector(".timeline-day-column, .timeline-day-preview");
+      const distance = column ? column.getBoundingClientRect().width + 14 : 360;
+      board.scrollBy({ left: direction * distance, behavior: "smooth" });
+      requestAnimationFrame(updateScrollState);
+    },
+    [isEnabled, updateScrollState],
+  );
+
+  useEffect(() => {
+    if (!isEnabled) return;
+    scrollToDay(activeDay);
+    updateScrollState();
+  }, [activeDay, isEnabled, scrollToDay, updateScrollState]);
+
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board || !isEnabled) return;
+    board.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+    updateScrollState();
+    return () => {
+      board.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [isEnabled, updateScrollState]);
+
+  return { boardRef, scrollByDirection, scrollState, scrollToDay };
 }
 
 function tripDays(trip) {
@@ -1948,6 +2014,7 @@ function DemoApp({ initialSection }) {
     () => days.map((_, index) => sortScheduleItems(timelineItems.filter((item) => item.day_index === index))),
     [days, timelineItems],
   );
+  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteCollapsed);
   const budgetsByItem = useMemo(() => {
     const byId = new Map(budgetItems.map((budget) => [budget.id, budget]));
     const next = {};
@@ -1962,6 +2029,11 @@ function DemoApp({ initialSection }) {
   function changeSection(section) {
     setActiveSection(section);
     window.history.pushState({}, "", `/demo/${section}`);
+  }
+
+  function selectTimelineDay(dayIndex) {
+    setActiveDay(dayIndex);
+    if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
 
   function saveTimelineItem(payload, editingId) {
@@ -2217,14 +2289,25 @@ function DemoApp({ initialSection }) {
         </header>
         {activeSection === "timeline" ? (
           <>
-            <DayTabs activeDay={activeDay} dayPrefix="第" daySuffix="天" days={days} onActiveDay={setActiveDay} />
-            <div className="timeline-toolbar">
+            <div className="timeline-top-row">
+              <DayTabs activeDay={activeDay} dayPrefix="第" daySuffix="天" days={days} onActiveDay={selectTimelineDay} />
               <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
                 {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
               </button>
             </div>
             <div className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}`}>
-              <section className="panel itinerary-panel">
+              {isRouteCollapsed ? (
+                <button
+                  className="board-scroll-button left"
+                  disabled={!dayBoardNavigation.scrollState.left}
+                  type="button"
+                  aria-label="查看前一天"
+                  onClick={() => dayBoardNavigation.scrollByDirection(-1)}
+                >
+                  ←
+                </button>
+              ) : null}
+              <section className="panel itinerary-panel" ref={dayBoardNavigation.boardRef}>
                 <ItineraryTimeline
                   activeDay={activeDay}
                   activeTrip={demoTrip}
@@ -2260,10 +2343,21 @@ function DemoApp({ initialSection }) {
                     focusedItemId={focusedItemId}
                     itemsByDay={itemsByDay}
                     onActiveDay={setActiveDay}
-                    onFocusItem={setFocusedItemId}
-                  />
-                ) : null}
+                  onFocusItem={setFocusedItemId}
+                />
+              ) : null}
               </section>
+              {isRouteCollapsed ? (
+                <button
+                  className="board-scroll-button right"
+                  disabled={!dayBoardNavigation.scrollState.right}
+                  type="button"
+                  aria-label="查看後一天"
+                  onClick={() => dayBoardNavigation.scrollByDirection(1)}
+                >
+                  →
+                </button>
+              ) : null}
               {isRouteCollapsed ? null : (
                 <aside className="side-panels">
                   <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" onFocusItem={setFocusedItemId} />
@@ -3000,6 +3094,12 @@ function TripWorkspace(props) {
     () => days.map((_, index) => sortScheduleItems(items.filter((item) => item.day_index === index))),
     [days, items],
   );
+  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteCollapsed);
+
+  function selectTimelineDay(dayIndex) {
+    onActiveDay(dayIndex);
+    if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
+  }
 
   return (
     <section className="trip-editor">
@@ -3069,7 +3169,12 @@ function TripWorkspace(props) {
       </div>
 
       {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
-        <DayTabs activeDay={activeDay} days={days} onActiveDay={onActiveDay} />
+        <div className="timeline-top-row">
+          <DayTabs activeDay={activeDay} days={days} onActiveDay={selectTimelineDay} />
+          <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
+            {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+          </button>
+        </div>
       )}
 
       {isBudgetMode ? (
@@ -3156,14 +3261,6 @@ function TripWorkspace(props) {
         />
       ) : null}
 
-      {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
-        <div className="timeline-toolbar">
-          <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
-            {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
-          </button>
-        </div>
-      )}
-
       <div
         className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}${
           isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode
@@ -3171,7 +3268,18 @@ function TripWorkspace(props) {
             : ""
         }`}
       >
-        <section className="panel itinerary-panel">
+        {isRouteCollapsed ? (
+          <button
+            className="board-scroll-button left"
+            disabled={!dayBoardNavigation.scrollState.left}
+            type="button"
+            aria-label="查看前一天"
+            onClick={() => dayBoardNavigation.scrollByDirection(-1)}
+          >
+            ←
+          </button>
+        ) : null}
+        <section className="panel itinerary-panel" ref={dayBoardNavigation.boardRef}>
           <ItineraryTimeline
                 activeTrip={activeTrip}
                 activeDay={activeDay}
@@ -3205,6 +3313,17 @@ function TripWorkspace(props) {
               ) : null}
             </section>
 
+            {isRouteCollapsed ? (
+              <button
+                className="board-scroll-button right"
+                disabled={!dayBoardNavigation.scrollState.right}
+                type="button"
+                aria-label="查看後一天"
+                onClick={() => dayBoardNavigation.scrollByDirection(1)}
+              >
+                →
+              </button>
+            ) : null}
             {isRouteCollapsed ? null : (
               <aside className="side-panels">
                 <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
@@ -3499,7 +3618,7 @@ function ItineraryTimeline({
   }
 
   return (
-    <div className="timeline-day-column active" style={{ order: activeDay }}>
+    <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
         <div>
           <p className="eyebrow">{dayTitle || headingEyebrow}</p>
@@ -3771,7 +3890,7 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
   return (
     <>
       {otherDays.map((day) => (
-        <section className="timeline-day-preview" key={day.date.toISOString()} style={{ order: day.index }}>
+        <section className="timeline-day-preview" data-day-index={day.index} key={day.date.toISOString()} style={{ order: day.index }}>
             <div className="timeline-day-preview-heading timeline-column-header">
             <div>
               <p className="eyebrow">Day {day.index + 1}</p>
