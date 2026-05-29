@@ -29,7 +29,7 @@ When opening edit for another Timeline item, `editingId`, form state, draft key,
 ## BUG-016 | Timeline invalid time range
 
 Priority: P1
-Status: Fixed
+Status: Fixed / user verified
 
 Description:
 Timeline item allows start time later than end time.
@@ -49,7 +49,7 @@ Fix note:
 The form shows a clear invalid time range message, keeps the editor open, and does not affect items without `end_time`. Invalid Timeline saves are blocked in `ItineraryTimeline.submit`, formal `saveItem`, `applyAlternative`, `reorderItem`, and Demo `saveTimelineItem`. The shared submit path reads the current time input values before calling the save callback, so local React state lag cannot bypass the validation.
 
 Verification:
-Run `npm run build`; manually test invalid equal/reversed ranges, valid ranges, empty `end_time`, edit mode, and `/demo/timeline`.
+`npm run build` passes. User verified that `14:00 -> 13:00` is blocked, the editor stays open, and the invalid time range message is shown.
 
 ---
 
