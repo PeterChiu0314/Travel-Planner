@@ -943,6 +943,10 @@ textarea {
   gap: 10px;
 }
 
+.timeline-column-header {
+  min-height: 58px;
+}
+
 .timeline-day-preview h4 {
   font-size: 16px;
 }
@@ -1935,7 +1939,7 @@ textarea {
 
   .timeline-workbench.route-collapsed .itinerary-panel {
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     gap: 14px;
     max-height: none;
     overflow-x: auto;
@@ -1954,7 +1958,8 @@ textarea {
 
   .timeline-workbench.route-collapsed .timeline-day-column,
   .timeline-workbench.route-collapsed .timeline-day-preview {
-    flex: 0 0 min(360px, 82vw);
+    flex: 0 0 340px;
+    width: 340px;
     max-height: calc(100vh - 250px);
     overflow-y: auto;
   }
@@ -1975,6 +1980,12 @@ textarea {
 
   .timeline-workbench.route-collapsed .timeline-day-preview {
     align-content: start;
+  }
+
+  .timeline-workbench.route-collapsed .timeline-column-header {
+    align-items: flex-start;
+    min-height: 66px;
+    margin-bottom: 12px;
   }
 }
 

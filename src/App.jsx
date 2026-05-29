@@ -2232,7 +2232,9 @@ function DemoApp({ initialSection }) {
                   canEdit
                   currentUserId="demo-peter"
                   dayItems={dayItems}
+                  dayDateLabel={days[activeDay] ? formatDate(days[activeDay]) : ""}
                   dayLabel={days[activeDay] ? `第 ${activeDay + 1} 天 / ${formatDate(days[activeDay])}` : ""}
+                  dayTitle={`Day ${activeDay + 1}`}
                   disableDraftAutosave
                   focusedItemId={focusedItemId}
                   headingEyebrow="行程"
@@ -3178,7 +3180,9 @@ function TripWorkspace(props) {
                 currentUserId={currentUserId}
                 members={members}
                 dayItems={dayItems}
+                dayDateLabel={days[activeDay] ? formatDate(days[activeDay]) : ""}
                 dayLabel={days[activeDay] ? `Day ${activeDay + 1} · ${formatDate(days[activeDay])}` : ""}
+                dayTitle={`Day ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
                 onApplyAlternative={onApplyAlternative}
                 onDeleteAlternative={onDeleteAlternative}
@@ -3319,7 +3323,9 @@ function ItineraryTimeline({
   canEdit,
   currentUserId,
   dayItems,
+  dayDateLabel,
   dayLabel,
+  dayTitle,
   disableDraftAutosave = false,
   focusedItemId,
   headingEyebrow = "行程",
@@ -3492,10 +3498,10 @@ function ItineraryTimeline({
 
   return (
     <div className="timeline-day-column active" style={{ order: activeDay }}>
-      <div className="panel-heading">
+      <div className="panel-heading timeline-column-header">
         <div>
-          <p className="eyebrow">{headingEyebrow}</p>
-          <h3>{dayLabel}</h3>
+          <p className="eyebrow">{dayTitle || headingEyebrow}</p>
+          <h3>{dayDateLabel || dayLabel}</h3>
         </div>
         <button className="icon-button" disabled={!canEdit} type="button" title="新增行程" onClick={openNewItem}>
           +
@@ -3764,7 +3770,7 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
     <>
       {otherDays.map((day) => (
         <section className="timeline-day-preview" key={day.date.toISOString()} style={{ order: day.index }}>
-          <div className="timeline-day-preview-heading">
+            <div className="timeline-day-preview-heading timeline-column-header">
             <div>
               <p className="eyebrow">Day {day.index + 1}</p>
               <h4>{formatDate(day.date)}</h4>
