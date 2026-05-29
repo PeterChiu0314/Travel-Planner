@@ -1938,10 +1938,15 @@ function DemoApp({ initialSection }) {
   const [luggageItems, setLuggageItems] = useState(() => createDemoLuggageItems());
   const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
   const [focusedItemId, setFocusedItemId] = useState(null);
+  const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
   const days = useMemo(() => tripDays(demoTrip), []);
   const dayItems = useMemo(
     () => sortScheduleItems(timelineItems.filter((item) => item.day_index === activeDay)),
     [activeDay, timelineItems],
+  );
+  const itemsByDay = useMemo(
+    () => days.map((_, index) => sortScheduleItems(timelineItems.filter((item) => item.day_index === index))),
+    [days, timelineItems],
   );
   const budgetsByItem = useMemo(() => {
     const byId = new Map(budgetItems.map((budget) => [budget.id, budget]));
@@ -2213,7 +2218,12 @@ function DemoApp({ initialSection }) {
         {activeSection === "timeline" ? (
           <>
             <DayTabs activeDay={activeDay} dayPrefix="第" daySuffix="天" days={days} onActiveDay={setActiveDay} />
-            <div className="content-grid">
+            <div className="timeline-toolbar">
+              <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
+                {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+              </button>
+            </div>
+            <div className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}`}>
               <section className="panel itinerary-panel">
                 <ItineraryTimeline
                   activeTrip={demoTrip}
@@ -2240,10 +2250,22 @@ function DemoApp({ initialSection }) {
                   restoreDrafts={false}
                   useEditLocks={false}
                 />
+                {isRouteCollapsed ? (
+                  <MultiDayTimelinePreview
+                    activeDay={activeDay}
+                    days={days}
+                    focusedItemId={focusedItemId}
+                    itemsByDay={itemsByDay}
+                    onActiveDay={setActiveDay}
+                    onFocusItem={setFocusedItemId}
+                  />
+                ) : null}
               </section>
-              <aside className="side-panels">
-                <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" onFocusItem={setFocusedItemId} />
-              </aside>
+              {isRouteCollapsed ? null : (
+                <aside className="side-panels">
+                  <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" onFocusItem={setFocusedItemId} />
+                </aside>
+              )}
             </div>
           </>
         ) : null}
@@ -2953,6 +2975,7 @@ function TripWorkspace(props) {
   const isLuggageMode = activeSection === "luggage";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
+  const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
   const alternativesByItem = useMemo(() => {
     const next = {};
     alternatives.forEach((alternative) => {
@@ -2970,6 +2993,10 @@ function TripWorkspace(props) {
     });
     return next;
   }, [budgetItems, itineraryBudgetLinks]);
+  const itemsByDay = useMemo(
+    () => days.map((_, index) => sortScheduleItems(items.filter((item) => item.day_index === index))),
+    [days, items],
+  );
 
   return (
     <section className="trip-editor">
@@ -3126,8 +3153,16 @@ function TripWorkspace(props) {
         />
       ) : null}
 
+      {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
+        <div className="timeline-toolbar">
+          <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
+            {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+          </button>
+        </div>
+      )}
+
       <div
-        className={`content-grid${
+        className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}${
           isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode
             ? " hidden-section"
             : ""
@@ -3153,11 +3188,23 @@ function TripWorkspace(props) {
                 onSaveAlternative={onSaveAlternative}
                 onSaveItem={onSaveItem}
               />
+              {isRouteCollapsed ? (
+                <MultiDayTimelinePreview
+                  activeDay={activeDay}
+                  days={days}
+                  focusedItemId={focusedItemId}
+                  itemsByDay={itemsByDay}
+                  onActiveDay={onActiveDay}
+                  onFocusItem={setFocusedItemId}
+                />
+              ) : null}
             </section>
 
-            <aside className="side-panels">
-              <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
-        </aside>
+            {isRouteCollapsed ? null : (
+              <aside className="side-panels">
+                <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
+              </aside>
+            )}
       </div>
     </section>
   );
@@ -3683,6 +3730,65 @@ function ItineraryTimeline({
         )}
       </div>
     </>
+  );
+}
+
+function MultiDayTimelinePreview({ activeDay, days, focusedItemId, itemsByDay, onActiveDay, onFocusItem }) {
+  const otherDays = days
+    .map((date, index) => ({ date, index, items: itemsByDay[index] || [] }))
+    .filter((day) => day.index !== activeDay);
+  if (!otherDays.length) return null;
+
+  return (
+    <div className="multi-day-preview">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Other Days</p>
+          <h3>其他日期行程</h3>
+        </div>
+      </div>
+      <div className="multi-day-grid">
+        {otherDays.map((day) => (
+          <section className="timeline-day-preview" key={day.date.toISOString()}>
+            <div className="timeline-day-preview-heading">
+              <div>
+                <p className="eyebrow">Day {day.index + 1}</p>
+                <h4>{formatDate(day.date)}</h4>
+              </div>
+              <button className="mini-button" type="button" onClick={() => onActiveDay(day.index)}>
+                查看
+              </button>
+            </div>
+            <div className="timeline-preview-list">
+              {day.items.length ? (
+                day.items.map((item) => {
+                  const destination = item.location_name || item.location;
+                  return (
+                    <button
+                      className={`timeline-preview-card${focusedItemId === item.id ? " focused" : ""}`}
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        onActiveDay(day.index);
+                        onFocusItem(item.id);
+                      }}
+                    >
+                      <span className="time-block">{formatTimeDisplay(item.start_time) || "--:--"}</span>
+                      <span>
+                        <strong>{item.title}</strong>
+                        {destination ? <em>{destination}</em> : null}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="timeline-empty compact">這一天還沒有行程</div>
+              )}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }
 

@@ -889,6 +889,11 @@ textarea {
   align-items: start;
 }
 
+.timeline-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -916,6 +921,80 @@ textarea {
 .side-panels {
   display: grid;
   gap: 18px;
+}
+
+.multi-day-preview {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.multi-day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.timeline-day-preview {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px;
+}
+
+.timeline-day-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.timeline-day-preview h4 {
+  font-size: 16px;
+}
+
+.timeline-preview-list {
+  display: grid;
+  gap: 8px;
+}
+
+.timeline-preview-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 10px;
+  text-align: left;
+}
+
+.timeline-preview-card.focused {
+  border-color: var(--mint);
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+
+.timeline-preview-card strong,
+.timeline-preview-card em {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.timeline-preview-card em {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.timeline-empty.compact {
+  min-height: 72px;
 }
 
 .item-form {
@@ -1847,6 +1926,36 @@ textarea {
 .dialog-card p {
   color: var(--muted);
   line-height: 1.6;
+}
+
+@media (min-width: 1101px) {
+  .timeline-workbench {
+    grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr);
+  }
+
+  .timeline-workbench.route-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .timeline-workbench .itinerary-panel {
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .timeline-workbench.route-collapsed .itinerary-panel {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .timeline-workbench .side-panels {
+    position: sticky;
+    top: 24px;
+  }
+
+  .timeline-workbench .route-map {
+    min-height: min(560px, calc(100vh - 250px));
+  }
 }
 
 @media (max-width: 1100px) {
