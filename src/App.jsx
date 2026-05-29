@@ -2251,7 +2251,7 @@ function DemoApp({ initialSection }) {
                   useEditLocks={false}
                 />
                 {isRouteCollapsed ? (
-                  <MultiDayTimelinePreview
+                  <MultiDayTimelineColumns
                     activeDay={activeDay}
                     days={days}
                     focusedItemId={focusedItemId}
@@ -3189,7 +3189,7 @@ function TripWorkspace(props) {
                 onSaveItem={onSaveItem}
               />
               {isRouteCollapsed ? (
-                <MultiDayTimelinePreview
+                <MultiDayTimelineColumns
                   activeDay={activeDay}
                   days={days}
                   focusedItemId={focusedItemId}
@@ -3477,7 +3477,7 @@ function ItineraryTimeline({
   }
 
   return (
-    <>
+    <div className="timeline-day-column active" style={{ order: activeDay }}>
       <div className="panel-heading">
         <div>
           <p className="eyebrow">{headingEyebrow}</p>
@@ -3729,66 +3729,58 @@ function ItineraryTimeline({
           <div className="timeline-empty">這一天還沒有行程</div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
-function MultiDayTimelinePreview({ activeDay, days, focusedItemId, itemsByDay, onActiveDay, onFocusItem }) {
+function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, onActiveDay, onFocusItem }) {
   const otherDays = days
     .map((date, index) => ({ date, index, items: itemsByDay[index] || [] }))
     .filter((day) => day.index !== activeDay);
   if (!otherDays.length) return null;
 
   return (
-    <div className="multi-day-preview">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Other Days</p>
-          <h3>其他日期行程</h3>
-        </div>
-      </div>
-      <div className="multi-day-grid">
-        {otherDays.map((day) => (
-          <section className="timeline-day-preview" key={day.date.toISOString()}>
-            <div className="timeline-day-preview-heading">
-              <div>
-                <p className="eyebrow">Day {day.index + 1}</p>
-                <h4>{formatDate(day.date)}</h4>
-              </div>
-              <button className="mini-button" type="button" onClick={() => onActiveDay(day.index)}>
-                查看
-              </button>
+    <>
+      {otherDays.map((day) => (
+        <section className="timeline-day-preview" key={day.date.toISOString()} style={{ order: day.index }}>
+          <div className="timeline-day-preview-heading">
+            <div>
+              <p className="eyebrow">Day {day.index + 1}</p>
+              <h4>{formatDate(day.date)}</h4>
             </div>
-            <div className="timeline-preview-list">
-              {day.items.length ? (
-                day.items.map((item) => {
-                  const destination = item.location_name || item.location;
-                  return (
-                    <button
-                      className={`timeline-preview-card${focusedItemId === item.id ? " focused" : ""}`}
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        onActiveDay(day.index);
-                        onFocusItem(item.id);
-                      }}
-                    >
-                      <span className="time-block">{formatTimeDisplay(item.start_time) || "--:--"}</span>
-                      <span>
-                        <strong>{item.title}</strong>
-                        {destination ? <em>{destination}</em> : null}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="timeline-empty compact">這一天還沒有行程</div>
-              )}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
+            <button className="mini-button" type="button" onClick={() => onActiveDay(day.index)}>
+              查看
+            </button>
+          </div>
+          <div className="timeline-preview-list">
+            {day.items.length ? (
+              day.items.map((item) => {
+                const destination = item.location_name || item.location;
+                return (
+                  <button
+                    className={`timeline-preview-card${focusedItemId === item.id ? " focused" : ""}`}
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      onActiveDay(day.index);
+                      onFocusItem(item.id);
+                    }}
+                  >
+                    <span className="time-block">{formatTimeDisplay(item.start_time) || "--:--"}</span>
+                    <span>
+                      <strong>{item.title}</strong>
+                      {destination ? <em>{destination}</em> : null}
+                    </span>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="timeline-empty compact">這一天還沒有行程</div>
+            )}
+          </div>
+        </section>
+      ))}
+    </>
   );
 }
 
