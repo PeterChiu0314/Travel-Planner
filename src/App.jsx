@@ -3341,7 +3341,7 @@ function ItineraryTimeline({
   const [conflict, setConflict] = useState(false);
   const [timeError, setTimeError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
-  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
     editingId,
@@ -3378,7 +3378,10 @@ function ItineraryTimeline({
   function openNewItem() {
     const lastItem = dayItems[dayItems.length - 1];
     const defaultStartTime = lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "";
-    setFormSeed({ ...emptyItemForm, start_time: defaultStartTime });
+    const nextForm = { ...emptyItemForm, start_time: defaultStartTime };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
@@ -3395,7 +3398,7 @@ function ItineraryTimeline({
       if (lockResult.lockedByAnotherUser) return;
       lockedItem = lockResult.data || item;
     }
-    setFormSeed({
+    const nextForm = {
       type: item.type,
       start_time: formatTimeDisplay(item.start_time),
       end_time: formatTimeDisplay(item.end_time),
@@ -3408,7 +3411,10 @@ function ItineraryTimeline({
       description: item.description || item.note || "",
       transportation_note: item.transportation_note || "",
       cost: item.cost || 0,
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
     setConflict(false);
     setTimeError("");
@@ -3432,12 +3438,20 @@ function ItineraryTimeline({
   async function submit(event) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const submittedStartTime = String(formData.get("start_time") ?? form.start_time ?? "");
-    const submittedEndTime = String(formData.get("end_time") ?? form.end_time ?? "");
     const submittedForm = {
       ...form,
-      start_time: submittedStartTime,
-      end_time: submittedEndTime,
+      type: String(formData.get("type") ?? form.type ?? ""),
+      start_time: String(formData.get("start_time") ?? form.start_time ?? ""),
+      end_time: String(formData.get("end_time") ?? form.end_time ?? ""),
+      title: String(formData.get("title") ?? form.title ?? ""),
+      location: String(formData.get("location") ?? form.location ?? ""),
+      location_name: String(formData.get("location_name") ?? form.location_name ?? form.location ?? ""),
+      address: String(formData.get("address") ?? form.address ?? ""),
+      map_url: String(formData.get("map_url") ?? form.map_url ?? ""),
+      note: String(formData.get("note") ?? form.note ?? form.description ?? ""),
+      description: String(formData.get("description") ?? form.description ?? form.note ?? ""),
+      transportation_note: String(formData.get("transportation_note") ?? form.transportation_note ?? ""),
+      cost: String(formData.get("cost") ?? form.cost ?? 0),
     };
     const invalidTimeRange = isInvalidTimeRange(submittedForm.start_time, submittedForm.end_time);
     if (invalidTimeRange) {
@@ -3501,7 +3515,7 @@ function ItineraryTimeline({
           <div className="field-group form-grid">
             <label>
               類型
-              <select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+              <select name="type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
                 {Object.entries(typeLabels).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -3549,6 +3563,7 @@ function ItineraryTimeline({
               費用
               <input
                 min="0"
+                name="cost"
                 step="1"
                 type="number"
                 value={form.cost}
@@ -3560,6 +3575,7 @@ function ItineraryTimeline({
             <label>
               名稱
               <input
+                name="title"
                 required
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -3569,6 +3585,7 @@ function ItineraryTimeline({
               目的地
               <input
                 placeholder="目的地或店名"
+                name="location_name"
                 value={form.location_name || form.location}
                 onChange={(event) => setForm({ ...form, location: event.target.value, location_name: event.target.value })}
               />
@@ -3577,6 +3594,7 @@ function ItineraryTimeline({
           <label className="full-label">
             備註
             <textarea
+              name="description"
               rows="3"
               value={form.description || form.note}
               onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
@@ -3586,6 +3604,7 @@ function ItineraryTimeline({
             <label>
               地址
               <input
+                name="address"
                 value={form.address}
                 onChange={(event) => setForm({ ...form, address: event.target.value })}
               />
@@ -3593,6 +3612,7 @@ function ItineraryTimeline({
             <label>
               Map URL
               <input
+                name="map_url"
                 placeholder="https://maps.google.com/..."
                 value={form.map_url}
                 onChange={(event) => setForm({ ...form, map_url: event.target.value })}
@@ -3602,6 +3622,7 @@ function ItineraryTimeline({
           <label className="full-label">
             交通備註
             <textarea
+              name="transportation_note"
               rows="2"
               value={form.transportation_note}
               onChange={(event) => setForm({ ...form, transportation_note: event.target.value })}

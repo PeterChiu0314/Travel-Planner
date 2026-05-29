@@ -13,6 +13,19 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-017 | Timeline edit state contamination
+
+Priority: P0
+Status: Confirmed
+
+Description:
+Switching directly from editing one Timeline card to another can keep stale form state from the previous card.
+
+Expected:
+When opening edit for another Timeline item, `editingId`, form state, draft key, and `baseUpdatedAt` must all switch to the newly selected item. Unsaved content from the previous item must not be submitted into the newly selected item.
+
+---
+
 ## BUG-016 | Timeline invalid time range
 
 Priority: P1
