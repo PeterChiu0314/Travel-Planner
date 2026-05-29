@@ -2226,6 +2226,7 @@ function DemoApp({ initialSection }) {
             <div className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}`}>
               <section className="panel itinerary-panel">
                 <ItineraryTimeline
+                  activeDay={activeDay}
                   activeTrip={demoTrip}
                   alternativesByItem={{}}
                   budgetsByItem={budgetsByItem}
@@ -3317,6 +3318,7 @@ function DayTabs({ activeDay, dayPrefix = "Day", daySuffix = "", days, onActiveD
 }
 
 function ItineraryTimeline({
+  activeDay = 0,
   activeTrip,
   alternativesByItem,
   budgetsByItem,
