@@ -686,6 +686,49 @@ function writeOfflineTripData(tripId, payload) {
 }
 
 const activeEditDraftEntityTypes = ["itinerary_item", "budget_item", "accommodation", "todo_item"];
+const sessionContextStoragePrefix = "travel-planner-session-context";
+const sessionContextSections = new Set([...desktopNavItems, ...mobileNavItems].map((item) => item.id));
+const luggageTabs = new Set(["personal", "shared"]);
+
+function sessionContextKey(userId) {
+  return `${sessionContextStoragePrefix}:${userId || "anonymous"}`;
+}
+
+function readSessionContext(userId) {
+  try {
+    const raw = localStorage.getItem(sessionContextKey(userId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionContext(userId, context) {
+  try {
+    localStorage.setItem(
+      sessionContextKey(userId),
+      JSON.stringify({
+        ...context,
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+  } catch {
+    // Session context restore is best effort; storage can be unavailable in private windows.
+  }
+}
+
+function normalizeSessionContext(context, trip) {
+  if (!context || !trip) return null;
+  const dayCount = tripDays(trip).length;
+  const activeDay = Number.isInteger(context.activeDay)
+    ? Math.min(Math.max(context.activeDay, 0), Math.max(dayCount - 1, 0))
+    : null;
+  return {
+    activeDay,
+    activeSection: sessionContextSections.has(context.activeSection) ? context.activeSection : null,
+    luggageTab: luggageTabs.has(context.luggageTab) ? context.luggageTab : null,
+  };
+}
 
 export default function App() {
   const demoSection = demoSectionFromPath();
@@ -720,7 +763,9 @@ export default function App() {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState("");
   const [activeSection, setActiveSection] = useState("today");
+  const [luggageTab, setLuggageTab] = useState("personal");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const restoredDayRef = useRef(null);
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
     destination: "京都, 日本",
@@ -754,6 +799,7 @@ export default function App() {
   const loadTrips = useCallback(
     async (preferredTripId = activeTripId) => {
       if (!session?.user) return;
+      const canRestoreSessionContext = !preferredTripId || preferredTripId === activeTripId;
       setLoading(true);
       const { data, error } = await supabase
         .from("trip_members")
@@ -766,16 +812,30 @@ export default function App() {
         const cachedTrips = readOfflineTrips(session.user.id);
         if (cachedTrips?.trips?.length) {
           setTrips(cachedTrips.trips);
+          const savedContext = canRestoreSessionContext ? readSessionContext(session.user.id) : null;
+          const savedTrip = savedContext
+            ? cachedTrips.trips.find((trip) => trip.id === savedContext.activeTripId) || null
+            : null;
           const latestEditDraft = findLatestDraftTrip({
             entityTypes: activeEditDraftEntityTypes,
             userId: session.user.id,
           });
           const nextActive =
+            savedTrip?.id ||
             cachedTrips.trips.find((trip) => trip.id === preferredTripId)?.id ||
             cachedTrips.trips.find((trip) => trip.id === latestEditDraft?.tripId)?.id ||
             cachedTrips.activeTripId ||
             cachedTrips.trips[0]?.id ||
             null;
+          if (savedTrip?.id === nextActive) {
+            const normalizedContext = normalizeSessionContext(savedContext, savedTrip);
+            if (normalizedContext?.activeSection) setActiveSection(normalizedContext.activeSection);
+            if (normalizedContext?.luggageTab) setLuggageTab(normalizedContext.luggageTab);
+            if (normalizedContext?.activeDay !== null) {
+              restoredDayRef.current = { activeDay: normalizedContext.activeDay, tripId: nextActive };
+              setActiveDay(normalizedContext.activeDay);
+            }
+          }
           setActiveTripId(nextActive);
           setNotice("目前使用已快取的離線旅程清單；重新連線後會自動更新。");
           setLoading(false);
@@ -800,15 +860,27 @@ export default function App() {
         .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
 
       setTrips(nextTrips);
+      const savedContext = canRestoreSessionContext ? readSessionContext(session.user.id) : null;
+      const savedTrip = savedContext ? nextTrips.find((trip) => trip.id === savedContext.activeTripId) || null : null;
       const latestEditDraft = findLatestDraftTrip({
         entityTypes: activeEditDraftEntityTypes,
         userId: session.user.id,
       });
       const nextActive =
+        savedTrip?.id ||
         nextTrips.find((trip) => trip.id === preferredTripId)?.id ||
         nextTrips.find((trip) => trip.id === latestEditDraft?.tripId)?.id ||
         nextTrips[0]?.id ||
         null;
+      if (savedTrip?.id === nextActive) {
+        const normalizedContext = normalizeSessionContext(savedContext, savedTrip);
+        if (normalizedContext?.activeSection) setActiveSection(normalizedContext.activeSection);
+        if (normalizedContext?.luggageTab) setLuggageTab(normalizedContext.luggageTab);
+        if (normalizedContext?.activeDay !== null) {
+          restoredDayRef.current = { activeDay: normalizedContext.activeDay, tripId: nextActive };
+          setActiveDay(normalizedContext.activeDay);
+        }
+      }
       setActiveTripId(nextActive);
       writeOfflineTrips(session.user.id, { trips: nextTrips, activeTripId: nextActive });
       setLoading(false);
@@ -1061,9 +1133,25 @@ export default function App() {
   }, [loadTrips, session]);
 
   useEffect(() => {
-    setActiveDay(todayDayIndex);
+    const restoredDay = restoredDayRef.current;
+    if (restoredDay?.tripId === activeTripId) {
+      setActiveDay(restoredDay.activeDay);
+      restoredDayRef.current = null;
+    } else {
+      setActiveDay(todayDayIndex);
+    }
     loadTripData(activeTripId);
   }, [activeTripId, loadTripData, todayDayIndex]);
+
+  useEffect(() => {
+    if (isDemoMode || !session?.user || !activeTripId) return;
+    writeSessionContext(session.user.id, {
+      activeDay,
+      activeSection,
+      activeTripId,
+      luggageTab,
+    });
+  }, [activeDay, activeSection, activeTripId, isDemoMode, luggageTab, session?.user]);
 
   useEffect(() => {
     if (activeTripId && isOwner) {
@@ -2004,6 +2092,7 @@ function exportTrip() {
             guideItems={guideItems}
             currentUserId={session.user.id}
             luggageItems={luggageItems}
+            luggageTab={luggageTab}
             members={members}
             packItems={packItems}
             sharedLuggageItems={sharedLuggageItems}
@@ -2037,6 +2126,7 @@ function exportTrip() {
             onSaveLuggageItem={saveLuggageItem}
             onSaveSharedLuggageItem={saveSharedLuggageItem}
             onSaveTodo={saveTodo}
+            onLuggageTabChange={setLuggageTab}
             onSectionChange={setActiveSection}
             onToggleLuggageItem={toggleLuggageItem}
             onToggleTodo={toggleTodo}
@@ -3158,6 +3248,7 @@ function TripWorkspace(props) {
     guideItems,
     currentUserId,
     luggageItems,
+    luggageTab,
     members,
     packItems,
     sharedLuggageItems,
@@ -3191,6 +3282,7 @@ function TripWorkspace(props) {
     onSaveLuggageItem,
     onSaveSharedLuggageItem,
     onSaveTodo,
+    onLuggageTabChange,
     onSectionChange,
     onToggleLuggageItem,
     onToggleTodo,
@@ -3372,6 +3464,7 @@ function TripWorkspace(props) {
       {isLuggageMode ? (
         <LuggagePanel
           activeTrip={activeTrip}
+          activeTab={luggageTab}
           canEdit={canEdit}
           currentUserId={currentUserId}
           isOwner={isOwner}
@@ -3382,6 +3475,7 @@ function TripWorkspace(props) {
           onDeleteShared={onDeleteSharedLuggageItem}
           onSavePersonal={onSaveLuggageItem}
           onSaveShared={onSaveSharedLuggageItem}
+          onTabChange={onLuggageTabChange}
           onTogglePersonal={onToggleLuggageItem}
           onUpdateShared={onUpdateSharedLuggageItem}
         />
@@ -6260,6 +6354,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
 
 function LuggagePanel({
   activeTrip,
+  activeTab = "personal",
   canEdit,
   currentUserId,
   isOwner,
@@ -6270,10 +6365,10 @@ function LuggagePanel({
   onDeleteShared,
   onSavePersonal,
   onSaveShared,
+  onTabChange,
   onTogglePersonal,
   onUpdateShared,
 }) {
-  const [activeTab, setActiveTab] = useState("personal");
   const [personalSeed, setPersonalSeed] = useState(emptyLuggageForm);
   const [sharedSeed, setSharedSeed] = useState(emptySharedLuggageForm);
   const [editingPersonalId, setEditingPersonalId] = useState(null);
@@ -6492,11 +6587,11 @@ function LuggagePanel({
         <button
           className={activeTab === "personal" ? "active" : ""}
           type="button"
-          onClick={() => setActiveTab("personal")}
+          onClick={() => onTabChange?.("personal")}
         >
           私物
         </button>
-        <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => setActiveTab("shared")}>
+        <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => onTabChange?.("shared")}>
           公物
         </button>
       </div>

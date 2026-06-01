@@ -13,6 +13,25 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-021 | Reload loses active trip/page context
+
+Priority: P1
+Status: Implemented / Needs Manual Verification
+
+Description:
+Reload/F5 could reopen the app on a different trip, section, Timeline day, or Luggage tab than the user was viewing before refresh.
+
+Expected:
+Reload should restore the last available active trip first, then restore the active section, Timeline active day, and Luggage personal/shared tab from local browser session context. If the stored trip no longer exists or is unavailable, the app should fall back to the first available trip.
+
+Fix note:
+Added local session context restore for active trip, active section, Timeline day, and Luggage tab without changing draft restore, editor guard, conflict handling, Realtime, or Supabase schema.
+
+Verification:
+`npm.cmd run build` and `git diff --check` required. Manual reload verification is still required.
+
+---
+
 ## BUG-020 | Restored edit draft conflict after trip switch
 
 Priority: P1
