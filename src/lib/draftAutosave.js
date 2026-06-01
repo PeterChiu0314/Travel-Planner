@@ -71,6 +71,34 @@ export function loadLatestDraftForEntity({ entityType, tripId, userId }) {
   return latest;
 }
 
+export function findLatestDraftTrip({ entityTypes = [], userId }) {
+  const userKey = userId || "anonymous";
+  const allowedTypes = new Set(entityTypes);
+  let latest = null;
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith(`${draftPrefix}:${userKey}:`)) continue;
+      const parts = key.split(":");
+      const draftUserId = parts[1];
+      const draftTripId = parts[2];
+      const draftEntityType = parts[3];
+      const draftEntityId = parts.slice(4).join(":") || "new";
+      if (draftUserId !== userKey || draftTripId === "no-trip") continue;
+      if (allowedTypes.size && !allowedTypes.has(draftEntityType)) continue;
+      if (draftEntityId === "new") continue;
+      const draft = loadDraft(key);
+      if (!draft?.form || !draft.savedAt) continue;
+      if (!latest || new Date(draft.savedAt).getTime() > new Date(latest.draft.savedAt).getTime()) {
+        latest = { draft, entityId: draftEntityId, entityType: draftEntityType, key, tripId: draftTripId };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return latest;
+}
+
 export function clearDraftsForEntity({ entityType, tripId, userId }) {
   const prefix = [draftPrefix, userId || "anonymous", tripId || "no-trip", entityType, ""].join(":");
   try {
@@ -105,6 +133,7 @@ export function useDraftAutosave({
   disabled = false,
   editingId,
   entityType,
+  forceDirtyOnOpen = false,
   isOpen,
   serverUpdatedAt,
   tripId,
@@ -143,6 +172,15 @@ export function useDraftAutosave({
       return;
     }
 
+    if (forceDirtyOnOpen) {
+      suppressFlushRef.current = false;
+      latestRef.current = defaultForm;
+      setForm(defaultForm);
+      setHasUnsavedChanges(true);
+      openedRef.current = true;
+      return;
+    }
+
     const draft = loadDraft(draftKey);
     if (isDraftNewerThanServer(draft, serverUpdatedAt)) {
       suppressFlushRef.current = false;
@@ -153,7 +191,7 @@ export function useDraftAutosave({
       setHasUnsavedChanges(false);
     }
     openedRef.current = true;
-  }, [defaultForm, disabled, draftKey, isOpen, serverUpdatedAt]);
+  }, [defaultForm, disabled, draftKey, forceDirtyOnOpen, isOpen, serverUpdatedAt]);
 
   useEffect(() => {
     if (disabled) return undefined;

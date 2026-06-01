@@ -13,6 +13,25 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-020 | Restored edit draft conflict after trip switch
+
+Priority: P1
+Status: Confirmed
+
+Description:
+Restored edit drafts can lose active guard behavior or keep a stale optimistic-lock baseline after reload and trip switching, causing missing save/discard prompts or false conflict messages when saving unchanged server records.
+
+Expected:
+Reload should prefer the trip that owns the latest unfinished edit draft when available. Restored edit drafts must be treated as active unsaved edits, must prompt before trip switching, and must use the current server `updated_at` as the save baseline unless another user actually changed the record.
+
+Fix note:
+Implementation is in progress for Timeline, Budget, Accommodation, and Todo.
+
+Verification:
+Manual verification required after implementation.
+
+---
+
 ## BUG-019 | Draft restore cross-trip contamination
 
 Priority: P0

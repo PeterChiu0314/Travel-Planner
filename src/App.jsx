@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
+import { clearDraft, findLatestDraftTrip, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 
@@ -685,6 +685,8 @@ function writeOfflineTripData(tripId, payload) {
   }
 }
 
+const activeEditDraftEntityTypes = ["itinerary_item", "budget_item", "accommodation", "todo_item"];
+
 export default function App() {
   const demoSection = demoSectionFromPath();
   const isDemoMode = Boolean(demoSection);
@@ -764,8 +766,13 @@ export default function App() {
         const cachedTrips = readOfflineTrips(session.user.id);
         if (cachedTrips?.trips?.length) {
           setTrips(cachedTrips.trips);
+          const latestEditDraft = findLatestDraftTrip({
+            entityTypes: activeEditDraftEntityTypes,
+            userId: session.user.id,
+          });
           const nextActive =
             cachedTrips.trips.find((trip) => trip.id === preferredTripId)?.id ||
+            cachedTrips.trips.find((trip) => trip.id === latestEditDraft?.tripId)?.id ||
             cachedTrips.activeTripId ||
             cachedTrips.trips[0]?.id ||
             null;
@@ -793,8 +800,15 @@ export default function App() {
         .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
 
       setTrips(nextTrips);
+      const latestEditDraft = findLatestDraftTrip({
+        entityTypes: activeEditDraftEntityTypes,
+        userId: session.user.id,
+      });
       const nextActive =
-        nextTrips.find((trip) => trip.id === preferredTripId)?.id || nextTrips[0]?.id || null;
+        nextTrips.find((trip) => trip.id === preferredTripId)?.id ||
+        nextTrips.find((trip) => trip.id === latestEditDraft?.tripId)?.id ||
+        nextTrips[0]?.id ||
+        null;
       setActiveTripId(nextActive);
       writeOfflineTrips(session.user.id, { trips: nextTrips, activeTripId: nextActive });
       setLoading(false);
@@ -3587,6 +3601,7 @@ function ItineraryTimeline({
   const [formSeed, setFormSeed] = useState(emptyItemForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [editorTripId, setEditorTripId] = useState(null);
+  const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
   const [timeError, setTimeError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
@@ -3595,6 +3610,7 @@ function ItineraryTimeline({
     disabled: disableDraftAutosave,
     editingId,
     entityType: "itinerary_item",
+    forceDirtyOnOpen: Boolean(restoredDraftKey),
     isOpen,
     serverUpdatedAt: baseUpdatedAt,
     tripId: activeTrip?.id,
@@ -3625,6 +3641,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     setIsOpen(false);
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, useEditLocks]);
 
@@ -3646,11 +3663,12 @@ function ItineraryTimeline({
     flushDraft();
     replaceForm(nextForm);
     setFormSeed(nextForm);
-    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingItem?.updated_at || null);
     setConflict(false);
     setTimeError("");
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
+    setRestoredDraftKey(latest.key);
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
@@ -3671,6 +3689,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
+    setRestoredDraftKey(null);
     setIsOpen(true);
   }
 
@@ -3710,6 +3729,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || null);
+    setRestoredDraftKey(null);
     setIsOpen(true);
   }
 
@@ -3724,6 +3744,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     setIsOpen(false);
   }
 
@@ -3779,6 +3800,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     setIsOpen(false);
     return true;
   }
@@ -4281,12 +4303,14 @@ function BudgetPanel({
   const [formSeed, setFormSeed] = useState(emptyBudgetForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [editorTripId, setEditorTripId] = useState(null);
+  const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
     editingId,
     entityType: "budget_item",
+    forceDirtyOnOpen: Boolean(restoredDraftKey),
     isOpen,
     serverUpdatedAt: baseUpdatedAt,
     tripId: activeTrip?.id,
@@ -4338,6 +4362,7 @@ function BudgetPanel({
     setConflict(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     setIsOpen(false);
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, useEditLocks]);
 
@@ -4352,10 +4377,11 @@ function BudgetPanel({
     const matchingItem = budgetItems.find((item) => item.id === latest.entityId);
     if (latest.entityId !== "new" && !matchingItem) return;
     setFormSeed(latest.draft.form);
-    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingItem?.updated_at || null);
     setConflict(false);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
+    setRestoredDraftKey(latest.key);
     setIsOpen(true);
   }, [activeTrip?.id, budgetItems, currentUserId, isOpen, restoreDrafts]);
 
@@ -4376,6 +4402,7 @@ function BudgetPanel({
     setConflict(false);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
+    setRestoredDraftKey(null);
     setIsOpen(true);
   }
 
@@ -4412,6 +4439,7 @@ function BudgetPanel({
     setConflict(false);
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || null);
+    setRestoredDraftKey(null);
     setIsOpen(true);
   }
 
@@ -4437,6 +4465,7 @@ function BudgetPanel({
     setIsOpen(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     return true;
   }
 
@@ -4456,6 +4485,7 @@ function BudgetPanel({
     setIsOpen(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
   }
 
   return (
@@ -4777,7 +4807,7 @@ function ActualExpensePanel({
     const matchingExpense = actualExpenses.find((expense) => expense.id === latest.entityId);
     if (latest.entityId !== "new" && !matchingExpense) return;
     setFormSeed(latest.draft.form);
-    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingExpense?.updated_at || null);
+    setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingExpense?.updated_at || null);
     setConflict(false);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
@@ -5325,11 +5355,13 @@ function AccommodationPanel({
   const [formSeed, setFormSeed] = useState(emptyAccommodationForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [editorTripId, setEditorTripId] = useState(null);
+  const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     editingId,
     entityType: "accommodation",
+    forceDirtyOnOpen: Boolean(restoredDraftKey),
     isOpen,
     serverUpdatedAt: baseUpdatedAt,
     tripId: activeTrip?.id || trip?.id,
@@ -5360,6 +5392,7 @@ function AccommodationPanel({
     setConflict(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     setIsOpen(false);
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, trip?.id]);
 
@@ -5374,10 +5407,11 @@ function AccommodationPanel({
     const matchingItem = accommodations.find((item) => item.id === latest.entityId);
     if (latest.entityId !== "new" && !matchingItem) return;
     setFormSeed(latest.draft.form);
-    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingItem?.updated_at || null);
     setConflict(false);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip?.id || trip?.id || null);
+    setRestoredDraftKey(latest.key);
     setIsOpen(true);
   }, [accommodations, activeTrip?.id, currentUserId, isOpen, trip?.id]);
 
@@ -5399,6 +5433,7 @@ function AccommodationPanel({
     setConflict(false);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || trip?.id || null);
+    setRestoredDraftKey(null);
     setIsOpen(true);
   }
 
@@ -5432,6 +5467,7 @@ function AccommodationPanel({
     setConflict(false);
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || trip?.id || null);
+    setRestoredDraftKey(null);
     setIsOpen(true);
   }
 
@@ -5449,6 +5485,7 @@ function AccommodationPanel({
     setIsOpen(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     return true;
   }
 
@@ -5468,6 +5505,7 @@ function AccommodationPanel({
     setIsOpen(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
   }
 
   return (
@@ -5753,11 +5791,13 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
   const [formSeed, setFormSeed] = useState(emptyTodoForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [editorTripId, setEditorTripId] = useState(null);
+  const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     editingId,
     entityType: "todo_item",
+    forceDirtyOnOpen: Boolean(restoredDraftKey),
     isOpen,
     serverUpdatedAt: baseUpdatedAt,
     tripId: activeTrip?.id,
@@ -5789,6 +5829,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     setConflict(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     setIsOpen(false);
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm]);
 
@@ -5803,10 +5844,11 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     const matchingItem = todoItems.find((item) => item.id === latest.entityId);
     if (latest.entityId !== "new" && !matchingItem) return;
     setFormSeed(latest.draft.form);
-    setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
+    setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingItem?.updated_at || null);
     setConflict(false);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
+    setRestoredDraftKey(latest.key);
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, isOpen, todoItems]);
 
@@ -5823,6 +5865,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     setConflict(false);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
+    setRestoredDraftKey(null);
     setIsOpen(true);
   }
 
@@ -5850,6 +5893,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     setConflict(false);
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || null);
+    setRestoredDraftKey(null);
     setIsOpen(true);
   }
 
@@ -5867,6 +5911,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     setIsOpen(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
     return true;
   }
 
@@ -5886,6 +5931,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     setIsOpen(false);
     setEditingId(null);
     setEditorTripId(null);
+    setRestoredDraftKey(null);
   }
 
   return (
