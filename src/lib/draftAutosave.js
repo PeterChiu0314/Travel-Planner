@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const draftPrefix = "travel-planner-draft";
-const skipDraftRestoreKey = "travel-planner-skip-draft-restore";
-let skipDraftRestoreForPage = null;
 
 export function getDraftKey({ entityId = "new", entityType, tripId, userId }) {
   return [draftPrefix, userId || "anonymous", tripId || "no-trip", entityType, entityId || "new"].join(":");
@@ -43,16 +41,6 @@ export function clearDraft(key) {
 }
 
 export function loadLatestDraftForEntity({ entityType, tripId, userId }) {
-  if (skipDraftRestoreForPage === null) {
-    try {
-      skipDraftRestoreForPage = sessionStorage.getItem(skipDraftRestoreKey) === "1";
-      if (skipDraftRestoreForPage) sessionStorage.removeItem(skipDraftRestoreKey);
-    } catch {
-      skipDraftRestoreForPage = false;
-      // Session storage is best effort.
-    }
-  }
-  if (skipDraftRestoreForPage) return null;
   const prefix = [draftPrefix, userId || "anonymous", tripId || "no-trip", entityType, ""].join(":");
   let latest = null;
   try {

@@ -303,10 +303,14 @@ Draft rules:
 - Drafts are local-only in `localStorage`.
 - Drafts must never sync to Supabase or Realtime.
 - Active form state has priority over server state.
-- Draft autosave happens by debounce and lifecycle events (`visibilitychange`, `pagehide`, `beforeunload`).
+- Draft autosave can preserve unfinished local work across interruptions.
 - Save success should clear the relevant draft.
 - Cancel should clear/release only when user confirms discarding unsaved changes.
 - Demo disables draft autosave.
+- Reload / browser close should warn the user when there are unsaved changes.
+- If the user still leaves after the browser warning, restoring the draft on the next visit is intentional behavior.
+- Restored draft data is not considered saved data.
+- Only explicit Save writes form data to the database.
 
 Forms currently using draft autosave include:
 

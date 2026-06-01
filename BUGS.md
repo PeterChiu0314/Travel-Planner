@@ -22,13 +22,13 @@ Description:
 Editing state could be interrupted by opening another record or switching trips, allowing stale form state or drafts to appear in the wrong item or trip.
 
 Expected:
-Switching to another record or trip while an editor has unsaved changes must ask whether to save or discard. Page section changes keep draft behavior without forcing a save. Reload and tab close use the browser native leave prompt instead of treating draft restore as the formal flow.
+Switching to another record or trip while an editor has unsaved changes must ask whether to save or discard. Page section changes keep draft behavior without forcing a save. Reload and tab close use the browser native leave prompt; if the user still leaves, draft restore on the next visit is allowed and is not considered saved database data.
 
 Fix note:
-Added a shared active editor guard for Timeline, Budget, Actual Expense, and Luggage personal/shared forms. Guarded transitions now save or discard the active editor before opening another record or switching trips, release edit locks on discard, and replace target form state instead of reusing stale state.
+Added a shared active editor guard for Timeline, Budget, Actual Expense, Luggage personal/shared forms, Accommodation, Todo, and Guide. Guarded transitions now save or discard the active editor before opening another record or switching trips, release edit locks on discard, and replace target form state instead of reusing stale state.
 
 Verification:
-`npm.cmd run build` passes.
+Phase 1 was user verified. `npm.cmd run build` passes after Phase 2.
 
 ---
 

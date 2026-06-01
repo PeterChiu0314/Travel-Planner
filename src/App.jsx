@@ -182,12 +182,6 @@ function ActiveEditorGuardDialog() {
   useEffect(() => {
     function handleBeforeUnload(event) {
       if (!getDirtyActiveEditorGuards().length) return;
-      try {
-        sessionStorage.setItem("travel-planner-skip-draft-restore", "1");
-        window.setTimeout(() => sessionStorage.removeItem("travel-planner-skip-draft-restore"), 1000);
-      } catch {
-        // Native unload prompts are best effort.
-      }
       event.preventDefault();
       event.returnValue = "";
     }
@@ -5252,7 +5246,7 @@ function AccommodationPanel({
   const [formSeed, setFormSeed] = useState(emptyAccommodationForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [conflict, setConflict] = useState(false);
-  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     editingId,
     entityType: "accommodation",
@@ -5262,6 +5256,17 @@ function AccommodationPanel({
     userId: currentUserId,
   });
   const selected = accommodations.find((item) => item.id === selectedId) || accommodations[0] || null;
+  const activeEditorGuard = useMemo(
+    () => ({
+      discard: () => closeAccommodationForm(true),
+      isActive: isOpen,
+      isDirty: hasUnsavedChanges,
+      save: () => saveCurrentAccommodation(),
+    }),
+    [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
+  );
+
+  useActiveEditorGuard(`accommodation:${activeTrip?.id || trip?.id || "no-trip"}`, activeEditorGuard);
 
   useEffect(() => {
     if (isOpen || !(activeTrip?.id || trip?.id) || !currentUserId) return;
@@ -5280,12 +5285,20 @@ function AccommodationPanel({
     setIsOpen(true);
   }, [accommodations, activeTrip?.id, currentUserId, isOpen, trip?.id]);
 
-  function openNewAccommodation() {
-    setFormSeed({
+  async function openNewAccommodation() {
+    if (isOpen) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeAccommodationForm(true);
+    }
+    const nextForm = {
       ...emptyAccommodationForm,
       check_in_date: trip.start_date || todayInput(),
       check_out_date: trip.start_date || todayInput(),
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(null);
     setConflict(false);
     setEditingId(null);
@@ -5294,10 +5307,15 @@ function AccommodationPanel({
 
   async function openEditAccommodation(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (isOpen && editingId !== item.id) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeAccommodationForm(true);
+    }
     const lockResult = await acquireEditLock({ record: item, supabase, table: "accommodations", userId: currentUserId });
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const lockedItem = lockResult.data || item;
-    setFormSeed({
+    const nextForm = {
       name: item.name || "",
       check_in_date: item.check_in_date || trip.start_date || todayInput(),
       check_out_date: item.check_out_date || item.check_in_date || trip.start_date || todayInput(),
@@ -5309,19 +5327,21 @@ function AccommodationPanel({
       payment_status: item.payment_status || "unpaid",
       budget_item_id: item.budget_item_id || "",
       custom_notes: item.custom_notes || "",
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
     setConflict(false);
     setEditingId(item.id);
     setIsOpen(true);
   }
 
-  async function submit(event) {
-    event.preventDefault();
+  async function saveCurrentAccommodation() {
     const result = await onSave(form, editingId, { baseUpdatedAt });
     if (!result?.ok) {
       if (result?.conflict) setConflict(true);
-      return;
+      return false;
     }
     clearDraft(draftKey);
     resetDraft(emptyAccommodationForm);
@@ -5330,6 +5350,12 @@ function AccommodationPanel({
     setConflict(false);
     setIsOpen(false);
     setEditingId(null);
+    return true;
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await saveCurrentAccommodation();
   }
 
   async function closeAccommodationForm(force = false) {
@@ -5627,7 +5653,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
   const [formSeed, setFormSeed] = useState(emptyTodoForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [conflict, setConflict] = useState(false);
-  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     editingId,
     entityType: "todo_item",
@@ -5639,6 +5665,17 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
   const memberById = new Map(members.map((member) => [member.user_id, member]));
   const guideById = new Map(guideItems.map((guide) => [guide.id, guide]));
   const pendingCount = todoItems.filter((item) => !item.completed).length;
+  const activeEditorGuard = useMemo(
+    () => ({
+      discard: () => closeTodoForm(true),
+      isActive: isOpen,
+      isDirty: hasUnsavedChanges,
+      save: () => saveCurrentTodo(),
+    }),
+    [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
+  );
+
+  useActiveEditorGuard(`todo:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
 
   useEffect(() => {
     if (isOpen || !activeTrip?.id || !currentUserId) return;
@@ -5657,7 +5694,14 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, isOpen, todoItems]);
 
-  function openNewTodo() {
+  async function openNewTodo() {
+    if (isOpen) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeTodoForm(true);
+    }
+    flushDraft();
+    replaceForm(emptyTodoForm);
     setFormSeed(emptyTodoForm);
     setBaseUpdatedAt(null);
     setConflict(false);
@@ -5667,28 +5711,35 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
 
   async function openEditTodo(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (isOpen && editingId !== item.id) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeTodoForm(true);
+    }
     const lockResult = await acquireEditLock({ record: item, supabase, table: "todo_items", userId: currentUserId });
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const lockedItem = lockResult.data || item;
-    setFormSeed({
+    const nextForm = {
       title: item.title || "",
       description: item.description || "",
       due_date: item.due_date || "",
       assignee_id: item.assignee_id || "",
       guide_id: item.guide_id || "",
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
     setConflict(false);
     setEditingId(item.id);
     setIsOpen(true);
   }
 
-  async function submit(event) {
-    event.preventDefault();
+  async function saveCurrentTodo() {
     const result = await onSave(form, editingId, { baseUpdatedAt });
     if (!result?.ok) {
       if (result?.conflict) setConflict(true);
-      return;
+      return false;
     }
     clearDraft(draftKey);
     resetDraft(emptyTodoForm);
@@ -5697,6 +5748,12 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     setConflict(false);
     setIsOpen(false);
     setEditingId(null);
+    return true;
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await saveCurrentTodo();
   }
 
   async function closeTodoForm(force = false) {
@@ -5830,7 +5887,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   const [formSeed, setFormSeed] = useState(emptyGuideForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [conflict, setConflict] = useState(false);
-  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     editingId,
     entityType: "guide_item",
@@ -5839,6 +5896,17 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     tripId: activeTrip?.id,
     userId: currentUserId,
   });
+  const activeEditorGuard = useMemo(
+    () => ({
+      discard: () => closeGuideForm(true),
+      isActive: isOpen,
+      isDirty: hasUnsavedChanges,
+      save: () => saveCurrentGuide(),
+    }),
+    [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
+  );
+
+  useActiveEditorGuard(`guide:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
 
   useEffect(() => {
     if (isOpen || !activeTrip?.id || !currentUserId) return;
@@ -5857,7 +5925,14 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, guideItems, isOpen]);
 
-  function openNewGuide() {
+  async function openNewGuide() {
+    if (isOpen) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeGuideForm(true);
+    }
+    flushDraft();
+    replaceForm(emptyGuideForm);
     setFormSeed(emptyGuideForm);
     setBaseUpdatedAt(null);
     setConflict(false);
@@ -5867,26 +5942,33 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
 
   async function openEditGuide(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (isOpen && editingId !== item.id) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeGuideForm(true);
+    }
     const lockResult = await acquireEditLock({ record: item, supabase, table: "guide_items", userId: currentUserId });
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const lockedItem = lockResult.data || item;
-    setFormSeed({
+    const nextForm = {
       title: item.title || "",
       description: item.description || "",
       url: item.url || "",
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
     setConflict(false);
     setEditingId(item.id);
     setIsOpen(true);
   }
 
-  async function submit(event) {
-    event.preventDefault();
+  async function saveCurrentGuide() {
     const result = await onSave(form, editingId, { baseUpdatedAt });
     if (!result?.ok) {
       if (result?.conflict) setConflict(true);
-      return;
+      return false;
     }
     clearDraft(draftKey);
     resetDraft(emptyGuideForm);
@@ -5895,6 +5977,12 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     setConflict(false);
     setIsOpen(false);
     setEditingId(null);
+    return true;
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await saveCurrentGuide();
   }
 
   async function closeGuideForm(force = false) {
