@@ -47,6 +47,14 @@ export function loadLatestDraftForEntity({ entityType, tripId, userId }) {
     for (let index = 0; index < localStorage.length; index += 1) {
       const key = localStorage.key(index);
       if (!key?.startsWith(prefix)) continue;
+      const [, draftUserId, draftTripId, draftEntityType] = key.split(":");
+      if (
+        draftUserId !== (userId || "anonymous") ||
+        draftTripId !== (tripId || "no-trip") ||
+        draftEntityType !== entityType
+      ) {
+        continue;
+      }
       const draft = loadDraft(key);
       if (!draft?.form || !draft.savedAt) continue;
       if (!latest || new Date(draft.savedAt).getTime() > new Date(latest.draft.savedAt).getTime()) {

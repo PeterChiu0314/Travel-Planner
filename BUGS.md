@@ -13,6 +13,25 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-019 | Draft restore cross-trip contamination
+
+Priority: P0
+Status: Implemented / Needs Manual Verification
+
+Description:
+Draft restore and active editor state could survive a trip switch, allowing a draft from trip A to appear in trip B or be saved into the wrong trip.
+
+Expected:
+Draft restore must be scoped to the draft key trip id and current active trip. Switching trips must clear active editor state without deleting drafts from the previous trip. Save callbacks must reject cross-trip editing contexts before writing to Supabase.
+
+Fix note:
+Draft restore now explicitly validates the draft key user, trip, and entity scope. Timeline, Budget, Actual Expense, Accommodation, Todo, Guide, and Luggage editor state is cleared when the active trip changes without deleting the previous trip draft. Save callbacks now receive trip context and reject mismatches; update mutations also constrain by `trip_id`.
+
+Verification:
+`npm.cmd run build` passes. Manual cross-trip restore verification is still required.
+
+---
+
 ## BUG-018 | Active Editor Guard
 
 Priority: P0
