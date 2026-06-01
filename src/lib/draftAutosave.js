@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const draftPrefix = "travel-planner-draft";
+const skipDraftRestoreKey = "travel-planner-skip-draft-restore";
+let skipDraftRestoreForPage = null;
 
 export function getDraftKey({ entityId = "new", entityType, tripId, userId }) {
   return [draftPrefix, userId || "anonymous", tripId || "no-trip", entityType, entityId || "new"].join(":");
@@ -41,6 +43,16 @@ export function clearDraft(key) {
 }
 
 export function loadLatestDraftForEntity({ entityType, tripId, userId }) {
+  if (skipDraftRestoreForPage === null) {
+    try {
+      skipDraftRestoreForPage = sessionStorage.getItem(skipDraftRestoreKey) === "1";
+      if (skipDraftRestoreForPage) sessionStorage.removeItem(skipDraftRestoreKey);
+    } catch {
+      skipDraftRestoreForPage = false;
+      // Session storage is best effort.
+    }
+  }
+  if (skipDraftRestoreForPage) return null;
   const prefix = [draftPrefix, userId || "anonymous", tripId || "no-trip", entityType, ""].join(":");
   let latest = null;
   try {
@@ -160,24 +172,10 @@ export function useDraftAutosave({
     if (disabled) return undefined;
     if (!isOpen) return undefined;
 
-    function flushDraft() {
+    return () => {
       if (hasUnsavedRef.current && !suppressFlushRef.current) {
         saveDraft(draftKey, { form: latestRef.current, serverUpdatedAt });
       }
-    }
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === "hidden") flushDraft();
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", flushDraft);
-    window.addEventListener("beforeunload", flushDraft);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", flushDraft);
-      window.removeEventListener("beforeunload", flushDraft);
-      flushDraft();
     };
   }, [disabled, draftKey, hasUnsavedChanges, isOpen, serverUpdatedAt]);
 

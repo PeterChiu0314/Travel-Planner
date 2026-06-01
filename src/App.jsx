@@ -122,6 +122,107 @@ const emptySharedLuggageForm = {
   assigned_to: "",
 };
 
+const activeEditorGuards = new Map();
+const activeEditorListeners = new Set();
+let activeEditorPromptResolve = null;
+
+function notifyActiveEditorListeners() {
+  activeEditorListeners.forEach((listener) => listener());
+}
+
+function registerActiveEditorGuard(id, guard) {
+  activeEditorGuards.set(id, guard);
+  notifyActiveEditorListeners();
+  return () => {
+    activeEditorGuards.delete(id);
+    notifyActiveEditorListeners();
+  };
+}
+
+function getDirtyActiveEditorGuards() {
+  return [...activeEditorGuards.values()].filter((guard) => guard.isDirty);
+}
+
+function showActiveEditorPrompt() {
+  if (activeEditorPromptResolve) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    activeEditorPromptResolve = resolve;
+    notifyActiveEditorListeners();
+  });
+}
+
+async function requestActiveEditorGuardResolution() {
+  const dirtyGuards = getDirtyActiveEditorGuards();
+  if (!dirtyGuards.length) return true;
+  const choice = await showActiveEditorPrompt();
+  if (!choice) return false;
+  for (const guard of dirtyGuards) {
+    const ok = choice === "save" ? await guard.save() : await guard.discard();
+    if (ok === false) return false;
+  }
+  return true;
+}
+
+function useActiveEditorGuard(id, guard) {
+  useEffect(() => {
+    if (!guard.isActive) return undefined;
+    return registerActiveEditorGuard(id, guard);
+  }, [id, guard]);
+}
+
+function ActiveEditorGuardDialog() {
+  const [isOpen, setIsOpen] = useState(Boolean(activeEditorPromptResolve));
+
+  useEffect(() => {
+    const listener = () => setIsOpen(Boolean(activeEditorPromptResolve));
+    activeEditorListeners.add(listener);
+    return () => activeEditorListeners.delete(listener);
+  }, []);
+
+  useEffect(() => {
+    function handleBeforeUnload(event) {
+      if (!getDirtyActiveEditorGuards().length) return;
+      try {
+        sessionStorage.setItem("travel-planner-skip-draft-restore", "1");
+        window.setTimeout(() => sessionStorage.removeItem("travel-planner-skip-draft-restore"), 1000);
+      } catch {
+        // Native unload prompts are best effort.
+      }
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  if (!isOpen) return null;
+
+  function choose(choice) {
+    const resolve = activeEditorPromptResolve;
+    activeEditorPromptResolve = null;
+    notifyActiveEditorListeners();
+    resolve?.(choice);
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="active-editor-guard-title">
+        <h2 id="active-editor-guard-title">您有未儲存的變更</h2>
+        <p>是否儲存後繼續？</p>
+        <div className="form-actions">
+          <button className="primary-button compact" type="button" onClick={() => choose("save")}>
+            儲存
+          </button>
+          <button className="ghost-button" type="button" onClick={() => choose("discard")}>
+            不儲存
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function todayInput(offset = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offset);
@@ -1706,6 +1807,12 @@ function exportTrip() {
     URL.revokeObjectURL(url);
   }
 
+  async function selectTrip(nextTripId) {
+    if (nextTripId === activeTripId) return;
+    const canContinue = await requestActiveEditorGuardResolution();
+    if (canContinue) setActiveTripId(nextTripId);
+  }
+
   if (isDemoMode) {
     return (
       <Shell>
@@ -1784,7 +1891,7 @@ function exportTrip() {
             </button>
           ))}
         </nav>
-        <TripList trips={trips} activeTripId={activeTripId} onSelect={setActiveTripId} />
+        <TripList trips={trips} activeTripId={activeTripId} onSelect={selectTrip} />
         <div className="user-box">
           {activeTrip ? (
             <MembersPanel
@@ -1950,6 +2057,7 @@ function exportTrip() {
           trip={activeTrip}
         />
       ) : null}
+      <ActiveEditorGuardDialog />
     </Shell>
   );
 }
@@ -3480,6 +3588,17 @@ function ItineraryTimeline({
     userId: currentUserId,
   });
   const memberById = new Map((members || []).map((member) => [member.user_id, member]));
+  const activeEditorGuard = useMemo(
+    () => ({
+      discard: () => closeEditor(true),
+      isActive: isOpen,
+      isDirty: hasUnsavedChanges,
+      save: () => saveCurrentEditor(),
+    }),
+    [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
+  );
+
+  useActiveEditorGuard(`timeline:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
 
   useEffect(() => {
     if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
@@ -3491,11 +3610,14 @@ function ItineraryTimeline({
     if (!latest) return;
     const matchingItem = dayItems.find((item) => item.id === latest.entityId);
     if (latest.entityId !== "new" && !matchingItem) return;
-    setFormSeed({
+    const nextForm = {
       ...latest.draft.form,
       start_time: formatTimeDisplay(latest.draft.form?.start_time),
       end_time: formatTimeDisplay(latest.draft.form?.end_time),
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
     setConflict(false);
     setTimeError("");
@@ -3503,7 +3625,12 @@ function ItineraryTimeline({
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
-  function openNewItem() {
+  async function openNewItem() {
+    if (isOpen) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeEditor(true);
+    }
     const lastItem = dayItems[dayItems.length - 1];
     const defaultStartTime = lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "";
     const nextForm = { ...emptyItemForm, start_time: defaultStartTime };
@@ -3519,6 +3646,11 @@ function ItineraryTimeline({
 
   async function openEditItem(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
+    if (isOpen && editingId !== item.id) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeEditor(true);
+    }
     let lockedItem = item;
     if (useEditLocks) {
       const lockResult = await acquireEditLock({ record: item, supabase, table: "itinerary_items", userId: currentUserId });
@@ -3563,9 +3695,7 @@ function ItineraryTimeline({
     setIsOpen(false);
   }
 
-  async function submit(event) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+  async function saveCurrentEditor(formData = new FormData()) {
     const destination = String(formData.get("location_name") ?? form.location_name ?? form.location ?? "").trim();
     const submittedForm = {
       ...form,
@@ -3586,7 +3716,7 @@ function ItineraryTimeline({
     if (invalidTimeRange) {
       setTimeError("結束時間必須晚於開始時間。");
       setForm(submittedForm);
-      return;
+      return false;
     }
     setTimeError("");
     const result = await onSaveItem(
@@ -3607,7 +3737,7 @@ function ItineraryTimeline({
     );
     if (!result?.ok) {
       if (result?.conflict) setConflict(true);
-      return;
+      return false;
     }
     if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyItemForm);
@@ -3617,6 +3747,12 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setIsOpen(false);
+    return true;
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await saveCurrentEditor(new FormData(event.currentTarget));
   }
 
   return (
@@ -4112,7 +4248,7 @@ function BudgetPanel({
   const [formSeed, setFormSeed] = useState(emptyBudgetForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [conflict, setConflict] = useState(false);
-  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
     editingId,
@@ -4145,6 +4281,17 @@ function BudgetPanel({
     });
     return next;
   }, [budgetItems]);
+  const activeEditorGuard = useMemo(
+    () => ({
+      discard: () => closeBudgetForm(true),
+      isActive: isOpen,
+      isDirty: hasUnsavedChanges,
+      save: () => saveCurrentBudget(),
+    }),
+    [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
+  );
+
+  useActiveEditorGuard(`budget:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
 
   useEffect(() => {
     if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
@@ -4163,11 +4310,19 @@ function BudgetPanel({
     setIsOpen(true);
   }, [activeTrip?.id, budgetItems, currentUserId, isOpen, restoreDrafts]);
 
-  function openNewBudget() {
-    setFormSeed({
+  async function openNewBudget() {
+    if (isOpen) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeBudgetForm(true);
+    }
+    const nextForm = {
       ...emptyBudgetForm,
       participantIds: approvedMembers.map((member) => member.user_id),
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(null);
     setConflict(false);
     setEditingId(null);
@@ -4176,13 +4331,18 @@ function BudgetPanel({
 
   async function openEditBudget(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
+    if (isOpen && editingId !== item.id) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeBudgetForm(true);
+    }
     let lockedItem = item;
     if (useEditLocks) {
       const lockResult = await acquireEditLock({ record: item, supabase, table: "budget_items", userId: currentUserId });
       if (lockResult.error || lockResult.lockedByAnotherUser) return;
       lockedItem = lockResult.data || item;
     }
-    setFormSeed({
+    const nextForm = {
       category: item.category || "其他",
       subcategory: item.subcategory || "",
       title: item.title || "",
@@ -4194,7 +4354,10 @@ function BudgetPanel({
       note: item.note || "",
       participantIds: participantsByBudget[item.id] || approvedMembers.map((member) => member.user_id),
       linkedItemIds: linksByBudget[item.id] || [],
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
     setConflict(false);
     setEditingId(item.id);
@@ -4209,12 +4372,11 @@ function BudgetPanel({
     });
   }
 
-  async function submit(event) {
-    event.preventDefault();
+  async function saveCurrentBudget() {
     const result = await onSave(form, editingId, { baseUpdatedAt });
     if (!result?.ok) {
       if (result?.conflict) setConflict(true);
-      return;
+      return false;
     }
     if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyBudgetForm);
@@ -4223,6 +4385,12 @@ function BudgetPanel({
     setConflict(false);
     setIsOpen(false);
     setEditingId(null);
+    return true;
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await saveCurrentBudget();
   }
 
   async function closeBudgetForm(force = false) {
@@ -4499,7 +4667,7 @@ function ActualExpensePanel({
   const [formSeed, setFormSeed] = useState(emptyActualForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [conflict, setConflict] = useState(false);
-  const { draftKey, form, hasUnsavedChanges, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
     editingId,
@@ -4518,6 +4686,17 @@ function ActualExpensePanel({
     return next;
   }, [actualParticipants]);
   const total = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
+  const activeEditorGuard = useMemo(
+    () => ({
+      discard: () => closeExpenseForm(true),
+      isActive: isOpen,
+      isDirty: hasUnsavedChanges,
+      save: () => saveCurrentExpense(),
+    }),
+    [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
+  );
+
+  useActiveEditorGuard(`actual:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
 
   useEffect(() => {
     if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
@@ -4536,12 +4715,20 @@ function ActualExpensePanel({
     setIsOpen(true);
   }, [activeTrip?.id, actualExpenses, currentUserId, isOpen, restoreDrafts]);
 
-  function openNewExpense() {
-    setFormSeed({
+  async function openNewExpense() {
+    if (isOpen) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeExpenseForm(true);
+    }
+    const nextForm = {
       ...emptyActualForm,
       paid_at: dateTimeLocalInput(),
       participantIds: approvedMembers.map((member) => member.user_id),
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(null);
     setConflict(false);
     setEditingId(null);
@@ -4550,6 +4737,11 @@ function ActualExpensePanel({
 
   async function openEditExpense(expense) {
     if (useEditLocks && isLockedByAnotherUser(expense, currentUserId)) return;
+    if (isOpen && editingId !== expense.id) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeExpenseForm(true);
+    }
     let lockedExpense = expense;
     if (useEditLocks) {
       const lockResult = await acquireEditLock({ record: expense, supabase, table: "actual_expenses", userId: currentUserId });
@@ -4557,7 +4749,7 @@ function ActualExpensePanel({
       lockedExpense = lockResult.data || expense;
     }
     const paidAt = expense.paid_at ? dateTimeLocalInput(new Date(expense.paid_at)) : dateTimeLocalInput();
-    setFormSeed({
+    const nextForm = {
       budget_item_id: expense.budget_item_id || "",
       title: expense.title || "",
       amount: expense.amount || 0,
@@ -4567,7 +4759,10 @@ function ActualExpensePanel({
       paid_at: paidAt,
       note: expense.note || "",
       participantIds: participantsByExpense[expense.id] || approvedMembers.map((member) => member.user_id),
-    });
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
     setBaseUpdatedAt(lockedExpense.updated_at || expense.updated_at || null);
     setConflict(false);
     setEditingId(expense.id);
@@ -4600,12 +4795,11 @@ function ActualExpensePanel({
     });
   }
 
-  async function submit(event) {
-    event.preventDefault();
+  async function saveCurrentExpense() {
     const result = await onSave(form, editingId, { baseUpdatedAt });
     if (!result?.ok) {
       if (result?.conflict) setConflict(true);
-      return;
+      return false;
     }
     if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyActualForm);
@@ -4614,6 +4808,12 @@ function ActualExpensePanel({
     setConflict(false);
     setIsOpen(false);
     setEditingId(null);
+    return true;
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await saveCurrentExpense();
   }
 
   async function closeExpenseForm(force = false) {
@@ -5831,6 +6031,27 @@ function LuggagePanel({
   const approvedMembers = members.filter((member) => member.status === "approved");
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
+  const personalEditorGuard = useMemo(
+    () => ({
+      discard: () => discardPersonalEdit(),
+      isActive: true,
+      isDirty: personalDraft.hasUnsavedChanges,
+      save: () => saveCurrentPersonal(),
+    }),
+    [personalForm, personalDraft.hasUnsavedChanges, editingPersonalId, personalUpdatedAt],
+  );
+  const sharedEditorGuard = useMemo(
+    () => ({
+      discard: () => discardSharedEdit(),
+      isActive: true,
+      isDirty: sharedDraft.hasUnsavedChanges,
+      save: () => saveCurrentShared(),
+    }),
+    [sharedForm, sharedDraft.hasUnsavedChanges, editingSharedId, sharedUpdatedAt],
+  );
+
+  useActiveEditorGuard(`luggage-personal:${activeTrip?.id || "no-trip"}`, personalEditorGuard);
+  useActiveEditorGuard(`luggage-shared:${activeTrip?.id || "no-trip"}`, sharedEditorGuard);
 
   useEffect(() => {
     if (!activeTrip?.id || !currentUserId || editingPersonalId) return;
@@ -5862,57 +6083,80 @@ function LuggagePanel({
     setEditingSharedId(latest.entityId === "new" ? null : latest.entityId);
   }, [activeTrip?.id, currentUserId, editingSharedId, sharedLuggageItems]);
 
-  async function submitPersonal(event) {
-    event.preventDefault();
-    if (!personalForm.title.trim()) return;
+  async function saveCurrentPersonal() {
+    if (!personalForm.title.trim()) return false;
     const result = await onSavePersonal(personalForm, editingPersonalId, { baseUpdatedAt: personalUpdatedAt });
-    if (!result?.ok) return;
+    if (!result?.ok) return false;
     clearDraftsForEntity({ entityType: "luggage_item", tripId: activeTrip?.id, userId: currentUserId });
     personalDraft.resetDraft(emptyLuggageForm);
     setPersonalSeed(emptyLuggageForm);
     setPersonalUpdatedAt(null);
     setEditingPersonalId(null);
+    return true;
   }
 
-  async function submitShared(event) {
+  async function submitPersonal(event) {
     event.preventDefault();
+    await saveCurrentPersonal();
+  }
+
+  async function saveCurrentShared() {
     const result = await onSaveShared(sharedForm, editingSharedId, { baseUpdatedAt: sharedUpdatedAt });
-    if (!result?.ok) return;
+    if (!result?.ok) return false;
     clearDraft(sharedDraft.draftKey);
     sharedDraft.resetDraft(emptySharedLuggageForm);
     setSharedSeed(emptySharedLuggageForm);
     setSharedUpdatedAt(null);
     setEditingSharedId(null);
+    return true;
+  }
+
+  async function submitShared(event) {
+    event.preventDefault();
+    await saveCurrentShared();
   }
 
   async function editPersonal(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
-    if (editingPersonalId && editingPersonalId !== item.id) {
-      await releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
+    if (editingPersonalId !== item.id && personalDraft.hasUnsavedChanges) {
+      const canContinue = await requestActiveEditorGuardResolution();
+      if (!canContinue) return;
+    } else if (editingPersonalId && editingPersonalId !== item.id) {
+      await discardPersonalEdit();
     }
     const lockResult = await acquireEditLock({ record: item, supabase, table: "luggage_items", userId: currentUserId });
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const nextForm = { title: item.title || "", category: item.category || "" };
+    personalDraft.flushDraft();
     setPersonalSeed(nextForm);
     personalDraft.replaceForm(nextForm, { dirty: false });
     setPersonalUpdatedAt(lockResult.data?.updated_at || item.updated_at || null);
     setEditingPersonalId(item.id);
   }
 
-  async function cancelPersonalEdit() {
+  async function discardPersonalEdit() {
     if (editingPersonalId) {
       await releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
     }
+    clearDraft(personalDraft.draftKey);
     personalDraft.resetDraft(emptyLuggageForm);
     setPersonalSeed(emptyLuggageForm);
     setPersonalUpdatedAt(null);
     setEditingPersonalId(null);
+    return true;
+  }
+
+  async function cancelPersonalEdit() {
+    await discardPersonalEdit();
   }
 
   async function editShared(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
-    if (editingSharedId && editingSharedId !== item.id) {
-      await releaseEditLock({ recordId: editingSharedId, supabase, table: "shared_luggage_items", userId: currentUserId });
+    if (editingSharedId !== item.id && sharedDraft.hasUnsavedChanges) {
+      const canContinue = await requestActiveEditorGuardResolution();
+      if (!canContinue) return;
+    } else if (editingSharedId && editingSharedId !== item.id) {
+      await discardSharedEdit();
     }
     const lockResult = await acquireEditLock({ record: item, supabase, table: "shared_luggage_items", userId: currentUserId });
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
@@ -5921,10 +6165,23 @@ function LuggagePanel({
       category: item.category || "",
       assigned_to: item.assigned_to || "",
     };
+    sharedDraft.flushDraft();
     setSharedSeed(nextForm);
     sharedDraft.replaceForm(nextForm, { dirty: false });
     setSharedUpdatedAt(lockResult.data?.updated_at || item.updated_at || null);
     setEditingSharedId(item.id);
+  }
+
+  async function discardSharedEdit() {
+    if (editingSharedId) {
+      await releaseEditLock({ recordId: editingSharedId, supabase, table: "shared_luggage_items", userId: currentUserId });
+    }
+    clearDraft(sharedDraft.draftKey);
+    sharedDraft.resetDraft(emptySharedLuggageForm);
+    setSharedSeed(emptySharedLuggageForm);
+    setSharedUpdatedAt(null);
+    setEditingSharedId(null);
+    return true;
   }
 
   return (

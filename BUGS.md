@@ -13,16 +13,41 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-018 | Active Editor Guard
+
+Priority: P0
+Status: Fixed
+
+Description:
+Editing state could be interrupted by opening another record or switching trips, allowing stale form state or drafts to appear in the wrong item or trip.
+
+Expected:
+Switching to another record or trip while an editor has unsaved changes must ask whether to save or discard. Page section changes keep draft behavior without forcing a save. Reload and tab close use the browser native leave prompt instead of treating draft restore as the formal flow.
+
+Fix note:
+Added a shared active editor guard for Timeline, Budget, Actual Expense, and Luggage personal/shared forms. Guarded transitions now save or discard the active editor before opening another record or switching trips, release edit locks on discard, and replace target form state instead of reusing stale state.
+
+Verification:
+`npm.cmd run build` passes.
+
+---
+
 ## BUG-017 | Timeline edit state contamination
 
 Priority: P0
-Status: Confirmed
+Status: Fixed / user verified
 
 Description:
 Switching directly from editing one Timeline card to another can keep stale form state from the previous card.
 
 Expected:
 When opening edit for another Timeline item, `editingId`, form state, draft key, and `baseUpdatedAt` must all switch to the newly selected item. Unsaved content from the previous item must not be submitted into the newly selected item.
+
+Fix note:
+`ItineraryTimeline` now flushes the current draft before switching edit targets, replaces the form state with the newly selected item data, and keeps the submit payload tied to the current form fields. Switching from A to B no longer carries A's stale form state into B.
+
+Verification:
+User verified that BUG-017 is fixed.
 
 ---
 
