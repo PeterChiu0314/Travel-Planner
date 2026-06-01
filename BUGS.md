@@ -13,6 +13,25 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-022 | Only one active editor allowed per trip
+
+Priority: P1
+Status: Implemented / Needs Manual Verification
+
+Description:
+Multiple page editors could remain active inside the same trip after switching sections, making later trip switches, reload restore, draft restore, and save guard behavior ambiguous.
+
+Expected:
+Only one active editor context should be allowed per user and trip. Switching pages may keep the existing editor/draft without prompting, but opening another editor in Timeline, Budget, Actual Expense, Accommodation, Todo, Guide, or Luggage must first resolve the existing active editor with Save or Discard.
+
+Fix note:
+Scoped editor guards now support same-trip handoff before opening another editor. Section panels stay mounted while hidden so active editor guards remain registered across page switches, and inactive section draft restore is gated to avoid restoring multiple editors at once.
+
+Verification:
+`npm.cmd run build` and `git diff --check` required. Manual cross-page editor handoff verification is still required.
+
+---
+
 ## BUG-021 | Reload loses active trip/page context
 
 Priority: P1

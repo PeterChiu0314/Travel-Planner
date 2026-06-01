@@ -139,8 +139,23 @@ function registerActiveEditorGuard(id, guard) {
   };
 }
 
-function getDirtyActiveEditorGuards() {
-  return [...activeEditorGuards.values()].filter((guard) => guard.isDirty);
+function activeEditorGuardTripId(id) {
+  const separatorIndex = id.lastIndexOf(":");
+  return separatorIndex >= 0 ? id.slice(separatorIndex + 1) : null;
+}
+
+function getActiveEditorGuardEntries({ excludeId, tripId } = {}) {
+  return [...activeEditorGuards.entries()].filter(([id]) => {
+    if (excludeId && id === excludeId) return false;
+    if (tripId && activeEditorGuardTripId(id) !== tripId) return false;
+    return true;
+  });
+}
+
+function getDirtyActiveEditorGuards(options) {
+  return getActiveEditorGuardEntries(options)
+    .map(([, guard]) => guard)
+    .filter((guard) => guard.isDirty);
 }
 
 function showActiveEditorPrompt() {
@@ -151,13 +166,29 @@ function showActiveEditorPrompt() {
   });
 }
 
-async function requestActiveEditorGuardResolution() {
-  const dirtyGuards = getDirtyActiveEditorGuards();
+async function requestActiveEditorGuardResolution(options) {
+  const dirtyGuards = getDirtyActiveEditorGuards(options);
   if (!dirtyGuards.length) return true;
   const choice = await showActiveEditorPrompt();
   if (!choice) return false;
   for (const guard of dirtyGuards) {
     const ok = choice === "save" ? await guard.save() : await guard.discard();
+    if (ok === false) return false;
+  }
+  return true;
+}
+
+async function requestActiveEditorHandoff(options) {
+  const activeEntries = getActiveEditorGuardEntries(options);
+  if (!activeEntries.length) return true;
+  const dirtyEntries = activeEntries.filter(([, guard]) => guard.isDirty);
+  if (dirtyEntries.length) {
+    const canContinue = await requestActiveEditorGuardResolution(options);
+    if (!canContinue) return false;
+  }
+  const cleanEntries = getActiveEditorGuardEntries(options).filter(([, guard]) => !guard.isDirty);
+  for (const [, guard] of cleanEntries) {
+    const ok = await guard.discard();
     if (ok === false) return false;
   }
   return true;
@@ -2716,6 +2747,14 @@ function DemoLuggageView({
     resetShared();
   }
 
+  function updatePersonalForm(nextForm) {
+    setPersonalForm(nextForm);
+  }
+
+  function updateSharedForm(nextForm) {
+    setSharedForm(nextForm);
+  }
+
   return (
     <section className="panel luggage-panel demo-panel">
       <div className="panel-heading">
@@ -2747,12 +2786,12 @@ function DemoLuggageView({
             <input
               placeholder="新增個人行李"
               value={personalForm.title}
-              onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
+              onChange={(event) => void updatePersonalForm({ ...personalForm, title: event.target.value })}
             />
             <input
               placeholder="分類"
               value={personalForm.category}
-              onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
+              onChange={(event) => void updatePersonalForm({ ...personalForm, category: event.target.value })}
             />
             <button className="icon-button small" disabled={!personalForm.title.trim()} type="submit">
               {editingPersonalId ? "S" : "+"}
@@ -3404,7 +3443,7 @@ function TripWorkspace(props) {
         </div>
       )}
 
-      {isBudgetMode ? (
+      <div className={isBudgetMode ? "" : "hidden-section"}>
         <BudgetPanel
           activeTrip={activeTrip}
           budgetItems={budgetItems}
@@ -3425,10 +3464,11 @@ function TripWorkspace(props) {
           onSaveActual={onSaveActualExpense}
           onSave={onSaveBudget}
           onUploadAttachment={onUploadAttachment}
+          restoreDrafts={isBudgetMode}
         />
-      ) : null}
+      </div>
 
-      {isAccommodationMode ? (
+      <div className={isAccommodationMode ? "" : "hidden-section"}>
         <AccommodationPanel
           activeTrip={activeTrip}
           accommodations={accommodations}
@@ -3442,10 +3482,11 @@ function TripWorkspace(props) {
           onOpenAttachment={onOpenAttachment}
           onSave={onSaveAccommodation}
           onUploadAttachment={onUploadAttachment}
+          restoreDrafts={isAccommodationMode}
         />
-      ) : null}
+      </div>
 
-      {isTodoMode ? (
+      <div className={isTodoMode ? "" : "hidden-section"}>
         <TodoGuidePanel
           activeTrip={activeTrip}
           canEdit={canEdit}
@@ -3458,10 +3499,11 @@ function TripWorkspace(props) {
           onSaveGuide={onSaveGuide}
           onSaveTodo={onSaveTodo}
           onToggleTodo={onToggleTodo}
+          restoreDrafts={isTodoMode}
         />
-      ) : null}
+      </div>
 
-      {isLuggageMode ? (
+      <div className={isLuggageMode ? "" : "hidden-section"}>
         <LuggagePanel
           activeTrip={activeTrip}
           activeTab={luggageTab}
@@ -3470,6 +3512,7 @@ function TripWorkspace(props) {
           isOwner={isOwner}
           luggageItems={luggageItems}
           members={members}
+          restoreDrafts={isLuggageMode}
           sharedLuggageItems={sharedLuggageItems}
           onDeletePersonal={onDeleteLuggageItem}
           onDeleteShared={onDeleteSharedLuggageItem}
@@ -3479,16 +3522,16 @@ function TripWorkspace(props) {
           onTogglePersonal={onToggleLuggageItem}
           onUpdateShared={onUpdateSharedLuggageItem}
         />
-      ) : null}
+      </div>
 
-      {isSettlementMode ? (
+      <div className={isSettlementMode ? "" : "hidden-section"}>
         <SettlementPanel
           actualExpenses={actualExpenses}
           actualParticipants={actualParticipants}
           budgetItems={budgetItems}
           members={members}
         />
-      ) : null}
+      </div>
 
       <div
         className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}${
@@ -3529,6 +3572,7 @@ function TripWorkspace(props) {
                 onReorderItem={onReorderItem}
                 onSaveAlternative={onSaveAlternative}
                 onSaveItem={onSaveItem}
+                restoreDrafts={activeSection === "timeline"}
               />
               {isRouteCollapsed ? (
                 <MultiDayTimelineColumns
@@ -3711,6 +3755,7 @@ function ItineraryTimeline({
     userId: currentUserId,
   });
   const memberById = new Map((members || []).map((member) => [member.user_id, member]));
+  const activeEditorGuardId = `timeline:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
       discard: () => closeEditor(true),
@@ -3721,7 +3766,7 @@ function ItineraryTimeline({
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(`timeline:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -3767,6 +3812,11 @@ function ItineraryTimeline({
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
   async function openNewItem() {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -3789,6 +3839,11 @@ function ItineraryTimeline({
 
   async function openEditItem(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -4433,6 +4488,7 @@ function BudgetPanel({
     });
     return next;
   }, [budgetItems]);
+  const activeEditorGuardId = `budget:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
       discard: () => closeBudgetForm(true),
@@ -4443,7 +4499,7 @@ function BudgetPanel({
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(`budget:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -4480,6 +4536,11 @@ function BudgetPanel({
   }, [activeTrip?.id, budgetItems, currentUserId, isOpen, restoreDrafts]);
 
   async function openNewBudget() {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -4502,6 +4563,11 @@ function BudgetPanel({
 
   async function openEditBudget(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -4864,6 +4930,7 @@ function ActualExpensePanel({
     return next;
   }, [actualParticipants]);
   const total = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
+  const activeEditorGuardId = `actual:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
       discard: () => closeExpenseForm(true),
@@ -4874,7 +4941,7 @@ function ActualExpensePanel({
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(`actual:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -4909,6 +4976,11 @@ function ActualExpensePanel({
   }, [activeTrip?.id, actualExpenses, currentUserId, isOpen, restoreDrafts]);
 
   async function openNewExpense() {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -4931,6 +5003,11 @@ function ActualExpensePanel({
 
   async function openEditExpense(expense) {
     if (useEditLocks && isLockedByAnotherUser(expense, currentUserId)) return;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen && editingId !== expense.id) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -5442,6 +5519,7 @@ function AccommodationPanel({
   onOpenAttachment,
   onSave,
   onUploadAttachment,
+  restoreDrafts = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -5462,6 +5540,7 @@ function AccommodationPanel({
     userId: currentUserId,
   });
   const selected = accommodations.find((item) => item.id === selectedId) || accommodations[0] || null;
+  const activeEditorGuardId = `accommodation:${activeTrip?.id || trip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
       discard: () => closeAccommodationForm(true),
@@ -5472,7 +5551,7 @@ function AccommodationPanel({
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(`accommodation:${activeTrip?.id || trip?.id || "no-trip"}`, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
 
   useEffect(() => {
     const currentTripId = activeTrip?.id || trip?.id || null;
@@ -5491,7 +5570,7 @@ function AccommodationPanel({
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, trip?.id]);
 
   useEffect(() => {
-    if (isOpen || !(activeTrip?.id || trip?.id) || !currentUserId) return;
+    if (!restoreDrafts || isOpen || !(activeTrip?.id || trip?.id) || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "accommodation",
       tripId: activeTrip?.id || trip?.id,
@@ -5507,9 +5586,14 @@ function AccommodationPanel({
     setEditorTripId(activeTrip?.id || trip?.id || null);
     setRestoredDraftKey(latest.key);
     setIsOpen(true);
-  }, [accommodations, activeTrip?.id, currentUserId, isOpen, trip?.id]);
+  }, [accommodations, activeTrip?.id, currentUserId, isOpen, restoreDrafts, trip?.id]);
 
   async function openNewAccommodation() {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id || trip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -5533,6 +5617,11 @@ function AccommodationPanel({
 
   async function openEditAccommodation(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id || trip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -5838,6 +5927,7 @@ function TodoGuidePanel({
   onSaveGuide,
   onSaveTodo,
   onToggleTodo,
+  restoreDrafts = true,
 }) {
   const [activeTab, setActiveTab] = useState("todo");
   const approvedMembers = members.filter((member) => member.status === "approved");
@@ -5869,17 +5959,37 @@ function TodoGuidePanel({
             onDelete={onDeleteTodo}
             onSave={onSaveTodo}
             onToggle={onToggleTodo}
+            restoreDrafts={restoreDrafts}
           />
         </div>
         <div className={`todo-guide-column${activeTab === "guide" ? " active" : ""}`}>
-          <GuidePanel activeTrip={activeTrip} canEdit={canEdit} currentUserId={currentUserId} guideItems={guideItems} onDelete={onDeleteGuide} onSave={onSaveGuide} />
+          <GuidePanel
+            activeTrip={activeTrip}
+            canEdit={canEdit}
+            currentUserId={currentUserId}
+            guideItems={guideItems}
+            onDelete={onDeleteGuide}
+            onSave={onSaveGuide}
+            restoreDrafts={restoreDrafts}
+          />
         </div>
       </div>
     </section>
   );
 }
 
-function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, todoItems, onDelete, onSave, onToggle }) {
+function TodoPanel({
+  activeTrip,
+  canEdit,
+  currentUserId,
+  guideItems,
+  members,
+  onDelete,
+  onSave,
+  onToggle,
+  restoreDrafts = true,
+  todoItems,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formSeed, setFormSeed] = useState(emptyTodoForm);
@@ -5900,6 +6010,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
   const memberById = new Map(members.map((member) => [member.user_id, member]));
   const guideById = new Map(guideItems.map((guide) => [guide.id, guide]));
   const pendingCount = todoItems.filter((item) => !item.completed).length;
+  const activeEditorGuardId = `todo:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
       discard: () => closeTodoForm(true),
@@ -5910,7 +6021,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(`todo:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -5928,7 +6039,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm]);
 
   useEffect(() => {
-    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "todo_item",
       tripId: activeTrip.id,
@@ -5944,9 +6055,14 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
     setEditorTripId(activeTrip.id);
     setRestoredDraftKey(latest.key);
     setIsOpen(true);
-  }, [activeTrip?.id, currentUserId, isOpen, todoItems]);
+  }, [activeTrip?.id, currentUserId, isOpen, restoreDrafts, todoItems]);
 
   async function openNewTodo() {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -5965,6 +6081,11 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
 
   async function openEditTodo(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -6141,7 +6262,7 @@ function TodoPanel({ activeTrip, canEdit, currentUserId, guideItems, members, to
   );
 }
 
-function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, onSave }) {
+function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, onSave, restoreDrafts = true }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formSeed, setFormSeed] = useState(emptyGuideForm);
@@ -6157,6 +6278,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     tripId: activeTrip?.id,
     userId: currentUserId,
   });
+  const activeEditorGuardId = `guide:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
       discard: () => closeGuideForm(true),
@@ -6167,7 +6289,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(`guide:${activeTrip?.id || "no-trip"}`, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -6184,7 +6306,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm]);
 
   useEffect(() => {
-    if (isOpen || !activeTrip?.id || !currentUserId) return;
+    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "guide_item",
       tripId: activeTrip.id,
@@ -6199,9 +6321,14 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
     setIsOpen(true);
-  }, [activeTrip?.id, currentUserId, guideItems, isOpen]);
+  }, [activeTrip?.id, currentUserId, guideItems, isOpen, restoreDrafts]);
 
   async function openNewGuide() {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -6219,6 +6346,11 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
 
   async function openEditGuide(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
       const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
       if (!canContinue) return;
@@ -6401,10 +6533,12 @@ function LuggagePanel({
   const approvedMembers = members.filter((member) => member.status === "approved");
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
+  const personalEditorGuardId = `luggage-personal:${activeTrip?.id || "no-trip"}`;
+  const sharedEditorGuardId = `luggage-shared:${activeTrip?.id || "no-trip"}`;
   const personalEditorGuard = useMemo(
     () => ({
       discard: () => discardPersonalEdit(),
-      isActive: true,
+      isActive: Boolean(editingPersonalId || personalDraft.hasUnsavedChanges),
       isDirty: personalDraft.hasUnsavedChanges,
       save: () => saveCurrentPersonal(),
     }),
@@ -6413,15 +6547,15 @@ function LuggagePanel({
   const sharedEditorGuard = useMemo(
     () => ({
       discard: () => discardSharedEdit(),
-      isActive: true,
+      isActive: Boolean(editingSharedId || sharedDraft.hasUnsavedChanges),
       isDirty: sharedDraft.hasUnsavedChanges,
       save: () => saveCurrentShared(),
     }),
     [sharedForm, sharedDraft.hasUnsavedChanges, editingSharedId, sharedUpdatedAt],
   );
 
-  useActiveEditorGuard(`luggage-personal:${activeTrip?.id || "no-trip"}`, personalEditorGuard);
-  useActiveEditorGuard(`luggage-shared:${activeTrip?.id || "no-trip"}`, sharedEditorGuard);
+  useActiveEditorGuard(personalEditorGuardId, personalEditorGuard);
+  useActiveEditorGuard(sharedEditorGuardId, sharedEditorGuard);
 
   useEffect(() => {
     const previousTripId = previousTripIdRef.current;
@@ -6445,7 +6579,7 @@ function LuggagePanel({
   }, [activeTrip?.id, currentUserId, editingPersonalId, editingSharedId, personalDraft, sharedDraft]);
 
   useEffect(() => {
-    if (!activeTrip?.id || !currentUserId || editingPersonalId) return;
+    if (!restoreDrafts || !activeTrip?.id || !currentUserId || editingPersonalId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "luggage_item",
       tripId: activeTrip.id,
@@ -6457,10 +6591,10 @@ function LuggagePanel({
     setPersonalSeed(latest.draft.form);
     setPersonalUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
     setEditingPersonalId(latest.entityId === "new" ? null : latest.entityId);
-  }, [activeTrip?.id, currentUserId, editingPersonalId, luggageItems]);
+  }, [activeTrip?.id, currentUserId, editingPersonalId, luggageItems, restoreDrafts]);
 
   useEffect(() => {
-    if (!activeTrip?.id || !currentUserId || editingSharedId) return;
+    if (!restoreDrafts || !activeTrip?.id || !currentUserId || editingSharedId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "shared_luggage_item",
       tripId: activeTrip.id,
@@ -6472,10 +6606,15 @@ function LuggagePanel({
     setSharedSeed(latest.draft.form);
     setSharedUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
     setEditingSharedId(latest.entityId === "new" ? null : latest.entityId);
-  }, [activeTrip?.id, currentUserId, editingSharedId, sharedLuggageItems]);
+  }, [activeTrip?.id, currentUserId, editingSharedId, restoreDrafts, sharedLuggageItems]);
 
   async function saveCurrentPersonal() {
     if (!personalForm.title.trim()) return false;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: personalEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return false;
     const result = await onSavePersonal(personalForm, editingPersonalId, { baseUpdatedAt: personalUpdatedAt, tripId: activeTrip?.id });
     if (!result?.ok) return false;
     clearDraft(personalDraft.draftKey);
@@ -6492,6 +6631,11 @@ function LuggagePanel({
   }
 
   async function saveCurrentShared() {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: sharedEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return false;
     const result = await onSaveShared(sharedForm, editingSharedId, { baseUpdatedAt: sharedUpdatedAt, tripId: activeTrip?.id });
     if (!result?.ok) return false;
     clearDraft(sharedDraft.draftKey);
@@ -6509,6 +6653,11 @@ function LuggagePanel({
 
   async function editPersonal(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: personalEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (editingPersonalId !== item.id && personalDraft.hasUnsavedChanges) {
       const canContinue = await requestActiveEditorGuardResolution();
       if (!canContinue) return;
@@ -6543,6 +6692,11 @@ function LuggagePanel({
 
   async function editShared(item) {
     if (isLockedByAnotherUser(item, currentUserId)) return;
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: sharedEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
     if (editingSharedId !== item.id && sharedDraft.hasUnsavedChanges) {
       const canContinue = await requestActiveEditorGuardResolution();
       if (!canContinue) return;
@@ -6573,6 +6727,22 @@ function LuggagePanel({
     setSharedUpdatedAt(null);
     setEditingSharedId(null);
     return true;
+  }
+
+  async function updatePersonalForm(nextForm) {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: personalEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (canOpenEditor) setPersonalForm(nextForm);
+  }
+
+  async function updateSharedForm(nextForm) {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: sharedEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (canOpenEditor) setSharedForm(nextForm);
   }
 
   return (
@@ -6701,7 +6871,7 @@ function LuggagePanel({
             <select
               disabled={!canEdit}
               value={sharedForm.assigned_to}
-              onChange={(event) => setSharedForm({ ...sharedForm, assigned_to: event.target.value })}
+              onChange={(event) => void updateSharedForm({ ...sharedForm, assigned_to: event.target.value })}
             >
               <option value="">未指派</option>
               {approvedMembers.map((member) => (
