@@ -6,192 +6,85 @@ This is the current working context for future AI agents. Keep this file short a
 
 The project is in MVP stabilization.
 
-Current focus:
+Current principles:
 
-* Stabilize existing collaboration flows.
+* Preserve existing collaboration flows.
 * Polish UX where users can lose work or get stuck.
 * Keep Demo pages consistent with the formal app UI.
 * Improve travel-first usability and planning flow.
-
-This is not a feature-expansion sprint. Prefer small, safe fixes.
+* Prefer small, safe changes over large rewrites.
 
 ---
 
 # Current Active Focus
 
-## Timeline / 行程 Desktop UX Phase 1
+## Timeline Layout & Transportation UX Phase
 
-Current active work is focused on improving the Timeline page desktop experience.
+Current focus:
 
-This phase is intentionally limited in scope:
+* Improve Timeline layout across different screen sizes.
+* Polish desktop, tablet, and narrow-window proportions.
+* Add transportation card between itinerary items.
+* Keep map collapse and Day Board behavior stable.
+* Preserve draft autosave, edit lock, Realtime safety, and Demo parity.
 
-* Desktop only.
-* Avoid large architecture rewrites.
-* Avoid breaking draft/realtime/edit-lock behavior.
-* Avoid touching unrelated systems.
+## Priority Order
 
-Priority order:
-
-1. UX clarity
-2. Editing safety
-3. Stable state flow
-4. Demo parity
-5. Visual polish
-
----
-
-# Current Timeline Phase 1 Tasks
-
-## 1. Terminology Unification
-
-Replace UI wording:
-
-* 「時間軸」→「行程」
-* 「地點」→「目的地」
-
-Apply consistently across:
-
-* Titles
-* Buttons
-* Placeholders
-* Card labels
-* Empty states
-* Demo timeline
+1. Responsive layout rules
+2. Day Board / map ratio polish
+3. Transportation card UX
+4. Timeline card density polish
+5. Demo parity
+6. Regression safety
 
 ---
 
-## 2. Timeline Card Cleanup
+# Recently Completed Timeline Work
 
-If destination/location is empty:
+Phase 1 and Phase 2 are mostly stabilized.
 
-* Do not show:
+Completed:
 
-  * 「未設置地點」
-  * Empty labels
-  * Empty icon rows
-
-Keep cards visually clean.
-
----
-
-## 3. Time Display Simplification
-
-Timeline cards should:
-
-* Hide seconds
-* Display:
-
-  * `09:00`
-  * `14:35`
-
-Do not display:
-
-* `09:00:00`
-
----
-
-## 4. Time Picker Improvement
-
-Timeline time options should:
-
-* Increment every 5 minutes
-
-Example:
-
-* 09:00
-* 09:05
-* 09:10
-
-Future configurability is planned later, but not in this phase.
-
----
-
-## 5. New Timeline Item Default Time
-
-When creating a new itinerary item:
-
-If the current Day already has items:
-
-* Default start time =
-  previous last item end time
-
-Example:
-
-Last item:
-
-* 14:00 ~ 15:30
-
-New item default:
-
-* start_time = 15:30
-
-If the last item has no end time:
-
-* Do not auto-fill
-* Keep blank
-
----
-
-## 6. Timeline Invalid Time Validation
-
-BUG-016 is already fixed.
-
-Do not regress this behavior.
-
-Current correct behavior:
-
-* end_time <= start_time prevents save
-* Validation error is shown
-* Editor stays open
-* Draft is preserved
-* Edit lock is preserved
-
----
-
-## 7. Timeline Page Simplification
-
-Timeline page should focus on itinerary planning only.
-
-Remove from Timeline page:
-
-* Packing checklist section
-* Budget section
-
-Do not leave empty layout gaps.
-
-Budget and luggage functionality should remain in their own dedicated pages.
-
----
-
-## 8. Member Section Relocation
-
-Move member section:
-
-* Into collapsible left sidebar
-* Above logout button
-
-Requirements:
-
-* Compact
-* Does not consume main itinerary space
-* Quick member visibility still available
+* UI wording unified: 「時間軸」→「行程」, 「地點」→「目的地」.
+* Timeline card time display simplified to `HH:mm`.
+* Time options changed to 5-minute increments.
+* New itinerary item defaults start time from previous item end time when available.
+* BUG-016 invalid time validation preserved:
+  * `end_time <= start_time` prevents save.
+  * Error is shown.
+  * Editor stays open.
+  * Draft and lock are preserved.
+* Timeline page no longer shows Budget or Luggage panels.
+* Members panel moved to the sidebar.
+* Desktop 40/60 Timeline layout implemented.
+* Map/route panel collapse implemented.
+* Collapsed map mode shows Day Board columns.
+* Day Board tabs, horizontal navigation, and active Day behavior implemented.
+* Day Board card polish implemented:
+  * Active Day column is wider.
+  * Cards use destination as primary title.
+  * Timeline form no longer exposes a separate title/name field.
+  * Save keeps `title` synced from destination/location for data compatibility.
+* Demo Timeline keeps parity and remains mock/local-state only.
 
 ---
 
 # Current Non-Goals
 
-Do not work on these yet unless explicitly requested:
+Do not work on these unless explicitly requested:
 
-* Mobile Timeline redesign
-* 40/60 layout
-* Map collapse system
-* Inline expanding card editor
-* Route-click auto scroll
+* Supabase schema changes
+* Realtime subscription rewrites
+* Draft autosave key or storage redesign
+* Edit lock flow rewrite
+* Google Maps API integration
+* Inline card editing architecture
 * Alternative flip-card UI
+* Route-click auto scroll
+* Marker/card hover sync
 * Container/view extraction
-* Major state refactor
-* New frameworks
-* Schema redesign
+* Major `src/App.jsx` architecture rewrite
+* New framework, TypeScript, Tailwind, or Next.js migration
 
 ---
 
@@ -205,14 +98,17 @@ Must preserve:
 * Demo/form parity
 * Google OAuth flow
 * Share route behavior
+* Budget, Luggage, Auth, and Share data flows
 * RLS-backed permissions
+* BUG-016 invalid time range validation
 
 Do not:
 
-* Reinitialize active forms during reload
-* Let Realtime overwrite active edits
-* Connect Demo to Supabase/Realtime/localStorage
-* Broadly rewrite `src/App.jsx`
+* Reinitialize active forms during reload/refetch.
+* Let Realtime overwrite active edits.
+* Connect Demo to Supabase, Realtime, Storage, Auth, or localStorage.
+* Broadly rewrite `src/App.jsx`.
+* Change Supabase schema or migrations.
 
 ---
 
@@ -226,14 +122,17 @@ npm run build
 
 Manual regression focus:
 
-* Timeline edit survives tab/app switch
-* Save clears draft correctly
-* Cancel releases lock correctly
-* Realtime update does not overwrite active form
-* Demo timeline still works without login
-* Demo timeline remains mock-state only
-* Timeline validation still blocks invalid time ranges
-* Default new item time behavior works correctly
+* Timeline edit survives tab/app switch.
+* Save clears draft correctly.
+* Cancel releases lock correctly.
+* Realtime update does not overwrite active form.
+* Demo timeline still works without login.
+* Demo timeline remains mock-state only.
+* Timeline validation still blocks invalid time ranges.
+* Default new item time behavior works correctly.
+* Map expanded mode keeps the route/map context stable.
+* Map collapsed mode keeps Day Board columns stable.
+* Day tabs and Day Board horizontal navigation still work.
 
 ---
 
@@ -244,6 +143,7 @@ Prefer stability over new capability.
 Before changing Timeline behavior, check:
 
 * `AGENT.md`
+* `UX_RULES.md`
 * `BUGS.md`
 * `src/lib/draftAutosave.js`
 * `src/lib/editLocks.js`
