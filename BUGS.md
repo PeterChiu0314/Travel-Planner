@@ -16,7 +16,7 @@ This document now separates:
 ## BUG-022 | Only one active editor allowed per trip
 
 Priority: P1
-Status: Implemented / Needs Manual Verification
+Status: Fixed / user verified
 
 Description:
 Multiple page editors could remain active inside the same trip after switching sections, making later trip switches, reload restore, draft restore, and save guard behavior ambiguous.
@@ -28,14 +28,14 @@ Fix note:
 Scoped editor guards now support same-trip handoff before opening another editor. Section panels stay mounted while hidden so active editor guards remain registered across page switches, and inactive section draft restore is gated to avoid restoring multiple editors at once.
 
 Verification:
-`npm.cmd run build` and `git diff --check` required. Manual cross-page editor handoff verification is still required.
+`npm.cmd run build` and `git diff --check` pass. User verified BUG-022 is fixed.
 
 ---
 
 ## BUG-021 | Reload loses active trip/page context
 
 Priority: P1
-Status: Implemented / Needs Manual Verification
+Status: Fixed / user verified
 
 Description:
 Reload/F5 could reopen the app on a different trip, section, Timeline day, or Luggage tab than the user was viewing before refresh.
@@ -47,14 +47,14 @@ Fix note:
 Added local session context restore for active trip, active section, Timeline day, and Luggage tab without changing draft restore, editor guard, conflict handling, Realtime, or Supabase schema.
 
 Verification:
-`npm.cmd run build` and `git diff --check` required. Manual reload verification is still required.
+`npm.cmd run build` and `git diff --check` pass. User verified BUG-021 is fixed.
 
 ---
 
 ## BUG-020 | Restored edit draft conflict after trip switch
 
 Priority: P1
-Status: Confirmed
+Status: Fixed / user verified
 
 Description:
 Restored edit drafts can lose active guard behavior or keep a stale optimistic-lock baseline after reload and trip switching, causing missing save/discard prompts or false conflict messages when saving unchanged server records.
@@ -63,17 +63,17 @@ Expected:
 Reload should prefer the trip that owns the latest unfinished edit draft when available. Restored edit drafts must be treated as active unsaved edits, must prompt before trip switching, and must use the current server `updated_at` as the save baseline unless another user actually changed the record.
 
 Fix note:
-Implementation is in progress for Timeline, Budget, Accommodation, and Todo.
+Restored edit drafts now remain under active editor guard, reuse the current server `updated_at` baseline for existing items, and clear the correct draft after successful save.
 
 Verification:
-Manual verification required after implementation.
+User verified BUG-020 is fixed.
 
 ---
 
 ## BUG-019 | Draft restore cross-trip contamination
 
 Priority: P0
-Status: Implemented / Needs Manual Verification
+Status: Fixed / user verified
 
 Description:
 Draft restore and active editor state could survive a trip switch, allowing a draft from trip A to appear in trip B or be saved into the wrong trip.
@@ -85,14 +85,14 @@ Fix note:
 Draft restore now explicitly validates the draft key user, trip, and entity scope. Timeline, Budget, Actual Expense, Accommodation, Todo, Guide, and Luggage editor state is cleared when the active trip changes without deleting the previous trip draft. Save callbacks now receive trip context and reject mismatches; update mutations also constrain by `trip_id`.
 
 Verification:
-`npm.cmd run build` passes. Manual cross-trip restore verification is still required.
+`npm.cmd run build` passes. User verified BUG-019 is fixed.
 
 ---
 
 ## BUG-018 | Active Editor Guard
 
 Priority: P0
-Status: Fixed
+Status: Fixed / user verified
 
 Description:
 Editing state could be interrupted by opening another record or switching trips, allowing stale form state or drafts to appear in the wrong item or trip.
@@ -104,7 +104,7 @@ Fix note:
 Added a shared active editor guard for Timeline, Budget, Actual Expense, Luggage personal/shared forms, Accommodation, Todo, and Guide. Guarded transitions now save or discard the active editor before opening another record or switching trips, release edit locks on discard, and replace target form state instead of reusing stale state.
 
 Verification:
-Phase 1 was user verified. `npm.cmd run build` passes after Phase 2.
+Phase 1 and Phase 2 were user verified. `npm.cmd run build` passes.
 
 ---
 
