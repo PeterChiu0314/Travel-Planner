@@ -6492,6 +6492,7 @@ function LuggagePanel({
   isOwner,
   luggageItems,
   members,
+  restoreDrafts = true,
   sharedLuggageItems,
   onDeletePersonal,
   onDeleteShared,
