@@ -22,15 +22,15 @@ Current principles:
 
 Current focus:
 
-* Improve Timeline layout across different screen sizes.
-* Polish desktop, tablet, and narrow-window proportions.
+* Focus on conventional desktop screen proportions first.
+* Polish the standard desktop Timeline workspace layout before broader responsive work.
 * Add transportation card between itinerary items.
 * Keep map collapse and Day Board behavior stable.
 * Preserve draft autosave, edit lock, Realtime safety, and Demo parity.
 
 ## Priority Order
 
-1. Responsive layout rules
+1. Standard desktop layout proportions
 2. Day Board / map ratio polish
 3. Transportation card UX
 4. Timeline card density polish
@@ -85,6 +85,7 @@ Do not work on these unless explicitly requested:
 * Container/view extraction
 * Major `src/App.jsx` architecture rewrite
 * New framework, TypeScript, Tailwind, or Next.js migration
+* Tablet, mobile, narrow-window, or device-specific layout optimization for now
 
 ---
 
