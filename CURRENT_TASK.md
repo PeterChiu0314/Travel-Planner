@@ -1,36 +1,36 @@
 # CURRENT_TASK.md
 
-This is the current working context for future AI agents. Keep this file short and update it when priorities change.
+這是給未來 AI agent 使用的目前工作脈絡。請保持簡短，當優先順序改變時更新此檔案。
 
-## Current Stage
+## 目前階段
 
-The project is in MVP stabilization.
+專案目前處於 MVP stabilization。
 
-Current principles:
+目前原則：
 
-* Preserve existing collaboration flows.
-* Polish UX where users can lose work or get stuck.
-* Keep Demo pages consistent with the formal app UI.
-* Improve travel-first usability and planning flow.
-* Prefer small, safe changes over large rewrites.
+* 保護既有多人協作流程。
+* 優化容易讓使用者遺失資料或卡住的 UX。
+* Demo 頁面要與正式 app UI 保持一致。
+* 改善 travel-first 的可用性與規劃流程。
+* 優先做小而安全的修改，避免大型重寫。
 
 ---
 
-# Current Active Focus
+# 目前主要焦點
 
 ## Timeline Layout & Transportation UX Phase
 
-Current focus:
+目前焦點：
 
-* Focus on conventional desktop screen proportions first.
-* Polish the standard desktop Timeline workspace layout before broader responsive work.
-* Add transportation card between itinerary items.
-* Keep map collapse and Day Board behavior stable.
-* Preserve draft autosave, edit lock, Realtime safety, and Demo parity.
+* 先專注常規電腦螢幕比例。
+* 在做更廣泛的 responsive 優化前，先打磨標準桌面版 Timeline workspace 版面。
+* 在行程項目之間加入 transportation card。
+* 保持地圖收合與 Day Board 行為穩定。
+* 保護 draft autosave、edit lock、Realtime safety 與 Demo parity。
 
-## Priority Order
+## 優先順序
 
-1. Standard desktop layout proportions
+1. 標準桌面版面比例
 2. Day Board / map ratio polish
 3. Transportation card UX
 4. Timeline card density polish
@@ -39,43 +39,43 @@ Current focus:
 
 ---
 
-# Recently Completed Timeline Work
+# 最近已完成的 Timeline 工作
 
-Phase 1 and Phase 2 are mostly stabilized.
+Phase 1 與 Phase 2 已大致穩定。
 
-Completed:
+已完成：
 
-* UI wording unified: 「時間軸」→「行程」, 「地點」→「目的地」.
-* Timeline card time display simplified to `HH:mm`.
-* Time options changed to 5-minute increments.
-* New itinerary item defaults start time from previous item end time when available.
-* BUG-016 invalid time validation preserved:
-  * `end_time <= start_time` prevents save.
-  * Error is shown.
-  * Editor stays open.
-  * Draft and lock are preserved.
-* Timeline page no longer shows Budget or Luggage panels.
-* Members panel moved to the sidebar.
-* Desktop 40/60 Timeline layout implemented.
-* Map/route panel collapse implemented.
-* Collapsed map mode shows Day Board columns.
-* Day Board tabs, horizontal navigation, and active Day behavior implemented.
-* Day Board card polish implemented:
-  * Active Day column is wider.
-  * Cards use destination as primary title.
-  * Timeline form no longer exposes a separate title/name field.
-  * Save keeps `title` synced from destination/location for data compatibility.
-* Demo Timeline keeps parity and remains mock/local-state only.
+* UI 文案統一：「時間軸」→「行程」，「地點」→「目的地」。
+* Timeline card 時間顯示簡化為 `HH:mm`。
+* 時間選項改為每 5 分鐘一跳。
+* 新增行程時，若上一筆有結束時間，會自動帶入開始時間。
+* BUG-016 invalid time validation 已保留：
+  * `end_time <= start_time` 會禁止儲存。
+  * 顯示錯誤提示。
+  * Editor 不會關閉。
+  * Draft 與 lock 會保留。
+* Timeline 頁不再顯示 Budget 或 Luggage panels。
+* Members panel 已移到 sidebar。
+* Desktop 40/60 Timeline layout 已完成。
+* Map / route panel 收合已完成。
+* 地圖收合模式已顯示 Day Board columns。
+* Day Board tabs、水平導覽與 active Day 行為已完成。
+* Day Board card polish 已完成：
+  * Active Day column 較寬。
+  * Cards 使用目的地作為主要標題。
+  * Timeline form 不再顯示獨立的 title/name 欄位。
+  * 儲存時仍會讓 `title` 與 destination/location 同步，以維持資料相容性。
+* Demo Timeline 保持 parity，且仍是 mock/local-state only。
 
 ---
 
-# Current Non-Goals
+# 目前非目標
 
-Do not work on these unless explicitly requested:
+除非使用者明確要求，否則不要做：
 
 * Supabase schema changes
 * Realtime subscription rewrites
-* Draft autosave key or storage redesign
+* Draft autosave key 或 storage redesign
 * Edit lock flow rewrite
 * Google Maps API integration
 * Inline card editing architecture
@@ -83,69 +83,69 @@ Do not work on these unless explicitly requested:
 * Route-click auto scroll
 * Marker/card hover sync
 * Container/view extraction
-* Major `src/App.jsx` architecture rewrite
-* New framework, TypeScript, Tailwind, or Next.js migration
-* Tablet, mobile, narrow-window, or device-specific layout optimization for now
+* 大規模 `src/App.jsx` architecture rewrite
+* 新增 framework、TypeScript、Tailwind 或 Next.js migration
+* Tablet、mobile、narrow-window 或 device-specific layout optimization
 
 ---
 
-# Stability Requirements
+# 穩定性要求
 
-Must preserve:
+必須保護：
 
-* Draft autosave behavior
-* Edit lock behavior
+* Draft autosave 行為
+* Edit lock 行為
 * Realtime active edit safety
 * Demo/form parity
 * Google OAuth flow
 * Share route behavior
-* Budget, Luggage, Auth, and Share data flows
+* Budget、Luggage、Auth、Share data flows
 * RLS-backed permissions
 * BUG-016 invalid time range validation
 
-Do not:
+不要：
 
-* Reinitialize active forms during reload/refetch.
-* Let Realtime overwrite active edits.
-* Connect Demo to Supabase, Realtime, Storage, Auth, or localStorage.
-* Broadly rewrite `src/App.jsx`.
-* Change Supabase schema or migrations.
+* 在 reload/refetch 時重新初始化 active forms。
+* 讓 Realtime 覆蓋 active edits。
+* 讓 Demo 連到 Supabase、Realtime、Storage、Auth 或 localStorage。
+* 大幅重寫 `src/App.jsx`。
+* 更動 Supabase schema 或 migrations。
 
 ---
 
-# Current Testing Focus
+# 目前測試重點
 
-Always run:
+每次修改後都要執行：
 
 ```bash
 npm run build
 ```
 
-Manual regression focus:
+Manual regression focus：
 
-* Timeline edit survives tab/app switch.
-* Save clears draft correctly.
-* Cancel releases lock correctly.
-* Realtime update does not overwrite active form.
-* Demo timeline still works without login.
-* Demo timeline remains mock-state only.
-* Timeline validation still blocks invalid time ranges.
-* Default new item time behavior works correctly.
-* Map expanded mode keeps the route/map context stable.
-* Map collapsed mode keeps Day Board columns stable.
-* Day tabs and Day Board horizontal navigation still work.
+* Timeline 編輯在切換瀏覽器 tab / app switch 後仍保留。
+* Save 後正確清除 draft。
+* Cancel 後正確釋放 lock。
+* Realtime update 不會覆蓋 active form。
+* Demo timeline 不需登入仍可使用。
+* Demo timeline 仍維持 mock-state only。
+* Timeline validation 仍會阻擋 invalid time range。
+* 新增行程預設帶入上一筆結束時間的行為仍正常。
+* Map expanded mode 的 route/map context 仍穩定。
+* Map collapsed mode 的 Day Board columns 仍穩定。
+* Day tabs 與 Day Board 水平導覽仍正常。
 
 ---
 
-# If Unsure
+# 如果不確定
 
-Prefer stability over new capability.
+優先選擇穩定性，而不是新功能。
 
-Before changing Timeline behavior, check:
+修改 Timeline 行為前，先檢查：
 
 * `AGENT.md`
 * `UX_RULES.md`
 * `BUGS.md`
 * `src/lib/draftAutosave.js`
 * `src/lib/editLocks.js`
-* Realtime subscription flow in `src/App.jsx`
+* `src/App.jsx` 裡的 Realtime subscription flow
