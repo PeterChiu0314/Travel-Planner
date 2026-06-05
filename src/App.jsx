@@ -40,9 +40,24 @@ const typeColors = {
   note: "#f3b64b",
 };
 
+const transportCategories = [
+  { value: "jr", label: "JR", icon: "🚆" },
+  { value: "train", label: "電車", icon: "🚆" },
+  { value: "bus", label: "公車", icon: "🚌" },
+  { value: "walk", label: "步行", icon: "🚶" },
+  { value: "drive", label: "自駕", icon: "🚗" },
+  { value: "taxi", label: "計程車", icon: "🚗" },
+  { value: "ferry", label: "渡輪", icon: "⛴️" },
+  { value: "flight", label: "飛機", icon: "✈️" },
+  { value: "other", label: "其他", icon: "➡️" },
+];
+
+const defaultTransportCategory = "train";
+
 const defaultPackItems = ["護照", "行動電源", "充電線", "轉接頭", "雨具", "常備藥", "票券"];
 
 const emptyItemForm = {
+  item_type: "visit",
   type: "attraction",
   start_time: "",
   end_time: "",
@@ -54,6 +69,10 @@ const emptyItemForm = {
   note: "",
   description: "",
   transportation_note: "",
+  transport_category: defaultTransportCategory,
+  transport_name: "",
+  transport_duration_minutes: "",
+  transport_note: "",
   cost: 0,
 };
 
@@ -287,6 +306,30 @@ function buildTimeOptions(stepMinutes = 5) {
 
 const timelineTimeOptions = buildTimeOptions(5);
 
+function isTransportationCard(item) {
+  return item?.item_type === "transport";
+}
+
+function transportCategoryMeta(category) {
+  return transportCategories.find((item) => item.value === category) || transportCategories[transportCategories.length - 1];
+}
+
+function formatDurationMinutes(value) {
+  const minutes = Number(value || 0);
+  if (!Number.isFinite(minutes) || minutes <= 0) return "";
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (!hours) return `${remainingMinutes}分鐘`;
+  if (!remainingMinutes) return `${hours}小時`;
+  return `${hours}小時${remainingMinutes}分鐘`;
+}
+
+function transportCardTitle(item) {
+  const name = item?.transport_name || item?.title || transportCategoryMeta(item?.transport_category).label;
+  const duration = formatDurationMinutes(item?.transport_duration_minutes);
+  return duration ? `${name}・${duration}` : name;
+}
+
 function dateTimeLocalInput(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -512,6 +555,7 @@ function createDemoTimelineItems() {
     {
       id: "demo-itinerary-1",
       day_index: 0,
+      item_type: "visit",
       type: "transport",
       start_time: "09:10",
       end_time: "10:25",
@@ -526,8 +570,30 @@ function createDemoTimelineItems() {
       updated_at: "2026-05-20T08:00:00.000Z",
     },
     {
+      id: "demo-transport-1",
+      day_index: 0,
+      item_type: "transport",
+      type: "transport",
+      start_time: "10:25",
+      end_time: null,
+      title: "JR奈良線",
+      location: null,
+      location_name: null,
+      address: null,
+      map_url: "",
+      description: "新宿站轉乘前往下一站，先確認月台。",
+      transportation_note: "新宿站轉乘前往下一站，先確認月台。",
+      transport_category: "jr",
+      transport_name: "JR奈良線",
+      transport_duration_minutes: 25,
+      transport_note: "新宿站轉乘前往下一站，先確認月台。",
+      cost: 0,
+      updated_at: "2026-05-20T08:00:00.000Z",
+    },
+    {
       id: "demo-itinerary-2",
       day_index: 0,
+      item_type: "visit",
       type: "food",
       start_time: "12:30",
       end_time: "13:30",
@@ -544,6 +610,7 @@ function createDemoTimelineItems() {
     {
       id: "demo-itinerary-3",
       day_index: 1,
+      item_type: "visit",
       type: "attraction",
       start_time: "10:00",
       end_time: "12:00",
@@ -636,6 +703,7 @@ function createDemoActualParticipants() {
 
 const demoItineraryBudgetLinks = [
   { id: "demo-link-1", itinerary_item_id: "demo-itinerary-1", budget_item_id: "demo-budget-1" },
+  { id: "demo-link-transport-1", itinerary_item_id: "demo-transport-1", budget_item_id: "demo-budget-1" },
   { id: "demo-link-2", itinerary_item_id: "demo-itinerary-2", budget_item_id: "demo-budget-2" },
 ];
 
@@ -1409,12 +1477,14 @@ export default function App() {
       return result;
     }
 
+    const insertAfterIndex = meta.insertAfterId ? dayItems.findIndex((item) => item.id === meta.insertAfterId) : -1;
+    const sortOrder = insertAfterIndex >= 0 ? insertAfterIndex + 1 : dayItems.length;
     const { error } = await supabase.from("itinerary_items").insert({
       ...normalizeItemPayload(payload),
       trip_id: activeTrip.id,
       day_index: activeDay,
       date: days[activeDay] ? dateToInputValue(days[activeDay]) : null,
-      sort_order: dayItems.length,
+      sort_order: sortOrder,
     });
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
@@ -2210,10 +2280,35 @@ function exportTrip() {
 }
 
 function normalizeItemPayload(payload) {
+  if (payload.item_type === "transport") {
+    const transportName = String(payload.transport_name || payload.title || "").trim();
+    const transportNote = String(payload.transport_note || payload.transportation_note || payload.description || payload.note || "").trim();
+    const durationMinutes = Number(payload.transport_duration_minutes || 0);
+    return {
+      ...payload,
+      item_type: "transport",
+      type: "transport",
+      title: transportName,
+      location: null,
+      location_name: null,
+      note: transportNote || null,
+      description: transportNote || null,
+      transportation_note: transportNote || null,
+      transport_category: payload.transport_category || defaultTransportCategory,
+      transport_name: transportName,
+      transport_duration_minutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? Math.round(durationMinutes) : null,
+      transport_note: transportNote || null,
+      start_time: payload.start_time || null,
+      end_time: null,
+      address: null,
+      map_url: null,
+    };
+  }
   const locationName = payload.location_name || payload.location;
   const description = payload.description || payload.note;
   return {
     ...payload,
+    item_type: payload.item_type || "visit",
     title: locationName || payload.title,
     location: locationName,
     location_name: locationName,
@@ -2224,6 +2319,10 @@ function normalizeItemPayload(payload) {
     address: payload.address || null,
     map_url: payload.map_url || null,
     transportation_note: payload.transportation_note || null,
+    transport_category: null,
+    transport_name: null,
+    transport_duration_minutes: null,
+    transport_note: null,
   };
 }
 
@@ -2292,9 +2391,10 @@ function DemoApp({ initialSection }) {
     if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
 
-  function saveTimelineItem(payload, editingId) {
-    if (!payload.title.trim()) return;
-    const invalidTimeRange = isInvalidTimeRange(payload.start_time, payload.end_time);
+  function saveTimelineItem(payload, editingId, meta = {}) {
+    const nextPayload = normalizeItemPayload(payload);
+    if (!nextPayload.title.trim()) return;
+    const invalidTimeRange = nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time);
     if (invalidTimeRange) return { ok: false };
     if (editingId) {
       setTimelineItems((current) =>
@@ -2302,9 +2402,7 @@ function DemoApp({ initialSection }) {
           item.id === editingId
             ? {
                 ...item,
-                ...payload,
-                location: payload.location_name || payload.location,
-                location_name: payload.location_name || payload.location,
+                ...nextPayload,
                 updated_at: new Date().toISOString(),
               }
             : item,
@@ -2312,18 +2410,22 @@ function DemoApp({ initialSection }) {
       );
       return { ok: true };
     }
-    setTimelineItems((current) => [
-      ...current,
-      {
-        ...emptyItemForm,
-        ...payload,
-        id: demoId("demo-itinerary"),
-        day_index: activeDay,
-        location: payload.location_name || payload.location,
-        location_name: payload.location_name || payload.location,
-        updated_at: new Date().toISOString(),
-      },
-    ]);
+    setTimelineItems((current) => {
+      const currentDayItems = sortScheduleItems(current.filter((item) => item.day_index === activeDay));
+      const insertAfterIndex = meta.insertAfterId ? currentDayItems.findIndex((item) => item.id === meta.insertAfterId) : -1;
+      const sortOrder = insertAfterIndex >= 0 ? insertAfterIndex + 1 : currentDayItems.length;
+      return [
+        ...current,
+        {
+          ...emptyItemForm,
+          ...nextPayload,
+          id: demoId(nextPayload.item_type === "transport" ? "demo-transport" : "demo-itinerary"),
+          day_index: activeDay,
+          sort_order: sortOrder,
+          updated_at: new Date().toISOString(),
+        },
+      ];
+    });
     return { ok: true };
   }
 
@@ -3739,6 +3841,7 @@ function ItineraryTimeline({
   const [formSeed, setFormSeed] = useState(emptyItemForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [editorTripId, setEditorTripId] = useState(null);
+  const [insertionAfterId, setInsertionAfterId] = useState(null);
   const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
   const [timeError, setTimeError] = useState("");
@@ -3780,6 +3883,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
+    setInsertionAfterId(null);
     setRestoredDraftKey(null);
     setIsOpen(false);
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, useEditLocks]);
@@ -3807,6 +3911,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
+    setInsertionAfterId(null);
     setRestoredDraftKey(latest.key);
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
@@ -3833,8 +3938,46 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
+    setInsertionAfterId(null);
     setRestoredDraftKey(null);
     setIsOpen(true);
+  }
+
+  async function openNewTransport(previousItem, nextItem) {
+    const canOpenEditor = await requestActiveEditorHandoff({
+      excludeId: activeEditorGuardId,
+      tripId: activeTrip?.id,
+    });
+    if (!canOpenEditor) return;
+    if (isOpen) {
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      if (!canContinue) return;
+      if (!hasUnsavedChanges) await closeEditor(true);
+    }
+    const nextForm = {
+      ...emptyItemForm,
+      item_type: "transport",
+      type: "transport",
+      start_time: formatTimeDisplay(previousItem?.end_time || previousItem?.start_time || ""),
+      transport_category: defaultTransportCategory,
+      transport_name: "",
+      transport_duration_minutes: "",
+      transport_note: "",
+      transportation_note: "",
+      title: "",
+    };
+    flushDraft();
+    replaceForm(nextForm);
+    setFormSeed(nextForm);
+    setBaseUpdatedAt(null);
+    setConflict(false);
+    setTimeError("");
+    setEditingId(null);
+    setEditorTripId(activeTrip?.id || null);
+    setInsertionAfterId(previousItem?.id || null);
+    setRestoredDraftKey(null);
+    setIsOpen(true);
+    onFocusItem(nextItem?.id || previousItem?.id);
   }
 
   async function openEditItem(item) {
@@ -3857,6 +4000,7 @@ function ItineraryTimeline({
       lockedItem = lockResult.data || item;
     }
     const nextForm = {
+      item_type: item.item_type || "visit",
       type: item.type,
       start_time: formatTimeDisplay(item.start_time),
       end_time: formatTimeDisplay(item.end_time),
@@ -3868,6 +4012,10 @@ function ItineraryTimeline({
       note: item.description || item.note || "",
       description: item.description || item.note || "",
       transportation_note: item.transportation_note || "",
+      transport_category: item.transport_category || defaultTransportCategory,
+      transport_name: item.transport_name || item.title || "",
+      transport_duration_minutes: item.transport_duration_minutes || "",
+      transport_note: item.transport_note || item.transportation_note || item.description || item.note || "",
       cost: item.cost || 0,
     };
     flushDraft();
@@ -3878,6 +4026,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || null);
+    setInsertionAfterId(null);
     setRestoredDraftKey(null);
     setIsOpen(true);
   }
@@ -3893,14 +4042,17 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
+    setInsertionAfterId(null);
     setRestoredDraftKey(null);
     setIsOpen(false);
   }
 
   async function saveCurrentEditor(formData = new FormData()) {
+    const itemType = String(formData.get("item_type") ?? form.item_type ?? "visit");
     const destination = String(formData.get("location_name") ?? form.location_name ?? form.location ?? "").trim();
     const submittedForm = {
       ...form,
+      item_type: itemType,
       type: String(formData.get("type") ?? form.type ?? ""),
       start_time: String(formData.get("start_time") ?? form.start_time ?? ""),
       end_time: String(formData.get("end_time") ?? form.end_time ?? ""),
@@ -3912,9 +4064,20 @@ function ItineraryTimeline({
       note: String(formData.get("note") ?? form.note ?? form.description ?? ""),
       description: String(formData.get("description") ?? form.description ?? form.note ?? ""),
       transportation_note: String(formData.get("transportation_note") ?? form.transportation_note ?? ""),
+      transport_category: String(formData.get("transport_category") ?? form.transport_category ?? defaultTransportCategory),
+      transport_name: String(formData.get("transport_name") ?? form.transport_name ?? form.title ?? ""),
+      transport_duration_minutes: String(formData.get("transport_duration_minutes") ?? form.transport_duration_minutes ?? ""),
+      transport_note: String(formData.get("transport_note") ?? form.transport_note ?? form.transportation_note ?? ""),
       cost: String(formData.get("cost") ?? form.cost ?? 0),
     };
-    const invalidTimeRange = isInvalidTimeRange(submittedForm.start_time, submittedForm.end_time);
+    if (submittedForm.item_type === "transport") {
+      submittedForm.title = submittedForm.transport_name.trim();
+      submittedForm.transportation_note = submittedForm.transport_note.trim();
+      submittedForm.note = submittedForm.transport_note.trim();
+      submittedForm.description = submittedForm.transport_note.trim();
+    }
+    const invalidTimeRange =
+      submittedForm.item_type !== "transport" && isInvalidTimeRange(submittedForm.start_time, submittedForm.end_time);
     if (invalidTimeRange) {
       setTimeError("結束時間必須晚於開始時間。");
       setForm(submittedForm);
@@ -3924,7 +4087,10 @@ function ItineraryTimeline({
     const result = await onSaveItem(
       {
         ...submittedForm,
-        title: (submittedForm.location_name || submittedForm.location || submittedForm.title).trim(),
+        title:
+          submittedForm.item_type === "transport"
+            ? submittedForm.transport_name.trim()
+            : (submittedForm.location_name || submittedForm.location || submittedForm.title).trim(),
         location: (submittedForm.location_name || submittedForm.location).trim(),
         location_name: (submittedForm.location_name || submittedForm.location).trim(),
         address: submittedForm.address.trim(),
@@ -3932,10 +4098,14 @@ function ItineraryTimeline({
         note: (submittedForm.description || submittedForm.note).trim(),
         description: (submittedForm.description || submittedForm.note).trim(),
         transportation_note: submittedForm.transportation_note.trim(),
+        transport_category: submittedForm.transport_category || defaultTransportCategory,
+        transport_name: submittedForm.transport_name.trim(),
+        transport_duration_minutes: Number(submittedForm.transport_duration_minutes || 0),
+        transport_note: submittedForm.transport_note.trim(),
         cost: Number(submittedForm.cost || 0),
       },
       editingId,
-      { baseUpdatedAt, tripId: editorTripId },
+      { baseUpdatedAt, insertAfterId: insertionAfterId, tripId: editorTripId },
     );
     if (!result?.ok) {
       if (result?.conflict) setConflict(true);
@@ -3949,6 +4119,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
+    setInsertionAfterId(null);
     setRestoredDraftKey(null);
     setIsOpen(false);
     return true;
@@ -3957,6 +4128,167 @@ function ItineraryTimeline({
   async function submit(event) {
     event.preventDefault();
     await saveCurrentEditor(new FormData(event.currentTarget));
+  }
+
+  const isTransportEditor = form.item_type === "transport";
+
+  function renderTransportEditorForm() {
+    const category = form.transport_category || defaultTransportCategory;
+    return (
+      <form className="item-form transport-editor-form" onSubmit={submit}>
+        <input name="item_type" type="hidden" value="transport" />
+        <input name="type" type="hidden" value="transport" />
+        <input name="start_time" type="hidden" value={form.start_time || ""} />
+        {conflict ? <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} /> : null}
+        <div className="transport-editor-heading">
+          <span className="transport-icon" aria-hidden="true">
+            {transportCategoryMeta(category).icon}
+          </span>
+          <strong>{transportCardTitle(form) || "新增交通資訊"}</strong>
+          <div className="transport-editor-actions">
+            <button className="primary-button compact" type="submit">
+              ✓ 保存
+            </button>
+            <button className="mini-button" type="button" onClick={() => closeEditor()}>
+              X
+            </button>
+          </div>
+        </div>
+        <div className="field-group form-grid wide">
+          <label>
+            交通類別
+            <select
+              name="transport_category"
+              value={category}
+              onChange={(event) => setForm({ ...form, transport_category: event.target.value })}
+            >
+              {transportCategories.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            交通時間
+            <input
+              min="1"
+              name="transport_duration_minutes"
+              placeholder="25"
+              required
+              step="1"
+              type="number"
+              value={form.transport_duration_minutes}
+              onChange={(event) => setForm({ ...form, transport_duration_minutes: event.target.value })}
+            />
+          </label>
+        </div>
+        <label className="full-label">
+          交通名稱
+          <input
+            maxLength="12"
+            name="transport_name"
+            placeholder="JR奈良線"
+            required
+            value={form.transport_name}
+            onChange={(event) => setForm({ ...form, transport_name: event.target.value, title: event.target.value })}
+          />
+        </label>
+        <label className="full-label">
+          備註
+          <textarea
+            name="transport_note"
+            rows="3"
+            value={form.transport_note}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                transport_note: event.target.value,
+                transportation_note: event.target.value,
+                note: event.target.value,
+                description: event.target.value,
+              })
+            }
+          />
+        </label>
+      </form>
+    );
+  }
+
+  function renderTransportCard(item, lockedByOther) {
+    const expanded = expandedId === item.id;
+    const budgets = budgetsByItem[item.id] || [];
+    const category = item.transport_category || defaultTransportCategory;
+    const note = item.transport_note || item.transportation_note || item.description || item.note;
+    return (
+      <article
+        className={`transport-card${focusedItemId === item.id ? " focused" : ""}${expanded ? " expanded" : ""}`}
+        onClick={() => {
+          setExpandedId(expanded ? null : item.id);
+          onFocusItem(item.id);
+        }}
+      >
+        <div className="transport-card-main">
+          <span className="transport-icon" aria-hidden="true">
+            {transportCategoryMeta(category).icon}
+          </span>
+          <strong>{transportCardTitle(item)}</strong>
+        </div>
+        {expanded ? (
+          <>
+            <div className="transport-card-details">
+              <p>{note ? `備註：${note}` : "備註：尚未填寫"}</p>
+              <div className="transport-budget-links">
+                <strong>預算</strong>
+                {budgets.length ? (
+                  budgets.map((budget) => (
+                    <span className="pill" key={budget.id}>
+                      {budget.title} {formatMoney(budget.twd_amount || budget.amount)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="muted-text">尚未連結預算</span>
+                )}
+              </div>
+            </div>
+            <div className="transport-card-actions">
+              <button
+                className="mini-button"
+                disabled={!canEdit || lockedByOther}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openEditItem(item);
+                }}
+              >
+                編輯
+              </button>
+              <button
+                className="mini-button"
+                disabled={!canEdit}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteItem(item.id);
+                }}
+              >
+                刪除
+              </button>
+            </div>
+          </>
+        ) : null}
+      </article>
+    );
+  }
+
+  function renderTransportInsert(previousItem, nextItem) {
+    if (!canEdit || isOpen || !nextItem || isTransportationCard(previousItem) || isTransportationCard(nextItem)) return null;
+    return (
+      <button className="transport-insert-zone" type="button" onClick={() => openNewTransport(previousItem, nextItem)}>
+        <span>+</span>
+        <strong>新增交通資訊</strong>
+      </button>
+    );
   }
 
   return (
@@ -3971,8 +4303,11 @@ function ItineraryTimeline({
         </button>
       </div>
 
-      {isOpen ? (
+      {isOpen && isTransportEditor && !editingId && !insertionAfterId ? renderTransportEditorForm() : null}
+
+      {isOpen && !isTransportEditor ? (
         <form className="item-form" onSubmit={submit}>
+          <input name="item_type" type="hidden" value="visit" />
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
           ) : null}
@@ -4104,7 +4439,7 @@ function ItineraryTimeline({
 
       <div className="timeline">
         {dayItems.length ? (
-          dayItems.map((item) => {
+          dayItems.map((item, index) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
             const locker = memberById.get(item.locked_by);
             const destination = item.location_name || item.location || item.title;
@@ -4114,10 +4449,18 @@ function ItineraryTimeline({
               0,
             );
             const displayCost = linkedBudgetTotal || Number(item.cost || 0);
+            if (isTransportationCard(item)) {
+              return (
+                <div className="timeline-flow-entry" key={item.id}>
+                  {isOpen && isTransportEditor && editingId === item.id ? renderTransportEditorForm() : renderTransportCard(item, lockedByOther)}
+                </div>
+              );
+            }
+            const nextItem = dayItems[index + 1];
             return (
+            <div className="timeline-flow-entry" key={item.id}>
             <article
               className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${expandedId === item.id ? " expanded" : ""}`}
-              key={item.id}
               onClick={() => {
                 setExpandedId(expandedId === item.id ? null : item.id);
                 onFocusItem(item.id);
@@ -4204,6 +4547,8 @@ function ItineraryTimeline({
                 </button>
               </div>
             </article>
+            {isOpen && isTransportEditor && insertionAfterId === item.id ? renderTransportEditorForm() : renderTransportInsert(item, nextItem)}
+            </div>
             );
           })
         ) : (
@@ -4249,6 +4594,26 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
               day.items.map((item) => {
                 const destination = item.location_name || item.location || item.title;
                 const secondaryText = item.note || item.description || item.transportation_note;
+                if (isTransportationCard(item)) {
+                  return (
+                    <button
+                      className={`timeline-preview-card transport-preview-card${focusedItemId === item.id ? " focused" : ""}`}
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        onActiveDay(day.index);
+                        onFocusItem(item.id);
+                      }}
+                    >
+                      <span className="transport-icon" aria-hidden="true">
+                        {transportCategoryMeta(item.transport_category).icon}
+                      </span>
+                      <span>
+                        <strong>{transportCardTitle(item)}</strong>
+                      </span>
+                    </button>
+                  );
+                }
                 return (
                   <button
                     className={`timeline-preview-card${focusedItemId === item.id ? " focused" : ""}`}
