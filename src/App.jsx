@@ -4343,8 +4343,9 @@ function ItineraryTimeline({
     if (adjacentTransportByPair[transportPairKey(previousItem.id, nextItem.id)]) return null;
     return (
       <button className="transport-insert-zone" type="button" onClick={() => openNewTransport(previousItem, nextItem)}>
-        <span>+</span>
-        <strong>新增交通資訊</strong>
+        <span className="transport-insert-icon">+</span>
+        <span className="transport-insert-label">新增交通資訊</span>
+        <span className="transport-insert-line" aria-hidden="true" />
       </button>
     );
   }
