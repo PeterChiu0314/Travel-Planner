@@ -340,10 +340,12 @@ function dateTimeLocalInput(date = new Date()) {
 }
 
 function sortScheduleItems(items) {
+  const usesManualFlowOrder = items.some((item) => isTransportationCard(item) || Number(item.sort_order || 0) > 0);
   return [...items].sort((a, b) => {
     const timeSort = (a.start_time || "99:99").localeCompare(b.start_time || "99:99");
     const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
-    return timeSort || orderSort;
+    if (!usesManualFlowOrder) return timeSort || orderSort;
+    return orderSort || timeSort;
   });
 }
 
@@ -555,6 +557,7 @@ function createDemoTimelineItems() {
     {
       id: "demo-itinerary-1",
       day_index: 0,
+      sort_order: 10,
       item_type: "visit",
       type: "transport",
       start_time: "09:10",
@@ -572,6 +575,7 @@ function createDemoTimelineItems() {
     {
       id: "demo-transport-1",
       day_index: 0,
+      sort_order: 15,
       item_type: "transport",
       type: "transport",
       start_time: "10:25",
@@ -593,6 +597,7 @@ function createDemoTimelineItems() {
     {
       id: "demo-itinerary-2",
       day_index: 0,
+      sort_order: 20,
       item_type: "visit",
       type: "food",
       start_time: "12:30",
@@ -1477,10 +1482,30 @@ export default function App() {
       return result;
     }
 
+    const normalizedPayload = normalizeItemPayload(payload);
     const insertAfterIndex = meta.insertAfterId ? dayItems.findIndex((item) => item.id === meta.insertAfterId) : -1;
-    const sortOrder = insertAfterIndex >= 0 ? insertAfterIndex + 1 : dayItems.length;
+    const isTransportInsert = normalizedPayload.item_type === "transport" && insertAfterIndex >= 0;
+    const sortOrder = isTransportInsert ? (insertAfterIndex + 1) * 10 + 5 : (dayItems.length + 1) * 10;
+    if (isTransportInsert) {
+      const orderResults = await Promise.all(
+        dayItems.map((item, index) => {
+          const nextSortOrder = (index + 1) * 10;
+          if (Number(item.sort_order || 0) === nextSortOrder) return Promise.resolve();
+          return supabase
+            .from("itinerary_items")
+            .update({ sort_order: nextSortOrder })
+            .eq("id", item.id)
+            .eq("trip_id", activeTrip.id);
+        }),
+      );
+      const orderError = orderResults.find((result) => result?.error)?.error;
+      if (orderError) {
+        setNotice(orderError.message);
+        return { ok: false, error: orderError };
+      }
+    }
     const { error } = await supabase.from("itinerary_items").insert({
-      ...normalizeItemPayload(payload),
+      ...normalizedPayload,
       trip_id: activeTrip.id,
       day_index: activeDay,
       date: days[activeDay] ? dateToInputValue(days[activeDay]) : null,
@@ -2413,9 +2438,17 @@ function DemoApp({ initialSection }) {
     setTimelineItems((current) => {
       const currentDayItems = sortScheduleItems(current.filter((item) => item.day_index === activeDay));
       const insertAfterIndex = meta.insertAfterId ? currentDayItems.findIndex((item) => item.id === meta.insertAfterId) : -1;
-      const sortOrder = insertAfterIndex >= 0 ? insertAfterIndex + 1 : currentDayItems.length;
+      const isTransportInsert = nextPayload.item_type === "transport" && insertAfterIndex >= 0;
+      const sortOrder = isTransportInsert ? (insertAfterIndex + 1) * 10 + 5 : (currentDayItems.length + 1) * 10;
+      const reorderedCurrent = isTransportInsert
+        ? current.map((item) => {
+            if (item.day_index !== activeDay) return item;
+            const itemIndex = currentDayItems.findIndex((dayItem) => dayItem.id === item.id);
+            return itemIndex >= 0 ? { ...item, sort_order: (itemIndex + 1) * 10 } : item;
+          })
+        : current;
       return [
-        ...current,
+        ...reorderedCurrent,
         {
           ...emptyItemForm,
           ...nextPayload,
@@ -3958,7 +3991,7 @@ function ItineraryTimeline({
       ...emptyItemForm,
       item_type: "transport",
       type: "transport",
-      start_time: formatTimeDisplay(previousItem?.end_time || previousItem?.start_time || ""),
+      start_time: "",
       transport_category: defaultTransportCategory,
       transport_name: "",
       transport_duration_minutes: "",
