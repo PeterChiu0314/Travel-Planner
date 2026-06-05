@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearDraft, findLatestDraftTrip, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
@@ -73,6 +73,8 @@ const emptyItemForm = {
   transport_name: "",
   transport_duration_minutes: "",
   transport_note: "",
+  from_item_id: null,
+  to_item_id: null,
   cost: 0,
 };
 
@@ -340,13 +342,35 @@ function dateTimeLocalInput(date = new Date()) {
 }
 
 function sortScheduleItems(items) {
-  const usesManualFlowOrder = items.some((item) => isTransportationCard(item) || Number(item.sort_order || 0) > 0);
   return [...items].sort((a, b) => {
     const timeSort = (a.start_time || "99:99").localeCompare(b.start_time || "99:99");
     const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
-    if (!usesManualFlowOrder) return timeSort || orderSort;
-    return orderSort || timeSort;
+    return timeSort || orderSort;
   });
+}
+
+function sortedVisitItems(items) {
+  return sortScheduleItems(items.filter((item) => !isTransportationCard(item)));
+}
+
+function transportPairKey(fromItemId, toItemId) {
+  return `${fromItemId || ""}->${toItemId || ""}`;
+}
+
+function buildAdjacentTransportMap(items, visits) {
+  const adjacentKeys = new Set();
+  visits.forEach((item, index) => {
+    const nextItem = visits[index + 1];
+    if (nextItem) adjacentKeys.add(transportPairKey(item.id, nextItem.id));
+  });
+  const next = {};
+  items
+    .filter((item) => isTransportationCard(item) && item.from_item_id && item.to_item_id)
+    .forEach((item) => {
+      const key = transportPairKey(item.from_item_id, item.to_item_id);
+      if (adjacentKeys.has(key) && !next[key]) next[key] = item;
+    });
+  return next;
 }
 
 function memberName(member) {
@@ -591,6 +615,8 @@ function createDemoTimelineItems() {
       transport_name: "JR奈良線",
       transport_duration_minutes: 25,
       transport_note: "新宿站轉乘前往下一站，先確認月台。",
+      from_item_id: "demo-itinerary-1",
+      to_item_id: "demo-itinerary-2",
       cost: 0,
       updated_at: "2026-05-20T08:00:00.000Z",
     },
@@ -1483,27 +1509,7 @@ export default function App() {
     }
 
     const normalizedPayload = normalizeItemPayload(payload);
-    const insertAfterIndex = meta.insertAfterId ? dayItems.findIndex((item) => item.id === meta.insertAfterId) : -1;
-    const isTransportInsert = normalizedPayload.item_type === "transport" && insertAfterIndex >= 0;
-    const sortOrder = isTransportInsert ? (insertAfterIndex + 1) * 10 + 5 : (dayItems.length + 1) * 10;
-    if (isTransportInsert) {
-      const orderResults = await Promise.all(
-        dayItems.map((item, index) => {
-          const nextSortOrder = (index + 1) * 10;
-          if (Number(item.sort_order || 0) === nextSortOrder) return Promise.resolve();
-          return supabase
-            .from("itinerary_items")
-            .update({ sort_order: nextSortOrder })
-            .eq("id", item.id)
-            .eq("trip_id", activeTrip.id);
-        }),
-      );
-      const orderError = orderResults.find((result) => result?.error)?.error;
-      if (orderError) {
-        setNotice(orderError.message);
-        return { ok: false, error: orderError };
-      }
-    }
+    const sortOrder = (dayItems.filter((item) => !isTransportationCard(item)).length + 1) * 10;
     const { error } = await supabase.from("itinerary_items").insert({
       ...normalizedPayload,
       trip_id: activeTrip.id,
@@ -2323,6 +2329,8 @@ function normalizeItemPayload(payload) {
       transport_name: transportName,
       transport_duration_minutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? Math.round(durationMinutes) : null,
       transport_note: transportNote || null,
+      from_item_id: payload.from_item_id || null,
+      to_item_id: payload.to_item_id || null,
       start_time: payload.start_time || null,
       end_time: null,
       address: null,
@@ -2348,6 +2356,8 @@ function normalizeItemPayload(payload) {
     transport_name: null,
     transport_duration_minutes: null,
     transport_note: null,
+    from_item_id: null,
+    to_item_id: null,
   };
 }
 
@@ -2436,19 +2446,10 @@ function DemoApp({ initialSection }) {
       return { ok: true };
     }
     setTimelineItems((current) => {
-      const currentDayItems = sortScheduleItems(current.filter((item) => item.day_index === activeDay));
-      const insertAfterIndex = meta.insertAfterId ? currentDayItems.findIndex((item) => item.id === meta.insertAfterId) : -1;
-      const isTransportInsert = nextPayload.item_type === "transport" && insertAfterIndex >= 0;
-      const sortOrder = isTransportInsert ? (insertAfterIndex + 1) * 10 + 5 : (currentDayItems.length + 1) * 10;
-      const reorderedCurrent = isTransportInsert
-        ? current.map((item) => {
-            if (item.day_index !== activeDay) return item;
-            const itemIndex = currentDayItems.findIndex((dayItem) => dayItem.id === item.id);
-            return itemIndex >= 0 ? { ...item, sort_order: (itemIndex + 1) * 10 } : item;
-          })
-        : current;
+      const currentDayVisits = sortedVisitItems(current.filter((item) => item.day_index === activeDay));
+      const sortOrder = (currentDayVisits.length + 1) * 10;
       return [
-        ...reorderedCurrent,
+        ...current,
         {
           ...emptyItemForm,
           ...nextPayload,
@@ -3882,7 +3883,7 @@ function ItineraryTimeline({
   const [formSeed, setFormSeed] = useState(emptyItemForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [editorTripId, setEditorTripId] = useState(null);
-  const [insertionAfterId, setInsertionAfterId] = useState(null);
+  const [insertionPair, setInsertionPair] = useState(null);
   const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
   const [timeError, setTimeError] = useState("");
@@ -3924,7 +3925,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
-    setInsertionAfterId(null);
+    setInsertionPair(null);
     setRestoredDraftKey(null);
     setIsOpen(false);
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, useEditLocks]);
@@ -3952,7 +3953,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
-    setInsertionAfterId(null);
+    setInsertionPair(null);
     setRestoredDraftKey(latest.key);
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
@@ -3979,7 +3980,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
-    setInsertionAfterId(null);
+    setInsertionPair(null);
     setRestoredDraftKey(null);
     setIsOpen(true);
   }
@@ -4005,6 +4006,8 @@ function ItineraryTimeline({
       transport_duration_minutes: "",
       transport_note: "",
       transportation_note: "",
+      from_item_id: previousItem?.id || null,
+      to_item_id: nextItem?.id || null,
       title: "",
     };
     flushDraft();
@@ -4015,7 +4018,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
-    setInsertionAfterId(previousItem?.id || null);
+    setInsertionPair(previousItem && nextItem ? { fromId: previousItem.id, toId: nextItem.id } : null);
     setRestoredDraftKey(null);
     setIsOpen(true);
     onFocusItem(nextItem?.id || previousItem?.id);
@@ -4057,6 +4060,8 @@ function ItineraryTimeline({
       transport_name: item.transport_name || item.title || "",
       transport_duration_minutes: item.transport_duration_minutes || "",
       transport_note: item.transport_note || item.transportation_note || item.description || item.note || "",
+      from_item_id: item.from_item_id || null,
+      to_item_id: item.to_item_id || null,
       cost: item.cost || 0,
     };
     flushDraft();
@@ -4067,7 +4072,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || null);
-    setInsertionAfterId(null);
+    setInsertionPair(null);
     setRestoredDraftKey(null);
     setIsOpen(true);
   }
@@ -4083,7 +4088,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
-    setInsertionAfterId(null);
+    setInsertionPair(null);
     setRestoredDraftKey(null);
     setIsOpen(false);
   }
@@ -4109,6 +4114,8 @@ function ItineraryTimeline({
       transport_name: String(formData.get("transport_name") ?? form.transport_name ?? form.title ?? ""),
       transport_duration_minutes: String(formData.get("transport_duration_minutes") ?? form.transport_duration_minutes ?? ""),
       transport_note: String(formData.get("transport_note") ?? form.transport_note ?? form.transportation_note ?? ""),
+      from_item_id: String(formData.get("from_item_id") ?? form.from_item_id ?? "") || null,
+      to_item_id: String(formData.get("to_item_id") ?? form.to_item_id ?? "") || null,
       cost: String(formData.get("cost") ?? form.cost ?? 0),
     };
     if (submittedForm.item_type === "transport") {
@@ -4143,10 +4150,12 @@ function ItineraryTimeline({
         transport_name: submittedForm.transport_name.trim(),
         transport_duration_minutes: Number(submittedForm.transport_duration_minutes || 0),
         transport_note: submittedForm.transport_note.trim(),
+        from_item_id: submittedForm.from_item_id,
+        to_item_id: submittedForm.to_item_id,
         cost: Number(submittedForm.cost || 0),
       },
       editingId,
-      { baseUpdatedAt, insertAfterId: insertionAfterId, tripId: editorTripId },
+      { baseUpdatedAt, tripId: editorTripId },
     );
     if (!result?.ok) {
       if (result?.conflict) setConflict(true);
@@ -4160,7 +4169,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(null);
-    setInsertionAfterId(null);
+    setInsertionPair(null);
     setRestoredDraftKey(null);
     setIsOpen(false);
     return true;
@@ -4172,6 +4181,8 @@ function ItineraryTimeline({
   }
 
   const isTransportEditor = form.item_type === "transport";
+  const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
+  const adjacentTransportByPair = useMemo(() => buildAdjacentTransportMap(dayItems, visitItems), [dayItems, visitItems]);
 
   function renderTransportEditorForm() {
     const category = form.transport_category || defaultTransportCategory;
@@ -4180,6 +4191,8 @@ function ItineraryTimeline({
         <input name="item_type" type="hidden" value="transport" />
         <input name="type" type="hidden" value="transport" />
         <input name="start_time" type="hidden" value={form.start_time || ""} />
+        <input name="from_item_id" type="hidden" value={form.from_item_id || ""} />
+        <input name="to_item_id" type="hidden" value={form.to_item_id || ""} />
         {conflict ? <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} /> : null}
         <div className="transport-editor-heading">
           <span className="transport-icon" aria-hidden="true">
@@ -4327,6 +4340,7 @@ function ItineraryTimeline({
 
   function renderTransportInsert(previousItem, nextItem) {
     if (!canEdit || isOpen || !nextItem || isTransportationCard(previousItem) || isTransportationCard(nextItem)) return null;
+    if (adjacentTransportByPair[transportPairKey(previousItem.id, nextItem.id)]) return null;
     return (
       <button className="transport-insert-zone" type="button" onClick={() => openNewTransport(previousItem, nextItem)}>
         <span>+</span>
@@ -4347,7 +4361,7 @@ function ItineraryTimeline({
         </button>
       </div>
 
-      {isOpen && isTransportEditor && !editingId && !insertionAfterId ? renderTransportEditorForm() : null}
+      {isOpen && isTransportEditor && !editingId && !insertionPair ? renderTransportEditorForm() : null}
 
       {isOpen && !isTransportEditor ? (
         <form autoComplete="off" className="item-form" onSubmit={submit}>
@@ -4488,8 +4502,8 @@ function ItineraryTimeline({
       ) : null}
 
       <div className="timeline">
-        {dayItems.length ? (
-          dayItems.map((item, index) => {
+        {visitItems.length ? (
+          visitItems.map((item, index) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
             const locker = memberById.get(item.locked_by);
             const destination = item.location_name || item.location || item.title;
@@ -4499,14 +4513,11 @@ function ItineraryTimeline({
               0,
             );
             const displayCost = linkedBudgetTotal || Number(item.cost || 0);
-            if (isTransportationCard(item)) {
-              return (
-                <div className="timeline-flow-entry" key={item.id}>
-                  {isOpen && isTransportEditor && editingId === item.id ? renderTransportEditorForm() : renderTransportCard(item, lockedByOther)}
-                </div>
-              );
-            }
-            const nextItem = dayItems[index + 1];
+            const nextItem = visitItems[index + 1];
+            const pairKey = nextItem ? transportPairKey(item.id, nextItem.id) : "";
+            const transportItem = pairKey ? adjacentTransportByPair[pairKey] : null;
+            const isAddingTransportHere =
+              isOpen && isTransportEditor && !editingId && insertionPair?.fromId === item.id && insertionPair?.toId === nextItem?.id;
             return (
             <div className="timeline-flow-entry" key={item.id}>
             <article
@@ -4597,7 +4608,15 @@ function ItineraryTimeline({
                 </button>
               </div>
             </article>
-            {isOpen && isTransportEditor && insertionAfterId === item.id ? renderTransportEditorForm() : renderTransportInsert(item, nextItem)}
+            {isAddingTransportHere ? renderTransportEditorForm() : null}
+            {!isAddingTransportHere && transportItem ? (
+              <div className="timeline-flow-entry" key={transportItem.id}>
+                {isOpen && isTransportEditor && editingId === transportItem.id
+                  ? renderTransportEditorForm()
+                  : renderTransportCard(transportItem, useEditLocks && isLockedByAnotherUser(transportItem, currentUserId))}
+              </div>
+            ) : null}
+            {!isAddingTransportHere && !transportItem ? renderTransportInsert(item, nextItem) : null}
             </div>
             );
           })
@@ -4617,7 +4636,10 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
 
   return (
     <>
-      {otherDays.map((day) => (
+      {otherDays.map((day) => {
+        const visits = sortedVisitItems(day.items);
+        const adjacentTransportByPair = buildAdjacentTransportMap(day.items, visits);
+        return (
         <section
           className="timeline-day-preview"
           data-day-index={day.index}
@@ -4640,34 +4662,17 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
             </div>
           </div>
           <div className="timeline-preview-list">
-            {day.items.length ? (
-              day.items.map((item) => {
+            {visits.length ? (
+              visits.map((item, index) => {
                 const destination = item.location_name || item.location || item.title;
                 const secondaryText = item.note || item.description || item.transportation_note;
-                if (isTransportationCard(item)) {
-                  return (
-                    <button
-                      className={`timeline-preview-card transport-preview-card${focusedItemId === item.id ? " focused" : ""}`}
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        onActiveDay(day.index);
-                        onFocusItem(item.id);
-                      }}
-                    >
-                      <span className="transport-icon" aria-hidden="true">
-                        {transportCategoryMeta(item.transport_category).icon}
-                      </span>
-                      <span>
-                        <strong>{transportCardTitle(item)}</strong>
-                      </span>
-                    </button>
-                  );
-                }
+                const nextItem = visits[index + 1];
+                const pairKey = nextItem ? transportPairKey(item.id, nextItem.id) : "";
+                const transportItem = pairKey ? adjacentTransportByPair[pairKey] : null;
                 return (
+                  <Fragment key={item.id}>
                   <button
                     className={`timeline-preview-card${focusedItemId === item.id ? " focused" : ""}`}
-                    key={item.id}
                     type="button"
                     onClick={() => {
                       onActiveDay(day.index);
@@ -4680,6 +4685,24 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
                       {secondaryText ? <em>{secondaryText}</em> : null}
                     </span>
                   </button>
+                  {transportItem ? (
+                    <button
+                      className={`timeline-preview-card transport-preview-card${focusedItemId === transportItem.id ? " focused" : ""}`}
+                      type="button"
+                      onClick={() => {
+                        onActiveDay(day.index);
+                        onFocusItem(transportItem.id);
+                      }}
+                    >
+                      <span className="transport-icon" aria-hidden="true">
+                        {transportCategoryMeta(transportItem.transport_category).icon}
+                      </span>
+                      <span>
+                        <strong>{transportCardTitle(transportItem)}</strong>
+                      </span>
+                    </button>
+                  ) : null}
+                  </Fragment>
                 );
               })
             ) : (
@@ -4687,7 +4710,8 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
             )}
           </div>
         </section>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -4756,7 +4780,7 @@ function AlternativeList({ alternatives, canEdit, item, onApply, onDelete, onSav
 }
 
 function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
-  const stops = dayItems.filter((item) => item.location_name || item.location);
+  const stops = sortedVisitItems(dayItems).filter((item) => item.location_name || item.location);
   return (
     <section className="panel">
       <div className="panel-heading tight">
