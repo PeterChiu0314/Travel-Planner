@@ -2917,13 +2917,15 @@ function DemoLuggageView({
               {luggageItems.filter((item) => item.packed).length}/{luggageItems.length}
             </span>
           </div>
-          <form className="inline-form" onSubmit={submitPersonal}>
+          <form autoComplete="off" className="inline-form" onSubmit={submitPersonal}>
             <input
+              autoComplete="off"
               placeholder="新增個人行李"
               value={personalForm.title}
               onChange={(event) => void updatePersonalForm({ ...personalForm, title: event.target.value })}
             />
             <input
+              autoComplete="off"
               placeholder="分類"
               value={personalForm.category}
               onChange={(event) => void updatePersonalForm({ ...personalForm, category: event.target.value })}
@@ -2994,13 +2996,15 @@ function DemoLuggageView({
             </div>
             <span className="pill">{sharedLuggageItems.length} 件</span>
           </div>
-          <form className="shared-luggage-form" onSubmit={submitShared}>
+          <form autoComplete="off" className="shared-luggage-form" onSubmit={submitShared}>
             <input
+              autoComplete="off"
               placeholder="新增團隊公物"
               value={sharedForm.title}
               onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
             />
             <input
+              autoComplete="off"
               placeholder="分類"
               value={sharedForm.category}
               onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
@@ -3147,13 +3151,15 @@ function LuggageView({
               {luggageItems.filter((item) => item.packed).length}/{luggageItems.length}
             </span>
           </div>
-          <form className="inline-form" onSubmit={submitPersonal}>
+          <form autoComplete="off" className="inline-form" onSubmit={submitPersonal}>
             <input
+              autoComplete="off"
               placeholder="新增個人行李"
               value={personalForm.title}
               onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
             />
             <input
+              autoComplete="off"
               placeholder="分類"
               value={personalForm.category}
               onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
@@ -3224,13 +3230,15 @@ function LuggageView({
             </div>
             <span className="pill">{sharedLuggageItems.length} 件</span>
           </div>
-          <form className="shared-luggage-form" onSubmit={submitShared}>
+          <form autoComplete="off" className="shared-luggage-form" onSubmit={submitShared}>
             <input
+              autoComplete="off"
               placeholder="新增團隊公物"
               value={sharedForm.title}
               onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
             />
             <input
+              autoComplete="off"
               placeholder="分類"
               value={sharedForm.category}
               onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
@@ -4168,7 +4176,7 @@ function ItineraryTimeline({
   function renderTransportEditorForm() {
     const category = form.transport_category || defaultTransportCategory;
     return (
-      <form className="item-form transport-editor-form" onSubmit={submit}>
+      <form autoComplete="off" className="item-form transport-editor-form" onSubmit={submit}>
         <input name="item_type" type="hidden" value="transport" />
         <input name="type" type="hidden" value="transport" />
         <input name="start_time" type="hidden" value={form.start_time || ""} />
@@ -4205,6 +4213,7 @@ function ItineraryTimeline({
           <label>
             交通時間
             <input
+              autoComplete="off"
               min="1"
               name="transport_duration_minutes"
               placeholder="25"
@@ -4219,6 +4228,7 @@ function ItineraryTimeline({
         <label className="full-label">
           交通名稱
           <input
+            autoComplete="off"
             maxLength="12"
             name="transport_name"
             placeholder="JR奈良線"
@@ -4230,6 +4240,7 @@ function ItineraryTimeline({
         <label className="full-label">
           備註
           <textarea
+            autoComplete="off"
             name="transport_note"
             rows="3"
             value={form.transport_note}
@@ -4339,7 +4350,7 @@ function ItineraryTimeline({
       {isOpen && isTransportEditor && !editingId && !insertionAfterId ? renderTransportEditorForm() : null}
 
       {isOpen && !isTransportEditor ? (
-        <form className="item-form" onSubmit={submit}>
+        <form autoComplete="off" className="item-form" onSubmit={submit}>
           <input name="item_type" type="hidden" value="visit" />
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
@@ -4399,6 +4410,7 @@ function ItineraryTimeline({
             <label>
               費用
               <input
+                autoComplete="off"
                 min="0"
                 name="cost"
                 step="1"
@@ -4412,6 +4424,7 @@ function ItineraryTimeline({
             <label>
               目的地
               <input
+                autoComplete="off"
                 placeholder="目的地或店名"
                 name="location_name"
                 required
@@ -4425,6 +4438,7 @@ function ItineraryTimeline({
           <label className="full-label">
             備註
             <textarea
+              autoComplete="off"
               name="description"
               rows="3"
               value={form.description || form.note}
@@ -4435,6 +4449,7 @@ function ItineraryTimeline({
             <label>
               地址
               <input
+                autoComplete="off"
                 name="address"
                 value={form.address}
                 onChange={(event) => setForm({ ...form, address: event.target.value })}
@@ -4443,6 +4458,7 @@ function ItineraryTimeline({
             <label>
               Map URL
               <input
+                autoComplete="off"
                 name="map_url"
                 placeholder="https://maps.google.com/..."
                 value={form.map_url}
@@ -4453,6 +4469,7 @@ function ItineraryTimeline({
           <label className="full-label">
             交通備註
             <textarea
+              autoComplete="off"
               name="transportation_note"
               rows="2"
               value={form.transportation_note}
@@ -5072,7 +5089,7 @@ function BudgetPanel({
       </div>
 
       {isOpen ? (
-        <form className="item-form budget-form" onSubmit={submit}>
+        <form autoComplete="off" className="item-form budget-form" onSubmit={submit}>
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeBudgetForm(true)} />
           ) : null}
@@ -5080,6 +5097,7 @@ function BudgetPanel({
             <label>
               大項
               <input
+                autoComplete="off"
                 required
                 value={form.category}
                 onChange={(event) => setForm({ ...form, category: event.target.value })}
@@ -5088,6 +5106,7 @@ function BudgetPanel({
             <label>
               細項
               <input
+                autoComplete="off"
                 value={form.subcategory}
                 onChange={(event) => setForm({ ...form, subcategory: event.target.value })}
               />
@@ -5095,6 +5114,7 @@ function BudgetPanel({
             <label>
               金額
               <input
+                autoComplete="off"
                 min="0"
                 step="1"
                 type="number"
@@ -5105,6 +5125,7 @@ function BudgetPanel({
             <label>
               幣別
               <input
+                autoComplete="off"
                 value={form.currency}
                 onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })}
               />
@@ -5114,6 +5135,7 @@ function BudgetPanel({
             <label>
               標題
               <input
+                autoComplete="off"
                 required
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -5122,6 +5144,7 @@ function BudgetPanel({
             <label>
               匯率
               <input
+                autoComplete="off"
                 min="0"
                 step="0.0001"
                 type="number"
@@ -5144,7 +5167,7 @@ function BudgetPanel({
             </label>
             <label>
               備註
-              <input value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
+              <input autoComplete="off" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
             </label>
           </div>
           <label className="checkbox-label">
@@ -5524,7 +5547,7 @@ function ActualExpensePanel({
       </div>
 
       {isOpen ? (
-        <form className="item-form budget-form" onSubmit={submit}>
+        <form autoComplete="off" className="item-form budget-form" onSubmit={submit}>
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeExpenseForm(true)} />
           ) : null}
@@ -5542,13 +5565,14 @@ function ActualExpensePanel({
             </label>
             <label>
               標題
-              <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+              <input autoComplete="off" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
             </label>
           </div>
           <div className="field-group form-grid">
             <label>
               金額
               <input
+                autoComplete="off"
                 min="0"
                 step="1"
                 type="number"
@@ -5559,6 +5583,7 @@ function ActualExpensePanel({
             <label>
               幣別
               <input
+                autoComplete="off"
                 value={form.currency}
                 onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })}
               />
@@ -5566,6 +5591,7 @@ function ActualExpensePanel({
             <label>
               匯率
               <input
+                autoComplete="off"
                 min="0"
                 step="0.0001"
                 type="number"
@@ -5576,6 +5602,7 @@ function ActualExpensePanel({
             <label>
               付款時間
               <input
+                autoComplete="off"
                 type="datetime-local"
                 value={form.paid_at}
                 onChange={(event) => setForm({ ...form, paid_at: event.target.value })}
@@ -5596,7 +5623,7 @@ function ActualExpensePanel({
             </label>
             <label>
               備註
-              <input value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
+              <input autoComplete="off" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
             </label>
           </div>
           <div className="budget-picker">
@@ -6102,18 +6129,19 @@ function AccommodationPanel({
       </div>
 
       {isOpen ? (
-        <form className="item-form accommodation-form" onSubmit={submit}>
+        <form autoComplete="off" className="item-form accommodation-form" onSubmit={submit}>
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeAccommodationForm(true)} />
           ) : null}
           <div className="field-group form-grid wide">
             <label>
               住宿名稱
-              <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+              <input autoComplete="off" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
             </label>
             <label>
               預約代碼
               <input
+                autoComplete="off"
                 value={form.booking_code}
                 onChange={(event) => setForm({ ...form, booking_code: event.target.value })}
               />
@@ -6158,11 +6186,11 @@ function AccommodationPanel({
           <div className="field-group form-grid wide">
             <label>
               地址
-              <input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
+              <input autoComplete="off" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
             </label>
             <label>
               Map URL
-              <input value={form.map_url} onChange={(event) => setForm({ ...form, map_url: event.target.value })} />
+              <input autoComplete="off" value={form.map_url} onChange={(event) => setForm({ ...form, map_url: event.target.value })} />
             </label>
           </div>
           <div className="field-group form-grid wide">
@@ -6195,6 +6223,7 @@ function AccommodationPanel({
           <label className="full-label">
             自訂備註
             <textarea
+              autoComplete="off"
               rows="3"
               value={form.custom_notes}
               onChange={(event) => setForm({ ...form, custom_notes: event.target.value })}
@@ -6563,18 +6592,19 @@ function TodoPanel({
       </div>
 
       {isOpen ? (
-        <form className="item-form" onSubmit={submit}>
+        <form autoComplete="off" className="item-form" onSubmit={submit}>
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeTodoForm(true)} />
           ) : null}
           <div className="field-group form-grid wide">
             <label>
               標題
-              <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+              <input autoComplete="off" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
             </label>
             <label>
               截止日
               <input
+                autoComplete="off"
                 type="date"
                 value={form.due_date}
                 onChange={(event) => setForm({ ...form, due_date: event.target.value })}
@@ -6608,6 +6638,7 @@ function TodoPanel({
           <label className="full-label">
             說明
             <textarea
+              autoComplete="off"
               rows="3"
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
@@ -6820,21 +6851,22 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
       </div>
 
       {isOpen ? (
-        <form className="item-form" onSubmit={submit}>
+        <form autoComplete="off" className="item-form" onSubmit={submit}>
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeGuideForm(true)} />
           ) : null}
           <label>
             標題
-            <input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+            <input autoComplete="off" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
           </label>
           <label className="full-label">
             URL
-            <input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} />
+            <input autoComplete="off" value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} />
           </label>
           <label className="full-label">
             說明
             <textarea
+              autoComplete="off"
               rows="3"
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
@@ -7174,7 +7206,7 @@ function LuggagePanel({
             </div>
             <span className="pill">{luggageItems.filter((item) => item.packed).length}/{luggageItems.length}</span>
           </div>
-          <form className="inline-form" onSubmit={submitPersonal}>
+          <form autoComplete="off" className="inline-form" onSubmit={submitPersonal}>
             <input
               placeholder="新增個人行李"
               value={personalForm.title}
@@ -7254,14 +7286,16 @@ function LuggagePanel({
             </div>
             <span className="pill">{sharedLuggageItems.length} 件</span>
           </div>
-          <form className="shared-luggage-form" onSubmit={submitShared}>
+          <form autoComplete="off" className="shared-luggage-form" onSubmit={submitShared}>
             <input
+              autoComplete="off"
               disabled={!canEdit}
               placeholder="新增團隊公物"
               value={sharedForm.title}
               onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
             />
             <input
+              autoComplete="off"
               disabled={!canEdit}
               placeholder="分類"
               value={sharedForm.category}
@@ -7347,6 +7381,7 @@ function PackList({ canEdit, items, onAdd, onDelete, onToggle }) {
         </div>
       </div>
       <form
+        autoComplete="off"
         className="inline-form"
         onSubmit={(event) => {
           event.preventDefault();
@@ -7355,6 +7390,7 @@ function PackList({ canEdit, items, onAdd, onDelete, onToggle }) {
         }}
       >
         <input
+          autoComplete="off"
           disabled={!canEdit}
           placeholder="新增項目"
           value={title}
@@ -7434,11 +7470,12 @@ function MembersPanel({ className = "", isOwner, members, onApprove, onReject })
 function TripDialog({ form, onChange, onClose, onSubmit }) {
   return (
     <div className="modal-backdrop">
-      <form className="dialog-card" onSubmit={onSubmit}>
+      <form autoComplete="off" className="dialog-card" onSubmit={onSubmit}>
         <h2>新增旅程</h2>
         <label>
           旅程名稱
           <input
+            autoComplete="off"
             required
             value={form.title}
             onChange={(event) => onChange({ ...form, title: event.target.value })}
@@ -7447,6 +7484,7 @@ function TripDialog({ form, onChange, onClose, onSubmit }) {
         <label>
           目的地
           <input
+            autoComplete="off"
             required
             value={form.destination}
             onChange={(event) => onChange({ ...form, destination: event.target.value })}
@@ -7456,6 +7494,7 @@ function TripDialog({ form, onChange, onClose, onSubmit }) {
           <label>
             開始日期
             <input
+              autoComplete="off"
               required
               type="date"
               value={form.start_date}
@@ -7465,6 +7504,7 @@ function TripDialog({ form, onChange, onClose, onSubmit }) {
           <label>
             結束日期
             <input
+              autoComplete="off"
               required
               type="date"
               value={form.end_date}
