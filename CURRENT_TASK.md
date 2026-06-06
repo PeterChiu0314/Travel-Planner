@@ -32,7 +32,7 @@
 
 1. 標準桌面版面比例
 2. Day Board / map ratio polish
-3. Transportation card UX
+3. Transportation card UX：Phase 3.0 Transportation Card v1 已完成
 4. Timeline card density polish
 5. Demo parity
 6. Regression safety
@@ -65,6 +65,13 @@ Phase 1 與 Phase 2 已大致穩定。
   * Cards 使用目的地作為主要標題。
   * Timeline form 不再顯示獨立的 title/name 欄位。
   * 儲存時仍會讓 `title` 與 destination/location 同步，以維持資料相容性。
+* Phase 3.0 Transportation Card v1 已完成並通過功能測試：
+  * 可在相鄰景點卡之間新增、展開、收合、編輯、刪除交通卡。
+  * 每組相鄰景點 pair 最多顯示一張交通卡。
+  * 景點卡依 `start_time` 排序；交通卡以 `from_item_id` / `to_item_id` pair 插入相鄰景點之間。
+  * non-adjacent transport 目前保留在 DB 但不顯示；Phase 3.1 前需記得使用者偏好改為失效即刪除。
+  * Insert zone 已完成輕量化 polish，避免破壞 Day Board 卡片密度。
+  * Demo Timeline 與正式版保持同一行為，仍是 mock/local-state only。
 * Demo Timeline 保持 parity，且仍是 mock/local-state only。
 
 ---
