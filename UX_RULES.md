@@ -101,6 +101,31 @@ Do not:
 - Hide the next stop behind too many taps.
 - Overload cards with every field by default.
 
+## Transportation Card UX Rules
+
+Transportation cards complete the travel flow between visit cards.
+
+Do:
+
+- Keep transportation cards visually smaller and quieter than visit cards.
+- Render valid transportation cards only between their adjacent `from_item_id` / `to_item_id` visit pair.
+- Keep invalid transportation cards visible in the Day warning area below the date header and above the first normal visit card.
+- Use one shared lightweight warning pattern for transportation warnings.
+- In collapsed state, keep warnings compact: small `⚠` icon or short warning text only.
+- In expanded state, show the warning reason and available actions.
+- For general warnings, allow confirm/edit/delete.
+- For invalid pair warnings, allow expand/edit/delete, but do not show confirm because confirming cannot repair placement.
+- Keep insert zones lightweight so they do not break Day Board card density.
+- Keep Demo Timeline behavior aligned with the formal Timeline.
+
+Do not:
+
+- Hide invalid transportation cards silently.
+- Force invalid transportation cards into the wrong gap.
+- Use large alert panels, modals, toasts, or full-width error banners for transportation warnings.
+- Add drag repositioning before Phase 3.4.
+- Let transportation cards support alternatives or flip-card behavior; alternatives remain visit-only.
+
 ## Budget UX Rules
 
 Budget is for travel planning and group clarity, not accounting bureaucracy.
