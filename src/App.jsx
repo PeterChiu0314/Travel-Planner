@@ -75,6 +75,12 @@ const emptyItemForm = {
   transport_note: "",
   from_item_id: null,
   to_item_id: null,
+  from_snapshot_start_time: null,
+  from_snapshot_end_time: null,
+  from_snapshot_destination: null,
+  to_snapshot_start_time: null,
+  to_snapshot_end_time: null,
+  to_snapshot_destination: null,
   cost: 0,
 };
 
@@ -357,6 +363,29 @@ function transportPairKey(fromItemId, toItemId) {
   return `${fromItemId || ""}->${toItemId || ""}`;
 }
 
+function visitSnapshotDestination(item) {
+  return item?.location_name || item?.location || item?.title || "";
+}
+
+function buildTransportPairSnapshot(fromItem, toItem) {
+  return {
+    from_snapshot_start_time: fromItem?.start_time || null,
+    from_snapshot_end_time: fromItem?.end_time || null,
+    from_snapshot_destination: visitSnapshotDestination(fromItem) || null,
+    to_snapshot_start_time: toItem?.start_time || null,
+    to_snapshot_end_time: toItem?.end_time || null,
+    to_snapshot_destination: visitSnapshotDestination(toItem) || null,
+  };
+}
+
+function transportSnapshotMatchesVisit(transportItem, prefix, visitItem) {
+  return (
+    (transportItem?.[`${prefix}_snapshot_start_time`] || null) === (visitItem?.start_time || null) &&
+    (transportItem?.[`${prefix}_snapshot_end_time`] || null) === (visitItem?.end_time || null) &&
+    (transportItem?.[`${prefix}_snapshot_destination`] || null) === (visitSnapshotDestination(visitItem) || null)
+  );
+}
+
 function buildAdjacentTransportMap(items, visits) {
   const adjacentKeys = new Set();
   visits.forEach((item, index) => {
@@ -402,14 +431,8 @@ function buildTransportPairState(items, visits) {
   return { adjacentTransportByPair, invalidTransportItems };
 }
 
-function isUpdatedAfter(item, comparisonItem) {
-  const itemTime = Date.parse(item?.updated_at || "");
-  const comparisonTime = Date.parse(comparisonItem?.updated_at || "");
-  return Number.isFinite(itemTime) && Number.isFinite(comparisonTime) && itemTime > comparisonTime;
-}
-
 function transportPairNeedsReview(transportItem, fromItem, toItem) {
-  return isUpdatedAfter(fromItem, transportItem) || isUpdatedAfter(toItem, transportItem);
+  return !transportSnapshotMatchesVisit(transportItem, "from", fromItem) || !transportSnapshotMatchesVisit(transportItem, "to", toItem);
 }
 
 function memberName(member) {
@@ -656,6 +679,12 @@ function createDemoTimelineItems() {
       transport_note: "新宿站轉乘前往下一站，先確認月台。",
       from_item_id: "demo-itinerary-1",
       to_item_id: "demo-itinerary-2",
+      from_snapshot_start_time: "09:10",
+      from_snapshot_end_time: "10:25",
+      from_snapshot_destination: "成田機場",
+      to_snapshot_start_time: "12:30",
+      to_snapshot_end_time: "13:30",
+      to_snapshot_destination: "新宿",
       cost: 0,
       updated_at: "2026-05-20T08:00:00.000Z",
     },
@@ -2012,9 +2041,15 @@ export default function App() {
 
   async function confirmTransportWarning(itemId) {
     if (!activeTrip || !canEdit) return;
+    const transportItem = items.find((item) => item.id === itemId);
+    if (!transportItem) return;
+    const snapshot = buildTransportPairSnapshot(
+      items.find((item) => item.id === transportItem.from_item_id),
+      items.find((item) => item.id === transportItem.to_item_id),
+    );
     const { error } = await supabase
       .from("itinerary_items")
-      .update({ updated_at: new Date().toISOString() })
+      .update({ ...snapshot, updated_at: new Date().toISOString() })
       .eq("id", itemId)
       .eq("trip_id", activeTrip.id);
     if (error) setNotice(error.message);
@@ -2382,6 +2417,12 @@ function normalizeItemPayload(payload) {
       transport_note: transportNote || null,
       from_item_id: payload.from_item_id || null,
       to_item_id: payload.to_item_id || null,
+      from_snapshot_start_time: payload.from_snapshot_start_time || null,
+      from_snapshot_end_time: payload.from_snapshot_end_time || null,
+      from_snapshot_destination: payload.from_snapshot_destination || null,
+      to_snapshot_start_time: payload.to_snapshot_start_time || null,
+      to_snapshot_end_time: payload.to_snapshot_end_time || null,
+      to_snapshot_destination: payload.to_snapshot_destination || null,
       start_time: payload.start_time || null,
       end_time: null,
       address: null,
@@ -2409,6 +2450,12 @@ function normalizeItemPayload(payload) {
     transport_note: null,
     from_item_id: null,
     to_item_id: null,
+    from_snapshot_start_time: null,
+    from_snapshot_end_time: null,
+    from_snapshot_destination: null,
+    to_snapshot_start_time: null,
+    to_snapshot_end_time: null,
+    to_snapshot_destination: null,
   };
 }
 
@@ -2516,7 +2563,17 @@ function DemoApp({ initialSection }) {
 
   function confirmTimelineTransportWarning(itemId) {
     setTimelineItems((current) =>
-      current.map((item) => (item.id === itemId ? { ...item, updated_at: new Date().toISOString() } : item)),
+      current.map((item) => {
+        if (item.id !== itemId) return item;
+        return {
+          ...item,
+          ...buildTransportPairSnapshot(
+            current.find((currentItem) => currentItem.id === item.from_item_id),
+            current.find((currentItem) => currentItem.id === item.to_item_id),
+          ),
+          updated_at: new Date().toISOString(),
+        };
+      }),
     );
   }
 
@@ -4069,6 +4126,7 @@ function ItineraryTimeline({
       transportation_note: "",
       from_item_id: previousItem?.id || null,
       to_item_id: nextItem?.id || null,
+      ...buildTransportPairSnapshot(previousItem, nextItem),
       title: "",
     };
     flushDraft();
@@ -4123,6 +4181,12 @@ function ItineraryTimeline({
       transport_note: item.transport_note || item.transportation_note || item.description || item.note || "",
       from_item_id: item.from_item_id || null,
       to_item_id: item.to_item_id || null,
+      from_snapshot_start_time: item.from_snapshot_start_time || null,
+      from_snapshot_end_time: item.from_snapshot_end_time || null,
+      from_snapshot_destination: item.from_snapshot_destination || null,
+      to_snapshot_start_time: item.to_snapshot_start_time || null,
+      to_snapshot_end_time: item.to_snapshot_end_time || null,
+      to_snapshot_destination: item.to_snapshot_destination || null,
       cost: item.cost || 0,
     };
     flushDraft();
@@ -4177,6 +4241,12 @@ function ItineraryTimeline({
       transport_note: String(formData.get("transport_note") ?? form.transport_note ?? form.transportation_note ?? ""),
       from_item_id: String(formData.get("from_item_id") ?? form.from_item_id ?? "") || null,
       to_item_id: String(formData.get("to_item_id") ?? form.to_item_id ?? "") || null,
+      from_snapshot_start_time: String(formData.get("from_snapshot_start_time") ?? form.from_snapshot_start_time ?? "") || null,
+      from_snapshot_end_time: String(formData.get("from_snapshot_end_time") ?? form.from_snapshot_end_time ?? "") || null,
+      from_snapshot_destination: String(formData.get("from_snapshot_destination") ?? form.from_snapshot_destination ?? "") || null,
+      to_snapshot_start_time: String(formData.get("to_snapshot_start_time") ?? form.to_snapshot_start_time ?? "") || null,
+      to_snapshot_end_time: String(formData.get("to_snapshot_end_time") ?? form.to_snapshot_end_time ?? "") || null,
+      to_snapshot_destination: String(formData.get("to_snapshot_destination") ?? form.to_snapshot_destination ?? "") || null,
       cost: String(formData.get("cost") ?? form.cost ?? 0),
     };
     if (submittedForm.item_type === "transport") {
@@ -4185,6 +4255,13 @@ function ItineraryTimeline({
       submittedForm.note = submittedForm.transport_note.trim();
       submittedForm.description = submittedForm.transport_note.trim();
     }
+    const currentPairSnapshot =
+      submittedForm.item_type === "transport"
+        ? buildTransportPairSnapshot(
+            dayItems.find((item) => item.id === submittedForm.from_item_id),
+            dayItems.find((item) => item.id === submittedForm.to_item_id),
+          )
+        : {};
     const invalidTimeRange =
       submittedForm.item_type !== "transport" && isInvalidTimeRange(submittedForm.start_time, submittedForm.end_time);
     if (invalidTimeRange) {
@@ -4213,6 +4290,7 @@ function ItineraryTimeline({
         transport_note: submittedForm.transport_note.trim(),
         from_item_id: submittedForm.from_item_id,
         to_item_id: submittedForm.to_item_id,
+        ...currentPairSnapshot,
         cost: Number(submittedForm.cost || 0),
       },
       editingId,
@@ -4257,6 +4335,12 @@ function ItineraryTimeline({
         <input name="start_time" type="hidden" value={form.start_time || ""} />
         <input name="from_item_id" type="hidden" value={form.from_item_id || ""} />
         <input name="to_item_id" type="hidden" value={form.to_item_id || ""} />
+        <input name="from_snapshot_start_time" type="hidden" value={form.from_snapshot_start_time || ""} />
+        <input name="from_snapshot_end_time" type="hidden" value={form.from_snapshot_end_time || ""} />
+        <input name="from_snapshot_destination" type="hidden" value={form.from_snapshot_destination || ""} />
+        <input name="to_snapshot_start_time" type="hidden" value={form.to_snapshot_start_time || ""} />
+        <input name="to_snapshot_end_time" type="hidden" value={form.to_snapshot_end_time || ""} />
+        <input name="to_snapshot_destination" type="hidden" value={form.to_snapshot_destination || ""} />
         {conflict ? <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} /> : null}
         <div className="transport-editor-heading">
           <span className="transport-icon" aria-hidden="true">
