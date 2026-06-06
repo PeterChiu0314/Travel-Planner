@@ -402,6 +402,16 @@ function buildTransportPairState(items, visits) {
   return { adjacentTransportByPair, invalidTransportItems };
 }
 
+function isUpdatedAfter(item, comparisonItem) {
+  const itemTime = Date.parse(item?.updated_at || "");
+  const comparisonTime = Date.parse(comparisonItem?.updated_at || "");
+  return Number.isFinite(itemTime) && Number.isFinite(comparisonTime) && itemTime > comparisonTime;
+}
+
+function transportPairNeedsReview(transportItem, fromItem, toItem) {
+  return isUpdatedAfter(fromItem, transportItem) || isUpdatedAfter(toItem, transportItem);
+}
+
 function memberName(member) {
   return member?.display_name || member?.email || member?.user_id || "未指定";
 }
@@ -2000,6 +2010,17 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
+  async function confirmTransportWarning(itemId) {
+    if (!activeTrip || !canEdit) return;
+    const { error } = await supabase
+      .from("itinerary_items")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", itemId)
+      .eq("trip_id", activeTrip.id);
+    if (error) setNotice(error.message);
+    else await loadTripData(activeTrip.id);
+  }
+
   async function reorderItem(draggedId, targetId) {
     if (!canEdit || draggedId === targetId) return;
     const nextItems = [...dayItems];
@@ -2264,6 +2285,7 @@ function exportTrip() {
             onAddPackItem={addPackItem}
             onApplyAlternative={applyAlternative}
             onConvertBudgetToActual={convertBudgetToActual}
+            onConfirmTransportWarning={confirmTransportWarning}
             onApproveMember={approveMember}
             onDeleteAlternative={deleteAlternative}
             onDeleteActualExpense={deleteActualExpense}
@@ -2490,6 +2512,12 @@ function DemoApp({ initialSection }) {
       ];
     });
     return { ok: true };
+  }
+
+  function confirmTimelineTransportWarning(itemId) {
+    setTimelineItems((current) =>
+      current.map((item) => (item.id === itemId ? { ...item, updated_at: new Date().toISOString() } : item)),
+    );
   }
 
   function saveBudgetItem(payload, editingId) {
@@ -2745,6 +2773,7 @@ function DemoApp({ initialSection }) {
                   headingEyebrow="行程"
                   members={demoMembers}
                   onApplyAlternative={() => {}}
+                  onConfirmTransportWarning={confirmTimelineTransportWarning}
                   onDeleteAlternative={() => {}}
                   onDeleteItem={(itemId) => {
                     setTimelineItems((current) => current.filter((item) => item.id !== itemId));
@@ -3471,6 +3500,7 @@ function TripWorkspace(props) {
     onAddPackItem,
     onApplyAlternative,
     onConvertBudgetToActual,
+    onConfirmTransportWarning,
     onApproveMember,
     onDeleteAlternative,
     onDeleteActualExpense,
@@ -3739,6 +3769,7 @@ function TripWorkspace(props) {
                 dayTitle={`Day ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
                 onApplyAlternative={onApplyAlternative}
+                onConfirmTransportWarning={onConfirmTransportWarning}
                 onDeleteAlternative={onDeleteAlternative}
                 onDeleteItem={onDeleteItem}
                 onFocusItem={setFocusedItemId}
@@ -3898,6 +3929,7 @@ function ItineraryTimeline({
   headingEyebrow = "行程",
   members,
   onApplyAlternative,
+  onConfirmTransportWarning,
   onDeleteAlternative,
   onDeleteItem,
   onFocusItem,
@@ -4313,14 +4345,19 @@ function ItineraryTimeline({
   }
 
   function renderTransportCard(item, lockedByOther, options = {}) {
-    const { warning = false } = options;
+    const { warningType = "" } = options;
+    const hasWarning = Boolean(warningType);
+    const isInvalidWarning = warningType === "invalid";
+    const isGeneralWarning = warningType === "general";
     const expanded = expandedId === item.id;
     const budgets = budgetsByItem[item.id] || [];
     const category = item.transport_category || defaultTransportCategory;
     const note = item.transport_note || item.transportation_note || item.description || item.note;
     return (
       <article
-        className={`transport-card${focusedItemId === item.id ? " focused" : ""}${expanded ? " expanded" : ""}${warning ? " warning" : ""}`}
+        className={`transport-card${focusedItemId === item.id ? " focused" : ""}${expanded ? " expanded" : ""}${
+          hasWarning ? ` warning ${warningType}-warning` : ""
+        }`}
         onClick={() => {
           setExpandedId(expanded ? null : item.id);
           onFocusItem(item.id);
@@ -4332,20 +4369,23 @@ function ItineraryTimeline({
           </span>
           <strong>{transportCardTitle(item)}</strong>
         </div>
-        {warning ? (
+        {hasWarning ? (
           <span className="transport-warning-badge" aria-label="交通資訊需確認">
             <span aria-hidden="true">⚠</span>
-            交通資訊需確認
+            {isInvalidWarning ? "交通資訊需確認" : null}
           </span>
         ) : null}
         {expanded ? (
           <>
             <div className="transport-card-details">
               <div>
-                {warning ? (
+                {isInvalidWarning ? (
                   <p className="transport-warning-detail">
                     {transportPairLabel(item)} 的交通資訊已不符合目前行程順序
                   </p>
+                ) : null}
+                {isGeneralWarning ? (
+                  <p className="transport-warning-detail">{transportPairLabel(item)} 的行程時間或目的地已變更，請確認交通資訊</p>
                 ) : null}
                 <p>{note ? `備註：${note}` : "備註：尚未填寫"}</p>
               </div>
@@ -4363,6 +4403,19 @@ function ItineraryTimeline({
               </div>
             </div>
             <div className="transport-card-actions">
+              {isGeneralWarning ? (
+                <button
+                  className="mini-button"
+                  disabled={!canEdit || lockedByOther}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onConfirmTransportWarning?.(item.id);
+                  }}
+                >
+                  確認
+                </button>
+              ) : null}
               <button
                 className="mini-button"
                 disabled={!canEdit || lockedByOther}
@@ -4422,7 +4475,7 @@ function ItineraryTimeline({
             <div className="timeline-flow-entry" key={item.id}>
               {isOpen && isTransportEditor && editingId === item.id
                 ? renderTransportEditorForm()
-                : renderTransportCard(item, useEditLocks && isLockedByAnotherUser(item, currentUserId), { warning: true })}
+                : renderTransportCard(item, useEditLocks && isLockedByAnotherUser(item, currentUserId), { warningType: "invalid" })}
             </div>
           ))}
           <div className="transport-warning-divider" aria-hidden="true" />
@@ -4584,6 +4637,8 @@ function ItineraryTimeline({
             const nextItem = visitItems[index + 1];
             const pairKey = nextItem ? transportPairKey(item.id, nextItem.id) : "";
             const transportItem = pairKey ? adjacentTransportByPair[pairKey] : null;
+            const transportWarningType =
+              transportItem && transportPairNeedsReview(transportItem, item, nextItem) ? "general" : "";
             const isAddingTransportHere =
               isOpen && isTransportEditor && !editingId && insertionPair?.fromId === item.id && insertionPair?.toId === nextItem?.id;
             return (
@@ -4681,7 +4736,9 @@ function ItineraryTimeline({
               <div className="timeline-flow-entry" key={transportItem.id}>
                 {isOpen && isTransportEditor && editingId === transportItem.id
                   ? renderTransportEditorForm()
-                  : renderTransportCard(transportItem, useEditLocks && isLockedByAnotherUser(transportItem, currentUserId))}
+                  : renderTransportCard(transportItem, useEditLocks && isLockedByAnotherUser(transportItem, currentUserId), {
+                      warningType: transportWarningType,
+                    })}
               </div>
             ) : null}
             {!isAddingTransportHere && !transportItem ? renderTransportInsert(item, nextItem) : null}

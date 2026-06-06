@@ -1272,6 +1272,16 @@ textarea {
   white-space: nowrap;
 }
 
+.transport-card.general-warning .transport-warning-badge {
+  color: #d65445;
+  font-size: 14px;
+  justify-self: end;
+}
+
+.transport-card.general-warning .transport-warning-badge span {
+  display: inline-block;
+}
+
 .transport-warning-detail {
   color: #9f3f2d;
   font-weight: 700;
