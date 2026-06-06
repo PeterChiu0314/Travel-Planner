@@ -1075,7 +1075,7 @@ textarea {
 
 .timeline {
   display: grid;
-  gap: 12px;
+  gap: 6px;
 }
 
 .timeline-flow-entry {
@@ -1098,10 +1098,10 @@ textarea {
 
 .timeline-item {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) auto;
+  grid-template-columns: 68px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
-  border: 1px solid var(--line);
+  border: 2px solid var(--line);
   border-radius: 8px;
   background: #fff;
   padding: 14px;
@@ -1204,14 +1204,14 @@ textarea {
 
 .transport-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: 68px minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
   cursor: pointer;
-  padding: 9px 14px;
+  padding: 7px 14px;
 }
 
 .transport-card.focused,
@@ -1227,6 +1227,17 @@ textarea {
 .transport-card.warning.expanded,
 .transport-card.warning.focused {
   border-color: var(--mint);
+}
+
+.transport-card-icon {
+  display: inline-flex;
+  grid-column: 1;
+  justify-self: center;
+}
+
+.transport-card > .transport-card-main {
+  grid-column: 2;
+  justify-self: start;
 }
 
 .transport-card-main,
@@ -1267,6 +1278,7 @@ textarea {
   font-size: 12px;
   font-weight: 800;
   gap: 4px;
+  grid-column: 3;
   justify-self: end;
   line-height: 1;
   white-space: nowrap;
@@ -1296,7 +1308,7 @@ textarea {
 
 .transport-card-details {
   display: grid;
-  grid-column: 1 / -1;
+  grid-column: 2 / -1;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: start;
@@ -1328,6 +1340,10 @@ textarea {
   gap: 8px;
 }
 
+.transport-card-actions {
+  grid-column: 2 / -1;
+}
+
 .transport-editor-form {
   border-color: var(--mint);
   box-shadow: inset 4px 0 0 var(--mint);
@@ -1352,10 +1368,23 @@ textarea {
   border: 0;
   background: transparent;
   color: var(--mint-dark);
-  font-size: 14px;
-  font-weight: 900;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
   padding: 0;
-  text-align: left;
+  text-align: center;
+}
+
+.time-connector {
+  width: 1px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--line);
+  margin: 4px 0;
 }
 
 .item-main {

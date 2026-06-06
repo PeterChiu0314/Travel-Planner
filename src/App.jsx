@@ -4447,10 +4447,12 @@ function ItineraryTimeline({
           onFocusItem(item.id);
         }}
       >
-        <div className="transport-card-main">
+        <span className="transport-card-icon" aria-hidden="true">
           <span className="transport-icon" aria-hidden="true">
             {transportCategoryMeta(category).icon}
           </span>
+        </span>
+        <div className="transport-card-main">
           <strong>{transportCardTitle(item)}</strong>
         </div>
         {hasWarning ? (
@@ -4735,9 +4737,9 @@ function ItineraryTimeline({
               }}
             >
               <div className="time-block">
-                {formatTimeDisplay(item.start_time) || "--:--"}
-                <br />
-                {formatTimeDisplay(item.end_time)}
+                <span>{formatTimeDisplay(item.start_time) || "--:--"}</span>
+                <span className="time-connector" aria-hidden="true" />
+                <span>{formatTimeDisplay(item.end_time)}</span>
               </div>
               <div className="item-main">
                 <h4>{destination}</h4>
