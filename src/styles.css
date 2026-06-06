@@ -2560,7 +2560,7 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .time-block {
+  .timeline-preview-card .time-block {
     display: inline-block;
   }
 
