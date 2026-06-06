@@ -69,7 +69,7 @@ Phase 1 與 Phase 2 已大致穩定。
   * 可在相鄰景點卡之間新增、展開、收合、編輯、刪除交通卡。
   * 每組相鄰景點 pair 最多顯示一張交通卡。
   * 景點卡依 `start_time` 排序；交通卡以 `from_item_id` / `to_item_id` pair 插入相鄰景點之間。
-  * non-adjacent transport 目前保留在 DB 但不顯示；Phase 3.1 前需記得使用者偏好改為失效即刪除。
+  * non-adjacent transport 在 Phase 3.1 改為保留資料並置頂顯示「交通資訊需確認」警示，不刪除、不硬塞到錯誤 gap。
   * Insert zone 已完成輕量化 polish，避免破壞 Day Board 卡片密度。
   * Demo Timeline 與正式版保持同一行為，仍是 mock/local-state only。
 * Demo Timeline 保持 parity，且仍是 mock/local-state only。

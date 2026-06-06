@@ -1220,6 +1220,15 @@ textarea {
   box-shadow: inset 4px 0 0 var(--mint);
 }
 
+.transport-card.warning {
+  border-color: rgba(214, 96, 77, 0.26);
+}
+
+.transport-card.warning.expanded,
+.transport-card.warning.focused {
+  border-color: var(--mint);
+}
+
 .transport-card-main,
 .transport-editor-heading {
   display: flex;
@@ -1242,6 +1251,37 @@ textarea {
   font-size: 24px;
   line-height: 1;
   text-align: center;
+}
+
+.transport-warning-stack {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.transport-warning-badge {
+  align-items: center;
+  align-self: center;
+  color: #b4533f;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 4px;
+  justify-self: end;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.transport-warning-detail {
+  color: #9f3f2d;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.transport-warning-divider {
+  border-top: 1px solid rgba(15, 95, 71, 0.14);
+  height: 1px;
+  margin-top: 2px;
 }
 
 .transport-card-details {

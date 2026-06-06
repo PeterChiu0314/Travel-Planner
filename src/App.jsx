@@ -373,6 +373,35 @@ function buildAdjacentTransportMap(items, visits) {
   return next;
 }
 
+function buildTransportPairState(items, visits) {
+  const adjacentKeys = new Set();
+  const visitIds = new Set(visits.map((item) => item.id));
+  visits.forEach((item, index) => {
+    const nextItem = visits[index + 1];
+    if (nextItem) adjacentKeys.add(transportPairKey(item.id, nextItem.id));
+  });
+
+  const adjacentTransportByPair = {};
+  const invalidTransportItems = [];
+  items
+    .filter((item) => isTransportationCard(item))
+    .forEach((item) => {
+      const hasPair = item.from_item_id && item.to_item_id;
+      const pairKey = hasPair ? transportPairKey(item.from_item_id, item.to_item_id) : "";
+      const pairExists = hasPair && visitIds.has(item.from_item_id) && visitIds.has(item.to_item_id);
+      const pairIsAdjacent = pairExists && adjacentKeys.has(pairKey);
+
+      if (pairIsAdjacent) {
+        if (!adjacentTransportByPair[pairKey]) adjacentTransportByPair[pairKey] = item;
+        return;
+      }
+
+      invalidTransportItems.push(item);
+    });
+
+  return { adjacentTransportByPair, invalidTransportItems };
+}
+
 function memberName(member) {
   return member?.display_name || member?.email || member?.user_id || "未指定";
 }
@@ -4182,7 +4211,10 @@ function ItineraryTimeline({
 
   const isTransportEditor = form.item_type === "transport";
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
-  const adjacentTransportByPair = useMemo(() => buildAdjacentTransportMap(dayItems, visitItems), [dayItems, visitItems]);
+  const { adjacentTransportByPair, invalidTransportItems } = useMemo(
+    () => buildTransportPairState(dayItems, visitItems),
+    [dayItems, visitItems],
+  );
 
   function renderTransportEditorForm() {
     const category = form.transport_category || defaultTransportCategory;
@@ -4272,14 +4304,23 @@ function ItineraryTimeline({
     );
   }
 
-  function renderTransportCard(item, lockedByOther) {
+  function transportPairLabel(item) {
+    const fromItem = dayItems.find((dayItem) => dayItem.id === item.from_item_id);
+    const toItem = dayItems.find((dayItem) => dayItem.id === item.to_item_id);
+    const fromLabel = fromItem?.location_name || fromItem?.location || fromItem?.title || "已移除景點";
+    const toLabel = toItem?.location_name || toItem?.location || toItem?.title || "已移除景點";
+    return `${fromLabel} → ${toLabel}`;
+  }
+
+  function renderTransportCard(item, lockedByOther, options = {}) {
+    const { warning = false } = options;
     const expanded = expandedId === item.id;
     const budgets = budgetsByItem[item.id] || [];
     const category = item.transport_category || defaultTransportCategory;
     const note = item.transport_note || item.transportation_note || item.description || item.note;
     return (
       <article
-        className={`transport-card${focusedItemId === item.id ? " focused" : ""}${expanded ? " expanded" : ""}`}
+        className={`transport-card${focusedItemId === item.id ? " focused" : ""}${expanded ? " expanded" : ""}${warning ? " warning" : ""}`}
         onClick={() => {
           setExpandedId(expanded ? null : item.id);
           onFocusItem(item.id);
@@ -4291,10 +4332,23 @@ function ItineraryTimeline({
           </span>
           <strong>{transportCardTitle(item)}</strong>
         </div>
+        {warning ? (
+          <span className="transport-warning-badge" aria-label="交通資訊需確認">
+            <span aria-hidden="true">⚠</span>
+            交通資訊需確認
+          </span>
+        ) : null}
         {expanded ? (
           <>
             <div className="transport-card-details">
-              <p>{note ? `備註：${note}` : "備註：尚未填寫"}</p>
+              <div>
+                {warning ? (
+                  <p className="transport-warning-detail">
+                    {transportPairLabel(item)} 的交通資訊已不符合目前行程順序
+                  </p>
+                ) : null}
+                <p>{note ? `備註：${note}` : "備註：尚未填寫"}</p>
+              </div>
               <div className="transport-budget-links">
                 <strong>預算</strong>
                 {budgets.length ? (
@@ -4361,6 +4415,19 @@ function ItineraryTimeline({
           +
         </button>
       </div>
+
+      {invalidTransportItems.length ? (
+        <div className="transport-warning-stack" aria-label="需確認交通資訊">
+          {invalidTransportItems.map((item) => (
+            <div className="timeline-flow-entry" key={item.id}>
+              {isOpen && isTransportEditor && editingId === item.id
+                ? renderTransportEditorForm()
+                : renderTransportCard(item, useEditLocks && isLockedByAnotherUser(item, currentUserId), { warning: true })}
+            </div>
+          ))}
+          <div className="transport-warning-divider" aria-hidden="true" />
+        </div>
+      ) : null}
 
       {isOpen && isTransportEditor && !editingId && !insertionPair ? renderTransportEditorForm() : null}
 
