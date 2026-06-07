@@ -493,14 +493,14 @@ code {
 }
 
 .mini-button {
-  min-width: 34px;
-  height: 34px;
-  min-height: 34px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
   border: 1px solid var(--line);
   background: #fff;
   color: var(--ink);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .primary-button:hover:not(:disabled),
@@ -1104,6 +1104,7 @@ textarea {
   border: 2px solid var(--line);
   border-radius: 8px;
   background: #fff;
+  min-height: 118px;
   padding: 14px;
   cursor: pointer;
 }
@@ -1205,9 +1206,9 @@ textarea {
 .transport-card {
   display: grid;
   grid-template-columns: 68px minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 6px 14px;
   align-items: center;
-  border: 1px solid var(--line);
+  border: 2px solid var(--line);
   border-radius: 8px;
   background: #fff;
   cursor: pointer;
@@ -1221,7 +1222,7 @@ textarea {
 }
 
 .transport-card.warning {
-  border-color: rgba(214, 96, 77, 0.26);
+  border-color: var(--coral);
 }
 
 .transport-card.warning.expanded,
@@ -1250,6 +1251,7 @@ textarea {
 
 .transport-card-main strong,
 .transport-editor-heading strong {
+  font-size: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1278,16 +1280,13 @@ textarea {
   font-size: 12px;
   font-weight: 800;
   gap: 4px;
-  grid-column: 3;
-  justify-self: end;
   line-height: 1;
   white-space: nowrap;
 }
 
 .transport-card.general-warning .transport-warning-badge {
   color: #d65445;
-  font-size: 14px;
-  justify-self: end;
+  font-size: 16px;
 }
 
 .transport-card.general-warning .transport-warning-badge span {
@@ -1295,9 +1294,18 @@ textarea {
 }
 
 .transport-warning-detail {
-  color: #9f3f2d;
+  color: var(--coral);
+  display: none;
+  font-size: 13px;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin: 0;
+  white-space: normal;
+}
+
+.transport-card.expanded .transport-warning-detail {
+  display: block;
+  grid-column: 1 / -1;
+  text-align: center;
 }
 
 .transport-warning-divider {
@@ -1310,7 +1318,7 @@ textarea {
   display: grid;
   grid-column: 2 / -1;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 8px 12px;
   align-items: start;
   border-top: 1px solid var(--line);
   padding-top: 10px;
@@ -1319,10 +1327,14 @@ textarea {
 .transport-card-details p {
   max-height: 120px;
   overflow: auto;
-  color: var(--ink);
   font-size: 13px;
   line-height: 1.5;
   white-space: normal;
+}
+
+.transport-note-detail {
+  grid-column: 1;
+  color: var(--muted);
 }
 
 .transport-budget-links {
@@ -1330,6 +1342,8 @@ textarea {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  grid-column: 2;
+  justify-self: end;
   flex-wrap: wrap;
 }
 
@@ -1341,7 +1355,10 @@ textarea {
 }
 
 .transport-card-actions {
-  grid-column: 2 / -1;
+  align-self: start;
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
 }
 
 .transport-editor-form {
@@ -1368,10 +1385,12 @@ textarea {
   border: 0;
   background: transparent;
   color: var(--mint-dark);
-  align-self: center;
+  align-self: start;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  min-height: 86px;
   font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
@@ -1388,7 +1407,15 @@ textarea {
 }
 
 .item-main {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
+}
+
+.timeline-item.expanded .item-main {
+  justify-content: flex-start;
 }
 
 .timeline-title-button {
@@ -1404,7 +1431,7 @@ textarea {
 
 .item-main h4 {
   margin: 0 0 6px;
-  font-size: 17px;
+  font-size: 20px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1419,6 +1446,11 @@ textarea {
   white-space: nowrap;
 }
 
+.item-summary:empty,
+.item-summary-placeholder {
+  display: none;
+}
+
 .transport-note {
   margin-top: 8px;
 }
@@ -1427,7 +1459,7 @@ textarea {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .item-details {
@@ -1452,7 +1484,7 @@ textarea {
 .linked-budget-list,
 .alternative-list {
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .linked-budget-list {
@@ -1505,10 +1537,11 @@ textarea {
   color: var(--mint-dark);
   padding: 4px 9px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .item-actions {
+  align-self: start;
   display: flex;
   gap: 8px;
 }

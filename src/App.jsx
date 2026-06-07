@@ -4454,29 +4454,25 @@ function ItineraryTimeline({
         </span>
         <div className="transport-card-main">
           <strong>{transportCardTitle(item)}</strong>
+          {hasWarning ? (
+            <span className="transport-warning-badge" aria-label="交通資訊需確認">
+              <span aria-hidden="true">⚠</span>
+            </span>
+          ) : null}
         </div>
-        {hasWarning ? (
-          <span className="transport-warning-badge" aria-label="交通資訊需確認">
-            <span aria-hidden="true">⚠</span>
-            {isInvalidWarning ? "交通資訊需確認" : null}
-          </span>
-        ) : null}
         {expanded ? (
           <>
+            {isInvalidWarning ? (
+              <p className="transport-warning-detail">
+                {transportPairLabel(item)} 的交通資訊已不符合目前行程順序
+              </p>
+            ) : null}
+            {isGeneralWarning ? (
+              <p className="transport-warning-detail">{transportPairLabel(item)} 的行程時間或目的地已變更，請確認交通資訊。</p>
+            ) : null}
             <div className="transport-card-details">
-              <div>
-                {isInvalidWarning ? (
-                  <p className="transport-warning-detail">
-                    {transportPairLabel(item)} 的交通資訊已不符合目前行程順序
-                  </p>
-                ) : null}
-                {isGeneralWarning ? (
-                  <p className="transport-warning-detail">{transportPairLabel(item)} 的行程時間或目的地已變更，請確認交通資訊</p>
-                ) : null}
-                <p>{note ? `備註：${note}` : "備註：尚未填寫"}</p>
-              </div>
+              <p className="transport-note-detail">{note || "尚未填寫"}</p>
               <div className="transport-budget-links">
-                <strong>預算</strong>
                 {budgets.length ? (
                   budgets.map((budget) => (
                     <span className="pill" key={budget.id}>
@@ -4506,23 +4502,25 @@ function ItineraryTimeline({
                 className="mini-button"
                 disabled={!canEdit || lockedByOther}
                 type="button"
+                title="編輯"
                 onClick={(event) => {
                   event.stopPropagation();
                   openEditItem(item);
                 }}
               >
-                編輯
+                E
               </button>
               <button
                 className="mini-button"
                 disabled={!canEdit}
                 type="button"
+                title="刪除"
                 onClick={(event) => {
                   event.stopPropagation();
                   onDeleteItem(item.id);
                 }}
               >
-                刪除
+                X
               </button>
             </div>
           </>
@@ -4743,7 +4741,13 @@ function ItineraryTimeline({
               </div>
               <div className="item-main">
                 <h4>{destination}</h4>
-                {secondaryText ? <p className="item-summary">{secondaryText}</p> : null}
+                {secondaryText ? (
+                  <p className="item-summary">{secondaryText}</p>
+                ) : (
+                  <p className="item-summary item-summary-placeholder" aria-hidden="true">
+                    &nbsp;
+                  </p>
+                )}
                 <div className="item-meta">
                   <span
                     className="pill"
