@@ -1,161 +1,162 @@
 # CURRENT_TASK.md
 
-這是給未來 AI agent 使用的目前工作脈絡。請保持簡短，當優先順序改變時更新此檔案。
+本文件記錄目前專案進度、當前工作方向、保護範圍與交接重點。之後 AI agent 進入專案時，請先閱讀本檔、`AGENT.md`、`UX_RULES.md`、`BUGS.md`。
+
+---
+
+## 目前分支
+
+目前 UI 實驗分支：
+
+```text
+codex/ui-experiment
+```
+
+最新已推送 commit：
+
+```text
+aa33012 Refine timeline transport card UI
+```
+
+此分支主要用於 Timeline / Transportation card UI polish。不要自動 push，除非使用者明確要求。
+
+---
 
 ## 目前階段
 
-專案目前處於 MVP stabilization。
+目前仍在 MVP stabilization 與 Timeline desktop UI polish 階段。
 
-目前原則：
+核心方向：
 
-* 保護既有多人協作流程。
-* 優化容易讓使用者遺失資料或卡住的 UX。
-* Demo 頁面要與正式 app UI 保持一致。
-* 改善 travel-first 的可用性與規劃流程。
-* 優先做小而安全的修改，避免大型重寫。
-
----
-
-# 目前主要焦點
-
-## Timeline Layout & Transportation UX Phase
-
-目前焦點：
-
-* 先專注常規電腦螢幕比例。
-* 在做更廣泛的 responsive 優化前，先打磨標準桌面版 Timeline workspace 版面。
-* 在行程項目之間加入 transportation card。
-* 保持地圖收合與 Day Board 行為穩定。
-* 保護 draft autosave、edit lock、Realtime safety 與 Demo parity。
-
-## 優先順序
-
-1. 標準桌面版面比例
-2. Day Board / map ratio polish
-3. Transportation card UX：Phase 3.0 / 3.1 / 3.1a 已完成；下一步 Phase 3.1b 警示 UI polish
-4. Timeline card density polish
-5. Demo parity
-6. Regression safety
+- 維持既有 Supabase / Realtime / Draft Autosave / Edit Lock 穩定。
+- 以小範圍 CSS / JSX 調整改善 Timeline 卡片閱讀性。
+- 保持 Demo Timeline 與正式 Timeline UI 共用與一致。
+- 避免大改資料流、schema、權限與架構。
 
 ---
 
-# 最近已完成的 Timeline 工作
+## 最近完成
 
-Phase 1 與 Phase 2 已大致穩定。
+### Timeline 景點卡
 
-已完成：
+- 時間欄改成開始時間、CSS 垂直線、結束時間三段結構。
+- 窄版 `.time-block` override 已修正，避免蓋掉 active day 主卡的 flex column。
+- 無備註卡片會保留一致收合卡高度，但不再用高空白硬撐。
+- 收合卡透過 `.timeline-item` min-height 與 `.item-main` flex 垂直置中維持高度與視覺穩定。
+- 景點卡標題、pill、mini button 視覺密度已調整。
 
-* UI 文案統一：「時間軸」→「行程」，「地點」→「目的地」。
-* Timeline card 時間顯示簡化為 `HH:mm`。
-* 時間選項改為每 5 分鐘一跳。
-* 新增行程時，若上一筆有結束時間，會自動帶入開始時間。
-* BUG-016 invalid time validation 已保留：
-  * `end_time <= start_time` 會禁止儲存。
-  * 顯示錯誤提示。
-  * Editor 不會關閉。
-  * Draft 與 lock 會保留。
-* Timeline 頁不再顯示 Budget 或 Luggage panels。
-* Members panel 已移到 sidebar。
-* Desktop 40/60 Timeline layout 已完成。
-* Map / route panel 收合已完成。
-* 地圖收合模式已顯示 Day Board columns。
-* Day Board tabs、水平導覽與 active Day 行為已完成。
-* Day Board card polish 已完成：
-  * Active Day column 較寬。
-  * Cards 使用目的地作為主要標題。
-  * Timeline form 不再顯示獨立的 title/name 欄位。
-  * 儲存時仍會讓 `title` 與 destination/location 同步，以維持資料相容性。
-* Phase 3.0 Transportation Card v1 已完成並通過功能測試：
-  * 可在相鄰景點卡之間新增、展開、收合、編輯、刪除交通卡。
-  * 每組相鄰景點 pair 最多顯示一張交通卡。
-  * 景點卡依 `start_time` 排序；交通卡以 `from_item_id` / `to_item_id` pair 插入相鄰景點之間。
-  * non-adjacent transport 在 Phase 3.1 改為保留資料並置頂顯示「交通資訊需確認」警示，不刪除、不硬塞到錯誤 gap。
-  * Phase 3.1a 一般警示改用上下景點 `start_time` / `end_time` / destination 快照判斷；備註、地址、Map URL 等非交通路線欄位不觸發。
-  * Phase 3.1a 已將 pair FK 改為 `on delete set null`，刪除上下景點後交通卡保留並進入失效警示區。
-  * Phase 3.1a 已完成測試 OK；接下來進行 Phase 3.1b Transportation warning UI polish。
-  * Insert zone 已完成輕量化 polish，避免破壞 Day Board 卡片密度。
-  * Demo Timeline 與正式版保持同一行為，仍是 mock/local-state only。
-* Demo Timeline 保持 parity，且仍是 mock/local-state only。
+### Timeline 交通卡
 
----
+- 交通卡改成與景點卡一致的三欄概念：
+  - 左欄交通 icon
+  - 中欄交通名稱
+  - 右欄 E / X actions
+- warning badge 已移到交通標題後方，例如：
 
-# 目前非目標
-
-除非使用者明確要求，否則不要做：
-
-* Supabase schema changes
-* Realtime subscription rewrites
-* Draft autosave key 或 storage redesign
-* Edit lock flow rewrite
-* Google Maps API integration
-* Inline card editing architecture
-* Alternative flip-card UI
-* Route-click auto scroll
-* Marker/card hover sync
-* Container/view extraction
-* 大規模 `src/App.jsx` architecture rewrite
-* 新增 framework、TypeScript、Tailwind 或 Next.js migration
-* Tablet、mobile、narrow-window 或 device-specific layout optimization
-
----
-
-# 穩定性要求
-
-必須保護：
-
-* Draft autosave 行為
-* Edit lock 行為
-* Realtime active edit safety
-* Demo/form parity
-* Google OAuth flow
-* Share route behavior
-* Budget、Luggage、Auth、Share data flows
-* RLS-backed permissions
-* BUG-016 invalid time range validation
-
-不要：
-
-* 在 reload/refetch 時重新初始化 active forms。
-* 讓 Realtime 覆蓋 active edits。
-* 讓 Demo 連到 Supabase、Realtime、Storage、Auth 或 localStorage。
-* 大幅重寫 `src/App.jsx`。
-* 更動 Supabase schema 或 migrations。
-
----
-
-# 目前測試重點
-
-每次修改後都要執行：
-
-```bash
-npm run build
+```text
+🚆 JR奈良線・25分鐘 ⚠
 ```
 
-Manual regression focus：
+- 交通卡 E / X 已固定在右上角。
+- 展開交通卡 details 目前版面：
+  - warning detail 是獨立 row
+  - 備註在下方左欄
+  - 預算 pill 在下方右欄
+- 展開 warning detail 只在 `.transport-card.expanded` 顯示；收合時只顯示標題旁 badge。
+- 交通卡展開區已移除「備註：」與「預算」label，只保留內容本身。
+- 一般 warning detail 句尾已補句點。
 
-* Timeline 編輯在切換瀏覽器 tab / app switch 後仍保留。
-* Save 後正確清除 draft。
-* Cancel 後正確釋放 lock。
-* Realtime update 不會覆蓋 active form。
-* Demo timeline 不需登入仍可使用。
-* Demo timeline 仍維持 mock-state only。
-* Timeline validation 仍會阻擋 invalid time range。
-* 新增行程預設帶入上一筆結束時間的行為仍正常。
-* Map expanded mode 的 route/map context 仍穩定。
-* Map collapsed mode 的 Day Board columns 仍穩定。
-* Day tabs 與 Day Board 水平導覽仍正常。
+### 文件 / agent 規則
+
+- `AGENT.md` 已新增 code modification rules：
+  - 既有檔案優先使用 `apply_patch`
+  - 優先小範圍 targeted edits
+  - 優先只修改受影響 JSX/CSS block
+  - 避免 PowerShell / Node one-liner / regex global / whole-file rewrite
+  - 只有建立新檔、migration、刻意替換文件、或使用者明確核准的大重構才允許 whole-file rewrite
 
 ---
 
-# 如果不確定
+## 當前保護範圍
 
-優先選擇穩定性，而不是新功能。
+除非使用者明確要求，不要修改：
 
-修改 Timeline 行為前，先檢查：
+- Supabase schema / migrations
+- RLS policies
+- Realtime subscription flow
+- Draft Autosave
+- Edit Lock
+- Auth / Google OAuth flow
+- Share route
+- Invite flow
+- Transportation card 資料模型
+- Transportation card pair 判斷邏輯
+- Demo 資料流
+- 大範圍 `src/App.jsx` 架構
 
-* `AGENT.md`
-* `UX_RULES.md`
-* `BUGS.md`
-* `src/lib/draftAutosave.js`
-* `src/lib/editLocks.js`
-* `src/App.jsx` 裡的 Realtime subscription flow
+本聊天室目前作為 UI 調整專用。使用者通常會先用 DevTools 預覽 CSS，再提供 selector / 數值。請依提供內容做最小修改。
+
+---
+
+## 目前驗證方式
+
+每次修改後至少執行：
+
+```bash
+npm.cmd run build
+```
+
+目前 build 會出現既有 Vite chunk size warning，這不是本輪 UI 修改造成的錯誤。
+
+手動檢查重點：
+
+- `/demo/timeline`
+- 正式登入後 Timeline
+- 地圖展開模式
+- 地圖收合 Day Board
+- 交通卡一般 warning
+- 交通卡失效 warning
+- 交通卡展開 / 收合
+- E / X 右上角位置
+- warning badge 位於交通標題後方
+- warning detail 只在展開時顯示
+
+---
+
+## 已知注意事項
+
+- PowerShell 讀取中文檔案時可能顯示亂碼，不一定代表原始檔壞掉。
+- 但不要用 `Get-Content | Set-Content` 或 PowerShell 全文 rewrite 處理含中文的 JSX。
+- 若需要修改 `src/App.jsx`，使用 `apply_patch`，並讓 patch context 儘量小。
+- 若 `apply_patch` 因中文 context 不穩，優先改用更小的 ASCII 周邊 context，而不是全文替換。
+- Demo Timeline 與正式 Timeline 的 active day 主卡共用 `ItineraryTimeline`。
+- Day Board preview 走 `MultiDayTimelineColumns`，不是完全相同 render path。
+
+---
+
+## 下一步可能工作
+
+依使用者 DevTools 驗證結果繼續做 Timeline UI polish：
+
+- 微調交通卡展開 details 的 spacing / alignment。
+- 微調 warning color token 或新增 warning 色票。
+- 微調景點卡與交通卡的垂直節奏。
+- 檢查 Day Board 收合狀態是否仍保持穩定。
+- 必要時同步 Demo/formal UI，但不要複製資料流。
+
+---
+
+## 交接提醒
+
+本專案是 Vite + React SPA，不是 Next.js。
+
+主要相關檔案：
+
+- `src/App.jsx`
+- `src/styles.css`
+- `AGENT.md`
+- `UX_RULES.md`
+- `BUGS.md`
+- `CURRENT_TASK.md`
+
+修改 UI 時請保持保守、小步、可驗證。
