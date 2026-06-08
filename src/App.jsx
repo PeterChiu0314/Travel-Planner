@@ -1591,9 +1591,13 @@ export default function App() {
   }
 
   async function saveAlternative(itemId, payload, editingId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEdit) return { ok: false };
     const nextPayload = {
       title: payload.title.trim(),
+      type: payload.type || "attraction",
+      start_time: payload.start_time || null,
+      end_time: payload.end_time || null,
+      cost: Number(payload.cost || 0),
       location_name: payload.location_name.trim() || null,
       address: payload.address.trim() || null,
       map_url: payload.map_url.trim() || null,
@@ -1605,7 +1609,7 @@ export default function App() {
       const { error } = await supabase.from("itinerary_alternatives").update(nextPayload).eq("id", editingId);
       if (error) setNotice(error.message);
       else await loadTripData(activeTrip.id);
-      return;
+      return { ok: !error, error };
     }
 
     const { error } = await supabase.from("itinerary_alternatives").insert({
@@ -1614,20 +1618,37 @@ export default function App() {
     });
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
+    return { ok: !error, error };
   }
 
   async function deleteAlternative(alternativeId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEdit) return { ok: false };
     const { error } = await supabase.from("itinerary_alternatives").delete().eq("id", alternativeId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
+    return { ok: !error, error };
   }
 
   async function applyAlternative(item, alternative) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEdit) return { ok: false };
+    const oldMainPayload = {
+      title: item.title,
+      type: item.type || "attraction",
+      start_time: item.start_time || null,
+      end_time: item.end_time || null,
+      cost: Number(item.cost || 0),
+      location_name: item.location_name || item.location || null,
+      address: item.address || null,
+      map_url: item.map_url || null,
+      description: item.description || item.note || null,
+      transportation_note: item.transportation_note || null,
+    };
     const nextPayload = normalizeItemPayload({
       ...item,
       title: alternative.title,
+      type: alternative.type || item.type,
+      start_time: alternative.start_time || "",
+      end_time: alternative.end_time || "",
       location: alternative.location_name || "",
       location_name: alternative.location_name || "",
       address: alternative.address || "",
@@ -1635,19 +1656,28 @@ export default function App() {
       note: alternative.description || "",
       description: alternative.description || "",
       transportation_note: alternative.transportation_note || "",
-      cost: item.cost || 0,
+      cost: alternative.cost || 0,
     });
     const invalidTimeRange = isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time);
     if (invalidTimeRange) {
       setNotice("結束時間必須晚於開始時間。");
-      return;
+      return { ok: false };
     }
-    const { error } = await supabase
+    const { error: itemError } = await supabase
       .from("itinerary_items")
       .update(nextPayload)
       .eq("id", item.id);
-    if (error) setNotice(error.message);
+    if (itemError) {
+      setNotice(itemError.message);
+      return { ok: false, error: itemError };
+    }
+    const { error: alternativeError } = await supabase
+      .from("itinerary_alternatives")
+      .update(oldMainPayload)
+      .eq("id", alternative.id);
+    if (alternativeError) setNotice(alternativeError.message);
     else await loadTripData(activeTrip.id);
+    return { ok: !alternativeError, error: alternativeError };
   }
 
   async function saveBudget(payload, editingId, meta = {}) {
@@ -2484,6 +2514,7 @@ function DemoApp({ initialSection }) {
   const [activeSection, setActiveSection] = useState(initialSection || "timeline");
   const [activeDay, setActiveDay] = useState(0);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
+  const [timelineAlternatives, setTimelineAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
   const [budgetParticipants, setBudgetParticipants] = useState(() => createDemoBudgetParticipants());
   const [actualExpenses, setActualExpenses] = useState(() => createDemoActualExpenses());
@@ -2513,6 +2544,13 @@ function DemoApp({ initialSection }) {
     });
     return next;
   }, [budgetItems, itineraryBudgetLinks]);
+  const alternativesByItem = useMemo(() => {
+    const next = {};
+    timelineAlternatives.forEach((alternative) => {
+      next[alternative.itinerary_item_id] = [...(next[alternative.itinerary_item_id] || []), alternative];
+    });
+    return next;
+  }, [timelineAlternatives]);
 
   function changeSection(section) {
     setActiveSection(section);
@@ -2817,7 +2855,7 @@ function DemoApp({ initialSection }) {
                 <ItineraryTimeline
                   activeDay={activeDay}
                   activeTrip={demoTrip}
-                  alternativesByItem={{}}
+                  alternativesByItem={alternativesByItem}
                   budgetsByItem={budgetsByItem}
                   canEdit
                   currentUserId="demo-peter"
@@ -2829,16 +2867,16 @@ function DemoApp({ initialSection }) {
                   focusedItemId={focusedItemId}
                   headingEyebrow="行程"
                   members={demoMembers}
-                  onApplyAlternative={() => {}}
+                  onApplyAlternative={applyTimelineAlternative}
                   onConfirmTransportWarning={confirmTimelineTransportWarning}
-                  onDeleteAlternative={() => {}}
+                  onDeleteAlternative={deleteTimelineAlternative}
                   onDeleteItem={(itemId) => {
                     setTimelineItems((current) => current.filter((item) => item.id !== itemId));
                     setItineraryBudgetLinks((current) => current.filter((link) => link.itinerary_item_id !== itemId));
                   }}
                   onFocusItem={setFocusedItemId}
                   onReorderItem={() => {}}
-                  onSaveAlternative={() => ({ ok: true })}
+                  onSaveAlternative={saveTimelineAlternative}
                   onSaveItem={saveTimelineItem}
                   restoreDrafts={false}
                   useEditLocks={false}
@@ -4006,6 +4044,8 @@ function ItineraryTimeline({
   const [conflict, setConflict] = useState(false);
   const [timeError, setTimeError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
+  const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
+  const [alternativeFormsByItem, setAlternativeFormsByItem] = useState({});
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -4326,6 +4366,102 @@ function ItineraryTimeline({
     [dayItems, visitItems],
   );
 
+  function alternativeDestination(alternative) {
+    return alternative?.location_name || alternative?.title || alternative?.address || "未命名備案";
+  }
+
+  function visitDestination(item) {
+    return item?.location_name || item?.location || item?.title || "未命名行程";
+  }
+
+  function alternativeToForm(alternative = {}) {
+    return {
+      type: alternative.type || "attraction",
+      start_time: formatTimeDisplay(alternative.start_time),
+      end_time: formatTimeDisplay(alternative.end_time),
+      cost: alternative.cost || 0,
+      location_name: alternative.location_name || alternative.title || "",
+      description: alternative.description || "",
+      address: alternative.address || "",
+      map_url: alternative.map_url || "",
+      transportation_note: alternative.transportation_note || "",
+    };
+  }
+
+  function emptyAlternativeForm(item) {
+    return {
+      type: item.type || "attraction",
+      start_time: "",
+      end_time: "",
+      cost: 0,
+      location_name: "",
+      description: "",
+      address: "",
+      map_url: "",
+      transportation_note: "",
+    };
+  }
+
+  function setAlternativeForm(itemId, patch) {
+    setAlternativeFormsByItem((current) => ({
+      ...current,
+      [itemId]: {
+        ...(current[itemId] || {}),
+        ...patch,
+      },
+    }));
+  }
+
+  async function flipAlternativeFace(item, alternative, isAlternativeFace) {
+    if (!alternative) {
+      setExpandedId(item.id);
+      setAlternativeFaceByItem((current) => ({ ...current, [item.id]: true }));
+      setAlternativeFormsByItem((current) => ({ ...current, [item.id]: current[item.id] || emptyAlternativeForm(item) }));
+      return;
+    }
+    const result = await onApplyAlternative(item, alternative);
+    if (result?.ok === false) return;
+    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: !isAlternativeFace }));
+    setAlternativeFormsByItem((current) => ({ ...current, [item.id]: alternativeToForm(item) }));
+  }
+
+  async function saveAlternativeForm(item, alternative) {
+    const formValue = alternativeFormsByItem[item.id] || alternativeToForm(alternative);
+    if (isInvalidTimeRange(formValue.start_time, formValue.end_time)) {
+      setTimeError("結束時間必須晚於開始時間。");
+      return;
+    }
+    setTimeError("");
+    const result = await onSaveAlternative(
+      item.id,
+      {
+        title: formValue.location_name,
+        type: formValue.type,
+        start_time: formValue.start_time,
+        end_time: formValue.end_time,
+        cost: formValue.cost,
+        location_name: formValue.location_name,
+        description: formValue.description,
+        address: formValue.address,
+        map_url: formValue.map_url,
+        transportation_note: formValue.transportation_note,
+      },
+      alternative?.id || null,
+    );
+    if (result?.ok === false) return;
+    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: true }));
+  }
+
+  function deleteAlternative(itemId, alternativeId) {
+    onDeleteAlternative(alternativeId);
+    setAlternativeFaceByItem((current) => ({ ...current, [itemId]: false }));
+    setAlternativeFormsByItem((current) => {
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
+  }
+
   function renderTransportEditorForm() {
     const category = form.transport_category || defaultTransportCategory;
     return (
@@ -4541,6 +4677,77 @@ function ItineraryTimeline({
     );
   }
 
+  function saveTimelineAlternative(itemId, payload, editingId) {
+    const nextPayload = {
+      title: payload.title.trim(),
+      type: payload.type || "attraction",
+      start_time: payload.start_time || null,
+      end_time: payload.end_time || null,
+      cost: Number(payload.cost || 0),
+      location_name: payload.location_name.trim() || null,
+      address: payload.address.trim() || null,
+      map_url: payload.map_url.trim() || null,
+      description: payload.description.trim() || null,
+      transportation_note: payload.transportation_note.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (!nextPayload.title) return { ok: false };
+    if (editingId) {
+      setTimelineAlternatives((current) =>
+        current.map((alternative) => (alternative.id === editingId ? { ...alternative, ...nextPayload } : alternative)),
+      );
+      return { ok: true };
+    }
+    setTimelineAlternatives((current) => [
+      ...current.filter((alternative) => alternative.itinerary_item_id !== itemId),
+      { ...nextPayload, id: demoId("demo-alternative"), itinerary_item_id: itemId },
+    ]);
+    return { ok: true };
+  }
+
+  function deleteTimelineAlternative(alternativeId) {
+    setTimelineAlternatives((current) => current.filter((alternative) => alternative.id !== alternativeId));
+  }
+
+  function applyTimelineAlternative(item, alternative) {
+    const oldMainPayload = {
+      title: item.title,
+      type: item.type || "attraction",
+      start_time: item.start_time || null,
+      end_time: item.end_time || null,
+      cost: Number(item.cost || 0),
+      location_name: item.location_name || item.location || null,
+      address: item.address || null,
+      map_url: item.map_url || null,
+      description: item.description || item.note || null,
+      transportation_note: item.transportation_note || null,
+      updated_at: new Date().toISOString(),
+    };
+    const nextPayload = normalizeItemPayload({
+      ...item,
+      title: alternative.title,
+      type: alternative.type || item.type,
+      start_time: alternative.start_time || "",
+      end_time: alternative.end_time || "",
+      location: alternative.location_name || "",
+      location_name: alternative.location_name || "",
+      address: alternative.address || "",
+      map_url: alternative.map_url || "",
+      note: alternative.description || "",
+      description: alternative.description || "",
+      transportation_note: alternative.transportation_note || "",
+      cost: alternative.cost || 0,
+    });
+    if (nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time)) return { ok: false };
+    setTimelineItems((current) =>
+      current.map((currentItem) => (currentItem.id === item.id ? { ...currentItem, ...nextPayload, updated_at: new Date().toISOString() } : currentItem)),
+    );
+    setTimelineAlternatives((current) =>
+      current.map((currentAlternative) => (currentAlternative.id === alternative.id ? { ...currentAlternative, ...oldMainPayload } : currentAlternative)),
+    );
+    return { ok: true };
+  }
+
   function renderVisitEditorForm() {
     return (
       <form autoComplete="off" className="item-form" onSubmit={submit}>
@@ -4681,6 +4888,173 @@ function ItineraryTimeline({
     );
   }
 
+  function renderAlternativeForm(item, alternative) {
+    const formValue = alternativeFormsByItem[item.id] || alternativeToForm(alternative);
+    return (
+      <div className="alternative-card-form" onClick={(event) => event.stopPropagation()}>
+        {timeError ? (
+          <div className="notice inline-error" role="alert">
+            <span>{timeError}</span>
+          </div>
+        ) : null}
+        <div className="field-group form-grid">
+          <label>
+            類型
+            <select value={formValue.type} onChange={(event) => setAlternativeForm(item.id, { type: event.target.value })}>
+              {Object.entries(typeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            開始
+            <select
+              value={formValue.start_time}
+              onChange={(event) => {
+                setTimeError("");
+                setAlternativeForm(item.id, { start_time: event.target.value });
+              }}
+            >
+              <option value="">未設定</option>
+              {timelineTimeOptions.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            結束
+            <select
+              value={formValue.end_time}
+              onChange={(event) => {
+                setTimeError("");
+                setAlternativeForm(item.id, { end_time: event.target.value });
+              }}
+            >
+              <option value="">未設定</option>
+              {timelineTimeOptions.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            費用
+            <input
+              autoComplete="off"
+              min="0"
+              step="1"
+              type="number"
+              value={formValue.cost}
+              onChange={(event) => setAlternativeForm(item.id, { cost: event.target.value })}
+            />
+          </label>
+        </div>
+        <label className="full-label">
+          目的地
+          <input
+            autoComplete="off"
+            placeholder="備案目的地或店名"
+            required
+            value={formValue.location_name}
+            onChange={(event) => setAlternativeForm(item.id, { location_name: event.target.value })}
+          />
+        </label>
+        <label className="full-label">
+          備註
+          <textarea
+            autoComplete="off"
+            rows="3"
+            value={formValue.description}
+            onChange={(event) => setAlternativeForm(item.id, { description: event.target.value })}
+          />
+        </label>
+        <div className="field-group form-grid wide">
+          <label>
+            地址
+            <input
+              autoComplete="off"
+              value={formValue.address}
+              onChange={(event) => setAlternativeForm(item.id, { address: event.target.value })}
+            />
+          </label>
+          <label>
+            Map URL
+            <input
+              autoComplete="off"
+              placeholder="https://maps.google.com/..."
+              value={formValue.map_url}
+              onChange={(event) => setAlternativeForm(item.id, { map_url: event.target.value })}
+            />
+          </label>
+        </div>
+        <label className="full-label">
+          交通備註
+          <textarea
+            autoComplete="off"
+            rows="2"
+            value={formValue.transportation_note}
+            onChange={(event) => setAlternativeForm(item.id, { transportation_note: event.target.value })}
+          />
+        </label>
+        <div className="form-actions">
+          <button className="primary-button compact" disabled={!canEdit || !formValue.location_name.trim()} type="button" onClick={() => saveAlternativeForm(item, alternative)}>
+            儲存備案
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderAlternativePanel(item, alternative, isAlternativeFace) {
+    return (
+      <div className="alternative-list">
+        <div className="alternative-heading">
+          <strong>備案</strong>
+        </div>
+        <div className="alternative-relation-row" title="點擊右下角切換">
+          {alternative ? (
+            <>
+              <span>{isAlternativeFace ? `原行程：${alternativeDestination(alternative)}` : `備案：${alternativeDestination(alternative)}`}</span>
+              {!isAlternativeFace ? (
+                <button
+                  className="mini-button"
+                  disabled={!canEdit}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    deleteAlternative(item.id, alternative.id);
+                  }}
+                >
+                  X
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <span className="muted-text">點擊右下角翻卡建立備案</span>
+          )}
+        </div>
+        {isAlternativeFace ? renderAlternativeForm(item, alternative) : null}
+        <button
+          className="alternative-flip-button"
+          disabled={!canEdit}
+          type="button"
+          title={alternative ? "切換主行程 / 備案" : "建立備案"}
+          onClick={(event) => {
+            event.stopPropagation();
+            flipAlternativeFace(item, alternative, isAlternativeFace);
+          }}
+        >
+          ↻
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
@@ -4715,13 +5089,31 @@ function ItineraryTimeline({
           visitItems.map((item, index) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
             const locker = memberById.get(item.locked_by);
-            const destination = item.location_name || item.location || item.title;
-            const secondaryText = item.note || item.description || item.transportation_note;
+            const alternative = (alternativesByItem[item.id] || [])[0] || null;
+            const isAlternativeFace = Boolean(alternativeFaceByItem[item.id]);
+            const displayItem =
+              isAlternativeFace && alternative
+                ? {
+                    ...item,
+                    ...alternative,
+                    item_type: "visit",
+                    type: alternative.type || item.type,
+                    cost: alternative.cost || 0,
+                    start_time: alternative.start_time || "",
+                    end_time: alternative.end_time || "",
+                    location: alternative.location_name || "",
+                    note: alternative.description || "",
+                    description: alternative.description || "",
+                    transportation_note: alternative.transportation_note || "",
+                  }
+                : item;
+            const destination = visitDestination(displayItem);
+            const secondaryText = displayItem.note || displayItem.description || displayItem.transportation_note;
             const linkedBudgetTotal = (budgetsByItem[item.id] || []).reduce(
               (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
               0,
             );
-            const displayCost = linkedBudgetTotal || Number(item.cost || 0);
+            const displayCost = linkedBudgetTotal || Number(displayItem.cost || 0);
             const nextItem = visitItems[index + 1];
             const pairKey = nextItem ? transportPairKey(item.id, nextItem.id) : "";
             const transportItem = pairKey ? adjacentTransportByPair[pairKey] : null;
@@ -4743,9 +5135,9 @@ function ItineraryTimeline({
               }}
             >
               <div className="time-block">
-                <span>{formatTimeDisplay(item.start_time) || "--:--"}</span>
+                <span>{formatTimeDisplay(displayItem.start_time) || "--:--"}</span>
                 <span className="time-connector" aria-hidden="true" />
-                <span>{formatTimeDisplay(item.end_time)}</span>
+                <span>{formatTimeDisplay(displayItem.end_time)}</span>
               </div>
               <div className="item-main">
                 <h4>{destination}</h4>
@@ -4759,23 +5151,23 @@ function ItineraryTimeline({
                 <div className="item-meta">
                   <span
                     className="pill"
-                    style={{ background: `${typeColors[item.type]}22`, color: typeColors[item.type] }}
+                    style={{ background: `${typeColors[displayItem.type]}22`, color: typeColors[displayItem.type] }}
                   >
-                    {typeLabels[item.type]}
+                    {typeLabels[displayItem.type]}
                   </span>
                   {displayCost > 0 ? <span className="pill">{formatMoney(displayCost)}</span> : null}
-                  {(alternativesByItem[item.id] || []).length ? (
-                    <span className="pill">{(alternativesByItem[item.id] || []).length} 個備案</span>
+                  {alternative ? (
+                    <span className="pill">備案</span>
                   ) : null}
                 </div>
                 {lockedByOther ? <div className="lock-note">{memberName(locker)} 正在編輯這筆資料</div> : null}
                 {expandedId === item.id ? (
                   <div className="item-details">
-                    {item.description || item.note ? <p>{item.description || item.note}</p> : null}
-                    {item.address ? <p>地址：{item.address}</p> : null}
-                    {item.transportation_note ? <p>交通：{item.transportation_note}</p> : null}
-                    {item.map_url ? (
-                      <a href={item.map_url} rel="noreferrer" target="_blank">
+                    {displayItem.description || displayItem.note ? <p>{displayItem.description || displayItem.note}</p> : null}
+                    {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
+                    {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
+                    {displayItem.map_url ? (
+                      <a href={displayItem.map_url} rel="noreferrer" target="_blank">
                         開啟地圖
                       </a>
                     ) : null}
@@ -4791,30 +5183,25 @@ function ItineraryTimeline({
                         <span className="muted-text">尚未連動預算</span>
                       )}
                     </div>
-                    <AlternativeList
-                      alternatives={alternativesByItem[item.id] || []}
-                      canEdit={canEdit}
-                      item={item}
-                      onApply={onApplyAlternative}
-                      onDelete={onDeleteAlternative}
-                      onSave={onSaveAlternative}
-                    />
+                    {renderAlternativePanel(item, alternative, isAlternativeFace)}
                   </div>
                 ) : null}
               </div>
               <div className="item-actions">
-                <button
-                  className="mini-button"
-                  disabled={!canEdit || lockedByOther}
-                  type="button"
-                  title="編輯"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openEditItem(item);
-                  }}
-                >
-                  E
-                </button>
+                {!isAlternativeFace ? (
+                  <button
+                    className="mini-button"
+                    disabled={!canEdit || lockedByOther}
+                    type="button"
+                    title="編輯"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openEditItem(item);
+                    }}
+                  >
+                    E
+                  </button>
+                ) : null}
                 <button
                   className="mini-button"
                   disabled={!canEdit}
@@ -4822,7 +5209,15 @@ function ItineraryTimeline({
                   title="刪除"
                   onClick={(event) => {
                     event.stopPropagation();
-                    onDeleteItem(item.id);
+                    if (isAlternativeFace) {
+                      if (alternative) {
+                        deleteAlternative(item.id, alternative.id);
+                      } else {
+                        setAlternativeFaceByItem((current) => ({ ...current, [item.id]: false }));
+                      }
+                    } else {
+                      onDeleteItem(item.id);
+                    }
                   }}
                 >
                   X
@@ -4937,69 +5332,6 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
         );
       })}
     </>
-  );
-}
-
-function AlternativeList({ alternatives, canEdit, item, onApply, onDelete, onSave }) {
-  function promptAlternative(alternative = null) {
-    const title = window.prompt("備案標題", alternative?.title || "");
-    if (!title?.trim()) return;
-    const locationName = window.prompt("備案目的地", alternative?.location_name || "") || "";
-    const mapUrl = window.prompt("Map URL", alternative?.map_url || "") || "";
-    onSave(
-      item.id,
-      {
-        title,
-        location_name: locationName,
-        address: alternative?.address || "",
-        map_url: mapUrl,
-        description: alternative?.description || "",
-        transportation_note: alternative?.transportation_note || "",
-      },
-      alternative?.id || null,
-    );
-  }
-
-  return (
-    <div className="alternative-list">
-      <div className="alternative-heading">
-        <strong>備案</strong>
-        <button className="mini-button" disabled={!canEdit} type="button" onClick={() => promptAlternative()}>
-          +
-        </button>
-      </div>
-      {alternatives.length ? (
-        alternatives.map((alternative) => (
-          <div className="alternative-row" key={alternative.id}>
-            <div>
-              <strong>{alternative.title}</strong>
-              {alternative.location_name || alternative.address ? (
-                <span>{alternative.location_name || alternative.address}</span>
-              ) : null}
-              {alternative.description ? <p>{alternative.description}</p> : null}
-            </div>
-            <div className="alternative-actions">
-              {alternative.map_url ? (
-                <a className="mini-button" href={alternative.map_url} rel="noreferrer" target="_blank">
-                  Map
-                </a>
-              ) : null}
-              <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onApply(item, alternative)}>
-                用
-              </button>
-              <button className="mini-button" disabled={!canEdit} type="button" onClick={() => promptAlternative(alternative)}>
-                E
-              </button>
-              <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(alternative.id)}>
-                X
-              </button>
-            </div>
-          </div>
-        ))
-      ) : (
-        <span className="muted-text">尚未建立備案</span>
-      )}
-    </div>
   );
 }
 
