@@ -4541,6 +4541,146 @@ function ItineraryTimeline({
     );
   }
 
+  function renderVisitEditorForm() {
+    return (
+      <form autoComplete="off" className="item-form" onSubmit={submit}>
+        <input name="item_type" type="hidden" value="visit" />
+        {conflict ? (
+          <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
+        ) : null}
+        {timeError ? (
+          <div className="notice inline-error" role="alert">
+            <span>{timeError}</span>
+          </div>
+        ) : null}
+        <div className="field-group form-grid">
+          <label>
+            類型
+            <select name="type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+              {Object.entries(typeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            開始
+            <select
+              name="start_time"
+              value={form.start_time}
+              onChange={(event) => {
+                setTimeError("");
+                setForm({ ...form, start_time: event.target.value });
+              }}
+            >
+              <option value="">未設定</option>
+              {timelineTimeOptions.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            結束
+            <select
+              name="end_time"
+              value={form.end_time}
+              onChange={(event) => {
+                setTimeError("");
+                setForm({ ...form, end_time: event.target.value });
+              }}
+            >
+              <option value="">未設定</option>
+              {timelineTimeOptions.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            費用
+            <input
+              autoComplete="off"
+              min="0"
+              name="cost"
+              step="1"
+              type="number"
+              value={form.cost}
+              onChange={(event) => setForm({ ...form, cost: event.target.value })}
+            />
+          </label>
+        </div>
+        <div className="field-group form-grid wide single">
+          <label>
+            目的地
+            <input
+              autoComplete="off"
+              placeholder="目的地或店名"
+              name="location_name"
+              required
+              value={form.location_name || form.location}
+              onChange={(event) =>
+                setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })
+              }
+            />
+          </label>
+        </div>
+        <label className="full-label">
+          備註
+          <textarea
+            autoComplete="off"
+            name="description"
+            rows="3"
+            value={form.description || form.note}
+            onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
+          />
+        </label>
+        <div className="field-group form-grid wide">
+          <label>
+            地址
+            <input
+              autoComplete="off"
+              name="address"
+              value={form.address}
+              onChange={(event) => setForm({ ...form, address: event.target.value })}
+            />
+          </label>
+          <label>
+            Map URL
+            <input
+              autoComplete="off"
+              name="map_url"
+              placeholder="https://maps.google.com/..."
+              value={form.map_url}
+              onChange={(event) => setForm({ ...form, map_url: event.target.value })}
+            />
+          </label>
+        </div>
+        <label className="full-label">
+          交通備註
+          <textarea
+            autoComplete="off"
+            name="transportation_note"
+            rows="2"
+            value={form.transportation_note}
+            onChange={(event) => setForm({ ...form, transportation_note: event.target.value })}
+          />
+        </label>
+        <div className="form-actions">
+          <button className="ghost-button" type="button" onClick={() => closeEditor()}>
+            取消
+          </button>
+          <button className="primary-button compact" type="submit">
+            儲存
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
@@ -4568,143 +4708,7 @@ function ItineraryTimeline({
 
       {isOpen && isTransportEditor && !editingId && !insertionPair ? renderTransportEditorForm() : null}
 
-      {isOpen && !isTransportEditor ? (
-        <form autoComplete="off" className="item-form" onSubmit={submit}>
-          <input name="item_type" type="hidden" value="visit" />
-          {conflict ? (
-            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
-          ) : null}
-          {timeError ? (
-            <div className="notice inline-error" role="alert">
-              <span>{timeError}</span>
-            </div>
-          ) : null}
-          <div className="field-group form-grid">
-            <label>
-              類型
-              <select name="type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
-                {Object.entries(typeLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              開始
-              <select
-                name="start_time"
-                value={form.start_time}
-                onChange={(event) => {
-                  setTimeError("");
-                  setForm({ ...form, start_time: event.target.value });
-                }}
-              >
-                <option value="">未設定</option>
-                {timelineTimeOptions.map((time) => (
-                  <option key={time} value={time}>
-                    {time}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              結束
-              <select
-                name="end_time"
-                value={form.end_time}
-                onChange={(event) => {
-                  setTimeError("");
-                  setForm({ ...form, end_time: event.target.value });
-                }}
-              >
-                <option value="">未設定</option>
-                {timelineTimeOptions.map((time) => (
-                  <option key={time} value={time}>
-                    {time}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              費用
-              <input
-                autoComplete="off"
-                min="0"
-                name="cost"
-                step="1"
-                type="number"
-                value={form.cost}
-                onChange={(event) => setForm({ ...form, cost: event.target.value })}
-              />
-            </label>
-          </div>
-          <div className="field-group form-grid wide single">
-            <label>
-              目的地
-              <input
-                autoComplete="off"
-                placeholder="目的地或店名"
-                name="location_name"
-                required
-                value={form.location_name || form.location}
-                onChange={(event) =>
-                  setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })
-                }
-              />
-            </label>
-          </div>
-          <label className="full-label">
-            備註
-            <textarea
-              autoComplete="off"
-              name="description"
-              rows="3"
-              value={form.description || form.note}
-              onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
-            />
-          </label>
-          <div className="field-group form-grid wide">
-            <label>
-              地址
-              <input
-                autoComplete="off"
-                name="address"
-                value={form.address}
-                onChange={(event) => setForm({ ...form, address: event.target.value })}
-              />
-            </label>
-            <label>
-              Map URL
-              <input
-                autoComplete="off"
-                name="map_url"
-                placeholder="https://maps.google.com/..."
-                value={form.map_url}
-                onChange={(event) => setForm({ ...form, map_url: event.target.value })}
-              />
-            </label>
-          </div>
-          <label className="full-label">
-            交通備註
-            <textarea
-              autoComplete="off"
-              name="transportation_note"
-              rows="2"
-              value={form.transportation_note}
-              onChange={(event) => setForm({ ...form, transportation_note: event.target.value })}
-            />
-          </label>
-          <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => closeEditor()}>
-              取消
-            </button>
-            <button className="primary-button compact" type="submit">
-              儲存
-            </button>
-          </div>
-        </form>
-      ) : null}
+      {isOpen && !isTransportEditor && !editingId ? renderVisitEditorForm() : null}
 
       <div className="timeline">
         {visitItems.length ? (
@@ -4725,8 +4729,12 @@ function ItineraryTimeline({
               transportItem && transportPairNeedsReview(transportItem, item, nextItem) ? "general" : "";
             const isAddingTransportHere =
               isOpen && isTransportEditor && !editingId && insertionPair?.fromId === item.id && insertionPair?.toId === nextItem?.id;
+            const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
             return (
             <div className="timeline-flow-entry" key={item.id}>
+            {isEditingVisitHere ? (
+              renderVisitEditorForm()
+            ) : (
             <article
               className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${expandedId === item.id ? " expanded" : ""}`}
               onClick={() => {
@@ -4821,6 +4829,7 @@ function ItineraryTimeline({
                 </button>
               </div>
             </article>
+            )}
             {isAddingTransportHere ? renderTransportEditorForm() : null}
             {!isAddingTransportHere && transportItem ? (
               <div className="timeline-flow-entry" key={transportItem.id}>
