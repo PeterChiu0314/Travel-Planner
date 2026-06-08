@@ -54,6 +54,7 @@ Important correction for future agents:
 - Do not add TypeScript, Tailwind, Next.js App Router, or a component framework unless explicitly requested and migration scope is approved.
 - Environment variables are Vite-style: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Never put a Supabase service role key in frontend code.
+- Windows / PowerShell encoding, `npm.cmd`, and Vite dev server startup notes are documented in `DEV_SETUP_WINDOWS.md`.
 
 Key files:
 
