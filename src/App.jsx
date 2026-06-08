@@ -4521,7 +4521,7 @@ function ItineraryTimeline({
   async function saveAlternativeForm(item, alternative) {
     const formValue = alternativeFormsByItem[item.id] || alternativeToForm(alternative);
     resetAlternativeError(item.id);
-    if (isInvalidTimeRange(formValue.start_time, formValue.end_time)) {
+    if (isInvalidTimeRange(item.start_time, item.end_time)) {
       setTimeError("結束時間必須晚於開始時間。");
       return;
     }
@@ -4530,10 +4530,10 @@ function ItineraryTimeline({
       item.id,
       {
         title: formValue.location_name,
-        type: formValue.type,
-        start_time: formValue.start_time,
-        end_time: formValue.end_time,
-        cost: formValue.cost,
+        type: item.type || "attraction",
+        start_time: item.start_time || "",
+        end_time: item.end_time || "",
+        cost: item.cost || 0,
         location_name: formValue.location_name,
         description: formValue.description,
         address: formValue.address,
@@ -4807,6 +4807,7 @@ function ItineraryTimeline({
     return (
       <form autoComplete="off" className="item-form" onSubmit={submit}>
         <input name="item_type" type="hidden" value="visit" />
+        {editingId ? <div className="form-mode-label">編輯主行程</div> : null}
         {conflict ? (
           <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
         ) : null}
@@ -4966,63 +4967,6 @@ function ItineraryTimeline({
             <span>{alternativeError}</span>
           </div>
         ) : null}
-        <div className="field-group form-grid">
-          <label>
-            類型
-            <select value={formValue.type} onChange={(event) => setAlternativeForm(item.id, { type: event.target.value })}>
-              {Object.entries(typeLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            開始
-            <select
-              value={formValue.start_time}
-              onChange={(event) => {
-                setTimeError("");
-                setAlternativeForm(item.id, { start_time: event.target.value });
-              }}
-            >
-              <option value="">未設定</option>
-              {timelineTimeOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            結束
-            <select
-              value={formValue.end_time}
-              onChange={(event) => {
-                setTimeError("");
-                setAlternativeForm(item.id, { end_time: event.target.value });
-              }}
-            >
-              <option value="">未設定</option>
-              {timelineTimeOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            費用
-            <input
-              autoComplete="off"
-              min="0"
-              step="1"
-              type="number"
-              value={formValue.cost}
-              onChange={(event) => setAlternativeForm(item.id, { cost: event.target.value })}
-            />
-          </label>
-        </div>
         <label className="full-label">
           目的地
           <input
@@ -5082,51 +5026,6 @@ function ItineraryTimeline({
     );
   }
 
-  function renderAlternativePanel(item, alternative, isAlternativeFace) {
-    return (
-      <div className="alternative-list">
-        <div className="alternative-heading">
-          <strong>備案</strong>
-        </div>
-        <div className="alternative-relation-row" title="點擊右下角切換">
-          {alternative ? (
-            <>
-              <span>{isAlternativeFace ? `原行程：${alternativeDestination(alternative)}` : `備案：${alternativeDestination(alternative)}`}</span>
-              {!isAlternativeFace ? (
-                <button
-                  className="mini-button"
-                  disabled={!canEdit}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    deleteAlternative(item.id, alternative.id);
-                  }}
-                >
-                  X
-                </button>
-              ) : null}
-            </>
-          ) : (
-            <span className="muted-text">點擊右下角翻卡建立備案</span>
-          )}
-        </div>
-        {isAlternativeFace ? renderAlternativeForm(item, alternative) : null}
-        <button
-          className="alternative-flip-button"
-          disabled={!canEdit}
-          type="button"
-          title={alternative ? "切換主行程 / 備案" : "建立備案"}
-          onClick={(event) => {
-            event.stopPropagation();
-            flipAlternativeFace(item, alternative, isAlternativeFace);
-          }}
-        >
-          ↻
-        </button>
-      </div>
-    );
-  }
-
   function renderAlternativeSummary(item, alternative, isAlternativeFace) {
     const alternativeError = alternativeErrorByItem[item.id];
     return (
@@ -5152,6 +5051,19 @@ function ItineraryTimeline({
         ) : (
           <div className="alternative-relation-row">
             <span>{alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}</span>
+            {alternative ? (
+              <button
+                className="mini-button"
+                disabled={!canEdit}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  deleteAlternative(item.id, alternative.id);
+                }}
+              >
+                X
+              </button>
+            ) : null}
           </div>
         )}
       </div>
@@ -5193,7 +5105,8 @@ function ItineraryTimeline({
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
             const locker = memberById.get(item.locked_by);
             const alternative = (alternativesByItem[item.id] || [])[0] || null;
-            const isAlternativeFace = Boolean(alternativeFaceByItem[item.id]);
+            const isExpanded = expandedId === item.id;
+            const isAlternativeFace = isExpanded && Boolean(alternativeFaceByItem[item.id]);
             const isEditingAlternative = Boolean(editingAlternativeByItem[item.id]);
             const isAlternativeFormFace = isAlternativeFace && (!alternative || isEditingAlternative);
             const alternativeFormValue =
@@ -5241,7 +5154,7 @@ function ItineraryTimeline({
               renderVisitEditorForm()
             ) : (
             <article
-              className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${expandedId === item.id ? " expanded" : ""}`}
+              className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${isExpanded ? " expanded" : ""}`}
               onClick={() => {
                 setExpandedId(expandedId === item.id ? null : item.id);
                 onFocusItem(item.id);
@@ -5281,7 +5194,7 @@ function ItineraryTimeline({
                   ) : null}
                 </div>
                 {lockedByOther ? <div className="lock-note">{memberName(locker)} 正在編輯這筆資料</div> : null}
-                {expandedId === item.id ? (
+                {isExpanded ? (
                   <div className="item-details">
                     {displayItem.description || displayItem.note ? <p>{displayItem.description || displayItem.note}</p> : null}
                     {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
@@ -5305,7 +5218,7 @@ function ItineraryTimeline({
                     </div>
                   </div>
                 ) : null}
-                    {renderAlternativeSummary(item, alternative, isAlternativeFace)}
+                    {isExpanded ? renderAlternativeSummary(item, alternative, isAlternativeFace) : null}
                   </>
                 )}
               </div>
@@ -5362,19 +5275,23 @@ function ItineraryTimeline({
                 >
                   X
                 </button>
-                <button
-                  className="alternative-flip-button"
-                  disabled={!canEdit}
-                  type="button"
-                  title={alternative ? "Toggle primary / alternative" : "Create alternative"}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    flipAlternativeFace(item, alternative, isAlternativeFace);
-                  }}
-                >
-                  ↻
-                </button>
               </div>
+              {isExpanded ? (
+                <div className="alternative-card-footer">
+                  <button
+                    className="alternative-flip-button"
+                    disabled={!canEdit}
+                    type="button"
+                    title={alternative ? "Toggle primary / alternative" : "Create alternative"}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      flipAlternativeFace(item, alternative, isAlternativeFace);
+                    }}
+                  >
+                    ↻
+                  </button>
+                </div>
+              ) : null}
             </article>
             )}
             {isAddingTransportHere ? renderTransportEditorForm() : null}

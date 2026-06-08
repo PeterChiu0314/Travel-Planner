@@ -1546,6 +1546,12 @@ textarea {
   gap: 8px;
 }
 
+.alternative-card-footer {
+  display: flex;
+  grid-column: 2 / 4;
+  justify-content: flex-end;
+}
+
 .alternative-flip-button {
   justify-self: end;
   width: 34px;
@@ -1557,6 +1563,12 @@ textarea {
   font-size: 18px;
   font-weight: 900;
   line-height: 1;
+}
+
+.form-mode-label {
+  color: var(--mint-dark);
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .alternative-row {
