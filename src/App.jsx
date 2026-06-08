@@ -2615,6 +2615,78 @@ function DemoApp({ initialSection }) {
     );
   }
 
+  function saveTimelineAlternative(itemId, payload, editingId) {
+    const nextPayload = {
+      title: payload.title.trim(),
+      type: payload.type || "attraction",
+      start_time: payload.start_time || null,
+      end_time: payload.end_time || null,
+      cost: Number(payload.cost || 0),
+      location_name: payload.location_name.trim() || null,
+      address: payload.address.trim() || null,
+      map_url: payload.map_url.trim() || null,
+      description: payload.description.trim() || null,
+      transportation_note: payload.transportation_note.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (!nextPayload.title) return { ok: false };
+    if (editingId) {
+      setTimelineAlternatives((current) =>
+        current.map((alternative) => (alternative.id === editingId ? { ...alternative, ...nextPayload } : alternative)),
+      );
+      return { ok: true };
+    }
+    setTimelineAlternatives((current) => [
+      ...current.filter((alternative) => alternative.itinerary_item_id !== itemId),
+      { ...nextPayload, id: demoId("demo-alternative"), itinerary_item_id: itemId },
+    ]);
+    return { ok: true };
+  }
+
+  function deleteTimelineAlternative(alternativeId) {
+    setTimelineAlternatives((current) => current.filter((alternative) => alternative.id !== alternativeId));
+    return { ok: true };
+  }
+
+  function applyTimelineAlternative(item, alternative) {
+    const oldMainPayload = {
+      title: item.title,
+      type: item.type || "attraction",
+      start_time: item.start_time || null,
+      end_time: item.end_time || null,
+      cost: Number(item.cost || 0),
+      location_name: item.location_name || item.location || null,
+      address: item.address || null,
+      map_url: item.map_url || null,
+      description: item.description || item.note || null,
+      transportation_note: item.transportation_note || null,
+      updated_at: new Date().toISOString(),
+    };
+    const nextPayload = normalizeItemPayload({
+      ...item,
+      title: alternative.title,
+      type: alternative.type || item.type,
+      start_time: alternative.start_time || "",
+      end_time: alternative.end_time || "",
+      location: alternative.location_name || "",
+      location_name: alternative.location_name || "",
+      address: alternative.address || "",
+      map_url: alternative.map_url || "",
+      note: alternative.description || "",
+      description: alternative.description || "",
+      transportation_note: alternative.transportation_note || "",
+      cost: alternative.cost || 0,
+    });
+    if (nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time)) return { ok: false };
+    setTimelineItems((current) =>
+      current.map((currentItem) => (currentItem.id === item.id ? { ...currentItem, ...nextPayload, updated_at: new Date().toISOString() } : currentItem)),
+    );
+    setTimelineAlternatives((current) =>
+      current.map((currentAlternative) => (currentAlternative.id === alternative.id ? { ...currentAlternative, ...oldMainPayload } : currentAlternative)),
+    );
+    return { ok: true };
+  }
+
   function saveBudgetItem(payload, editingId) {
     if (!payload.title.trim()) return;
     const participantIds = payload.participantIds?.length ? payload.participantIds : demoMembers.map((member) => member.user_id);
@@ -4502,6 +4574,7 @@ function ItineraryTimeline({
   }
 
   async function applyAlternativeFace(item, alternative) {
+    if (typeof onApplyAlternative !== "function") return;
     resetAlternativeError(item.id);
     const result = await onApplyAlternative(item, alternative);
     if (result?.ok === false) {
@@ -4728,77 +4801,6 @@ function ItineraryTimeline({
         <span className="transport-insert-line" aria-hidden="true" />
       </button>
     );
-  }
-
-  function saveTimelineAlternative(itemId, payload, editingId) {
-    const nextPayload = {
-      title: payload.title.trim(),
-      type: payload.type || "attraction",
-      start_time: payload.start_time || null,
-      end_time: payload.end_time || null,
-      cost: Number(payload.cost || 0),
-      location_name: payload.location_name.trim() || null,
-      address: payload.address.trim() || null,
-      map_url: payload.map_url.trim() || null,
-      description: payload.description.trim() || null,
-      transportation_note: payload.transportation_note.trim() || null,
-      updated_at: new Date().toISOString(),
-    };
-    if (!nextPayload.title) return { ok: false };
-    if (editingId) {
-      setTimelineAlternatives((current) =>
-        current.map((alternative) => (alternative.id === editingId ? { ...alternative, ...nextPayload } : alternative)),
-      );
-      return { ok: true };
-    }
-    setTimelineAlternatives((current) => [
-      ...current.filter((alternative) => alternative.itinerary_item_id !== itemId),
-      { ...nextPayload, id: demoId("demo-alternative"), itinerary_item_id: itemId },
-    ]);
-    return { ok: true };
-  }
-
-  function deleteTimelineAlternative(alternativeId) {
-    setTimelineAlternatives((current) => current.filter((alternative) => alternative.id !== alternativeId));
-  }
-
-  function applyTimelineAlternative(item, alternative) {
-    const oldMainPayload = {
-      title: item.title,
-      type: item.type || "attraction",
-      start_time: item.start_time || null,
-      end_time: item.end_time || null,
-      cost: Number(item.cost || 0),
-      location_name: item.location_name || item.location || null,
-      address: item.address || null,
-      map_url: item.map_url || null,
-      description: item.description || item.note || null,
-      transportation_note: item.transportation_note || null,
-      updated_at: new Date().toISOString(),
-    };
-    const nextPayload = normalizeItemPayload({
-      ...item,
-      title: alternative.title,
-      type: alternative.type || item.type,
-      start_time: alternative.start_time || "",
-      end_time: alternative.end_time || "",
-      location: alternative.location_name || "",
-      location_name: alternative.location_name || "",
-      address: alternative.address || "",
-      map_url: alternative.map_url || "",
-      note: alternative.description || "",
-      description: alternative.description || "",
-      transportation_note: alternative.transportation_note || "",
-      cost: alternative.cost || 0,
-    });
-    if (nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time)) return { ok: false };
-    setTimelineItems((current) =>
-      current.map((currentItem) => (currentItem.id === item.id ? { ...currentItem, ...nextPayload, updated_at: new Date().toISOString() } : currentItem)),
-    );
-    setTimelineAlternatives((current) =>
-      current.map((currentAlternative) => (currentAlternative.id === alternative.id ? { ...currentAlternative, ...oldMainPayload } : currentAlternative)),
-    );
-    return { ok: true };
   }
 
   function renderVisitEditorForm() {
@@ -5139,11 +5141,13 @@ function ItineraryTimeline({
             <div className="alternative-relation-row">
               <span>{`原行程：${visitDestination(item)}`}</span>
             </div>
-            <div className="alternative-face-actions">
-              <button className="primary-button compact" disabled={!canEdit} type="button" onClick={() => applyAlternativeFace(item, alternative)}>
-                使用此備案
-              </button>
-            </div>
+            {typeof onApplyAlternative === "function" ? (
+              <div className="alternative-face-actions">
+                <button className="primary-button compact" disabled={!canEdit} type="button" onClick={() => applyAlternativeFace(item, alternative)}>
+                  使用此備案
+                </button>
+              </div>
+            ) : null}
           </>
         ) : (
           <div className="alternative-relation-row">
