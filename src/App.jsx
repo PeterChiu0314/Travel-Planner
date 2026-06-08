@@ -4046,6 +4046,8 @@ function ItineraryTimeline({
   const [expandedId, setExpandedId] = useState(null);
   const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
   const [alternativeFormsByItem, setAlternativeFormsByItem] = useState({});
+  const [editingAlternativeByItem, setEditingAlternativeByItem] = useState({});
+  const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -4391,14 +4393,14 @@ function ItineraryTimeline({
   function emptyAlternativeForm(item) {
     return {
       type: item.type || "attraction",
-      start_time: "",
-      end_time: "",
+      start_time: formatTimeDisplay(item.start_time),
+      end_time: formatTimeDisplay(item.end_time),
       cost: 0,
       location_name: "",
       description: "",
-      address: "",
-      map_url: "",
-      transportation_note: "",
+      address: item.address || "",
+      map_url: item.map_url || "",
+      transportation_note: item.transportation_note || "",
     };
   }
 
@@ -4412,21 +4414,41 @@ function ItineraryTimeline({
     }));
   }
 
-  async function flipAlternativeFace(item, alternative, isAlternativeFace) {
-    if (!alternative) {
-      setExpandedId(item.id);
-      setAlternativeFaceByItem((current) => ({ ...current, [item.id]: true }));
-      setAlternativeFormsByItem((current) => ({ ...current, [item.id]: current[item.id] || emptyAlternativeForm(item) }));
-      return;
+  function resetAlternativeError(itemId) {
+    setAlternativeErrorByItem((current) => {
+      if (!current[itemId]) return current;
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
+  }
+
+  function cancelAlternativeFace(itemId, hasAlternative) {
+    setEditingAlternativeByItem((current) => ({ ...current, [itemId]: false }));
+    resetAlternativeError(itemId);
+    if (!hasAlternative) {
+      setAlternativeFaceByItem((current) => ({ ...current, [itemId]: false }));
+      setAlternativeFormsByItem((current) => {
+        const next = { ...current };
+        delete next[itemId];
+        return next;
+      });
     }
-    const result = await onApplyAlternative(item, alternative);
-    if (result?.ok === false) return;
-    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: !isAlternativeFace }));
-    setAlternativeFormsByItem((current) => ({ ...current, [item.id]: alternativeToForm(item) }));
+  }
+
+  function flipAlternativeFace(item, alternative, isAlternativeFace) {
+    const nextFace = !isAlternativeFace;
+    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: nextFace }));
+    setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
+    resetAlternativeError(item.id);
+    if (nextFace && !alternative) {
+      setAlternativeFormsByItem((current) => ({ ...current, [item.id]: current[item.id] || emptyAlternativeForm(item) }));
+    }
   }
 
   async function saveAlternativeForm(item, alternative) {
     const formValue = alternativeFormsByItem[item.id] || alternativeToForm(alternative);
+    resetAlternativeError(item.id);
     if (isInvalidTimeRange(formValue.start_time, formValue.end_time)) {
       setTimeError("結束時間必須晚於開始時間。");
       return;
@@ -4448,18 +4470,49 @@ function ItineraryTimeline({
       },
       alternative?.id || null,
     );
-    if (result?.ok === false) return;
+    if (result?.ok === false) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [item.id]: result.error?.message || "Alternative save failed. Please try again.",
+      }));
+      return;
+    }
     setAlternativeFaceByItem((current) => ({ ...current, [item.id]: true }));
+    setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
+    resetAlternativeError(item.id);
   }
 
-  function deleteAlternative(itemId, alternativeId) {
-    onDeleteAlternative(alternativeId);
+  async function deleteAlternative(itemId, alternativeId) {
+    resetAlternativeError(itemId);
+    const result = await onDeleteAlternative(alternativeId);
+    if (result?.ok === false) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [itemId]: result.error?.message || "Alternative delete failed. Please try again.",
+      }));
+      return;
+    }
     setAlternativeFaceByItem((current) => ({ ...current, [itemId]: false }));
+    setEditingAlternativeByItem((current) => ({ ...current, [itemId]: false }));
     setAlternativeFormsByItem((current) => {
       const next = { ...current };
       delete next[itemId];
       return next;
     });
+  }
+
+  async function applyAlternativeFace(item, alternative) {
+    resetAlternativeError(item.id);
+    const result = await onApplyAlternative(item, alternative);
+    if (result?.ok === false) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [item.id]: result.error?.message || "Alternative apply failed. Please try again.",
+      }));
+      return;
+    }
+    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: false }));
+    setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
   }
 
   function renderTransportEditorForm() {
@@ -4890,11 +4943,25 @@ function ItineraryTimeline({
 
   function renderAlternativeForm(item, alternative) {
     const formValue = alternativeFormsByItem[item.id] || alternativeToForm(alternative);
+    const alternativeError = alternativeErrorByItem[item.id];
     return (
-      <div className="alternative-card-form" onClick={(event) => event.stopPropagation()}>
+      <form
+        autoComplete="off"
+        className="alternative-card-form"
+        onClick={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          saveAlternativeForm(item, alternative);
+        }}
+      >
         {timeError ? (
           <div className="notice inline-error" role="alert">
             <span>{timeError}</span>
+          </div>
+        ) : null}
+        {alternativeError ? (
+          <div className="notice inline-error" role="alert">
+            <span>{alternativeError}</span>
           </div>
         ) : null}
         <div className="field-group form-grid">
@@ -5002,11 +5069,14 @@ function ItineraryTimeline({
           />
         </label>
         <div className="form-actions">
-          <button className="primary-button compact" disabled={!canEdit || !formValue.location_name.trim()} type="button" onClick={() => saveAlternativeForm(item, alternative)}>
+          <button className="ghost-button compact" type="button" onClick={() => cancelAlternativeFace(item.id, Boolean(alternative))}>
+            取消
+          </button>
+          <button className="primary-button compact" disabled={!canEdit || !formValue.location_name.trim()} type="submit">
             儲存備案
           </button>
         </div>
-      </div>
+      </form>
     );
   }
 
@@ -5055,6 +5125,35 @@ function ItineraryTimeline({
     );
   }
 
+  function renderAlternativeSummary(item, alternative, isAlternativeFace) {
+    const alternativeError = alternativeErrorByItem[item.id];
+    return (
+      <div className="alternative-list compact">
+        {alternativeError ? (
+          <div className="notice inline-error" role="alert">
+            <span>{alternativeError}</span>
+          </div>
+        ) : null}
+        {isAlternativeFace && alternative ? (
+          <>
+            <div className="alternative-relation-row">
+              <span>{`原行程：${visitDestination(item)}`}</span>
+            </div>
+            <div className="alternative-face-actions">
+              <button className="primary-button compact" disabled={!canEdit} type="button" onClick={() => applyAlternativeFace(item, alternative)}>
+                使用此備案
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="alternative-relation-row">
+            <span>{alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
@@ -5091,8 +5190,12 @@ function ItineraryTimeline({
             const locker = memberById.get(item.locked_by);
             const alternative = (alternativesByItem[item.id] || [])[0] || null;
             const isAlternativeFace = Boolean(alternativeFaceByItem[item.id]);
+            const isEditingAlternative = Boolean(editingAlternativeByItem[item.id]);
+            const isAlternativeFormFace = isAlternativeFace && (!alternative || isEditingAlternative);
+            const alternativeFormValue =
+              alternativeFormsByItem[item.id] || (alternative ? alternativeToForm(alternative) : emptyAlternativeForm(item));
             const displayItem =
-              isAlternativeFace && alternative
+              isAlternativeFace && alternative && !isEditingAlternative
                 ? {
                     ...item,
                     ...alternative,
@@ -5107,8 +5210,14 @@ function ItineraryTimeline({
                     transportation_note: alternative.transportation_note || "",
                   }
                 : item;
-            const destination = visitDestination(displayItem);
-            const secondaryText = displayItem.note || displayItem.description || displayItem.transportation_note;
+            const destination = isAlternativeFormFace
+              ? alternative
+                ? "編輯備案"
+                : "建立備案"
+              : visitDestination(displayItem);
+            const secondaryText = isAlternativeFormFace
+              ? `原行程：${visitDestination(item)}`
+              : displayItem.note || displayItem.description || displayItem.transportation_note;
             const linkedBudgetTotal = (budgetsByItem[item.id] || []).reduce(
               (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
               0,
@@ -5135,12 +5244,19 @@ function ItineraryTimeline({
               }}
             >
               <div className="time-block">
-                <span>{formatTimeDisplay(displayItem.start_time) || "--:--"}</span>
+                <span>{formatTimeDisplay(isAlternativeFormFace ? alternativeFormValue.start_time : displayItem.start_time) || "--:--"}</span>
                 <span className="time-connector" aria-hidden="true" />
-                <span>{formatTimeDisplay(displayItem.end_time)}</span>
+                <span>{formatTimeDisplay(isAlternativeFormFace ? alternativeFormValue.end_time : displayItem.end_time)}</span>
               </div>
               <div className="item-main">
                 <h4>{destination}</h4>
+                {isAlternativeFormFace ? (
+                  <>
+                    {secondaryText ? <p className="item-summary">{secondaryText}</p> : null}
+                    {renderAlternativeForm(item, alternative)}
+                  </>
+                ) : (
+                  <>
                 {secondaryText ? (
                   <p className="item-summary">{secondaryText}</p>
                 ) : (
@@ -5183,9 +5299,11 @@ function ItineraryTimeline({
                         <span className="muted-text">尚未連動預算</span>
                       )}
                     </div>
-                    {renderAlternativePanel(item, alternative, isAlternativeFace)}
                   </div>
                 ) : null}
+                    {renderAlternativeSummary(item, alternative, isAlternativeFace)}
+                  </>
+                )}
               </div>
               <div className="item-actions">
                 {!isAlternativeFace ? (
@@ -5202,6 +5320,22 @@ function ItineraryTimeline({
                     E
                   </button>
                 ) : null}
+                {isAlternativeFace && alternative && !isAlternativeFormFace ? (
+                  <button
+                    className="mini-button"
+                    disabled={!canEdit || lockedByOther}
+                    type="button"
+                    title="Edit alternative"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setEditingAlternativeByItem((current) => ({ ...current, [item.id]: true }));
+                      setAlternativeFormsByItem((current) => ({ ...current, [item.id]: alternativeToForm(alternative) }));
+                      resetAlternativeError(item.id);
+                    }}
+                  >
+                    E
+                  </button>
+                ) : null}
                 <button
                   className="mini-button"
                   disabled={!canEdit}
@@ -5209,11 +5343,13 @@ function ItineraryTimeline({
                   title="刪除"
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (isAlternativeFace) {
+                    if (isAlternativeFormFace) {
+                      cancelAlternativeFace(item.id, Boolean(alternative));
+                    } else if (isAlternativeFace) {
                       if (alternative) {
                         deleteAlternative(item.id, alternative.id);
                       } else {
-                        setAlternativeFaceByItem((current) => ({ ...current, [item.id]: false }));
+                        cancelAlternativeFace(item.id, false);
                       }
                     } else {
                       onDeleteItem(item.id);
@@ -5221,6 +5357,18 @@ function ItineraryTimeline({
                   }}
                 >
                   X
+                </button>
+                <button
+                  className="alternative-flip-button"
+                  disabled={!canEdit}
+                  type="button"
+                  title={alternative ? "Toggle primary / alternative" : "Create alternative"}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    flipAlternativeFace(item, alternative, isAlternativeFace);
+                  }}
+                >
+                  ↻
                 </button>
               </div>
             </article>
