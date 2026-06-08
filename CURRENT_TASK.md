@@ -15,7 +15,7 @@ codex/ui-experiment
 最新已推送 commit：
 
 ```text
-aa33012 Refine timeline transport card UI
+718e55f Render itinerary editor inline
 ```
 
 此分支主要用於 Timeline / Transportation card UI polish。不要自動 push，除非使用者明確要求。
@@ -37,6 +37,36 @@ aa33012 Refine timeline transport card UI
 
 ## 最近完成
 
+### Phase 3 目前順序
+
+- Phase 3.0：交通卡 v1 ✅ 已完成
+- Phase 3.1：交通卡警示 ✅ 已完成
+  - 一般警示
+  - 失效警示
+  - 刪除上下景點後交通卡保留
+  - 快照判斷
+- Phase 3.2：景點卡原位置展開編輯 ✅ 已完成
+  - 點 E 後在原卡片位置展開
+  - 點卡片本體仍是展開 / 收合詳細資訊
+- Phase 3.2a：地圖展開模式版面規劃 ⏸ 暫緩
+  - Reason：需等 App Layout / Trip Header / Sidebar 統一後再處理
+- Phase 3.2b：Inline editor auto scroll ⏸ 暫緩
+  - Reason：需等 scroll 容器規則確定後再處理
+- Phase 3.3：地圖點位自動捲動 ⏸ 暫緩
+  - Reason：需等地圖展開版面與 scroll 容器確定後再處理
+- Phase 3.3：備案翻卡 ⏭ 下一步
+  - 備案只做景點卡
+  - 每張景點卡最多 1 個備案
+  - 主行程與備案可互換
+  - 互換後相關交通卡顯示警示
+- Phase 3.4：拖曳排序
+  - 只拖曳景點卡
+  - 交通卡不可自由排序
+  - 交通卡依 pair 顯示
+  - 失效交通卡未來可拖曳重新放置到 gap
+
+Phase 3 收尾後，優先進行 App Layout 改版。
+
 ### Timeline 景點卡
 
 - 時間欄改成開始時間、CSS 垂直線、結束時間三段結構。
@@ -44,6 +74,8 @@ aa33012 Refine timeline transport card UI
 - 無備註卡片會保留一致收合卡高度，但不再用高空白硬撐。
 - 收合卡透過 `.timeline-item` min-height 與 `.item-main` flex 垂直置中維持高度與視覺穩定。
 - 景點卡標題、pill、mini button 視覺密度已調整。
+- Phase 3.2 inline editor 已完成：點景點卡 E 後，編輯表單會在原卡片位置展開，不再固定出現在 Day 頂部。
+- 點景點卡本體仍維持展開 / 收合詳細資訊，不會直接進入編輯模式。
 
 ### Timeline 交通卡
 
@@ -136,13 +168,22 @@ npm.cmd run build
 
 ## 下一步可能工作
 
-依使用者 DevTools 驗證結果繼續做 Timeline UI polish：
+依目前 Phase 3 新順序繼續：
 
-- 微調交通卡展開 details 的 spacing / alignment。
-- 微調 warning color token 或新增 warning 色票。
-- 微調景點卡與交通卡的垂直節奏。
-- 檢查 Day Board 收合狀態是否仍保持穩定。
-- 必要時同步 Demo/formal UI，但不要複製資料流。
+- Phase 3.3：備案翻卡。
+- Phase 3.4：拖曳排序。
+- Phase 3 收尾後，先做 App Layout 改版。
+
+暫緩項目：
+
+- 地圖展開模式版面規劃。
+- Inline editor auto scroll。
+- 地圖點位自動捲動。
+
+暫緩原因：
+
+- 需等待 App Layout / Trip Header / Sidebar 統一。
+- 需等待地圖展開版面與 scroll 容器規則確定。
 
 ---
 
