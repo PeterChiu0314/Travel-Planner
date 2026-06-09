@@ -1540,12 +1540,6 @@ textarea {
   margin-top: 8px;
 }
 
-.alternative-face-actions {
-  display: flex;
-  justify-content: flex-start;
-  gap: 8px;
-}
-
 .alternative-card-footer {
   display: flex;
   grid-column: 2 / 4;

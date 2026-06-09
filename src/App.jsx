@@ -4508,14 +4508,26 @@ function ItineraryTimeline({
     }
   }
 
-  function flipAlternativeFace(item, alternative, isAlternativeFace) {
-    const nextFace = !isAlternativeFace;
-    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: nextFace }));
-    setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
+  async function flipAlternativeFace(item, alternative) {
     resetAlternativeError(item.id);
-    if (nextFace && !alternative) {
+    if (!alternative) {
+      setAlternativeFaceByItem((current) => ({ ...current, [item.id]: true }));
+      setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
       setAlternativeFormsByItem((current) => ({ ...current, [item.id]: current[item.id] || emptyAlternativeForm(item) }));
+      return;
     }
+    if (typeof onApplyAlternative !== "function") return;
+    const result = await onApplyAlternative(item, alternative);
+    if (result?.ok === false) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [item.id]: result.error?.message || "Alternative apply failed. Please try again.",
+      }));
+      return;
+    }
+    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: false }));
+    setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
+    setAlternativeFormsByItem((current) => ({ ...current, [item.id]: alternativeToForm(item) }));
   }
 
   async function saveAlternativeForm(item, alternative) {
@@ -4549,7 +4561,7 @@ function ItineraryTimeline({
       }));
       return;
     }
-    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: true }));
+    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: false }));
     setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
     resetAlternativeError(item.id);
   }
@@ -4571,21 +4583,6 @@ function ItineraryTimeline({
       delete next[itemId];
       return next;
     });
-  }
-
-  async function applyAlternativeFace(item, alternative) {
-    if (typeof onApplyAlternative !== "function") return;
-    resetAlternativeError(item.id);
-    const result = await onApplyAlternative(item, alternative);
-    if (result?.ok === false) {
-      setAlternativeErrorByItem((current) => ({
-        ...current,
-        [item.id]: result.error?.message || "Alternative apply failed. Please try again.",
-      }));
-      return;
-    }
-    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: false }));
-    setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
   }
 
   function renderTransportEditorForm() {
@@ -5036,18 +5033,9 @@ function ItineraryTimeline({
           </div>
         ) : null}
         {isAlternativeFace && alternative ? (
-          <>
-            <div className="alternative-relation-row">
-              <span>{`原行程：${visitDestination(item)}`}</span>
-            </div>
-            {typeof onApplyAlternative === "function" ? (
-              <div className="alternative-face-actions">
-                <button className="primary-button compact" disabled={!canEdit} type="button" onClick={() => applyAlternativeFace(item, alternative)}>
-                  使用此備案
-                </button>
-              </div>
-            ) : null}
-          </>
+          <div className="alternative-relation-row">
+            <span>{`原行程：${visitDestination(item)}`}</span>
+          </div>
         ) : (
           <div className="alternative-relation-row">
             <span>{alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}</span>
@@ -5285,7 +5273,7 @@ function ItineraryTimeline({
                     title={alternative ? "Toggle primary / alternative" : "Create alternative"}
                     onClick={(event) => {
                       event.stopPropagation();
-                      flipAlternativeFace(item, alternative, isAlternativeFace);
+                      flipAlternativeFace(item, alternative);
                     }}
                   >
                     ↻
