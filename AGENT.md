@@ -54,6 +54,7 @@ Important correction for future agents:
 - Do not add TypeScript, Tailwind, Next.js App Router, or a component framework unless explicitly requested and migration scope is approved.
 - Environment variables are Vite-style: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Never put a Supabase service role key in frontend code.
+- Windows / PowerShell encoding, `npm.cmd`, and Vite dev server startup notes are documented in `DEV_SETUP_WINDOWS.md`.
 
 Key files:
 
@@ -591,6 +592,18 @@ General:
 - Do not duplicate UI; extract view components carefully when needed.
 - Keep production data callbacks separate from Demo local-state callbacks.
 - Keep comments short and only where they reduce confusion.
+
+Code modification:
+
+- For existing files, prefer `apply_patch`.
+- Prefer minimal targeted edits.
+- Prefer modifying only the affected JSX/CSS block.
+- Avoid PowerShell full-file replacements.
+- Avoid `Get-Content | Set-Content` rewrite flows.
+- Avoid Node one-liner whole-file rewrites.
+- Avoid regex-based global replacements.
+- Avoid whole-file rewrites unless explicitly required.
+- Whole-file rewrites are allowed only when creating a new file, creating a new migration, replacing a document intentionally, or doing a large refactor explicitly approved by the user.
 
 Forms:
 
