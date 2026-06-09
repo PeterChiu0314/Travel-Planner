@@ -13,6 +13,30 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-023 | Timeline same-day item times can overlap
+
+Priority: TBD
+Status: Backlog / 待修
+Discovered: 2026-06-09
+
+Location:
+Timeline / Day Board / itinerary card time editing
+
+Description:
+Timeline currently validates only a single itinerary card's own time range (`end_time > start_time`). It does not check whether different cards on the same day overlap, so one itinerary item's time can cover another item's time.
+
+Example:
+
+```text
+A: 07:00 ~ 11:45
+B: 07:30 ~ 09:30
+```
+
+Expected:
+Same-day Timeline itinerary items should not be allowed to save overlapping time ranges.
+
+---
+
 ## BUG-022 | Only one active editor allowed per trip
 
 Priority: P1
