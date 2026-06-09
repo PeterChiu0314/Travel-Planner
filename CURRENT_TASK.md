@@ -6,25 +6,27 @@
 
 ## 目前分支
 
-目前 UI 實驗分支：
-
 ```text
-codex/ui-experiment
+main
 ```
 
-最新已推送 commit：
+Phase 3.3 已從 `codex/ui-experiment` 合併回 `main`，並已推送到 GitHub。
+
+最新已合併 commit：
 
 ```text
-718e55f Render itinerary editor inline
+d427c27 Merge remote-tracking branch 'origin/codex/ui-experiment'
 ```
 
-此分支主要用於 Timeline / Transportation card UI polish。不要自動 push，除非使用者明確要求。
+後續若另開 UI 實驗分支，請依該聊天室/任務的 push 規則執行。
 
 ---
 
 ## 目前階段
 
 目前仍在 MVP stabilization 與 Timeline desktop UI polish 階段。
+
+Phase 3.3 備案翻卡已測試完成，可以告一段落。下一步優先進入 Phase 3.4 拖曳排序；Phase 3 收尾後，再進行 App Layout 改版。
 
 核心方向：
 
@@ -54,12 +56,17 @@ codex/ui-experiment
   - Reason：需等 scroll 容器規則確定後再處理
 - Phase 3.3：地圖點位自動捲動 ⏸ 暫緩
   - Reason：需等地圖展開版面與 scroll 容器確定後再處理
-- Phase 3.3：備案翻卡 ⏭ 下一步
+- Phase 3.3：備案翻卡 ✅ 已完成
   - 備案只做景點卡
   - 每張景點卡最多 1 個備案
-  - 主行程與備案可互換
-  - 互換後相關交通卡顯示警示
-- Phase 3.4：拖曳排序
+  - 移除 prompt / alert / confirm 式備案操作
+  - 景點卡展開後可建立 / 編輯 / 刪除備案
+  - `↻` 直接主備互換，不需要再按「使用此備案」
+  - 主行程與備案可互換，item id 與位置不變
+  - 主行程與備案共用同一套 `item.start_time` / `item.end_time`
+  - 互換後相關交通卡沿用 Phase 3.1 快照比對顯示一般警示
+  - Demo Timeline 已同步
+- Phase 3.4：拖曳排序 ⏭ 下一步
   - 只拖曳景點卡
   - 交通卡不可自由排序
   - 交通卡依 pair 顯示
@@ -76,6 +83,12 @@ Phase 3 收尾後，優先進行 App Layout 改版。
 - 景點卡標題、pill、mini button 視覺密度已調整。
 - Phase 3.2 inline editor 已完成：點景點卡 E 後，編輯表單會在原卡片位置展開，不再固定出現在 Day 頂部。
 - 點景點卡本體仍維持展開 / 收合詳細資訊，不會直接進入編輯模式。
+- Phase 3.3 備案翻卡已完成：
+  - 每張景點卡最多 1 個備案。
+  - 備案面與主行程面透過 `↻` 直接互換。
+  - 主備互換只交換目的地、備註、Map URL 等景點內容；時間維持同一張景點卡共用。
+  - 備案建立 / 編輯表單已精簡為目的地、備註、Map URL。
+  - 景點卡表單已移除費用、地址、交通備註，改以停留時長連動開始 / 結束時間。
 
 ### Timeline 交通卡
 
@@ -126,7 +139,7 @@ Phase 3 收尾後，優先進行 App Layout 改版。
 - Demo 資料流
 - 大範圍 `src/App.jsx` 架構
 
-本聊天室目前作為 UI 調整專用。使用者通常會先用 DevTools 預覽 CSS，再提供 selector / 數值。請依提供內容做最小修改。
+若進行 UI 調整，使用者可能會先用 DevTools 預覽 CSS，再提供 selector / 數值。請依提供內容做最小修改。
 
 ---
 
@@ -170,7 +183,6 @@ npm.cmd run build
 
 依目前 Phase 3 新順序繼續：
 
-- Phase 3.3：備案翻卡。
 - Phase 3.4：拖曳排序。
 - Phase 3 收尾後，先做 App Layout 改版。
 
