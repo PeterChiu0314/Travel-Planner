@@ -1670,8 +1670,8 @@ export default function App() {
       ...item,
       title: alternative.title,
       type: alternative.type || item.type,
-      start_time: alternative.start_time || "",
-      end_time: alternative.end_time || "",
+      start_time: item.start_time || "",
+      end_time: item.end_time || "",
       location: alternative.location_name || "",
       location_name: alternative.location_name || "",
       address: alternative.address || "",
@@ -2689,8 +2689,8 @@ function DemoApp({ initialSection }) {
       ...item,
       title: alternative.title,
       type: alternative.type || item.type,
-      start_time: alternative.start_time || "",
-      end_time: alternative.end_time || "",
+      start_time: item.start_time || "",
+      end_time: item.end_time || "",
       location: alternative.location_name || "",
       location_name: alternative.location_name || "",
       address: alternative.address || "",
@@ -4478,8 +4478,6 @@ function ItineraryTimeline({
   function alternativeToForm(alternative = {}) {
     return {
       type: alternative.type || "attraction",
-      start_time: formatTimeDisplay(alternative.start_time),
-      end_time: formatTimeDisplay(alternative.end_time),
       cost: alternative.cost || 0,
       location_name: alternative.location_name || alternative.title || "",
       description: alternative.description || "",
@@ -4492,8 +4490,6 @@ function ItineraryTimeline({
   function emptyAlternativeForm(item) {
     return {
       type: item.type || "attraction",
-      start_time: formatTimeDisplay(item.start_time),
-      end_time: formatTimeDisplay(item.end_time),
       cost: 0,
       location_name: "",
       description: "",
@@ -5105,8 +5101,6 @@ function ItineraryTimeline({
             const isAlternativeFace = isExpanded && Boolean(alternativeFaceByItem[item.id]);
             const isEditingAlternative = Boolean(editingAlternativeByItem[item.id]);
             const isAlternativeFormFace = isAlternativeFace && (!alternative || isEditingAlternative);
-            const alternativeFormValue =
-              alternativeFormsByItem[item.id] || (alternative ? alternativeToForm(alternative) : emptyAlternativeForm(item));
             const displayItem =
               isAlternativeFace && alternative && !isEditingAlternative
                 ? {
@@ -5115,8 +5109,8 @@ function ItineraryTimeline({
                     item_type: "visit",
                     type: alternative.type || item.type,
                     cost: alternative.cost || 0,
-                    start_time: alternative.start_time || "",
-                    end_time: alternative.end_time || "",
+                    start_time: item.start_time || "",
+                    end_time: item.end_time || "",
                     location: alternative.location_name || "",
                     note: alternative.description || "",
                     description: alternative.description || "",
@@ -5157,9 +5151,9 @@ function ItineraryTimeline({
               }}
             >
               <div className="time-block">
-                <span>{formatTimeDisplay(isAlternativeFormFace ? alternativeFormValue.start_time : displayItem.start_time) || "--:--"}</span>
+                <span>{formatTimeDisplay(item.start_time) || "--:--"}</span>
                 <span className="time-connector" aria-hidden="true" />
-                <span>{formatTimeDisplay(isAlternativeFormFace ? alternativeFormValue.end_time : displayItem.end_time)}</span>
+                <span>{formatTimeDisplay(item.end_time)}</span>
               </div>
               <div className="item-main">
                 <h4>{destination}</h4>
