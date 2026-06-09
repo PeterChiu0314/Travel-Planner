@@ -313,6 +313,29 @@ function buildTimeOptions(stepMinutes = 5) {
 }
 
 const timelineTimeOptions = buildTimeOptions(5);
+const timelineDurationOptions = buildDurationOptions(5, 24 * 60 - 5);
+
+function buildDurationOptions(stepMinutes = 5, maxMinutes = 12 * 60) {
+  const options = [];
+  for (let minutes = stepMinutes; minutes <= maxMinutes; minutes += stepMinutes) {
+    options.push(minutes);
+  }
+  return options;
+}
+
+function minutesToTimeValue(totalMinutes) {
+  if (!Number.isFinite(totalMinutes) || totalMinutes < 0 || totalMinutes >= 24 * 60) return "";
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+  const minutes = String(totalMinutes % 60).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function getDurationMinutes(startTime, endTime) {
+  const start = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
+  if (start === null || end === null || end <= start) return "";
+  return String(end - start);
+}
 
 function isTransportationCard(item) {
   return item?.item_type === "transport";
@@ -4368,6 +4391,10 @@ function ItineraryTimeline({
       submittedForm.transportation_note = submittedForm.transport_note.trim();
       submittedForm.note = submittedForm.transport_note.trim();
       submittedForm.description = submittedForm.transport_note.trim();
+    } else {
+      submittedForm.address = "";
+      submittedForm.transportation_note = "";
+      submittedForm.cost = "0";
     }
     const currentPairSnapshot =
       submittedForm.item_type === "transport"
@@ -4545,12 +4572,12 @@ function ItineraryTimeline({
         type: item.type || "attraction",
         start_time: item.start_time || "",
         end_time: item.end_time || "",
-        cost: item.cost || 0,
+        cost: 0,
         location_name: formValue.location_name,
         description: formValue.description,
-        address: formValue.address,
+        address: "",
         map_url: formValue.map_url,
-        transportation_note: formValue.transportation_note,
+        transportation_note: "",
       },
       alternative?.id || null,
     );
@@ -4813,6 +4840,21 @@ function ItineraryTimeline({
             <span>{timeError}</span>
           </div>
         ) : null}
+        <div className="field-group form-grid wide single destination-field">
+          <label>
+            目的地
+            <input
+              autoComplete="off"
+              placeholder="請輸入目的地名稱"
+              name="location_name"
+              required
+              value={form.location_name || form.location}
+              onChange={(event) =>
+                setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })
+              }
+            />
+          </label>
+        </div>
         <div className="field-group form-grid">
           <label>
             類型
@@ -4831,7 +4873,14 @@ function ItineraryTimeline({
               value={form.start_time}
               onChange={(event) => {
                 setTimeError("");
-                setForm({ ...form, start_time: event.target.value });
+                const nextStart = event.target.value;
+                const duration = Number(getDurationMinutes(form.start_time, form.end_time));
+                const startMinutes = timeToMinutes(nextStart);
+                const nextEnd =
+                  startMinutes !== null && Number.isFinite(duration) && duration > 0
+                    ? minutesToTimeValue(startMinutes + duration)
+                    : form.end_time;
+                setForm({ ...form, start_time: nextStart, end_time: nextEnd || form.end_time });
               }}
             >
               <option value="">未設定</option>
@@ -4861,31 +4910,26 @@ function ItineraryTimeline({
             </select>
           </label>
           <label>
-            費用
-            <input
-              autoComplete="off"
-              min="0"
-              name="cost"
-              step="1"
-              type="number"
-              value={form.cost}
-              onChange={(event) => setForm({ ...form, cost: event.target.value })}
-            />
-          </label>
-        </div>
-        <div className="field-group form-grid wide single">
-          <label>
-            目的地
-            <input
-              autoComplete="off"
-              placeholder="目的地或店名"
-              name="location_name"
-              required
-              value={form.location_name || form.location}
-              onChange={(event) =>
-                setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })
-              }
-            />
+            停留時長
+            <select
+              value={getDurationMinutes(form.start_time, form.end_time)}
+              disabled={!form.start_time}
+              onChange={(event) => {
+                setTimeError("");
+                const start = timeToMinutes(form.start_time);
+                const duration = Number(event.target.value);
+                if (start === null || !Number.isFinite(duration) || duration <= 0) return;
+                const nextEnd = minutesToTimeValue(start + duration);
+                if (nextEnd) setForm({ ...form, end_time: nextEnd });
+              }}
+            >
+              <option value="">未設定</option>
+              {timelineDurationOptions.map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  {formatDurationMinutes(minutes)}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
         <label className="full-label">
@@ -4898,16 +4942,7 @@ function ItineraryTimeline({
             onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
           />
         </label>
-        <div className="field-group form-grid wide">
-          <label>
-            地址
-            <input
-              autoComplete="off"
-              name="address"
-              value={form.address}
-              onChange={(event) => setForm({ ...form, address: event.target.value })}
-            />
-          </label>
+        <div className="field-group form-grid wide single">
           <label>
             Map URL
             <input
@@ -4919,16 +4954,6 @@ function ItineraryTimeline({
             />
           </label>
         </div>
-        <label className="full-label">
-          交通備註
-          <textarea
-            autoComplete="off"
-            name="transportation_note"
-            rows="2"
-            value={form.transportation_note}
-            onChange={(event) => setForm({ ...form, transportation_note: event.target.value })}
-          />
-        </label>
         <div className="form-actions">
           <button className="ghost-button" type="button" onClick={() => closeEditor()}>
             取消
@@ -4983,15 +5008,7 @@ function ItineraryTimeline({
             onChange={(event) => setAlternativeForm(item.id, { description: event.target.value })}
           />
         </label>
-        <div className="field-group form-grid wide">
-          <label>
-            地址
-            <input
-              autoComplete="off"
-              value={formValue.address}
-              onChange={(event) => setAlternativeForm(item.id, { address: event.target.value })}
-            />
-          </label>
+        <div className="field-group form-grid wide single">
           <label>
             Map URL
             <input
@@ -5002,15 +5019,6 @@ function ItineraryTimeline({
             />
           </label>
         </div>
-        <label className="full-label">
-          交通備註
-          <textarea
-            autoComplete="off"
-            rows="2"
-            value={formValue.transportation_note}
-            onChange={(event) => setAlternativeForm(item.id, { transportation_note: event.target.value })}
-          />
-        </label>
         <div className="form-actions">
           <button className="ghost-button compact" type="button" onClick={() => cancelAlternativeFace(item.id, Boolean(alternative))}>
             取消

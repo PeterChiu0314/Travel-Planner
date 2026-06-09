@@ -1062,6 +1062,15 @@ textarea {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.destination-field {
+  margin-top: 0;
+}
+
+.destination-field input {
+  font-size: 18px;
+  font-weight: 800;
+}
+
 .full-label {
   margin-top: 12px;
 }
