@@ -458,6 +458,18 @@ function transportPairNeedsReview(transportItem, fromItem, toItem) {
   return !transportSnapshotMatchesVisit(transportItem, "from", fromItem) || !transportSnapshotMatchesVisit(transportItem, "to", toItem);
 }
 
+function transportTimeShortageMinutes(transportItem, fromItem, toItem) {
+  if (!isTransportationCard(transportItem) || !fromItem || !toItem) return 0;
+  if (!fromItem.start_time || !fromItem.end_time || !toItem.start_time || !toItem.end_time) return 0;
+  const transportMinutes = Number(transportItem.transport_duration_minutes || 0);
+  if (!Number.isFinite(transportMinutes) || transportMinutes <= 0) return 0;
+  const previousEnd = timeToMinutes(fromItem.end_time);
+  const nextStart = timeToMinutes(toItem.start_time);
+  if (previousEnd === null || nextStart === null) return 0;
+  const gapMinutes = nextStart - previousEnd;
+  return Math.max(0, transportMinutes - gapMinutes);
+}
+
 function memberName(member) {
   return member?.display_name || member?.email || member?.user_id || "未指定";
 }
@@ -4804,10 +4816,12 @@ function ItineraryTimeline({
   }
 
   function renderTransportCard(item, lockedByOther, options = {}) {
-    const { warningType = "" } = options;
-    const hasWarning = Boolean(warningType);
+    const { hasTimeShortage = false, warningType = "" } = options;
     const isInvalidWarning = warningType === "invalid";
     const isGeneralWarning = warningType === "general";
+    const isShortageWarning = hasTimeShortage && !isInvalidWarning;
+    const hasWarning = Boolean(warningType) || isShortageWarning;
+    const warningClass = isInvalidWarning ? "invalid" : isGeneralWarning ? "general" : isShortageWarning ? "shortage" : warningType;
     const expanded = expandedId === item.id;
     const budgets = budgetsByItem[item.id] || [];
     const category = item.transport_category || defaultTransportCategory;
@@ -4815,7 +4829,7 @@ function ItineraryTimeline({
     return (
       <article
         className={`transport-card${focusedItemId === item.id ? " focused" : ""}${expanded ? " expanded" : ""}${
-          hasWarning ? ` warning ${warningType}-warning` : ""
+          hasWarning ? ` warning ${warningClass}-warning` : ""
         }`}
         onClick={() => {
           setExpandedId(expanded ? null : item.id);
@@ -4842,8 +4856,15 @@ function ItineraryTimeline({
                 {transportPairLabel(item)} 的交通資訊已不符合目前行程順序
               </p>
             ) : null}
+            {isShortageWarning ? (
+              <p className="transport-warning-detail">交通時間不足，請注意交通時間或行程時間。</p>
+            ) : null}
             {isGeneralWarning ? (
-              <p className="transport-warning-detail">{transportPairLabel(item)} 的行程時間或目的地已變更，請確認交通資訊。</p>
+              <p className="transport-warning-detail">
+                {isShortageWarning
+                  ? "行程時間或目的地已變更，請確認交通資訊。"
+                  : `${transportPairLabel(item)} 的行程時間或目的地已變更，請確認交通資訊。`}
+              </p>
             ) : null}
             <div className="transport-card-details">
               <p className="transport-note-detail">{note || "尚未填寫"}</p>
@@ -5252,8 +5273,9 @@ function ItineraryTimeline({
             const nextItem = visitItems[index + 1];
             const pairKey = nextItem ? transportPairKey(item.id, nextItem.id) : "";
             const transportItem = pairKey ? adjacentTransportByPair[pairKey] : null;
-            const transportWarningType =
-              transportItem && transportPairNeedsReview(transportItem, item, nextItem) ? "general" : "";
+            const hasTransportTimeShortage = transportItem ? transportTimeShortageMinutes(transportItem, item, nextItem) > 0 : false;
+            const transportNeedsReview = transportItem && transportPairNeedsReview(transportItem, item, nextItem);
+            const transportWarningType = transportNeedsReview ? "general" : hasTransportTimeShortage ? "shortage" : "";
             const isAddingTransportHere =
               isOpen && isTransportEditor && !editingId && insertionPair?.fromId === item.id && insertionPair?.toId === nextItem?.id;
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
@@ -5409,6 +5431,7 @@ function ItineraryTimeline({
                 {isOpen && isTransportEditor && editingId === transportItem.id
                   ? renderTransportEditorForm()
                   : renderTransportCard(transportItem, useEditLocks && isLockedByAnotherUser(transportItem, currentUserId), {
+                      hasTimeShortage: hasTransportTimeShortage,
                       warningType: transportWarningType,
                     })}
               </div>
