@@ -1600,7 +1600,6 @@ export default function App() {
     });
     if (overlapItem) {
       const overlapError = formatTimelineOverlapError(overlapItem);
-      setNotice(overlapError);
       return { ok: false, overlapError };
     }
     if (editingId) {
