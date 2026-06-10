@@ -81,6 +81,9 @@ const emptyItemForm = {
   to_snapshot_start_time: null,
   to_snapshot_end_time: null,
   to_snapshot_destination: null,
+  is_fixed: false,
+  fixed_at: null,
+  fixed_by: null,
   cost: 0,
 };
 
@@ -1584,6 +1587,30 @@ export default function App() {
     return !meta.tripId || meta.tripId === activeTrip?.id;
   }
 
+  async function ensureItineraryItemEditable(itemId) {
+    const localItem = items.find((item) => item.id === itemId);
+    if (localItem && isTransportationCard(localItem)) return true;
+    if (localItem?.is_fixed) {
+      setNotice("此行程已固定，請先解鎖後再修改。");
+      return false;
+    }
+    const { data, error } = await supabase
+      .from("itinerary_items")
+      .select("is_fixed")
+      .eq("id", itemId)
+      .eq("trip_id", activeTrip.id)
+      .maybeSingle();
+    if (error) {
+      setNotice(error.message);
+      return false;
+    }
+    if (data?.is_fixed) {
+      setNotice("此行程已固定，請先解鎖後再修改。");
+      return false;
+    }
+    return true;
+  }
+
   async function updateWithConflictCheck(table, payload, editingId, meta = {}) {
     let query = supabase.from(table).update(payload).eq("id", editingId);
     if (meta.tripId) query = query.eq("trip_id", meta.tripId);
@@ -1598,6 +1625,12 @@ export default function App() {
   async function saveItem(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
+    const editingItem = editingId ? items.find((item) => item.id === editingId) : null;
+    if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
+      setNotice("此行程已固定，請先解鎖後再修改。");
+      return { ok: false, fixed: true };
+    }
+    if (editingId && !(await ensureItineraryItemEditable(editingId))) return { ok: false, fixed: true };
     const normalizedPayload = normalizeItemPayload(payload);
     const invalidTimeRange = !isTransportationCard(normalizedPayload) && isInvalidTimeRange(normalizedPayload.start_time, normalizedPayload.end_time);
     if (invalidTimeRange) {
@@ -1637,6 +1670,14 @@ export default function App() {
 
   async function saveAlternative(itemId, payload, editingId) {
     if (!activeTrip || !canEdit) return { ok: false };
+    const item = items.find((currentItem) => currentItem.id === itemId);
+    if (item?.is_fixed) {
+      setNotice("此行程已固定，請先解鎖後再修改。");
+      return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
+    }
+    if (!(await ensureItineraryItemEditable(itemId))) {
+      return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
+    }
     const nextPayload = {
       title: payload.title.trim(),
       type: payload.type || "attraction",
@@ -1668,6 +1709,15 @@ export default function App() {
 
   async function deleteAlternative(alternativeId) {
     if (!activeTrip || !canEdit) return { ok: false };
+    const alternative = alternatives.find((item) => item.id === alternativeId);
+    const parentItem = alternative ? items.find((item) => item.id === alternative.itinerary_item_id) : null;
+    if (parentItem?.is_fixed) {
+      setNotice("此行程已固定，請先解鎖後再修改。");
+      return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
+    }
+    if (parentItem && !(await ensureItineraryItemEditable(parentItem.id))) {
+      return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
+    }
     const { error } = await supabase.from("itinerary_alternatives").delete().eq("id", alternativeId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
@@ -1676,6 +1726,13 @@ export default function App() {
 
   async function applyAlternative(item, alternative) {
     if (!activeTrip || !canEdit) return { ok: false };
+    if (item?.is_fixed) {
+      setNotice("此行程已固定，請先解鎖後再修改。");
+      return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
+    }
+    if (!(await ensureItineraryItemEditable(item.id))) {
+      return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
+    }
     const oldMainPayload = {
       title: item.title,
       type: item.type || "attraction",
@@ -2110,6 +2167,11 @@ export default function App() {
   async function deleteItem(itemId) {
     if (!activeTrip || !canEdit) return;
     const item = items.find((currentItem) => currentItem.id === itemId);
+    if (item?.is_fixed && !isTransportationCard(item)) {
+      setNotice("此行程已固定，請先解鎖後再修改。");
+      return;
+    }
+    if (item && !isTransportationCard(item) && !(await ensureItineraryItemEditable(itemId))) return;
     if (item && !isTransportationCard(item)) {
       const relatedDeleteResults = await Promise.all([
         supabase
@@ -2132,6 +2194,30 @@ export default function App() {
     const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId).eq("trip_id", activeTrip.id);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
+  }
+
+  async function toggleItemFixed(item) {
+    if (!activeTrip || !canEdit || !item || isTransportationCard(item)) return { ok: false };
+    if (!item.is_fixed && item.locked_by) {
+      setNotice("此行程目前有人正在編輯，暫時無法鎖定。");
+      return { ok: false };
+    }
+    const nextFixed = !item.is_fixed;
+    const { error } = await supabase
+      .from("itinerary_items")
+      .update({
+        is_fixed: nextFixed,
+        fixed_at: nextFixed ? new Date().toISOString() : null,
+        fixed_by: nextFixed ? session.user.id : null,
+      })
+      .eq("id", item.id)
+      .eq("trip_id", activeTrip.id);
+    if (error) {
+      setNotice(error.message);
+      return { ok: false, error };
+    }
+    await loadTripData(activeTrip.id);
+    return { ok: true };
   }
 
   async function confirmTransportWarning(itemId) {
@@ -2157,6 +2243,10 @@ export default function App() {
     const from = nextItems.findIndex((item) => item.id === draggedId);
     const to = nextItems.findIndex((item) => item.id === targetId);
     if (from < 0 || to < 0) return;
+    if (nextItems[from]?.is_fixed || nextItems[to]?.is_fixed) {
+      setNotice("固定行程不可拖曳或作為排序目標。");
+      return;
+    }
     const [dragged] = nextItems.splice(from, 1);
     nextItems.splice(to, 0, dragged);
     const invalidItem = nextItems.find((item) => isInvalidTimeRange(item.start_time, item.end_time));
@@ -2444,6 +2534,7 @@ function exportTrip() {
             onToggleLuggageItem={toggleLuggageItem}
             onToggleTodo={toggleTodo}
             onTogglePackItem={togglePackItem}
+            onToggleItemFixed={toggleItemFixed}
             onUpdateSharedLuggageItem={updateSharedLuggageItem}
             onUpdateTrip={updateTrip}
             onOpenAttachment={openAttachment}
@@ -2652,6 +2743,10 @@ function DemoApp({ initialSection }) {
   function saveTimelineItem(payload, editingId, meta = {}) {
     const nextPayload = normalizeItemPayload(payload);
     if (!nextPayload.title.trim()) return;
+    const editingItem = editingId ? timelineItems.find((item) => item.id === editingId) : null;
+    if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
+      return { ok: false, fixed: true };
+    }
     const invalidTimeRange = nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time);
     if (invalidTimeRange) return { ok: false };
     const overlapItem = findOverlappingVisitItem({
@@ -2710,6 +2805,8 @@ function DemoApp({ initialSection }) {
   }
 
   function saveTimelineAlternative(itemId, payload, editingId) {
+    const item = timelineItems.find((currentItem) => currentItem.id === itemId);
+    if (item?.is_fixed) return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     const nextPayload = {
       title: payload.title.trim(),
       type: payload.type || "attraction",
@@ -2738,6 +2835,9 @@ function DemoApp({ initialSection }) {
   }
 
   function deleteTimelineAlternative(alternativeId) {
+    const alternative = timelineAlternatives.find((item) => item.id === alternativeId);
+    const parentItem = alternative ? timelineItems.find((item) => item.id === alternative.itinerary_item_id) : null;
+    if (parentItem?.is_fixed) return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     setTimelineAlternatives((current) => current.filter((alternative) => alternative.id !== alternativeId));
     return { ok: true };
   }
@@ -2745,6 +2845,7 @@ function DemoApp({ initialSection }) {
   function deleteTimelineItem(itemId) {
     const deletedIds = new Set([itemId]);
     const deletedItem = timelineItems.find((item) => item.id === itemId);
+    if (deletedItem?.is_fixed && !isTransportationCard(deletedItem)) return;
     if (deletedItem && !isTransportationCard(deletedItem)) {
       timelineItems.forEach((item) => {
         if (isTransportationCard(item) && (item.from_item_id === itemId || item.to_item_id === itemId)) {
@@ -2756,7 +2857,26 @@ function DemoApp({ initialSection }) {
     setItineraryBudgetLinks((current) => current.filter((link) => !deletedIds.has(link.itinerary_item_id)));
   }
 
+  function toggleTimelineItemFixed(item) {
+    if (!item || isTransportationCard(item)) return { ok: false };
+    setTimelineItems((current) =>
+      current.map((currentItem) =>
+        currentItem.id === item.id
+          ? {
+              ...currentItem,
+              is_fixed: !currentItem.is_fixed,
+              fixed_at: currentItem.is_fixed ? null : new Date().toISOString(),
+              fixed_by: currentItem.is_fixed ? null : "demo-peter",
+              updated_at: new Date().toISOString(),
+            }
+          : currentItem,
+      ),
+    );
+    return { ok: true };
+  }
+
   function applyTimelineAlternative(item, alternative) {
+    if (item?.is_fixed) return { ok: false };
     const oldMainPayload = {
       title: item.title,
       type: item.type || "attraction",
@@ -3055,6 +3175,7 @@ function DemoApp({ initialSection }) {
                   onReorderItem={() => {}}
                   onSaveAlternative={saveTimelineAlternative}
                   onSaveItem={saveTimelineItem}
+                  onToggleItemFixed={toggleTimelineItemFixed}
                   restoreDrafts={false}
                   useEditLocks={false}
                 />
@@ -3801,6 +3922,7 @@ function TripWorkspace(props) {
     onToggleLuggageItem,
     onToggleTodo,
     onTogglePackItem,
+    onToggleItemFixed,
     onUpdateSharedLuggageItem,
     onUpdateTrip,
     onOpenAttachment,
@@ -4048,6 +4170,7 @@ function TripWorkspace(props) {
                 onReorderItem={onReorderItem}
                 onSaveAlternative={onSaveAlternative}
                 onSaveItem={onSaveItem}
+                onToggleItemFixed={onToggleItemFixed}
                 restoreDrafts={activeSection === "timeline"}
               />
               {isRouteCollapsed ? (
@@ -4208,6 +4331,7 @@ function ItineraryTimeline({
   onReorderItem,
   onSaveAlternative,
   onSaveItem,
+  onToggleItemFixed,
   restoreDrafts = true,
   useEditLocks = true,
 }) {
@@ -4226,6 +4350,7 @@ function ItineraryTimeline({
   const [editingAlternativeByItem, setEditingAlternativeByItem] = useState({});
   const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [fixedNotice, setFixedNotice] = useState("");
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -4278,6 +4403,7 @@ function ItineraryTimeline({
     if (!latest) return;
     const matchingItem = dayItems.find((item) => item.id === latest.entityId);
     if (latest.entityId !== "new" && !matchingItem) return;
+    if (matchingItem?.is_fixed && !isTransportationCard(matchingItem)) return;
     const nextForm = {
       ...latest.draft.form,
       start_time: formatTimeDisplay(latest.draft.form?.start_time),
@@ -4364,6 +4490,10 @@ function ItineraryTimeline({
   }
 
   async function openEditItem(item) {
+    if (item.is_fixed && !isTransportationCard(item)) {
+      setFixedNotice("此行程已固定，請先解鎖後再修改。");
+      return;
+    }
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
@@ -4407,6 +4537,9 @@ function ItineraryTimeline({
       to_snapshot_start_time: item.to_snapshot_start_time || null,
       to_snapshot_end_time: item.to_snapshot_end_time || null,
       to_snapshot_destination: item.to_snapshot_destination || null,
+      is_fixed: Boolean(item.is_fixed),
+      fixed_at: item.fixed_at || null,
+      fixed_by: item.fixed_by || null,
       cost: item.cost || 0,
     };
     flushDraft();
@@ -4440,6 +4573,11 @@ function ItineraryTimeline({
 
   async function saveCurrentEditor(formData = new FormData()) {
     const itemType = String(formData.get("item_type") ?? form.item_type ?? "visit");
+    const editingItem = editingId ? dayItems.find((item) => item.id === editingId) : null;
+    if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
+      setTimeError("此行程已固定，請先解鎖後再修改。");
+      return false;
+    }
     const destination = String(formData.get("location_name") ?? form.location_name ?? form.location ?? "").trim();
     const submittedForm = {
       ...form,
@@ -4521,6 +4659,10 @@ function ItineraryTimeline({
       { baseUpdatedAt, tripId: editorTripId },
     );
     if (!result?.ok) {
+      if (result?.fixed) {
+        setTimeError("此行程已固定，請先解鎖後再修改。");
+        setForm(submittedForm);
+      }
       if (result?.overlapError) {
         setTimeError(result.overlapError);
         setForm(submittedForm);
@@ -4619,6 +4761,10 @@ function ItineraryTimeline({
   }
 
   async function flipAlternativeFace(item, alternative) {
+    if (item?.is_fixed) {
+      setFixedNotice("此行程已固定，請先解鎖後再修改。");
+      return;
+    }
     resetAlternativeError(item.id);
     if (!alternative) {
       setAlternativeFaceByItem((current) => ({ ...current, [item.id]: true }));
@@ -4641,6 +4787,13 @@ function ItineraryTimeline({
   }
 
   async function saveAlternativeForm(item, alternative) {
+    if (item?.is_fixed) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [item.id]: "此行程已固定，請先解鎖後再修改。",
+      }));
+      return;
+    }
     const formValue = alternativeFormsByItem[item.id] || alternativeToForm(alternative);
     resetAlternativeError(item.id);
     if (isInvalidTimeRange(item.start_time, item.end_time)) {
@@ -4677,6 +4830,14 @@ function ItineraryTimeline({
   }
 
   async function deleteAlternative(itemId, alternativeId) {
+    const parentItem = dayItems.find((item) => item.id === itemId);
+    if (parentItem?.is_fixed) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [itemId]: "此行程已固定，請先解鎖後再修改。",
+      }));
+      return;
+    }
     resetAlternativeError(itemId);
     const result = await onDeleteAlternative(alternativeId);
     if (result?.ok === false) {
@@ -4703,7 +4864,27 @@ function ItineraryTimeline({
   }
 
   function requestDeleteItem(item) {
+    if (item?.is_fixed && !isTransportationCard(item)) {
+      setFixedNotice("此行程已固定，請先解鎖後再修改。");
+      return;
+    }
     setDeleteTarget(item);
+  }
+
+  async function toggleItemFixed(item) {
+    if (!item || isTransportationCard(item) || typeof onToggleItemFixed !== "function") return;
+    if (!item.is_fixed) {
+      if (editingId === item.id || (isOpen && form.item_type !== "transport" && editingId === item.id)) {
+        setFixedNotice("此行程正在編輯中，請結束編輯後再鎖定。");
+        return;
+      }
+      if (useEditLocks && item.locked_by) {
+        setFixedNotice("此行程目前有人正在編輯，暫時無法鎖定。");
+        return;
+      }
+    }
+    setFixedNotice("");
+    await onToggleItemFixed(item);
   }
 
   async function confirmDeleteTarget() {
@@ -5157,7 +5338,7 @@ function ItineraryTimeline({
         ) : (
           <div className="alternative-relation-row">
             <span>{alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}</span>
-            {alternative ? (
+            {alternative && !item.is_fixed ? (
               <button
                 className="mini-button"
                 disabled={!canEdit}
@@ -5214,6 +5395,15 @@ function ItineraryTimeline({
         </button>
       </div>
 
+      {fixedNotice ? (
+        <div className="notice inline-error" role="alert">
+          <span>{fixedNotice}</span>
+          <button type="button" onClick={() => setFixedNotice("")}>
+            X
+          </button>
+        </div>
+      ) : null}
+
       {invalidTransportItems.length ? (
         <div className="transport-warning-stack" aria-label="需確認交通資訊">
           {invalidTransportItems.map((item) => (
@@ -5238,6 +5428,7 @@ function ItineraryTimeline({
             const locker = memberById.get(item.locked_by);
             const alternative = (alternativesByItem[item.id] || [])[0] || null;
             const isExpanded = expandedId === item.id;
+            const isItemFixed = Boolean(item.is_fixed);
             const isAlternativeFace = isExpanded && Boolean(alternativeFaceByItem[item.id]);
             const isEditingAlternative = Boolean(editingAlternativeByItem[item.id]);
             const isAlternativeFormFace = isAlternativeFace && (!alternative || isEditingAlternative);
@@ -5285,7 +5476,9 @@ function ItineraryTimeline({
               renderVisitEditorForm()
             ) : (
             <article
-              className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${isExpanded ? " expanded" : ""}`}
+              className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${isExpanded ? " expanded" : ""}${
+                isItemFixed ? " fixed" : ""
+              }`}
               onClick={() => {
                 setExpandedId(expandedId === item.id ? null : item.id);
                 onFocusItem(item.id);
@@ -5354,7 +5547,21 @@ function ItineraryTimeline({
                 )}
               </div>
               <div className="item-actions">
-                {!isAlternativeFace ? (
+                {(!isAlternativeFace || isItemFixed) ? (
+                  <button
+                    className="mini-button lock-button"
+                    disabled={!canEdit || (!isItemFixed && (lockedByOther || Boolean(item.locked_by)))}
+                    type="button"
+                    title={isItemFixed ? "解鎖" : "鎖定"}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleItemFixed(item);
+                    }}
+                  >
+                    {isItemFixed ? "🔒" : "🔓"}
+                  </button>
+                ) : null}
+                {!isAlternativeFace && !isItemFixed ? (
                   <button
                     className="mini-button"
                     disabled={!canEdit || lockedByOther}
@@ -5368,7 +5575,7 @@ function ItineraryTimeline({
                     E
                   </button>
                 ) : null}
-                {isAlternativeFace && alternative && !isAlternativeFormFace ? (
+                {isAlternativeFace && alternative && !isAlternativeFormFace && !isItemFixed ? (
                   <button
                     className="mini-button"
                     disabled={!canEdit || lockedByOther}
@@ -5384,30 +5591,32 @@ function ItineraryTimeline({
                     E
                   </button>
                 ) : null}
-                <button
-                  className="mini-button"
-                  disabled={!canEdit}
-                  type="button"
-                  title="刪除"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (isAlternativeFormFace) {
-                      cancelAlternativeFace(item.id, Boolean(alternative));
-                    } else if (isAlternativeFace) {
-                      if (alternative) {
-                        deleteAlternative(item.id, alternative.id);
+                {!isItemFixed ? (
+                  <button
+                    className="mini-button"
+                    disabled={!canEdit}
+                    type="button"
+                    title="刪除"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (isAlternativeFormFace) {
+                        cancelAlternativeFace(item.id, Boolean(alternative));
+                      } else if (isAlternativeFace) {
+                        if (alternative) {
+                          deleteAlternative(item.id, alternative.id);
+                        } else {
+                          cancelAlternativeFace(item.id, false);
+                        }
                       } else {
-                        cancelAlternativeFace(item.id, false);
+                        requestDeleteItem(item);
                       }
-                    } else {
-                      requestDeleteItem(item);
-                    }
-                  }}
-                >
-                  X
-                </button>
+                    }}
+                  >
+                    X
+                  </button>
+                ) : null}
               </div>
-              {isExpanded ? (
+              {isExpanded && !isItemFixed ? (
                 <div className="alternative-card-footer">
                   <button
                     className="alternative-flip-button"

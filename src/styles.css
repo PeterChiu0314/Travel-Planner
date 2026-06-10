@@ -1118,6 +1118,11 @@ textarea {
   cursor: pointer;
 }
 
+.timeline-item.fixed {
+  border-color: rgba(15, 95, 71, 0.42);
+  background: #fbfcfa;
+}
+
 .transport-insert-zone {
   display: grid;
   grid-template-columns: 22px max-content minmax(24px, 1fr);
@@ -1615,6 +1620,11 @@ textarea {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.lock-button {
+  font-size: 14px;
+  line-height: 1;
 }
 
 .route-map {
