@@ -26,7 +26,7 @@ d427c27 Merge remote-tracking branch 'origin/codex/ui-experiment'
 
 目前仍在 MVP stabilization 與 Timeline desktop UI polish 階段。
 
-Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確認與關聯交通卡清理已驗收完成。Phase 3.5 交通時間不足警示已實作並通過 build，待使用者驗收；Phase 3 收尾後，再進行 App Layout 改版。
+Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確認與關聯交通卡清理已驗收完成。Phase 3.5 交通時間不足警示已驗收完成；Phase 3 收尾後，再進行 App Layout 改版。
 
 核心方向：
 
@@ -72,7 +72,7 @@ Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確
   - 交通卡按 X 時先顯示刪除確認。
   - 保留 Phase 3.1 失效交通卡警示，用於排序變動、順序反轉、舊資料異常等非刪除景點造成的 pair 無效情境。
   - Demo Timeline 需同步 local state 行為。
-- Phase 3.5：交通時間不足警示 🧪 待測試
+- Phase 3.5：交通時間不足警示 ✅ 已完成
   - 有效相鄰交通卡才計算交通時間是否足夠。
   - 當 `transport_duration_minutes` 大於前一景點結束到後一景點開始的間隔時顯示警示。
   - 只提醒，不阻止景點或交通卡儲存。
@@ -191,7 +191,6 @@ npm.cmd run build
 
 依目前 Phase 3 新順序繼續：
 
-- Phase 3.5：交通時間不足警示驗收。
 - Phase 3 收尾。
 - App Layout 改版。
 
