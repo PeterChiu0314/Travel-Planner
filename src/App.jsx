@@ -2086,8 +2086,28 @@ export default function App() {
   }
 
   async function deleteItem(itemId) {
-    if (!canEdit) return;
-    const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId);
+    if (!activeTrip || !canEdit) return;
+    const item = items.find((currentItem) => currentItem.id === itemId);
+    if (item && !isTransportationCard(item)) {
+      const relatedDeleteResults = await Promise.all([
+        supabase
+          .from("itinerary_items")
+          .delete()
+          .eq("trip_id", activeTrip.id)
+          .eq("from_item_id", itemId),
+        supabase
+          .from("itinerary_items")
+          .delete()
+          .eq("trip_id", activeTrip.id)
+          .eq("to_item_id", itemId),
+      ]);
+      const relatedError = relatedDeleteResults.find((result) => result.error)?.error;
+      if (relatedError) {
+        setNotice(relatedError.message);
+        return;
+      }
+    }
+    const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId).eq("trip_id", activeTrip.id);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
@@ -2671,6 +2691,20 @@ function DemoApp({ initialSection }) {
     return { ok: true };
   }
 
+  function deleteTimelineItem(itemId) {
+    const deletedIds = new Set([itemId]);
+    const deletedItem = timelineItems.find((item) => item.id === itemId);
+    if (deletedItem && !isTransportationCard(deletedItem)) {
+      timelineItems.forEach((item) => {
+        if (isTransportationCard(item) && (item.from_item_id === itemId || item.to_item_id === itemId)) {
+          deletedIds.add(item.id);
+        }
+      });
+    }
+    setTimelineItems((current) => current.filter((item) => !deletedIds.has(item.id)));
+    setItineraryBudgetLinks((current) => current.filter((link) => !deletedIds.has(link.itinerary_item_id)));
+  }
+
   function applyTimelineAlternative(item, alternative) {
     const oldMainPayload = {
       title: item.title,
@@ -2965,10 +2999,7 @@ function DemoApp({ initialSection }) {
                   onApplyAlternative={applyTimelineAlternative}
                   onConfirmTransportWarning={confirmTimelineTransportWarning}
                   onDeleteAlternative={deleteTimelineAlternative}
-                  onDeleteItem={(itemId) => {
-                    setTimelineItems((current) => current.filter((item) => item.id !== itemId));
-                    setItineraryBudgetLinks((current) => current.filter((link) => link.itinerary_item_id !== itemId));
-                  }}
+                  onDeleteItem={deleteTimelineItem}
                   onFocusItem={setFocusedItemId}
                   onReorderItem={() => {}}
                   onSaveAlternative={saveTimelineAlternative}
@@ -4143,6 +4174,7 @@ function ItineraryTimeline({
   const [alternativeFormsByItem, setAlternativeFormsByItem] = useState({});
   const [editingAlternativeByItem, setEditingAlternativeByItem] = useState({});
   const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -4608,6 +4640,24 @@ function ItineraryTimeline({
     });
   }
 
+  function relatedTransportItemsFor(item) {
+    if (!item || isTransportationCard(item)) return [];
+    return dayItems.filter(
+      (dayItem) => isTransportationCard(dayItem) && (dayItem.from_item_id === item.id || dayItem.to_item_id === item.id),
+    );
+  }
+
+  function requestDeleteItem(item) {
+    setDeleteTarget(item);
+  }
+
+  async function confirmDeleteTarget() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    await onDeleteItem(target.id);
+  }
+
   function renderTransportEditorForm() {
     const category = form.transport_category || defaultTransportCategory;
     return (
@@ -4799,7 +4849,7 @@ function ItineraryTimeline({
                 title="刪除"
                 onClick={(event) => {
                   event.stopPropagation();
-                  onDeleteItem(item.id);
+                  requestDeleteItem(item);
                 }}
               >
                 X
@@ -5062,7 +5112,33 @@ function ItineraryTimeline({
     );
   }
 
+  const deleteRelatedTransports = relatedTransportItemsFor(deleteTarget);
+  const deleteTargetIsTransport = isTransportationCard(deleteTarget);
+  const deleteTitle = deleteTargetIsTransport ? "確認刪除交通資訊？" : "確認刪除行程？";
+  const deleteMessage = deleteTargetIsTransport
+    ? "此操作無法復原。"
+    : deleteRelatedTransports.length
+      ? "關聯的交通卡將被一併移除，此操作無法復原。"
+      : "此操作無法復原。";
+
   return (
+    <>
+    {deleteTarget ? (
+      <div className="modal-backdrop">
+        <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+          <h2 id="delete-confirm-title">{deleteTitle}</h2>
+          <p>{deleteMessage}</p>
+          <div className="form-actions">
+            <button className="ghost-button" type="button" onClick={() => setDeleteTarget(null)}>
+              取消
+            </button>
+            <button className="primary-button compact" type="button" onClick={confirmDeleteTarget}>
+              確認刪除
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
     <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
         <div>
@@ -5259,7 +5335,7 @@ function ItineraryTimeline({
                         cancelAlternativeFace(item.id, false);
                       }
                     } else {
-                      onDeleteItem(item.id);
+                      requestDeleteItem(item);
                     }
                   }}
                 >
@@ -5303,6 +5379,7 @@ function ItineraryTimeline({
         )}
       </div>
     </div>
+    </>
   );
 }
 
