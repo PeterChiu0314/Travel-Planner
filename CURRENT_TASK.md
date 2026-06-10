@@ -26,7 +26,7 @@ d427c27 Merge remote-tracking branch 'origin/codex/ui-experiment'
 
 目前仍在 MVP stabilization 與 Timeline desktop UI polish 階段。
 
-Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確認與關聯交通卡清理已實作並通過 build，待使用者驗收；Phase 3 收尾後，再進行 App Layout 改版。
+Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確認與關聯交通卡清理已驗收完成；Phase 3 收尾後，再進行 App Layout 改版。
 
 核心方向：
 
@@ -66,7 +66,7 @@ Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確
   - 主行程與備案共用同一套 `item.start_time` / `item.end_time`
   - 互換後相關交通卡沿用 Phase 3.1 快照比對顯示一般警示
   - Demo Timeline 已同步
-- Phase 3.4：刪除確認與關聯交通卡清理 🧪 待測試
+- Phase 3.4：刪除確認與關聯交通卡清理 ✅ 已完成
   - 景點卡按 X 時先顯示刪除確認。
   - 若景點有關聯交通卡，確認刪除後一併移除 from/to 關聯交通卡。
   - 交通卡按 X 時先顯示刪除確認。
@@ -184,8 +184,8 @@ npm.cmd run build
 
 依目前 Phase 3 新順序繼續：
 
-- Phase 3.4：刪除確認與關聯交通卡清理驗收。
-- Phase 3 收尾後，先做 App Layout 改版。
+- Phase 3 收尾。
+- App Layout 改版。
 
 暫緩項目：
 
