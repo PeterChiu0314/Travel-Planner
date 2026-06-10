@@ -15,8 +15,8 @@ This document now separates:
 
 ## BUG-023 | Timeline same-day item times can overlap
 
-Priority: TBD
-Status: Backlog / 待修
+Priority: P1
+Status: Implemented / Needs Manual Verification
 Discovered: 2026-06-09
 
 Location:
@@ -34,6 +34,12 @@ B: 07:30 ~ 09:30
 
 Expected:
 Same-day Timeline itinerary items should not be allowed to save overlapping time ranges.
+
+Fix note:
+Timeline visit saves now reject same-day visit overlaps using `newStart < otherEnd && newEnd > otherStart`, excluding transportation cards and the item currently being edited. The Timeline editor keeps the form open and shows the overlapping item label and time range. Demo `/demo/timeline` uses the same overlap check.
+
+Verification:
+`npm.cmd run build` passes. Manual Timeline overlap verification is still required.
 
 ---
 

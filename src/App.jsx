@@ -1586,20 +1586,31 @@ export default function App() {
   async function saveItem(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const invalidTimeRange = isInvalidTimeRange(payload.start_time, payload.end_time);
+    const normalizedPayload = normalizeItemPayload(payload);
+    const invalidTimeRange = !isTransportationCard(normalizedPayload) && isInvalidTimeRange(normalizedPayload.start_time, normalizedPayload.end_time);
     if (invalidTimeRange) {
       setNotice("結束時間必須晚於開始時間。");
       return { ok: false };
     }
+    const overlapItem = findOverlappingVisitItem({
+      dayIndex: activeDay,
+      editingId,
+      items,
+      payload: normalizedPayload,
+    });
+    if (overlapItem) {
+      const overlapError = formatTimelineOverlapError(overlapItem);
+      setNotice(overlapError);
+      return { ok: false, overlapError };
+    }
     if (editingId) {
-      const result = await updateWithConflictCheck("itinerary_items", normalizeItemPayload(payload), editingId, meta);
+      const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, meta);
       if (result.error) setNotice(result.error.message);
       else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
       else await loadTripData(activeTrip.id);
       return result;
     }
 
-    const normalizedPayload = normalizeItemPayload(payload);
     const sortOrder = (dayItems.filter((item) => !isTransportationCard(item)).length + 1) * 10;
     const { error } = await supabase.from("itinerary_items").insert({
       ...normalizedPayload,
@@ -2549,6 +2560,28 @@ function isInvalidTimeRange(startTime, endTime) {
   return start >= end;
 }
 
+function formatTimelineOverlapError(item) {
+  const label = visitSnapshotDestination(item) || item?.title || "行程";
+  return `此行程時間與「${label} ${formatTimeDisplay(item?.start_time)}~${formatTimeDisplay(item?.end_time)}」重疊，請調整時間。`;
+}
+
+function findOverlappingVisitItem({ dayIndex, editingId, items, payload }) {
+  if (isTransportationCard(payload)) return null;
+  const newStart = timeToMinutes(payload?.start_time);
+  const newEnd = timeToMinutes(payload?.end_time);
+  if (newStart === null || newEnd === null) return null;
+
+  return sortScheduleItems(items || []).find((item) => {
+    if (isTransportationCard(item)) return false;
+    if (editingId && item.id === editingId) return false;
+    if (Number(item.day_index) !== Number(dayIndex)) return false;
+    const otherStart = timeToMinutes(item.start_time);
+    const otherEnd = timeToMinutes(item.end_time);
+    if (otherStart === null || otherEnd === null) return false;
+    return newStart < otherEnd && newEnd > otherStart;
+  });
+}
+
 function Shell({ children, collapsed = false }) {
   return <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
 }
@@ -2610,6 +2643,13 @@ function DemoApp({ initialSection }) {
     if (!nextPayload.title.trim()) return;
     const invalidTimeRange = nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time);
     if (invalidTimeRange) return { ok: false };
+    const overlapItem = findOverlappingVisitItem({
+      dayIndex: activeDay,
+      editingId,
+      items: timelineItems,
+      payload: nextPayload,
+    });
+    if (overlapItem) return { ok: false, overlapError: formatTimelineOverlapError(overlapItem) };
     if (editingId) {
       setTimelineItems((current) =>
         current.map((item) =>
@@ -4470,6 +4510,10 @@ function ItineraryTimeline({
       { baseUpdatedAt, tripId: editorTripId },
     );
     if (!result?.ok) {
+      if (result?.overlapError) {
+        setTimeError(result.overlapError);
+        setForm(submittedForm);
+      }
       if (result?.conflict) setConflict(true);
       return false;
     }
