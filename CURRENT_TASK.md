@@ -26,7 +26,7 @@ d427c27 Merge remote-tracking branch 'origin/codex/ui-experiment'
 
 目前仍在 MVP stabilization 與 Timeline desktop UI polish 階段。
 
-Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確認與關聯交通卡清理已驗收完成。Phase 3.5 交通時間不足警示已驗收完成。Phase 3.6 景點卡固定 / 鎖定已實作並通過 build，待使用者驗收；Phase 3 收尾後，再進行 App Layout 改版。
+Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確認與關聯交通卡清理已驗收完成。Phase 3.5 交通時間不足警示已驗收完成。Phase 3.6 景點卡固定 / 鎖定已驗收完成；Phase 3 收尾後，再進行 App Layout 改版。
 
 核心方向：
 
@@ -79,7 +79,7 @@ Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確
   - 交通時間不足不能透過確認解除，只能透過調整景點時間或交通時間解除。
   - 若同時有一般快照警示，確認按鈕只清除一般快照警示，交通時間不足會保留。
   - 失效交通卡仍沿用 Phase 3.1 失效警示，不計算交通時間不足。
-- Phase 3.6：景點卡固定 / 鎖定 🧪 待測試
+- Phase 3.6：景點卡固定 / 鎖定 ✅ 已完成
   - 只支援景點卡固定，交通卡不提供鎖定。
   - 未固定景點顯示 🔓，固定後顯示 🔒。
   - 固定景點只允許展開 / 收合與查看內容。
@@ -198,7 +198,6 @@ npm.cmd run build
 
 依目前 Phase 3 新順序繼續：
 
-- Phase 3.6：景點卡固定 / 鎖定驗收。
 - Phase 3 收尾。
 - App Layout 改版。
 
