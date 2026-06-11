@@ -1595,7 +1595,7 @@ export default function App() {
   }
 
   async function updateTrip(patch) {
-    if (!activeTrip || !isOwner) return;
+    if (!activeTrip || !isOwner) return { ok: false };
     const nextPatch = { ...patch };
     if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
       nextPatch.name = nextPatch.title;
@@ -1607,8 +1607,12 @@ export default function App() {
       nextPatch.start_date = nextPatch.end_date;
     }
     const { error } = await supabase.from("trips").update(nextPatch).eq("id", activeTrip.id);
-    if (error) setNotice(error.message);
-    else await loadTrips(activeTrip.id);
+    if (error) {
+      setNotice(error.message);
+      return { ok: false, error };
+    }
+    await loadTrips(activeTrip.id);
+    return { ok: true };
   }
 
   async function deleteTrip() {
@@ -2762,9 +2766,16 @@ function TripHeader({
 }) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isEditingTrip, setIsEditingTrip] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [titleError, setTitleError] = useState("");
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
   const menuRef = useRef(null);
+  const titleInputRef = useRef(null);
+  const titleSaveRef = useRef(false);
   const metaItems = useMemo(() => buildTripHeaderMeta(trip, members, days), [days, members, trip]);
   const hasTrip = Boolean(trip);
+  const canRenameTrip = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
 
   useEffect(() => {
     if (!isMoreOpen) return undefined;
@@ -2782,18 +2793,129 @@ function TripHeader({
     };
   }, [isMoreOpen]);
 
+  useEffect(() => {
+    if (!isEditingTitle) return;
+    requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    });
+  }, [isEditingTitle]);
+
   function chooseMenuAction(action) {
     setIsMoreOpen(false);
     action();
+  }
+
+  function startTitleEdit() {
+    if (!canRenameTrip || isSavingTitle) return;
+    setTitleDraft(trip?.title || "");
+    setTitleError("");
+    setIsEditingTitle(true);
+  }
+
+  function cancelTitleEdit() {
+    setTitleDraft(trip?.title || "");
+    setTitleError("");
+    setIsEditingTitle(false);
+    setIsSavingTitle(false);
+    titleSaveRef.current = false;
+  }
+
+  async function saveTitleDraft() {
+    if (!canRenameTrip || titleSaveRef.current) return false;
+    const nextTitle = titleDraft.trim();
+    const currentTitle = String(trip?.title || "").trim();
+    if (!nextTitle) {
+      setTitleError("旅程名稱不能為空白");
+      return false;
+    }
+    if (nextTitle === currentTitle) {
+      setTitleError("");
+      setIsEditingTitle(false);
+      return true;
+    }
+    setTitleError("");
+    titleSaveRef.current = true;
+    setIsSavingTitle(true);
+    let result;
+    try {
+      result = await onUpdateTrip({ title: nextTitle });
+    } catch (error) {
+      result = { ok: false, error };
+    }
+    if (result?.ok === false) {
+      titleSaveRef.current = false;
+      setIsSavingTitle(false);
+      setTitleError("儲存失敗，請再試一次");
+      return false;
+    }
+    titleSaveRef.current = false;
+    setIsSavingTitle(false);
+    setIsEditingTitle(false);
+    setTitleDraft("");
+    return true;
+  }
+
+  function handleTitleKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.stopPropagation();
+      saveTitleDraft();
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelTitleEdit();
+    }
+  }
+
+  function handleTitleBlur() {
+    saveTitleDraft();
   }
 
   return (
     <header className="trip-header">
       <div className="trip-header-main">
         <div className="trip-header-title-row">
-          <h2 className="trip-header-title" title={trip?.title || "選擇或建立旅程"}>
-            {trip?.title || "選擇或建立旅程"}
-          </h2>
+          <div className="trip-header-title-wrap">
+            {isEditingTitle ? (
+              <>
+                <input
+                  ref={titleInputRef}
+                  className="trip-header-title-input"
+                  type="text"
+                  aria-label="旅程名稱"
+                  aria-describedby={titleError ? "trip-header-title-error" : undefined}
+                  disabled={isSavingTitle}
+                  value={titleDraft}
+                  onBlur={handleTitleBlur}
+                  onChange={(event) => {
+                    setTitleDraft(event.target.value);
+                    if (titleError) setTitleError("");
+                  }}
+                  onKeyDown={handleTitleKeyDown}
+                />
+                {titleError ? (
+                  <span className="trip-header-title-error" id="trip-header-title-error">
+                    {titleError}
+                  </span>
+                ) : null}
+              </>
+            ) : canRenameTrip ? (
+              <button
+                className="trip-header-title trip-header-title-button"
+                type="button"
+                title="點擊修改旅程名稱"
+                onClick={startTitleEdit}
+              >
+                <span>{trip?.title || "選擇或建立旅程"}</span>
+              </button>
+            ) : (
+              <h2 className="trip-header-title" title={trip?.title || "選擇或建立旅程"}>
+                {trip?.title || "選擇或建立旅程"}
+              </h2>
+            )}
+          </div>
           {onUpdateTrip ? (
             <button
               className="trip-header-edit-button"
@@ -3372,7 +3494,10 @@ function DemoApp({ initialSection }) {
           onExport={() => {}}
           onInvite={() => {}}
           onShare={() => {}}
-          onUpdateTrip={(patch) => setDemoActiveTrip((current) => ({ ...current, ...patch }))}
+          onUpdateTrip={(patch) => {
+            setDemoActiveTrip((current) => ({ ...current, ...patch }));
+            return { ok: true };
+          }}
         />
         {activeSection === "timeline" ? (
           <>
