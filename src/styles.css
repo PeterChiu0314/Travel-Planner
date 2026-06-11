@@ -1003,6 +1003,10 @@ code {
   gap: 8px;
 }
 
+.trip-header-date-actions .primary-button {
+  min-width: 64px;
+}
+
 .trip-date-range-footer {
   display: flex;
   align-items: center;

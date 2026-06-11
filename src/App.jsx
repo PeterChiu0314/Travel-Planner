@@ -2868,6 +2868,8 @@ function TripHeader({
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [startDateDraft, setStartDateDraft] = useState("");
   const [endDateDraft, setEndDateDraft] = useState("");
+  const [originalStartDate, setOriginalStartDate] = useState("");
+  const [originalEndDate, setOriginalEndDate] = useState("");
   const [startDateInput, setStartDateInput] = useState("");
   const [endDateInput, setEndDateInput] = useState("");
   const [dateSelectionStep, setDateSelectionStep] = useState("start");
@@ -2888,6 +2890,7 @@ function TripHeader({
   const canEditTitle = hasTrip && canRenameTrip && typeof onUpdateTrip === "function";
   const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
   const canOpenDatePopover = canOpenTripEditor;
+  const isDateRangeEmpty = !startDateDraft && !endDateDraft;
   const dateDraftDayCount = dateRangeDayCount(startDateDraft, endDateDraft);
   const todayDateKey = todayInput();
   const previewEndDate =
@@ -3025,13 +3028,17 @@ function TripHeader({
       const canContinue = await saveTitleDraft();
       if (!canContinue) return;
     }
-    setStartDateDraft(trip?.start_date || "");
-    setEndDateDraft(trip?.end_date || "");
-    setStartDateInput(formatHeaderDate(trip?.start_date) || "");
-    setEndDateInput(formatHeaderDate(trip?.end_date) || "");
+    const nextOriginalStartDate = trip?.start_date || "";
+    const nextOriginalEndDate = trip?.end_date || "";
+    setOriginalStartDate(nextOriginalStartDate);
+    setOriginalEndDate(nextOriginalEndDate);
+    setStartDateDraft(nextOriginalStartDate);
+    setEndDateDraft(nextOriginalEndDate);
+    setStartDateInput(formatHeaderDate(nextOriginalStartDate) || "");
+    setEndDateInput(formatHeaderDate(nextOriginalEndDate) || "");
     setDateSelectionStep("start");
     setHoveredDate("");
-    setVisibleMonth(startOfMonth(parseDateOnly(trip?.start_date) || parseDateOnly(todayInput()) || new Date()));
+    setVisibleMonth(startOfMonth(parseDateOnly(nextOriginalStartDate) || parseDateOnly(todayInput()) || new Date()));
     setDateError("");
     setIsDatePopoverOpen(true);
   }
@@ -3121,6 +3128,20 @@ function TripHeader({
     setDateSelectionStep("start");
     setHoveredDate("");
     setDateError("");
+    requestAnimationFrame(() => {
+      startDateTextInputRef.current?.focus();
+    });
+  }
+
+  function restoreOriginalDateDrafts() {
+    setStartDateDraft(originalStartDate);
+    setEndDateDraft(originalEndDate);
+    setStartDateInput(formatHeaderDate(originalStartDate) || "");
+    setEndDateInput(formatHeaderDate(originalEndDate) || "");
+    setDateSelectionStep(originalStartDate && !originalEndDate ? "end" : "start");
+    setHoveredDate("");
+    setDateError("");
+    setVisibleMonth(startOfMonth(parseDateOnly(originalStartDate) || parseDateOnly(todayInput()) || new Date()));
     requestAnimationFrame(() => {
       startDateTextInputRef.current?.focus();
     });
@@ -3286,7 +3307,11 @@ function TripHeader({
   function handleDatePopoverKeyDown(event) {
     if ((event.key === "Enter" || event.key === " ") && event.target === dateDialogRef.current) {
       event.preventDefault();
-      saveDateDrafts();
+      if (isDateRangeEmpty) {
+        restoreOriginalDateDrafts();
+      } else {
+        saveDateDrafts();
+      }
     }
   }
 
@@ -3536,7 +3561,7 @@ function TripHeader({
                               <button
                                 type="button"
                                 className="ghost-button compact"
-                                disabled={isSavingDates}
+                                disabled={isSavingDates || isDateRangeEmpty}
                                 onClick={clearDateDrafts}
                               >
                                 清除
@@ -3544,10 +3569,13 @@ function TripHeader({
                               <button
                                 type="button"
                                 className="primary-button compact"
-                                disabled={isSavingDates || !startDateDraft || !endDateDraft || isDateBefore(endDateDraft, startDateDraft)}
-                                onClick={saveDateDrafts}
+                                disabled={
+                                  isSavingDates ||
+                                  (!isDateRangeEmpty && (!startDateDraft || !endDateDraft || isDateBefore(endDateDraft, startDateDraft)))
+                                }
+                                onClick={isDateRangeEmpty ? restoreOriginalDateDrafts : saveDateDrafts}
                               >
-                                {isSavingDates ? "儲存中..." : "儲存"}
+                                {isSavingDates ? "儲存中..." : isDateRangeEmpty ? "取消" : "儲存"}
                               </button>
                             </div>
                           </div>
