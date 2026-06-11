@@ -551,6 +551,14 @@ function formatHeaderDate(value) {
   return `${year}/${month}/${day}`;
 }
 
+function dateRangeDayCount(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+  return Math.round((end - start) / 86400000) + 1;
+}
+
 function tripStatusLabel(status) {
   return {
     planning: "規劃階段",
@@ -2484,6 +2492,7 @@ function exportTrip() {
 
       <main className="workspace">
         <TripHeader
+          activeSection={activeSection}
           trip={activeTrip}
           members={members}
           days={days}
@@ -2767,6 +2776,7 @@ function TripHeaderIcon({ name }) {
 }
 
 function TripHeader({
+  activeSection,
   trip,
   members = [],
   days = [],
@@ -2785,13 +2795,24 @@ function TripHeader({
   const [titleDraft, setTitleDraft] = useState("");
   const [titleError, setTitleError] = useState("");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+  const [startDateDraft, setStartDateDraft] = useState("");
+  const [endDateDraft, setEndDateDraft] = useState("");
+  const [dateError, setDateError] = useState("");
+  const [isSavingDates, setIsSavingDates] = useState(false);
   const menuRef = useRef(null);
+  const datePopoverRef = useRef(null);
+  const dateButtonRef = useRef(null);
+  const startDateInputRef = useRef(null);
   const titleInputRef = useRef(null);
   const titleSaveRef = useRef(false);
+  const dateSaveRef = useRef(false);
   const meta = useMemo(() => buildTripHeaderMeta(trip, members, days), [days, members, trip]);
   const hasTrip = Boolean(trip);
   const canEditTitle = hasTrip && canRenameTrip && typeof onUpdateTrip === "function";
   const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
+  const canOpenDatePopover = canOpenTripEditor;
+  const dateDraftDayCount = dateRangeDayCount(startDateDraft, endDateDraft);
   const metaItems = [
     meta.destinationLabel
       ? {
@@ -2804,11 +2825,11 @@ function TripHeader({
       : null,
     meta.dateRangeLabel
       ? {
-          action: canOpenTripEditor,
+          action: canOpenDatePopover,
           key: "dates",
           label: meta.dateRangeLabel,
-          onClick: () => openTripEditor(),
-          title: canOpenTripEditor ? "編輯旅程日期" : undefined,
+          onClick: () => toggleDatePopover(),
+          title: canOpenDatePopover ? "編輯旅程日期" : undefined,
         }
       : null,
     meta.dayCountLabel ? { key: "days", label: meta.dayCountLabel } : null,
@@ -2848,13 +2869,129 @@ function TripHeader({
     });
   }, [isEditingTitle]);
 
+  useEffect(() => {
+    if (!isDatePopoverOpen) return undefined;
+    requestAnimationFrame(() => {
+      startDateInputRef.current?.focus();
+    });
+    function closeOnEscape(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDatePopover();
+      }
+    }
+    function closeOnOutsidePointer(event) {
+      if (datePopoverRef.current && !datePopoverRef.current.contains(event.target)) {
+        closeDatePopover();
+      }
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+    };
+  }, [isDatePopoverOpen]);
+
+  useEffect(() => {
+    if (!isDatePopoverOpen) return;
+    closeDatePopover({ restoreFocus: false });
+  }, [activeSection, trip?.id]);
+
   function chooseMenuAction(action) {
     setIsMoreOpen(false);
     action();
   }
 
+  function closeDatePopover({ restoreFocus = true } = {}) {
+    setIsDatePopoverOpen(false);
+    setDateError("");
+    setIsSavingDates(false);
+    dateSaveRef.current = false;
+    if (restoreFocus) {
+      requestAnimationFrame(() => {
+        dateButtonRef.current?.focus();
+      });
+    }
+  }
+
+  async function toggleDatePopover() {
+    if (isDatePopoverOpen) {
+      closeDatePopover();
+      return;
+    }
+    await openDatePopover();
+  }
+
+  async function openDatePopover() {
+    if (!canOpenDatePopover || isSavingDates) return;
+    setIsMoreOpen(false);
+    setIsEditingTrip(false);
+    if (isEditingTitle) {
+      const canContinue = await saveTitleDraft();
+      if (!canContinue) return;
+    }
+    setStartDateDraft(trip?.start_date || "");
+    setEndDateDraft(trip?.end_date || "");
+    setDateError("");
+    setIsDatePopoverOpen(true);
+  }
+
+  function validateDateDrafts() {
+    if (!startDateDraft || !endDateDraft) return "請選擇開始日期與結束日期";
+    const start = new Date(`${startDateDraft}T00:00:00`);
+    const end = new Date(`${endDateDraft}T00:00:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return "請選擇開始日期與結束日期";
+    }
+    if (end < start) return "結束日期不能早於開始日期";
+    return "";
+  }
+
+  async function saveDateDrafts() {
+    if (!canOpenDatePopover || dateSaveRef.current) return false;
+    const validationError = validateDateDrafts();
+    if (validationError) {
+      setDateError(validationError);
+      return false;
+    }
+    const currentStartDate = trip?.start_date || "";
+    const currentEndDate = trip?.end_date || "";
+    if (startDateDraft === currentStartDate && endDateDraft === currentEndDate) {
+      closeDatePopover();
+      return true;
+    }
+    setDateError("");
+    dateSaveRef.current = true;
+    setIsSavingDates(true);
+    let result;
+    try {
+      result = await onUpdateTrip({ start_date: startDateDraft, end_date: endDateDraft });
+    } catch (error) {
+      result = { ok: false, error };
+    }
+    if (result?.ok === false) {
+      dateSaveRef.current = false;
+      setIsSavingDates(false);
+      setDateError("儲存失敗，請再試一次");
+      return false;
+    }
+    dateSaveRef.current = false;
+    setIsSavingDates(false);
+    closeDatePopover();
+    return true;
+  }
+
+  function handleDatePopoverKeyDown(event) {
+    if (event.key === "Enter" && event.target?.tagName === "INPUT") {
+      event.preventDefault();
+      saveDateDrafts();
+    }
+  }
+
   async function openTripEditor() {
     setIsMoreOpen(false);
+    closeDatePopover({ restoreFocus: false });
     if (isEditingTitle) {
       const canContinue = await saveTitleDraft();
       if (!canContinue) return;
@@ -2873,6 +3010,7 @@ function TripHeader({
 
   function startTitleEdit() {
     if (!canEditTitle || isSavingTitle) return;
+    closeDatePopover({ restoreFocus: false });
     setTitleDraft(trip?.title || "");
     setTitleError("");
     setIsEditingTitle(true);
@@ -3010,14 +3148,96 @@ function TripHeader({
                   </span>
                 ) : null}
                 {item.action ? (
-                  <button
-                    className="trip-header-meta-action"
-                    type="button"
-                    title={item.title}
-                    onClick={item.onClick}
-                  >
-                    {item.label}
-                  </button>
+                  item.key === "dates" ? (
+                    <span className="trip-header-meta-popover-anchor" ref={datePopoverRef}>
+                      <button
+                        ref={dateButtonRef}
+                        className="trip-header-meta-action"
+                        type="button"
+                        title={item.title}
+                        aria-haspopup="dialog"
+                        aria-expanded={isDatePopoverOpen}
+                        onClick={item.onClick}
+                      >
+                        {item.label}
+                      </button>
+                      {isDatePopoverOpen ? (
+                        <div
+                          className="trip-header-date-popover"
+                          role="dialog"
+                          aria-label="編輯旅程日期"
+                          onKeyDown={handleDatePopoverKeyDown}
+                        >
+                          <label className="trip-header-date-field">
+                            <span>開始日期</span>
+                            <input
+                              ref={startDateInputRef}
+                              type="date"
+                              value={startDateDraft}
+                              disabled={isSavingDates}
+                              aria-describedby={dateError ? "trip-header-date-error" : undefined}
+                              onChange={(event) => {
+                                setStartDateDraft(event.target.value);
+                                if (dateError) setDateError("");
+                              }}
+                            />
+                          </label>
+                          <label className="trip-header-date-field">
+                            <span>結束日期</span>
+                            <input
+                              type="date"
+                              value={endDateDraft}
+                              disabled={isSavingDates}
+                              aria-describedby={dateError ? "trip-header-date-error" : undefined}
+                              onChange={(event) => {
+                                setEndDateDraft(event.target.value);
+                                if (dateError) setDateError("");
+                              }}
+                            />
+                          </label>
+                          <div className="trip-header-date-summary" aria-live="polite">
+                            旅程天數：{dateDraftDayCount ? `${dateDraftDayCount} 天` : "—"}
+                          </div>
+                          {dateError ? (
+                            <div
+                              className="trip-header-date-error"
+                              id="trip-header-date-error"
+                              role="alert"
+                            >
+                              {dateError}
+                            </div>
+                          ) : null}
+                          <div className="trip-header-date-actions">
+                            <button
+                              type="button"
+                              className="ghost-button compact"
+                              disabled={isSavingDates}
+                              onClick={() => closeDatePopover()}
+                            >
+                              取消
+                            </button>
+                            <button
+                              type="button"
+                              className="primary-button compact"
+                              disabled={isSavingDates}
+                              onClick={saveDateDrafts}
+                            >
+                              {isSavingDates ? "儲存中..." : "儲存"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <button
+                      className="trip-header-meta-action"
+                      type="button"
+                      title={item.title}
+                      onClick={item.onClick}
+                    >
+                      {item.label}
+                    </button>
+                  )
                 ) : (
                   <span className="trip-header-meta-item" title={item.title}>
                     {item.label}
@@ -3575,6 +3795,7 @@ function DemoApp({ initialSection }) {
       <main className="workspace demo-workspace">
         <div className="demo-banner">Demo Mode：這是展示資料，操作不會永久保存。</div>
         <TripHeader
+          activeSection={activeSection}
           trip={demoActiveTrip}
           members={demoMembers}
           days={days}

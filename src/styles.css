@@ -807,6 +807,80 @@ code {
   outline-offset: 1px;
 }
 
+.trip-header-meta-popover-anchor {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.trip-header-date-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  width: min(320px, calc(100vw - 32px));
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+  box-shadow: 0 18px 42px rgba(38, 45, 40, 0.16);
+  color: var(--ink);
+  padding: 12px;
+}
+
+.trip-header-date-field {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.trip-header-date-field input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 7px 9px;
+}
+
+.trip-header-date-field input:focus-visible {
+  outline: 3px solid rgba(25, 109, 82, 0.28);
+  outline-offset: 2px;
+}
+
+.trip-header-date-summary {
+  border-radius: 7px;
+  background: rgba(232, 246, 239, 0.7);
+  color: var(--mint-dark);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.trip-header-date-error {
+  border: 1px solid rgba(157, 51, 37, 0.2);
+  border-radius: 7px;
+  background: #fff8f5;
+  color: #9d3325;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.trip-header-date-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .trip-header-meta-separator {
   color: #a8aea8;
   font-weight: 900;
