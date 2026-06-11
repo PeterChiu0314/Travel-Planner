@@ -28,7 +28,7 @@ Header 目前狀態：
 - Phase 1.1 Header 上方間距修正：✅ 已完成、已驗收
 - Phase 1.2 旅程名稱 Inline Edit：✅ 已完成、已驗收
 - Phase 1.3 Header Metadata 結構與互動入口：✅ 已完成、已驗收
-- Phase 1.4 Header 日期 Popover：🟡 已實作並 push，尚未驗收
+- Phase 1.4 Header 日期 Popover：✅ 已完成、已測試、User Verified!
 
 核心方向：
 
@@ -65,7 +65,7 @@ Header 目前狀態：
   - 支援 Enter 儲存、Esc / 外部點擊 / 取消 / 切換旅程 / 切換 section 關閉。
   - 使用既有 `onUpdateTrip({ start_date, end_date })` 更新旅程日期，不處理 Timeline 日期搬移、資料刪除或 day remap。
   - `npm.cmd run build` 與 `git diff --check` 已通過。
-  - 狀態：尚未使用者驗收。下一步請先處理 Phase 1.4 驗收回饋，不要進入 Phase 1.5。
+  - 狀態：已完成、已測試、User Verified!
 
 ### Phase 3 目前順序
 
