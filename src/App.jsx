@@ -1060,6 +1060,7 @@ export default function App() {
   const canEdit =
     activeMembership?.status === "approved" &&
     (activeMembership?.role === "owner" || activeMembership?.role === "editor");
+  const canRenameActiveTrip = canEdit || activeTrip?.owner_id === session?.user?.id;
   const isPending = activeMembership?.status === "pending";
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
@@ -1595,7 +1596,7 @@ export default function App() {
   }
 
   async function updateTrip(patch) {
-    if (!activeTrip || !canEdit) return { ok: false };
+    if (!activeTrip || !canRenameActiveTrip) return { ok: false };
     const nextPatch = { ...patch };
     if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
       nextPatch.name = nextPatch.title;
@@ -2477,7 +2478,7 @@ function exportTrip() {
           members={members}
           days={days}
           canEditTrip={isOwner}
-          canRenameTrip={canEdit}
+          canRenameTrip={canRenameActiveTrip}
           onDelete={deleteTrip}
           onExport={exportTrip}
           onInvite={() => setIsInviteDialogOpen(true)}
