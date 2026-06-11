@@ -1595,7 +1595,7 @@ export default function App() {
   }
 
   async function updateTrip(patch) {
-    if (!activeTrip || !isOwner) return { ok: false };
+    if (!activeTrip || !canEdit) return { ok: false };
     const nextPatch = { ...patch };
     if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
       nextPatch.name = nextPatch.title;
@@ -2477,6 +2477,7 @@ function exportTrip() {
           members={members}
           days={days}
           canEditTrip={isOwner}
+          canRenameTrip={canEdit}
           onDelete={deleteTrip}
           onExport={exportTrip}
           onInvite={() => setIsInviteDialogOpen(true)}
@@ -2758,6 +2759,7 @@ function TripHeader({
   members = [],
   days = [],
   canEditTrip = false,
+  canRenameTrip = canEditTrip,
   onDelete,
   onExport,
   onInvite,
@@ -2775,7 +2777,7 @@ function TripHeader({
   const titleSaveRef = useRef(false);
   const metaItems = useMemo(() => buildTripHeaderMeta(trip, members, days), [days, members, trip]);
   const hasTrip = Boolean(trip);
-  const canRenameTrip = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
+  const canEditTitle = hasTrip && canRenameTrip && typeof onUpdateTrip === "function";
 
   useEffect(() => {
     if (!isMoreOpen) return undefined;
@@ -2807,7 +2809,7 @@ function TripHeader({
   }
 
   function startTitleEdit() {
-    if (!canRenameTrip || isSavingTitle) return;
+    if (!canEditTitle || isSavingTitle) return;
     setTitleDraft(trip?.title || "");
     setTitleError("");
     setIsEditingTitle(true);
@@ -2822,7 +2824,7 @@ function TripHeader({
   }
 
   async function saveTitleDraft() {
-    if (!canRenameTrip || titleSaveRef.current) return false;
+    if (!canEditTitle || titleSaveRef.current) return false;
     const nextTitle = titleDraft.trim();
     const currentTitle = String(trip?.title || "").trim();
     if (!nextTitle) {
@@ -2901,9 +2903,9 @@ function TripHeader({
                   </span>
                 ) : null}
               </>
-            ) : canRenameTrip ? (
+            ) : canEditTitle ? (
               <button
-                className="trip-header-title trip-header-title-button"
+                className="trip-header-title-button"
                 type="button"
                 title="點擊修改旅程名稱"
                 onClick={startTitleEdit}
