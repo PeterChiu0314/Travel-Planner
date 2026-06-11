@@ -291,6 +291,76 @@ function dateToInputValue(date) {
   return `${year}-${month}-${day}`;
 }
 
+function parseDateOnly(value) {
+  if (!value) return null;
+  const [year, month, day] = String(value).split("-").map(Number);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+function formatDateKey(date) {
+  return dateToInputValue(date);
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date, amount) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function daysInMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function calendarMonthCells(monthDate) {
+  const monthStart = startOfMonth(monthDate);
+  const leadingDays = monthStart.getDay();
+  const totalDays = daysInMonth(monthStart);
+  const cells = [];
+  for (let index = 0; index < 42; index += 1) {
+    const monthDay = index - leadingDays + 1;
+    if (monthDay < 1 || monthDay > totalDays) {
+      cells.push({ blank: true, key: `blank-${formatDateKey(monthStart)}-${index}` });
+      continue;
+    }
+    const date = new Date(monthStart);
+    date.setDate(monthDay);
+    cells.push({ date, key: formatDateKey(date), day: date.getDate() });
+  }
+  return cells;
+}
+
+function isSameDate(first, second) {
+  return Boolean(first && second && first === second);
+}
+
+function isDateBefore(first, second) {
+  return Boolean(first && second && first < second);
+}
+
+function isDateInRange(value, start, end) {
+  return Boolean(value && start && end && value >= start && value <= end);
+}
+
+function normalizeDateInput(value) {
+  const text = String(value || "").trim();
+  let match = text.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (!match) match = text.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+  if (!match) return "";
+  const [, year, month, day] = match;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+function parseDateTextInput(value) {
+  const normalized = normalizeDateInput(value);
+  if (!normalized) return "";
+  return parseDateOnly(normalized) ? normalized : "";
+}
+
 function currentTimeInput() {
   const date = new Date();
   const hours = String(date.getHours()).padStart(2, "0");
@@ -543,8 +613,8 @@ function formatDate(date) {
 
 function formatHeaderDate(value) {
   if (!value) return "";
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "";
+  const date = parseDateOnly(value);
+  if (!date) return "";
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -553,9 +623,9 @@ function formatHeaderDate(value) {
 
 function dateRangeDayCount(startDate, endDate) {
   if (!startDate || !endDate) return null;
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+  const start = parseDateOnly(startDate);
+  const end = parseDateOnly(endDate);
+  if (!start || !end || end < start) return null;
   return Math.round((end - start) / 86400000) + 1;
 }
 
@@ -2798,12 +2868,18 @@ function TripHeader({
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [startDateDraft, setStartDateDraft] = useState("");
   const [endDateDraft, setEndDateDraft] = useState("");
+  const [startDateInput, setStartDateInput] = useState("");
+  const [endDateInput, setEndDateInput] = useState("");
+  const [dateSelectionStep, setDateSelectionStep] = useState("start");
+  const [hoveredDate, setHoveredDate] = useState("");
+  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(parseDateOnly(todayInput()) || new Date()));
   const [dateError, setDateError] = useState("");
   const [isSavingDates, setIsSavingDates] = useState(false);
   const menuRef = useRef(null);
   const datePopoverRef = useRef(null);
   const dateButtonRef = useRef(null);
-  const startDateInputRef = useRef(null);
+  const dateDialogRef = useRef(null);
+  const startDateTextInputRef = useRef(null);
   const titleInputRef = useRef(null);
   const titleSaveRef = useRef(false);
   const dateSaveRef = useRef(false);
@@ -2813,6 +2889,23 @@ function TripHeader({
   const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
   const canOpenDatePopover = canOpenTripEditor;
   const dateDraftDayCount = dateRangeDayCount(startDateDraft, endDateDraft);
+  const todayDateKey = todayInput();
+  const previewEndDate =
+    dateSelectionStep === "end" &&
+    startDateDraft &&
+    !endDateDraft &&
+    hoveredDate &&
+    !isDateBefore(hoveredDate, startDateDraft) &&
+    !isDateBefore(hoveredDate, todayDateKey)
+      ? hoveredDate
+      : "";
+  const previewDayCount = previewEndDate ? dateRangeDayCount(startDateDraft, previewEndDate) : null;
+  const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
+  const weekdayFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { weekday: "short" }), []);
+  const fullDateFormat = useMemo(
+    () => new Intl.DateTimeFormat("zh-TW", { day: "numeric", month: "long", year: "numeric" }),
+    [],
+  );
   const metaItems = [
     meta.destinationLabel
       ? {
@@ -2872,7 +2965,7 @@ function TripHeader({
   useEffect(() => {
     if (!isDatePopoverOpen) return undefined;
     requestAnimationFrame(() => {
-      startDateInputRef.current?.focus();
+      startDateTextInputRef.current?.focus();
     });
     function closeOnEscape(event) {
       if (event.key === "Escape") {
@@ -2906,6 +2999,7 @@ function TripHeader({
   function closeDatePopover({ restoreFocus = true } = {}) {
     setIsDatePopoverOpen(false);
     setDateError("");
+    setHoveredDate("");
     setIsSavingDates(false);
     dateSaveRef.current = false;
     if (restoreFocus) {
@@ -2933,18 +3027,26 @@ function TripHeader({
     }
     setStartDateDraft(trip?.start_date || "");
     setEndDateDraft(trip?.end_date || "");
+    setStartDateInput(formatHeaderDate(trip?.start_date) || "");
+    setEndDateInput(formatHeaderDate(trip?.end_date) || "");
+    setDateSelectionStep("start");
+    setHoveredDate("");
+    setVisibleMonth(startOfMonth(parseDateOnly(trip?.start_date) || parseDateOnly(todayInput()) || new Date()));
     setDateError("");
     setIsDatePopoverOpen(true);
   }
 
   function validateDateDrafts() {
     if (!startDateDraft || !endDateDraft) return "請選擇開始日期與結束日期";
-    const start = new Date(`${startDateDraft}T00:00:00`);
-    const end = new Date(`${endDateDraft}T00:00:00`);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    const start = parseDateOnly(startDateDraft);
+    const end = parseDateOnly(endDateDraft);
+    if (!start || !end) {
       return "請選擇開始日期與結束日期";
     }
-    if (end < start) return "結束日期不能早於開始日期";
+    if (isDateBefore(startDateDraft, todayDateKey) || isDateBefore(endDateDraft, todayDateKey)) {
+      return "不可選擇早於今日的日期";
+    }
+    if (isDateBefore(endDateDraft, startDateDraft)) return "結束日期不能早於開始日期";
     return "";
   }
 
@@ -2982,8 +3084,207 @@ function TripHeader({
     return true;
   }
 
+  function selectDateFromCalendar(dateKey) {
+    if (isSavingDates) return;
+    if (isDateBefore(dateKey, todayDateKey)) {
+      setDateError("不可選擇早於今日的日期");
+      return;
+    }
+    setDateError("");
+    setHoveredDate("");
+    if (dateSelectionStep === "start" || !startDateDraft) {
+      setStartDateDraft(dateKey);
+      setStartDateInput(formatHeaderDate(dateKey));
+      setEndDateDraft("");
+      setEndDateInput("");
+      setDateSelectionStep("end");
+      return;
+    }
+    if (isDateBefore(dateKey, startDateDraft)) {
+      setStartDateDraft(dateKey);
+      setStartDateInput(formatHeaderDate(dateKey));
+      setEndDateDraft("");
+      setEndDateInput("");
+      setDateSelectionStep("end");
+      return;
+    }
+    setEndDateDraft(dateKey);
+    setEndDateInput(formatHeaderDate(dateKey));
+    setDateSelectionStep("start");
+  }
+
+  function clearDateDrafts() {
+    setStartDateDraft("");
+    setEndDateDraft("");
+    setStartDateInput("");
+    setEndDateInput("");
+    setDateSelectionStep("start");
+    setHoveredDate("");
+    setDateError("");
+    requestAnimationFrame(() => {
+      startDateTextInputRef.current?.focus();
+    });
+  }
+
+  function commitDateTextInput(field) {
+    const rawValue = field === "start" ? startDateInput : endDateInput;
+    if (!String(rawValue || "").trim()) {
+      if (field === "start") {
+        setStartDateDraft("");
+        setEndDateDraft("");
+        setEndDateInput("");
+        setDateSelectionStep("start");
+      } else {
+        setEndDateDraft("");
+        setDateSelectionStep(startDateDraft ? "end" : "start");
+      }
+      setDateError("");
+      return true;
+    }
+    const normalized = parseDateTextInput(rawValue);
+    if (!normalized) {
+      setDateError("請輸入有效日期");
+      return false;
+    }
+    if (isDateBefore(normalized, todayDateKey)) {
+      setDateError("不可選擇早於今日的日期");
+      return false;
+    }
+    setDateError("");
+    setHoveredDate("");
+    setVisibleMonth(startOfMonth(parseDateOnly(normalized)));
+    if (field === "start") {
+      setStartDateDraft(normalized);
+      setStartDateInput(formatHeaderDate(normalized));
+      if (endDateDraft && isDateBefore(endDateDraft, normalized)) {
+        setEndDateDraft("");
+        setEndDateInput("");
+      }
+      setDateSelectionStep("end");
+      return true;
+    }
+    if (startDateDraft && isDateBefore(normalized, startDateDraft)) {
+      setStartDateDraft(normalized);
+      setStartDateInput(formatHeaderDate(normalized));
+      setEndDateDraft("");
+      setEndDateInput("");
+      setDateSelectionStep("end");
+      return true;
+    }
+    setEndDateDraft(normalized);
+    setEndDateInput(formatHeaderDate(normalized));
+    setDateSelectionStep("start");
+    return true;
+  }
+
+  function handleDateInputKeyDown(event, field) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    event.stopPropagation();
+    commitDateTextInput(field);
+  }
+
+  function renderDateMonth(monthDate, controls = {}) {
+    const cells = calendarMonthCells(monthDate);
+    const weekdays = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(2026, 5, 7 + index);
+      return weekdayFormat.format(date);
+    });
+    return (
+      <section className="trip-date-range-month" key={formatDateKey(monthDate)}>
+        <div className="trip-date-range-month-header">
+          {controls.previous ? (
+            <button
+              type="button"
+              className="mini-button"
+              disabled={isSavingDates}
+              aria-label="上一個月份"
+              onClick={() => setVisibleMonth((month) => addMonths(month, -1))}
+            >
+              &lt;
+            </button>
+          ) : (
+            <span />
+          )}
+          <strong>{monthFormat.format(monthDate)}</strong>
+          {controls.next ? (
+            <button
+              type="button"
+              className="mini-button"
+              disabled={isSavingDates}
+              aria-label="下一個月份"
+              onClick={() => setVisibleMonth((month) => addMonths(month, 1))}
+            >
+              &gt;
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
+        <div className="trip-date-range-weekdays" aria-hidden="true">
+          {weekdays.map((weekday) => (
+            <span key={weekday}>{weekday}</span>
+          ))}
+        </div>
+        <div className="trip-date-range-grid">
+          {cells.map((cell) => {
+            if (cell.blank) {
+              return <span className="trip-date-range-day-blank" key={cell.key} aria-hidden="true" />;
+            }
+            const isDisabledDate = isDateBefore(cell.key, todayDateKey);
+            const isRangeStart = isSameDate(cell.key, startDateDraft);
+            const isRangeEnd = isSameDate(cell.key, endDateDraft);
+            const isSingleDay = Boolean(startDateDraft && endDateDraft && isSameDate(startDateDraft, endDateDraft) && isRangeStart);
+            const isInRange = isDateInRange(cell.key, startDateDraft, endDateDraft) && !isRangeStart && !isRangeEnd;
+            const isPreviewRange =
+              !isDisabledDate && Boolean(previewEndDate) && isDateInRange(cell.key, startDateDraft, previewEndDate) && !isRangeStart;
+            const classNames = [
+              "trip-date-range-day",
+              isDisabledDate ? "is-disabled" : "",
+              isSameDate(cell.key, todayDateKey) ? "is-today" : "",
+              isRangeStart ? "is-range-start" : "",
+              isInRange ? "is-in-range" : "",
+              isRangeEnd ? "is-range-end" : "",
+              isSingleDay ? "is-single-day" : "",
+              isPreviewRange ? "is-preview-range" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+            const selectionLabel = isRangeStart
+              ? "，開始日期"
+              : isRangeEnd
+                ? "，結束日期"
+                : isInRange || isPreviewRange
+                  ? "，行程範圍內"
+                  : "";
+            return (
+              <button
+                className={classNames}
+                key={cell.key}
+                type="button"
+                disabled={isSavingDates || isDisabledDate}
+                aria-label={`${fullDateFormat.format(cell.date)}${selectionLabel}`}
+                aria-disabled={isDisabledDate ? "true" : undefined}
+                aria-selected={isRangeStart || isRangeEnd || isInRange}
+                onClick={() => selectDateFromCalendar(cell.key)}
+                onMouseEnter={() => {
+                  if (!isDisabledDate && dateSelectionStep === "end" && startDateDraft && !endDateDraft) setHoveredDate(cell.key);
+                }}
+                onFocus={() => {
+                  if (!isDisabledDate && dateSelectionStep === "end" && startDateDraft && !endDateDraft) setHoveredDate(cell.key);
+                }}
+              >
+                <span>{cell.day}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
   function handleDatePopoverKeyDown(event) {
-    if (event.key === "Enter" && event.target?.tagName === "INPUT") {
+    if ((event.key === "Enter" || event.key === " ") && event.target === dateDialogRef.current) {
       event.preventDefault();
       saveDateDrafts();
     }
@@ -3163,40 +3464,55 @@ function TripHeader({
                       </button>
                       {isDatePopoverOpen ? (
                         <div
+                          ref={dateDialogRef}
                           className="trip-header-date-popover"
                           role="dialog"
                           aria-label="編輯旅程日期"
+                          tabIndex={-1}
                           onKeyDown={handleDatePopoverKeyDown}
                         >
-                          <label className="trip-header-date-field">
-                            <span>開始日期</span>
-                            <input
-                              ref={startDateInputRef}
-                              type="date"
-                              value={startDateDraft}
-                              disabled={isSavingDates}
-                              aria-describedby={dateError ? "trip-header-date-error" : undefined}
-                              onChange={(event) => {
-                                setStartDateDraft(event.target.value);
-                                if (dateError) setDateError("");
-                              }}
-                            />
-                          </label>
-                          <label className="trip-header-date-field">
-                            <span>結束日期</span>
-                            <input
-                              type="date"
-                              value={endDateDraft}
-                              disabled={isSavingDates}
-                              aria-describedby={dateError ? "trip-header-date-error" : undefined}
-                              onChange={(event) => {
-                                setEndDateDraft(event.target.value);
-                                if (dateError) setDateError("");
-                              }}
-                            />
-                          </label>
-                          <div className="trip-header-date-summary" aria-live="polite">
-                            旅程天數：{dateDraftDayCount ? `${dateDraftDayCount} 天` : "—"}
+                          <div className="trip-date-range-summary" aria-live="polite">
+                            <label className={`trip-date-range-summary-item${dateSelectionStep === "start" ? " is-active" : ""}`}>
+                              <span>開始日期</span>
+                              <input
+                                ref={startDateTextInputRef}
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="YYYYMMDD"
+                                value={startDateInput}
+                                disabled={isSavingDates}
+                                aria-describedby={dateError ? "trip-header-date-error" : undefined}
+                                onBlur={() => commitDateTextInput("start")}
+                                onChange={(event) => {
+                                  setStartDateInput(event.target.value);
+                                  if (dateError) setDateError("");
+                                }}
+                                onKeyDown={(event) => handleDateInputKeyDown(event, "start")}
+                              />
+                            </label>
+                            <label className={`trip-date-range-summary-item${dateSelectionStep === "end" ? " is-active" : ""}`}>
+                              <span>結束日期</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="YYYYMMDD"
+                                value={endDateInput}
+                                disabled={isSavingDates}
+                                aria-describedby={dateError ? "trip-header-date-error" : undefined}
+                                onBlur={() => commitDateTextInput("end")}
+                                onChange={(event) => {
+                                  setEndDateInput(event.target.value);
+                                  if (dateError) setDateError("");
+                                }}
+                                onKeyDown={(event) => handleDateInputKeyDown(event, "end")}
+                              />
+                            </label>
+                          </div>
+                          <div className="trip-date-range-picker">
+                            <div className="trip-date-range-months" onMouseLeave={() => setHoveredDate("")}>
+                              {renderDateMonth(visibleMonth, { previous: true })}
+                              {renderDateMonth(addMonths(visibleMonth, 1), { next: true })}
+                            </div>
                           </div>
                           {dateError ? (
                             <div
@@ -3207,23 +3523,33 @@ function TripHeader({
                               {dateError}
                             </div>
                           ) : null}
-                          <div className="trip-header-date-actions">
-                            <button
-                              type="button"
-                              className="ghost-button compact"
-                              disabled={isSavingDates}
-                              onClick={() => closeDatePopover()}
-                            >
-                              取消
-                            </button>
-                            <button
-                              type="button"
-                              className="primary-button compact"
-                              disabled={isSavingDates}
-                              onClick={saveDateDrafts}
-                            >
-                              {isSavingDates ? "儲存中..." : "儲存"}
-                            </button>
+                          <div className="trip-date-range-footer">
+                            <div className="trip-header-date-summary" aria-live="polite">
+                              旅程天數：
+                              {dateDraftDayCount
+                                ? `${dateDraftDayCount} 天`
+                                : previewDayCount
+                                  ? `${previewDayCount} 天（預覽）`
+                                  : "—"}
+                            </div>
+                            <div className="trip-header-date-actions">
+                              <button
+                                type="button"
+                                className="ghost-button compact"
+                                disabled={isSavingDates}
+                                onClick={clearDateDrafts}
+                              >
+                                清除
+                              </button>
+                              <button
+                                type="button"
+                                className="primary-button compact"
+                                disabled={isSavingDates || !startDateDraft || !endDateDraft || isDateBefore(endDateDraft, startDateDraft)}
+                                onClick={saveDateDrafts}
+                              >
+                                {isSavingDates ? "儲存中..." : "儲存"}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ) : null}
