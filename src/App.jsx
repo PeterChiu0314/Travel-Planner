@@ -571,15 +571,17 @@ function tripDestinationMeta(destination) {
 }
 
 function buildTripHeaderMeta(trip, members, days) {
-  if (!trip) return [];
-  const meta = [...tripDestinationMeta(trip.destination)];
+  if (!trip) return {};
+  const destinationLabel = tripDestinationMeta(trip.destination).join(" · ");
   const startDate = formatHeaderDate(trip.start_date);
   const endDate = formatHeaderDate(trip.end_date);
-  if (startDate && endDate) meta.push(`${startDate} - ${endDate}`);
-  if (days.length) meta.push(`${days.length} 天`);
-  meta.push(tripStatusLabel(trip.status));
-  meta.push(`${members.length} 位成員`);
-  return meta;
+  return {
+    destinationLabel,
+    dateRangeLabel: startDate && endDate ? `${startDate} - ${endDate}` : "",
+    dayCountLabel: days.length ? `${days.length} 天` : "",
+    statusLabel: tripStatusLabel(trip.status),
+    membersLabel: `${members.length} 位成員`,
+  };
 }
 
 function formatMoney(value) {
@@ -2376,6 +2378,14 @@ function exportTrip() {
     if (canContinue) setActiveTripId(nextTripId);
   }
 
+  function focusSidebarMembers() {
+    const panel = document.querySelector(".sidebar-members");
+    if (!panel) return;
+    panel.scrollIntoView({ block: "center", behavior: "smooth" });
+    panel.setAttribute("tabindex", "-1");
+    panel.focus({ preventScroll: true });
+  }
+
   if (isDemoMode) {
     return (
       <Shell>
@@ -2482,6 +2492,7 @@ function exportTrip() {
           onDelete={deleteTrip}
           onExport={exportTrip}
           onInvite={() => setIsInviteDialogOpen(true)}
+          onOpenMembers={focusSidebarMembers}
           onShare={() => setIsShareDialogOpen(true)}
           onUpdateTrip={updateTrip}
         />
@@ -2764,6 +2775,7 @@ function TripHeader({
   onDelete,
   onExport,
   onInvite,
+  onOpenMembers,
   onShare,
   onUpdateTrip,
 }) {
@@ -2776,9 +2788,41 @@ function TripHeader({
   const menuRef = useRef(null);
   const titleInputRef = useRef(null);
   const titleSaveRef = useRef(false);
-  const metaItems = useMemo(() => buildTripHeaderMeta(trip, members, days), [days, members, trip]);
+  const meta = useMemo(() => buildTripHeaderMeta(trip, members, days), [days, members, trip]);
   const hasTrip = Boolean(trip);
   const canEditTitle = hasTrip && canRenameTrip && typeof onUpdateTrip === "function";
+  const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
+  const metaItems = [
+    meta.destinationLabel
+      ? {
+          action: canOpenTripEditor,
+          key: "destination",
+          label: meta.destinationLabel,
+          onClick: () => openTripEditor(),
+          title: canOpenTripEditor ? "編輯目的地" : undefined,
+        }
+      : null,
+    meta.dateRangeLabel
+      ? {
+          action: canOpenTripEditor,
+          key: "dates",
+          label: meta.dateRangeLabel,
+          onClick: () => openTripEditor(),
+          title: canOpenTripEditor ? "編輯旅程日期" : undefined,
+        }
+      : null,
+    meta.dayCountLabel ? { key: "days", label: meta.dayCountLabel } : null,
+    meta.statusLabel ? { key: "status", label: meta.statusLabel, title: "旅程階段" } : null,
+    meta.membersLabel
+      ? {
+          action: typeof onOpenMembers === "function",
+          key: "members",
+          label: meta.membersLabel,
+          onClick: () => openMembers(),
+          title: typeof onOpenMembers === "function" ? "查看成員" : undefined,
+        }
+      : null,
+  ].filter(Boolean);
 
   useEffect(() => {
     if (!isMoreOpen) return undefined;
@@ -2807,6 +2851,24 @@ function TripHeader({
   function chooseMenuAction(action) {
     setIsMoreOpen(false);
     action();
+  }
+
+  async function openTripEditor() {
+    setIsMoreOpen(false);
+    if (isEditingTitle) {
+      const canContinue = await saveTitleDraft();
+      if (!canContinue) return;
+    }
+    setIsEditingTrip(true);
+  }
+
+  async function openMembers() {
+    if (typeof onOpenMembers !== "function") return;
+    if (isEditingTitle) {
+      const canContinue = await saveTitleDraft();
+      if (!canContinue) return;
+    }
+    onOpenMembers();
   }
 
   function startTitleEdit() {
@@ -2926,7 +2988,13 @@ function TripHeader({
               title="編輯旅程資料"
               aria-label="編輯旅程資料"
               disabled={!hasTrip || !canEditTrip}
-              onClick={() => setIsEditingTrip((value) => !value)}
+              onClick={() => {
+                if (isEditingTrip) {
+                  setIsEditingTrip(false);
+                  return;
+                }
+                openTripEditor();
+              }}
             >
               <TripHeaderIcon name="edit" />
             </button>
@@ -2935,9 +3003,27 @@ function TripHeader({
         {metaItems.length ? (
           <div className="trip-header-meta" aria-label="旅程摘要">
             {metaItems.map((item, index) => (
-              <span className="trip-header-meta-item" key={`${item}-${index}`}>
-                {item}
-              </span>
+              <Fragment key={item.key}>
+                {index > 0 ? (
+                  <span className="trip-header-meta-separator" aria-hidden="true">
+                    ·
+                  </span>
+                ) : null}
+                {item.action ? (
+                  <button
+                    className="trip-header-meta-action"
+                    type="button"
+                    title={item.title}
+                    onClick={item.onClick}
+                  >
+                    {item.label}
+                  </button>
+                ) : (
+                  <span className="trip-header-meta-item" title={item.title}>
+                    {item.label}
+                  </span>
+                )}
+              </Fragment>
             ))}
           </div>
         ) : null}
@@ -2984,7 +3070,7 @@ function TripHeader({
                   type="button"
                   role="menuitem"
                   disabled={!canEditTrip}
-                  onClick={() => chooseMenuAction(() => setIsEditingTrip(true))}
+                  onClick={() => chooseMenuAction(openTripEditor)}
                 >
                   編輯旅程資料
                 </button>

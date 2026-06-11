@@ -769,7 +769,7 @@ code {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 8px;
+  gap: 4px 6px;
   min-width: 0;
   color: var(--muted);
   font-size: 14px;
@@ -777,18 +777,40 @@ code {
   line-height: 1.35;
 }
 
+.trip-header-meta-action,
 .trip-header-meta-item {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   min-width: 0;
+  max-width: 100%;
   white-space: nowrap;
 }
 
-.trip-header-meta-item:not(:last-child)::after {
-  content: "·";
+.trip-header-meta-action {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 2px 5px;
+}
+
+.trip-header-meta-action:hover {
+  background: rgba(232, 246, 239, 0.82);
+  color: var(--mint-dark);
+}
+
+.trip-header-meta-action:focus-visible {
+  outline: 3px solid rgba(25, 109, 82, 0.28);
+  outline-offset: 1px;
+}
+
+.trip-header-meta-separator {
   color: #a8aea8;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .trip-header-actions {
