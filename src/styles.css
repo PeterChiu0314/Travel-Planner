@@ -341,6 +341,7 @@ code {
   color: var(--mint-dark);
   font-weight: 900;
   line-height: 1.5;
+  margin-top: 16px;
   padding: 12px 14px;
 }
 
@@ -624,7 +625,7 @@ code {
 
 .workspace {
   min-width: 0;
-  padding: 24px;
+  padding: 0 24px 24px;
 }
 
 .trip-header {
@@ -636,7 +637,7 @@ code {
   min-height: 68px;
   border-bottom: 1px solid var(--line);
   margin: -4px -24px 18px;
-  padding: 12px 24px 14px;
+  padding: 30px 24px 14px;
   background: rgba(255, 253, 248, 0.82);
 }
 
@@ -2753,11 +2754,15 @@ textarea {
     padding: 16px;
   }
 
+  .workspace {
+    padding-top: 0;
+  }
+
   .trip-header {
     gap: 10px;
     min-height: 62px;
     margin: -2px -16px 16px;
-    padding: 10px 16px 12px;
+    padding: 30px 16px 12px;
   }
 
   .trip-header-title {
