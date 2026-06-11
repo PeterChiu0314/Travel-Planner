@@ -541,6 +541,47 @@ function formatDate(date) {
   }).format(date);
 }
 
+function formatHeaderDate(value) {
+  if (!value) return "";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
+}
+
+function tripStatusLabel(status) {
+  return {
+    planning: "規劃階段",
+    traveling: "旅行階段",
+    settled: "結算階段",
+  }[status || "planning"] || "規劃階段";
+}
+
+function tripDestinationMeta(destination) {
+  const value = String(destination || "").trim();
+  if (!value) return [];
+  const parts = value
+    .split(/[,，]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 2) return [parts[1], parts[0]];
+  return [value];
+}
+
+function buildTripHeaderMeta(trip, members, days) {
+  if (!trip) return [];
+  const meta = [...tripDestinationMeta(trip.destination)];
+  const startDate = formatHeaderDate(trip.start_date);
+  const endDate = formatHeaderDate(trip.end_date);
+  if (startDate && endDate) meta.push(`${startDate} - ${endDate}`);
+  if (days.length) meta.push(`${days.length} 天`);
+  meta.push(tripStatusLabel(trip.status));
+  meta.push(`${members.length} 位成員`);
+  return meta;
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat("zh-TW", {
     style: "currency",
@@ -665,9 +706,10 @@ function demoSectionLabel(section) {
 const demoTrip = {
   id: "demo-trip",
   title: "東京家庭旅行 Demo",
-  destination: "東京",
+  destination: "東京,日本",
   start_date: "2026-06-12",
   end_date: "2026-06-14",
+  status: "planning",
 };
 
 const demoMembers = [
@@ -2426,36 +2468,17 @@ function exportTrip() {
       </aside>
 
       <main className="workspace">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">Collaborative Travel Planner</p>
-            <h2>{activeTrip?.title || "選擇或建立旅程"}</h2>
-          </div>
-          <div className="topbar-actions">
-            <button className="ghost-button" type="button" disabled={!activeTrip} onClick={exportTrip}>
-              匯出 JSON
-            </button>
-            <button
-              className="ghost-button"
-              type="button"
-              disabled={!isOwner}
-              onClick={() => setIsInviteDialogOpen(true)}
-            >
-              邀請朋友
-            </button>
-            <button
-              className="ghost-button"
-              type="button"
-              disabled={!isOwner}
-              onClick={() => setIsShareDialogOpen(true)}
-            >
-              唯讀分享
-            </button>
-            <button className="ghost-button danger" type="button" disabled={!isOwner} onClick={deleteTrip}>
-              刪除旅程
-            </button>
-          </div>
-        </header>
+        <TripHeader
+          trip={activeTrip}
+          members={members}
+          days={days}
+          canEditTrip={isOwner}
+          onDelete={deleteTrip}
+          onExport={exportTrip}
+          onInvite={() => setIsInviteDialogOpen(true)}
+          onShare={() => setIsShareDialogOpen(true)}
+          onUpdateTrip={updateTrip}
+        />
 
         {notice ? (
           <div className="notice" role="status">
@@ -2536,7 +2559,6 @@ function exportTrip() {
             onTogglePackItem={togglePackItem}
             onToggleItemFixed={toggleItemFixed}
             onUpdateSharedLuggageItem={updateSharedLuggageItem}
-            onUpdateTrip={updateTrip}
             onOpenAttachment={openAttachment}
             onUploadAttachment={uploadAttachment}
           />
@@ -2688,9 +2710,225 @@ function Shell({ children, collapsed = false }) {
   return <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
 }
 
+function TripHeaderIcon({ name }) {
+  if (name === "invite") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M15 20a6 6 0 0 0-12 0" />
+        <circle cx="9" cy="8" r="4" />
+        <path d="M19 8v6" />
+        <path d="M22 11h-6" />
+      </svg>
+    );
+  }
+  if (name === "share") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="6" cy="12" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <path d="m8.6 10.6 6.8-4.2" />
+        <path d="m8.6 13.4 6.8 4.2" />
+      </svg>
+    );
+  }
+  if (name === "more") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <circle cx="12" cy="5" r="1.5" />
+        <circle cx="12" cy="12" r="1.5" />
+        <circle cx="12" cy="19" r="1.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="m4 20 4.4-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" />
+      <path d="m14 6 4 4" />
+    </svg>
+  );
+}
+
+function TripHeader({
+  trip,
+  members = [],
+  days = [],
+  canEditTrip = false,
+  onDelete,
+  onExport,
+  onInvite,
+  onShare,
+  onUpdateTrip,
+}) {
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isEditingTrip, setIsEditingTrip] = useState(false);
+  const menuRef = useRef(null);
+  const metaItems = useMemo(() => buildTripHeaderMeta(trip, members, days), [days, members, trip]);
+  const hasTrip = Boolean(trip);
+
+  useEffect(() => {
+    if (!isMoreOpen) return undefined;
+    function closeOnEscape(event) {
+      if (event.key === "Escape") setIsMoreOpen(false);
+    }
+    function closeOnOutsidePointer(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setIsMoreOpen(false);
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+    };
+  }, [isMoreOpen]);
+
+  function chooseMenuAction(action) {
+    setIsMoreOpen(false);
+    action();
+  }
+
+  return (
+    <header className="trip-header">
+      <div className="trip-header-main">
+        <div className="trip-header-title-row">
+          <h2 className="trip-header-title" title={trip?.title || "選擇或建立旅程"}>
+            {trip?.title || "選擇或建立旅程"}
+          </h2>
+          {onUpdateTrip ? (
+            <button
+              className="trip-header-edit-button"
+              type="button"
+              title="編輯旅程資料"
+              aria-label="編輯旅程資料"
+              disabled={!hasTrip || !canEditTrip}
+              onClick={() => setIsEditingTrip((value) => !value)}
+            >
+              <TripHeaderIcon name="edit" />
+            </button>
+          ) : null}
+        </div>
+        {metaItems.length ? (
+          <div className="trip-header-meta" aria-label="旅程摘要">
+            {metaItems.map((item, index) => (
+              <span className="trip-header-meta-item" key={`${item}-${index}`}>
+                {item}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="trip-header-actions">
+        <button
+          className="trip-header-icon-button"
+          type="button"
+          title="邀請朋友"
+          aria-label="邀請朋友"
+          disabled={!hasTrip || !canEditTrip}
+          onClick={onInvite}
+        >
+          <TripHeaderIcon name="invite" />
+        </button>
+        <button
+          className="trip-header-icon-button"
+          type="button"
+          title="唯讀分享"
+          aria-label="唯讀分享"
+          disabled={!hasTrip || !canEditTrip}
+          onClick={onShare}
+        >
+          <TripHeaderIcon name="share" />
+        </button>
+        <div className="trip-header-more" ref={menuRef}>
+          <button
+            className="trip-header-icon-button"
+            type="button"
+            title="更多操作"
+            aria-label="更多操作"
+            aria-haspopup="menu"
+            aria-expanded={isMoreOpen}
+            disabled={!hasTrip}
+            onClick={() => setIsMoreOpen((value) => !value)}
+          >
+            <TripHeaderIcon name="more" />
+          </button>
+          {isMoreOpen ? (
+            <div className="trip-header-more-menu" role="menu">
+              {onUpdateTrip ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={!canEditTrip}
+                  onClick={() => chooseMenuAction(() => setIsEditingTrip(true))}
+                >
+                  編輯旅程資料
+                </button>
+              ) : null}
+              <button type="button" role="menuitem" onClick={() => chooseMenuAction(onExport)}>
+                匯出 JSON
+              </button>
+              <button
+                className="danger"
+                type="button"
+                role="menuitem"
+                disabled={!canEditTrip}
+                onClick={() => chooseMenuAction(onDelete)}
+              >
+                刪除旅程
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {isEditingTrip && hasTrip && onUpdateTrip ? (
+        <div className="trip-header-edit field-group trip-fields">
+          <label>
+            旅程名稱
+            <input
+              key={`${trip.id}-${trip.updated_at}-title`}
+              disabled={!canEditTrip}
+              defaultValue={trip.title}
+              onBlur={(event) => onUpdateTrip({ title: event.target.value })}
+            />
+          </label>
+          <label>
+            目的地
+            <input
+              key={`${trip.id}-${trip.updated_at}-destination`}
+              disabled={!canEditTrip}
+              defaultValue={trip.destination}
+              onBlur={(event) => onUpdateTrip({ destination: event.target.value })}
+            />
+          </label>
+          <label>
+            開始日期
+            <input
+              disabled={!canEditTrip}
+              type="date"
+              value={trip.start_date || ""}
+              onChange={(event) => onUpdateTrip({ start_date: event.target.value })}
+            />
+          </label>
+          <label>
+            結束日期
+            <input
+              disabled={!canEditTrip}
+              type="date"
+              value={trip.end_date || ""}
+              onChange={(event) => onUpdateTrip({ end_date: event.target.value })}
+            />
+          </label>
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
 function DemoApp({ initialSection }) {
   const [activeSection, setActiveSection] = useState(initialSection || "timeline");
   const [activeDay, setActiveDay] = useState(0);
+  const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrip);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
@@ -2702,7 +2940,7 @@ function DemoApp({ initialSection }) {
   const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
   const [focusedItemId, setFocusedItemId] = useState(null);
   const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
-  const days = useMemo(() => tripDays(demoTrip), []);
+  const days = useMemo(() => tripDays(demoActiveTrip), [demoActiveTrip]);
   const dayItems = useMemo(
     () => sortScheduleItems(timelineItems.filter((item) => item.day_index === activeDay)),
     [activeDay, timelineItems],
@@ -3125,12 +3363,17 @@ function DemoApp({ initialSection }) {
       </aside>
       <main className="workspace demo-workspace">
         <div className="demo-banner">Demo Mode：這是展示資料，操作不會永久保存。</div>
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">展示資料沙盒</p>
-            <h2>{demoTrip.title}</h2>
-          </div>
-        </header>
+        <TripHeader
+          trip={demoActiveTrip}
+          members={demoMembers}
+          days={days}
+          canEditTrip
+          onDelete={() => {}}
+          onExport={() => {}}
+          onInvite={() => {}}
+          onShare={() => {}}
+          onUpdateTrip={(patch) => setDemoActiveTrip((current) => ({ ...current, ...patch }))}
+        />
         {activeSection === "timeline" ? (
           <>
             <div className="timeline-top-row">
@@ -3154,7 +3397,7 @@ function DemoApp({ initialSection }) {
               <section className="panel itinerary-panel" ref={dayBoardNavigation.boardRef}>
                 <ItineraryTimeline
                   activeDay={activeDay}
-                  activeTrip={demoTrip}
+                  activeTrip={demoActiveTrip}
                   alternativesByItem={alternativesByItem}
                   budgetsByItem={budgetsByItem}
                   canEdit
@@ -3211,7 +3454,7 @@ function DemoApp({ initialSection }) {
         ) : null}
         {activeSection === "budget" ? (
           <BudgetPanel
-            activeTrip={demoTrip}
+            activeTrip={demoActiveTrip}
             actualExpenses={actualExpenses}
             actualParticipants={actualParticipants}
             attachments={[]}
@@ -3924,7 +4167,6 @@ function TripWorkspace(props) {
     onTogglePackItem,
     onToggleItemFixed,
     onUpdateSharedLuggageItem,
-    onUpdateTrip,
     onOpenAttachment,
     onUploadAttachment,
   } = props;
@@ -3985,51 +4227,6 @@ function TripWorkspace(props) {
           }}
         />
       ) : null}
-
-      <div
-        className={`field-group trip-fields${
-          isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode
-            ? " hidden-section"
-            : ""
-        }`}
-      >
-        <label>
-          旅程名稱
-          <input
-            key={`${activeTrip.id}-${activeTrip.updated_at}-title`}
-            disabled={!isOwner}
-            defaultValue={activeTrip.title}
-            onBlur={(event) => onUpdateTrip({ title: event.target.value })}
-          />
-        </label>
-        <label>
-          目的地
-          <input
-            key={`${activeTrip.id}-${activeTrip.updated_at}-destination`}
-            disabled={!isOwner}
-            defaultValue={activeTrip.destination}
-            onBlur={(event) => onUpdateTrip({ destination: event.target.value })}
-          />
-        </label>
-        <label>
-          開始日期
-          <input
-            disabled={!isOwner}
-            type="date"
-            value={activeTrip.start_date}
-            onChange={(event) => onUpdateTrip({ start_date: event.target.value })}
-          />
-        </label>
-        <label>
-          結束日期
-          <input
-            disabled={!isOwner}
-            type="date"
-            value={activeTrip.end_date}
-            onChange={(event) => onUpdateTrip({ end_date: event.target.value })}
-          />
-        </label>
-      </div>
 
       {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
         <div className="timeline-top-row">
