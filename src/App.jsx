@@ -629,6 +629,10 @@ function dateRangeDayCount(startDate, endDate) {
   return Math.round((end - start) / 86400000) + 1;
 }
 
+function initialDateSelectionStep(startDate, endDate) {
+  return startDate && !endDate ? "end" : "start";
+}
+
 function tripStatusLabel(status) {
   return {
     planning: "規劃階段",
@@ -3036,7 +3040,7 @@ function TripHeader({
     setEndDateDraft(nextOriginalEndDate);
     setStartDateInput(formatHeaderDate(nextOriginalStartDate) || "");
     setEndDateInput(formatHeaderDate(nextOriginalEndDate) || "");
-    setDateSelectionStep("start");
+    setDateSelectionStep(initialDateSelectionStep(nextOriginalStartDate, nextOriginalEndDate));
     setHoveredDate("");
     setVisibleMonth(startOfMonth(parseDateOnly(nextOriginalStartDate) || parseDateOnly(todayInput()) || new Date()));
     setDateError("");
@@ -3138,7 +3142,7 @@ function TripHeader({
     setEndDateDraft(originalEndDate);
     setStartDateInput(formatHeaderDate(originalStartDate) || "");
     setEndDateInput(formatHeaderDate(originalEndDate) || "");
-    setDateSelectionStep(originalStartDate && !originalEndDate ? "end" : "start");
+    setDateSelectionStep(initialDateSelectionStep(originalStartDate, originalEndDate));
     setHoveredDate("");
     setDateError("");
     setVisibleMonth(startOfMonth(parseDateOnly(originalStartDate) || parseDateOnly(todayInput()) || new Date()));
@@ -3157,7 +3161,7 @@ function TripHeader({
         setDateSelectionStep("start");
       } else {
         setEndDateDraft("");
-        setDateSelectionStep(startDateDraft ? "end" : "start");
+        setDateSelectionStep(initialDateSelectionStep(startDateDraft, ""));
       }
       setDateError("");
       return true;
@@ -3170,6 +3174,16 @@ function TripHeader({
     if (isDateBefore(normalized, todayDateKey)) {
       setDateError("不可選擇早於今日的日期");
       return false;
+    }
+    const currentDraft = field === "start" ? startDateDraft : endDateDraft;
+    if (normalized === currentDraft) {
+      if (field === "start") {
+        setStartDateInput(formatHeaderDate(normalized));
+      } else {
+        setEndDateInput(formatHeaderDate(normalized));
+      }
+      setDateError("");
+      return true;
     }
     setDateError("");
     setHoveredDate("");
