@@ -7,37 +7,65 @@
 ## 目前分支
 
 ```text
-main
+codex/app-layout-header
 ```
 
-Phase 3.3 已從 `codex/ui-experiment` 合併回 `main`，並已推送到 GitHub。
+本分支專門處理 App Layout Header 改版。請在此分支上繼續 Header 相關修正，不要切回 `main` 或另開分支，除非使用者明確要求。
 
-最新已合併 commit：
-
-```text
-d427c27 Merge remote-tracking branch 'origin/codex/ui-experiment'
-```
-
-後續若另開 UI 實驗分支，請依該聊天室/任務的 push 規則執行。
+目前本聊天室規則：修改完成並驗證後，預設 commit 並 push 到 `origin/codex/app-layout-header`；若單一任務明確禁止 push，則以該任務指示優先。
 
 ---
 
 ## 目前階段
 
-目前仍在 MVP stabilization 與 Timeline desktop UI polish 階段。
+目前進入 App Layout Header 改版階段。
 
-Phase 3.3 備案翻卡已測試完成，可以告一段落。Phase 3.4 刪除確認與關聯交通卡清理已驗收完成。Phase 3.5 交通時間不足警示已驗收完成。Phase 3.6 景點卡固定 / 鎖定已驗收完成；Phase 3 收尾後，再進行 App Layout 改版。
+Phase 3 已大致收尾。App Layout 先從 Header 開始，Sidebar 與 Toolbar 後續會另開階段處理。
+
+Header 目前狀態：
+
+- Phase 1.0 Header 基礎改版：✅ 已完成、已驗收
+- Phase 1.1 Header 上方間距修正：✅ 已完成、已驗收
+- Phase 1.2 旅程名稱 Inline Edit：✅ 已完成、已驗收
+- Phase 1.3 Header Metadata 結構與互動入口：✅ 已完成、已驗收
+- Phase 1.4 Header 日期 Popover：🟡 已實作並 push，尚未驗收
 
 核心方向：
 
 - 維持既有 Supabase / Realtime / Draft Autosave / Edit Lock 穩定。
-- 以小範圍 CSS / JSX 調整改善 Timeline 卡片閱讀性。
-- 保持 Demo Timeline 與正式 Timeline UI 共用與一致。
-- 避免大改資料流、schema、權限與架構。
+- Header 改版以小範圍 JSX / CSS 調整為主。
+- Formal App 與 Demo Header 必須保持一致。
+- 避免大改資料流、schema、權限與 App 架構。
 
 ---
 
 ## 最近完成
+
+### App Layout Header
+
+- Phase 1.0：建立緊湊雙行式 Trip Header。
+  - 第一行顯示旅程名稱與右側 icon actions。
+  - 第二行顯示目的地、日期、天數、階段、成員數。
+  - 匯出 JSON、刪除旅程收進更多選單。
+  - `.trip-fields` 不再常駐占用 Header 下方高度，改由「編輯旅程資料」入口開啟。
+- Phase 1.1：修正 Header 上方異常留白。
+  - `.workspace` 保留左右下 padding，`padding-top` 改為 0。
+  - `.trip-header` 自身負責上方 30px 間距。
+- Phase 1.2：旅程名稱 Inline Edit。
+  - 有權限者點擊旅程名稱可切換 input。
+  - Enter 儲存、Esc 取消、blur 依既有規則處理。
+  - Owner / Editor 可改名；Viewer 維持純文字。
+- Phase 1.3：Header Metadata 結構化。
+  - metadata 拆成目的地、日期、天數、階段、成員數。
+  - 目的地與日期為可互動入口；成員數可導向既有 Sidebar 成員區。
+  - Demo 與 Formal 共用同一套 Header 視覺規則。
+- Phase 1.4：Header 日期 Popover。
+  - 日期 metadata 點擊後開啟輕量 popover。
+  - Popover 包含開始日期、結束日期、旅程天數 preview、取消、儲存。
+  - 支援 Enter 儲存、Esc / 外部點擊 / 取消 / 切換旅程 / 切換 section 關閉。
+  - 使用既有 `onUpdateTrip({ start_date, end_date })` 更新旅程日期，不處理 Timeline 日期搬移、資料刪除或 day remap。
+  - `npm.cmd run build` 與 `git diff --check` 已通過。
+  - 狀態：尚未使用者驗收。下一步請先處理 Phase 1.4 驗收回饋，不要進入 Phase 1.5。
 
 ### Phase 3 目前順序
 
