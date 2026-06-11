@@ -1687,14 +1687,11 @@ export default function App() {
     if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
       nextPatch.name = nextPatch.title;
     }
-    if (
-      hasStartDatePatch &&
-      hasEndDatePatch &&
-      nextPatch.start_date &&
-      nextPatch.end_date &&
-      nextPatch.end_date < nextPatch.start_date
-    ) {
-      nextPatch.end_date = nextPatch.start_date;
+    if (hasStartDatePatch && hasEndDatePatch) {
+      if (!nextPatch.start_date || !nextPatch.end_date || nextPatch.end_date < nextPatch.start_date) {
+        setNotice("Invalid trip date range");
+        return { ok: false };
+      }
     } else if (hasStartDatePatch && nextPatch.start_date && activeTrip.end_date < nextPatch.start_date) {
       nextPatch.end_date = nextPatch.start_date;
     } else if (hasEndDatePatch && nextPatch.end_date && nextPatch.end_date < activeTrip.start_date) {
