@@ -1682,13 +1682,22 @@ export default function App() {
   async function updateTrip(patch) {
     if (!activeTrip || !canRenameActiveTrip) return { ok: false };
     const nextPatch = { ...patch };
+    const hasStartDatePatch = Object.prototype.hasOwnProperty.call(nextPatch, "start_date");
+    const hasEndDatePatch = Object.prototype.hasOwnProperty.call(nextPatch, "end_date");
     if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
       nextPatch.name = nextPatch.title;
     }
-    if (nextPatch.start_date && activeTrip.end_date < nextPatch.start_date) {
+    if (
+      hasStartDatePatch &&
+      hasEndDatePatch &&
+      nextPatch.start_date &&
+      nextPatch.end_date &&
+      nextPatch.end_date < nextPatch.start_date
+    ) {
       nextPatch.end_date = nextPatch.start_date;
-    }
-    if (nextPatch.end_date && nextPatch.end_date < activeTrip.start_date) {
+    } else if (hasStartDatePatch && nextPatch.start_date && activeTrip.end_date < nextPatch.start_date) {
+      nextPatch.end_date = nextPatch.start_date;
+    } else if (hasEndDatePatch && nextPatch.end_date && nextPatch.end_date < activeTrip.start_date) {
       nextPatch.start_date = nextPatch.end_date;
     }
     const { error } = await supabase.from("trips").update(nextPatch).eq("id", activeTrip.id);
