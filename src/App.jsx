@@ -661,20 +661,56 @@ function tripStageLabel(stage) {
   }[stage || "unset"] || "階段未設定";
 }
 
-function tripDestinationMeta(destination) {
+function splitTripDestinationFallback(destination) {
   const value = String(destination || "").trim();
-  if (!value) return [];
+  if (!value) return { city: "", country: "" };
+  const dotParts = value
+    .split(" · ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (dotParts.length === 2) return { country: dotParts[0], city: dotParts[1] };
   const parts = value
     .split(/[,，]/)
     .map((part) => part.trim())
     .filter(Boolean);
-  if (parts.length === 2) return [parts[1], parts[0]];
-  return [value];
+  if (parts.length === 2) return { country: parts[1], city: parts[0] };
+  return { city: value, country: "" };
+}
+
+function tripDestinationParts(trip) {
+  const country = String(trip?.destination_country || "").trim();
+  const city = String(trip?.destination_city || "").trim();
+  if (country || city) return { country, city };
+  return splitTripDestinationFallback(trip?.destination);
+}
+
+function combineTripDestination(country, city) {
+  return [country, city].map((part) => String(part || "").trim()).filter(Boolean).join(" · ");
+}
+
+function tripDestinationLabel(trip) {
+  const { country, city } = tripDestinationParts(trip);
+  return combineTripDestination(country, city) || "目的地未設定";
+}
+
+function destinationPatchFromParts(country, city) {
+  const nextCountry = String(country || "").trim();
+  const nextCity = String(city || "").trim();
+  return {
+    destination: combineTripDestination(nextCountry, nextCity),
+    destination_city: nextCity || null,
+    destination_country: nextCountry || null,
+  };
+}
+
+function destinationPatchFromText(destination) {
+  const parts = splitTripDestinationFallback(destination);
+  return destinationPatchFromParts(parts.country, parts.city);
 }
 
 function buildTripHeaderMeta(trip, members, days) {
   if (!trip) return {};
-  const destinationLabel = tripDestinationMeta(trip.destination).join(" · ");
+  const destinationLabel = tripDestinationLabel(trip);
   const startDate = formatHeaderDate(trip.start_date);
   const endDate = formatHeaderDate(trip.end_date);
   const stage = deriveTripStage(trip.start_date, trip.end_date);
@@ -813,6 +849,8 @@ const demoTrip = {
   id: "demo-trip",
   title: "東京家庭旅行 Demo",
   destination: "東京,日本",
+  destination_city: "東京",
+  destination_country: "日本",
   start_date: "2026-06-12",
   end_date: "2026-06-14",
   status: "planning",
@@ -1189,7 +1227,7 @@ export default function App() {
       const { data, error } = await supabase
         .from("trip_members")
         .select(
-          "role,status,trip_id,trips(id,title,name,status,destination,start_date,end_date,owner_id,updated_at)",
+          "role,status,trip_id,trips(id,title,name,status,destination,destination_country,destination_city,start_date,end_date,owner_id,updated_at)",
         )
         .eq("user_id", session.user.id);
 
@@ -1658,11 +1696,12 @@ export default function App() {
     const safeEndDate =
       tripForm.end_date < tripForm.start_date ? tripForm.start_date : tripForm.end_date;
     const tripId = crypto.randomUUID();
+    const destinationPatch = destinationPatchFromText(tripForm.destination);
     const { error: tripError } = await supabase.from("trips").insert({
       id: tripId,
       title: tripForm.title.trim(),
       name: tripForm.title.trim(),
-      destination: tripForm.destination.trim(),
+      ...destinationPatch,
       start_date: tripForm.start_date,
       end_date: safeEndDate,
       status: "planning",
@@ -1708,6 +1747,13 @@ export default function App() {
     const hasEndDatePatch = Object.prototype.hasOwnProperty.call(nextPatch, "end_date");
     if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
       nextPatch.name = nextPatch.title;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(nextPatch, "destination") &&
+      !Object.prototype.hasOwnProperty.call(nextPatch, "destination_country") &&
+      !Object.prototype.hasOwnProperty.call(nextPatch, "destination_city")
+    ) {
+      Object.assign(nextPatch, destinationPatchFromText(nextPatch.destination));
     }
     if (hasStartDatePatch && hasEndDatePatch) {
       if (!nextPatch.start_date || !nextPatch.end_date || nextPatch.end_date < nextPatch.start_date) {
@@ -2897,6 +2943,11 @@ function TripHeader({
   const [titleDraft, setTitleDraft] = useState("");
   const [titleError, setTitleError] = useState("");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [isDestinationPopoverOpen, setIsDestinationPopoverOpen] = useState(false);
+  const [countryDraft, setCountryDraft] = useState("");
+  const [cityDraft, setCityDraft] = useState("");
+  const [destinationError, setDestinationError] = useState("");
+  const [isSavingDestination, setIsSavingDestination] = useState(false);
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [startDateDraft, setStartDateDraft] = useState("");
   const [endDateDraft, setEndDateDraft] = useState("");
@@ -2910,17 +2961,23 @@ function TripHeader({
   const [dateError, setDateError] = useState("");
   const [isSavingDates, setIsSavingDates] = useState(false);
   const menuRef = useRef(null);
+  const destinationPopoverRef = useRef(null);
+  const destinationButtonRef = useRef(null);
+  const countryInputRef = useRef(null);
+  const cityInputRef = useRef(null);
   const datePopoverRef = useRef(null);
   const dateButtonRef = useRef(null);
   const dateDialogRef = useRef(null);
   const startDateTextInputRef = useRef(null);
   const titleInputRef = useRef(null);
   const titleSaveRef = useRef(false);
+  const destinationSaveRef = useRef(false);
   const dateSaveRef = useRef(false);
   const meta = useMemo(() => buildTripHeaderMeta(trip, members, days), [days, members, trip]);
   const hasTrip = Boolean(trip);
   const canEditTitle = hasTrip && canRenameTrip && typeof onUpdateTrip === "function";
   const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
+  const canOpenDestinationPopover = canOpenTripEditor;
   const canOpenDatePopover = canOpenTripEditor;
   const isDateRangeEmpty = !startDateDraft && !endDateDraft;
   const dateDraftDayCount = dateRangeDayCount(startDateDraft, endDateDraft);
@@ -2944,11 +3001,11 @@ function TripHeader({
   const metaItems = [
     meta.destinationLabel
       ? {
-          action: canOpenTripEditor,
+          action: canOpenDestinationPopover,
           key: "destination",
           label: meta.destinationLabel,
-          onClick: () => openTripEditor(),
-          title: canOpenTripEditor ? "編輯目的地" : undefined,
+          onClick: () => toggleDestinationPopover(),
+          title: canOpenDestinationPopover ? "編輯目的地" : undefined,
         }
       : null,
     meta.dateRangeLabel
@@ -3005,6 +3062,35 @@ function TripHeader({
   }, [isEditingTitle]);
 
   useEffect(() => {
+    if (!isDestinationPopoverOpen) return undefined;
+    requestAnimationFrame(() => {
+      countryInputRef.current?.focus();
+    });
+    function closeOnEscape(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDestinationPopover();
+      }
+    }
+    function closeOnOutsidePointer(event) {
+      if (destinationPopoverRef.current && !destinationPopoverRef.current.contains(event.target)) {
+        closeDestinationPopover();
+      }
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+    };
+  }, [isDestinationPopoverOpen]);
+
+  useEffect(() => {
+    if (!isDestinationPopoverOpen) return;
+    closeDestinationPopover({ restoreFocus: false });
+  }, [activeSection, trip?.id]);
+
+  useEffect(() => {
     if (!isDatePopoverOpen) return undefined;
     requestAnimationFrame(() => {
       startDateTextInputRef.current?.focus();
@@ -3035,7 +3121,91 @@ function TripHeader({
 
   function chooseMenuAction(action) {
     setIsMoreOpen(false);
+    closeDestinationPopover({ restoreFocus: false });
     action();
+  }
+
+  function closeDestinationPopover({ restoreFocus = true } = {}) {
+    setIsDestinationPopoverOpen(false);
+    setDestinationError("");
+    setIsSavingDestination(false);
+    destinationSaveRef.current = false;
+    if (restoreFocus) {
+      requestAnimationFrame(() => {
+        destinationButtonRef.current?.focus();
+      });
+    }
+  }
+
+  async function toggleDestinationPopover() {
+    if (isDestinationPopoverOpen) {
+      closeDestinationPopover();
+      return;
+    }
+    await openDestinationPopover();
+  }
+
+  async function openDestinationPopover() {
+    if (!canOpenDestinationPopover || isSavingDestination) return;
+    setIsMoreOpen(false);
+    closeDatePopover({ restoreFocus: false });
+    setIsEditingTrip(false);
+    if (isEditingTitle) {
+      const canContinue = await saveTitleDraft();
+      if (!canContinue) return;
+    }
+    const { country, city } = tripDestinationParts(trip);
+    setCountryDraft(country);
+    setCityDraft(city);
+    setDestinationError("");
+    setIsDestinationPopoverOpen(true);
+  }
+
+  async function saveDestinationDrafts() {
+    if (!canOpenDestinationPopover || destinationSaveRef.current) return false;
+    const nextCountry = countryDraft.trim();
+    const nextCity = cityDraft.trim();
+    const patch = destinationPatchFromParts(nextCountry, nextCity);
+    const currentParts = tripDestinationParts(trip);
+    const currentDestination = combineTripDestination(currentParts.country, currentParts.city);
+    if (
+      patch.destination_country === (currentParts.country || null) &&
+      patch.destination_city === (currentParts.city || null) &&
+      patch.destination === currentDestination
+    ) {
+      closeDestinationPopover();
+      return true;
+    }
+    setDestinationError("");
+    destinationSaveRef.current = true;
+    setIsSavingDestination(true);
+    let result;
+    try {
+      result = await onUpdateTrip(patch);
+    } catch (error) {
+      result = { ok: false, error };
+    }
+    if (result?.ok === false) {
+      destinationSaveRef.current = false;
+      setIsSavingDestination(false);
+      setDestinationError("儲存失敗，請再試一次");
+      return false;
+    }
+    destinationSaveRef.current = false;
+    setIsSavingDestination(false);
+    closeDestinationPopover();
+    return true;
+  }
+
+  function handleDestinationKeyDown(event, field) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (field === "country") {
+      cityInputRef.current?.focus();
+      return;
+    }
+    saveDestinationDrafts();
   }
 
   function closeDatePopover({ restoreFocus = true } = {}) {
@@ -3062,6 +3232,7 @@ function TripHeader({
   async function openDatePopover() {
     if (!canOpenDatePopover || isSavingDates) return;
     setIsMoreOpen(false);
+    closeDestinationPopover({ restoreFocus: false });
     setIsEditingTrip(false);
     if (isEditingTitle) {
       const canContinue = await saveTitleDraft();
@@ -3366,6 +3537,7 @@ function TripHeader({
 
   async function openTripEditor() {
     setIsMoreOpen(false);
+    closeDestinationPopover({ restoreFocus: false });
     closeDatePopover({ restoreFocus: false });
     if (isEditingTitle) {
       const canContinue = await saveTitleDraft();
@@ -3376,6 +3548,7 @@ function TripHeader({
 
   async function openMembers() {
     if (typeof onOpenMembers !== "function") return;
+    closeDestinationPopover({ restoreFocus: false });
     if (isEditingTitle) {
       const canContinue = await saveTitleDraft();
       if (!canContinue) return;
@@ -3385,6 +3558,7 @@ function TripHeader({
 
   function startTitleEdit() {
     if (!canEditTitle || isSavingTitle) return;
+    closeDestinationPopover({ restoreFocus: false });
     closeDatePopover({ restoreFocus: false });
     setTitleDraft(trip?.title || "");
     setTitleError("");
@@ -3523,7 +3697,95 @@ function TripHeader({
                   </span>
                 ) : null}
                 {item.action ? (
-                  item.key === "dates" ? (
+                  item.key === "destination" ? (
+                    <span className="trip-header-meta-popover-anchor" ref={destinationPopoverRef}>
+                      <button
+                        ref={destinationButtonRef}
+                        className="trip-header-meta-action"
+                        type="button"
+                        title={item.title}
+                        aria-haspopup="dialog"
+                        aria-expanded={isDestinationPopoverOpen}
+                        onClick={item.onClick}
+                      >
+                        {item.label}
+                      </button>
+                      {isDestinationPopoverOpen ? (
+                        <div
+                          className="trip-header-destination-popover"
+                          role="dialog"
+                          aria-label="編輯旅程目的地"
+                        >
+                          <div className="trip-header-destination-fields">
+                            <label className="trip-header-destination-field" htmlFor="trip-destination-country">
+                              <span>國家</span>
+                              <input
+                                id="trip-destination-country"
+                                ref={countryInputRef}
+                                type="text"
+                                aria-label="國家"
+                                aria-describedby={destinationError ? "trip-header-destination-error" : undefined}
+                                disabled={isSavingDestination}
+                                value={countryDraft}
+                                onChange={(event) => {
+                                  setCountryDraft(event.target.value);
+                                  if (destinationError) setDestinationError("");
+                                }}
+                                onKeyDown={(event) => handleDestinationKeyDown(event, "country")}
+                              />
+                            </label>
+                            <label className="trip-header-destination-field" htmlFor="trip-destination-city">
+                              <span>城市</span>
+                              <input
+                                id="trip-destination-city"
+                                ref={cityInputRef}
+                                type="text"
+                                aria-label="城市"
+                                aria-describedby={destinationError ? "trip-header-destination-error" : undefined}
+                                disabled={isSavingDestination}
+                                value={cityDraft}
+                                onChange={(event) => {
+                                  setCityDraft(event.target.value);
+                                  if (destinationError) setDestinationError("");
+                                }}
+                                onKeyDown={(event) => handleDestinationKeyDown(event, "city")}
+                              />
+                            </label>
+                          </div>
+                          <p className="trip-header-destination-hint">
+                            使用 Map 編輯第一天行程時，系統將自動填入目的地。
+                          </p>
+                          {destinationError ? (
+                            <div
+                              className="trip-header-destination-error"
+                              id="trip-header-destination-error"
+                              role="alert"
+                            >
+                              {destinationError}
+                            </div>
+                          ) : null}
+                          <div className="trip-header-destination-actions">
+                            <button
+                              type="button"
+                              className="ghost-button compact"
+                              disabled={isSavingDestination}
+                              onClick={() => closeDestinationPopover()}
+                            >
+                              取消
+                            </button>
+                            <button
+                              type="button"
+                              className="primary-button compact"
+                              disabled={isSavingDestination}
+                              onClick={saveDestinationDrafts}
+                            >
+                              {isSavingDestination ? "儲存中..." : "儲存"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </span>
+                  ) : item.key === "dates" ? (
                     <span className="trip-header-meta-popover-anchor" ref={datePopoverRef}>
                       <button
                         ref={dateButtonRef}
@@ -3685,7 +3947,10 @@ function TripHeader({
             aria-haspopup="menu"
             aria-expanded={isMoreOpen}
             disabled={!hasTrip}
-            onClick={() => setIsMoreOpen((value) => !value)}
+            onClick={() => {
+              closeDestinationPopover({ restoreFocus: false });
+              setIsMoreOpen((value) => !value);
+            }}
           >
             <TripHeaderIcon name="more" />
           </button>

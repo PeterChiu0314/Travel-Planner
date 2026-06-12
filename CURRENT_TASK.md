@@ -29,7 +29,8 @@ Header 目前狀態：
 - Phase 1.2 旅程名稱 Inline Edit：✅ 已完成、已驗收
 - Phase 1.3 Header Metadata 結構與互動入口：✅ 已完成、已驗收
 - Phase 1.4 Header 日期 Popover：✅ 已完成、已測試、User Verified!
-- Phase 1.5 旅程階段自動判斷與 Header 顯示：🟡 已實作，尚未驗收
+- Phase 1.5 旅程階段自動判斷與 Header 顯示：✅ 已完成、已測試、User Verified
+- Phase 1.6 目的地 Popover 與 Map-ready 國家／城市資料結構：🟡 已實作，尚未驗收
 - Phase 1.5B 旅程檢視模式：⏸ 暫緩規劃，尚未實作
 
 核心方向：
@@ -74,6 +75,14 @@ Header 目前狀態：
   - 缺少日期或日期無效時顯示「階段未設定」。
   - 旅程階段維持純顯示，不可點擊、無 dropdown、無 preview mode。
   - Phase 1.5B 旅程檢視模式暫緩規劃，尚未實作。
+  - 狀態：已完成、已測試、User Verified。
+- Phase 1.6：目的地 Popover 與 Map-ready 國家／城市資料結構。
+  - Header 目的地點擊後開啟專用 Popover，不再直接開舊完整旅程資料編輯區。
+  - 新增 `destination_country`、`destination_city`，並保留 `destination` 作相容欄位。
+  - Header 顯示優先讀國家／城市，舊資料使用 `destination` fallback。
+  - 儲存目的地時同步更新 country、city、combined destination。
+  - Formal / Demo 共用同一個 TripHeader Popover JSX。
+  - 不串接 Map API，不處理 geocoding、Place ID、lat / lng。
   - 狀態：已實作，尚未使用者驗收。
 
 ### Phase 3 目前順序

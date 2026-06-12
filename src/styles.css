@@ -833,6 +833,80 @@ code {
   min-width: 0;
 }
 
+.trip-header-destination-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+  box-shadow: 0 14px 34px rgba(38, 45, 40, 0.14);
+  color: var(--ink);
+  padding: 12px;
+}
+
+.trip-header-destination-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.trip-header-destination-field {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.trip-header-destination-field input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 7px 9px;
+}
+
+.trip-header-destination-field input:focus-visible {
+  border-color: rgba(25, 109, 82, 0.32);
+  outline: 3px solid rgba(25, 109, 82, 0.28);
+  outline-offset: 2px;
+}
+
+.trip-header-destination-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.trip-header-destination-error {
+  border: 1px solid rgba(157, 51, 37, 0.2);
+  border-radius: 7px;
+  background: #fff8f5;
+  color: #9d3325;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.trip-header-destination-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .trip-header-date-popover {
   position: absolute;
   top: calc(100% + 8px);
