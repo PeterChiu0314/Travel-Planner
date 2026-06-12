@@ -312,6 +312,12 @@ function addMonths(date, amount) {
   return new Date(date.getFullYear(), date.getMonth() + amount, 1);
 }
 
+function addDays(date, amount) {
+  const next = new Date(date);
+  next.setDate(date.getDate() + amount);
+  return next;
+}
+
 function daysInMonth(date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
@@ -810,6 +816,168 @@ function tripDays(trip) {
   });
 }
 
+function getTimelineDayPosition(item) {
+  const position = Number(item?.day_index);
+  return Number.isInteger(position) && position >= 0 ? position : 0;
+}
+
+function getTimelineDayDate(startDate, position) {
+  const start = parseDateOnly(startDate);
+  if (!start || !Number.isInteger(position) || position < 0) return "";
+  return dateToInputValue(addDays(start, position));
+}
+
+function emptyTimelineDayCounts() {
+  return {
+    alternatives: 0,
+    budgetLinks: 0,
+    fixed: 0,
+    timeline: 0,
+    transports: 0,
+    visits: 0,
+  };
+}
+
+function buildTimelineDayPreviewMap(items = [], alternatives = [], itineraryBudgetLinks = []) {
+  const byPosition = new Map();
+  const itemPositionById = new Map();
+
+  items.forEach((item) => {
+    const position = getTimelineDayPosition(item);
+    const counts = byPosition.get(position) || emptyTimelineDayCounts();
+    counts.timeline += 1;
+    if (isTransportationCard(item)) counts.transports += 1;
+    else counts.visits += 1;
+    if (item?.is_fixed) counts.fixed += 1;
+    byPosition.set(position, counts);
+    if (item?.id) itemPositionById.set(item.id, position);
+  });
+
+  alternatives.forEach((alternative) => {
+    const position = itemPositionById.get(alternative?.itinerary_item_id);
+    if (position === undefined) return;
+    const counts = byPosition.get(position) || emptyTimelineDayCounts();
+    counts.alternatives += 1;
+    byPosition.set(position, counts);
+  });
+
+  const budgetLinksByPosition = new Map();
+  itineraryBudgetLinks.forEach((link) => {
+    const position = itemPositionById.get(link?.itinerary_item_id);
+    if (position === undefined || !link?.budget_item_id) return;
+    const linkedBudgetIds = budgetLinksByPosition.get(position) || new Set();
+    linkedBudgetIds.add(link.budget_item_id);
+    budgetLinksByPosition.set(position, linkedBudgetIds);
+  });
+
+  budgetLinksByPosition.forEach((linkedBudgetIds, position) => {
+    const counts = byPosition.get(position) || emptyTimelineDayCounts();
+    counts.budgetLinks = linkedBudgetIds.size;
+    byPosition.set(position, counts);
+  });
+
+  return byPosition;
+}
+
+function getAffectedTimelineDays({
+  alternatives = [],
+  itineraryBudgetLinks = [],
+  items = [],
+  newDayCount,
+  oldDayCount,
+  oldStartDate,
+}) {
+  const countsByPosition = buildTimelineDayPreviewMap(items, alternatives, itineraryBudgetLinks);
+  const affectedDays = [];
+  for (let position = newDayCount; position < oldDayCount; position += 1) {
+    const counts = countsByPosition.get(position) || emptyTimelineDayCounts();
+    affectedDays.push({
+      counts,
+      dayKey: `index:${position}`,
+      label: `Day ${position + 1}`,
+      originalDate: getTimelineDayDate(oldStartDate, position),
+      position,
+    });
+  }
+  return affectedDays;
+}
+
+function classifyTripDateChange({
+  alternatives = [],
+  itineraryBudgetLinks = [],
+  items = [],
+  newEndDate,
+  newStartDate,
+  oldEndDate,
+  oldStartDate,
+}) {
+  const oldDayCount = dateRangeDayCount(oldStartDate, oldEndDate) || 0;
+  const newDayCount = dateRangeDayCount(newStartDate, newEndDate) || 0;
+  const base = {
+    affectedDays: [],
+    hasTimelineRemoval: false,
+    newDayCount,
+    newEndDate,
+    newStartDate,
+    oldDayCount,
+    oldEndDate,
+    oldStartDate,
+    removedDayPositions: [],
+    type: "unchanged",
+  };
+
+  if (!oldStartDate || !oldEndDate || !newStartDate || !newEndDate || !oldDayCount || !newDayCount || newEndDate < newStartDate) {
+    return { ...base, type: "invalid" };
+  }
+  if (oldStartDate === newStartDate && oldEndDate === newEndDate) return base;
+  if (newDayCount >= oldDayCount) return { ...base, type: "same-or-extended" };
+
+  const affectedDays = getAffectedTimelineDays({
+    alternatives,
+    itineraryBudgetLinks,
+    items,
+    newDayCount,
+    oldDayCount,
+    oldStartDate,
+  });
+  const removedDayPositions = affectedDays.map((day) => day.position);
+  const hasTimelineRemoval = affectedDays.some((day) => day.counts.timeline > 0);
+
+  return {
+    ...base,
+    affectedDays,
+    hasTimelineRemoval,
+    removedDayPositions,
+    type: hasTimelineRemoval ? "shortened-with-timeline" : "shortened-empty-tail",
+  };
+}
+
+function buildTripDateChangePreview({
+  accommodations = [],
+  alternatives = [],
+  itineraryBudgetLinks = [],
+  items = [],
+  newEndDate,
+  newStartDate,
+  todoItems = [],
+  trip,
+}) {
+  const classification = classifyTripDateChange({
+    alternatives,
+    itineraryBudgetLinks,
+    items,
+    newEndDate,
+    newStartDate,
+    oldEndDate: trip?.end_date || "",
+    oldStartDate: trip?.start_date || "",
+  });
+  return {
+    ...classification,
+    accommodationCount: accommodations.filter((item) => item?.check_in_date || item?.check_out_date).length,
+    todoCount: todoItems.filter((item) => item?.due_date).length,
+  };
+}
+
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
 }
@@ -1217,6 +1385,10 @@ export default function App() {
   const todayItems = useMemo(
     () => sortScheduleItems(items.filter((item) => item.day_index === todayDayIndex)),
     [items, todayDayIndex],
+  );
+  const tripDateChangePreviewData = useMemo(
+    () => ({ accommodations, alternatives, itineraryBudgetLinks, items, todoItems }),
+    [accommodations, alternatives, itineraryBudgetLinks, items, todoItems],
   );
 
   const loadTrips = useCallback(
@@ -2644,6 +2816,7 @@ function exportTrip() {
           trip={activeTrip}
           members={members}
           days={days}
+          dateChangePreviewData={tripDateChangePreviewData}
           canEditTrip={isOwner}
           canRenameTrip={canRenameActiveTrip}
           onDelete={deleteTrip}
@@ -2924,11 +3097,62 @@ function TripHeaderIcon({ name }) {
   );
 }
 
+function TripDateChangePreview({ preview }) {
+  if (!preview || preview.type === "unchanged" || preview.type === "invalid") return null;
+  const addedDayCount = Math.max(0, preview.newDayCount - preview.oldDayCount);
+  const isBlocked = preview.type === "shortened-with-timeline";
+  const isShortened = preview.type === "shortened-empty-tail" || preview.type === "shortened-with-timeline";
+  const reviewCount = preview.accommodationCount + preview.todoCount;
+
+  return (
+    <div className={`trip-date-change-preview${isBlocked ? " is-blocked" : ""}`} aria-live="polite">
+      {preview.type === "same-or-extended" ? (
+        <p>
+          Day 1 會對齊新的開始日期
+          {addedDayCount ? `，並新增 ${addedDayCount} 個空白 Day。` : "，既有 Day 順序維持不變。"}
+        </p>
+      ) : null}
+      {preview.type === "shortened-empty-tail" ? (
+        <p>將移除 {preview.removedDayPositions.length} 個尾端空白 Day，未發現 Timeline 資料。</p>
+      ) : null}
+      {isBlocked ? <p>此變更會移除含有 Timeline 資料的 Day，本階段先阻擋儲存。</p> : null}
+      {isShortened && preview.affectedDays.length ? (
+        <ul className="trip-date-change-days">
+          {preview.affectedDays.map((day) => (
+            <li key={day.dayKey}>
+              <strong>
+                {day.label}
+                {day.originalDate ? ` · ${formatHeaderDate(day.originalDate)}` : ""}
+              </strong>
+              {day.counts.timeline ? (
+                <span>
+                  {day.counts.visits} 個行程、{day.counts.transports} 個交通
+                  {day.counts.fixed ? `、${day.counts.fixed} 個固定項目` : ""}
+                  {day.counts.alternatives ? `、${day.counts.alternatives} 個備案` : ""}
+                  {day.counts.budgetLinks ? `、${day.counts.budgetLinks} 個預算連結` : ""}
+                </span>
+              ) : (
+                <span>空白 Day</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {reviewCount ? (
+        <p className="trip-date-change-note">
+          住宿 {preview.accommodationCount} 筆、待辦 {preview.todoCount} 筆不會自動調整，儲存後請人工確認。
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function TripHeader({
   activeSection,
   trip,
   members = [],
   days = [],
+  dateChangePreviewData = {},
   canEditTrip = false,
   canRenameTrip = canEditTrip,
   onDelete,
@@ -3001,6 +3225,17 @@ function TripHeader({
       ? hoveredDate
       : "";
   const previewDayCount = previewEndDate ? dateRangeDayCount(startDateDraft, previewEndDate) : null;
+  const dateChangePreview = useMemo(
+    () =>
+      buildTripDateChangePreview({
+        ...dateChangePreviewData,
+        newEndDate: endDateDraft,
+        newStartDate: startDateDraft,
+        trip,
+      }),
+    [dateChangePreviewData, endDateDraft, startDateDraft, trip],
+  );
+  const isDateChangeBlocked = dateChangePreview.type === "shortened-with-timeline";
   const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
   const weekdayFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { weekday: "short" }), []);
   const fullDateFormat = useMemo(
@@ -3371,6 +3606,10 @@ function TripHeader({
     if (startDateDraft === currentStartDate && endDateDraft === currentEndDate) {
       closeDatePopover();
       return true;
+    }
+    if (dateChangePreview.hasTimelineRemoval) {
+      setDateError("縮短後的日期會移除含有 Timeline 資料的 Day；Phase 1.7B 先阻擋儲存。");
+      return false;
     }
     setDateError("");
     dateSaveRef.current = true;
@@ -3915,6 +4154,7 @@ function TripHeader({
                               {renderDateMonth(addMonths(visibleMonth, 1), { next: true })}
                             </div>
                           </div>
+                          <TripDateChangePreview preview={dateChangePreview} />
                           {dateError ? (
                             <div
                               className="trip-header-date-error"
@@ -3947,6 +4187,7 @@ function TripHeader({
                                 className="primary-button compact"
                                 disabled={
                                   isSavingDates ||
+                                  isDateChangeBlocked ||
                                   (!isDateRangeEmpty && (!startDateDraft || !endDateDraft || isDateBefore(endDateDraft, startDateDraft)))
                                 }
                                 onClick={isDateRangeEmpty ? restoreOriginalDateDrafts : saveDateDrafts}
@@ -4153,6 +4394,16 @@ function DemoApp({ initialSection }) {
     });
     return next;
   }, [timelineAlternatives]);
+  const tripDateChangePreviewData = useMemo(
+    () => ({
+      accommodations: [],
+      alternatives: timelineAlternatives,
+      itineraryBudgetLinks,
+      items: timelineItems,
+      todoItems: [],
+    }),
+    [itineraryBudgetLinks, timelineAlternatives, timelineItems],
+  );
 
   function changeSection(section) {
     setActiveSection(section);
@@ -4554,6 +4805,7 @@ function DemoApp({ initialSection }) {
           trip={demoActiveTrip}
           members={demoMembers}
           days={days}
+          dateChangePreviewData={tripDateChangePreviewData}
           canEditTrip
           onDelete={() => {}}
           onExport={() => {}}

@@ -1077,6 +1077,48 @@ code {
   font-weight: 900;
 }
 
+.trip-date-change-preview {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(54, 109, 87, 0.18);
+  border-radius: 7px;
+  background: #f7fbf8;
+  color: #2e5f4c;
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.trip-date-change-preview.is-blocked {
+  border-color: rgba(157, 51, 37, 0.24);
+  background: #fff8f5;
+  color: #9d3325;
+}
+
+.trip-date-change-preview p {
+  margin: 0;
+  font-weight: 800;
+}
+
+.trip-date-change-days {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trip-date-change-days li {
+  display: grid;
+  gap: 2px;
+}
+
+.trip-date-change-days span,
+.trip-date-change-note {
+  color: inherit;
+  opacity: 0.82;
+}
+
 .trip-header-date-actions {
   display: flex;
   justify-content: flex-end;
