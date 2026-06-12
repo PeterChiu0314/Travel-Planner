@@ -2652,6 +2652,7 @@ function exportTrip() {
           onOpenMembers={focusSidebarMembers}
           onShare={() => setIsShareDialogOpen(true)}
           onUpdateTrip={updateTrip}
+          showDeveloperTools={isOwner}
         />
 
         {notice ? (
@@ -2936,9 +2937,14 @@ function TripHeader({
   onOpenMembers,
   onShare,
   onUpdateTrip,
+  showDeveloperTools = false,
 }) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const [isEditingTrip, setIsEditingTrip] = useState(false);
+  const [isDeveloperToolsOpen, setIsDeveloperToolsOpen] = useState(false);
+  const [developerStartDateDraft, setDeveloperStartDateDraft] = useState("");
+  const [developerEndDateDraft, setDeveloperEndDateDraft] = useState("");
+  const [developerToolsError, setDeveloperToolsError] = useState("");
+  const [isApplyingDeveloperDates, setIsApplyingDeveloperDates] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [titleError, setTitleError] = useState("");
@@ -2961,6 +2967,8 @@ function TripHeader({
   const [dateError, setDateError] = useState("");
   const [isSavingDates, setIsSavingDates] = useState(false);
   const menuRef = useRef(null);
+  const developerStartDateRef = useRef(null);
+  const developerDateSaveRef = useRef(false);
   const destinationPopoverRef = useRef(null);
   const destinationButtonRef = useRef(null);
   const countryInputRef = useRef(null);
@@ -2979,6 +2987,7 @@ function TripHeader({
   const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
   const canOpenDestinationPopover = canOpenTripEditor;
   const canOpenDatePopover = canOpenTripEditor;
+  const canOpenDeveloperTools = hasTrip && showDeveloperTools && canEditTrip && typeof onUpdateTrip === "function";
   const isDateRangeEmpty = !startDateDraft && !endDateDraft;
   const dateDraftDayCount = dateRangeDayCount(startDateDraft, endDateDraft);
   const todayDateKey = todayInput();
@@ -3091,6 +3100,18 @@ function TripHeader({
   }, [activeSection, trip?.id]);
 
   useEffect(() => {
+    if (!isDeveloperToolsOpen) return;
+    requestAnimationFrame(() => {
+      developerStartDateRef.current?.focus();
+    });
+  }, [isDeveloperToolsOpen]);
+
+  useEffect(() => {
+    if (!isDeveloperToolsOpen) return;
+    closeDeveloperTools();
+  }, [activeSection, trip?.id]);
+
+  useEffect(() => {
     if (!isDatePopoverOpen) return undefined;
     requestAnimationFrame(() => {
       startDateTextInputRef.current?.focus();
@@ -3125,6 +3146,77 @@ function TripHeader({
     action();
   }
 
+  function closeDeveloperTools() {
+    setIsDeveloperToolsOpen(false);
+    setDeveloperToolsError("");
+    setIsApplyingDeveloperDates(false);
+    developerDateSaveRef.current = false;
+  }
+
+  async function toggleDeveloperTools() {
+    if (isDeveloperToolsOpen) {
+      closeDeveloperTools();
+      return;
+    }
+    await openDeveloperTools();
+  }
+
+  async function openDeveloperTools() {
+    if (!canOpenDeveloperTools || isApplyingDeveloperDates) return;
+    setIsMoreOpen(false);
+    closeDestinationPopover({ restoreFocus: false });
+    closeDatePopover({ restoreFocus: false });
+    if (isEditingTitle) {
+      const canContinue = await saveTitleDraft();
+      if (!canContinue) return;
+    }
+    setDeveloperStartDateDraft(trip?.start_date || "");
+    setDeveloperEndDateDraft(trip?.end_date || "");
+    setDeveloperToolsError("");
+    setIsDeveloperToolsOpen(true);
+  }
+
+  function validateDeveloperDateDrafts() {
+    const nextStartDate = developerStartDateDraft.trim();
+    const nextEndDate = developerEndDateDraft.trim();
+    if (!nextStartDate || !nextEndDate) return "請選擇開始日期與結束日期";
+    const start = parseDateOnly(nextStartDate);
+    const end = parseDateOnly(nextEndDate);
+    if (!start || !end) return "請選擇開始日期與結束日期";
+    if (isDateBefore(nextEndDate, nextStartDate)) return "結束日期不能早於開始日期";
+    return "";
+  }
+
+  async function applyDeveloperDates() {
+    if (!canOpenDeveloperTools || developerDateSaveRef.current) return false;
+    const nextStartDate = developerStartDateDraft.trim();
+    const nextEndDate = developerEndDateDraft.trim();
+    const validationError = validateDeveloperDateDrafts();
+    if (validationError) {
+      setDeveloperToolsError(validationError);
+      return false;
+    }
+    setDeveloperToolsError("");
+    developerDateSaveRef.current = true;
+    setIsApplyingDeveloperDates(true);
+    let result;
+    try {
+      result = await onUpdateTrip({ start_date: nextStartDate, end_date: nextEndDate });
+    } catch (error) {
+      result = { ok: false, error };
+    }
+    if (result?.ok === false) {
+      developerDateSaveRef.current = false;
+      setIsApplyingDeveloperDates(false);
+      setDeveloperToolsError("套用失敗，請再試一次");
+      return false;
+    }
+    developerDateSaveRef.current = false;
+    setIsApplyingDeveloperDates(false);
+    closeDeveloperTools();
+    return true;
+  }
+
   function closeDestinationPopover({ restoreFocus = true } = {}) {
     setIsDestinationPopoverOpen(false);
     setDestinationError("");
@@ -3149,7 +3241,7 @@ function TripHeader({
     if (!canOpenDestinationPopover || isSavingDestination) return;
     setIsMoreOpen(false);
     closeDatePopover({ restoreFocus: false });
-    setIsEditingTrip(false);
+    closeDeveloperTools();
     if (isEditingTitle) {
       const canContinue = await saveTitleDraft();
       if (!canContinue) return;
@@ -3233,7 +3325,7 @@ function TripHeader({
     if (!canOpenDatePopover || isSavingDates) return;
     setIsMoreOpen(false);
     closeDestinationPopover({ restoreFocus: false });
-    setIsEditingTrip(false);
+    closeDeveloperTools();
     if (isEditingTitle) {
       const canContinue = await saveTitleDraft();
       if (!canContinue) return;
@@ -3535,20 +3627,10 @@ function TripHeader({
     }
   }
 
-  async function openTripEditor() {
-    setIsMoreOpen(false);
-    closeDestinationPopover({ restoreFocus: false });
-    closeDatePopover({ restoreFocus: false });
-    if (isEditingTitle) {
-      const canContinue = await saveTitleDraft();
-      if (!canContinue) return;
-    }
-    setIsEditingTrip(true);
-  }
-
   async function openMembers() {
     if (typeof onOpenMembers !== "function") return;
     closeDestinationPopover({ restoreFocus: false });
+    closeDeveloperTools();
     if (isEditingTitle) {
       const canContinue = await saveTitleDraft();
       if (!canContinue) return;
@@ -3560,6 +3642,7 @@ function TripHeader({
     if (!canEditTitle || isSavingTitle) return;
     closeDestinationPopover({ restoreFocus: false });
     closeDatePopover({ restoreFocus: false });
+    closeDeveloperTools();
     setTitleDraft(trip?.title || "");
     setTitleError("");
     setIsEditingTitle(true);
@@ -3668,24 +3751,6 @@ function TripHeader({
               </h2>
             )}
           </div>
-          {onUpdateTrip ? (
-            <button
-              className="trip-header-edit-button"
-              type="button"
-              title="編輯旅程資料"
-              aria-label="編輯旅程資料"
-              disabled={!hasTrip || !canEditTrip}
-              onClick={() => {
-                if (isEditingTrip) {
-                  setIsEditingTrip(false);
-                  return;
-                }
-                openTripEditor();
-              }}
-            >
-              <TripHeaderIcon name="edit" />
-            </button>
-          ) : null}
         </div>
         {metaItems.length ? (
           <div className="trip-header-meta" aria-label="旅程摘要">
@@ -3956,19 +4021,18 @@ function TripHeader({
           </button>
           {isMoreOpen ? (
             <div className="trip-header-more-menu" role="menu">
-              {onUpdateTrip ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={!canEditTrip}
-                  onClick={() => chooseMenuAction(openTripEditor)}
-                >
-                  編輯旅程資料
-                </button>
-              ) : null}
               <button type="button" role="menuitem" onClick={() => chooseMenuAction(onExport)}>
                 匯出 JSON
               </button>
+              {canOpenDeveloperTools ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => chooseMenuAction(toggleDeveloperTools)}
+                >
+                  開發者工具
+                </button>
+              ) : null}
               <button
                 className="danger"
                 type="button"
@@ -3983,44 +4047,64 @@ function TripHeader({
         </div>
       </div>
 
-      {isEditingTrip && hasTrip && onUpdateTrip ? (
-        <div className="trip-header-edit field-group trip-fields">
-          <label>
-            旅程名稱
-            <input
-              key={`${trip.id}-${trip.updated_at}-title`}
-              disabled={!canEditTrip}
-              defaultValue={trip.title}
-              onBlur={(event) => onUpdateTrip({ title: event.target.value })}
-            />
-          </label>
-          <label>
-            目的地
-            <input
-              key={`${trip.id}-${trip.updated_at}-destination`}
-              disabled={!canEditTrip}
-              defaultValue={trip.destination}
-              onBlur={(event) => onUpdateTrip({ destination: event.target.value })}
-            />
-          </label>
-          <label>
-            開始日期
-            <input
-              disabled={!canEditTrip}
-              type="date"
-              value={trip.start_date || ""}
-              onChange={(event) => onUpdateTrip({ start_date: event.target.value })}
-            />
-          </label>
-          <label>
-            結束日期
-            <input
-              disabled={!canEditTrip}
-              type="date"
-              value={trip.end_date || ""}
-              onChange={(event) => onUpdateTrip({ end_date: event.target.value })}
-            />
-          </label>
+      {isDeveloperToolsOpen && hasTrip && canOpenDeveloperTools ? (
+        <div className="trip-header-developer-tools">
+          <div>
+            <h3 className="trip-header-developer-tools-heading">開發者工具</h3>
+            <p className="trip-header-developer-tools-hint">
+              僅供測試歷史日期與旅程階段使用。此工具可能略過正式日期選擇器的限制。
+            </p>
+          </div>
+          <div className="trip-header-developer-tools-fields">
+            <label>
+              開始日期
+              <input
+                ref={developerStartDateRef}
+                disabled={isApplyingDeveloperDates}
+                type="date"
+                value={developerStartDateDraft}
+                onChange={(event) => {
+                  setDeveloperStartDateDraft(event.target.value);
+                  if (developerToolsError) setDeveloperToolsError("");
+                }}
+              />
+            </label>
+            <label>
+              結束日期
+              <input
+                disabled={isApplyingDeveloperDates}
+                type="date"
+                value={developerEndDateDraft}
+                onChange={(event) => {
+                  setDeveloperEndDateDraft(event.target.value);
+                  if (developerToolsError) setDeveloperToolsError("");
+                }}
+              />
+            </label>
+          </div>
+          {developerToolsError ? (
+            <div className="trip-header-developer-tools-error" role="alert">
+              {developerToolsError}
+            </div>
+          ) : null}
+          <div className="trip-header-developer-tools-actions">
+            <button
+              type="button"
+              className="ghost-button compact"
+              disabled={isApplyingDeveloperDates}
+              onClick={closeDeveloperTools}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="primary-button compact"
+              disabled={isApplyingDeveloperDates}
+              onClick={applyDeveloperDates}
+            >
+              {isApplyingDeveloperDates ? "套用中..." : "套用測試日期"}
+            </button>
+          </div>
         </div>
       ) : null}
     </header>

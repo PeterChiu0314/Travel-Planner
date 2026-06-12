@@ -741,20 +741,6 @@ code {
   white-space: nowrap;
 }
 
-.trip-header-edit-button {
-  display: inline-grid;
-  flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  min-height: 34px;
-  place-items: center;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink);
-}
-
-.trip-header-edit-button svg,
 .trip-header-icon-button svg {
   width: 20px;
   height: 20px;
@@ -1132,14 +1118,12 @@ code {
   color: var(--ink);
 }
 
-.trip-header-edit-button:hover:not(:disabled),
 .trip-header-icon-button:hover:not(:disabled) {
   border-color: rgba(25, 109, 82, 0.28);
   background: rgba(232, 246, 239, 0.88);
   color: var(--mint-dark);
 }
 
-.trip-header-edit-button:focus-visible,
 .trip-header-icon-button:focus-visible,
 .trip-header-more-menu button:focus-visible {
   outline: 3px solid rgba(25, 109, 82, 0.28);
@@ -1184,10 +1168,49 @@ code {
   color: #9d3325;
 }
 
-.trip-header-edit {
+.trip-header-developer-tools {
   grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
+}
+
+.trip-header-developer-tools-heading {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.trip-header-developer-tools-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.trip-header-developer-tools-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.trip-header-developer-tools-error {
+  border: 1px solid rgba(157, 51, 37, 0.2);
+  border-radius: 7px;
+  background: #fff8f5;
+  color: #9d3325;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.trip-header-developer-tools-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .topbar {
@@ -1276,10 +1299,6 @@ code {
 .field-group {
   display: grid;
   gap: 12px;
-}
-
-.trip-fields {
-  grid-template-columns: minmax(180px, 1.4fr) minmax(160px, 1fr) repeat(2, minmax(140px, 0.7fr));
 }
 
 label {
@@ -3130,7 +3149,7 @@ textarea {
     justify-content: flex-start;
   }
 
-  .trip-fields {
+  .trip-header-developer-tools-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -3181,12 +3200,6 @@ textarea {
     width: 44px;
     height: 44px;
     min-height: 44px;
-  }
-
-  .trip-header-edit-button {
-    width: 32px;
-    height: 32px;
-    min-height: 32px;
   }
 
   .trip-header-meta {
@@ -3282,7 +3295,7 @@ textarea {
     flex: 1;
   }
 
-  .trip-fields,
+  .trip-header-developer-tools-fields,
   .form-grid,
   .form-grid.wide {
     grid-template-columns: 1fr;
