@@ -978,6 +978,13 @@ function buildTripDateChangePreview({
   };
 }
 
+function syncTimelineItemDatesForTripStart(items = [], startDate) {
+  return items.map((item) => ({
+    ...item,
+    date: getTimelineDayDate(startDate, getTimelineDayPosition(item)) || item.date || null,
+  }));
+}
+
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
 }
@@ -1917,6 +1924,11 @@ export default function App() {
     const nextPatch = { ...patch };
     const hasStartDatePatch = Object.prototype.hasOwnProperty.call(nextPatch, "start_date");
     const hasEndDatePatch = Object.prototype.hasOwnProperty.call(nextPatch, "end_date");
+    if (hasStartDatePatch || hasEndDatePatch) {
+      const nextStartDate = hasStartDatePatch ? nextPatch.start_date : activeTrip.start_date;
+      const nextEndDate = hasEndDatePatch ? nextPatch.end_date : activeTrip.end_date;
+      return updateTripDateRange({ endDate: nextEndDate, startDate: nextStartDate });
+    }
     if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
       nextPatch.name = nextPatch.title;
     }
@@ -1927,16 +1939,6 @@ export default function App() {
     ) {
       Object.assign(nextPatch, destinationPatchFromText(nextPatch.destination));
     }
-    if (hasStartDatePatch && hasEndDatePatch) {
-      if (!nextPatch.start_date || !nextPatch.end_date || nextPatch.end_date < nextPatch.start_date) {
-        setNotice("Invalid trip date range");
-        return { ok: false };
-      }
-    } else if (hasStartDatePatch && nextPatch.start_date && activeTrip.end_date < nextPatch.start_date) {
-      nextPatch.end_date = nextPatch.start_date;
-    } else if (hasEndDatePatch && nextPatch.end_date && nextPatch.end_date < activeTrip.start_date) {
-      nextPatch.start_date = nextPatch.end_date;
-    }
     const { error } = await supabase.from("trips").update(nextPatch).eq("id", activeTrip.id);
     if (error) {
       setNotice(error.message);
@@ -1944,6 +1946,36 @@ export default function App() {
     }
     await loadTrips(activeTrip.id);
     return { ok: true };
+  }
+
+  async function updateTripDateRange({ startDate, endDate }) {
+    if (!activeTrip || !canRenameActiveTrip) return { ok: false };
+    if (!startDate || !endDate || endDate < startDate) {
+      setNotice("Invalid trip date range");
+      return { ok: false };
+    }
+    const preview = buildTripDateChangePreview({
+      ...tripDateChangePreviewData,
+      newEndDate: endDate,
+      newStartDate: startDate,
+      trip: activeTrip,
+    });
+    if (preview.hasTimelineRemoval) {
+      setNotice("This date change would remove Timeline data. Please handle it in the shortening cleanup flow.");
+      return { ok: false, unsafeShortening: true };
+    }
+    const { data, error } = await supabase.rpc("apply_trip_date_change", {
+      trip_id: activeTrip.id,
+      new_start_date: startDate,
+      new_end_date: endDate,
+    });
+    if (error) {
+      setNotice(error.message);
+      return { ok: false, error };
+    }
+    setActiveDay((current) => Math.min(current, Math.max((preview.newDayCount || 1) - 1, 0)));
+    await Promise.all([loadTrips(activeTrip.id), loadTripData(activeTrip.id)]);
+    return { ok: true, data };
   }
 
   async function deleteTrip() {
@@ -2825,6 +2857,7 @@ function exportTrip() {
           onOpenMembers={focusSidebarMembers}
           onShare={() => setIsShareDialogOpen(true)}
           onUpdateTrip={updateTrip}
+          onUpdateTripDateRange={updateTripDateRange}
           showDeveloperTools={isOwner}
         />
 
@@ -3161,6 +3194,7 @@ function TripHeader({
   onOpenMembers,
   onShare,
   onUpdateTrip,
+  onUpdateTripDateRange,
   showDeveloperTools = false,
 }) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -3209,9 +3243,10 @@ function TripHeader({
   const hasTrip = Boolean(trip);
   const canEditTitle = hasTrip && canRenameTrip && typeof onUpdateTrip === "function";
   const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
+  const canUpdateTripDateRange = hasTrip && canEditTrip && typeof onUpdateTripDateRange === "function";
   const canOpenDestinationPopover = canOpenTripEditor;
-  const canOpenDatePopover = canOpenTripEditor;
-  const canOpenDeveloperTools = hasTrip && showDeveloperTools && canEditTrip && typeof onUpdateTrip === "function";
+  const canOpenDatePopover = canUpdateTripDateRange;
+  const canOpenDeveloperTools = hasTrip && showDeveloperTools && canEditTrip && typeof onUpdateTripDateRange === "function";
   const isDateRangeEmpty = !startDateDraft && !endDateDraft;
   const dateDraftDayCount = dateRangeDayCount(startDateDraft, endDateDraft);
   const todayDateKey = todayInput();
@@ -3436,7 +3471,7 @@ function TripHeader({
     setIsApplyingDeveloperDates(true);
     let result;
     try {
-      result = await onUpdateTrip({ start_date: nextStartDate, end_date: nextEndDate });
+      result = await onUpdateTripDateRange({ startDate: nextStartDate, endDate: nextEndDate });
     } catch (error) {
       result = { ok: false, error };
     }
@@ -3616,7 +3651,7 @@ function TripHeader({
     setIsSavingDates(true);
     let result;
     try {
-      result = await onUpdateTrip({ start_date: startDateDraft, end_date: endDateDraft });
+      result = await onUpdateTripDateRange({ startDate: startDateDraft, endDate: endDateDraft });
     } catch (error) {
       result = { ok: false, error };
     }
@@ -4415,6 +4450,21 @@ function DemoApp({ initialSection }) {
     if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
 
+  function updateDemoTripDateRange({ startDate, endDate }) {
+    if (!startDate || !endDate || endDate < startDate) return { ok: false };
+    const preview = buildTripDateChangePreview({
+      ...tripDateChangePreviewData,
+      newEndDate: endDate,
+      newStartDate: startDate,
+      trip: demoActiveTrip,
+    });
+    if (preview.hasTimelineRemoval) return { ok: false };
+    setDemoActiveTrip((current) => ({ ...current, start_date: startDate, end_date: endDate }));
+    setTimelineItems((current) => syncTimelineItemDatesForTripStart(current, startDate));
+    setActiveDay((current) => Math.min(current, Math.max((preview.newDayCount || 1) - 1, 0)));
+    return { ok: true };
+  }
+
   function saveTimelineItem(payload, editingId, meta = {}) {
     const nextPayload = normalizeItemPayload(payload);
     if (!nextPayload.title.trim()) return;
@@ -4815,6 +4865,7 @@ function DemoApp({ initialSection }) {
             setDemoActiveTrip((current) => ({ ...current, ...patch }));
             return { ok: true };
           }}
+          onUpdateTripDateRange={updateDemoTripDateRange}
         />
         {activeSection === "timeline" ? (
           <>
