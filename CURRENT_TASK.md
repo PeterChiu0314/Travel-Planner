@@ -7,20 +7,20 @@
 ## 目前分支
 
 ```text
-codex/app-layout-header
+codex/trip-date-data-flow
 ```
 
-本分支專門處理 App Layout Header 改版。請在此分支上繼續 Header 相關修正，不要切回 `main` 或另開分支，除非使用者明確要求。
+本分支專門處理旅程日期變更與行程資料流。Header 改版分支已合併進 `main`，Phase 1.7 起請在本分支上繼續日期資料流相關工作，不要切回 `main` 或另開分支，除非使用者明確要求。
 
-目前本聊天室規則：修改完成並驗證後，預設 commit 並 push 到 `origin/codex/app-layout-header`；若單一任務明確禁止 push，則以該任務指示優先。
+目前本聊天室規則：修改完成並驗證後，預設 commit 並 push 到 `origin/codex/trip-date-data-flow`；若單一任務明確禁止 push，則以該任務指示優先。
 
 ---
 
 ## 目前階段
 
-目前進入 App Layout Header 改版階段。
+目前進入 App Layout Phase 1.7：旅程日期與行程資料流階段。
 
-Phase 3 已大致收尾。App Layout 先從 Header 開始，Sidebar 與 Toolbar 後續會另開階段處理。
+Phase 3 已大致收尾。App Layout Header Phase 1.0～1.6A 已完成並合併，Sidebar 與 Toolbar 後續會另開階段處理。目前重點改為：旅程日期變更後，Timeline、住宿、預算、待辦、Share / Export 等資料如何安全同步。
 
 Header 目前狀態：
 
@@ -31,15 +31,17 @@ Header 目前狀態：
 - Phase 1.4 Header 日期 Popover：✅ 已完成、已測試、User Verified!
 - Phase 1.5 旅程階段自動判斷與 Header 顯示：✅ 已完成、已測試、User Verified
 - Phase 1.6 目的地 Popover 與 Map-ready 國家／城市資料結構：✅ 已完成、已測試、User Verified
-- Phase 1.6A 移除舊鉛筆入口，將 Legacy Editor 改為開發者日期工具：🟡 已實作，尚未驗收
+- Phase 1.6A 移除舊鉛筆入口，將 Legacy Editor 改為開發者日期工具：✅ 已完成、已測試、User Verified
+- Phase 1.7A 旅程日期與行程資料模型 Audit：✅ 已完成，尚未實作 Phase 1.7B
 - Phase 1.5B 旅程檢視模式：⏸ 暫緩規劃，尚未實作
 
 核心方向：
 
 - 維持既有 Supabase / Realtime / Draft Autosave / Edit Lock 穩定。
-- Header 改版以小範圍 JSX / CSS 調整為主。
-- Formal App 與 Demo Header 必須保持一致。
-- 避免大改資料流、schema、權限與 App 架構。
+- 旅程日期變更需先做預檢、影響統計與使用者確認，再做任何資料搬移或刪除。
+- 避免用前端多次 request 處理高風險縮短清理；需要 transaction 的情境優先評估 RPC。
+- Header 日期 Popover 與開發者日期工具維持既有 UI，不進行 Sidebar / Toolbar / Timeline layout 改版。
+- 不要在未確認規則前自動刪除 itinerary、住宿、待辦、預算連結或固定景點。
 
 ---
 
@@ -91,7 +93,29 @@ Header 目前狀態：
   - 開發者工具只保留開始日期、結束日期、說明、取消、套用測試日期。
   - 開發者工具允許歷史日期，用於測試旅程階段與歷史旅程。
   - Demo 預設不顯示開發者工具。
-  - 狀態：已實作，尚未使用者驗收。
+  - 狀態：已完成、已測試、User Verified。
+
+### App Layout Phase 1.7：旅程日期資料流
+
+- Phase 1.7A：旅程日期與行程資料模型 Audit。
+  - 本次只做 audit，未修改 App code、schema、migration 或資料。
+  - 目前模型屬於混合模型：Timeline Day 由 `trips.start_date` / `trips.end_date` 動態產生，但 `itinerary_items` 同時存 `day_index` 與 `date`。
+  - Formal Timeline 主要用 `day_index` 顯示；`itinerary_items.date` 在新增時寫入，但改旅程日期時不會自動同步。
+  - Header 日期 Popover 與 Owner-only 開發者日期工具目前都只更新 `trips.start_date` / `trips.end_date`，沒有搬移、刪除或 remap itinerary / accommodation / todo / budget data。
+  - 縮短旅程後，超出新 day range 的 itinerary row 仍留在 DB 與 state，但沒有對應 Day tab / Day board 可見。
+  - Share Snapshot / Export JSON 可能仍包含正式 Timeline 看不到的 itinerary rows。
+  - Accommodation 有自己的 `check_in_date` / `check_out_date`；Todo 有 `due_date`；目前都只依 `trip_id` 查詢，不依旅程日期範圍過濾。
+  - Luggage 與 Guide 不直接依旅程日期。
+  - 固定景點 `is_fixed` 目前只保護手動編輯 / 刪除 / 排序 / 備案，不會阻止旅程日期更新造成資料隱藏或後續刪除風險。
+  - 建議後續 Phase 先做前端預檢與影響統計，再進入資料搬移 / 刪除 / RPC transaction。
+
+建議後續拆分：
+
+- Phase 1.7B：安全日期變更分類與前端預檢。
+- Phase 1.7C：相同天數平移與從結束日延長旅程。
+- Phase 1.7D：縮短旅程影響統計與確認。
+- Phase 1.7E：RPC transaction 與資料清理。
+- Phase 1.7F：Share / Export / Draft / Session restore 回歸測試與收尾。
 
 ### Phase 3 目前順序
 
