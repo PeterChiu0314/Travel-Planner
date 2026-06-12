@@ -985,6 +985,17 @@ function syncTimelineItemDatesForTripStart(items = [], startDate) {
   }));
 }
 
+function timelineItemIdsRemovedByShortening(items = [], newDayCount) {
+  const removedIds = new Set(
+    items.filter((item) => getTimelineDayPosition(item) >= newDayCount).map((item) => item.id).filter(Boolean),
+  );
+  items.forEach((item) => {
+    if (!isTransportationCard(item)) return;
+    if (removedIds.has(item.from_item_id) || removedIds.has(item.to_item_id)) removedIds.add(item.id);
+  });
+  return removedIds;
+}
+
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
 }
@@ -1948,7 +1959,7 @@ export default function App() {
     return { ok: true };
   }
 
-  async function updateTripDateRange({ startDate, endDate }) {
+  async function updateTripDateRange({ confirmTimelineRemoval = false, startDate, endDate }) {
     if (!activeTrip || !canRenameActiveTrip) return { ok: false };
     if (!startDate || !endDate || endDate < startDate) {
       setNotice("Invalid trip date range");
@@ -1960,11 +1971,12 @@ export default function App() {
       newStartDate: startDate,
       trip: activeTrip,
     });
-    if (preview.hasTimelineRemoval) {
+    if (preview.hasTimelineRemoval && !confirmTimelineRemoval) {
       setNotice("This date change would remove Timeline data. Please handle it in the shortening cleanup flow.");
       return { ok: false, unsafeShortening: true };
     }
     const { data, error } = await supabase.rpc("apply_trip_date_change", {
+      confirm_timeline_removal: Boolean(confirmTimelineRemoval),
       trip_id: activeTrip.id,
       new_start_date: startDate,
       new_end_date: endDate,
@@ -3130,7 +3142,7 @@ function TripHeaderIcon({ name }) {
   );
 }
 
-function TripDateChangePreview({ preview }) {
+function TripDateChangePreview({ isRemovalConfirmed = false, onConfirmRemoval, preview }) {
   if (!preview || preview.type === "unchanged" || preview.type === "invalid") return null;
   const addedDayCount = Math.max(0, preview.newDayCount - preview.oldDayCount);
   const isBlocked = preview.type === "shortened-with-timeline";
@@ -3176,6 +3188,20 @@ function TripDateChangePreview({ preview }) {
           住宿 {preview.accommodationCount} 筆、待辦 {preview.todoCount} 筆不會自動調整，儲存後請人工確認。
         </p>
       ) : null}
+      {isBlocked ? (
+        <div className="trip-date-change-confirm">
+          <span>
+            {isRemovalConfirmed
+              ? "已確認縮短旅程，儲存後會刪除上述 Timeline 資料。"
+              : "請先確認縮短旅程，確認不會立即儲存。"}
+          </span>
+          {!isRemovalConfirmed ? (
+            <button type="button" className="ghost-button compact" onClick={onConfirmRemoval}>
+              確認縮短旅程
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -3220,6 +3246,7 @@ function TripHeader({
   const [startDateInput, setStartDateInput] = useState("");
   const [endDateInput, setEndDateInput] = useState("");
   const [dateSelectionStep, setDateSelectionStep] = useState("start");
+  const [isDateRemovalConfirmed, setIsDateRemovalConfirmed] = useState(false);
   const [hoveredDate, setHoveredDate] = useState("");
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(parseDateOnly(todayInput()) || new Date()));
   const [dateError, setDateError] = useState("");
@@ -3270,7 +3297,9 @@ function TripHeader({
       }),
     [dateChangePreviewData, endDateDraft, startDateDraft, trip],
   );
-  const isDateChangeBlocked = dateChangePreview.type === "shortened-with-timeline";
+  useEffect(() => {
+    if (!dateChangePreview.hasTimelineRemoval) setIsDateRemovalConfirmed(false);
+  }, [dateChangePreview.hasTimelineRemoval]);
   const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
   const weekdayFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { weekday: "short" }), []);
   const fullDateFormat = useMemo(
@@ -3574,6 +3603,7 @@ function TripHeader({
     setIsDatePopoverOpen(false);
     setDateError("");
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setIsSavingDates(false);
     dateSaveRef.current = false;
     if (restoreFocus) {
@@ -3610,6 +3640,7 @@ function TripHeader({
     setEndDateInput(formatHeaderDate(nextOriginalEndDate) || "");
     setDateSelectionStep(initialDateSelectionStep(nextOriginalStartDate, nextOriginalEndDate));
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setVisibleMonth(startOfMonth(parseDateOnly(nextOriginalStartDate) || parseDateOnly(todayInput()) || new Date()));
     setDateError("");
     setIsDatePopoverOpen(true);
@@ -3642,8 +3673,8 @@ function TripHeader({
       closeDatePopover();
       return true;
     }
-    if (dateChangePreview.hasTimelineRemoval) {
-      setDateError("縮短後的日期會移除含有 Timeline 資料的 Day；Phase 1.7B 先阻擋儲存。");
+    if (dateChangePreview.hasTimelineRemoval && !isDateRemovalConfirmed) {
+      setDateError("請先確認縮短旅程會刪除尾端 Timeline 資料。");
       return false;
     }
     setDateError("");
@@ -3651,7 +3682,11 @@ function TripHeader({
     setIsSavingDates(true);
     let result;
     try {
-      result = await onUpdateTripDateRange({ startDate: startDateDraft, endDate: endDateDraft });
+      result = await onUpdateTripDateRange({
+        confirmTimelineRemoval: dateChangePreview.hasTimelineRemoval && isDateRemovalConfirmed,
+        startDate: startDateDraft,
+        endDate: endDateDraft,
+      });
     } catch (error) {
       result = { ok: false, error };
     }
@@ -3675,6 +3710,7 @@ function TripHeader({
     }
     setDateError("");
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     if (dateSelectionStep === "start" || !startDateDraft) {
       setStartDateDraft(dateKey);
       setStartDateInput(formatHeaderDate(dateKey));
@@ -3703,6 +3739,7 @@ function TripHeader({
     setEndDateInput("");
     setDateSelectionStep("start");
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setDateError("");
     requestAnimationFrame(() => {
       startDateTextInputRef.current?.focus();
@@ -3716,6 +3753,7 @@ function TripHeader({
     setEndDateInput(formatHeaderDate(originalEndDate) || "");
     setDateSelectionStep(initialDateSelectionStep(originalStartDate, originalEndDate));
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setDateError("");
     setVisibleMonth(startOfMonth(parseDateOnly(originalStartDate) || parseDateOnly(todayInput()) || new Date()));
     requestAnimationFrame(() => {
@@ -3735,6 +3773,7 @@ function TripHeader({
         setEndDateDraft("");
         setDateSelectionStep(initialDateSelectionStep(startDateDraft, ""));
       }
+      setIsDateRemovalConfirmed(false);
       setDateError("");
       return true;
     }
@@ -3759,6 +3798,7 @@ function TripHeader({
     }
     setDateError("");
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setVisibleMonth(startOfMonth(parseDateOnly(normalized)));
     if (field === "start") {
       setStartDateDraft(normalized);
@@ -4189,7 +4229,14 @@ function TripHeader({
                               {renderDateMonth(addMonths(visibleMonth, 1), { next: true })}
                             </div>
                           </div>
-                          <TripDateChangePreview preview={dateChangePreview} />
+                          <TripDateChangePreview
+                            isRemovalConfirmed={isDateRemovalConfirmed}
+                            onConfirmRemoval={() => {
+                              setIsDateRemovalConfirmed(true);
+                              setDateError("");
+                            }}
+                            preview={dateChangePreview}
+                          />
                           {dateError ? (
                             <div
                               className="trip-header-date-error"
@@ -4222,7 +4269,6 @@ function TripHeader({
                                 className="primary-button compact"
                                 disabled={
                                   isSavingDates ||
-                                  isDateChangeBlocked ||
                                   (!isDateRangeEmpty && (!startDateDraft || !endDateDraft || isDateBefore(endDateDraft, startDateDraft)))
                                 }
                                 onClick={isDateRangeEmpty ? restoreOriginalDateDrafts : saveDateDrafts}
@@ -4450,7 +4496,7 @@ function DemoApp({ initialSection }) {
     if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
 
-  function updateDemoTripDateRange({ startDate, endDate }) {
+  function updateDemoTripDateRange({ confirmTimelineRemoval = false, startDate, endDate }) {
     if (!startDate || !endDate || endDate < startDate) return { ok: false };
     const preview = buildTripDateChangePreview({
       ...tripDateChangePreviewData,
@@ -4458,9 +4504,25 @@ function DemoApp({ initialSection }) {
       newStartDate: startDate,
       trip: demoActiveTrip,
     });
-    if (preview.hasTimelineRemoval) return { ok: false };
+    if (preview.hasTimelineRemoval && !confirmTimelineRemoval) return { ok: false, unsafeShortening: true };
+    const removedIds = confirmTimelineRemoval
+      ? timelineItemIdsRemovedByShortening(timelineItems, preview.newDayCount)
+      : new Set();
     setDemoActiveTrip((current) => ({ ...current, start_date: startDate, end_date: endDate }));
-    setTimelineItems((current) => syncTimelineItemDatesForTripStart(current, startDate));
+    setTimelineItems((current) =>
+      syncTimelineItemDatesForTripStart(
+        current.filter((item) => !removedIds.has(item.id)),
+        startDate,
+      ),
+    );
+    if (removedIds.size) {
+      setTimelineAlternatives((current) =>
+        current.filter((alternative) => !removedIds.has(alternative.itinerary_item_id)),
+      );
+      setItineraryBudgetLinks((current) =>
+        current.filter((link) => !removedIds.has(link.itinerary_item_id)),
+      );
+    }
     setActiveDay((current) => Math.min(current, Math.max((preview.newDayCount || 1) - 1, 0)));
     return { ok: true };
   }

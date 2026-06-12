@@ -1119,6 +1119,25 @@ code {
   opacity: 0.82;
 }
 
+.trip-date-change-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid rgba(157, 51, 37, 0.18);
+  padding-top: 8px;
+}
+
+.trip-date-change-confirm span {
+  color: inherit;
+  font-weight: 800;
+  opacity: 0.9;
+}
+
+.trip-date-change-confirm .ghost-button {
+  flex: 0 0 auto;
+}
+
 .trip-header-date-actions {
   display: flex;
   justify-content: flex-end;
