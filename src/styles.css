@@ -807,6 +807,26 @@ code {
   outline-offset: 1px;
 }
 
+.trip-header-stage {
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.trip-header-stage.is-planning,
+.trip-header-stage.is-unset {
+  background: rgba(137, 145, 137, 0.1);
+}
+
+.trip-header-stage.is-traveling {
+  background: rgba(25, 109, 82, 0.12);
+  color: var(--mint-dark);
+}
+
+.trip-header-stage.is-settled {
+  background: rgba(38, 45, 40, 0.08);
+  color: #6d746f;
+}
+
 .trip-header-meta-popover-anchor {
   position: relative;
   display: inline-flex;

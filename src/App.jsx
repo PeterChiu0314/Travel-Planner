@@ -629,16 +629,36 @@ function dateRangeDayCount(startDate, endDate) {
   return Math.round((end - start) / 86400000) + 1;
 }
 
+function getTodayDateKey() {
+  return todayInput();
+}
+
+function normalizeDateOnlyKey(value) {
+  const date = parseDateOnly(value);
+  return date ? formatDateKey(date) : "";
+}
+
 function initialDateSelectionStep(startDate, endDate) {
   return startDate && !endDate ? "end" : "start";
 }
 
-function tripStatusLabel(status) {
+function deriveTripStage(startDate, endDate, todayDate = getTodayDateKey()) {
+  const startKey = normalizeDateOnlyKey(startDate);
+  const endKey = normalizeDateOnlyKey(endDate);
+  const todayKey = normalizeDateOnlyKey(todayDate);
+  if (!startKey || !endKey || !todayKey || endKey < startKey) return "unset";
+  if (todayKey < startKey) return "planning";
+  if (todayKey > endKey) return "settled";
+  return "traveling";
+}
+
+function tripStageLabel(stage) {
   return {
+    unset: "階段未設定",
     planning: "規劃階段",
     traveling: "旅行階段",
     settled: "結算階段",
-  }[status || "planning"] || "規劃階段";
+  }[stage || "unset"] || "階段未設定";
 }
 
 function tripDestinationMeta(destination) {
@@ -657,11 +677,13 @@ function buildTripHeaderMeta(trip, members, days) {
   const destinationLabel = tripDestinationMeta(trip.destination).join(" · ");
   const startDate = formatHeaderDate(trip.start_date);
   const endDate = formatHeaderDate(trip.end_date);
+  const stage = deriveTripStage(trip.start_date, trip.end_date);
   return {
     destinationLabel,
     dateRangeLabel: startDate && endDate ? `${startDate} - ${endDate}` : "",
     dayCountLabel: days.length ? `${days.length} 天` : "",
-    statusLabel: tripStatusLabel(trip.status),
+    stage,
+    statusLabel: tripStageLabel(stage),
     membersLabel: `${members.length} 位成員`,
   };
 }
@@ -2939,7 +2961,14 @@ function TripHeader({
         }
       : null,
     meta.dayCountLabel ? { key: "days", label: meta.dayCountLabel } : null,
-    meta.statusLabel ? { key: "status", label: meta.statusLabel, title: "旅程階段" } : null,
+    meta.statusLabel
+      ? {
+          className: `trip-header-stage is-${meta.stage}`,
+          key: "status",
+          label: meta.statusLabel,
+          title: "系統會依旅程日期自動判斷目前階段",
+        }
+      : null,
     meta.membersLabel
       ? {
           action: typeof onOpenMembers === "function",
@@ -3613,7 +3642,10 @@ function TripHeader({
                     </button>
                   )
                 ) : (
-                  <span className="trip-header-meta-item" title={item.title}>
+                  <span
+                    className={item.className ? `trip-header-meta-item ${item.className}` : "trip-header-meta-item"}
+                    title={item.title}
+                  >
                     {item.label}
                   </span>
                 )}

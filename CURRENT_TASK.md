@@ -29,6 +29,8 @@ Header 目前狀態：
 - Phase 1.2 旅程名稱 Inline Edit：✅ 已完成、已驗收
 - Phase 1.3 Header Metadata 結構與互動入口：✅ 已完成、已驗收
 - Phase 1.4 Header 日期 Popover：✅ 已完成、已測試、User Verified!
+- Phase 1.5 旅程階段自動判斷與 Header 顯示：🟡 已實作，尚未驗收
+- Phase 1.5B 旅程檢視模式：⏸ 暫緩規劃，尚未實作
 
 核心方向：
 
@@ -66,6 +68,13 @@ Header 目前狀態：
   - 使用既有 `onUpdateTrip({ start_date, end_date })` 更新旅程日期，不處理 Timeline 日期搬移、資料刪除或 day remap。
   - `npm.cmd run build` 與 `git diff --check` 已通過。
   - 狀態：已完成、已測試、User Verified!
+- Phase 1.5：旅程階段自動判斷與 Header 顯示。
+  - Header 旅程階段改由今天日期、旅程開始日期、旅程結束日期推導。
+  - Header 不再依賴 `trips.status` 顯示階段，也不會寫回資料庫。
+  - 缺少日期或日期無效時顯示「階段未設定」。
+  - 旅程階段維持純顯示，不可點擊、無 dropdown、無 preview mode。
+  - Phase 1.5B 旅程檢視模式暫緩規劃，尚未實作。
+  - 狀態：已實作，尚未使用者驗收。
 
 ### Phase 3 目前順序
 
