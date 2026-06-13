@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { clearDraft, findLatestDraftTrip, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
+import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 
@@ -186,6 +186,10 @@ function getDirtyActiveEditorGuards(options) {
   return getActiveEditorGuardEntries(options)
     .map(([, guard]) => guard)
     .filter((guard) => guard.isDirty);
+}
+
+function hasActiveEditorGuard(options) {
+  return getActiveEditorGuardEntries(options).length > 0;
 }
 
 function showActiveEditorPrompt() {
@@ -994,6 +998,22 @@ function timelineItemIdsRemovedByShortening(items = [], newDayCount) {
     if (removedIds.has(item.from_item_id) || removedIds.has(item.to_item_id)) removedIds.add(item.id);
   });
   return removedIds;
+}
+
+function timelineItemsInTripRange(items = [], trip) {
+  const dayCount = dateRangeDayCount(trip?.start_date, trip?.end_date) || 0;
+  if (!dayCount) return [];
+  return sortScheduleItems(
+    items
+      .filter((item) => {
+        const position = getTimelineDayPosition(item);
+        return position >= 0 && position < dayCount;
+      })
+      .map((item) => ({
+        ...item,
+        date: getTimelineDayDate(trip.start_date, getTimelineDayPosition(item)) || item.date || null,
+      })),
+  );
 }
 
 function inviteTokenFromUrl() {
@@ -1965,6 +1985,19 @@ export default function App() {
       setNotice("Invalid trip date range");
       return { ok: false };
     }
+    if (hasActiveEditorGuard({ tripId: activeTrip.id })) {
+      const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
+      setNotice(message);
+      return { ok: false, dirtyDraft: true, message };
+    }
+    const latestTripDraft = session?.user?.id
+      ? findLatestDraftTrip({ entityTypes: activeEditDraftEntityTypes, userId: session.user.id })
+      : null;
+    if (latestTripDraft?.tripId === activeTrip.id) {
+      const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
+      setNotice(message);
+      return { ok: false, dirtyDraft: true, message };
+    }
     const preview = buildTripDateChangePreview({
       ...tripDateChangePreviewData,
       newEndDate: endDate,
@@ -1975,6 +2008,10 @@ export default function App() {
       setNotice("This date change would remove Timeline data. Please handle it in the shortening cleanup flow.");
       return { ok: false, unsafeShortening: true };
     }
+    const removedTimelineDraftIds =
+      preview.hasTimelineRemoval && confirmTimelineRemoval
+        ? timelineItemIdsRemovedByShortening(items, preview.newDayCount)
+        : new Set();
     const { data, error } = await supabase.rpc("apply_trip_date_change", {
       confirm_timeline_removal: Boolean(confirmTimelineRemoval),
       trip_id: activeTrip.id,
@@ -1984,6 +2021,18 @@ export default function App() {
     if (error) {
       setNotice(error.message);
       return { ok: false, error };
+    }
+    if (removedTimelineDraftIds.size && session?.user?.id) {
+      removedTimelineDraftIds.forEach((itemId) => {
+        clearDraft(
+          getDraftKey({
+            entityId: itemId,
+            entityType: "timeline",
+            tripId: activeTrip.id,
+            userId: session.user.id,
+          }),
+        );
+      });
     }
     setActiveDay((current) => Math.min(current, Math.max((preview.newDayCount || 1) - 1, 0)));
     await Promise.all([loadTrips(activeTrip.id), loadTripData(activeTrip.id)]);
@@ -2729,9 +2778,10 @@ export default function App() {
 
 function exportTrip() {
     if (!activeTrip) return;
+    const exportedItems = timelineItemsInTripRange(items, activeTrip);
     const payload = {
       ...activeTrip,
-      itinerary_items: items,
+      itinerary_items: exportedItems,
       pack_items: packItems,
       members,
     };
@@ -3507,7 +3557,7 @@ function TripHeader({
     if (result?.ok === false) {
       developerDateSaveRef.current = false;
       setIsApplyingDeveloperDates(false);
-      setDeveloperToolsError("套用失敗，請再試一次");
+      setDeveloperToolsError(result.message || "套用失敗，請再試一次");
       return false;
     }
     developerDateSaveRef.current = false;
@@ -3693,7 +3743,7 @@ function TripHeader({
     if (result?.ok === false) {
       dateSaveRef.current = false;
       setIsSavingDates(false);
-      setDateError("儲存失敗，請再試一次");
+      setDateError(result.message || "儲存失敗，請再試一次");
       return false;
     }
     dateSaveRef.current = false;
@@ -10316,15 +10366,47 @@ function InviteDialog({ trip, onClose }) {
 function ShareDialog({ links, onClose, onRefresh, trip }) {
   const [busy, setBusy] = useState(false);
   const [copiedId, setCopiedId] = useState("");
+  const [error, setError] = useState("");
+  const primaryLink = useMemo(
+    () =>
+      [...links].sort((a, b) => {
+        if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+        return (b.created_at || "").localeCompare(a.created_at || "");
+      })[0] || null,
+    [links],
+  );
 
   async function copyShareUrl(token, id) {
     const url = `${window.location.origin}?share=${token}`;
-    await navigator.clipboard.writeText(url);
-    setCopiedId(id);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setError("");
+    } catch {
+      setError("無法複製分享連結，請手動複製網址。");
+    }
   }
 
   async function createShareLink() {
     setBusy(true);
+    setError("");
+    if (primaryLink) {
+      if (!primaryLink.is_active) {
+        const { error: updateError } = await supabase
+          .from("share_links")
+          .update({ is_active: true })
+          .eq("id", primaryLink.id);
+        if (updateError) {
+          setBusy(false);
+          setError(updateError.message);
+          return;
+        }
+        await onRefresh();
+      }
+      setBusy(false);
+      await copyShareUrl(primaryLink.token, primaryLink.id);
+      return;
+    }
     const token = crypto.randomUUID();
     const { error } = await supabase.from("share_links").insert({
       trip_id: trip.id,
@@ -10334,7 +10416,7 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
     setBusy(false);
 
     if (error) {
-      window.alert(error.message);
+      setError(error.message);
       return;
     }
 
@@ -10344,6 +10426,7 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
 
   async function toggleShareLink(link) {
     setBusy(true);
+    setError("");
     const { error } = await supabase
       .from("share_links")
       .update({ is_active: !link.is_active })
@@ -10351,7 +10434,7 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
     setBusy(false);
 
     if (error) {
-      window.alert(error.message);
+      setError(error.message);
       return;
     }
 
@@ -10363,27 +10446,23 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
       <div className="dialog-card share-dialog">
         <h2>唯讀分享</h2>
         <p>分享頁不需要登入，只會顯示行程、住宿與指南；預算、實付、結算、行李與成員資料不會公開。</p>
+        {error ? <div className="notice danger">{error}</div> : null}
         <div className="share-link-list">
-          {links.length ? (
-            links.map((link) => {
-              const shareUrl = `${window.location.origin}?share=${link.token}`;
-              return (
-                <div className="share-link-row" key={link.id}>
-                  <div>
-                    <strong>{link.is_active ? "啟用中" : "已停用"}</strong>
-                    <span>{shareUrl}</span>
-                  </div>
-                  <div className="share-link-actions">
-                    <button className="mini-button" type="button" onClick={() => copyShareUrl(link.token, link.id)}>
-                      {copiedId === link.id ? "已複製" : "複製"}
-                    </button>
-                    <button className="mini-button" type="button" disabled={busy} onClick={() => toggleShareLink(link)}>
-                      {link.is_active ? "停用" : "啟用"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })
+          {primaryLink ? (
+            <div className="share-link-row" key={primaryLink.id}>
+              <div>
+                <strong>{primaryLink.is_active ? "分享連結已啟用" : "分享連結已停用"}</strong>
+                <span>{`${window.location.origin}?share=${primaryLink.token}`}</span>
+              </div>
+              <div className="share-link-actions">
+                <button className="mini-button" type="button" onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}>
+                  {copiedId === primaryLink.id ? "已複製" : "複製"}
+                </button>
+                <button className="mini-button" type="button" disabled={busy} onClick={() => toggleShareLink(primaryLink)}>
+                  {primaryLink.is_active ? "停用" : "啟用"}
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="empty-inline">尚未建立唯讀分享連結。</div>
           )}
@@ -10406,8 +10485,9 @@ function ShareView({ error, loading, snapshot }) {
   const itineraryItems = snapshot?.itinerary_items || [];
   const accommodations = snapshot?.accommodations || [];
   const guideItems = snapshot?.guide_items || [];
+  const sortedItineraryItems = useMemo(() => sortScheduleItems(itineraryItems), [itineraryItems]);
 
-  const groupedItems = itineraryItems.reduce((groups, item) => {
+  const groupedItems = sortedItineraryItems.reduce((groups, item) => {
     const key = item.date || `Day ${Number(item.day_index || 0) + 1}`;
     groups[key] = [...(groups[key] || []), item];
     return groups;

@@ -139,13 +139,14 @@ Phase 1.7 拆分：
     - 交通卡、備案、固定景點、預算連結：資料與關聯保留。
     - Accommodation / Todo：日期與資料完全不變，只保留提醒。
 - Phase 1.7D：縮短旅程確認與 Timeline 資料清理。
-  - 狀態：Migration 已套用正式 Supabase，待正式頁功能測試。
+  - 狀態：已完成、已測試 OK、User Verified。
   - 有資料的尾端 Day 警示。
   - 顯示景點、交通、備案、固定景點統計。
   - 確認後 transaction 刪除。
   - Budget link 解除、Budget 保留。
   - Accommodation / Todo 不自動修改。
 - Phase 1.7E：跨流程一致性與正式收尾。
+  - 狀態：Migration 已套用正式 Supabase，待正式頁功能測試。
   - Share View。
   - Export JSON。
   - Developer Date Tool。
