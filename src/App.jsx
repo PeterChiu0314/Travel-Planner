@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { clearDraft, findLatestDraftTrip, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
+import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 
@@ -188,6 +188,10 @@ function getDirtyActiveEditorGuards(options) {
     .filter((guard) => guard.isDirty);
 }
 
+function hasActiveEditorGuard(options) {
+  return getActiveEditorGuardEntries(options).length > 0;
+}
+
 function showActiveEditorPrompt() {
   if (activeEditorPromptResolve) return Promise.resolve(null);
   return new Promise((resolve) => {
@@ -310,6 +314,12 @@ function startOfMonth(date) {
 
 function addMonths(date, amount) {
   return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function addDays(date, amount) {
+  const next = new Date(date);
+  next.setDate(date.getDate() + amount);
+  return next;
 }
 
 function daysInMonth(date) {
@@ -810,6 +820,202 @@ function tripDays(trip) {
   });
 }
 
+function getTimelineDayPosition(item) {
+  const position = Number(item?.day_index);
+  return Number.isInteger(position) && position >= 0 ? position : 0;
+}
+
+function getTimelineDayDate(startDate, position) {
+  const start = parseDateOnly(startDate);
+  if (!start || !Number.isInteger(position) || position < 0) return "";
+  return dateToInputValue(addDays(start, position));
+}
+
+function emptyTimelineDayCounts() {
+  return {
+    alternatives: 0,
+    budgetLinks: 0,
+    fixed: 0,
+    timeline: 0,
+    transports: 0,
+    visits: 0,
+  };
+}
+
+function buildTimelineDayPreviewMap(items = [], alternatives = [], itineraryBudgetLinks = []) {
+  const byPosition = new Map();
+  const itemPositionById = new Map();
+
+  items.forEach((item) => {
+    const position = getTimelineDayPosition(item);
+    const counts = byPosition.get(position) || emptyTimelineDayCounts();
+    counts.timeline += 1;
+    if (isTransportationCard(item)) counts.transports += 1;
+    else counts.visits += 1;
+    if (item?.is_fixed) counts.fixed += 1;
+    byPosition.set(position, counts);
+    if (item?.id) itemPositionById.set(item.id, position);
+  });
+
+  alternatives.forEach((alternative) => {
+    const position = itemPositionById.get(alternative?.itinerary_item_id);
+    if (position === undefined) return;
+    const counts = byPosition.get(position) || emptyTimelineDayCounts();
+    counts.alternatives += 1;
+    byPosition.set(position, counts);
+  });
+
+  const budgetLinksByPosition = new Map();
+  itineraryBudgetLinks.forEach((link) => {
+    const position = itemPositionById.get(link?.itinerary_item_id);
+    if (position === undefined || !link?.budget_item_id) return;
+    const linkedBudgetIds = budgetLinksByPosition.get(position) || new Set();
+    linkedBudgetIds.add(link.budget_item_id);
+    budgetLinksByPosition.set(position, linkedBudgetIds);
+  });
+
+  budgetLinksByPosition.forEach((linkedBudgetIds, position) => {
+    const counts = byPosition.get(position) || emptyTimelineDayCounts();
+    counts.budgetLinks = linkedBudgetIds.size;
+    byPosition.set(position, counts);
+  });
+
+  return byPosition;
+}
+
+function getAffectedTimelineDays({
+  alternatives = [],
+  itineraryBudgetLinks = [],
+  items = [],
+  newDayCount,
+  oldDayCount,
+  oldStartDate,
+}) {
+  const countsByPosition = buildTimelineDayPreviewMap(items, alternatives, itineraryBudgetLinks);
+  const affectedDays = [];
+  for (let position = newDayCount; position < oldDayCount; position += 1) {
+    const counts = countsByPosition.get(position) || emptyTimelineDayCounts();
+    affectedDays.push({
+      counts,
+      dayKey: `index:${position}`,
+      label: `Day ${position + 1}`,
+      originalDate: getTimelineDayDate(oldStartDate, position),
+      position,
+    });
+  }
+  return affectedDays;
+}
+
+function classifyTripDateChange({
+  alternatives = [],
+  itineraryBudgetLinks = [],
+  items = [],
+  newEndDate,
+  newStartDate,
+  oldEndDate,
+  oldStartDate,
+}) {
+  const oldDayCount = dateRangeDayCount(oldStartDate, oldEndDate) || 0;
+  const newDayCount = dateRangeDayCount(newStartDate, newEndDate) || 0;
+  const base = {
+    affectedDays: [],
+    hasTimelineRemoval: false,
+    newDayCount,
+    newEndDate,
+    newStartDate,
+    oldDayCount,
+    oldEndDate,
+    oldStartDate,
+    removedDayPositions: [],
+    type: "unchanged",
+  };
+
+  if (!oldStartDate || !oldEndDate || !newStartDate || !newEndDate || !oldDayCount || !newDayCount || newEndDate < newStartDate) {
+    return { ...base, type: "invalid" };
+  }
+  if (oldStartDate === newStartDate && oldEndDate === newEndDate) return base;
+  if (newDayCount >= oldDayCount) return { ...base, type: "same-or-extended" };
+
+  const affectedDays = getAffectedTimelineDays({
+    alternatives,
+    itineraryBudgetLinks,
+    items,
+    newDayCount,
+    oldDayCount,
+    oldStartDate,
+  });
+  const removedDayPositions = affectedDays.map((day) => day.position);
+  const hasTimelineRemoval = affectedDays.some((day) => day.counts.timeline > 0);
+
+  return {
+    ...base,
+    affectedDays,
+    hasTimelineRemoval,
+    removedDayPositions,
+    type: hasTimelineRemoval ? "shortened-with-timeline" : "shortened-empty-tail",
+  };
+}
+
+function buildTripDateChangePreview({
+  accommodations = [],
+  alternatives = [],
+  itineraryBudgetLinks = [],
+  items = [],
+  newEndDate,
+  newStartDate,
+  todoItems = [],
+  trip,
+}) {
+  const classification = classifyTripDateChange({
+    alternatives,
+    itineraryBudgetLinks,
+    items,
+    newEndDate,
+    newStartDate,
+    oldEndDate: trip?.end_date || "",
+    oldStartDate: trip?.start_date || "",
+  });
+  return {
+    ...classification,
+    accommodationCount: accommodations.filter((item) => item?.check_in_date || item?.check_out_date).length,
+    todoCount: todoItems.filter((item) => item?.due_date).length,
+  };
+}
+
+function syncTimelineItemDatesForTripStart(items = [], startDate) {
+  return items.map((item) => ({
+    ...item,
+    date: getTimelineDayDate(startDate, getTimelineDayPosition(item)) || item.date || null,
+  }));
+}
+
+function timelineItemIdsRemovedByShortening(items = [], newDayCount) {
+  const removedIds = new Set(
+    items.filter((item) => getTimelineDayPosition(item) >= newDayCount).map((item) => item.id).filter(Boolean),
+  );
+  items.forEach((item) => {
+    if (!isTransportationCard(item)) return;
+    if (removedIds.has(item.from_item_id) || removedIds.has(item.to_item_id)) removedIds.add(item.id);
+  });
+  return removedIds;
+}
+
+function timelineItemsInTripRange(items = [], trip) {
+  const dayCount = dateRangeDayCount(trip?.start_date, trip?.end_date) || 0;
+  if (!dayCount) return [];
+  return sortScheduleItems(
+    items
+      .filter((item) => {
+        const position = getTimelineDayPosition(item);
+        return position >= 0 && position < dayCount;
+      })
+      .map((item) => ({
+        ...item,
+        date: getTimelineDayDate(trip.start_date, getTimelineDayPosition(item)) || item.date || null,
+      })),
+  );
+}
+
 function inviteTokenFromUrl() {
   return new URLSearchParams(window.location.search).get("invite");
 }
@@ -1204,7 +1410,17 @@ export default function App() {
   const canEdit =
     activeMembership?.status === "approved" &&
     (activeMembership?.role === "owner" || activeMembership?.role === "editor");
-  const canRenameActiveTrip = canEdit || activeTrip?.owner_id === session?.user?.id;
+  const activeTripStage = deriveTripStage(activeTrip?.start_date, activeTrip?.end_date);
+  const isTripFinalizedStatus = activeTrip?.status === "settled";
+  const isTripInSettlementPhase = activeTripStage === "settled";
+  const isTripDateLocked = isTripFinalizedStatus || isTripInSettlementPhase;
+  const canEditActiveTripContent = canEdit && !isTripDateLocked;
+  const canManageActiveTrip = isOwner && !isTripDateLocked;
+  const canChangeTripDates = isOwner && !isTripDateLocked;
+  const canInviteMembers = isOwner && !isTripDateLocked;
+  const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
+  const canManageShareLink = isOwner;
+  const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
@@ -1217,6 +1433,10 @@ export default function App() {
   const todayItems = useMemo(
     () => sortScheduleItems(items.filter((item) => item.day_index === todayDayIndex)),
     [items, todayDayIndex],
+  );
+  const tripDateChangePreviewData = useMemo(
+    () => ({ accommodations, alternatives, itineraryBudgetLinks, items, todoItems }),
+    [accommodations, alternatives, itineraryBudgetLinks, items, todoItems],
   );
 
   const loadTrips = useCallback(
@@ -1745,6 +1965,11 @@ export default function App() {
     const nextPatch = { ...patch };
     const hasStartDatePatch = Object.prototype.hasOwnProperty.call(nextPatch, "start_date");
     const hasEndDatePatch = Object.prototype.hasOwnProperty.call(nextPatch, "end_date");
+    if (hasStartDatePatch || hasEndDatePatch) {
+      const nextStartDate = hasStartDatePatch ? nextPatch.start_date : activeTrip.start_date;
+      const nextEndDate = hasEndDatePatch ? nextPatch.end_date : activeTrip.end_date;
+      return updateTripDateRange({ endDate: nextEndDate, startDate: nextStartDate });
+    }
     if (Object.prototype.hasOwnProperty.call(nextPatch, "title")) {
       nextPatch.name = nextPatch.title;
     }
@@ -1755,16 +1980,6 @@ export default function App() {
     ) {
       Object.assign(nextPatch, destinationPatchFromText(nextPatch.destination));
     }
-    if (hasStartDatePatch && hasEndDatePatch) {
-      if (!nextPatch.start_date || !nextPatch.end_date || nextPatch.end_date < nextPatch.start_date) {
-        setNotice("Invalid trip date range");
-        return { ok: false };
-      }
-    } else if (hasStartDatePatch && nextPatch.start_date && activeTrip.end_date < nextPatch.start_date) {
-      nextPatch.end_date = nextPatch.start_date;
-    } else if (hasEndDatePatch && nextPatch.end_date && nextPatch.end_date < activeTrip.start_date) {
-      nextPatch.start_date = nextPatch.end_date;
-    }
     const { error } = await supabase.from("trips").update(nextPatch).eq("id", activeTrip.id);
     if (error) {
       setNotice(error.message);
@@ -1774,8 +1989,84 @@ export default function App() {
     return { ok: true };
   }
 
+  async function updateTripDateRange({
+    allowSettlementOverride = false,
+    confirmTimelineRemoval = false,
+    source = "trip-date-popover",
+    startDate,
+    endDate,
+  }) {
+    const canOverrideSettlementLock = allowSettlementOverride === true && source === "developer-date-tool";
+    if (!activeTrip || !isOwner) {
+      const message = "You do not have permission to change trip dates.";
+      setNotice(message);
+      return { ok: false, permissionDenied: true, message };
+    }
+    if (isTripDateLocked && !canOverrideSettlementLock) {
+      const message = "旅程已進入結算階段，無法修改日期。";
+      setNotice(message);
+      return { ok: false, dateLocked: true, message };
+    }
+    if (!startDate || !endDate || endDate < startDate) {
+      setNotice("Invalid trip date range");
+      return { ok: false };
+    }
+    if (hasActiveEditorGuard({ tripId: activeTrip.id })) {
+      const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
+      setNotice(message);
+      return { ok: false, dirtyDraft: true, message };
+    }
+    const latestTripDraft = session?.user?.id
+      ? findLatestDraftTrip({ entityTypes: activeEditDraftEntityTypes, userId: session.user.id })
+      : null;
+    if (latestTripDraft?.tripId === activeTrip.id) {
+      const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
+      setNotice(message);
+      return { ok: false, dirtyDraft: true, message };
+    }
+    const preview = buildTripDateChangePreview({
+      ...tripDateChangePreviewData,
+      newEndDate: endDate,
+      newStartDate: startDate,
+      trip: activeTrip,
+    });
+    if (preview.hasTimelineRemoval && !confirmTimelineRemoval) {
+      setNotice("This date change would remove Timeline data. Please handle it in the shortening cleanup flow.");
+      return { ok: false, unsafeShortening: true };
+    }
+    const removedTimelineDraftIds =
+      preview.hasTimelineRemoval && confirmTimelineRemoval
+        ? timelineItemIdsRemovedByShortening(items, preview.newDayCount)
+        : new Set();
+    const { data, error } = await supabase.rpc("apply_trip_date_change", {
+      confirm_timeline_removal: Boolean(confirmTimelineRemoval),
+      trip_id: activeTrip.id,
+      new_start_date: startDate,
+      new_end_date: endDate,
+    });
+    if (error) {
+      setNotice(error.message);
+      return { ok: false, error };
+    }
+    if (removedTimelineDraftIds.size && session?.user?.id) {
+      removedTimelineDraftIds.forEach((itemId) => {
+        clearDraft(
+          getDraftKey({
+            entityId: itemId,
+            entityType: "timeline",
+            tripId: activeTrip.id,
+            userId: session.user.id,
+          }),
+        );
+      });
+    }
+    setActiveDay((current) => Math.min(current, Math.max((preview.newDayCount || 1) - 1, 0)));
+    await Promise.all([loadTrips(activeTrip.id), loadTripData(activeTrip.id)]);
+    return { ok: true, data };
+  }
+
   async function deleteTrip() {
-    if (!activeTrip || !isOwner) return;
+    if (!activeTrip || !canManageActiveTrip) return;
     const ok = window.confirm(`刪除「${activeTrip.title}」？`);
     if (!ok) return;
     const { error } = await supabase.from("trips").delete().eq("id", activeTrip.id);
@@ -1828,7 +2119,7 @@ export default function App() {
   }
 
   async function saveItem(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const editingItem = editingId ? items.find((item) => item.id === editingId) : null;
     if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
@@ -1874,7 +2165,7 @@ export default function App() {
   }
 
   async function saveAlternative(itemId, payload, editingId) {
-    if (!activeTrip || !canEdit) return { ok: false };
+    if (!activeTrip || !canEditActiveTripContent) return { ok: false };
     const item = items.find((currentItem) => currentItem.id === itemId);
     if (item?.is_fixed) {
       setNotice("此行程已固定，請先解鎖後再修改。");
@@ -1913,7 +2204,7 @@ export default function App() {
   }
 
   async function deleteAlternative(alternativeId) {
-    if (!activeTrip || !canEdit) return { ok: false };
+    if (!activeTrip || !canEditActiveTripContent) return { ok: false };
     const alternative = alternatives.find((item) => item.id === alternativeId);
     const parentItem = alternative ? items.find((item) => item.id === alternative.itinerary_item_id) : null;
     if (parentItem?.is_fixed) {
@@ -1930,7 +2221,7 @@ export default function App() {
   }
 
   async function applyAlternative(item, alternative) {
-    if (!activeTrip || !canEdit) return { ok: false };
+    if (!activeTrip || !canEditActiveTripContent) return { ok: false };
     if (item?.is_fixed) {
       setNotice("此行程已固定，請先解鎖後再修改。");
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
@@ -1988,7 +2279,7 @@ export default function App() {
   }
 
   async function saveBudget(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const amount = Number(payload.amount || 0);
     const exchangeRate = payload.currency === "TWD" ? 1 : Number(payload.exchange_rate || 1);
@@ -2053,14 +2344,14 @@ export default function App() {
   }
 
   async function deleteBudget(budgetId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("budget_items").delete().eq("id", budgetId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function saveActualExpense(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const amount = Number(payload.amount || 0);
     const exchangeRate = payload.currency === "TWD" ? 1 : Number(payload.exchange_rate || 1);
@@ -2110,7 +2401,7 @@ export default function App() {
   }
 
   async function convertBudgetToActual(budget) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const participantIds = budgetParticipants
       .filter((participant) => participant.budget_item_id === budget.id)
       .map((participant) => participant.user_id);
@@ -2151,14 +2442,14 @@ export default function App() {
   }
 
   async function deleteActualExpense(expenseId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("actual_expenses").delete().eq("id", expenseId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function saveAccommodation(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const safeCheckOut =
       payload.check_out_date && payload.check_out_date < payload.check_in_date
@@ -2188,14 +2479,14 @@ export default function App() {
   }
 
   async function deleteAccommodation(accommodationId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("accommodations").delete().eq("id", accommodationId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function saveGuide(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const nextPayload = {
       trip_id: activeTrip.id,
@@ -2213,14 +2504,14 @@ export default function App() {
   }
 
   async function deleteGuide(guideId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("guide_items").delete().eq("id", guideId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function saveTodo(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const nextPayload = {
       trip_id: activeTrip.id,
@@ -2240,21 +2531,21 @@ export default function App() {
   }
 
   async function toggleTodo(todo) {
-    if (!canEdit) return;
+    if (!canEditActiveTripContent) return;
     const { error } = await supabase.from("todo_items").update({ completed: !todo.completed }).eq("id", todo.id);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function deleteTodo(todoId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("todo_items").delete().eq("id", todoId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function saveLuggageItem(payload, editingId, meta = {}) {
-    if (!activeTrip || !session?.user) return;
+    if (!activeTrip || !session?.user || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const nextPayload = {
       trip_id: activeTrip.id,
@@ -2273,21 +2564,21 @@ export default function App() {
   }
 
   async function toggleLuggageItem(item) {
-    if (!session?.user) return;
+    if (!session?.user || !canEditActiveTripContent) return;
     const { error } = await supabase.from("luggage_items").update({ packed: !item.packed }).eq("id", item.id);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function deleteLuggageItem(itemId) {
-    if (!session?.user) return;
+    if (!session?.user || !canEditActiveTripContent) return;
     const { error } = await supabase.from("luggage_items").delete().eq("id", itemId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function saveSharedLuggageItem(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const nextPayload = {
       trip_id: activeTrip.id,
@@ -2305,21 +2596,21 @@ export default function App() {
   }
 
   async function updateSharedLuggageItem(itemId, patch) {
-    if (!activeTrip || !session?.user) return;
+    if (!activeTrip || !session?.user || !canEditActiveTripContent) return;
     const { error } = await supabase.from("shared_luggage_items").update(patch).eq("id", itemId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function deleteSharedLuggageItem(itemId) {
-    if (!canEdit) return;
+    if (!canEditActiveTripContent) return;
     const { error } = await supabase.from("shared_luggage_items").delete().eq("id", itemId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function uploadAttachment(targetType, targetId, file) {
-    if (!activeTrip || !canEdit || !file) return;
+    if (!activeTrip || !canEditActiveTripContent || !file) return;
     if (file.size > 10 * 1024 * 1024) {
       setNotice("附件大小需小於 10MB");
       return;
@@ -2358,7 +2649,7 @@ export default function App() {
   }
 
   async function deleteAttachment(attachment) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const storageResult = await supabase.storage.from(attachmentBucket).remove([attachment.file_url]);
     if (storageResult.error) {
       setNotice(storageResult.error.message);
@@ -2370,7 +2661,7 @@ export default function App() {
   }
 
   async function deleteItem(itemId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const item = items.find((currentItem) => currentItem.id === itemId);
     if (item?.is_fixed && !isTransportationCard(item)) {
       setNotice("此行程已固定，請先解鎖後再修改。");
@@ -2402,7 +2693,7 @@ export default function App() {
   }
 
   async function toggleItemFixed(item) {
-    if (!activeTrip || !canEdit || !item || isTransportationCard(item)) return { ok: false };
+    if (!activeTrip || !canEditActiveTripContent || !item || isTransportationCard(item)) return { ok: false };
     if (!item.is_fixed && item.locked_by) {
       setNotice("此行程目前有人正在編輯，暫時無法鎖定。");
       return { ok: false };
@@ -2426,7 +2717,7 @@ export default function App() {
   }
 
   async function confirmTransportWarning(itemId) {
-    if (!activeTrip || !canEdit) return;
+    if (!activeTrip || !canEditActiveTripContent) return;
     const transportItem = items.find((item) => item.id === itemId);
     if (!transportItem) return;
     const snapshot = buildTransportPairSnapshot(
@@ -2443,7 +2734,7 @@ export default function App() {
   }
 
   async function reorderItem(draggedId, targetId) {
-    if (!canEdit || draggedId === targetId) return;
+    if (!canEditActiveTripContent || draggedId === targetId) return;
     const nextItems = [...dayItems];
     const from = nextItems.findIndex((item) => item.id === draggedId);
     const to = nextItems.findIndex((item) => item.id === targetId);
@@ -2469,7 +2760,7 @@ export default function App() {
   }
 
   async function addPackItem(title) {
-    if (!activeTrip || !canEdit || !title.trim()) return;
+    if (!activeTrip || !canEditActiveTripContent || !title.trim()) return;
     const { error } = await supabase
       .from("pack_items")
       .insert({ trip_id: activeTrip.id, title: title.trim() });
@@ -2478,7 +2769,7 @@ export default function App() {
   }
 
   async function togglePackItem(item) {
-    if (!canEdit) return;
+    if (!canEditActiveTripContent) return;
     const { error } = await supabase
       .from("pack_items")
       .update({ done: !item.done })
@@ -2488,14 +2779,14 @@ export default function App() {
   }
 
   async function deletePackItem(itemId) {
-    if (!canEdit) return;
+    if (!canEditActiveTripContent) return;
     const { error } = await supabase.from("pack_items").delete().eq("id", itemId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function approveMember(memberId) {
-    if (!isOwner) return;
+    if (!canInviteMembers) return;
     const { error } = await supabase
       .from("trip_members")
       .update({ status: "approved" })
@@ -2505,7 +2796,7 @@ export default function App() {
   }
 
   async function rejectMember(memberId) {
-    if (!isOwner) return;
+    if (!canInviteMembers) return;
     const { error } = await supabase.from("trip_members").delete().eq("id", memberId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
@@ -2513,9 +2804,10 @@ export default function App() {
 
 function exportTrip() {
     if (!activeTrip) return;
+    const exportedItems = timelineItemsInTripRange(items, activeTrip);
     const payload = {
       ...activeTrip,
-      itinerary_items: items,
+      itinerary_items: exportedItems,
       pack_items: packItems,
       members,
     };
@@ -2625,7 +2917,7 @@ function exportTrip() {
           {activeTrip ? (
             <MembersPanel
               className="sidebar-members"
-              isOwner={isOwner}
+              isOwner={canInviteMembers}
               members={members}
               onApprove={approveMember}
               onReject={rejectMember}
@@ -2644,14 +2936,22 @@ function exportTrip() {
           trip={activeTrip}
           members={members}
           days={days}
-          canEditTrip={isOwner}
+          dateChangePreviewData={tripDateChangePreviewData}
+          canChangeTripDates={canChangeTripDates}
+          canEditTrip={canManageActiveTrip}
+          canInvite={canInviteMembers}
           canRenameTrip={canRenameActiveTrip}
+          canShare={canOpenShareDialog}
+          canViewDatePopover={isOwner}
           onDelete={deleteTrip}
           onExport={exportTrip}
           onInvite={() => setIsInviteDialogOpen(true)}
           onOpenMembers={focusSidebarMembers}
-          onShare={() => setIsShareDialogOpen(true)}
+          onShare={() => {
+            if (canOpenShareDialog) setIsShareDialogOpen(true);
+          }}
           onUpdateTrip={updateTrip}
+          onUpdateTripDateRange={updateTripDateRange}
           showDeveloperTools={isOwner}
         />
 
@@ -2682,7 +2982,7 @@ function exportTrip() {
             attachments={attachments}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
-            canEdit={canEdit}
+            canEdit={canEditActiveTripContent}
             dayItems={dayItems}
             days={days}
             isOwner={isOwner}
@@ -2762,12 +3062,13 @@ function exportTrip() {
         />
       ) : null}
 
-      {isInviteDialogOpen && activeTrip ? (
+      {isInviteDialogOpen && activeTrip && canInviteMembers ? (
         <InviteDialog trip={activeTrip} onClose={() => setIsInviteDialogOpen(false)} />
       ) : null}
 
-      {isShareDialogOpen && activeTrip ? (
+      {isShareDialogOpen && activeTrip && canOpenShareDialog ? (
         <ShareDialog
+          canManage={canManageShareLink}
           links={shareLinks}
           onClose={() => setIsShareDialogOpen(false)}
           onRefresh={() => loadShareLinks(activeTrip.id)}
@@ -2924,19 +3225,89 @@ function TripHeaderIcon({ name }) {
   );
 }
 
+function TripDateChangePreview({ isRemovalConfirmed = false, onConfirmRemoval, preview }) {
+  if (!preview || preview.type === "unchanged" || preview.type === "invalid") return null;
+  const addedDayCount = Math.max(0, preview.newDayCount - preview.oldDayCount);
+  const isBlocked = preview.type === "shortened-with-timeline";
+  const isShortened = preview.type === "shortened-empty-tail" || preview.type === "shortened-with-timeline";
+  const reviewCount = preview.accommodationCount + preview.todoCount;
+
+  return (
+    <div className={`trip-date-change-preview${isBlocked ? " is-blocked" : ""}`} aria-live="polite">
+      {preview.type === "same-or-extended" ? (
+        <p>
+          Day 1 會對齊新的開始日期
+          {addedDayCount ? `，並新增 ${addedDayCount} 個空白 Day。` : "，既有 Day 順序維持不變。"}
+        </p>
+      ) : null}
+      {preview.type === "shortened-empty-tail" ? (
+        <p>將移除 {preview.removedDayPositions.length} 個尾端空白 Day，未發現 Timeline 資料。</p>
+      ) : null}
+      {isBlocked ? <p>此變更會移除含有 Timeline 資料的 Day，本階段先阻擋儲存。</p> : null}
+      {isShortened && preview.affectedDays.length ? (
+        <ul className="trip-date-change-days">
+          {preview.affectedDays.map((day) => (
+            <li key={day.dayKey}>
+              <strong>
+                {day.label}
+                {day.originalDate ? ` · ${formatHeaderDate(day.originalDate)}` : ""}
+              </strong>
+              {day.counts.timeline ? (
+                <span>
+                  {day.counts.visits} 個行程、{day.counts.transports} 個交通
+                  {day.counts.fixed ? `、${day.counts.fixed} 個固定項目` : ""}
+                  {day.counts.alternatives ? `、${day.counts.alternatives} 個備案` : ""}
+                  {day.counts.budgetLinks ? `、${day.counts.budgetLinks} 個預算連結` : ""}
+                </span>
+              ) : (
+                <span>空白 Day</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {reviewCount ? (
+        <p className="trip-date-change-note">
+          住宿 {preview.accommodationCount} 筆、待辦 {preview.todoCount} 筆不會自動調整，儲存後請人工確認。
+        </p>
+      ) : null}
+      {isBlocked ? (
+        <div className="trip-date-change-confirm">
+          <span>
+            {isRemovalConfirmed
+              ? "已確認縮短旅程，儲存後會刪除上述 Timeline 資料。"
+              : "請先確認縮短旅程，確認不會立即儲存。"}
+          </span>
+          {!isRemovalConfirmed ? (
+            <button type="button" className="ghost-button compact" onClick={onConfirmRemoval}>
+              確認縮短旅程
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function TripHeader({
   activeSection,
   trip,
   members = [],
   days = [],
+  dateChangePreviewData = {},
   canEditTrip = false,
+  canChangeTripDates = canEditTrip,
+  canInvite = canEditTrip,
   canRenameTrip = canEditTrip,
+  canShare = canEditTrip,
+  canViewDatePopover = canChangeTripDates,
   onDelete,
   onExport,
   onInvite,
   onOpenMembers,
   onShare,
   onUpdateTrip,
+  onUpdateTripDateRange,
   showDeveloperTools = false,
 }) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -2962,6 +3333,7 @@ function TripHeader({
   const [startDateInput, setStartDateInput] = useState("");
   const [endDateInput, setEndDateInput] = useState("");
   const [dateSelectionStep, setDateSelectionStep] = useState("start");
+  const [isDateRemovalConfirmed, setIsDateRemovalConfirmed] = useState(false);
   const [hoveredDate, setHoveredDate] = useState("");
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(parseDateOnly(todayInput()) || new Date()));
   const [dateError, setDateError] = useState("");
@@ -2985,9 +3357,11 @@ function TripHeader({
   const hasTrip = Boolean(trip);
   const canEditTitle = hasTrip && canRenameTrip && typeof onUpdateTrip === "function";
   const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
+  const canViewTripDateRange = hasTrip && canViewDatePopover && typeof onUpdateTripDateRange === "function";
+  const canUpdateTripDateRange = canViewTripDateRange && canChangeTripDates;
   const canOpenDestinationPopover = canOpenTripEditor;
-  const canOpenDatePopover = canOpenTripEditor;
-  const canOpenDeveloperTools = hasTrip && showDeveloperTools && canEditTrip && typeof onUpdateTrip === "function";
+  const canOpenDatePopover = canViewTripDateRange;
+  const canOpenDeveloperTools = hasTrip && showDeveloperTools && typeof onUpdateTripDateRange === "function";
   const isDateRangeEmpty = !startDateDraft && !endDateDraft;
   const dateDraftDayCount = dateRangeDayCount(startDateDraft, endDateDraft);
   const todayDateKey = todayInput();
@@ -3001,6 +3375,19 @@ function TripHeader({
       ? hoveredDate
       : "";
   const previewDayCount = previewEndDate ? dateRangeDayCount(startDateDraft, previewEndDate) : null;
+  const dateChangePreview = useMemo(
+    () =>
+      buildTripDateChangePreview({
+        ...dateChangePreviewData,
+        newEndDate: endDateDraft,
+        newStartDate: startDateDraft,
+        trip,
+      }),
+    [dateChangePreviewData, endDateDraft, startDateDraft, trip],
+  );
+  useEffect(() => {
+    if (!dateChangePreview.hasTimelineRemoval) setIsDateRemovalConfirmed(false);
+  }, [dateChangePreview.hasTimelineRemoval]);
   const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
   const weekdayFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { weekday: "short" }), []);
   const fullDateFormat = useMemo(
@@ -3201,14 +3588,19 @@ function TripHeader({
     setIsApplyingDeveloperDates(true);
     let result;
     try {
-      result = await onUpdateTrip({ start_date: nextStartDate, end_date: nextEndDate });
+      result = await onUpdateTripDateRange({
+        allowSettlementOverride: true,
+        source: "developer-date-tool",
+        startDate: nextStartDate,
+        endDate: nextEndDate,
+      });
     } catch (error) {
       result = { ok: false, error };
     }
     if (result?.ok === false) {
       developerDateSaveRef.current = false;
       setIsApplyingDeveloperDates(false);
-      setDeveloperToolsError("套用失敗，請再試一次");
+      setDeveloperToolsError(result.message || "套用失敗，請再試一次");
       return false;
     }
     developerDateSaveRef.current = false;
@@ -3304,6 +3696,7 @@ function TripHeader({
     setIsDatePopoverOpen(false);
     setDateError("");
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setIsSavingDates(false);
     dateSaveRef.current = false;
     if (restoreFocus) {
@@ -3340,8 +3733,9 @@ function TripHeader({
     setEndDateInput(formatHeaderDate(nextOriginalEndDate) || "");
     setDateSelectionStep(initialDateSelectionStep(nextOriginalStartDate, nextOriginalEndDate));
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setVisibleMonth(startOfMonth(parseDateOnly(nextOriginalStartDate) || parseDateOnly(todayInput()) || new Date()));
-    setDateError("");
+    setDateError(canUpdateTripDateRange ? "" : "旅程已進入結算階段，無法修改日期。");
     setIsDatePopoverOpen(true);
   }
 
@@ -3361,6 +3755,10 @@ function TripHeader({
 
   async function saveDateDrafts() {
     if (!canOpenDatePopover || dateSaveRef.current) return false;
+    if (!canUpdateTripDateRange) {
+      setDateError("旅程已進入結算階段，無法修改日期。");
+      return false;
+    }
     const validationError = validateDateDrafts();
     if (validationError) {
       setDateError(validationError);
@@ -3372,19 +3770,27 @@ function TripHeader({
       closeDatePopover();
       return true;
     }
+    if (dateChangePreview.hasTimelineRemoval && !isDateRemovalConfirmed) {
+      setDateError("請先確認縮短旅程會刪除尾端 Timeline 資料。");
+      return false;
+    }
     setDateError("");
     dateSaveRef.current = true;
     setIsSavingDates(true);
     let result;
     try {
-      result = await onUpdateTrip({ start_date: startDateDraft, end_date: endDateDraft });
+      result = await onUpdateTripDateRange({
+        confirmTimelineRemoval: dateChangePreview.hasTimelineRemoval && isDateRemovalConfirmed,
+        startDate: startDateDraft,
+        endDate: endDateDraft,
+      });
     } catch (error) {
       result = { ok: false, error };
     }
     if (result?.ok === false) {
       dateSaveRef.current = false;
       setIsSavingDates(false);
-      setDateError("儲存失敗，請再試一次");
+      setDateError(result.message || "儲存失敗，請再試一次");
       return false;
     }
     dateSaveRef.current = false;
@@ -3394,13 +3800,17 @@ function TripHeader({
   }
 
   function selectDateFromCalendar(dateKey) {
-    if (isSavingDates) return;
+    if (isSavingDates || !canUpdateTripDateRange) {
+      if (!canUpdateTripDateRange) setDateError("旅程已進入結算階段，無法修改日期。");
+      return;
+    }
     if (isDateBefore(dateKey, todayDateKey)) {
       setDateError("不可選擇早於今日的日期");
       return;
     }
     setDateError("");
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     if (dateSelectionStep === "start" || !startDateDraft) {
       setStartDateDraft(dateKey);
       setStartDateInput(formatHeaderDate(dateKey));
@@ -3423,12 +3833,17 @@ function TripHeader({
   }
 
   function clearDateDrafts() {
+    if (!canUpdateTripDateRange) {
+      setDateError("旅程已進入結算階段，無法修改日期。");
+      return;
+    }
     setStartDateDraft("");
     setEndDateDraft("");
     setStartDateInput("");
     setEndDateInput("");
     setDateSelectionStep("start");
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setDateError("");
     requestAnimationFrame(() => {
       startDateTextInputRef.current?.focus();
@@ -3442,6 +3857,7 @@ function TripHeader({
     setEndDateInput(formatHeaderDate(originalEndDate) || "");
     setDateSelectionStep(initialDateSelectionStep(originalStartDate, originalEndDate));
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setDateError("");
     setVisibleMonth(startOfMonth(parseDateOnly(originalStartDate) || parseDateOnly(todayInput()) || new Date()));
     requestAnimationFrame(() => {
@@ -3450,6 +3866,10 @@ function TripHeader({
   }
 
   function commitDateTextInput(field) {
+    if (!canUpdateTripDateRange) {
+      setDateError("旅程已進入結算階段，無法修改日期。");
+      return false;
+    }
     const rawValue = field === "start" ? startDateInput : endDateInput;
     if (!String(rawValue || "").trim()) {
       if (field === "start") {
@@ -3461,6 +3881,7 @@ function TripHeader({
         setEndDateDraft("");
         setDateSelectionStep(initialDateSelectionStep(startDateDraft, ""));
       }
+      setIsDateRemovalConfirmed(false);
       setDateError("");
       return true;
     }
@@ -3485,6 +3906,7 @@ function TripHeader({
     }
     setDateError("");
     setHoveredDate("");
+    setIsDateRemovalConfirmed(false);
     setVisibleMonth(startOfMonth(parseDateOnly(normalized)));
     if (field === "start") {
       setStartDateDraft(normalized);
@@ -3881,7 +4303,7 @@ function TripHeader({
                                 inputMode="numeric"
                                 placeholder="YYYYMMDD"
                                 value={startDateInput}
-                                disabled={isSavingDates}
+                                disabled={isSavingDates || !canUpdateTripDateRange}
                                 aria-describedby={dateError ? "trip-header-date-error" : undefined}
                                 onBlur={() => commitDateTextInput("start")}
                                 onChange={(event) => {
@@ -3898,7 +4320,7 @@ function TripHeader({
                                 inputMode="numeric"
                                 placeholder="YYYYMMDD"
                                 value={endDateInput}
-                                disabled={isSavingDates}
+                                disabled={isSavingDates || !canUpdateTripDateRange}
                                 aria-describedby={dateError ? "trip-header-date-error" : undefined}
                                 onBlur={() => commitDateTextInput("end")}
                                 onChange={(event) => {
@@ -3915,6 +4337,16 @@ function TripHeader({
                               {renderDateMonth(addMonths(visibleMonth, 1), { next: true })}
                             </div>
                           </div>
+                          {canUpdateTripDateRange ? (
+                            <TripDateChangePreview
+                              isRemovalConfirmed={isDateRemovalConfirmed}
+                              onConfirmRemoval={() => {
+                                setIsDateRemovalConfirmed(true);
+                                setDateError("");
+                              }}
+                              preview={dateChangePreview}
+                            />
+                          ) : null}
                           {dateError ? (
                             <div
                               className="trip-header-date-error"
@@ -3937,7 +4369,7 @@ function TripHeader({
                               <button
                                 type="button"
                                 className="ghost-button compact"
-                                disabled={isSavingDates || isDateRangeEmpty}
+                                disabled={isSavingDates || !canUpdateTripDateRange || isDateRangeEmpty}
                                 onClick={clearDateDrafts}
                               >
                                 清除
@@ -3947,6 +4379,7 @@ function TripHeader({
                                 className="primary-button compact"
                                 disabled={
                                   isSavingDates ||
+                                  !canUpdateTripDateRange ||
                                   (!isDateRangeEmpty && (!startDateDraft || !endDateDraft || isDateBefore(endDateDraft, startDateDraft)))
                                 }
                                 onClick={isDateRangeEmpty ? restoreOriginalDateDrafts : saveDateDrafts}
@@ -3988,7 +4421,7 @@ function TripHeader({
           type="button"
           title="邀請朋友"
           aria-label="邀請朋友"
-          disabled={!hasTrip || !canEditTrip}
+          disabled={!hasTrip || !canInvite}
           onClick={onInvite}
         >
           <TripHeaderIcon name="invite" />
@@ -3998,7 +4431,7 @@ function TripHeader({
           type="button"
           title="唯讀分享"
           aria-label="唯讀分享"
-          disabled={!hasTrip || !canEditTrip}
+          disabled={!hasTrip || !canShare}
           onClick={onShare}
         >
           <TripHeaderIcon name="share" />
@@ -4052,7 +4485,7 @@ function TripHeader({
           <div>
             <h3 className="trip-header-developer-tools-heading">開發者工具</h3>
             <p className="trip-header-developer-tools-hint">
-              僅供測試歷史日期與旅程階段使用。此工具可能略過正式日期選擇器的限制。
+              開發者日期工具可覆寫結算階段日期鎖，僅供測試使用。
             </p>
           </div>
           <div className="trip-header-developer-tools-fields">
@@ -4153,6 +4586,16 @@ function DemoApp({ initialSection }) {
     });
     return next;
   }, [timelineAlternatives]);
+  const tripDateChangePreviewData = useMemo(
+    () => ({
+      accommodations: [],
+      alternatives: timelineAlternatives,
+      itineraryBudgetLinks,
+      items: timelineItems,
+      todoItems: [],
+    }),
+    [itineraryBudgetLinks, timelineAlternatives, timelineItems],
+  );
 
   function changeSection(section) {
     setActiveSection(section);
@@ -4162,6 +4605,37 @@ function DemoApp({ initialSection }) {
   function selectTimelineDay(dayIndex) {
     setActiveDay(dayIndex);
     if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
+  }
+
+  function updateDemoTripDateRange({ confirmTimelineRemoval = false, startDate, endDate }) {
+    if (!startDate || !endDate || endDate < startDate) return { ok: false };
+    const preview = buildTripDateChangePreview({
+      ...tripDateChangePreviewData,
+      newEndDate: endDate,
+      newStartDate: startDate,
+      trip: demoActiveTrip,
+    });
+    if (preview.hasTimelineRemoval && !confirmTimelineRemoval) return { ok: false, unsafeShortening: true };
+    const removedIds = confirmTimelineRemoval
+      ? timelineItemIdsRemovedByShortening(timelineItems, preview.newDayCount)
+      : new Set();
+    setDemoActiveTrip((current) => ({ ...current, start_date: startDate, end_date: endDate }));
+    setTimelineItems((current) =>
+      syncTimelineItemDatesForTripStart(
+        current.filter((item) => !removedIds.has(item.id)),
+        startDate,
+      ),
+    );
+    if (removedIds.size) {
+      setTimelineAlternatives((current) =>
+        current.filter((alternative) => !removedIds.has(alternative.itinerary_item_id)),
+      );
+      setItineraryBudgetLinks((current) =>
+        current.filter((link) => !removedIds.has(link.itinerary_item_id)),
+      );
+    }
+    setActiveDay((current) => Math.min(current, Math.max((preview.newDayCount || 1) - 1, 0)));
+    return { ok: true };
   }
 
   function saveTimelineItem(payload, editingId, meta = {}) {
@@ -4554,6 +5028,7 @@ function DemoApp({ initialSection }) {
           trip={demoActiveTrip}
           members={demoMembers}
           days={days}
+          dateChangePreviewData={tripDateChangePreviewData}
           canEditTrip
           onDelete={() => {}}
           onExport={() => {}}
@@ -4563,6 +5038,7 @@ function DemoApp({ initialSection }) {
             setDemoActiveTrip((current) => ({ ...current, ...patch }));
             return { ok: true };
           }}
+          onUpdateTripDateRange={updateDemoTripDateRange}
         />
         {activeSection === "timeline" ? (
           <>
@@ -9699,7 +10175,7 @@ function LuggagePanel({
             {sharedLuggageItems.length ? (
               sharedLuggageItems.map((item) => {
                 const assignee = memberById.get(item.assigned_to);
-                const canToggleAssigned = item.assigned_to === currentUserId || canEdit;
+                const canToggleAssigned = canEdit && (item.assigned_to === currentUserId || canEdit);
                 return (
                   <article className="shared-luggage-row" key={item.id}>
                     <div>
@@ -9948,18 +10424,51 @@ function InviteDialog({ trip, onClose }) {
   );
 }
 
-function ShareDialog({ links, onClose, onRefresh, trip }) {
+function ShareDialog({ canManage = false, links, onClose, onRefresh, trip }) {
   const [busy, setBusy] = useState(false);
   const [copiedId, setCopiedId] = useState("");
+  const [error, setError] = useState("");
+  const primaryLink = useMemo(
+    () =>
+      [...links].sort((a, b) => {
+        if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+        return (b.created_at || "").localeCompare(a.created_at || "");
+      })[0] || null,
+    [links],
+  );
 
   async function copyShareUrl(token, id) {
     const url = `${window.location.origin}?share=${token}`;
-    await navigator.clipboard.writeText(url);
-    setCopiedId(id);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setError("");
+    } catch {
+      setError("無法複製分享連結，請手動複製網址。");
+    }
   }
 
   async function createShareLink() {
+    if (!canManage) return;
     setBusy(true);
+    setError("");
+    if (primaryLink) {
+      if (!primaryLink.is_active) {
+        const { error: updateError } = await supabase
+          .from("share_links")
+          .update({ is_active: true })
+          .eq("id", primaryLink.id);
+        if (updateError) {
+          setBusy(false);
+          setError(updateError.message);
+          return;
+        }
+        await onRefresh();
+      }
+      setBusy(false);
+      await copyShareUrl(primaryLink.token, primaryLink.id);
+      return;
+    }
     const token = crypto.randomUUID();
     const { error } = await supabase.from("share_links").insert({
       trip_id: trip.id,
@@ -9969,7 +10478,7 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
     setBusy(false);
 
     if (error) {
-      window.alert(error.message);
+      setError(error.message);
       return;
     }
 
@@ -9978,7 +10487,9 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
   }
 
   async function toggleShareLink(link) {
+    if (!canManage) return;
     setBusy(true);
+    setError("");
     const { error } = await supabase
       .from("share_links")
       .update({ is_active: !link.is_active })
@@ -9986,7 +10497,7 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
     setBusy(false);
 
     if (error) {
-      window.alert(error.message);
+      setError(error.message);
       return;
     }
 
@@ -9998,27 +10509,27 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
       <div className="dialog-card share-dialog">
         <h2>唯讀分享</h2>
         <p>分享頁不需要登入，只會顯示行程、住宿與指南；預算、實付、結算、行李與成員資料不會公開。</p>
+        {error ? <div className="notice danger">{error}</div> : null}
         <div className="share-link-list">
-          {links.length ? (
-            links.map((link) => {
-              const shareUrl = `${window.location.origin}?share=${link.token}`;
-              return (
-                <div className="share-link-row" key={link.id}>
-                  <div>
-                    <strong>{link.is_active ? "啟用中" : "已停用"}</strong>
-                    <span>{shareUrl}</span>
-                  </div>
-                  <div className="share-link-actions">
-                    <button className="mini-button" type="button" onClick={() => copyShareUrl(link.token, link.id)}>
-                      {copiedId === link.id ? "已複製" : "複製"}
-                    </button>
-                    <button className="mini-button" type="button" disabled={busy} onClick={() => toggleShareLink(link)}>
-                      {link.is_active ? "停用" : "啟用"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })
+          {primaryLink ? (
+            <div className="share-link-row" key={primaryLink.id}>
+              <div>
+                <strong>{primaryLink.is_active ? "分享連結已啟用" : "分享連結已停用"}</strong>
+                <span>{`${window.location.origin}?share=${primaryLink.token}`}</span>
+              </div>
+              <div className="share-link-actions">
+                {primaryLink.is_active ? (
+                  <button className="mini-button" type="button" onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}>
+                    {copiedId === primaryLink.id ? "已複製" : "複製"}
+                  </button>
+                ) : null}
+                {canManage ? (
+                  <button className="mini-button" type="button" disabled={busy} onClick={() => toggleShareLink(primaryLink)}>
+                    {primaryLink.is_active ? "停用" : "啟用"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
           ) : (
             <div className="empty-inline">尚未建立唯讀分享連結。</div>
           )}
@@ -10027,9 +10538,11 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
           <button className="ghost-button" type="button" onClick={onClose}>
             關閉
           </button>
-          <button className="primary-button compact" type="button" disabled={busy} onClick={createShareLink}>
-            建立並複製連結
-          </button>
+          {canManage ? (
+            <button className="primary-button compact" type="button" disabled={busy} onClick={createShareLink}>
+              建立並複製連結
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -10041,8 +10554,9 @@ function ShareView({ error, loading, snapshot }) {
   const itineraryItems = snapshot?.itinerary_items || [];
   const accommodations = snapshot?.accommodations || [];
   const guideItems = snapshot?.guide_items || [];
+  const sortedItineraryItems = useMemo(() => sortScheduleItems(itineraryItems), [itineraryItems]);
 
-  const groupedItems = itineraryItems.reduce((groups, item) => {
+  const groupedItems = sortedItineraryItems.reduce((groups, item) => {
     const key = item.date || `Day ${Number(item.day_index || 0) + 1}`;
     groups[key] = [...(groups[key] || []), item];
     return groups;

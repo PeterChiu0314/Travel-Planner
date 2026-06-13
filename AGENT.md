@@ -200,6 +200,14 @@ Only `request_trip_membership` should be directly callable from the frontend amo
 
 Migrations are in `supabase/migrations`.
 
+Applied production migrations:
+
+- `016_apply_trip_date_change.sql`
+- `017_confirm_trip_date_shortening.sql`
+- `018_filter_share_snapshot_timeline.sql`
+
+These have already been applied to the production Supabase project. Do not edit them in place for future work. Any schema, RPC, permission, or share snapshot change after Phase 1.7 must use a new migration, starting at `019+`.
+
 Important tables:
 
 - `trips`: trip metadata. Has both `title` and `name` for compatibility. Status is `planning`, `traveling`, or `settled`.
@@ -241,6 +249,24 @@ Share flow:
 - Public `get_share_snapshot(share_token)` delegates to `app_private.get_share_snapshot`.
 - It returns only trip, timeline, accommodations, and guide data.
 - It must not expose budget, actual expense, settlement, personal luggage, shared luggage, member private data, or attachments unless explicitly redesigned.
+- Share links are a readonly public view, not member invitations.
+- Owner can manage share links.
+- Editor can open the share dialog and copy an existing active share link.
+- Viewer cannot open the share dialog.
+
+Trip date data flow:
+
+- The current Timeline model is still mixed: Day identity is derived from `day_index`, while `itinerary_items.date` is stored for compatibility and export/share consistency.
+- `trip_days` has not been introduced yet. Do not assume stable Day row identity exists.
+- Formal trip date changes must go through `updateTripDateRange()` in `src/App.jsx`.
+- `updateTripDateRange()` must call the centralized `apply_trip_date_change` RPC for production data changes. Do not directly update `trips.start_date` / `trips.end_date` from a new frontend path.
+- `itinerary_items.date` must stay aligned with `trip.start_date + day_index`.
+- Shortening that removes Timeline data must require explicit confirmation and must happen transactionally through the RPC path.
+- Accommodation, Todo, Budget, Actual, Luggage, Guide, and Budget item bodies are not automatically date-shifted by trip date changes.
+- UI settlement phase is derived by `deriveTripStage(start_date, end_date)`, not only `trips.status`.
+- Header Date Popover and invite/member management must be locked in settlement phase.
+- Developer Date Tool may override settlement phase date lock for testing, but it must still require owner permission and must not bypass active editor / dirty draft guards, dangerous shortening confirmation, or the RPC transaction path.
+- Share / Export should filter out out-of-range Timeline items and derive display dates from `trip.start_date + day_index`.
 
 ## 7. Realtime Flow
 
@@ -634,7 +660,13 @@ UI:
 
 Always run:
 
-- `npm run build`
+- `npm.cmd run build`
+
+Automated smoke:
+
+- Playwright is available through `@playwright/test`.
+- Run `npx.cmd playwright test` after changes touching route branching, Demo, Share View, TripHeader, or app shell loading.
+- The current smoke suite covers app shell loading, `/demo/timeline`, Demo budget/luggage navigation, and public `?share=` route behavior.
 
 For auth/permissions changes:
 
