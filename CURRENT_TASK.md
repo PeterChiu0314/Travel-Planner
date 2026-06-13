@@ -360,3 +360,57 @@ npm.cmd run build
 - `CURRENT_TASK.md`
 
 修改 UI 時請保持保守、小步、可驗證。
+
+---
+
+## Phase 1.8 Work Log
+
+### Phase 1.8A - Audit
+
+- Completed: Audited current App Header, member/sidebar/share/invite permission boundaries, and confirmed no DB/RLS/RPC changes are required for this phase.
+- Changed files: none.
+- Test result: read-only audit; no validation commands required beyond branch/status checks.
+- Next: Implement Header member preview and unified members/invite entry.
+
+### Phase 1.8B - Header Member Entry
+
+- Completed: Replaced the standalone invite icon in TripHeader with a member preview button that shows member avatars and owner-only pending count.
+- Changed files: `src/App.jsx`, `src/styles.css`.
+- Test result: `npm.cmd run build` passed.
+- Next: Build the unified members/invite dialog.
+
+### Phase 1.8C - Members / Invite Dialog
+
+- Completed: Replaced the old invite-only dialog with a members dialog that lists approved members, supports owner role changes for editor/viewer, supports member removal, shows pending requests for owner, and keeps settlement-phase member management locked.
+- Changed files: `src/App.jsx`, `src/styles.css`.
+- Test result: `npm.cmd run build` passed.
+- Next: Align Demo route behavior with the formal Header entry.
+
+### Phase 1.8D - Demo Parity
+
+- Completed: Added Demo Header member entry behavior and a read-only Demo members dialog without Supabase writes.
+- Changed files: `src/App.jsx`.
+- Test result: `npm.cmd run test:e2e` initially caught a missing React key fallback for demo members; fixed with `id || user_id || email`.
+- Next: Add smoke coverage for the new Demo member entry.
+
+### Phase 1.8E - Smoke Coverage
+
+- Completed: Added Playwright smoke coverage that opens the Demo Header member entry, verifies the 4-avatar +N overflow state, verifies the members dialog renders, verifies the metadata member count opens the same dialog, verifies Demo navigation does not call Supabase/Auth/REST/Realtime backend APIs, and locks formal member/share permission guards, labels, settlement notice, and disabled states with source-level tests.
+- Changed files: `tests/phase-1-7f-smoke.spec.js`, `tests/phase-1-8-source-guards.spec.js`.
+- Test result: `npm.cmd run test:e2e` passed with 8/8 tests.
+- Next: Final validation and cleanup.
+
+### Phase 1.8F - Final Validation
+
+- Completed: Ran final validation after App/Header/CSS/test changes. Completion audit also tightened approved-member-only Header counts, expanded Demo members to cover +N overflow, and added trip boundary filters to pending approve/reject, role update, and member removal mutations.
+- Changed files: `CURRENT_TASK.md`, `src/App.jsx`, `src/styles.css`, `tests/phase-1-7f-smoke.spec.js`, `tests/phase-1-8-source-guards.spec.js`.
+- Test result: `npm.cmd run build` passed; `npm.cmd run test:e2e` passed with 8/8 tests; `git diff --check` passed.
+- Next: User review, then commit/push when requested.
+
+### Phase 1.8 Pending Manual Verification
+
+- Owner: open Members dialog, create invite link, approve/reject pending member, change editor/viewer role, remove editor/viewer, and confirm Share management still works from the separate Share dialog.
+- Editor: open Members dialog, confirm invite/pending/role/remove controls are unavailable, open Share dialog, copy an existing active share link, and confirm create/enable/disable controls are unavailable.
+- Viewer: open Members dialog, confirm invite/pending/role/remove controls are unavailable, and confirm Share dialog cannot be opened.
+- Settlement phase: confirm Members dialog opens read-only, management controls are disabled, settlement notice appears, Header date editing remains locked, and Share permissions remain independent.
+- Auth/invite regression: confirm Google login still reaches the formal app and `request_trip_membership` invite flow still works.
