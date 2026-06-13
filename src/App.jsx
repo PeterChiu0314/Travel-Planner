@@ -1410,13 +1410,16 @@ export default function App() {
   const canEdit =
     activeMembership?.status === "approved" &&
     (activeMembership?.role === "owner" || activeMembership?.role === "editor");
-  const isTripSettled = activeTrip?.status === "settled";
-  const canEditActiveTripContent = canEdit && !isTripSettled;
-  const canManageActiveTrip = isOwner && !isTripSettled;
-  const canChangeTripDates = isOwner && !isTripSettled;
-  const canInviteMembers = isOwner && !isTripSettled;
+  const activeTripStage = deriveTripStage(activeTrip?.start_date, activeTrip?.end_date);
+  const isTripFinalizedStatus = activeTrip?.status === "settled";
+  const isTripInSettlementPhase = activeTripStage === "settled";
+  const isTripDateLocked = isTripFinalizedStatus || isTripInSettlementPhase;
+  const canEditActiveTripContent = canEdit && !isTripDateLocked;
+  const canManageActiveTrip = isOwner && !isTripDateLocked;
+  const canChangeTripDates = isOwner && !isTripDateLocked;
+  const canInviteMembers = isOwner && !isTripDateLocked;
   const canManageShareLink = isOwner;
-  const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripSettled;
+  const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
@@ -1987,7 +1990,7 @@ export default function App() {
 
   async function updateTripDateRange({ confirmTimelineRemoval = false, startDate, endDate }) {
     if (!activeTrip || !canChangeTripDates) {
-      const message = isTripSettled ? "旅程已結算，無法修改日期。" : "You do not have permission to change trip dates.";
+      const message = isTripDateLocked ? "旅程已進入結算階段，無法修改日期。" : "You do not have permission to change trip dates.";
       setNotice(message);
       return { ok: false, dateLocked: true, message };
     }
@@ -3540,7 +3543,7 @@ function TripHeader({
     }
     setDeveloperStartDateDraft(trip?.start_date || "");
     setDeveloperEndDateDraft(trip?.end_date || "");
-    setDeveloperToolsError(canUpdateTripDateRange ? "" : "旅程已結算，無法修改日期。");
+    setDeveloperToolsError(canUpdateTripDateRange ? "" : "旅程已進入結算階段，無法修改日期。");
     setIsDeveloperToolsOpen(true);
   }
 
@@ -3558,7 +3561,7 @@ function TripHeader({
   async function applyDeveloperDates() {
     if (!canOpenDeveloperTools || developerDateSaveRef.current) return false;
     if (!canUpdateTripDateRange) {
-      setDeveloperToolsError("旅程已結算，無法修改日期。");
+      setDeveloperToolsError("旅程已進入結算階段，無法修改日期。");
       return false;
     }
     const nextStartDate = developerStartDateDraft.trim();
@@ -3715,7 +3718,7 @@ function TripHeader({
     setHoveredDate("");
     setIsDateRemovalConfirmed(false);
     setVisibleMonth(startOfMonth(parseDateOnly(nextOriginalStartDate) || parseDateOnly(todayInput()) || new Date()));
-    setDateError(canUpdateTripDateRange ? "" : "旅程已結算，無法修改日期。");
+    setDateError(canUpdateTripDateRange ? "" : "旅程已進入結算階段，無法修改日期。");
     setIsDatePopoverOpen(true);
   }
 
@@ -3736,7 +3739,7 @@ function TripHeader({
   async function saveDateDrafts() {
     if (!canOpenDatePopover || dateSaveRef.current) return false;
     if (!canUpdateTripDateRange) {
-      setDateError("旅程已結算，無法修改日期。");
+      setDateError("旅程已進入結算階段，無法修改日期。");
       return false;
     }
     const validationError = validateDateDrafts();
@@ -3781,7 +3784,7 @@ function TripHeader({
 
   function selectDateFromCalendar(dateKey) {
     if (isSavingDates || !canUpdateTripDateRange) {
-      if (!canUpdateTripDateRange) setDateError("旅程已結算，無法修改日期。");
+      if (!canUpdateTripDateRange) setDateError("旅程已進入結算階段，無法修改日期。");
       return;
     }
     if (isDateBefore(dateKey, todayDateKey)) {
@@ -3814,7 +3817,7 @@ function TripHeader({
 
   function clearDateDrafts() {
     if (!canUpdateTripDateRange) {
-      setDateError("旅程已結算，無法修改日期。");
+      setDateError("旅程已進入結算階段，無法修改日期。");
       return;
     }
     setStartDateDraft("");
@@ -3847,7 +3850,7 @@ function TripHeader({
 
   function commitDateTextInput(field) {
     if (!canUpdateTripDateRange) {
-      setDateError("旅程已結算，無法修改日期。");
+      setDateError("旅程已進入結算階段，無法修改日期。");
       return false;
     }
     const rawValue = field === "start" ? startDateInput : endDateInput;
