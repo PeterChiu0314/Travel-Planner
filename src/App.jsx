@@ -10570,8 +10570,8 @@ function MembersInviteDialog({
   const inviteUrl = token ? `${window.location.origin}?invite=${token}` : "";
 
   return (
-    <div className="modal-backdrop">
-      <div className="dialog-card members-dialog">
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="dialog-card members-dialog" onClick={(event) => event.stopPropagation()}>
         <h2>成員與邀請</h2>
         {isTripDateLocked ? (
           <div className="notice">旅程已進入結算階段，無法邀請或管理成員。</div>
@@ -10657,7 +10657,7 @@ function MembersInviteDialog({
           <div className="panel-heading tight">
             <div>
               <p className="eyebrow">Invite</p>
-              <h3>邀請朋友</h3>
+              <h3>邀請成員</h3>
             </div>
           </div>
           <p>{hasOnlyOneApprovedMember ? "邀請朋友一起規劃這趟旅程。" : "朋友使用連結登入後會送出加入申請，核准後即可共同編輯。"}</p>
@@ -10672,7 +10672,7 @@ function MembersInviteDialog({
           <div className="panel-heading tight">
             <div>
               <p className="eyebrow">Permission</p>
-              <h3>你的權限說明</h3>
+              <h3>權限說明</h3>
             </div>
           </div>
           <p>

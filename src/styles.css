@@ -592,15 +592,18 @@ code {
 
 .member-avatar {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #fff;
   color: var(--mint-dark);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  align-content: center;
 }
 
 .member-avatar.more {
@@ -608,12 +611,13 @@ code {
 }
 
 .member-avatar.compact {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   margin-left: -7px;
   border-color: rgba(25, 109, 82, 0.18);
   box-shadow: 0 0 0 2px #fffefa;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .member-avatar.compact:first-child {
@@ -1181,18 +1185,27 @@ code {
 }
 
 .trip-header-member-preview {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-width: 154px;
-  min-height: 52px;
+  min-height: 40px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.88);
   color: var(--ink);
   padding: 0 12px;
   font: inherit;
   font-weight: 900;
+}
+
+.trip-header-member-preview::after {
+  content: "";
+  width: 1px;
+  height: 24px;
+  margin-left: auto;
+  background: rgba(98, 108, 101, 0.18);
 }
 
 .trip-header-member-preview:hover:not(:disabled) {
@@ -1227,23 +1240,37 @@ code {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
+  margin-left: 0;
+  order: 2;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 1.5px;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .trip-header-icon-button {
   display: inline-grid;
-  width: 52px;
-  height: 52px;
-  min-height: 52px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
   place-items: center;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.88);
   color: var(--ink);
+  align-content: center;
+  justify-content: center;
+}
+
+.trip-header-icon-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5px;
 }
 
 .trip-header-icon-button:hover:not(:disabled) {
@@ -3083,7 +3110,7 @@ textarea {
 
 .members-dialog {
   align-content: start;
-  width: min(720px, 100%);
+  width: min(600px, 100%);
   max-height: calc(100vh - 32px);
   overflow: auto;
 }
@@ -3094,18 +3121,18 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fffefa;
-  padding: 12px;
+  padding: 12px 18px;
 }
 
 .members-dialog-section h3 {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .member-row.detailed {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .member-row.detailed .member-email {
@@ -3116,14 +3143,19 @@ textarea {
 }
 
 .member-role-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
   border: 1px solid rgba(25, 109, 82, 0.16);
   border-radius: 999px;
   background: #f4fbf7;
   color: var(--mint-dark);
   padding: 5px 9px;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
   white-space: nowrap;
+  text-align: center;
 }
 
 .compact-select {

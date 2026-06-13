@@ -42,6 +42,8 @@ test("phase 1.8 members dialog keeps required labels and disabled states", () =>
   expect(appSource).toContain('editor: "編輯者"');
   expect(appSource).toContain('viewer: "檢視者"');
   expect(appSource).toContain("旅程已進入結算階段，無法邀請或管理成員。");
+  expect(appSource).toContain("<h3>邀請成員</h3>");
+  expect(appSource).toContain("<h3>權限說明</h3>");
   expect(appSource).toContain("邀請朋友一起規劃這趟旅程。");
   expect(appSource).toContain('const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];');
   expect(appSource).toContain('className="trip-header-member-pending"');

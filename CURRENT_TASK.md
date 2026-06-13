@@ -1,5 +1,35 @@
 # CURRENT_TASK.md
 
+## Current Status - App Layout Header Phase 1.8
+
+Branch:
+
+```text
+codex/app-layout-header-phase-1-8
+```
+
+Status:
+
+```text
+Phase 1.8 - Completed / Tested / User Verified
+```
+
+Summary:
+
+- Header member preview long button is implemented.
+- "成員與邀請" dialog is implemented.
+- Owner / Editor / Viewer permissions are aligned.
+- Editor can open Share Dialog and copy existing active share links.
+- Viewer cannot open Share Dialog.
+- Demo smoke coverage and source guard coverage are in place.
+- Latest pushed commits:
+  - `8835a54 feat: add phase 1.8 member header management`
+  - `4856504 fix: allow editors to copy active share links`
+
+Next likely work:
+
+- Continue App Layout Header follow-up from `codex/app-layout-header-phase-1-8`, or merge after final review.
+
 本文件記錄目前專案進度、當前工作方向、保護範圍與交接重點。之後 AI agent 進入專案時，請先閱讀本檔、`AGENT.md`、`UX_RULES.md`、`BUGS.md`。
 
 ---
@@ -405,12 +435,13 @@ npm.cmd run build
 - Completed: Ran final validation after App/Header/CSS/test changes. Completion audit also tightened approved-member-only Header counts, expanded Demo members to cover +N overflow, and added trip boundary filters to pending approve/reject, role update, and member removal mutations.
 - Changed files: `CURRENT_TASK.md`, `src/App.jsx`, `src/styles.css`, `tests/phase-1-7f-smoke.spec.js`, `tests/phase-1-8-source-guards.spec.js`.
 - Test result: `npm.cmd run build` passed; `npm.cmd run test:e2e` passed with 8/8 tests; `git diff --check` passed.
-- Next: User review, then commit/push when requested.
+- Next: Phase 1.8 is complete and pushed; proceed to merge/follow-up planning when requested.
 
-### Phase 1.8 Pending Manual Verification
+### Phase 1.8 Manual Verification
 
-- Owner: open Members dialog, create invite link, approve/reject pending member, change editor/viewer role, remove editor/viewer, and confirm Share management still works from the separate Share dialog.
-- Editor: open Members dialog, confirm invite/pending/role/remove controls are unavailable, open Share dialog, copy an existing active share link, and confirm create/enable/disable controls are unavailable.
-- Viewer: open Members dialog, confirm invite/pending/role/remove controls are unavailable, and confirm Share dialog cannot be opened.
-- Settlement phase: confirm Members dialog opens read-only, management controls are disabled, settlement notice appears, Header date editing remains locked, and Share permissions remain independent.
-- Auth/invite regression: confirm Google login still reaches the formal app and `request_trip_membership` invite flow still works.
+- Status: Completed / Tested / User Verified.
+- Owner: verified Members dialog, invite link, pending approval/rejection, editor/viewer role changes, editor/viewer removal, and independent Share management.
+- Editor: verified Members dialog read-only management state, Share dialog access, active share link copy, and no create/enable/disable controls.
+- Viewer: verified Members dialog access and no Share dialog access.
+- Settlement phase: verified Members dialog read-only behavior, management lock, settlement notice, Header date lock, and independent Share permissions.
+- Auth/invite regression: verified Google login and invite membership flow were not broken by Phase 1.8.

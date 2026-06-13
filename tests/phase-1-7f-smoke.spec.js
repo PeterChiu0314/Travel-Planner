@@ -120,6 +120,8 @@ test("demo header member entry opens members dialog", async ({ page }) => {
 
   await page.locator(".trip-header-meta .trip-header-meta-action").last().click();
   await expect(page.locator(".members-dialog")).toBeVisible();
+  await page.locator(".modal-backdrop").click({ position: { x: 8, y: 8 } });
+  await expect(page.locator(".members-dialog")).toHaveCount(0);
   expect(failures).toEqual([]);
 });
 
