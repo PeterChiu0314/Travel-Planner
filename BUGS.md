@@ -369,6 +369,22 @@ Description:
 
 ---
 
+## BUG-024 | npm audit reports vite/esbuild vulnerability
+
+Priority: Security backlog
+Status: Backlog
+
+Description:
+`npm audit` reports a vite/esbuild vulnerability after Playwright setup.
+
+Decision:
+Do not run `npm audit fix --force` during Phase 1.7F because it would upgrade to Vite 8 and may introduce breaking changes.
+
+Next step:
+Plan a dedicated dependency upgrade pass with Vite migration testing.
+
+---
+
 # Closed / Cannot Reproduce
 
 ## BUG-006 | Shared luggage blank submit
