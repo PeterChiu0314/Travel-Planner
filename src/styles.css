@@ -3185,6 +3185,25 @@ textarea {
   border-color: rgba(157, 51, 37, 0.36);
 }
 
+.member-remove-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.member-remove-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 @media (min-width: 1101px) {
   .timeline-workbench {
     grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr);
