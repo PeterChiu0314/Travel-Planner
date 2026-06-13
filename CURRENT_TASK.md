@@ -18,9 +18,9 @@ codex/trip-date-data-flow
 
 ## 目前階段
 
-目前進入 App Layout Phase 1.7：旅程日期與行程資料流階段。
+App Layout Phase 1.7：旅程日期變更與資料一致性已完成、已測試、User Verified，並已 push 到 `codex/trip-date-data-flow`。
 
-Phase 3 已大致收尾。App Layout Header Phase 1.0～1.6A 已完成並合併，Sidebar 與 Toolbar 後續會另開階段處理。目前重點改為：旅程日期變更後，Timeline、住宿、預算、待辦、Share / Export 等資料如何安全同步。
+Phase 3 已大致收尾。App Layout Header Phase 1.0～1.6A 已完成並合併，Phase 1.7 日期資料流已完成。Sidebar、Toolbar、Share UX、Data Portability、`trip_days` 與地圖 / 路線整合後續會另開階段處理。
 
 Header 目前狀態：
 
@@ -34,15 +34,25 @@ Header 目前狀態：
 - Phase 1.6A 移除舊鉛筆入口，將 Legacy Editor 改為開發者日期工具：✅ 已完成、已測試、User Verified
 - Phase 1.7A 日期與各模組資料關聯 Audit：✅ 已完成
 - Phase 1.7B 日期變更分類、Timeline 預檢與警示 UI：✅ 已完成、已測試、User Verified
+- Phase 1.7C 安全日期變更執行：✅ 已完成、已測試、User Verified
+- Phase 1.7D 縮短旅程確認與 Timeline 資料清理：✅ 已完成、已測試、User Verified
+- Phase 1.7E 跨流程一致性、Share / Export / Draft 收尾：✅ 已完成、已測試、User Verified
+- Phase 1.7F 完整回歸測試與文件更新：✅ 已完成、已測試、User Verified
 - Phase 1.5B 旅程檢視模式：⏸ 暫緩規劃，尚未實作
 
-核心方向：
+Phase 1.7 最終核心規則：
 
 - 維持既有 Supabase / Realtime / Draft Autosave / Edit Lock 穩定。
+- 正式旅程日期變更必須走 `updateTripDateRange()`，再走 `apply_trip_date_change` RPC；不要直接更新 `trips.start_date` / `trips.end_date`。
 - 旅程日期變更需先做預檢、影響統計與使用者確認，再做任何資料搬移或刪除。
-- 避免用前端多次 request 處理高風險縮短清理；需要 transaction 的情境優先評估 RPC。
-- Header 日期 Popover 與開發者日期工具維持既有 UI，不進行 Sidebar / Toolbar / Timeline layout 改版。
-- 不要在未確認規則前自動刪除 itinerary、住宿、待辦、預算連結或固定景點。
+- 縮短旅程且尾端有 Timeline 資料時，必須明確確認後才可 transaction 刪除。
+- Header Date Popover 不可繞過結算階段日期鎖。
+- Developer Date Tool 可覆寫 settlement phase date lock，但仍必須通過 Owner 權限、active editor / dirty draft guard、危險縮短確認與 RPC transaction。
+- Share / Export 的 Timeline 日期應與正式 Timeline 一致，以 `trip.start_date + day_index` 對齊，不依賴舊 `itinerary_items.date` 作顯示真相。
+- Accommodation / Todo / Budget 本體不因旅程日期變更自動修改；只在 preview / 提醒中提示使用者檢查。
+- `trip_days` 尚未導入；目前仍使用 `day_index + date` 混合模型。
+- JSON import 尚未實作，後續應獨立進入 Data Portability Phase。
+- 016 / 017 / 018 migrations 已套用正式 Supabase；後續 schema / RPC 變更不可修改已套用 migration，需新增 019+。
 
 ---
 
@@ -146,14 +156,20 @@ Phase 1.7 拆分：
   - Budget link 解除、Budget 保留。
   - Accommodation / Todo 不自動修改。
 - Phase 1.7E：跨流程一致性與正式收尾。
-  - 狀態：Migration 已套用正式 Supabase，待正式頁功能測試。
-  - Share View。
-  - Export JSON。
-  - Developer Date Tool。
-  - activeDay / Session restore。
+  - 狀態：已完成、已測試、User Verified。
+  - Share View 日期範圍過濾與日期一致性。
+  - Share Link 單筆規則。
+  - Export JSON 日期一致性。
+  - Developer Date Tool settlement override。
+  - activeDay / Session restore clamp。
   - Formal / Demo parity。
   - 防止其他日期更新路徑繞過統一資料入口。
 - Phase 1.7F：完整回歸測試與文件更新。
+  - 狀態：已完成、已測試、User Verified。
+  - 已建立 Playwright smoke / e2e 測試環境。
+  - `npm.cmd run build` 通過。
+  - `npx.cmd playwright test` 通過，4 tests passed。
+  - 已記錄 vite / esbuild npm audit vulnerability 為 backlog，不執行 breaking `npm audit fix --force`。
 
 ### Phase 3 目前順序
 

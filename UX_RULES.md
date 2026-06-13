@@ -126,6 +126,61 @@ Do not:
 - Add drag repositioning before Phase 3.4.
 - Let transportation cards support alternatives or flip-card behavior; alternatives remain visit-only.
 
+## Trip Date UX Rules
+
+Trip dates affect Timeline visibility, share/export consistency, and potential data deletion.
+
+Do:
+
+- Treat trip date changes as a high-impact flow.
+- Show a preview before changing dates.
+- Require explicit confirmation before shortening deletes Timeline data.
+- Keep Timeline item display dates aligned with `trip.start_date + day_index`.
+- Remind users that Accommodation and Todo dates are not automatically changed.
+
+Do not:
+
+- Let normal date editing silently hide or delete Timeline data.
+- Let Header Date Popover modify dates during settlement phase.
+- Treat fixed visit cards as immune from confirmed trip shortening.
+- Introduce a second normal date editing path outside the Header Date Popover.
+
+## Settlement UX Rules
+
+Settlement phase means the trip is effectively completed or archived for normal editing.
+
+Do:
+
+- Lock normal trip date editing during settlement phase.
+- Lock invite and member approval actions during settlement phase.
+- Keep readonly sharing available during settlement phase.
+- Design a deliberate "reopen trip" flow if settled trips need normal editing in the future.
+
+Do not:
+
+- Use Header Date Popover to reopen or reschedule a settled trip.
+- Block readonly sharing just because the trip is in settlement phase.
+- Confuse share links with member invitations.
+
+## Share UX Rules
+
+Readonly sharing is for showing the trip, not collaborating on it.
+
+Do:
+
+- Keep share links as a single primary link in the UI.
+- Let owners create, enable, disable, and copy share links.
+- Let editors open the share dialog and copy an existing active link.
+- Keep viewers out of the share dialog.
+- Keep the public share page unauthenticated and readonly.
+- Keep sensitive collaboration data out of Share View.
+
+Do not:
+
+- Expose Budget, Actual Expense, Settlement, Luggage, member private data, or private attachments in Share View unless the product explicitly redesigns sharing.
+- Let editors create, enable, or disable share links.
+- Treat a share link like a member invite.
+
 ## Budget UX Rules
 
 Budget is for travel planning and group clarity, not accounting bureaucracy.
@@ -180,6 +235,23 @@ Do not:
 - Build simplified CRUD pages that diverge from formal UI.
 - Connect Demo to Supabase, Auth, Storage, Realtime, draft autosave, edit lock, or localStorage.
 - Maintain a second unrelated UI for Demo.
+
+## Developer Tool UX Rules
+
+Developer tools exist for testing state transitions, not for normal user workflows.
+
+Do:
+
+- Keep Developer Date Tool owner-only.
+- Use it to test planning, traveling, and settlement phase transitions.
+- Allow it to override settlement phase date lock for testing.
+- Keep it on the same safe data path as formal date changes.
+
+Do not:
+
+- Show Developer Date Tool in Demo by default.
+- Let it bypass dirty draft guards, dangerous shortening confirmation, or transaction-backed RPC updates.
+- Promote it as the main trip date editing UI.
 
 ## Editing UX Rules
 
