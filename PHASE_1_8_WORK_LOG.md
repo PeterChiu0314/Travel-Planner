@@ -255,3 +255,38 @@ Remaining completion evidence requires:
 - Real formal trip data.
 - Manual Google login and invite-flow verification.
 
+## Regression Fix - Editor Share Link Visibility
+
+### Issue
+
+Editor could open the Share dialog but could not see the active share link previously created by Owner.
+
+### Root Cause
+
+The Share dialog open permission and share-link loading permission were not fully separated:
+
+- `canOpenShareDialog` allowed Owner or Editor to open the dialog.
+- The share-link loading effect still loaded links only when `isOwner` was true.
+- Result: Editor opened the dialog with an empty `shareLinks` state.
+
+### Fix
+
+- Kept `canOpenShareDialog = isOwner || isEditor`.
+- Renamed share management permission to `canManageShareLinks = isOwner`.
+- Updated share-link loading to run when `canOpenShareDialog` is true.
+- Left Share management controls behind `canManage`.
+- Editor can now see/copy active share links but still cannot create, enable, or disable share links.
+- Viewer still cannot open Share dialog.
+
+### Changed Files
+
+- `src/App.jsx`
+- `tests/phase-1-8-source-guards.spec.js`
+
+### Validation
+
+```text
+npm.cmd run build      passed
+npm.cmd run test:e2e   passed, 9/9
+git diff --check       passed
+```

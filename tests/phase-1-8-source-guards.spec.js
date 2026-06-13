@@ -9,9 +9,20 @@ test("phase 1.8 formal member and share gates stay separated", () => {
   expect(appSource).toContain(
     'const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");',
   );
-  expect(appSource).toContain("const canManageShareLink = isOwner;");
+  expect(appSource).toContain("const canManageShareLinks = isOwner;");
   expect(appSource).toContain("canManageMembers={canInviteMembers}");
-  expect(appSource).toContain("canManage={canManageShareLink}");
+  expect(appSource).toContain("canManage={canManageShareLinks}");
+  expect(appSource).toContain("if (activeTripId && canOpenShareDialog)");
+  expect(appSource).toContain("}, [activeTripId, canOpenShareDialog, loadShareLinks]);");
+});
+
+test("phase 1.8 editor share dialog can copy active links but cannot manage them", () => {
+  expect(appSource).toContain("primaryLink.is_active ? (");
+  expect(appSource).toContain("onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}");
+  expect(appSource).toContain("{canManage ? (");
+  expect(appSource).toContain("onClick={() => toggleShareLink(primaryLink)}");
+  expect(appSource).toContain("{canManage ? (");
+  expect(appSource).toContain("onClick={createShareLink}");
 });
 
 test("phase 1.8 member mutations keep owner-only lock and trip boundary", () => {

@@ -1423,7 +1423,7 @@ export default function App() {
   const canInviteMembers = isOwner && !isTripDateLocked;
   const canOpenMembersDialog = activeMembership?.status === "approved";
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
-  const canManageShareLink = isOwner;
+  const canManageShareLinks = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
   const pendingMemberCount = isOwner ? members.filter((member) => member.status === "pending").length : 0;
@@ -1802,12 +1802,12 @@ export default function App() {
   }, [activeDay, activeSection, activeTripId, isDemoMode, luggageTab, session?.user]);
 
   useEffect(() => {
-    if (activeTripId && isOwner) {
+    if (activeTripId && canOpenShareDialog) {
       loadShareLinks(activeTripId);
     } else {
       setShareLinks([]);
     }
-  }, [activeTripId, isOwner, loadShareLinks]);
+  }, [activeTripId, canOpenShareDialog, loadShareLinks]);
 
   useEffect(() => {
     if (!activeTripId || !session?.user) return undefined;
@@ -3160,7 +3160,7 @@ function exportTrip() {
 
       {isShareDialogOpen && activeTrip && canOpenShareDialog ? (
         <ShareDialog
-          canManage={canManageShareLink}
+          canManage={canManageShareLinks}
           links={shareLinks}
           onClose={() => setIsShareDialogOpen(false)}
           onRefresh={() => loadShareLinks(activeTrip.id)}
