@@ -1418,6 +1418,7 @@ export default function App() {
   const canManageActiveTrip = isOwner && !isTripDateLocked;
   const canChangeTripDates = isOwner && !isTripDateLocked;
   const canInviteMembers = isOwner && !isTripDateLocked;
+  const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
   const canManageShareLink = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
@@ -1988,9 +1989,21 @@ export default function App() {
     return { ok: true };
   }
 
-  async function updateTripDateRange({ confirmTimelineRemoval = false, startDate, endDate }) {
-    if (!activeTrip || !canChangeTripDates) {
-      const message = isTripDateLocked ? "旅程已進入結算階段，無法修改日期。" : "You do not have permission to change trip dates.";
+  async function updateTripDateRange({
+    allowSettlementOverride = false,
+    confirmTimelineRemoval = false,
+    source = "trip-date-popover",
+    startDate,
+    endDate,
+  }) {
+    const canOverrideSettlementLock = allowSettlementOverride === true && source === "developer-date-tool";
+    if (!activeTrip || !isOwner) {
+      const message = "You do not have permission to change trip dates.";
+      setNotice(message);
+      return { ok: false, permissionDenied: true, message };
+    }
+    if (isTripDateLocked && !canOverrideSettlementLock) {
+      const message = "旅程已進入結算階段，無法修改日期。";
       setNotice(message);
       return { ok: false, dateLocked: true, message };
     }
@@ -2928,13 +2941,15 @@ function exportTrip() {
           canEditTrip={canManageActiveTrip}
           canInvite={canInviteMembers}
           canRenameTrip={canRenameActiveTrip}
-          canShare={canManageShareLink}
+          canShare={canOpenShareDialog}
           canViewDatePopover={isOwner}
           onDelete={deleteTrip}
           onExport={exportTrip}
           onInvite={() => setIsInviteDialogOpen(true)}
           onOpenMembers={focusSidebarMembers}
-          onShare={() => setIsShareDialogOpen(true)}
+          onShare={() => {
+            if (canOpenShareDialog) setIsShareDialogOpen(true);
+          }}
           onUpdateTrip={updateTrip}
           onUpdateTripDateRange={updateTripDateRange}
           showDeveloperTools={isOwner}
@@ -3051,8 +3066,9 @@ function exportTrip() {
         <InviteDialog trip={activeTrip} onClose={() => setIsInviteDialogOpen(false)} />
       ) : null}
 
-      {isShareDialogOpen && activeTrip && canManageShareLink ? (
+      {isShareDialogOpen && activeTrip && canOpenShareDialog ? (
         <ShareDialog
+          canManage={canManageShareLink}
           links={shareLinks}
           onClose={() => setIsShareDialogOpen(false)}
           onRefresh={() => loadShareLinks(activeTrip.id)}
@@ -3543,7 +3559,7 @@ function TripHeader({
     }
     setDeveloperStartDateDraft(trip?.start_date || "");
     setDeveloperEndDateDraft(trip?.end_date || "");
-    setDeveloperToolsError(canUpdateTripDateRange ? "" : "旅程已進入結算階段，無法修改日期。");
+    setDeveloperToolsError("");
     setIsDeveloperToolsOpen(true);
   }
 
@@ -3560,10 +3576,6 @@ function TripHeader({
 
   async function applyDeveloperDates() {
     if (!canOpenDeveloperTools || developerDateSaveRef.current) return false;
-    if (!canUpdateTripDateRange) {
-      setDeveloperToolsError("旅程已進入結算階段，無法修改日期。");
-      return false;
-    }
     const nextStartDate = developerStartDateDraft.trim();
     const nextEndDate = developerEndDateDraft.trim();
     const validationError = validateDeveloperDateDrafts();
@@ -3576,7 +3588,12 @@ function TripHeader({
     setIsApplyingDeveloperDates(true);
     let result;
     try {
-      result = await onUpdateTripDateRange({ startDate: nextStartDate, endDate: nextEndDate });
+      result = await onUpdateTripDateRange({
+        allowSettlementOverride: true,
+        source: "developer-date-tool",
+        startDate: nextStartDate,
+        endDate: nextEndDate,
+      });
     } catch (error) {
       result = { ok: false, error };
     }
@@ -4468,7 +4485,7 @@ function TripHeader({
           <div>
             <h3 className="trip-header-developer-tools-heading">開發者工具</h3>
             <p className="trip-header-developer-tools-hint">
-              僅供測試歷史日期與旅程階段使用。此工具可能略過正式日期選擇器的限制。
+              開發者日期工具可覆寫結算階段日期鎖，僅供測試使用。
             </p>
           </div>
           <div className="trip-header-developer-tools-fields">
@@ -4476,7 +4493,7 @@ function TripHeader({
               開始日期
               <input
                 ref={developerStartDateRef}
-                disabled={isApplyingDeveloperDates || !canUpdateTripDateRange}
+                disabled={isApplyingDeveloperDates}
                 type="date"
                 value={developerStartDateDraft}
                 onChange={(event) => {
@@ -4488,7 +4505,7 @@ function TripHeader({
             <label>
               結束日期
               <input
-                disabled={isApplyingDeveloperDates || !canUpdateTripDateRange}
+                disabled={isApplyingDeveloperDates}
                 type="date"
                 value={developerEndDateDraft}
                 onChange={(event) => {
@@ -4515,7 +4532,7 @@ function TripHeader({
             <button
               type="button"
               className="primary-button compact"
-              disabled={isApplyingDeveloperDates || !canUpdateTripDateRange}
+              disabled={isApplyingDeveloperDates}
               onClick={applyDeveloperDates}
             >
               {isApplyingDeveloperDates ? "套用中..." : "套用測試日期"}
@@ -10407,7 +10424,7 @@ function InviteDialog({ trip, onClose }) {
   );
 }
 
-function ShareDialog({ links, onClose, onRefresh, trip }) {
+function ShareDialog({ canManage = false, links, onClose, onRefresh, trip }) {
   const [busy, setBusy] = useState(false);
   const [copiedId, setCopiedId] = useState("");
   const [error, setError] = useState("");
@@ -10432,6 +10449,7 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
   }
 
   async function createShareLink() {
+    if (!canManage) return;
     setBusy(true);
     setError("");
     if (primaryLink) {
@@ -10469,6 +10487,7 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
   }
 
   async function toggleShareLink(link) {
+    if (!canManage) return;
     setBusy(true);
     setError("");
     const { error } = await supabase
@@ -10499,12 +10518,16 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
                 <span>{`${window.location.origin}?share=${primaryLink.token}`}</span>
               </div>
               <div className="share-link-actions">
-                <button className="mini-button" type="button" onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}>
-                  {copiedId === primaryLink.id ? "已複製" : "複製"}
-                </button>
-                <button className="mini-button" type="button" disabled={busy} onClick={() => toggleShareLink(primaryLink)}>
-                  {primaryLink.is_active ? "停用" : "啟用"}
-                </button>
+                {primaryLink.is_active ? (
+                  <button className="mini-button" type="button" onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}>
+                    {copiedId === primaryLink.id ? "已複製" : "複製"}
+                  </button>
+                ) : null}
+                {canManage ? (
+                  <button className="mini-button" type="button" disabled={busy} onClick={() => toggleShareLink(primaryLink)}>
+                    {primaryLink.is_active ? "停用" : "啟用"}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : (
@@ -10515,9 +10538,11 @@ function ShareDialog({ links, onClose, onRefresh, trip }) {
           <button className="ghost-button" type="button" onClick={onClose}>
             關閉
           </button>
-          <button className="primary-button compact" type="button" disabled={busy} onClick={createShareLink}>
-            建立並複製連結
-          </button>
+          {canManage ? (
+            <button className="primary-button compact" type="button" disabled={busy} onClick={createShareLink}>
+              建立並複製連結
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
