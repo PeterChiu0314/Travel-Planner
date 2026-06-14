@@ -1,5 +1,39 @@
 # CURRENT_TASK.md
 
+## Current Status - App Layout Phase 1 Header UI
+
+Branch:
+
+```text
+codex/app-layout-header-phase-1-8
+```
+
+Status:
+
+```text
+App Layout Phase 1 Header UI - Completed / user verified
+```
+
+Summary:
+
+- Header member preview long button is implemented.
+- Members / invite dialog is implemented.
+- "成員與邀請" dialog is implemented.
+- Owner / Editor / Viewer permissions are aligned.
+- Editor can open Share Dialog and copy existing active share links.
+- Viewer cannot open Share Dialog.
+- Demo smoke coverage and source guard coverage are in place.
+- Header UI polish follow-ups are completed and pushed.
+- Latest pushed commits:
+  - `8835a54 feat: add phase 1.8 member header management`
+  - `4856504 fix: allow editors to copy active share links`
+  - `6e75041 feat: add member role action menu`
+  - `cf9ff38 style: tune trip date picker summary`
+
+Next likely work:
+
+- Start App Layout Sidebar redesign phase from the current header-complete baseline.
+
 本文件記錄目前專案進度、當前工作方向、保護範圍與交接重點。之後 AI agent 進入專案時，請先閱讀本檔、`AGENT.md`、`UX_RULES.md`、`BUGS.md`。
 
 ---
@@ -360,3 +394,58 @@ npm.cmd run build
 - `CURRENT_TASK.md`
 
 修改 UI 時請保持保守、小步、可驗證。
+
+---
+
+## Phase 1.8 Work Log
+
+### Phase 1.8A - Audit
+
+- Completed: Audited current App Header, member/sidebar/share/invite permission boundaries, and confirmed no DB/RLS/RPC changes are required for this phase.
+- Changed files: none.
+- Test result: read-only audit; no validation commands required beyond branch/status checks.
+- Next: Implement Header member preview and unified members/invite entry.
+
+### Phase 1.8B - Header Member Entry
+
+- Completed: Replaced the standalone invite icon in TripHeader with a member preview button that shows member avatars and owner-only pending count.
+- Changed files: `src/App.jsx`, `src/styles.css`.
+- Test result: `npm.cmd run build` passed.
+- Next: Build the unified members/invite dialog.
+
+### Phase 1.8C - Members / Invite Dialog
+
+- Completed: Replaced the old invite-only dialog with a members dialog that lists approved members, supports owner role changes for editor/viewer, supports member removal, shows pending requests for owner, and keeps settlement-phase member management locked.
+- Changed files: `src/App.jsx`, `src/styles.css`.
+- Test result: `npm.cmd run build` passed.
+- Next: Align Demo route behavior with the formal Header entry.
+
+### Phase 1.8D - Demo Parity
+
+- Completed: Added Demo Header member entry behavior and a read-only Demo members dialog without Supabase writes.
+- Changed files: `src/App.jsx`.
+- Test result: `npm.cmd run test:e2e` initially caught a missing React key fallback for demo members; fixed with `id || user_id || email`.
+- Next: Add smoke coverage for the new Demo member entry.
+
+### Phase 1.8E - Smoke Coverage
+
+- Completed: Added Playwright smoke coverage that opens the Demo Header member entry, verifies the 4-avatar +N overflow state, verifies the members dialog renders, verifies the metadata member count opens the same dialog, verifies Demo navigation does not call Supabase/Auth/REST/Realtime backend APIs, and locks formal member/share permission guards, labels, settlement notice, and disabled states with source-level tests.
+- Changed files: `tests/phase-1-7f-smoke.spec.js`, `tests/phase-1-8-source-guards.spec.js`.
+- Test result: `npm.cmd run test:e2e` passed with 8/8 tests.
+- Next: Final validation and cleanup.
+
+### Phase 1.8F - Final Validation
+
+- Completed: Ran final validation after App/Header/CSS/test changes. Completion audit also tightened approved-member-only Header counts, expanded Demo members to cover +N overflow, and added trip boundary filters to pending approve/reject, role update, and member removal mutations.
+- Changed files: `CURRENT_TASK.md`, `src/App.jsx`, `src/styles.css`, `tests/phase-1-7f-smoke.spec.js`, `tests/phase-1-8-source-guards.spec.js`.
+- Test result: `npm.cmd run build` passed; `npm.cmd run test:e2e` passed with 8/8 tests; `git diff --check` passed.
+- Next: Phase 1.8 is complete and pushed; proceed to merge/follow-up planning when requested.
+
+### Phase 1.8 Manual Verification
+
+- Status: Completed / Tested / User Verified.
+- Owner: verified Members dialog, invite link, pending approval/rejection, editor/viewer role changes, editor/viewer removal, and independent Share management.
+- Editor: verified Members dialog read-only management state, Share dialog access, active share link copy, and no create/enable/disable controls.
+- Viewer: verified Members dialog access and no Share dialog access.
+- Settlement phase: verified Members dialog read-only behavior, management lock, settlement notice, Header date lock, and independent Share permissions.
+- Auth/invite regression: verified Google login and invite membership flow were not broken by Phase 1.8.

@@ -52,6 +52,15 @@ function collectConsoleFailures(page) {
   return failures;
 }
 
+function collectSupabaseRequests(page) {
+  const requests = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    if (/^https?:\/\/[^/]*supabase/i.test(url) || /\/auth\/v1\/|\/rest\/v1\/|\/realtime\/v1\//i.test(url)) requests.push(url);
+  });
+  return requests;
+}
+
 test("app shell loads without crashing", async ({ page }) => {
   const failures = collectConsoleFailures(page);
 
@@ -77,6 +86,7 @@ test("demo timeline renders without authentication", async ({ page }) => {
 
 test("demo navigation can switch to budget and luggage", async ({ page }) => {
   const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
 
   await page.goto("/demo/timeline");
   await page.getByRole("button", { name: /預算/ }).first().click();
@@ -85,7 +95,33 @@ test("demo navigation can switch to budget and luggage", async ({ page }) => {
 
   await page.getByRole("button", { name: /行李/ }).first().click();
   await expect(page).toHaveURL(/\/demo\/luggage$/);
+  expect(supabaseRequests).toEqual([]);
   await expect(page.getByRole("heading", { name: /個人行李|行李/ }).first()).toBeVisible();
+  expect(failures).toEqual([]);
+});
+
+test("demo header member entry opens members dialog", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+
+  await page.goto("/demo/timeline");
+  const memberPreview = page.locator(".trip-header-member-preview");
+
+  await expect(memberPreview).toHaveAttribute("aria-label", "成員與邀請");
+  await expect(memberPreview).toHaveAttribute("title", "成員與邀請");
+  await expect(memberPreview.locator(".member-avatar.compact")).toHaveCount(5);
+  await expect(memberPreview.locator(".member-avatar.more")).toHaveText("+1");
+  await memberPreview.click();
+
+  await expect(page.locator(".members-dialog")).toBeVisible();
+  await expect(page.locator(".members-dialog h2")).toHaveText("成員與邀請");
+  await expect(page.locator(".members-dialog-section")).toHaveCount(3);
+  await page.locator(".members-dialog .ghost-button").click();
+  await expect(page.locator(".members-dialog")).toHaveCount(0);
+
+  await page.locator(".trip-header-meta .trip-header-meta-action").last().click();
+  await expect(page.locator(".members-dialog")).toBeVisible();
+  await page.locator(".modal-backdrop").click({ position: { x: 8, y: 8 } });
+  await expect(page.locator(".members-dialog")).toHaveCount(0);
   expect(failures).toEqual([]);
 });
 

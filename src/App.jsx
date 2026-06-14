@@ -720,6 +720,7 @@ function destinationPatchFromText(destination) {
 
 function buildTripHeaderMeta(trip, members, days) {
   if (!trip) return {};
+  const approvedMemberCount = members.filter((member) => member.status === "approved").length;
   const destinationLabel = tripDestinationLabel(trip);
   const startDate = formatHeaderDate(trip.start_date);
   const endDate = formatHeaderDate(trip.end_date);
@@ -730,7 +731,7 @@ function buildTripHeaderMeta(trip, members, days) {
     dayCountLabel: days.length ? `${days.length} 天` : "",
     stage,
     statusLabel: tripStageLabel(stage),
-    membersLabel: `${members.length} 位成員`,
+    membersLabel: `${approvedMemberCount} 位成員`,
   };
 }
 
@@ -1066,6 +1067,8 @@ const demoMembers = [
   { user_id: "demo-peter", display_name: "Peter", email: "peter@example.com", role: "owner", status: "approved" },
   { user_id: "demo-a", display_name: "小安", email: "ariel@example.com", role: "editor", status: "approved" },
   { user_id: "demo-b", display_name: "阿班", email: "ben@example.com", role: "viewer", status: "approved" },
+  { user_id: "demo-c", display_name: "Chloe", email: "chloe@example.com", role: "editor", status: "approved" },
+  { user_id: "demo-d", display_name: "Dora", email: "dora@example.com", role: "viewer", status: "approved" },
 ];
 
 function createDemoTimelineItems() {
@@ -1384,7 +1387,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareLinks, setShareLinks] = useState([]);
   const [shareSnapshot, setShareSnapshot] = useState(null);
@@ -1418,10 +1421,12 @@ export default function App() {
   const canManageActiveTrip = isOwner && !isTripDateLocked;
   const canChangeTripDates = isOwner && !isTripDateLocked;
   const canInviteMembers = isOwner && !isTripDateLocked;
+  const canOpenMembersDialog = activeMembership?.status === "approved";
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
-  const canManageShareLink = isOwner;
+  const canManageShareLinks = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
+  const pendingMemberCount = isOwner ? members.filter((member) => member.status === "pending").length : 0;
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
 
@@ -1797,12 +1802,12 @@ export default function App() {
   }, [activeDay, activeSection, activeTripId, isDemoMode, luggageTab, session?.user]);
 
   useEffect(() => {
-    if (activeTripId && isOwner) {
+    if (activeTripId && canOpenShareDialog) {
       loadShareLinks(activeTripId);
     } else {
       setShareLinks([]);
     }
-  }, [activeTripId, isOwner, loadShareLinks]);
+  }, [activeTripId, canOpenShareDialog, loadShareLinks]);
 
   useEffect(() => {
     if (!activeTripId || !session?.user) return undefined;
@@ -2786,20 +2791,89 @@ export default function App() {
   }
 
   async function approveMember(memberId) {
-    if (!canInviteMembers) return;
+    if (!activeTrip || !canInviteMembers) return;
     const { error } = await supabase
       .from("trip_members")
       .update({ status: "approved" })
-      .eq("id", memberId);
+      .eq("id", memberId)
+      .eq("trip_id", activeTrip.id);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function rejectMember(memberId) {
-    if (!canInviteMembers) return;
-    const { error } = await supabase.from("trip_members").delete().eq("id", memberId);
+    if (!activeTrip || !canInviteMembers) return;
+    const { error } = await supabase.from("trip_members").delete().eq("id", memberId).eq("trip_id", activeTrip.id);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
+  }
+
+  async function createMemberInviteToken() {
+    if (!activeTrip || !canInviteMembers) {
+      const message = isTripDateLocked
+        ? "旅程已進入結算階段，無法邀請或管理成員。"
+        : "You do not have permission to invite members.";
+      setNotice(message);
+      return { ok: false, message };
+    }
+    const token = crypto.randomUUID();
+    const { error } = await supabase.from("trip_invites").insert({
+      trip_id: activeTrip.id,
+      token,
+    });
+    if (error) {
+      setNotice(error.message);
+      return { ok: false, error, message: error.message };
+    }
+    return { ok: true, token };
+  }
+
+  async function updateMemberRole(memberId, nextRole) {
+    if (!activeTrip || !canInviteMembers) return { ok: false };
+    if (!["editor", "viewer"].includes(nextRole)) return { ok: false };
+    const targetMember = members.find((member) => member.id === memberId);
+    if (
+      !targetMember ||
+      targetMember.trip_id !== activeTrip.id ||
+      targetMember.status !== "approved" ||
+      targetMember.role === "owner"
+    ) {
+      return { ok: false };
+    }
+    if (targetMember.user_id === session?.user?.id) return { ok: false };
+    const { error } = await supabase
+      .from("trip_members")
+      .update({ role: nextRole })
+      .eq("id", memberId)
+      .eq("trip_id", activeTrip.id);
+    if (error) {
+      setNotice(error.message);
+      return { ok: false, error };
+    }
+    await loadTripData(activeTrip.id);
+    return { ok: true };
+  }
+
+  async function removeMember(memberId) {
+    if (!activeTrip || !canInviteMembers) return { ok: false };
+    const targetMember = members.find((member) => member.id === memberId);
+    if (
+      !targetMember ||
+      targetMember.trip_id !== activeTrip.id ||
+      targetMember.role === "owner" ||
+      targetMember.user_id === session?.user?.id
+    ) {
+      return { ok: false };
+    }
+    const ok = window.confirm(`移除「${memberName(targetMember)}」？`);
+    if (!ok) return { ok: false, cancelled: true };
+    const { error } = await supabase.from("trip_members").delete().eq("id", memberId).eq("trip_id", activeTrip.id);
+    if (error) {
+      setNotice(error.message);
+      return { ok: false, error };
+    }
+    await loadTripData(activeTrip.id);
+    return { ok: true };
   }
 
 function exportTrip() {
@@ -2939,14 +3013,19 @@ function exportTrip() {
           dateChangePreviewData={tripDateChangePreviewData}
           canChangeTripDates={canChangeTripDates}
           canEditTrip={canManageActiveTrip}
-          canInvite={canInviteMembers}
+          canOpenMembers={canOpenMembersDialog}
           canRenameTrip={canRenameActiveTrip}
           canShare={canOpenShareDialog}
           canViewDatePopover={isOwner}
+          pendingMemberCount={pendingMemberCount}
           onDelete={deleteTrip}
           onExport={exportTrip}
-          onInvite={() => setIsInviteDialogOpen(true)}
-          onOpenMembers={focusSidebarMembers}
+          onInvite={() => {
+            if (canOpenMembersDialog) setIsMembersDialogOpen(true);
+          }}
+          onOpenMembers={() => {
+            if (canOpenMembersDialog) setIsMembersDialogOpen(true);
+          }}
           onShare={() => {
             if (canOpenShareDialog) setIsShareDialogOpen(true);
           }}
@@ -3062,13 +3141,26 @@ function exportTrip() {
         />
       ) : null}
 
-      {isInviteDialogOpen && activeTrip && canInviteMembers ? (
-        <InviteDialog trip={activeTrip} onClose={() => setIsInviteDialogOpen(false)} />
+      {isMembersDialogOpen && activeTrip && canOpenMembersDialog ? (
+        <MembersInviteDialog
+          canManageMembers={canInviteMembers}
+          currentRole={activeMembership?.role}
+          currentUserId={session.user.id}
+          isTripDateLocked={isTripDateLocked}
+          members={members}
+          onApprove={approveMember}
+          onClose={() => setIsMembersDialogOpen(false)}
+          onCreateInvite={createMemberInviteToken}
+          onReject={rejectMember}
+          onRemoveMember={removeMember}
+          onUpdateRole={updateMemberRole}
+          trip={activeTrip}
+        />
       ) : null}
 
       {isShareDialogOpen && activeTrip && canOpenShareDialog ? (
         <ShareDialog
-          canManage={canManageShareLink}
+          canManage={canManageShareLinks}
           links={shareLinks}
           onClose={() => setIsShareDialogOpen(false)}
           onRefresh={() => loadShareLinks(activeTrip.id)}
@@ -3289,6 +3381,33 @@ function TripDateChangePreview({ isRemovalConfirmed = false, onConfirmRemoval, p
   );
 }
 
+function HeaderMemberPreview({ disabled, members = [], onOpen, pendingCount = 0 }) {
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  const visibleMembers = approvedMembers.slice(0, 4);
+  const overflowCount = Math.max(approvedMembers.length - visibleMembers.length, 0);
+  return (
+    <button
+      className="trip-header-member-preview"
+      type="button"
+      title="成員與邀請"
+      aria-label="成員與邀請"
+      disabled={disabled}
+      onClick={onOpen}
+    >
+      <span className="trip-header-member-avatars" aria-hidden="true">
+        {visibleMembers.map((member) => (
+          <span className="member-avatar compact" key={member.id || member.user_id} title={memberName(member)}>
+            {memberInitial(member)}
+          </span>
+        ))}
+        {overflowCount > 0 ? <span className="member-avatar compact more">+{overflowCount}</span> : null}
+      </span>
+      {pendingCount > 0 ? <span className="trip-header-member-pending">待審 {pendingCount}</span> : null}
+      <TripHeaderIcon name="invite" />
+    </button>
+  );
+}
+
 function TripHeader({
   activeSection,
   trip,
@@ -3297,10 +3416,11 @@ function TripHeader({
   dateChangePreviewData = {},
   canEditTrip = false,
   canChangeTripDates = canEditTrip,
-  canInvite = canEditTrip,
+  canOpenMembers = canEditTrip,
   canRenameTrip = canEditTrip,
   canShare = canEditTrip,
   canViewDatePopover = canChangeTripDates,
+  pendingMemberCount = 0,
   onDelete,
   onExport,
   onInvite,
@@ -3389,7 +3509,6 @@ function TripHeader({
     if (!dateChangePreview.hasTimelineRemoval) setIsDateRemovalConfirmed(false);
   }, [dateChangePreview.hasTimelineRemoval]);
   const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
-  const weekdayFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { weekday: "short" }), []);
   const fullDateFormat = useMemo(
     () => new Intl.DateTimeFormat("zh-TW", { day: "numeric", month: "long", year: "numeric" }),
     [],
@@ -3424,11 +3543,11 @@ function TripHeader({
       : null,
     meta.membersLabel
       ? {
-          action: typeof onOpenMembers === "function",
+          action: canOpenMembers && typeof onOpenMembers === "function",
           key: "members",
           label: meta.membersLabel,
           onClick: () => openMembers(),
-          title: typeof onOpenMembers === "function" ? "查看成員" : undefined,
+          title: canOpenMembers && typeof onOpenMembers === "function" ? "成員與邀請" : undefined,
         }
       : null,
   ].filter(Boolean);
@@ -3941,10 +4060,7 @@ function TripHeader({
 
   function renderDateMonth(monthDate, controls = {}) {
     const cells = calendarMonthCells(monthDate);
-    const weekdays = Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(2026, 5, 7 + index);
-      return weekdayFormat.format(date);
-    });
+    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
     return (
       <section className="trip-date-range-month" key={formatDateKey(monthDate)}>
         <div className="trip-date-range-month-header">
@@ -4416,16 +4532,12 @@ function TripHeader({
       </div>
 
       <div className="trip-header-actions">
-        <button
-          className="trip-header-icon-button"
-          type="button"
-          title="邀請朋友"
-          aria-label="邀請朋友"
-          disabled={!hasTrip || !canInvite}
-          onClick={onInvite}
-        >
-          <TripHeaderIcon name="invite" />
-        </button>
+        <HeaderMemberPreview
+          disabled={!hasTrip || !canOpenMembers}
+          members={members}
+          pendingCount={pendingMemberCount}
+          onOpen={onInvite}
+        />
         <button
           className="trip-header-icon-button"
           type="button"
@@ -4547,6 +4659,7 @@ function TripHeader({
 function DemoApp({ initialSection }) {
   const [activeSection, setActiveSection] = useState(initialSection || "timeline");
   const [activeDay, setActiveDay] = useState(0);
+  const [isDemoMembersDialogOpen, setIsDemoMembersDialogOpen] = useState(false);
   const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrip);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
@@ -5030,9 +5143,11 @@ function DemoApp({ initialSection }) {
           days={days}
           dateChangePreviewData={tripDateChangePreviewData}
           canEditTrip
+          canOpenMembers
           onDelete={() => {}}
           onExport={() => {}}
-          onInvite={() => {}}
+          onInvite={() => setIsDemoMembersDialogOpen(true)}
+          onOpenMembers={() => setIsDemoMembersDialogOpen(true)}
           onShare={() => {}}
           onUpdateTrip={(patch) => {
             setDemoActiveTrip((current) => ({ ...current, ...patch }));
@@ -5197,6 +5312,21 @@ function DemoApp({ initialSection }) {
           </button>
         ))}
       </nav>
+      {isDemoMembersDialogOpen ? (
+        <MembersInviteDialog
+          canManageMembers={false}
+          currentRole="owner"
+          currentUserId="demo-peter"
+          isTripDateLocked={false}
+          members={demoMembers}
+          onApprove={() => {}}
+          onClose={() => setIsDemoMembersDialogOpen(false)}
+          onCreateInvite={() => ({ ok: false, message: "Demo 不會產生正式邀請連結。" })}
+          onReject={() => {}}
+          onRemoveMember={() => {}}
+          onUpdateRole={() => {}}
+        />
+      ) : null}
     </section>
   );
 }
@@ -10274,6 +10404,14 @@ function memberInitial(member) {
   return source.trim().slice(0, 1).toUpperCase();
 }
 
+function memberRoleLabel(role) {
+  return {
+    owner: "擁有者",
+    editor: "編輯者",
+    viewer: "檢視者",
+  }[role] || "成員";
+}
+
 function MembersPanel({ className = "", isOwner, members, onApprove, onReject }) {
   if (!members.length) return null;
   const approvedCount = members.filter((member) => member.status === "approved").length;
@@ -10300,7 +10438,7 @@ function MembersPanel({ className = "", isOwner, members, onApprove, onReject })
             <div>
               <strong>{member.display_name || member.email || member.user_id}</strong>
               <span>
-                {member.role === "owner" ? "擁有者" : "編輯者"} ·{" "}
+                {memberRoleLabel(member.role)} ·{" "}
                 {member.status === "approved" ? "已核准" : "等待核准"}
               </span>
             </div>
@@ -10379,44 +10517,240 @@ function TripDialog({ form, onChange, onClose, onSubmit }) {
   );
 }
 
-function InviteDialog({ trip, onClose }) {
+function MembersInviteDialog({
+  canManageMembers,
+  currentRole,
+  currentUserId,
+  isTripDateLocked,
+  members,
+  onApprove,
+  onClose,
+  onCreateInvite,
+  onReject,
+  onRemoveMember,
+  onUpdateRole,
+}) {
   const [token, setToken] = useState("");
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [openRoleMenuMemberId, setOpenRoleMenuMemberId] = useState(null);
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];
+  const hasOnlyOneApprovedMember = approvedMembers.length === 1;
+
+  useEffect(() => {
+    if (!openRoleMenuMemberId) return undefined;
+
+    function closeRoleMenuOnOutsideClick(event) {
+      if (event.target instanceof Element && event.target.closest(".member-role-menu")) return;
+      setOpenRoleMenuMemberId(null);
+    }
+
+    function closeRoleMenuOnEscape(event) {
+      if (event.key === "Escape") {
+        setOpenRoleMenuMemberId(null);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeRoleMenuOnOutsideClick);
+    document.addEventListener("keydown", closeRoleMenuOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeRoleMenuOnOutsideClick);
+      document.removeEventListener("keydown", closeRoleMenuOnEscape);
+    };
+  }, [openRoleMenuMemberId]);
+
+  function chooseMemberRole(member, nextRole) {
+    setOpenRoleMenuMemberId(null);
+    if (member.role !== nextRole) {
+      onUpdateRole(member.id, nextRole);
+    }
+  }
+
+  function removeMemberFromMenu(member) {
+    setOpenRoleMenuMemberId(null);
+    onRemoveMember(member.id);
+  }
 
   async function createInvite() {
+    if (!canManageMembers || busy) return;
+    setBusy(true);
+    setError("");
     let nextToken = token;
-    if (!nextToken) {
-      nextToken = crypto.randomUUID();
-      const { error } = await supabase.from("trip_invites").insert({
-        trip_id: trip.id,
-        token: nextToken,
-      });
-      if (error) {
-        window.alert(error.message);
+    if (!nextToken && typeof onCreateInvite === "function") {
+      const result = await onCreateInvite();
+      if (!result?.ok) {
+        setBusy(false);
+        setError(result?.message || "無法產生邀請連結。");
         return;
       }
+      nextToken = result.token;
       setToken(nextToken);
     }
     const url = `${window.location.origin}?invite=${nextToken}`;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      setError("無法複製邀請連結，請手動複製網址。");
+    }
+    setBusy(false);
   }
 
   const inviteUrl = token ? `${window.location.origin}?invite=${token}` : "";
 
   return (
-    <div className="modal-backdrop">
-      <div className="dialog-card">
-        <h2>邀請朋友</h2>
-        <p>朋友使用連結登入後會送出加入申請，核准後即可共同編輯。</p>
-        {inviteUrl ? <input readOnly value={inviteUrl} /> : null}
-        {copied ? <div className="notice">邀請連結已複製。</div> : null}
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="dialog-card members-dialog" onClick={(event) => event.stopPropagation()}>
+        <h2>成員與邀請</h2>
+        {isTripDateLocked ? (
+          <div className="notice">旅程已進入結算階段，無法邀請或管理成員。</div>
+        ) : null}
+        {error ? <div className="notice danger">{error}</div> : null}
+
+        <section className="members-dialog-section">
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">Members</p>
+              <h3>目前成員</h3>
+            </div>
+            <span className="pill">{approvedMembers.length} 位</span>
+          </div>
+          <div className="member-list">
+            {approvedMembers.map((member) => {
+              const canEditRole = canManageMembers && member.role !== "owner" && member.user_id !== currentUserId;
+              return (
+                <div className="member-row detailed" key={member.id || member.user_id || member.email}>
+                  <span className="member-avatar">{memberInitial(member)}</span>
+                  <div>
+                    <strong>{memberName(member)}</strong>
+                    <span className="member-email">{member.email || member.user_id}</span>
+                  </div>
+                  <div className="member-actions">
+                    {canEditRole ? (
+                      <div className="member-role-menu">
+                        <button
+                          className="member-role-pill member-role-menu-trigger"
+                          type="button"
+                          aria-haspopup="menu"
+                          aria-expanded={openRoleMenuMemberId === member.id}
+                          aria-label={`${memberName(member)} 角色操作`}
+                          onClick={() =>
+                            setOpenRoleMenuMemberId((currentMemberId) => (currentMemberId === member.id ? null : member.id))
+                          }
+                        >
+                          {memberRoleLabel(member.role)}
+                          <span className="member-role-menu-caret" aria-hidden="true">
+                            ▾
+                          </span>
+                        </button>
+                        {openRoleMenuMemberId === member.id ? (
+                          <div className="member-role-menu-popover" role="menu">
+                            {["editor", "viewer"].map((role) => (
+                              <button
+                                className={`member-role-menu-item${member.role === role ? " active" : ""}`}
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={member.role === role}
+                                key={role}
+                                onClick={() => chooseMemberRole(member, role)}
+                              >
+                                <span className="member-role-menu-check" aria-hidden="true">
+                                  {member.role === role ? "✓" : ""}
+                                </span>
+                                {memberRoleLabel(role)}
+                              </button>
+                            ))}
+                            <div className="member-role-menu-separator" />
+                            <button
+                              className="member-role-menu-item danger"
+                              type="button"
+                              role="menuitem"
+                              onClick={() => removeMemberFromMenu(member)}
+                            >
+                              <span className="member-role-menu-check" aria-hidden="true" />
+                              移除成員
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <span className="member-role-pill">{memberRoleLabel(member.role)}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {pendingMembers.length ? (
+          <section className="members-dialog-section">
+            <div className="panel-heading tight">
+              <div>
+                <p className="eyebrow">Pending</p>
+                <h3>待審核</h3>
+              </div>
+              <span className="pill">{pendingMembers.length} 位</span>
+            </div>
+            <div className="member-list">
+              {pendingMembers.map((member) => (
+                <div className="member-row detailed" key={member.id || member.user_id || member.email}>
+                  <span className="member-avatar">{memberInitial(member)}</span>
+                  <div>
+                    <strong>{memberName(member)}</strong>
+                    <span className="member-email">{member.email || member.user_id}</span>
+                  </div>
+                  <div className="member-actions">
+                    <button className="mini-button" type="button" onClick={() => onApprove(member.id)}>
+                      核准
+                    </button>
+                    <button className="mini-button" type="button" onClick={() => onReject(member.id)}>
+                      拒絕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="members-dialog-section">
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">Invite</p>
+              <h3>邀請成員</h3>
+            </div>
+          </div>
+          <p>{hasOnlyOneApprovedMember ? "邀請朋友一起規劃這趟旅程。" : "朋友使用連結登入後會送出加入申請，核准後即可共同編輯。"}</p>
+          {inviteUrl ? <input readOnly value={inviteUrl} /> : null}
+          {copied ? <div className="notice">邀請連結已複製。</div> : null}
+          <button className="primary-button compact" type="button" disabled={!canManageMembers || busy} onClick={createInvite}>
+            {busy ? "產生中..." : "產生並複製連結"}
+          </button>
+        </section>
+
+        <section className="members-dialog-section">
+          <div className="panel-heading tight">
+            <div>
+              <p className="eyebrow">Permission</p>
+              <h3>權限說明</h3>
+            </div>
+          </div>
+          <p>
+            你目前是{memberRoleLabel(currentRole)}。
+            {currentRole === "owner"
+              ? "擁有者可管理成員、邀請與分享連結。"
+              : currentRole === "editor"
+                ? "編輯者可共同編輯旅程，並可複製既有啟用的分享連結。"
+                : "檢視者可查看旅程與成員資訊，但不可編輯或管理分享。"}
+          </p>
+        </section>
+
         <div className="form-actions">
           <button className="ghost-button" type="button" onClick={onClose}>
             關閉
-          </button>
-          <button className="primary-button compact" type="button" onClick={createInvite}>
-            產生並複製連結
           </button>
         </div>
       </div>

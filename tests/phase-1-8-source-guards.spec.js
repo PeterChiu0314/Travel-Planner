@@ -1,0 +1,52 @@
+import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+const appSource = readFileSync("src/App.jsx", "utf8");
+
+test("phase 1.8 formal member and share gates stay separated", () => {
+  expect(appSource).toContain('const canInviteMembers = isOwner && !isTripDateLocked;');
+  expect(appSource).toContain('const canOpenMembersDialog = activeMembership?.status === "approved";');
+  expect(appSource).toContain(
+    'const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");',
+  );
+  expect(appSource).toContain("const canManageShareLinks = isOwner;");
+  expect(appSource).toContain("canManageMembers={canInviteMembers}");
+  expect(appSource).toContain("canManage={canManageShareLinks}");
+  expect(appSource).toContain("if (activeTripId && canOpenShareDialog)");
+  expect(appSource).toContain("}, [activeTripId, canOpenShareDialog, loadShareLinks]);");
+});
+
+test("phase 1.8 editor share dialog can copy active links but cannot manage them", () => {
+  expect(appSource).toContain("primaryLink.is_active ? (");
+  expect(appSource).toContain("onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}");
+  expect(appSource).toContain("{canManage ? (");
+  expect(appSource).toContain("onClick={() => toggleShareLink(primaryLink)}");
+  expect(appSource).toContain("{canManage ? (");
+  expect(appSource).toContain("onClick={createShareLink}");
+});
+
+test("phase 1.8 member mutations keep owner-only lock and trip boundary", () => {
+  expect(appSource).toContain("if (!activeTrip || !canInviteMembers) return;");
+  expect(appSource).toContain("if (!activeTrip || !canInviteMembers) return { ok: false };");
+  expect(appSource).toContain(".update({ status: \"approved\" })");
+  expect(appSource).toContain(".update({ role: nextRole })");
+  expect(appSource).toContain(".delete().eq(\"id\", memberId).eq(\"trip_id\", activeTrip.id)");
+  expect(appSource).toContain(".eq(\"trip_id\", activeTrip.id);");
+  expect(appSource).toContain('!["editor", "viewer"].includes(nextRole)');
+  expect(appSource).toContain('targetMember.role === "owner"');
+  expect(appSource).toContain("targetMember.user_id === session?.user?.id");
+});
+
+test("phase 1.8 members dialog keeps required labels and disabled states", () => {
+  expect(appSource).toContain('owner: "擁有者"');
+  expect(appSource).toContain('editor: "編輯者"');
+  expect(appSource).toContain('viewer: "檢視者"');
+  expect(appSource).toContain("旅程已進入結算階段，無法邀請或管理成員。");
+  expect(appSource).toContain("<h3>邀請成員</h3>");
+  expect(appSource).toContain("<h3>權限說明</h3>");
+  expect(appSource).toContain("邀請朋友一起規劃這趟旅程。");
+  expect(appSource).toContain('const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];');
+  expect(appSource).toContain('className="trip-header-member-pending"');
+  expect(appSource).toContain("disabled={!canManageMembers || busy}");
+  expect(appSource).toContain('const canEditRole = canManageMembers && member.role !== "owner" && member.user_id !== currentUserId;');
+});
