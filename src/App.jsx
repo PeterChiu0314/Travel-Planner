@@ -10599,7 +10599,7 @@ function MembersInviteDialog({
                   <div className="member-actions">
                     {canEditRole ? (
                       <select
-                        className="compact-select"
+                        className="compact-select member-role-select"
                         value={member.role}
                         aria-label={`${memberName(member)} 角色`}
                         onChange={(event) => onUpdateRole(member.id, event.target.value)}

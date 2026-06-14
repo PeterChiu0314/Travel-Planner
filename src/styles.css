@@ -3175,6 +3175,31 @@ textarea {
   outline-offset: 1px;
 }
 
+.member-role-select {
+  min-width: 86px;
+  min-height: 34px;
+  border-color: rgba(25, 109, 82, 0.16);
+  border-radius: 999px;
+  background: #f4fbf7;
+  color: var(--mint-dark);
+  padding: 0 30px 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.member-role-select:hover:not(:disabled) {
+  border-color: rgba(25, 109, 82, 0.3);
+  background: #eef8f2;
+}
+
+.member-role-select:focus-visible {
+  border-color: rgba(25, 109, 82, 0.42);
+  background: #fffefa;
+  outline: 3px solid rgba(25, 109, 82, 0.2);
+  outline-offset: 2px;
+}
+
 .mini-button.danger {
   border-color: rgba(157, 51, 37, 0.2);
   color: #9d3325;
