@@ -562,7 +562,9 @@ code {
 
 .trip-list {
   display: grid;
+  align-content: start;
   gap: 10px;
+  grid-auto-rows: max-content;
 }
 
 .sidebar-trip-section {
@@ -599,7 +601,7 @@ code {
 }
 
 .sidebar-trip-list-region {
-  display: grid;
+  display: block;
   gap: 10px;
   min-height: 0;
   overflow-y: auto;
@@ -609,7 +611,9 @@ code {
 
 .trip-card {
   display: block;
+  align-self: start;
   width: 100%;
+  min-height: 76px;
   border: 1px solid rgba(217, 222, 216, 0.72);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.8);
