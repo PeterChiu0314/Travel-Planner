@@ -58,7 +58,7 @@ test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", 
   expect(appSource).toContain('<h2 id="sidebar-trips-title">我的旅程</h2>');
   expect(appSource).toContain('className="mini-button sidebar-create-trip"');
   expect(appSource).toContain('aria-label="新增旅程"');
-  expect(appSource).toContain('<TripList trips={trips} activeTripId={activeTripId} onCreate={() => setIsTripDialogOpen(true)} onSelect={selectTrip} />');
+  expect(appSource).toContain('<TripList trips={trips} activeTripId={activeTripId} compact={isSidebarCollapsed} onCreate={() => setIsTripDialogOpen(true)} onSelect={selectTrip} />');
   expect(appSource).toContain('className="trip-empty-card"');
   expect(appSource).toContain("+ 建立第一個旅程");
   expect(appSource).not.toContain('className="primary-button create-trip-button"');

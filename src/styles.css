@@ -75,7 +75,7 @@ code {
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
 }
 
 .login-view {
@@ -145,7 +145,7 @@ code {
 
 .sidebar.collapsed {
   align-items: center;
-  padding: 18px 12px;
+  padding: 18px 14px;
 }
 
 .brand {
@@ -153,7 +153,8 @@ code {
   flex: 0 0 auto;
   align-items: center;
   gap: 12px;
-  margin-bottom: 24px;
+  width: 100%;
+  margin-bottom: 22px;
 }
 
 .sidebar.collapsed .brand {
@@ -167,10 +168,20 @@ code {
   width: 46px;
   height: 46px;
   place-items: center;
+  border: 0;
   border-radius: 8px;
   background: var(--mint-dark);
   color: #fff;
+  cursor: pointer;
+  font: inherit;
   font-weight: 800;
+}
+
+.brand-mark:hover,
+.brand-mark:focus-visible {
+  box-shadow: 0 10px 24px rgba(38, 45, 40, 0.16);
+  outline: 0;
+  transform: translateY(-1px);
 }
 
 .brand h1 {
@@ -367,6 +378,7 @@ code {
   display: grid;
   flex: 0 0 auto;
   gap: 8px;
+  width: 100%;
   margin: 18px 0 18px;
 }
 
@@ -387,10 +399,10 @@ code {
 }
 
 .section-nav-button.active {
-  border-color: rgba(47, 143, 114, 0.36);
+  border-color: rgba(47, 143, 114, 0.48);
   background: #e8f5ee;
   color: var(--mint-dark);
-  box-shadow: inset 4px 0 0 var(--mint);
+  box-shadow: inset 4px 0 0 var(--mint), 0 10px 24px rgba(25, 109, 82, 0.08);
 }
 
 .section-nav-button.active .section-nav-icon {
@@ -427,8 +439,7 @@ code {
 }
 
 .sidebar.collapsed .sidebar-trip-heading h2,
-.sidebar.collapsed .user-account-label,
-.sidebar.collapsed .user-signout-button {
+.sidebar.collapsed .user-account-label {
   display: none;
 }
 
@@ -461,12 +472,22 @@ code {
 }
 
 .sidebar.collapsed .trip-card strong {
-  max-width: 42px;
+  max-width: 44px;
   margin-bottom: 0;
   overflow: hidden;
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sidebar.collapsed .sidebar-trip-section {
+  gap: 8px;
+  width: 100%;
+}
+
+.sidebar.collapsed .sidebar-trip-list-region {
+  width: 100%;
+  padding-right: 0;
 }
 
 .bottom-nav {
@@ -671,6 +692,7 @@ code {
   display: grid;
   flex: 0 0 auto;
   gap: 10px;
+  width: 100%;
   margin-top: auto;
   border-top: 1px solid var(--line);
   padding-top: 18px;
@@ -682,9 +704,22 @@ code {
 
 .user-box-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
+}
+
+.user-avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(25, 109, 82, 0.18);
+  border-radius: 999px;
+  background: #eef6f1;
+  color: var(--mint-dark);
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .user-account {
@@ -709,6 +744,29 @@ code {
 
 .user-signout-button {
   width: 100%;
+}
+
+.sidebar.collapsed .user-box {
+  gap: 8px;
+  padding-top: 14px;
+}
+
+.sidebar.collapsed .user-account {
+  display: none;
+}
+
+.sidebar.collapsed .user-avatar,
+.sidebar.collapsed .user-settings-button,
+.sidebar.collapsed .user-signout-button {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+}
+
+.sidebar.collapsed .user-signout-button {
+  display: grid;
+  place-items: center;
+  padding: 0;
 }
 
 .sidebar-members {
@@ -3591,6 +3649,23 @@ textarea {
   .sidebar.collapsed .user-account-label,
   .sidebar.collapsed .user-signout-button {
     display: block;
+  }
+
+  .sidebar.collapsed .user-box-top {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    justify-items: stretch;
+  }
+
+  .sidebar.collapsed .user-account {
+    display: grid;
+  }
+
+  .sidebar.collapsed .user-avatar,
+  .sidebar.collapsed .user-settings-button,
+  .sidebar.collapsed .user-signout-button {
+    width: auto;
+    height: auto;
+    min-width: 32px;
   }
 
   .sidebar.collapsed .trip-empty-card {

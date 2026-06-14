@@ -1421,6 +1421,8 @@ export default function App() {
   const canChangeTripDates = isOwner && !isTripDateLocked;
   const canInviteMembers = isOwner && !isTripDateLocked;
   const canOpenMembersDialog = activeMembership?.status === "approved";
+  const userDisplayName = session?.user?.user_metadata?.full_name || session?.user?.email || "";
+  const userInitial = (userDisplayName.trim()[0] || "?").toUpperCase();
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
   const canManageShareLinks = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
@@ -2943,7 +2945,21 @@ function exportTrip() {
     <Shell appLayout collapsed={isSidebarCollapsed}>
       <aside className={`sidebar${isSidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">TP</div>
+          <button
+            className="brand-mark"
+            type="button"
+            title={isSidebarCollapsed ? "展開側欄" : "回到總覽"}
+            aria-label={isSidebarCollapsed ? "展開側欄" : "回到總覽"}
+            onClick={() => {
+              if (isSidebarCollapsed) {
+                setIsSidebarCollapsed(false);
+                return;
+              }
+              setActiveSection("today");
+            }}
+          >
+            TP
+          </button>
           <div className="brand-copy">
             <h1>旅程規劃室</h1>
             <p>{trips.length} 個旅程</p>
@@ -2964,6 +2980,8 @@ function exportTrip() {
               key={item.id}
               type="button"
               title={item.label}
+              aria-label={item.label}
+              aria-current={activeSection === item.id ? "page" : undefined}
               onClick={() => setActiveSection(item.id)}
             >
               <span className="section-nav-icon" aria-hidden="true">
@@ -2987,20 +3005,23 @@ function exportTrip() {
             </button>
           </div>
           <div className="sidebar-trip-list-region">
-            <TripList trips={trips} activeTripId={activeTripId} onCreate={() => setIsTripDialogOpen(true)} onSelect={selectTrip} />
+            <TripList trips={trips} activeTripId={activeTripId} compact={isSidebarCollapsed} onCreate={() => setIsTripDialogOpen(true)} onSelect={selectTrip} />
           </div>
         </section>
         <div className="user-box">
           <div className="user-box-top">
+            <div className="user-avatar" aria-hidden="true">
+              {userInitial}
+            </div>
             <div className="user-account">
               <span className="user-account-label nav-label">帳號</span>
-              <strong className="nav-label">{session.user.user_metadata?.full_name || session.user.email}</strong>
+              <strong className="nav-label">{userDisplayName}</strong>
             </div>
-            <button className="mini-button user-settings-button" type="button" title="設定" aria-label="設定">
+            <button className="mini-button user-settings-button" type="button" title="設定" aria-label="設定" onClick={() => setActiveSection("settings")}>
               設
             </button>
           </div>
-          <button className="ghost-button user-signout-button" type="button" onClick={signOut}>
+          <button className="ghost-button user-signout-button" type="button" title="登出" aria-label="登出" onClick={signOut}>
             登出
           </button>
         </div>
@@ -5863,7 +5884,13 @@ function LoginView({ onSignIn, notice }) {
   );
 }
 
-function TripList({ trips, activeTripId, onCreate, onSelect }) {
+function getTripInitials(title = "") {
+  const compactTitle = title.trim();
+  if (!compactTitle) return "旅";
+  return Array.from(compactTitle).slice(0, 2).join("");
+}
+
+function TripList({ trips, activeTripId, compact = false, onCreate, onSelect }) {
   if (!trips.length) {
     return (
       <button className="trip-empty-card" type="button" onClick={onCreate}>
@@ -5879,9 +5906,11 @@ function TripList({ trips, activeTripId, onCreate, onSelect }) {
           className={`trip-card${trip.id === activeTripId ? " active" : ""}`}
           key={trip.id}
           type="button"
+          title={trip.title}
+          aria-label={`${trip.title}${trip.id === activeTripId ? "，目前旅程" : ""}`}
           onClick={() => onSelect(trip.id)}
         >
-          <strong>{trip.title}</strong>
+          <strong>{compact ? getTripInitials(trip.title) : trip.title}</strong>
           <span>
             {trip.destination} · {trip.start_date}
           </span>
