@@ -1,6 +1,6 @@
 # CURRENT_TASK.md
 
-## Current Status - App Layout Header Phase 1.8
+## Current Status - App Layout Phase 1 Header UI
 
 Branch:
 
@@ -11,24 +11,28 @@ codex/app-layout-header-phase-1-8
 Status:
 
 ```text
-Phase 1.8 - Completed / Tested / User Verified
+App Layout Phase 1 Header UI - Completed / user verified
 ```
 
 Summary:
 
 - Header member preview long button is implemented.
+- Members / invite dialog is implemented.
 - "成員與邀請" dialog is implemented.
 - Owner / Editor / Viewer permissions are aligned.
 - Editor can open Share Dialog and copy existing active share links.
 - Viewer cannot open Share Dialog.
 - Demo smoke coverage and source guard coverage are in place.
+- Header UI polish follow-ups are completed and pushed.
 - Latest pushed commits:
   - `8835a54 feat: add phase 1.8 member header management`
   - `4856504 fix: allow editors to copy active share links`
+  - `6e75041 feat: add member role action menu`
+  - `cf9ff38 style: tune trip date picker summary`
 
 Next likely work:
 
-- Continue App Layout Header follow-up from `codex/app-layout-header-phase-1-8`, or merge after final review.
+- Start App Layout Sidebar redesign phase from the current header-complete baseline.
 
 本文件記錄目前專案進度、當前工作方向、保護範圍與交接重點。之後 AI agent 進入專案時，請先閱讀本檔、`AGENT.md`、`UX_RULES.md`、`BUGS.md`。
 
