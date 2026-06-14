@@ -353,10 +353,11 @@ code {
 .section-nav {
   display: grid;
   gap: 8px;
-  margin: 18px 0 10px;
+  margin: 18px 0 18px;
 }
 
 .section-nav-button {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -372,9 +373,15 @@ code {
 }
 
 .section-nav-button.active {
-  border-color: rgba(47, 143, 114, 0.26);
-  background: #eef6f1;
+  border-color: rgba(47, 143, 114, 0.36);
+  background: #e8f5ee;
   color: var(--mint-dark);
+  box-shadow: inset 4px 0 0 var(--mint);
+}
+
+.section-nav-button.active .section-nav-icon {
+  background: var(--mint-dark);
+  color: #fff;
 }
 
 .section-nav-icon {
@@ -391,17 +398,44 @@ code {
 }
 
 .sidebar.collapsed .section-nav,
+.sidebar.collapsed .sidebar-trip-section,
 .sidebar.collapsed .trip-list,
 .sidebar.collapsed .user-box,
-.sidebar.collapsed .create-trip-button {
+.sidebar.collapsed .trip-empty-card {
   width: 100%;
 }
 
 .sidebar.collapsed .section-nav-button,
-.sidebar.collapsed .create-trip-button,
+.sidebar.collapsed .sidebar-trip-heading,
 .sidebar.collapsed .user-box .ghost-button {
   justify-content: center;
   padding-inline: 0;
+}
+
+.sidebar.collapsed .sidebar-trip-heading h2,
+.sidebar.collapsed .user-account-label,
+.sidebar.collapsed .user-signout-button {
+  display: none;
+}
+
+.sidebar.collapsed .user-box-top {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.sidebar.collapsed .user-settings-button {
+  width: 100%;
+}
+
+.sidebar.collapsed .trip-empty-card {
+  min-height: 42px;
+  padding: 8px 4px;
+  font-size: 0;
+}
+
+.sidebar.collapsed .trip-empty-card::before {
+  content: "+";
+  font-size: 18px;
 }
 
 .sidebar.collapsed .trip-card {
@@ -515,13 +549,47 @@ code {
 .trip-list {
   display: grid;
   gap: 10px;
-  margin-top: 18px;
+}
+
+.sidebar-trip-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.sidebar-trip-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sidebar-trip-heading h2 {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.sidebar-create-trip {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.sidebar-trip-list-region {
+  display: grid;
+  gap: 10px;
 }
 
 .trip-card {
   display: block;
   width: 100%;
-  border: 1px solid transparent;
+  border: 1px solid rgba(217, 222, 216, 0.72);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.8);
   color: var(--ink);
@@ -530,8 +598,9 @@ code {
 }
 
 .trip-card.active {
-  border-color: var(--mint);
-  box-shadow: inset 4px 0 0 var(--mint);
+  border-color: rgba(47, 143, 114, 0.34);
+  background: rgba(232, 245, 238, 0.62);
+  box-shadow: none;
 }
 
 .trip-card strong {
@@ -554,16 +623,66 @@ code {
   font-weight: 800;
 }
 
+.trip-empty-card {
+  width: 100%;
+  min-height: 78px;
+  border: 1px dashed rgba(105, 115, 109, 0.34);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+  padding: 14px;
+  text-align: center;
+  font-weight: 900;
+}
+
+.trip-empty-card:hover,
+.trip-empty-card:focus-visible {
+  border-color: rgba(47, 143, 114, 0.36);
+  background: rgba(232, 245, 238, 0.72);
+  color: var(--mint-dark);
+}
+
 .user-box {
   display: grid;
   gap: 10px;
-  margin-top: 24px;
+  margin-top: auto;
   border-top: 1px solid var(--line);
   padding-top: 18px;
 }
 
 .user-box strong {
   overflow-wrap: anywhere;
+}
+
+.user-box-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.user-account {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.user-account-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.user-settings-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+}
+
+.user-signout-button {
+  width: 100%;
 }
 
 .sidebar-members {
@@ -3419,16 +3538,20 @@ textarea {
     display: block;
   }
 
-  .sidebar.collapsed .sidebar-members {
-    justify-items: stretch;
+  .sidebar.collapsed .sidebar-trip-heading h2,
+  .sidebar.collapsed .user-account-label,
+  .sidebar.collapsed .user-signout-button {
+    display: block;
   }
 
-  .sidebar.collapsed .sidebar-members .panel-heading {
-    display: flex;
+  .sidebar.collapsed .trip-empty-card {
+    min-height: 78px;
+    padding: 14px;
+    font-size: inherit;
   }
 
-  .sidebar.collapsed .sidebar-members .member-list {
-    display: grid;
+  .sidebar.collapsed .trip-empty-card::before {
+    content: none;
   }
 
   .sidebar-toggle {

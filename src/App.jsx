@@ -6,14 +6,13 @@ import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 const attachmentBucket = "trip-attachments";
 
 const desktopNavItems = [
-  { id: "today", label: "今日 / 總覽", shortLabel: "今日" },
+  { id: "today", label: "總覽", shortLabel: "覽" },
   { id: "timeline", label: "行程", shortLabel: "程" },
   { id: "budget", label: "預算", shortLabel: "錢" },
   { id: "accommodation", label: "住宿", shortLabel: "宿" },
   { id: "todo", label: "待辦", shortLabel: "辦" },
   { id: "luggage", label: "行李", shortLabel: "李" },
   { id: "settlement", label: "結算", shortLabel: "結" },
-  { id: "settings", label: "設定", shortLabel: "設" },
 ];
 
 const mobileNavItems = [
@@ -2900,14 +2899,6 @@ function exportTrip() {
     if (canContinue) setActiveTripId(nextTripId);
   }
 
-  function focusSidebarMembers() {
-    const panel = document.querySelector(".sidebar-members");
-    if (!panel) return;
-    panel.scrollIntoView({ block: "center", behavior: "smooth" });
-    panel.setAttribute("tabindex", "-1");
-    panel.focus({ preventScroll: true });
-  }
-
   if (isDemoMode) {
     return (
       <Shell>
@@ -2966,10 +2957,6 @@ function exportTrip() {
             {isSidebarCollapsed ? ">" : "<"}
           </button>
         </div>
-        <button className="primary-button create-trip-button" type="button" onClick={() => setIsTripDialogOpen(true)}>
-          <span aria-hidden="true">+</span>
-          新增旅程
-        </button>
         <nav className="section-nav" aria-label="功能導覽">
           {desktopNavItems.map((item) => (
             <button
@@ -2986,19 +2973,34 @@ function exportTrip() {
             </button>
           ))}
         </nav>
-        <TripList trips={trips} activeTripId={activeTripId} onSelect={selectTrip} />
+        <section className="sidebar-trip-section" aria-labelledby="sidebar-trips-title">
+          <div className="sidebar-trip-heading">
+            <h2 id="sidebar-trips-title">我的旅程</h2>
+            <button
+              className="mini-button sidebar-create-trip"
+              type="button"
+              title="新增旅程"
+              aria-label="新增旅程"
+              onClick={() => setIsTripDialogOpen(true)}
+            >
+              +
+            </button>
+          </div>
+          <div className="sidebar-trip-list-region">
+            <TripList trips={trips} activeTripId={activeTripId} onCreate={() => setIsTripDialogOpen(true)} onSelect={selectTrip} />
+          </div>
+        </section>
         <div className="user-box">
-          {activeTrip ? (
-            <MembersPanel
-              className="sidebar-members"
-              isOwner={canInviteMembers}
-              members={members}
-              onApprove={approveMember}
-              onReject={rejectMember}
-            />
-          ) : null}
-          <strong className="nav-label">{session.user.user_metadata?.full_name || session.user.email}</strong>
-          <button className="ghost-button" type="button" onClick={signOut}>
+          <div className="user-box-top">
+            <div className="user-account">
+              <span className="user-account-label nav-label">帳號</span>
+              <strong className="nav-label">{session.user.user_metadata?.full_name || session.user.email}</strong>
+            </div>
+            <button className="mini-button user-settings-button" type="button" title="設定" aria-label="設定">
+              設
+            </button>
+          </div>
+          <button className="ghost-button user-signout-button" type="button" onClick={signOut}>
             登出
           </button>
         </div>
@@ -5861,7 +5863,15 @@ function LoginView({ onSignIn, notice }) {
   );
 }
 
-function TripList({ trips, activeTripId, onSelect }) {
+function TripList({ trips, activeTripId, onCreate, onSelect }) {
+  if (!trips.length) {
+    return (
+      <button className="trip-empty-card" type="button" onClick={onCreate}>
+        + 建立第一個旅程
+      </button>
+    );
+  }
+
   return (
     <div className="trip-list" aria-label="旅程列表">
       {trips.map((trip) => (

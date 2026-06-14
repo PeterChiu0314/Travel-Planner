@@ -23,9 +23,9 @@ Before starting Phase 2, read:
 
 - `AGENT.md`
 - `CURRENT_TASK.md`
-- `UX_RULES.md`
-- `BUGS.md`
-- `PHASE_1_8_WORK_LOG.md`
+- `docs/UX_RULES.md`
+- `docs/BUGS.md`
+- `docs/PHASE_1_8_WORK_LOG.md`
 
 ## Phase 1 Header UI Summary
 
@@ -123,4 +123,3 @@ Phase 2 should keep this baseline passing.
 5. Validate with `npm.cmd run build`.
 6. Run `npm.cmd run test:e2e` when Sidebar changes affect navigation, Demo route, or app shell behavior.
 7. Keep commits scoped and push after verified checkpoints.
-

@@ -50,3 +50,18 @@ test("phase 1.8 members dialog keeps required labels and disabled states", () =>
   expect(appSource).toContain("disabled={!canManageMembers || busy}");
   expect(appSource).toContain('const canEditRole = canManageMembers && member.role !== "owner" && member.user_id !== currentUserId;');
 });
+
+test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", () => {
+  expect(appSource).toContain('{ id: "today", label: "總覽", shortLabel: "覽" }');
+  expect(appSource).not.toContain('{ id: "settings", label: "設定", shortLabel: "設" }');
+  expect(appSource).toContain('<h2 id="sidebar-trips-title">我的旅程</h2>');
+  expect(appSource).toContain('className="mini-button sidebar-create-trip"');
+  expect(appSource).toContain('aria-label="新增旅程"');
+  expect(appSource).toContain('<TripList trips={trips} activeTripId={activeTripId} onCreate={() => setIsTripDialogOpen(true)} onSelect={selectTrip} />');
+  expect(appSource).toContain('className="trip-empty-card"');
+  expect(appSource).toContain("+ 建立第一個旅程");
+  expect(appSource).not.toContain('className="primary-button create-trip-button"');
+  expect(appSource).not.toContain('className="sidebar-members"');
+  expect(appSource).toContain("const canContinue = await requestActiveEditorGuardResolution();");
+  expect(appSource).toContain("if (canContinue) setActiveTripId(nextTripId);");
+});

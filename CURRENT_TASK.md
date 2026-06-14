@@ -1,11 +1,23 @@
 # CURRENT_TASK.md
 
+## Documentation Layout
+
+Root Markdown files are entry points. Detailed project documents are stored in `docs/`.
+
+Read these for phase handoff and operating context:
+
+- `AGENT.md`
+- `docs/UX_RULES.md`
+- `docs/BUGS.md`
+- `docs/PHASE_2_SIDEBAR_HANDOFF.md`
+- `docs/PHASE_1_8_WORK_LOG.md`
+
 ## Current Status - App Layout Phase 1 Header UI
 
 Branch:
 
 ```text
-codex/app-layout-header-phase-1-8
+main
 ```
 
 Status:
@@ -34,7 +46,7 @@ Next likely work:
 
 - Start App Layout Sidebar redesign phase from the current header-complete baseline.
 
-本文件記錄目前專案進度、當前工作方向、保護範圍與交接重點。之後 AI agent 進入專案時，請先閱讀本檔、`AGENT.md`、`UX_RULES.md`、`BUGS.md`。
+本文件記錄目前專案進度、當前工作方向、保護範圍與交接重點。之後 AI agent 進入專案時，請先閱讀本檔、`AGENT.md`、`docs/UX_RULES.md`、`docs/BUGS.md`。
 
 ---
 
@@ -389,8 +401,8 @@ npm.cmd run build
 - `src/App.jsx`
 - `src/styles.css`
 - `AGENT.md`
-- `UX_RULES.md`
-- `BUGS.md`
+- `docs/UX_RULES.md`
+- `docs/BUGS.md`
 - `CURRENT_TASK.md`
 
 修改 UI 時請保持保守、小步、可驗證。
