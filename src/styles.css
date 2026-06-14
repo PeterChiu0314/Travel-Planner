@@ -3175,29 +3175,97 @@ textarea {
   outline-offset: 1px;
 }
 
-.member-role-select {
-  min-width: 86px;
+.member-role-menu {
+  position: relative;
+}
+
+.member-role-menu-trigger {
+  gap: 6px;
   min-height: 34px;
-  border-color: rgba(25, 109, 82, 0.16);
-  border-radius: 999px;
-  background: #f4fbf7;
-  color: var(--mint-dark);
-  padding: 0 30px 0 12px;
-  font-size: 12px;
-  font-weight: 700;
   cursor: pointer;
 }
 
-.member-role-select:hover:not(:disabled) {
+.member-role-menu-trigger:hover {
   border-color: rgba(25, 109, 82, 0.3);
   background: #eef8f2;
 }
 
-.member-role-select:focus-visible {
+.member-role-menu-trigger:focus-visible {
   border-color: rgba(25, 109, 82, 0.42);
   background: #fffefa;
   outline: 3px solid rgba(25, 109, 82, 0.2);
   outline-offset: 2px;
+}
+
+.member-role-menu-caret {
+  color: rgba(25, 109, 82, 0.72);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.member-role-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 148px;
+  border: 1px solid rgba(25, 109, 82, 0.16);
+  border-radius: 8px;
+  background: #fffefa;
+  box-shadow: 0 14px 32px rgba(30, 45, 36, 0.14);
+  padding: 6px;
+}
+
+.member-role-menu-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.member-role-menu-item:hover,
+.member-role-menu-item:focus-visible {
+  background: #eef8f2;
+  outline: none;
+}
+
+.member-role-menu-item.active {
+  color: var(--mint-dark);
+}
+
+.member-role-menu-item.danger {
+  color: #9d3325;
+}
+
+.member-role-menu-item.danger:hover,
+.member-role-menu-item.danger:focus-visible {
+  background: #fff8f5;
+}
+
+.member-role-menu-check {
+  color: var(--mint-dark);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+.member-role-menu-separator {
+  height: 1px;
+  margin: 6px 4px;
+  background: rgba(98, 108, 101, 0.16);
 }
 
 .mini-button.danger {
@@ -3208,25 +3276,6 @@ textarea {
 .mini-button.danger:hover:not(:disabled) {
   background: #fff8f5;
   border-color: rgba(157, 51, 37, 0.36);
-}
-
-.member-remove-button {
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  padding: 0;
-  display: inline-grid;
-  place-items: center;
-}
-
-.member-remove-button svg {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 @media (min-width: 1101px) {

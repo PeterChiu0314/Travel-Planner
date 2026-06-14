@@ -10538,9 +10538,44 @@ function MembersInviteDialog({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [openRoleMenuMemberId, setOpenRoleMenuMemberId] = useState(null);
   const approvedMembers = members.filter((member) => member.status === "approved");
   const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];
   const hasOnlyOneApprovedMember = approvedMembers.length === 1;
+
+  useEffect(() => {
+    if (!openRoleMenuMemberId) return undefined;
+
+    function closeRoleMenuOnOutsideClick(event) {
+      if (event.target instanceof Element && event.target.closest(".member-role-menu")) return;
+      setOpenRoleMenuMemberId(null);
+    }
+
+    function closeRoleMenuOnEscape(event) {
+      if (event.key === "Escape") {
+        setOpenRoleMenuMemberId(null);
+      }
+    }
+
+    document.addEventListener("pointerdown", closeRoleMenuOnOutsideClick);
+    document.addEventListener("keydown", closeRoleMenuOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeRoleMenuOnOutsideClick);
+      document.removeEventListener("keydown", closeRoleMenuOnEscape);
+    };
+  }, [openRoleMenuMemberId]);
+
+  function chooseMemberRole(member, nextRole) {
+    setOpenRoleMenuMemberId(null);
+    if (member.role !== nextRole) {
+      onUpdateRole(member.id, nextRole);
+    }
+  }
+
+  function removeMemberFromMenu(member) {
+    setOpenRoleMenuMemberId(null);
+    onRemoveMember(member.id);
+  }
 
   async function createInvite() {
     if (!canManageMembers || busy) return;
@@ -10598,35 +10633,55 @@ function MembersInviteDialog({
                   </div>
                   <div className="member-actions">
                     {canEditRole ? (
-                      <select
-                        className="compact-select member-role-select"
-                        value={member.role}
-                        aria-label={`${memberName(member)} 角色`}
-                        onChange={(event) => onUpdateRole(member.id, event.target.value)}
-                      >
-                        <option value="editor">編輯者</option>
-                        <option value="viewer">檢視者</option>
-                      </select>
+                      <div className="member-role-menu">
+                        <button
+                          className="member-role-pill member-role-menu-trigger"
+                          type="button"
+                          aria-haspopup="menu"
+                          aria-expanded={openRoleMenuMemberId === member.id}
+                          aria-label={`${memberName(member)} 角色操作`}
+                          onClick={() =>
+                            setOpenRoleMenuMemberId((currentMemberId) => (currentMemberId === member.id ? null : member.id))
+                          }
+                        >
+                          {memberRoleLabel(member.role)}
+                          <span className="member-role-menu-caret" aria-hidden="true">
+                            ▾
+                          </span>
+                        </button>
+                        {openRoleMenuMemberId === member.id ? (
+                          <div className="member-role-menu-popover" role="menu">
+                            {["editor", "viewer"].map((role) => (
+                              <button
+                                className={`member-role-menu-item${member.role === role ? " active" : ""}`}
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={member.role === role}
+                                key={role}
+                                onClick={() => chooseMemberRole(member, role)}
+                              >
+                                <span className="member-role-menu-check" aria-hidden="true">
+                                  {member.role === role ? "✓" : ""}
+                                </span>
+                                {memberRoleLabel(role)}
+                              </button>
+                            ))}
+                            <div className="member-role-menu-separator" />
+                            <button
+                              className="member-role-menu-item danger"
+                              type="button"
+                              role="menuitem"
+                              onClick={() => removeMemberFromMenu(member)}
+                            >
+                              <span className="member-role-menu-check" aria-hidden="true" />
+                              移除成員
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : (
                       <span className="member-role-pill">{memberRoleLabel(member.role)}</span>
                     )}
-                    {canEditRole ? (
-                      <button
-                        className="mini-button danger member-remove-button"
-                        type="button"
-                        title="移除成員"
-                        aria-label={`移除 ${memberName(member)}`}
-                        onClick={() => onRemoveMember(member.id)}
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24">
-                          <path d="M3 6h18" />
-                          <path d="M8 6V4h8v2" />
-                          <path d="M19 6l-1 14H6L5 6" />
-                          <path d="M10 11v5" />
-                          <path d="M14 11v5" />
-                        </svg>
-                      </button>
-                    ) : null}
                   </div>
                 </div>
               );
