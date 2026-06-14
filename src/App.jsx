@@ -2940,7 +2940,7 @@ function exportTrip() {
   }
 
   return (
-    <Shell collapsed={isSidebarCollapsed}>
+    <Shell appLayout collapsed={isSidebarCollapsed}>
       <aside className={`sidebar${isSidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand">
           <div className="brand-mark">TP</div>
@@ -3276,8 +3276,8 @@ function findOverlappingVisitItem({ dayIndex, editingId, items, payload }) {
   });
 }
 
-function Shell({ children, collapsed = false }) {
-  return <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
+function Shell({ appLayout = false, children, collapsed = false }) {
+  return <div className={`app-shell${appLayout ? " app-shell-workspace" : ""}${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
 }
 
 function TripHeaderIcon({ name }) {

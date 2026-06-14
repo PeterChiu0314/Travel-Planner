@@ -68,6 +68,12 @@ code {
   min-height: 100vh;
 }
 
+.app-shell-workspace {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .app-shell.sidebar-collapsed {
   grid-template-columns: 84px minmax(0, 1fr);
 }
@@ -131,6 +137,12 @@ code {
   padding: 24px;
 }
 
+.app-shell-workspace .sidebar {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .sidebar.collapsed {
   align-items: center;
   padding: 18px 12px;
@@ -138,6 +150,7 @@ code {
 
 .brand {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 12px;
   margin-bottom: 24px;
@@ -352,6 +365,7 @@ code {
 
 .section-nav {
   display: grid;
+  flex: 0 0 auto;
   gap: 8px;
   margin: 18px 0 18px;
 }
@@ -553,7 +567,10 @@ code {
 
 .sidebar-trip-section {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  flex: 1 1 auto;
   gap: 10px;
+  min-height: 0;
   margin-top: 4px;
 }
 
@@ -584,6 +601,10 @@ code {
 .sidebar-trip-list-region {
   display: grid;
   gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
 }
 
 .trip-card {
@@ -644,6 +665,7 @@ code {
 
 .user-box {
   display: grid;
+  flex: 0 0 auto;
   gap: 10px;
   margin-top: auto;
   border-top: 1px solid var(--line);
@@ -764,6 +786,14 @@ code {
   padding: 0 24px 24px;
 }
 
+.app-shell-workspace .workspace {
+  height: 100dvh;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 .trip-header {
   position: relative;
   display: grid;
@@ -775,6 +805,13 @@ code {
   margin: -4px -24px 18px;
   padding: 30px 24px 14px;
   background: rgba(255, 253, 248, 0.82);
+}
+
+.app-shell-workspace .trip-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(18px);
 }
 
 .trip-header-main {
@@ -959,7 +996,7 @@ code {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 30;
+  z-index: 70;
   display: grid;
   width: 360px;
   max-width: calc(100vw - 32px);
@@ -1033,7 +1070,7 @@ code {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 30;
+  z-index: 70;
   display: grid;
   width: 600px;
   max-width: calc(100vw - 32px);
@@ -1413,7 +1450,7 @@ code {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 20;
+  z-index: 70;
   display: grid;
   min-width: 168px;
   border: 1px solid var(--line);
@@ -3204,7 +3241,7 @@ textarea {
   place-items: center;
   background: rgba(24, 32, 28, 0.36);
   padding: 16px;
-  z-index: 20;
+  z-index: 80;
 }
 
 .dialog-card {
@@ -3326,7 +3363,7 @@ textarea {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  z-index: 30;
+  z-index: 90;
   display: grid;
   min-width: 148px;
   border: 1px solid rgba(25, 109, 82, 0.16);
@@ -3514,9 +3551,17 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .app-shell-workspace {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
   .sidebar {
     position: static;
+    height: auto;
     min-height: auto;
+    overflow: visible;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
@@ -3568,6 +3613,24 @@ textarea {
 
   .trip-list {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .sidebar-trip-section,
+  .sidebar-trip-list-region {
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .app-shell-workspace .workspace {
+    height: auto;
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+
+  .app-shell-workspace .trip-header {
+    position: relative;
+    top: auto;
+    z-index: auto;
   }
 
   .content-grid {

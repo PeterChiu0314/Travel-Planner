@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const appSource = readFileSync("src/App.jsx", "utf8");
+const styleSource = readFileSync("src/styles.css", "utf8");
 
 test("phase 1.8 formal member and share gates stay separated", () => {
   expect(appSource).toContain('const canInviteMembers = isOwner && !isTripDateLocked;');
@@ -64,4 +65,20 @@ test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", 
   expect(appSource).not.toContain('className="sidebar-members"');
   expect(appSource).toContain("const canContinue = await requestActiveEditorGuardResolution();");
   expect(appSource).toContain("if (canContinue) setActiveTripId(nextTripId);");
+});
+
+test("phase 2.3 app shell owns desktop scroll without changing demo/share shell", () => {
+  expect(appSource).toContain("<Shell appLayout collapsed={isSidebarCollapsed}>");
+  expect(appSource).toContain('className={`app-shell${appLayout ? " app-shell-workspace" : ""}${collapsed ? " sidebar-collapsed" : ""}`}');
+  expect(styleSource).toContain(".app-shell-workspace {");
+  expect(styleSource).toContain("height: 100dvh;");
+  expect(styleSource).toContain("overflow: hidden;");
+  expect(styleSource).toContain(".app-shell-workspace .sidebar {");
+  expect(styleSource).toContain("overflow-y: auto;");
+  expect(styleSource).toContain(".app-shell-workspace .trip-header {");
+  expect(styleSource).toContain("position: sticky;");
+  expect(styleSource).toContain("z-index: 40;");
+  expect(styleSource).toContain(".app-shell-workspace {\n    height: auto;");
+  expect(styleSource).toContain(".app-shell-workspace .workspace {\n    height: auto;");
+  expect(styleSource).toContain(".app-shell-workspace .trip-header {\n    position: relative;");
 });
