@@ -3146,7 +3146,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 72px;
+  min-width: 88px;
   border: 1px solid rgba(25, 109, 82, 0.16);
   border-radius: 999px;
   background: #f4fbf7;
@@ -3181,7 +3181,7 @@ textarea {
 
 .member-role-menu-trigger {
   gap: 6px;
-  min-height: 34px;
+  min-height: 26px;
   cursor: pointer;
 }
 
