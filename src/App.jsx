@@ -3509,7 +3509,6 @@ function TripHeader({
     if (!dateChangePreview.hasTimelineRemoval) setIsDateRemovalConfirmed(false);
   }, [dateChangePreview.hasTimelineRemoval]);
   const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
-  const weekdayFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { weekday: "short" }), []);
   const fullDateFormat = useMemo(
     () => new Intl.DateTimeFormat("zh-TW", { day: "numeric", month: "long", year: "numeric" }),
     [],
@@ -4061,10 +4060,7 @@ function TripHeader({
 
   function renderDateMonth(monthDate, controls = {}) {
     const cells = calendarMonthCells(monthDate);
-    const weekdays = Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(2026, 5, 7 + index);
-      return weekdayFormat.format(date);
-    });
+    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
     return (
       <section className="trip-date-range-month" key={formatDateKey(monthDate)}>
         <div className="trip-date-range-month-header">
