@@ -3384,6 +3384,18 @@ textarea {
   padding: 22px;
 }
 
+.create-trip-dialog {
+  align-content: start;
+  width: min(640px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+.create-trip-date-picker {
+  display: grid;
+  gap: 12px;
+}
+
 .dialog-card h2 {
   font-size: 24px;
 }
