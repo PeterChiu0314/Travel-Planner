@@ -52,6 +52,22 @@ Next likely work:
 - When ready, merge `codex/app-layout-sidebar-phase-2.2` into `main`.
 - Continue to avoid broad rewrites; remaining Sidebar work should be small CSS/JSX polish unless explicitly scoped otherwise.
 
+Known issue - Sidebar responsive at `<=1100px`:
+
+- At `<=1100px`, Sidebar switches to a top layout and the trip list can spread horizontally, taking too much height.
+- This was intentionally not fixed in Phase 2.4.
+- Handle this later in the Mobile / Tablet layout stage.
+- Possible directions:
+  - Hide Sidebar trip list under `<=1100px`.
+  - Replace it with a mobile trip switcher.
+  - Move trip switching into Header / bottom sheet / drawer.
+
+Handoff note:
+
+- Home-side Phase 2.4 wrap-up was done before the latest office-side commits.
+- Current local workspace has now been pulled to the GitHub latest branch state.
+- Continue from `eed45d1 docs: update sidebar phase handoff status` unless newer remote commits exist.
+
 本文件記錄目前專案進度、當前工作方向、保護範圍與交接重點。之後 AI agent 進入專案時，請先閱讀本檔、`AGENT.md`、`docs/UX_RULES.md`、`docs/BUGS.md`。
 
 ---
