@@ -593,7 +593,7 @@ code {
   grid-template-rows: auto minmax(0, 1fr);
   flex: 1 1 auto;
   gap: 10px;
-  min-height: 0;
+  min-height: clamp(178px, 30dvh, 260px);
   margin-top: 4px;
 }
 
@@ -624,7 +624,7 @@ code {
 .sidebar-trip-list-region {
   display: block;
   gap: 10px;
-  min-height: 0;
+  min-height: 128px;
   overflow-y: auto;
   padding-right: 2px;
   scrollbar-gutter: stable;
@@ -841,6 +841,73 @@ code {
 .sidebar.collapsed .sidebar-members .member-summary {
   justify-content: center;
   margin-bottom: 0;
+}
+
+@media (min-width: 1101px) and (max-height: 820px) {
+  .sidebar {
+    padding: 14px 16px;
+  }
+
+  .sidebar.collapsed {
+    padding: 14px 12px;
+  }
+
+  .brand {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .section-nav {
+    gap: 4px;
+    margin: 8px 0 10px;
+  }
+
+  .section-nav-button {
+    min-height: 32px;
+    padding: 5px 8px;
+  }
+
+  .section-nav-icon {
+    flex-basis: 24px;
+    width: 24px;
+    height: 24px;
+  }
+
+  .sidebar-trip-section {
+    min-height: 174px;
+  }
+
+  .sidebar-trip-list-region {
+    min-height: 122px;
+  }
+
+  .trip-card {
+    min-height: 72px;
+    padding: 12px;
+  }
+
+  .user-box {
+    gap: 7px;
+    padding-top: 10px;
+  }
+
+  .sidebar.collapsed .user-box {
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  .sidebar.collapsed .user-avatar,
+  .sidebar.collapsed .user-settings-button,
+  .sidebar.collapsed .user-signout-button {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
 }
 
 .workspace {
