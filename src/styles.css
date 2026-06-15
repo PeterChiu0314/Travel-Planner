@@ -352,10 +352,30 @@ code {
   padding: 24px;
 }
 
+.app-shell-workspace .demo-sidebar {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .demo-workspace {
   display: grid;
   align-content: start;
   gap: 18px;
+}
+
+.user-email {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.demo-user-box button:disabled,
+.sidebar-create-trip:disabled {
+  cursor: default;
+  opacity: 0.78;
+  transform: none;
 }
 
 .demo-banner {
@@ -601,7 +621,6 @@ code {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  border-bottom: 1px solid var(--line);
   align-items: center;
 }
 
@@ -696,7 +715,7 @@ code {
   width: 100%;
   margin-top: auto;
   border-top: 1px solid var(--line);
-  padding-top: 18px;
+  padding-top: 10px;
 }
 
 .user-box strong {

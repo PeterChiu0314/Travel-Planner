@@ -1062,6 +1062,45 @@ const demoTrip = {
   status: "planning",
 };
 
+const demoTrips = [
+  {
+    ...demoTrip,
+    id: "demo-trip-kyoto",
+    title: "京都琵琶湖之旅-TEST",
+    destination: "京都・琵琶湖, 日本",
+    start_date: "2027-04-05",
+    end_date: "2027-04-10",
+    updated_at: "2026-06-15T10:00:00.000Z",
+  },
+  {
+    ...demoTrip,
+    id: "demo-trip-system",
+    title: "系統測試專用",
+    destination: "日本・京都",
+    start_date: "2026-07-08",
+    end_date: "2026-07-12",
+    updated_at: "2026-06-14T10:00:00.000Z",
+  },
+  {
+    ...demoTrip,
+    id: "demo-trip-wild",
+    title: "野人沒有日記",
+    destination: "綠野山林",
+    start_date: "2026-05-30",
+    end_date: "2026-06-02",
+    updated_at: "2026-06-13T10:00:00.000Z",
+  },
+  {
+    ...demoTrip,
+    id: "demo-trip-a-test",
+    title: "A_TEST",
+    destination: "Taiwan・Yilan",
+    start_date: "2026-06-23",
+    end_date: "2026-06-25",
+    updated_at: "2026-06-12T10:00:00.000Z",
+  },
+];
+
 const demoMembers = [
   { user_id: "demo-peter", display_name: "Peter", email: "peter@example.com", role: "owner", status: "approved" },
   { user_id: "demo-a", display_name: "小安", email: "ariel@example.com", role: "editor", status: "approved" },
@@ -1421,7 +1460,8 @@ export default function App() {
   const canChangeTripDates = isOwner && !isTripDateLocked;
   const canInviteMembers = isOwner && !isTripDateLocked;
   const canOpenMembersDialog = activeMembership?.status === "approved";
-  const userDisplayName = session?.user?.user_metadata?.full_name || session?.user?.email || "";
+  const userEmail = session?.user?.email || "";
+  const userDisplayName = session?.user?.user_metadata?.full_name || userEmail;
   const userInitial = (userDisplayName.trim()[0] || "?").toUpperCase();
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
   const canManageShareLinks = isOwner;
@@ -2902,11 +2942,7 @@ function exportTrip() {
   }
 
   if (isDemoMode) {
-    return (
-      <Shell>
-        <DemoApp initialSection={demoSection} />
-      </Shell>
-    );
+    return <DemoApp initialSection={demoSection} />;
   }
 
   if (!hasSupabaseConfig) {
@@ -3014,8 +3050,8 @@ function exportTrip() {
               {userInitial}
             </div>
             <div className="user-account">
-              <span className="user-account-label nav-label">帳號</span>
               <strong className="nav-label">{userDisplayName}</strong>
+              {userEmail ? <span className="user-email nav-label">{userEmail}</span> : null}
             </div>
             <button className="mini-button user-settings-button" type="button" title="設定" aria-label="設定" onClick={() => setActiveSection("settings")}>
               設
@@ -4730,7 +4766,8 @@ function DemoApp({ initialSection }) {
   const [activeSection, setActiveSection] = useState(initialSection || "timeline");
   const [activeDay, setActiveDay] = useState(0);
   const [isDemoMembersDialogOpen, setIsDemoMembersDialogOpen] = useState(false);
-  const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrip);
+  const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrips[0]);
+  const [isDemoSidebarCollapsed, setIsDemoSidebarCollapsed] = useState(false);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
@@ -5179,14 +5216,38 @@ function DemoApp({ initialSection }) {
   }
 
   return (
-    <section className="demo-shell">
-      <aside className="demo-sidebar">
+    <Shell appLayout collapsed={isDemoSidebarCollapsed}>
+      <aside className={`sidebar demo-sidebar${isDemoSidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">TP</div>
+          <button
+            className="brand-mark"
+            type="button"
+            title={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到 Demo 行程"}
+            aria-label={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到 Demo 行程"}
+            onClick={() => {
+              if (isDemoSidebarCollapsed) {
+                setIsDemoSidebarCollapsed(false);
+                return;
+              }
+              changeSection("timeline");
+            }}
+          >
+            TP
+          </button>
           <div className="brand-copy">
             <h1>旅遊規劃</h1>
             <p>展示模式</p>
           </div>
+          <button
+            className="mini-button sidebar-toggle"
+            type="button"
+            title={isDemoSidebarCollapsed ? "展開側欄" : "收合側欄"}
+            aria-label={isDemoSidebarCollapsed ? "展開側欄" : "收合側欄"}
+            aria-expanded={!isDemoSidebarCollapsed}
+            onClick={() => setIsDemoSidebarCollapsed((value) => !value)}
+          >
+            {isDemoSidebarCollapsed ? ">" : "<"}
+          </button>
         </div>
         <nav className="section-nav" aria-label="Demo 導覽">
           {["timeline", "budget", "luggage"].map((section) => (
@@ -5194,6 +5255,9 @@ function DemoApp({ initialSection }) {
               className={`section-nav-button${activeSection === section ? " active" : ""}`}
               key={section}
               type="button"
+              title={demoSectionLabel(section)}
+              aria-label={demoSectionLabel(section)}
+              aria-current={activeSection === section ? "page" : undefined}
               onClick={() => changeSection(section)}
             >
               <span className="section-nav-icon" aria-hidden="true">
@@ -5203,6 +5267,52 @@ function DemoApp({ initialSection }) {
             </button>
           ))}
         </nav>
+        <section className="sidebar-trip-section" aria-labelledby="demo-sidebar-trips-title">
+          <div className="sidebar-trip-heading">
+            <h2 id="demo-sidebar-trips-title">我的旅程</h2>
+            <button
+              className="mini-button sidebar-create-trip"
+              type="button"
+              title="Demo 模式不支援新增旅程"
+              aria-label="Demo 模式不支援新增旅程"
+              disabled
+            >
+              +
+            </button>
+          </div>
+          <div className="sidebar-trip-list-region">
+            <TripList
+              trips={demoTrips.map((trip) => ({
+                ...trip,
+                membership: { role: "owner", status: "approved" },
+              }))}
+              activeTripId={demoActiveTrip.id}
+              compact={isDemoSidebarCollapsed}
+              onCreate={() => {}}
+              onSelect={(tripId) => {
+                const nextTrip = demoTrips.find((trip) => trip.id === tripId);
+                if (nextTrip) setDemoActiveTrip(nextTrip);
+              }}
+            />
+          </div>
+        </section>
+        <div className="user-box demo-user-box">
+          <div className="user-box-top">
+            <div className="user-avatar" aria-hidden="true">
+              D
+            </div>
+            <div className="user-account">
+              <strong className="nav-label">Demo User</strong>
+              <span className="user-email nav-label">demo@example.com</span>
+            </div>
+            <button className="mini-button user-settings-button" type="button" title="Demo 設定僅供展示" aria-label="Demo 設定僅供展示" disabled>
+              設
+            </button>
+          </div>
+          <button className="ghost-button user-signout-button" type="button" title="Demo 不需要登出" aria-label="Demo 不需要登出" disabled>
+            Demo
+          </button>
+        </div>
       </aside>
       <main className="workspace demo-workspace">
         <div className="demo-banner">Demo Mode：這是展示資料，操作不會永久保存。</div>
@@ -5397,7 +5507,7 @@ function DemoApp({ initialSection }) {
           onUpdateRole={() => {}}
         />
       ) : null}
-    </section>
+    </Shell>
   );
 }
 

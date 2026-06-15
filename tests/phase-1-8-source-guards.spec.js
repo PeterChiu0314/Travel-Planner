@@ -67,8 +67,13 @@ test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", 
   expect(appSource).toContain("if (canContinue) setActiveTripId(nextTripId);");
 });
 
-test("phase 2.3 app shell owns desktop scroll without changing demo/share shell", () => {
+test("phase 2.3 app shell owns desktop scroll and demo sidebar uses local parity shell", () => {
   expect(appSource).toContain("<Shell appLayout collapsed={isSidebarCollapsed}>");
+  expect(appSource).toContain("<Shell appLayout collapsed={isDemoSidebarCollapsed}>");
+  expect(appSource).toContain("const demoTrips = [");
+  expect(appSource).toContain('className={`sidebar demo-sidebar${isDemoSidebarCollapsed ? " collapsed" : ""}`}');
+  expect(appSource).toContain('id="demo-sidebar-trips-title"');
+  expect(appSource).toContain("Demo User");
   expect(appSource).toContain('className={`app-shell${appLayout ? " app-shell-workspace" : ""}${collapsed ? " sidebar-collapsed" : ""}`}');
   expect(styleSource).toContain(".app-shell-workspace {");
   expect(styleSource).toContain("height: 100dvh;");
@@ -78,7 +83,8 @@ test("phase 2.3 app shell owns desktop scroll without changing demo/share shell"
   expect(styleSource).toContain(".app-shell-workspace .trip-header {");
   expect(styleSource).toContain("position: sticky;");
   expect(styleSource).toContain("z-index: 40;");
-  expect(styleSource).toContain(".app-shell-workspace {\n    height: auto;");
-  expect(styleSource).toContain(".app-shell-workspace .workspace {\n    height: auto;");
-  expect(styleSource).toContain(".app-shell-workspace .trip-header {\n    position: relative;");
+  expect(styleSource).toContain(".app-shell-workspace .demo-sidebar {");
+  expect(styleSource).toMatch(/\.app-shell-workspace\s*{\s*height:\s*auto;/);
+  expect(styleSource).toMatch(/\.app-shell-workspace \.workspace\s*{\s*height:\s*auto;/);
+  expect(styleSource).toMatch(/\.app-shell-workspace \.trip-header\s*{\s*position:\s*relative;/);
 });

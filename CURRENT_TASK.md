@@ -12,6 +12,58 @@ Read these for phase handoff and operating context:
 - `docs/PHASE_2_SIDEBAR_HANDOFF.md`
 - `docs/PHASE_1_8_WORK_LOG.md`
 
+## Latest Status - App Layout Phase 2 Sidebar Home Wrap-up
+
+Branch:
+
+```text
+codex/app-layout-sidebar-phase-2.2
+```
+
+Status:
+
+```text
+App Layout Phase 2 Sidebar - home wrap-up complete, ready to continue at office
+```
+
+Completed in the latest home-side wrap-up:
+
+- Phase 2.6 Demo Sidebar Parity is implemented as UI-only local state:
+  - Demo Sidebar uses local mock trips.
+  - Demo supports Sidebar collapse.
+  - Demo trip list scroll, Header, and account area now match the formal Sidebar structure.
+  - Demo does not use Supabase, Auth, Realtime, Storage, Draft Autosave, or Edit Lock.
+- The Demo nested Shell issue was fixed; Demo pages no longer render blank when Sidebar is expanded.
+- Formal and Demo Sidebar account areas now match:
+  - Name on the first line.
+  - Email on the second line.
+  - The old small account label is removed.
+- Sidebar trip heading polish is complete:
+  - "我的旅程" and the create trip button were enlarged for clearer hierarchy.
+  - The trip heading bottom border was removed.
+- Account area polish is complete:
+  - `.user-box` top padding is now `10px`.
+  - `.user-email` is now 11px and regular weight.
+
+Validation completed:
+
+- `npm.cmd run build` passed.
+- `npx.cmd playwright test` passed, 11/11.
+- `git diff --check` passed, with only Windows LF/CRLF warnings.
+- Browser visual verification was not available in the Codex desktop sandbox on this machine; the Browser runtime failed with `CreateProcessAsUserW failed: 5`.
+
+Latest pushed continuation point:
+
+```text
+latest pushed commit after this wrap-up: feat: align demo and formal sidebar account UI
+```
+
+Office continuation:
+
+- Tomorrow at the office, pull `codex/app-layout-sidebar-phase-2.2` and continue from the latest pushed commit.
+- Remaining Sidebar work should stay as small CSS/JSX polish unless explicitly scoped otherwise.
+- Keep the known `<=1100px` responsive Sidebar issue for the later Mobile / Tablet layout stage.
+
 ## Current Status - App Layout Phase 2 Sidebar Wrap-up
 
 Branch:
