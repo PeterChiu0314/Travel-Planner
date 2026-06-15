@@ -12,39 +12,45 @@ Read these for phase handoff and operating context:
 - `docs/PHASE_2_SIDEBAR_HANDOFF.md`
 - `docs/PHASE_1_8_WORK_LOG.md`
 
-## Current Status - App Layout Phase 1 Header UI
+## Current Status - App Layout Phase 2 Sidebar Wrap-up
 
 Branch:
 
 ```text
-main
+codex/app-layout-sidebar-phase-2.2
 ```
 
 Status:
 
 ```text
-App Layout Phase 1 Header UI - Completed / user verified
+App Layout Phase 2 Sidebar - mostly complete / small polish remains
 ```
 
 Summary:
 
-- Header member preview long button is implemented.
-- Members / invite dialog is implemented.
-- "成員與邀請" dialog is implemented.
-- Owner / Editor / Viewer permissions are aligned.
-- Editor can open Share Dialog and copy existing active share links.
-- Viewer cannot open Share Dialog.
-- Demo smoke coverage and source guard coverage are in place.
-- Header UI polish follow-ups are completed and pushed.
-- Latest pushed commits:
-  - `8835a54 feat: add phase 1.8 member header management`
-  - `4856504 fix: allow editors to copy active share links`
-  - `6e75041 feat: add member role action menu`
-  - `cf9ff38 style: tune trip date picker summary`
+- Header Phase 1 is complete, user verified, merged to `main`, and remains the baseline for Phase 2.
+- Sidebar Phase 2 work is currently on `codex/app-layout-sidebar-phase-2.2`.
+- `origin/main` is still at `526f9d3 docs: add phase 2 sidebar handoff`; Sidebar Phase 2 work has not been merged to `main`.
+- Sidebar information architecture is implemented.
+- App shell scroll layout is implemented: Sidebar/Header are fixed in desktop workspace mode and Workspace owns main scrolling.
+- Sidebar compact/collapsed mode is implemented.
+- Desktop low-height Sidebar trip list minimum height was fixed so "我的旅程" stays usable.
+- Phase 2.5a is complete: New Trip Dialog now reuses the Header date range picker UI.
+- New Trip creation data flow is unchanged and still submits selected `start_date` / `end_date`.
+- Latest pushed commits on `codex/app-layout-sidebar-phase-2.2`:
+  - `06b04b0 feat: update sidebar information architecture`
+  - `1f681cd feat: fix app shell scroll layout`
+  - `38a54bb fix: prevent sidebar trip cards stretching`
+  - `50383d0 feat: add sidebar compact mode`
+  - `746aac1 fix: preserve sidebar trip list height`
+  - `02355d0 feat: reuse date picker in trip dialog`
 
 Next likely work:
 
-- Start App Layout Sidebar redesign phase from the current header-complete baseline.
+- Final Sidebar visual polish / QA.
+- Decide whether to update `docs/PHASE_2_SIDEBAR_HANDOFF.md` or create a Phase 2 completion handoff.
+- When ready, merge `codex/app-layout-sidebar-phase-2.2` into `main`.
+- Continue to avoid broad rewrites; remaining Sidebar work should be small CSS/JSX polish unless explicitly scoped otherwise.
 
 本文件記錄目前專案進度、當前工作方向、保護範圍與交接重點。之後 AI agent 進入專案時，請先閱讀本檔、`AGENT.md`、`docs/UX_RULES.md`、`docs/BUGS.md`。
 
@@ -53,20 +59,55 @@ Next likely work:
 ## 目前分支
 
 ```text
-codex/trip-date-data-flow
+codex/app-layout-sidebar-phase-2.2
 ```
 
-本分支專門處理旅程日期變更與行程資料流。Header 改版分支已合併進 `main`，Phase 1.7 起請在本分支上繼續日期資料流相關工作，不要切回 `main` 或另開分支，除非使用者明確要求。
+本分支目前處理 App Layout Phase 2 Sidebar 收尾與小型 UI polish。Header 改版已合併進 `main`；Sidebar Phase 2 尚未合併進 `main`。
 
-目前本聊天室規則：修改完成並驗證後，預設 commit 並 push 到 `origin/codex/trip-date-data-flow`；若單一任務明確禁止 push，則以該任務指示優先。
+目前本聊天室規則：修改完成並驗證後，若使用者要求 push，推到 `origin/codex/app-layout-sidebar-phase-2.2`；若單一任務明確禁止 push，則以該任務指示優先。
 
 ---
 
 ## 目前階段
 
-App Layout Phase 1.7：旅程日期變更與資料一致性已完成、已測試、User Verified，並已 push 到 `codex/trip-date-data-flow`。
+App Layout Phase 2：Sidebar 收尾階段。Phase 2.2～2.4 已大致完成；Phase 2.4b 與 Phase 2.5a 已完成並 push。
 
-Phase 3 已大致收尾。App Layout Header Phase 1.0～1.6A 已完成並合併，Phase 1.7 日期資料流已完成。Sidebar、Toolbar、Share UX、Data Portability、`trip_days` 與地圖 / 路線整合後續會另開階段處理。
+Phase 2 已完成重點：
+
+- Phase 2.1 Sidebar audit：已完成，記錄於 `docs/PHASE_2_1_SIDEBAR_AUDIT.md`。
+- Phase 2.2 Sidebar information architecture：已完成。
+- Phase 2.3 Fixed Sidebar / Header / Workspace scroll：已完成。
+- Phase 2.4 Desktop nav / compact mode / collapsed behavior：大致完成。
+- Phase 2.4b Desktop Sidebar Trip List minimum height：已完成。
+- Phase 2.5a New Trip Dialog date picker reuse：已完成。
+
+目前保護範圍：
+
+- 不改 Auth / Google OAuth。
+- 不改 Share route / Share Dialog core behavior。
+- 不改 Invite / member mutation logic。
+- 不改 Draft Autosave。
+- 不改 Edit Lock。
+- 不改 Realtime subscription flow。
+- 不改 Supabase schema / RLS / RPC / migrations。
+- 不改 `updateTripDateRange()` 或旅程日期 RPC 資料流。
+- 不改 `selectTrip` / dirty editor guard。
+- 不改 Sidebar layout，除非任務明確要求。
+
+建議驗證：
+
+```powershell
+npm.cmd run build
+git diff --check
+```
+
+如果任務影響 navigation、Demo route、Share route、App shell loading，追加：
+
+```powershell
+npm.cmd run test:e2e
+```
+
+以下 Phase 1 / 日期資料流紀錄為歷史脈絡，仍可作為保護規則參考。
 
 Header 目前狀態：
 
