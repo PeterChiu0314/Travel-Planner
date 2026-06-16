@@ -134,7 +134,7 @@ code {
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px);
-  padding: 24px 14px 10px 14px;
+  padding: 24px 14px 8px 14px;
 }
 
 .app-shell-workspace .sidebar {
@@ -400,10 +400,10 @@ code {
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: var(--ink);
-  padding: 8px 10px;
+  color: #18201cbf;
+  padding: 4px 10px;
   text-align: left;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .section-nav-button.active {
@@ -420,15 +420,21 @@ code {
 
 .section-nav-icon {
   display: grid;
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
   place-items: center;
   border-radius: 8px;
   background: #edf3ef;
-  color: var(--mint-dark);
+  color: var(--muted);
   font-size: 12px;
   font-weight: 900;
+}
+
+.section-nav-icon svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 2;
 }
 
 .sidebar.collapsed .section-nav,
@@ -582,7 +588,7 @@ code {
 .trip-list {
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 6px;
   grid-auto-rows: max-content;
 }
 
@@ -603,9 +609,9 @@ code {
 }
 
 .sidebar-trip-heading h2 {
-  color: #18201cde;
+  color: var(--ink);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
   margin-left: 4px;
 }
 
@@ -613,9 +619,9 @@ code {
   display: inline-grid;
   place-items: center;
   flex: 0 0 32px;
-  width: 34px;
-  min-width: 34px;
-  min-height: 34px;
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
   font-size: 20px;
   font-weight: 400;
   line-height: 1;
@@ -692,10 +698,10 @@ code {
   position: relative;
   display: grid;
   flex: 0 0 auto;
-  width: 100%;
-  margin-top: auto;
+  width: auto;
+  margin: auto -14px 0;
   border-top: 1px solid var(--line);
-  padding-top: 10px;
+  padding: 8px 8px 0;
 }
 
 .user-box strong {
@@ -714,7 +720,7 @@ code {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.78);
   color: var(--ink);
-  padding: 10px;
+  padding: 8px 10px;
   text-align: left;
   font: inherit;
   cursor: pointer;
@@ -742,7 +748,6 @@ code {
 
 .user-account {
   display: grid;
-  gap: 2px;
   min-width: 0;
 }
 
@@ -764,12 +769,13 @@ code {
 
 .account-menu {
   position: absolute;
-  right: 0;
+  right: 8px;
   bottom: 100%;
+  left: 8px;
   z-index: 65;
   display: grid;
   min-width: min(220px, 100%);
-  width: 100%;
+  width: auto;
   gap: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -784,7 +790,7 @@ code {
   grid-template-columns: 24px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  min-height: 38px;
+  min-height: 26px;
   border: 0;
   border-radius: 7px;
   background: transparent;
@@ -810,11 +816,7 @@ code {
 .account-menu-separator {
   height: 1px;
   background: var(--line);
-  margin: 2px 4px;
-}
-
-.sidebar.collapsed .user-box {
-  padding-top: 14px;
+  margin: 2px -2px;
 }
 
 .sidebar.collapsed .user-box-card {
@@ -3985,7 +3987,7 @@ textarea {
   }
 
   .user-box {
-    margin-top: 14px;
+    margin: 14px 0 0;
   }
 
   .topbar {

@@ -1,5 +1,17 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, LogOut, Settings } from "lucide-react";
+import {
+  Bed,
+  ChevronDown,
+  ChevronUp,
+  ClipboardCheck,
+  HandCoins,
+  LayoutDashboard,
+  LogOut,
+  Luggage,
+  Map as MapIcon,
+  Settings,
+  Wallet,
+} from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
@@ -7,13 +19,13 @@ import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 const attachmentBucket = "trip-attachments";
 
 const desktopNavItems = [
-  { id: "today", label: "總覽", shortLabel: "覽" },
-  { id: "timeline", label: "行程", shortLabel: "程" },
-  { id: "budget", label: "預算", shortLabel: "錢" },
-  { id: "accommodation", label: "住宿", shortLabel: "宿" },
-  { id: "todo", label: "待辦", shortLabel: "辦" },
-  { id: "luggage", label: "行李", shortLabel: "李" },
-  { id: "settlement", label: "結算", shortLabel: "結" },
+  { id: "today", Icon: LayoutDashboard, label: "總覽", shortLabel: "覽" },
+  { id: "timeline", Icon: MapIcon, label: "行程", shortLabel: "程" },
+  { id: "budget", Icon: Wallet, label: "預算", shortLabel: "錢" },
+  { id: "accommodation", Icon: Bed, label: "住宿", shortLabel: "宿" },
+  { id: "todo", Icon: ClipboardCheck, label: "待辦", shortLabel: "辦" },
+  { id: "luggage", Icon: Luggage, label: "行李", shortLabel: "李" },
+  { id: "settlement", Icon: HandCoins, label: "結算", shortLabel: "結" },
 ];
 
 const mobileNavItems = [
@@ -3016,22 +3028,25 @@ function exportTrip() {
           </button>
         </div>
         <nav className="section-nav" aria-label="功能導覽">
-          {desktopNavItems.map((item) => (
-            <button
-              className={`section-nav-button${activeSection === item.id ? " active" : ""}`}
-              key={item.id}
-              type="button"
-              title={item.label}
-              aria-label={item.label}
-              aria-current={activeSection === item.id ? "page" : undefined}
-              onClick={() => setActiveSection(item.id)}
-            >
-              <span className="section-nav-icon" aria-hidden="true">
-                {item.shortLabel}
-              </span>
-              <span className="nav-label">{item.label}</span>
-            </button>
-          ))}
+          {desktopNavItems.map((item) => {
+            const Icon = item.Icon;
+            return (
+              <button
+                className={`section-nav-button${activeSection === item.id ? " active" : ""}`}
+                key={item.id}
+                type="button"
+                title={item.label}
+                aria-label={item.label}
+                aria-current={activeSection === item.id ? "page" : undefined}
+                onClick={() => setActiveSection(item.id)}
+              >
+                <span className="section-nav-icon" aria-hidden="true">
+                  <Icon size={15} strokeWidth={2.2} />
+                </span>
+                <span className="nav-label">{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
         <section className="sidebar-trip-section" aria-labelledby="sidebar-trips-title">
           <div className="sidebar-trip-heading">
@@ -5340,22 +5355,26 @@ function DemoApp({ initialSection }) {
           </button>
         </div>
         <nav className="section-nav" aria-label="Demo 導覽">
-          {["timeline", "budget", "luggage"].map((section) => (
-            <button
-              className={`section-nav-button${activeSection === section ? " active" : ""}`}
-              key={section}
-              type="button"
-              title={demoSectionLabel(section)}
-              aria-label={demoSectionLabel(section)}
-              aria-current={activeSection === section ? "page" : undefined}
-              onClick={() => changeSection(section)}
-            >
-              <span className="section-nav-icon" aria-hidden="true">
-                {section === "timeline" ? "程" : section === "budget" ? "$" : "李"}
-              </span>
-              <span className="nav-label">{demoSectionLabel(section)}</span>
-            </button>
-          ))}
+          {["timeline", "budget", "luggage"].map((section) => {
+            const navItem = desktopNavItems.find((item) => item.id === section);
+            const Icon = navItem?.Icon;
+            return (
+              <button
+                className={`section-nav-button${activeSection === section ? " active" : ""}`}
+                key={section}
+                type="button"
+                title={demoSectionLabel(section)}
+                aria-label={demoSectionLabel(section)}
+                aria-current={activeSection === section ? "page" : undefined}
+                onClick={() => changeSection(section)}
+              >
+                <span className="section-nav-icon" aria-hidden="true">
+                  {Icon ? <Icon size={15} strokeWidth={2.2} /> : navItem?.shortLabel}
+                </span>
+                <span className="nav-label">{demoSectionLabel(section)}</span>
+              </button>
+            );
+          })}
         </nav>
         <section className="sidebar-trip-section" aria-labelledby="demo-sidebar-trips-title">
           <div className="sidebar-trip-heading">
