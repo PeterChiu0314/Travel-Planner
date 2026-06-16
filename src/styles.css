@@ -145,7 +145,12 @@ code {
 
 .sidebar.collapsed {
   align-items: center;
-  padding: 18px 14px;
+  padding: 24px 14px 8px 14px;
+}
+
+.app-shell-workspace .sidebar.collapsed {
+  z-index: 80;
+  overflow: visible;
 }
 
 .brand {
@@ -158,9 +163,10 @@ code {
 }
 
 .sidebar.collapsed .brand {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
+  display: flex;
+  min-height: 46px;
+  justify-items: initial;
+  gap: 12px;
 }
 
 .brand-mark {
@@ -184,6 +190,20 @@ code {
   transform: translateY(-1px);
 }
 
+.brand-logo-action {
+  display: none;
+}
+
+.sidebar.collapsed .brand-mark:hover .brand-logo-text,
+.sidebar.collapsed .brand-mark:focus-visible .brand-logo-text {
+  display: none;
+}
+
+.sidebar.collapsed .brand-mark:hover .brand-logo-action,
+.sidebar.collapsed .brand-mark:focus-visible .brand-logo-action {
+  display: block;
+}
+
 .brand h1 {
   font-size: 20px;
 }
@@ -200,7 +220,7 @@ code {
 }
 
 .sidebar.collapsed .sidebar-toggle {
-  margin-left: 0;
+  display: none;
 }
 
 .share-view {
@@ -445,10 +465,31 @@ code {
   width: 100%;
 }
 
+.sidebar.collapsed .section-nav {
+  margin: 0 0 20px;
+}
+
 .sidebar.collapsed .section-nav-button,
 .sidebar.collapsed .sidebar-trip-heading {
   justify-content: center;
   padding-inline: 0;
+}
+
+.sidebar.collapsed .section-nav-button {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+}
+
+.sidebar.collapsed .section-nav-button.active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sidebar.collapsed .section-nav-button.active .section-nav-icon {
+  background: #edf3ef;
+  color: var(--muted);
 }
 
 .sidebar.collapsed .sidebar-trip-heading h2,
@@ -456,7 +497,21 @@ code {
   display: none;
 }
 
+.sidebar.collapsed .sidebar-trip-heading {
+  min-height: 42px;
+  margin-bottom: 0;
+}
+
+.sidebar.collapsed .sidebar-create-trip {
+  flex: 0 0 42px;
+  width: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+}
+
 .sidebar.collapsed .trip-empty-card {
+  width: 42px;
   min-height: 42px;
   padding: 8px 4px;
   font-size: 0;
@@ -469,14 +524,16 @@ code {
 
 .sidebar.collapsed .trip-card {
   display: grid;
+  width: 42px;
   min-height: 42px;
+  height: 42px;
   place-items: center;
-  padding: 8px;
+  padding: 0;
   text-align: center;
 }
 
 .sidebar.collapsed .trip-card strong {
-  max-width: 44px;
+  max-width: 28px;
   margin-bottom: 0;
   overflow: hidden;
   font-size: 12px;
@@ -487,11 +544,16 @@ code {
 .sidebar.collapsed .sidebar-trip-section {
   gap: 8px;
   width: 100%;
+  align-items: center;
 }
 
 .sidebar.collapsed .sidebar-trip-list-region {
   width: 100%;
   padding-right: 0;
+}
+
+.sidebar.collapsed .trip-list {
+  justify-items: center;
 }
 
 .bottom-nav {
@@ -820,25 +882,40 @@ code {
 }
 
 .sidebar.collapsed .user-box-card {
-  grid-template-columns: 1fr;
-  justify-items: center;
-  min-height: 42px;
-  padding: 4px;
+  grid-template-columns: 32px;
+  justify-items: start;
+  min-height: 56px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  padding: 8px 10px;
+}
+
+.sidebar.collapsed .user-box-card:hover,
+.sidebar.collapsed .user-box-card:focus-visible {
+  background: transparent;
+  box-shadow: none;
 }
 
 .sidebar.collapsed .user-avatar {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
 }
 
 .sidebar.collapsed .account-menu-arrow {
   display: none;
 }
 
+.sidebar.collapsed .user-box {
+  overflow: visible;
+}
+
 .sidebar.collapsed .account-menu {
   right: auto;
-  left: 0;
+  left: calc(100% + 8px);
+  z-index: 120;
+  width: 220px;
   min-width: 200px;
 }
 
@@ -922,7 +999,11 @@ code {
   }
 
   .sidebar.collapsed {
-    padding: 14px 12px;
+    padding: 14px 16px;
+  }
+
+  .sidebar.collapsed .brand {
+    min-height: 40px;
   }
 
   .brand {
@@ -965,9 +1046,9 @@ code {
   }
 
   .sidebar.collapsed .user-avatar {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
   }
 }
 

@@ -9,6 +9,9 @@ import {
   LogOut,
   Luggage,
   Map as MapIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
   Settings,
   Wallet,
 } from "lucide-react";
@@ -19,14 +22,24 @@ import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 const attachmentBucket = "trip-attachments";
 
 const desktopNavItems = [
-  { id: "today", Icon: LayoutDashboard, label: "總覽", shortLabel: "覽" },
-  { id: "timeline", Icon: MapIcon, label: "行程", shortLabel: "程" },
-  { id: "budget", Icon: Wallet, label: "預算", shortLabel: "錢" },
-  { id: "accommodation", Icon: Bed, label: "住宿", shortLabel: "宿" },
-  { id: "todo", Icon: ClipboardCheck, label: "待辦", shortLabel: "辦" },
-  { id: "luggage", Icon: Luggage, label: "行李", shortLabel: "李" },
-  { id: "settlement", Icon: HandCoins, label: "結算", shortLabel: "結" },
+  { id: "today", label: "總覽", shortLabel: "覽" },
+  { id: "timeline", label: "行程", shortLabel: "程" },
+  { id: "budget", label: "預算", shortLabel: "錢" },
+  { id: "accommodation", label: "住宿", shortLabel: "宿" },
+  { id: "todo", label: "待辦", shortLabel: "辦" },
+  { id: "luggage", label: "行李", shortLabel: "李" },
+  { id: "settlement", label: "結算", shortLabel: "結" },
 ];
+
+const desktopNavIcons = {
+  accommodation: Bed,
+  budget: Wallet,
+  luggage: Luggage,
+  settlement: HandCoins,
+  timeline: MapIcon,
+  today: LayoutDashboard,
+  todo: ClipboardCheck,
+};
 
 const mobileNavItems = [
   { id: "today", label: "今日" },
@@ -3012,7 +3025,10 @@ function exportTrip() {
               setActiveSection("today");
             }}
           >
-            TP
+            <span className="brand-logo-text">TP</span>
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="brand-logo-action" size={22} strokeWidth={2.2} aria-hidden="true" />
+            ) : null}
           </button>
           <div className="brand-copy">
             <h1>旅程規劃室</h1>
@@ -3024,12 +3040,12 @@ function exportTrip() {
             title={isSidebarCollapsed ? "展開側欄" : "收合側欄"}
             onClick={() => setIsSidebarCollapsed((value) => !value)}
           >
-            {isSidebarCollapsed ? ">" : "<"}
+            <PanelLeftClose size={18} strokeWidth={2.2} aria-hidden="true" />
           </button>
         </div>
         <nav className="section-nav" aria-label="功能導覽">
           {desktopNavItems.map((item) => {
-            const Icon = item.Icon;
+            const Icon = desktopNavIcons[item.id];
             return (
               <button
                 className={`section-nav-button${activeSection === item.id ? " active" : ""}`}
@@ -3058,7 +3074,7 @@ function exportTrip() {
               aria-label="新增旅程"
               onClick={() => setIsTripDialogOpen(true)}
             >
-              +
+              {isSidebarCollapsed ? <Plus size={18} strokeWidth={2.2} aria-hidden="true" /> : "+"}
             </button>
           </div>
           <div className="sidebar-trip-list-region">
@@ -5337,7 +5353,10 @@ function DemoApp({ initialSection }) {
               changeSection("timeline");
             }}
           >
-            TP
+            <span className="brand-logo-text">TP</span>
+            {isDemoSidebarCollapsed ? (
+              <PanelLeftOpen className="brand-logo-action" size={22} strokeWidth={2.2} aria-hidden="true" />
+            ) : null}
           </button>
           <div className="brand-copy">
             <h1>旅遊規劃</h1>
@@ -5351,13 +5370,13 @@ function DemoApp({ initialSection }) {
             aria-expanded={!isDemoSidebarCollapsed}
             onClick={() => setIsDemoSidebarCollapsed((value) => !value)}
           >
-            {isDemoSidebarCollapsed ? ">" : "<"}
+            <PanelLeftClose size={18} strokeWidth={2.2} aria-hidden="true" />
           </button>
         </div>
         <nav className="section-nav" aria-label="Demo 導覽">
           {["timeline", "budget", "luggage"].map((section) => {
             const navItem = desktopNavItems.find((item) => item.id === section);
-            const Icon = navItem?.Icon;
+            const Icon = navItem ? desktopNavIcons[navItem.id] : null;
             return (
               <button
                 className={`section-nav-button${activeSection === section ? " active" : ""}`}
@@ -5386,7 +5405,7 @@ function DemoApp({ initialSection }) {
               aria-label="Demo 模式不支援新增旅程"
               disabled
             >
-              +
+              {isDemoSidebarCollapsed ? <Plus size={18} strokeWidth={2.2} aria-hidden="true" /> : "+"}
             </button>
           </div>
           <div className="sidebar-trip-list-region">
@@ -6149,7 +6168,7 @@ function LoginView({ onSignIn, notice }) {
 function getTripInitials(title = "") {
   const compactTitle = title.trim();
   if (!compactTitle) return "旅";
-  return Array.from(compactTitle).slice(0, 2).join("");
+  return Array.from(compactTitle).slice(0, 1).join("");
 }
 
 function TripList({ trips, activeTripId, compact = false, onCreate, onSelect }) {
