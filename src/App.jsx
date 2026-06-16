@@ -6,12 +6,12 @@ import {
   ClipboardCheck,
   HandCoins,
   LayoutDashboard,
+  LayoutList,
   LogOut,
   Luggage,
   Map as MapIcon,
   PanelLeftClose,
   PanelLeftOpen,
-  Plus,
   Settings,
   Wallet,
 } from "lucide-react";
@@ -1461,6 +1461,7 @@ export default function App() {
   const [luggageTab, setLuggageTab] = useState("personal");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
   const restoredDayRef = useRef(null);
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
@@ -1498,6 +1499,7 @@ export default function App() {
 
   useEffect(() => {
     setIsAccountMenuOpen(false);
+    setIsSidebarTripMenuOpen(false);
   }, [activeSection, activeTripId, isSidebarCollapsed]);
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
@@ -3064,23 +3066,19 @@ function exportTrip() {
             );
           })}
         </nav>
-        <section className="sidebar-trip-section" aria-labelledby="sidebar-trips-title">
-          <div className="sidebar-trip-heading">
-            <h2 id="sidebar-trips-title">我的旅程</h2>
-            <button
-              className="mini-button sidebar-create-trip"
-              type="button"
-              title="新增旅程"
-              aria-label="新增旅程"
-              onClick={() => setIsTripDialogOpen(true)}
-            >
-              {isSidebarCollapsed ? <Plus size={18} strokeWidth={2.2} aria-hidden="true" /> : "+"}
-            </button>
-          </div>
-          <div className="sidebar-trip-list-region">
-            <TripList trips={trips} activeTripId={activeTripId} compact={isSidebarCollapsed} onCreate={() => setIsTripDialogOpen(true)} onSelect={selectTrip} />
-          </div>
-        </section>
+        <SidebarTripSection
+          activeTripId={activeTripId}
+          collapsed={isSidebarCollapsed}
+          createTitle="新增旅程"
+          flyoutId="sidebar-trips-flyout"
+          headingId="sidebar-trips-title"
+          isFlyoutOpen={isSidebarTripMenuOpen}
+          onCloseFlyout={() => setIsSidebarTripMenuOpen(false)}
+          onCreate={() => setIsTripDialogOpen(true)}
+          onSelect={selectTrip}
+          onToggleFlyout={() => setIsSidebarTripMenuOpen((value) => !value)}
+          trips={trips}
+        />
         <SidebarAccountMenu
           collapsed={isSidebarCollapsed}
           email={userEmail}
@@ -3366,6 +3364,92 @@ function findOverlappingVisitItem({ dayIndex, editingId, items, payload }) {
 
 function Shell({ appLayout = false, children, collapsed = false }) {
   return <div className={`app-shell${appLayout ? " app-shell-workspace" : ""}${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
+}
+
+function SidebarTripSection({
+  activeTripId,
+  collapsed = false,
+  createDisabled = false,
+  createTitle = "新增旅程",
+  flyoutId,
+  headingId,
+  isFlyoutOpen,
+  onCloseFlyout,
+  onCreate,
+  onSelect,
+  onToggleFlyout,
+  trips,
+}) {
+  const flyoutRef = useRef(null);
+
+  useEffect(() => {
+    if (!collapsed || !isFlyoutOpen) return undefined;
+    function handlePointerDown(event) {
+      if (!flyoutRef.current || flyoutRef.current.contains(event.target)) return;
+      onCloseFlyout();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [collapsed, isFlyoutOpen, onCloseFlyout]);
+
+  function handleCreate() {
+    if (createDisabled) return;
+    onCloseFlyout();
+    onCreate();
+  }
+
+  function handleSelect(tripId) {
+    onCloseFlyout();
+    onSelect(tripId);
+  }
+
+  if (!collapsed) {
+    return (
+      <section className="sidebar-trip-section" aria-labelledby={headingId}>
+        <div className="sidebar-trip-heading">
+          <h2 id={headingId}>我的旅程</h2>
+          <button className="mini-button sidebar-create-trip" type="button" title={createTitle} aria-label={createTitle} disabled={createDisabled} onClick={handleCreate}>
+            +
+          </button>
+        </div>
+        <div className="sidebar-trip-list-region">
+          <TripList trips={trips} activeTripId={activeTripId} compact={false} onCreate={handleCreate} onSelect={handleSelect} />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="sidebar-trip-section sidebar-trip-section-collapsed" aria-label="旅程操作" ref={flyoutRef}>
+      <div className="sidebar-trip-menu-divider" aria-hidden="true" />
+      <button
+        className={`mini-button sidebar-trip-menu-button${isFlyoutOpen ? " active" : ""}`}
+        type="button"
+        title="我的旅程"
+        aria-label="我的旅程"
+        aria-controls={flyoutId}
+        aria-expanded={isFlyoutOpen}
+        onClick={onToggleFlyout}
+      >
+        <LayoutList size={19} strokeWidth={2.2} aria-hidden="true" />
+      </button>
+      {isFlyoutOpen ? (
+        <div className="sidebar-trip-flyout" id={flyoutId}>
+          <div className="sidebar-trip-heading">
+            <h2 id={headingId}>我的旅程</h2>
+            <button className="mini-button sidebar-create-trip" type="button" title={createTitle} aria-label={createTitle} disabled={createDisabled} onClick={handleCreate}>
+              +
+            </button>
+          </div>
+          <div className="sidebar-trip-list-region">
+            <TripList trips={trips} activeTripId={activeTripId} compact={false} onCreate={handleCreate} onSelect={handleSelect} />
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function SidebarAccountMenu({
@@ -4886,6 +4970,7 @@ function DemoApp({ initialSection }) {
   const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrips[0]);
   const [isDemoSidebarCollapsed, setIsDemoSidebarCollapsed] = useState(false);
   const [isDemoAccountMenuOpen, setIsDemoAccountMenuOpen] = useState(false);
+  const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
@@ -4900,6 +4985,7 @@ function DemoApp({ initialSection }) {
   const days = useMemo(() => tripDays(demoActiveTrip), [demoActiveTrip]);
   useEffect(() => {
     setIsDemoAccountMenuOpen(false);
+    setIsDemoSidebarTripMenuOpen(false);
   }, [activeSection, demoActiveTrip.id, isDemoSidebarCollapsed]);
   const dayItems = useMemo(
     () => sortScheduleItems(timelineItems.filter((item) => item.day_index === activeDay)),
@@ -5395,35 +5481,26 @@ function DemoApp({ initialSection }) {
             );
           })}
         </nav>
-        <section className="sidebar-trip-section" aria-labelledby="demo-sidebar-trips-title">
-          <div className="sidebar-trip-heading">
-            <h2 id="demo-sidebar-trips-title">我的旅程</h2>
-            <button
-              className="mini-button sidebar-create-trip"
-              type="button"
-              title="Demo 模式不支援新增旅程"
-              aria-label="Demo 模式不支援新增旅程"
-              disabled
-            >
-              {isDemoSidebarCollapsed ? <Plus size={18} strokeWidth={2.2} aria-hidden="true" /> : "+"}
-            </button>
-          </div>
-          <div className="sidebar-trip-list-region">
-            <TripList
-              trips={demoTrips.map((trip) => ({
-                ...trip,
-                membership: { role: "owner", status: "approved" },
-              }))}
-              activeTripId={demoActiveTrip.id}
-              compact={isDemoSidebarCollapsed}
-              onCreate={() => {}}
-              onSelect={(tripId) => {
-                const nextTrip = demoTrips.find((trip) => trip.id === tripId);
-                if (nextTrip) setDemoActiveTrip(nextTrip);
-              }}
-            />
-          </div>
-        </section>
+        <SidebarTripSection
+          activeTripId={demoActiveTrip.id}
+          collapsed={isDemoSidebarCollapsed}
+          createDisabled
+          createTitle="Demo 模式不支援新增旅程"
+          flyoutId="demo-sidebar-trips-flyout"
+          headingId="demo-sidebar-trips-title"
+          isFlyoutOpen={isDemoSidebarTripMenuOpen}
+          onCloseFlyout={() => setIsDemoSidebarTripMenuOpen(false)}
+          onCreate={() => {}}
+          onSelect={(tripId) => {
+            const nextTrip = demoTrips.find((trip) => trip.id === tripId);
+            if (nextTrip) setDemoActiveTrip(nextTrip);
+          }}
+          onToggleFlyout={() => setIsDemoSidebarTripMenuOpen((value) => !value)}
+          trips={demoTrips.map((trip) => ({
+            ...trip,
+            membership: { role: "owner", status: "approved" },
+          }))}
+        />
         <SidebarAccountMenu
           collapsed={isDemoSidebarCollapsed}
           email="demo@example.com"

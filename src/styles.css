@@ -547,6 +547,24 @@ code {
   align-items: center;
 }
 
+.sidebar.collapsed .sidebar-trip-section-collapsed {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto;
+  flex: 0 0 auto;
+  gap: 20px;
+  justify-items: center;
+  min-height: 0;
+  margin-top: 0;
+}
+
+.sidebar.collapsed .sidebar-trip-menu-divider {
+  width: 42px;
+  height: 1px;
+  background: rgba(214, 219, 213, 0.92);
+  border-radius: 999px;
+}
+
 .sidebar.collapsed .sidebar-trip-list-region {
   width: 100%;
   padding-right: 0;
@@ -554,6 +572,72 @@ code {
 
 .sidebar.collapsed .trip-list {
   justify-items: center;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout {
+  position: absolute;
+  left: calc(100% + 0px);
+  top: 20px;
+  z-index: 120;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  width: 280px;
+  max-height: min(70dvh, 520px);
+  border: 1px solid rgba(217, 222, 216, 0.86);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 46px rgba(38, 45, 40, 0.16);
+  padding: 10px;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout .sidebar-trip-heading {
+  justify-content: space-between;
+  min-height: 32px;
+  margin-bottom: 0;
+  padding-inline: 0;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout .sidebar-trip-heading h2 {
+  display: block;
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout .sidebar-trip-list-region {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout .trip-list {
+  justify-items: stretch;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout .trip-card {
+  display: block;
+  width: 100%;
+  min-height: 68px;
+  height: auto;
+  padding: 8px 14px;
+  text-align: left;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout .trip-card strong {
+  display: block;
+  max-width: none;
+  margin-bottom: 6px;
+  overflow: visible;
+  font-size: 15px;
+  font-weight: 500;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout .trip-card span,
+.sidebar.collapsed .sidebar-trip-flyout .trip-card em {
+  display: block;
 }
 
 .bottom-nav {
@@ -687,6 +771,24 @@ code {
   font-size: 20px;
   font-weight: 400;
   line-height: 1;
+}
+
+.sidebar-trip-menu-button {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.sidebar-trip-menu-button.active,
+.sidebar-trip-menu-button:hover:not(:disabled),
+.sidebar-trip-menu-button:focus-visible:not(:disabled) {
+  border-color: rgba(47, 143, 114, 0.34);
+  background: rgba(232, 245, 238, 0.78);
+  color: var(--mint-dark);
 }
 
 .sidebar-trip-list-region {
@@ -883,12 +985,13 @@ code {
 
 .sidebar.collapsed .user-box-card {
   grid-template-columns: 32px;
-  justify-items: start;
+  justify-content: center;
+  justify-items: center;
   min-height: 56px;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  padding: 8px 10px;
+  padding: 8px 0;
 }
 
 .sidebar.collapsed .user-box-card:hover,
@@ -908,12 +1011,17 @@ code {
 }
 
 .sidebar.collapsed .user-box {
+  width: 100%;
+  margin: auto 0 0;
+  border-top: 0;
+  padding: 0;
   overflow: visible;
 }
 
 .sidebar.collapsed .account-menu {
   right: auto;
-  left: 100%;
+  left: 0;
+  bottom: 50px;
   z-index: 120;
   width: 220px;
   min-width: 200px;
