@@ -64,7 +64,7 @@ code {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -336,7 +336,7 @@ code {
 .demo-shell {
   display: grid;
   grid-column: 1 / -1;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -349,7 +349,7 @@ code {
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(18px);
-  padding: 24px;
+  padding: 24px 14px 10px 14px;
 }
 
 .app-shell-workspace .demo-sidebar {
@@ -632,12 +632,12 @@ code {
   display: block;
   align-self: start;
   width: 100%;
-  min-height: 76px;
+  min-height: 68px;
   border: 1px solid rgba(217, 222, 216, 0.72);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.8);
   color: var(--ink);
-  padding: 14px;
+  padding: 8px 14px;
   text-align: left;
 }
 
@@ -651,13 +651,15 @@ code {
   display: block;
   margin-bottom: 6px;
   overflow-wrap: anywhere;
+  font-size: 15px;
+  font-weight: 500;
 }
 
 .trip-card span,
 .trip-card em {
   display: block;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 11px;
   font-style: normal;
 }
 
@@ -790,7 +792,7 @@ code {
   padding: 0 10px;
   text-align: left;
   font: inherit;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .account-menu-item:hover:not(:disabled),
@@ -956,8 +958,8 @@ code {
   }
 
   .trip-card {
-    min-height: 72px;
-    padding: 12px;
+    min-height: 68px;
+    padding: 8px 14px;
   }
 
   .sidebar.collapsed .user-avatar {
