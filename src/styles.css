@@ -134,7 +134,7 @@ code {
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px);
-  padding: 24px 10px 8px;
+  padding: 22px 10px 8px;
 }
 
 .app-shell-workspace .sidebar {
@@ -159,7 +159,8 @@ code {
   align-items: center;
   gap: 12px;
   width: 100%;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
+  margin-left: 4px;
 }
 
 .sidebar.collapsed .brand {
@@ -171,8 +172,8 @@ code {
 
 .brand-mark {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 0;
   border-radius: 8px;
@@ -206,6 +207,7 @@ code {
 
 .brand h1 {
   font-size: 20px;
+  line-height: 1.2;
 }
 
 .sidebar-toggle {
@@ -407,7 +409,7 @@ code {
   flex: 0 0 auto;
   gap: 8px;
   width: 100%;
-  margin: 18px 18px 20px 0;
+  margin-bottom: 30px;
 }
 
 .section-nav-button {
@@ -1180,9 +1182,8 @@ code {
   align-items: center;
   gap: 10px 18px;
   min-height: 68px;
-  border-bottom: 1px solid var(--line);
-  margin: -4px -24px 18px;
-  padding: 30px 24px 14px;
+  margin: -8px -24px 18px;
+  padding: 12px 10px;
   background: rgba(255, 253, 248, 0.82);
 }
 
@@ -1191,6 +1192,21 @@ code {
   top: 0;
   z-index: 40;
   backdrop-filter: blur(18px);
+}
+
+.app-shell-workspace .trip-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  height: 10px;
+  pointer-events: none;
+  background: rgb(0 0 0 / 10%);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+  mask-image: linear-gradient(to bottom, black, transparent);
 }
 
 .trip-header-main {
