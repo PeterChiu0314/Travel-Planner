@@ -134,7 +134,7 @@ code {
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px);
-  padding: 24px;
+  padding: 24px 14px 10px 14px;
 }
 
 .app-shell-workspace .sidebar {
