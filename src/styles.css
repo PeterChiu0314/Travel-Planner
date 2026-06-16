@@ -488,8 +488,8 @@ code {
 }
 
 .sidebar.collapsed .section-nav-button.active .section-nav-icon {
-  background: #edf3ef;
-  color: var(--muted);
+  background: var(--mint-dark);
+  color: #fff;
 }
 
 .sidebar.collapsed .sidebar-trip-heading h2,
