@@ -12,6 +12,53 @@ Read these for phase handoff and operating context:
 - `docs/PHASE_2_SIDEBAR_HANDOFF.md`
 - `docs/PHASE_1_8_WORK_LOG.md`
 
+## Latest Status - 2026-06-17 Home Wrap-up
+
+Branch:
+
+```text
+codex/app-layout-sidebar-phase-2.2
+```
+
+Status:
+
+```text
+App Layout Phase 2 Sidebar - collapsed sidebar polish pushed, ready to continue at office
+```
+
+Latest pushed commits:
+
+- `0da3629 feat: add collapsed sidebar trip flyout`
+- `1c6f664 style: polish sidebar and header spacing`
+
+Completed in this home-side wrap-up:
+
+- Collapsed Sidebar trip list was converted into a dedicated trip-list entry button under the nav icons.
+- The trip-list button opens a right-side flyout panel with the full trip list layout and create-trip `+` inside the panel.
+- Collapsed Sidebar no longer shows the standalone create-trip `+` in the rail.
+- Collapsed Sidebar account avatar was restored to the bottom of the rail and kept centered.
+- Collapsed account menu position was adjusted to open from the lower rail area.
+- Demo Sidebar was kept in parity with the formal Sidebar for the collapsed trip-list flyout behavior.
+- Header and Sidebar spacing polish was pushed:
+  - Header bottom border removed.
+  - Header blur/shadow fade added with `.app-shell-workspace .trip-header::after`.
+  - Header margin/padding tightened.
+  - Sidebar, brand, logo, nav spacing tightened.
+
+Validation completed:
+
+- `npm.cmd run build` passed.
+- `npx.cmd playwright test tests/phase-1-8-source-guards.spec.js` passed, 7/7.
+- `npx.cmd playwright test` passed, 12/12, after the collapsed trip flyout work.
+- `git diff --check` passed, with only Windows LF/CRLF warnings.
+
+Office continuation:
+
+- Pull `codex/app-layout-sidebar-phase-2.2` before continuing.
+- Continue from `1c6f664 style: polish sidebar and header spacing` unless newer remote commits exist.
+- Remaining Sidebar work should stay as small CSS/JSX polish unless explicitly scoped otherwise.
+- Keep the known `<=1100px` responsive Sidebar issue for the later Mobile / Tablet layout stage.
+
 ## Latest Status - App Layout Phase 2 Sidebar Home Wrap-up
 
 Branch:
