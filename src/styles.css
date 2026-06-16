@@ -371,22 +371,10 @@ code {
   overflow-wrap: anywhere;
 }
 
-.demo-user-box button:disabled,
 .sidebar-create-trip:disabled {
   cursor: default;
   opacity: 0.78;
   transform: none;
-}
-
-.demo-banner {
-  border: 1px solid rgba(47, 143, 114, 0.28);
-  border-radius: 8px;
-  background: rgba(47, 143, 114, 0.1);
-  color: var(--mint-dark);
-  font-weight: 900;
-  line-height: 1.5;
-  margin-top: 16px;
-  padding: 12px 14px;
 }
 
 .demo-panel {
@@ -452,24 +440,14 @@ code {
 }
 
 .sidebar.collapsed .section-nav-button,
-.sidebar.collapsed .sidebar-trip-heading,
-.sidebar.collapsed .user-box .ghost-button {
+.sidebar.collapsed .sidebar-trip-heading {
   justify-content: center;
   padding-inline: 0;
 }
 
 .sidebar.collapsed .sidebar-trip-heading h2,
-.sidebar.collapsed .user-account-label {
+.sidebar.collapsed .user-account {
   display: none;
-}
-
-.sidebar.collapsed .user-box-top {
-  grid-template-columns: 1fr;
-  justify-items: center;
-}
-
-.sidebar.collapsed .user-settings-button {
-  width: 100%;
 }
 
 .sidebar.collapsed .trip-empty-card {
@@ -709,9 +687,9 @@ code {
 }
 
 .user-box {
+  position: relative;
   display: grid;
   flex: 0 0 auto;
-  gap: 10px;
   width: 100%;
   margin-top: auto;
   border-top: 1px solid var(--line);
@@ -719,14 +697,32 @@ code {
 }
 
 .user-box strong {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.user-box-top {
+.user-box-card {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: 32px minmax(0, 1fr) 18px;
   align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  padding: 10px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.user-box-card:hover,
+.user-box-card:focus-visible {
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(38, 45, 40, 0.12);
+  outline: 0;
 }
 
 .user-avatar {
@@ -748,45 +744,98 @@ code {
   min-width: 0;
 }
 
-.user-account-label {
+.user-account .nav-label,
+.user-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu-arrow {
+  display: grid;
+  min-width: 18px;
+  place-items: center;
   color: var(--muted);
   font-size: 11px;
+  font-weight: 900;
+}
+
+.account-menu {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  z-index: 65;
+  display: grid;
+  min-width: min(220px, 100%);
+  width: 100%;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffefa;
+  box-shadow: 0 18px 42px rgba(38, 45, 40, 0.16);
+  margin-bottom: 8px;
+  padding: 6px;
+}
+
+.account-menu-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  padding: 0 10px;
+  text-align: left;
+  font: inherit;
   font-weight: 800;
 }
 
-.user-settings-button {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 32px;
-  width: 32px;
-  min-width: 32px;
+.account-menu-item:hover:not(:disabled),
+.account-menu-item:focus-visible:not(:disabled) {
+  background: #eef6f1;
+  color: var(--mint-dark);
+  outline: 0;
 }
 
-.user-signout-button {
-  width: 100%;
+.account-menu-item:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.account-menu-separator {
+  height: 1px;
+  background: var(--line);
+  margin: 2px 4px;
 }
 
 .sidebar.collapsed .user-box {
-  gap: 8px;
   padding-top: 14px;
 }
 
-.sidebar.collapsed .user-account {
-  display: none;
+.sidebar.collapsed .user-box-card {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  min-height: 42px;
+  padding: 4px;
 }
 
-.sidebar.collapsed .user-avatar,
-.sidebar.collapsed .user-settings-button,
-.sidebar.collapsed .user-signout-button {
+.sidebar.collapsed .user-avatar {
   width: 42px;
   height: 42px;
   min-width: 42px;
 }
 
-.sidebar.collapsed .user-signout-button {
-  display: grid;
-  place-items: center;
-  padding: 0;
+.sidebar.collapsed .account-menu-arrow {
+  display: none;
+}
+
+.sidebar.collapsed .account-menu {
+  right: auto;
+  left: 0;
+  min-width: 200px;
 }
 
 .sidebar-members {
@@ -911,19 +960,7 @@ code {
     padding: 12px;
   }
 
-  .user-box {
-    gap: 7px;
-    padding-top: 10px;
-  }
-
-  .sidebar.collapsed .user-box {
-    gap: 6px;
-    padding-top: 10px;
-  }
-
-  .sidebar.collapsed .user-avatar,
-  .sidebar.collapsed .user-settings-button,
-  .sidebar.collapsed .user-signout-button {
+  .sidebar.collapsed .user-avatar {
     width: 36px;
     height: 36px;
     min-width: 36px;
@@ -3744,26 +3781,28 @@ textarea {
     display: block;
   }
 
-  .sidebar.collapsed .sidebar-trip-heading h2,
-  .sidebar.collapsed .user-account-label,
-  .sidebar.collapsed .user-signout-button {
+  .sidebar.collapsed .sidebar-trip-heading h2 {
     display: block;
   }
 
-  .sidebar.collapsed .user-box-top {
+  .sidebar.collapsed .user-box-card {
     grid-template-columns: 32px minmax(0, 1fr) auto;
     justify-items: stretch;
+    min-height: 56px;
+    padding: 10px;
   }
 
   .sidebar.collapsed .user-account {
     display: grid;
   }
 
-  .sidebar.collapsed .user-avatar,
-  .sidebar.collapsed .user-settings-button,
-  .sidebar.collapsed .user-signout-button {
-    width: auto;
-    height: auto;
+  .sidebar.collapsed .account-menu-arrow {
+    display: grid;
+  }
+
+  .sidebar.collapsed .user-avatar {
+    width: 32px;
+    height: 32px;
     min-width: 32px;
   }
 

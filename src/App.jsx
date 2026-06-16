@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, LogOut, Settings } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
@@ -1434,6 +1435,7 @@ export default function App() {
   const [activeSection, setActiveSection] = useState("today");
   const [luggageTab, setLuggageTab] = useState("personal");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const restoredDayRef = useRef(null);
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
@@ -1468,6 +1470,10 @@ export default function App() {
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
   const pendingMemberCount = isOwner ? members.filter((member) => member.status === "pending").length : 0;
+
+  useEffect(() => {
+    setIsAccountMenuOpen(false);
+  }, [activeSection, activeTripId, isSidebarCollapsed]);
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
 
@@ -3044,23 +3050,17 @@ function exportTrip() {
             <TripList trips={trips} activeTripId={activeTripId} compact={isSidebarCollapsed} onCreate={() => setIsTripDialogOpen(true)} onSelect={selectTrip} />
           </div>
         </section>
-        <div className="user-box">
-          <div className="user-box-top">
-            <div className="user-avatar" aria-hidden="true">
-              {userInitial}
-            </div>
-            <div className="user-account">
-              <strong className="nav-label">{userDisplayName}</strong>
-              {userEmail ? <span className="user-email nav-label">{userEmail}</span> : null}
-            </div>
-            <button className="mini-button user-settings-button" type="button" title="設定" aria-label="設定" onClick={() => setActiveSection("settings")}>
-              設
-            </button>
-          </div>
-          <button className="ghost-button user-signout-button" type="button" title="登出" aria-label="登出" onClick={signOut}>
-            登出
-          </button>
-        </div>
+        <SidebarAccountMenu
+          collapsed={isSidebarCollapsed}
+          email={userEmail}
+          initial={userInitial}
+          isOpen={isAccountMenuOpen}
+          name={userDisplayName}
+          onClose={() => setIsAccountMenuOpen(false)}
+          onSettings={() => setActiveSection("settings")}
+          onSignOut={signOut}
+          onToggle={() => setIsAccountMenuOpen((value) => !value)}
+        />
       </aside>
 
       <main className="workspace">
@@ -3335,6 +3335,90 @@ function findOverlappingVisitItem({ dayIndex, editingId, items, payload }) {
 
 function Shell({ appLayout = false, children, collapsed = false }) {
   return <div className={`app-shell${appLayout ? " app-shell-workspace" : ""}${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
+}
+
+function SidebarAccountMenu({
+  collapsed = false,
+  email = "",
+  initial = "?",
+  isOpen,
+  name,
+  onClose,
+  onSettings,
+  onSignOut,
+  onToggle,
+  settingsDisabled = false,
+  signOutDisabled = false,
+}) {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    function handlePointerDown(event) {
+      if (!menuRef.current || menuRef.current.contains(event.target)) return;
+      onClose();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <div className="user-box" ref={menuRef}>
+      {isOpen ? (
+        <div className="account-menu" role="menu" aria-label="帳號選單">
+          <button
+            className="account-menu-item"
+            type="button"
+            role="menuitem"
+            disabled={settingsDisabled}
+            onClick={() => {
+              onClose();
+              onSettings();
+            }}
+          >
+            <Settings size={16} aria-hidden="true" strokeWidth={2.2} />
+            <span>設定</span>
+          </button>
+          <div className="account-menu-separator" aria-hidden="true" />
+          <button
+            className="account-menu-item"
+            type="button"
+            role="menuitem"
+            disabled={signOutDisabled}
+            onClick={() => {
+              onClose();
+              onSignOut();
+            }}
+          >
+            <LogOut size={16} aria-hidden="true" strokeWidth={2.2} />
+            <span>登出</span>
+          </button>
+        </div>
+      ) : null}
+      <button
+        className="user-box-card"
+        type="button"
+        title="帳號選單"
+        aria-label="帳號選單"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={onToggle}
+      >
+        <span className="user-avatar" aria-hidden="true">
+          {initial}
+        </span>
+        <span className="user-account">
+          <strong className="nav-label">{name}</strong>
+          {email ? <span className="user-email nav-label">{email}</span> : null}
+        </span>
+        <span className="account-menu-arrow" aria-hidden="true">
+          {collapsed ? null : isOpen ? <ChevronDown size={16} strokeWidth={2.2} /> : <ChevronUp size={16} strokeWidth={2.2} />}
+        </span>
+      </button>
+    </div>
+  );
 }
 
 function TripDateRangeSelector({
@@ -3638,6 +3722,7 @@ function TripHeader({
   members = [],
   days = [],
   dateChangePreviewData = {},
+  demoNotice = "",
   canEditTrip = false,
   canChangeTripDates = canEditTrip,
   canOpenMembers = canEditTrip,
@@ -3769,6 +3854,7 @@ function TripHeader({
           title: canOpenMembers && typeof onOpenMembers === "function" ? "成員與邀請" : undefined,
         }
       : null,
+    demoNotice ? { key: "demo-notice", label: demoNotice } : null,
   ].filter(Boolean);
 
   useEffect(() => {
@@ -4768,6 +4854,7 @@ function DemoApp({ initialSection }) {
   const [isDemoMembersDialogOpen, setIsDemoMembersDialogOpen] = useState(false);
   const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrips[0]);
   const [isDemoSidebarCollapsed, setIsDemoSidebarCollapsed] = useState(false);
+  const [isDemoAccountMenuOpen, setIsDemoAccountMenuOpen] = useState(false);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
@@ -4780,6 +4867,9 @@ function DemoApp({ initialSection }) {
   const [focusedItemId, setFocusedItemId] = useState(null);
   const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
   const days = useMemo(() => tripDays(demoActiveTrip), [demoActiveTrip]);
+  useEffect(() => {
+    setIsDemoAccountMenuOpen(false);
+  }, [activeSection, demoActiveTrip.id, isDemoSidebarCollapsed]);
   const dayItems = useMemo(
     () => sortScheduleItems(timelineItems.filter((item) => item.day_index === activeDay)),
     [activeDay, timelineItems],
@@ -5296,32 +5386,28 @@ function DemoApp({ initialSection }) {
             />
           </div>
         </section>
-        <div className="user-box demo-user-box">
-          <div className="user-box-top">
-            <div className="user-avatar" aria-hidden="true">
-              D
-            </div>
-            <div className="user-account">
-              <strong className="nav-label">Demo User</strong>
-              <span className="user-email nav-label">demo@example.com</span>
-            </div>
-            <button className="mini-button user-settings-button" type="button" title="Demo 設定僅供展示" aria-label="Demo 設定僅供展示" disabled>
-              設
-            </button>
-          </div>
-          <button className="ghost-button user-signout-button" type="button" title="Demo 不需要登出" aria-label="Demo 不需要登出" disabled>
-            Demo
-          </button>
-        </div>
+        <SidebarAccountMenu
+          collapsed={isDemoSidebarCollapsed}
+          email="demo@example.com"
+          initial="D"
+          isOpen={isDemoAccountMenuOpen}
+          name="Demo User"
+          onClose={() => setIsDemoAccountMenuOpen(false)}
+          onSettings={() => {}}
+          onSignOut={() => {}}
+          onToggle={() => setIsDemoAccountMenuOpen((value) => !value)}
+          settingsDisabled
+          signOutDisabled
+        />
       </aside>
       <main className="workspace demo-workspace">
-        <div className="demo-banner">Demo Mode：這是展示資料，操作不會永久保存。</div>
         <TripHeader
           activeSection={activeSection}
           trip={demoActiveTrip}
           members={demoMembers}
           days={days}
           dateChangePreviewData={tripDateChangePreviewData}
+          demoNotice="Demo Mode 資料不會永久保存。"
           canEditTrip
           canOpenMembers
           onDelete={() => {}}

@@ -77,7 +77,7 @@ test("demo timeline renders without authentication", async ({ page }) => {
 
   await page.goto("/demo/timeline");
 
-  await expect(page.getByText("Demo Mode：這是展示資料，操作不會永久保存。")).toBeVisible();
+  await expect(page.getByText("Demo Mode 資料不會永久保存。")).toBeVisible();
   await expect(page.getByRole("button", { name: "京都琵琶湖之旅-TEST，目前旅程" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "我的旅程" })).toBeVisible();
   await expect(page.getByText("Demo User")).toBeVisible();
