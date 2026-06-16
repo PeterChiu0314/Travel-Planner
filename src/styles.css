@@ -75,7 +75,7 @@ code {
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: 66px minmax(0, 1fr);
 }
 
 .login-view {
@@ -134,7 +134,7 @@ code {
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px);
-  padding: 24px 14px 8px 14px;
+  padding: 24px 10px 8px;
 }
 
 .app-shell-workspace .sidebar {
@@ -145,7 +145,7 @@ code {
 
 .sidebar.collapsed {
   align-items: center;
-  padding: 24px 14px 8px 14px;
+  padding: 24px 10px 8px;
 }
 
 .app-shell-workspace .sidebar.collapsed {
@@ -369,7 +369,7 @@ code {
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(18px);
-  padding: 24px 14px 10px 14px;
+  padding: 24px 10px 8px;
 }
 
 .app-shell-workspace .demo-sidebar {
@@ -503,10 +503,10 @@ code {
 }
 
 .sidebar.collapsed .sidebar-create-trip {
-  flex: 0 0 42px;
-  width: 42px;
-  min-width: 42px;
-  min-height: 42px;
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
   padding: 0;
 }
 
@@ -524,9 +524,9 @@ code {
 
 .sidebar.collapsed .trip-card {
   display: grid;
-  width: 42px;
-  min-height: 42px;
-  height: 42px;
+  width: 40px;
+  min-height: 40px;
+  height: 40px;
   place-items: center;
   padding: 0;
   text-align: center;
@@ -913,7 +913,7 @@ code {
 
 .sidebar.collapsed .account-menu {
   right: auto;
-  left: calc(100% + 8px);
+  left: 100%;
   z-index: 120;
   width: 220px;
   min-width: 200px;
@@ -995,11 +995,11 @@ code {
 
 @media (min-width: 1101px) and (max-height: 820px) {
   .sidebar {
-    padding: 14px 16px;
+    padding: 14px 10px 8px;
   }
 
   .sidebar.collapsed {
-    padding: 14px 16px;
+    padding: 14px 10px 8px;
   }
 
   .sidebar.collapsed .brand {

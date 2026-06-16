@@ -26,6 +26,36 @@ Status:
 App Layout Phase 2 Sidebar - home wrap-up complete, ready to continue at office
 ```
 
+Latest office-side update - 2026-06-16:
+
+- Current branch remains `codex/app-layout-sidebar-phase-2.2`.
+- Sidebar collapsed UI polish has been implemented and pushed:
+  - Logo acts as the expand button in collapsed mode.
+  - Collapsed logo hover shows lucide `PanelLeftOpen`.
+  - Expanded collapse button uses lucide `PanelLeftClose`.
+  - Collapsed nav icons are centered.
+  - Collapsed active nav keeps the dark green icon background with white icon.
+  - Collapsed trip create button uses lucide `Plus`.
+  - Collapsed trip cards use fixed icon-size buttons and show only the first character of the trip title.
+  - Collapsed account area shows only the avatar.
+  - Collapsed account menu opens as a dropup to the right and is not clipped.
+- Sidebar account menu redesign has been implemented and pushed:
+  - Account area is a clickable card in expanded mode.
+  - Account menu contains Settings and Log out with lucide `Settings` and `LogOut`.
+  - Existing Settings navigation and Sign Out flow were preserved.
+- Recent local CSS polish not yet pushed at the time of this update:
+  - `.app-shell.sidebar-collapsed` width changed to `66px`.
+  - Formal `.sidebar` padding changed to `24px 10px 8px`.
+  - `.demo-sidebar` padding synced to `24px 10px 8px`.
+  - Low-height desktop media query sidebar padding synced to `14px 10px 8px`.
+  - Collapsed trip card size changed to `40px`.
+  - Collapsed create trip button size changed to `32px`.
+  - Collapsed account menu left edge changed to `left: 100%` so it touches the sidebar boundary.
+- Validation after the local CSS polish:
+  - `npm.cmd run build` passed.
+  - `git diff --check` passed.
+- Full Playwright browser smoke was not rerun after this local CSS-only polish. Earlier full Playwright run on this machine was blocked by missing Playwright Chromium executable; source-guard tests passed after the collapsed sidebar JSX/CSS work.
+
 Completed in the latest home-side wrap-up:
 
 - Phase 2.6 Demo Sidebar Parity is implemented as UI-only local state:
