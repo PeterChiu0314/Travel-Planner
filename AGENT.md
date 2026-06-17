@@ -2,6 +2,24 @@
 
 This file is the operating guide for future AI agents working on this travel planner. It is intentionally project-specific. Do not treat this as generic SaaS boilerplate.
 
+## Documentation Layout
+
+Root Markdown files are entry points:
+
+- `AGENT.md`: agent operating guide.
+- `CURRENT_TASK.md`: current project status and active phase handoff.
+- `README.md`: general project README.
+
+Detailed project documents live in `docs/`:
+
+- `docs/BUGS.md`
+- `docs/UX_RULES.md`
+- `docs/DEV_SETUP_WINDOWS.md`
+- `docs/PHASE_1_8_WORK_LOG.md`
+- `docs/PHASE_2_SIDEBAR_HANDOFF.md`
+
+When starting a new phase, read `CURRENT_TASK.md` first, then the relevant files under `docs/`.
+
 ## 1. Product Philosophy
 
 This project is a collaborative travel planning tool. It is not a generic SaaS dashboard, not a pure recommendation site, not a pure expense app, and not a map-first product.
@@ -54,7 +72,7 @@ Important correction for future agents:
 - Do not add TypeScript, Tailwind, Next.js App Router, or a component framework unless explicitly requested and migration scope is approved.
 - Environment variables are Vite-style: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 - Never put a Supabase service role key in frontend code.
-- Windows / PowerShell encoding, `npm.cmd`, and Vite dev server startup notes are documented in `DEV_SETUP_WINDOWS.md`.
+- Windows / PowerShell encoding, `npm.cmd`, and Vite dev server startup notes are documented in `docs/DEV_SETUP_WINDOWS.md`.
 
 Key files:
 

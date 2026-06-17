@@ -1,4 +1,20 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bed,
+  ChevronDown,
+  ChevronUp,
+  ClipboardCheck,
+  HandCoins,
+  LayoutDashboard,
+  LayoutList,
+  LogOut,
+  Luggage,
+  Map as MapIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  Wallet,
+} from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
@@ -6,15 +22,24 @@ import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 const attachmentBucket = "trip-attachments";
 
 const desktopNavItems = [
-  { id: "today", label: "今日 / 總覽", shortLabel: "今日" },
+  { id: "today", label: "總覽", shortLabel: "覽" },
   { id: "timeline", label: "行程", shortLabel: "程" },
   { id: "budget", label: "預算", shortLabel: "錢" },
   { id: "accommodation", label: "住宿", shortLabel: "宿" },
   { id: "todo", label: "待辦", shortLabel: "辦" },
   { id: "luggage", label: "行李", shortLabel: "李" },
   { id: "settlement", label: "結算", shortLabel: "結" },
-  { id: "settings", label: "設定", shortLabel: "設" },
 ];
+
+const desktopNavIcons = {
+  accommodation: Bed,
+  budget: Wallet,
+  luggage: Luggage,
+  settlement: HandCoins,
+  timeline: MapIcon,
+  today: LayoutDashboard,
+  todo: ClipboardCheck,
+};
 
 const mobileNavItems = [
   { id: "today", label: "今日" },
@@ -1063,6 +1088,45 @@ const demoTrip = {
   status: "planning",
 };
 
+const demoTrips = [
+  {
+    ...demoTrip,
+    id: "demo-trip-kyoto",
+    title: "京都琵琶湖之旅-TEST",
+    destination: "京都・琵琶湖, 日本",
+    start_date: "2027-04-05",
+    end_date: "2027-04-10",
+    updated_at: "2026-06-15T10:00:00.000Z",
+  },
+  {
+    ...demoTrip,
+    id: "demo-trip-system",
+    title: "系統測試專用",
+    destination: "日本・京都",
+    start_date: "2026-07-08",
+    end_date: "2026-07-12",
+    updated_at: "2026-06-14T10:00:00.000Z",
+  },
+  {
+    ...demoTrip,
+    id: "demo-trip-wild",
+    title: "野人沒有日記",
+    destination: "綠野山林",
+    start_date: "2026-05-30",
+    end_date: "2026-06-02",
+    updated_at: "2026-06-13T10:00:00.000Z",
+  },
+  {
+    ...demoTrip,
+    id: "demo-trip-a-test",
+    title: "A_TEST",
+    destination: "Taiwan・Yilan",
+    start_date: "2026-06-23",
+    end_date: "2026-06-25",
+    updated_at: "2026-06-12T10:00:00.000Z",
+  },
+];
+
 const demoMembers = [
   { user_id: "demo-peter", display_name: "Peter", email: "peter@example.com", role: "owner", status: "approved" },
   { user_id: "demo-a", display_name: "小安", email: "ariel@example.com", role: "editor", status: "approved" },
@@ -1396,6 +1460,8 @@ export default function App() {
   const [activeSection, setActiveSection] = useState("today");
   const [luggageTab, setLuggageTab] = useState("personal");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
   const restoredDayRef = useRef(null);
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
@@ -1422,11 +1488,19 @@ export default function App() {
   const canChangeTripDates = isOwner && !isTripDateLocked;
   const canInviteMembers = isOwner && !isTripDateLocked;
   const canOpenMembersDialog = activeMembership?.status === "approved";
+  const userEmail = session?.user?.email || "";
+  const userDisplayName = session?.user?.user_metadata?.full_name || userEmail;
+  const userInitial = (userDisplayName.trim()[0] || "?").toUpperCase();
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
   const canManageShareLinks = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
   const pendingMemberCount = isOwner ? members.filter((member) => member.status === "pending").length : 0;
+
+  useEffect(() => {
+    setIsAccountMenuOpen(false);
+    setIsSidebarTripMenuOpen(false);
+  }, [activeSection, activeTripId, isSidebarCollapsed]);
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
 
@@ -2900,20 +2974,8 @@ function exportTrip() {
     if (canContinue) setActiveTripId(nextTripId);
   }
 
-  function focusSidebarMembers() {
-    const panel = document.querySelector(".sidebar-members");
-    if (!panel) return;
-    panel.scrollIntoView({ block: "center", behavior: "smooth" });
-    panel.setAttribute("tabindex", "-1");
-    panel.focus({ preventScroll: true });
-  }
-
   if (isDemoMode) {
-    return (
-      <Shell>
-        <DemoApp initialSection={demoSection} />
-      </Shell>
-    );
+    return <DemoApp initialSection={demoSection} />;
   }
 
   if (!hasSupabaseConfig) {
@@ -2949,10 +3011,27 @@ function exportTrip() {
   }
 
   return (
-    <Shell collapsed={isSidebarCollapsed}>
+    <Shell appLayout collapsed={isSidebarCollapsed}>
       <aside className={`sidebar${isSidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">TP</div>
+          <button
+            className="brand-mark"
+            type="button"
+            title={isSidebarCollapsed ? "展開側欄" : "回到總覽"}
+            aria-label={isSidebarCollapsed ? "展開側欄" : "回到總覽"}
+            onClick={() => {
+              if (isSidebarCollapsed) {
+                setIsSidebarCollapsed(false);
+                return;
+              }
+              setActiveSection("today");
+            }}
+          >
+            <span className="brand-logo-text">TP</span>
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="brand-logo-action" size={22} strokeWidth={2.2} aria-hidden="true" />
+            ) : null}
+          </button>
           <div className="brand-copy">
             <h1>旅程規劃室</h1>
             <p>{trips.length} 個旅程</p>
@@ -2963,45 +3042,54 @@ function exportTrip() {
             title={isSidebarCollapsed ? "展開側欄" : "收合側欄"}
             onClick={() => setIsSidebarCollapsed((value) => !value)}
           >
-            {isSidebarCollapsed ? ">" : "<"}
+            <PanelLeftClose size={18} strokeWidth={2.2} aria-hidden="true" />
           </button>
         </div>
-        <button className="primary-button create-trip-button" type="button" onClick={() => setIsTripDialogOpen(true)}>
-          <span aria-hidden="true">+</span>
-          新增旅程
-        </button>
         <nav className="section-nav" aria-label="功能導覽">
-          {desktopNavItems.map((item) => (
-            <button
-              className={`section-nav-button${activeSection === item.id ? " active" : ""}`}
-              key={item.id}
-              type="button"
-              title={item.label}
-              onClick={() => setActiveSection(item.id)}
-            >
-              <span className="section-nav-icon" aria-hidden="true">
-                {item.shortLabel}
-              </span>
-              <span className="nav-label">{item.label}</span>
-            </button>
-          ))}
+          {desktopNavItems.map((item) => {
+            const Icon = desktopNavIcons[item.id];
+            return (
+              <button
+                className={`section-nav-button${activeSection === item.id ? " active" : ""}`}
+                key={item.id}
+                type="button"
+                title={item.label}
+                aria-label={item.label}
+                aria-current={activeSection === item.id ? "page" : undefined}
+                onClick={() => setActiveSection(item.id)}
+              >
+                <span className="section-nav-icon" aria-hidden="true">
+                  <Icon size={15} strokeWidth={2.2} />
+                </span>
+                <span className="nav-label">{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
-        <TripList trips={trips} activeTripId={activeTripId} onSelect={selectTrip} />
-        <div className="user-box">
-          {activeTrip ? (
-            <MembersPanel
-              className="sidebar-members"
-              isOwner={canInviteMembers}
-              members={members}
-              onApprove={approveMember}
-              onReject={rejectMember}
-            />
-          ) : null}
-          <strong className="nav-label">{session.user.user_metadata?.full_name || session.user.email}</strong>
-          <button className="ghost-button" type="button" onClick={signOut}>
-            登出
-          </button>
-        </div>
+        <SidebarTripSection
+          activeTripId={activeTripId}
+          collapsed={isSidebarCollapsed}
+          createTitle="新增旅程"
+          flyoutId="sidebar-trips-flyout"
+          headingId="sidebar-trips-title"
+          isFlyoutOpen={isSidebarTripMenuOpen}
+          onCloseFlyout={() => setIsSidebarTripMenuOpen(false)}
+          onCreate={() => setIsTripDialogOpen(true)}
+          onSelect={selectTrip}
+          onToggleFlyout={() => setIsSidebarTripMenuOpen((value) => !value)}
+          trips={trips}
+        />
+        <SidebarAccountMenu
+          collapsed={isSidebarCollapsed}
+          email={userEmail}
+          initial={userInitial}
+          isOpen={isAccountMenuOpen}
+          name={userDisplayName}
+          onClose={() => setIsAccountMenuOpen(false)}
+          onSettings={() => setActiveSection("settings")}
+          onSignOut={signOut}
+          onToggle={() => setIsAccountMenuOpen((value) => !value)}
+        />
       </aside>
 
       <main className="workspace">
@@ -3274,8 +3362,343 @@ function findOverlappingVisitItem({ dayIndex, editingId, items, payload }) {
   });
 }
 
-function Shell({ children, collapsed = false }) {
-  return <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
+function Shell({ appLayout = false, children, collapsed = false }) {
+  return <div className={`app-shell${appLayout ? " app-shell-workspace" : ""}${collapsed ? " sidebar-collapsed" : ""}`}>{children}</div>;
+}
+
+function SidebarTripSection({
+  activeTripId,
+  collapsed = false,
+  createDisabled = false,
+  createTitle = "新增旅程",
+  flyoutId,
+  headingId,
+  isFlyoutOpen,
+  onCloseFlyout,
+  onCreate,
+  onSelect,
+  onToggleFlyout,
+  trips,
+}) {
+  const flyoutRef = useRef(null);
+
+  useEffect(() => {
+    if (!collapsed || !isFlyoutOpen) return undefined;
+    function handlePointerDown(event) {
+      if (!flyoutRef.current || flyoutRef.current.contains(event.target)) return;
+      onCloseFlyout();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [collapsed, isFlyoutOpen, onCloseFlyout]);
+
+  function handleCreate() {
+    if (createDisabled) return;
+    onCloseFlyout();
+    onCreate();
+  }
+
+  function handleSelect(tripId) {
+    onCloseFlyout();
+    onSelect(tripId);
+  }
+
+  if (!collapsed) {
+    return (
+      <section className="sidebar-trip-section" aria-labelledby={headingId}>
+        <div className="sidebar-trip-heading">
+          <h2 id={headingId}>我的旅程</h2>
+          <button className="mini-button sidebar-create-trip" type="button" title={createTitle} aria-label={createTitle} disabled={createDisabled} onClick={handleCreate}>
+            +
+          </button>
+        </div>
+        <div className="sidebar-trip-list-region">
+          <TripList trips={trips} activeTripId={activeTripId} compact={false} onCreate={handleCreate} onSelect={handleSelect} />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="sidebar-trip-section sidebar-trip-section-collapsed" aria-label="旅程操作" ref={flyoutRef}>
+      <div className="sidebar-trip-menu-divider" aria-hidden="true" />
+      <button
+        className={`mini-button sidebar-trip-menu-button${isFlyoutOpen ? " active" : ""}`}
+        type="button"
+        title="我的旅程"
+        aria-label="我的旅程"
+        aria-controls={flyoutId}
+        aria-expanded={isFlyoutOpen}
+        onClick={onToggleFlyout}
+      >
+        <LayoutList size={19} strokeWidth={2.2} aria-hidden="true" />
+      </button>
+      {isFlyoutOpen ? (
+        <div className="sidebar-trip-flyout" id={flyoutId}>
+          <div className="sidebar-trip-heading">
+            <h2 id={headingId}>我的旅程</h2>
+            <button className="mini-button sidebar-create-trip" type="button" title={createTitle} aria-label={createTitle} disabled={createDisabled} onClick={handleCreate}>
+              +
+            </button>
+          </div>
+          <div className="sidebar-trip-list-region">
+            <TripList trips={trips} activeTripId={activeTripId} compact={false} onCreate={handleCreate} onSelect={handleSelect} />
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function SidebarAccountMenu({
+  collapsed = false,
+  email = "",
+  initial = "?",
+  isOpen,
+  name,
+  onClose,
+  onSettings,
+  onSignOut,
+  onToggle,
+  settingsDisabled = false,
+  signOutDisabled = false,
+}) {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    function handlePointerDown(event) {
+      if (!menuRef.current || menuRef.current.contains(event.target)) return;
+      onClose();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <div className="user-box" ref={menuRef}>
+      {isOpen ? (
+        <div className="account-menu" role="menu" aria-label="帳號選單">
+          <button
+            className="account-menu-item"
+            type="button"
+            role="menuitem"
+            disabled={settingsDisabled}
+            onClick={() => {
+              onClose();
+              onSettings();
+            }}
+          >
+            <Settings size={16} aria-hidden="true" strokeWidth={2.2} />
+            <span>設定</span>
+          </button>
+          <div className="account-menu-separator" aria-hidden="true" />
+          <button
+            className="account-menu-item"
+            type="button"
+            role="menuitem"
+            disabled={signOutDisabled}
+            onClick={() => {
+              onClose();
+              onSignOut();
+            }}
+          >
+            <LogOut size={16} aria-hidden="true" strokeWidth={2.2} />
+            <span>登出</span>
+          </button>
+        </div>
+      ) : null}
+      <button
+        className="user-box-card"
+        type="button"
+        title="帳號選單"
+        aria-label="帳號選單"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={onToggle}
+      >
+        <span className="user-avatar" aria-hidden="true">
+          {initial}
+        </span>
+        <span className="user-account">
+          <strong className="nav-label">{name}</strong>
+          {email ? <span className="user-email nav-label">{email}</span> : null}
+        </span>
+        <span className="account-menu-arrow" aria-hidden="true">
+          {collapsed ? null : isOpen ? <ChevronDown size={16} strokeWidth={2.2} /> : <ChevronUp size={16} strokeWidth={2.2} />}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function TripDateRangeSelector({
+  activeStep,
+  disabled = false,
+  endDate,
+  endInput,
+  errorId,
+  minDateKey = "",
+  onCommitInput,
+  onEndInputChange,
+  onHoverDate,
+  onInputKeyDown,
+  onSelectDate,
+  onStartInputChange,
+  onVisibleMonthChange,
+  previewEndDate = "",
+  startDate,
+  startInput,
+  startInputRef,
+  visibleMonth,
+}) {
+  const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
+  const fullDateFormat = useMemo(
+    () => new Intl.DateTimeFormat("zh-TW", { day: "numeric", month: "long", year: "numeric" }),
+    [],
+  );
+
+  function renderMonth(monthDate, controls = {}) {
+    const cells = calendarMonthCells(monthDate);
+    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+    return (
+      <section className="trip-date-range-month" key={formatDateKey(monthDate)}>
+        <div className="trip-date-range-month-header">
+          {controls.previous ? (
+            <button
+              type="button"
+              className="mini-button"
+              disabled={disabled}
+              aria-label="上一個月份"
+              onClick={() => onVisibleMonthChange(addMonths(visibleMonth, -1))}
+            >
+              &lt;
+            </button>
+          ) : (
+            <span />
+          )}
+          <strong>{monthFormat.format(monthDate)}</strong>
+          {controls.next ? (
+            <button
+              type="button"
+              className="mini-button"
+              disabled={disabled}
+              aria-label="下一個月份"
+              onClick={() => onVisibleMonthChange(addMonths(visibleMonth, 1))}
+            >
+              &gt;
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
+        <div className="trip-date-range-weekdays" aria-hidden="true">
+          {weekdays.map((weekday) => (
+            <span key={weekday}>{weekday}</span>
+          ))}
+        </div>
+        <div className="trip-date-range-grid">
+          {cells.map((cell) => {
+            if (cell.blank) {
+              return <span className="trip-date-range-day-blank" key={cell.key} aria-hidden="true" />;
+            }
+            const isDisabledDate = Boolean(minDateKey && isDateBefore(cell.key, minDateKey));
+            const isRangeStart = isSameDate(cell.key, startDate);
+            const isRangeEnd = isSameDate(cell.key, endDate);
+            const isSingleDay = Boolean(startDate && endDate && isSameDate(startDate, endDate) && isRangeStart);
+            const isInRange = isDateInRange(cell.key, startDate, endDate) && !isRangeStart && !isRangeEnd;
+            const isPreviewRange =
+              !isDisabledDate && Boolean(previewEndDate) && isDateInRange(cell.key, startDate, previewEndDate) && !isRangeStart;
+            const classNames = [
+              "trip-date-range-day",
+              isDisabledDate ? "is-disabled" : "",
+              isSameDate(cell.key, todayInput()) ? "is-today" : "",
+              isRangeStart ? "is-range-start" : "",
+              isInRange ? "is-in-range" : "",
+              isRangeEnd ? "is-range-end" : "",
+              isSingleDay ? "is-single-day" : "",
+              isPreviewRange ? "is-preview-range" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+            const selectionLabel = isRangeStart
+              ? "，開始日期"
+              : isRangeEnd
+                ? "，結束日期"
+                : isInRange || isPreviewRange
+                  ? "，行程範圍內"
+                  : "";
+            return (
+              <button
+                className={classNames}
+                key={cell.key}
+                type="button"
+                disabled={disabled || isDisabledDate}
+                aria-label={`${fullDateFormat.format(cell.date)}${selectionLabel}`}
+                aria-disabled={isDisabledDate ? "true" : undefined}
+                aria-selected={isRangeStart || isRangeEnd || isInRange}
+                onClick={() => onSelectDate(cell.key)}
+                onMouseEnter={() => {
+                  if (!disabled && !isDisabledDate && activeStep === "end" && startDate && !endDate) onHoverDate(cell.key);
+                }}
+                onFocus={() => {
+                  if (!disabled && !isDisabledDate && activeStep === "end" && startDate && !endDate) onHoverDate(cell.key);
+                }}
+              >
+                <span>{cell.day}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <div className="trip-date-range-summary" aria-live="polite">
+        <label className={`trip-date-range-summary-item${activeStep === "start" ? " is-active" : ""}`}>
+          <span>開始日期</span>
+          <input
+            ref={startInputRef}
+            type="text"
+            inputMode="numeric"
+            placeholder="YYYYMMDD"
+            value={startInput}
+            disabled={disabled}
+            aria-describedby={errorId}
+            onBlur={() => onCommitInput("start")}
+            onChange={(event) => onStartInputChange(event.target.value)}
+            onKeyDown={(event) => onInputKeyDown(event, "start")}
+          />
+        </label>
+        <label className={`trip-date-range-summary-item${activeStep === "end" ? " is-active" : ""}`}>
+          <span>結束日期</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="YYYYMMDD"
+            value={endInput}
+            disabled={disabled}
+            aria-describedby={errorId}
+            onBlur={() => onCommitInput("end")}
+            onChange={(event) => onEndInputChange(event.target.value)}
+            onKeyDown={(event) => onInputKeyDown(event, "end")}
+          />
+        </label>
+      </div>
+      <div className="trip-date-range-picker">
+        <div className="trip-date-range-months" onMouseLeave={() => onHoverDate("")}>
+          {renderMonth(visibleMonth, { previous: true })}
+          {renderMonth(addMonths(visibleMonth, 1), { next: true })}
+        </div>
+      </div>
+    </>
+  );
 }
 
 function TripHeaderIcon({ name }) {
@@ -3414,6 +3837,7 @@ function TripHeader({
   members = [],
   days = [],
   dateChangePreviewData = {},
+  demoNotice = "",
   canEditTrip = false,
   canChangeTripDates = canEditTrip,
   canOpenMembers = canEditTrip,
@@ -3508,11 +3932,6 @@ function TripHeader({
   useEffect(() => {
     if (!dateChangePreview.hasTimelineRemoval) setIsDateRemovalConfirmed(false);
   }, [dateChangePreview.hasTimelineRemoval]);
-  const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
-  const fullDateFormat = useMemo(
-    () => new Intl.DateTimeFormat("zh-TW", { day: "numeric", month: "long", year: "numeric" }),
-    [],
-  );
   const metaItems = [
     meta.destinationLabel
       ? {
@@ -3550,6 +3969,7 @@ function TripHeader({
           title: canOpenMembers && typeof onOpenMembers === "function" ? "成員與邀請" : undefined,
         }
       : null,
+    demoNotice ? { key: "demo-notice", label: demoNotice } : null,
   ].filter(Boolean);
 
   useEffect(() => {
@@ -4058,102 +4478,6 @@ function TripHeader({
     commitDateTextInput(field);
   }
 
-  function renderDateMonth(monthDate, controls = {}) {
-    const cells = calendarMonthCells(monthDate);
-    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
-    return (
-      <section className="trip-date-range-month" key={formatDateKey(monthDate)}>
-        <div className="trip-date-range-month-header">
-          {controls.previous ? (
-            <button
-              type="button"
-              className="mini-button"
-              disabled={isSavingDates}
-              aria-label="上一個月份"
-              onClick={() => setVisibleMonth((month) => addMonths(month, -1))}
-            >
-              &lt;
-            </button>
-          ) : (
-            <span />
-          )}
-          <strong>{monthFormat.format(monthDate)}</strong>
-          {controls.next ? (
-            <button
-              type="button"
-              className="mini-button"
-              disabled={isSavingDates}
-              aria-label="下一個月份"
-              onClick={() => setVisibleMonth((month) => addMonths(month, 1))}
-            >
-              &gt;
-            </button>
-          ) : (
-            <span />
-          )}
-        </div>
-        <div className="trip-date-range-weekdays" aria-hidden="true">
-          {weekdays.map((weekday) => (
-            <span key={weekday}>{weekday}</span>
-          ))}
-        </div>
-        <div className="trip-date-range-grid">
-          {cells.map((cell) => {
-            if (cell.blank) {
-              return <span className="trip-date-range-day-blank" key={cell.key} aria-hidden="true" />;
-            }
-            const isDisabledDate = isDateBefore(cell.key, todayDateKey);
-            const isRangeStart = isSameDate(cell.key, startDateDraft);
-            const isRangeEnd = isSameDate(cell.key, endDateDraft);
-            const isSingleDay = Boolean(startDateDraft && endDateDraft && isSameDate(startDateDraft, endDateDraft) && isRangeStart);
-            const isInRange = isDateInRange(cell.key, startDateDraft, endDateDraft) && !isRangeStart && !isRangeEnd;
-            const isPreviewRange =
-              !isDisabledDate && Boolean(previewEndDate) && isDateInRange(cell.key, startDateDraft, previewEndDate) && !isRangeStart;
-            const classNames = [
-              "trip-date-range-day",
-              isDisabledDate ? "is-disabled" : "",
-              isSameDate(cell.key, todayDateKey) ? "is-today" : "",
-              isRangeStart ? "is-range-start" : "",
-              isInRange ? "is-in-range" : "",
-              isRangeEnd ? "is-range-end" : "",
-              isSingleDay ? "is-single-day" : "",
-              isPreviewRange ? "is-preview-range" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-            const selectionLabel = isRangeStart
-              ? "，開始日期"
-              : isRangeEnd
-                ? "，結束日期"
-                : isInRange || isPreviewRange
-                  ? "，行程範圍內"
-                  : "";
-            return (
-              <button
-                className={classNames}
-                key={cell.key}
-                type="button"
-                disabled={isSavingDates || isDisabledDate}
-                aria-label={`${fullDateFormat.format(cell.date)}${selectionLabel}`}
-                aria-disabled={isDisabledDate ? "true" : undefined}
-                aria-selected={isRangeStart || isRangeEnd || isInRange}
-                onClick={() => selectDateFromCalendar(cell.key)}
-                onMouseEnter={() => {
-                  if (!isDisabledDate && dateSelectionStep === "end" && startDateDraft && !endDateDraft) setHoveredDate(cell.key);
-                }}
-                onFocus={() => {
-                  if (!isDisabledDate && dateSelectionStep === "end" && startDateDraft && !endDateDraft) setHoveredDate(cell.key);
-                }}
-              >
-                <span>{cell.day}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-    );
-  }
-
   function handleDatePopoverKeyDown(event) {
     if ((event.key === "Enter" || event.key === " ") && event.target === dateDialogRef.current) {
       event.preventDefault();
@@ -4410,49 +4734,32 @@ function TripHeader({
                           tabIndex={-1}
                           onKeyDown={handleDatePopoverKeyDown}
                         >
-                          <div className="trip-date-range-summary" aria-live="polite">
-                            <label className={`trip-date-range-summary-item${dateSelectionStep === "start" ? " is-active" : ""}`}>
-                              <span>開始日期</span>
-                              <input
-                                ref={startDateTextInputRef}
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="YYYYMMDD"
-                                value={startDateInput}
-                                disabled={isSavingDates || !canUpdateTripDateRange}
-                                aria-describedby={dateError ? "trip-header-date-error" : undefined}
-                                onBlur={() => commitDateTextInput("start")}
-                                onChange={(event) => {
-                                  setStartDateInput(event.target.value);
-                                  if (dateError) setDateError("");
-                                }}
-                                onKeyDown={(event) => handleDateInputKeyDown(event, "start")}
-                              />
-                            </label>
-                            <label className={`trip-date-range-summary-item${dateSelectionStep === "end" ? " is-active" : ""}`}>
-                              <span>結束日期</span>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="YYYYMMDD"
-                                value={endDateInput}
-                                disabled={isSavingDates || !canUpdateTripDateRange}
-                                aria-describedby={dateError ? "trip-header-date-error" : undefined}
-                                onBlur={() => commitDateTextInput("end")}
-                                onChange={(event) => {
-                                  setEndDateInput(event.target.value);
-                                  if (dateError) setDateError("");
-                                }}
-                                onKeyDown={(event) => handleDateInputKeyDown(event, "end")}
-                              />
-                            </label>
-                          </div>
-                          <div className="trip-date-range-picker">
-                            <div className="trip-date-range-months" onMouseLeave={() => setHoveredDate("")}>
-                              {renderDateMonth(visibleMonth, { previous: true })}
-                              {renderDateMonth(addMonths(visibleMonth, 1), { next: true })}
-                            </div>
-                          </div>
+                          <TripDateRangeSelector
+                            activeStep={dateSelectionStep}
+                            disabled={isSavingDates || !canUpdateTripDateRange}
+                            endDate={endDateDraft}
+                            endInput={endDateInput}
+                            errorId={dateError ? "trip-header-date-error" : undefined}
+                            minDateKey={todayDateKey}
+                            onCommitInput={commitDateTextInput}
+                            onEndInputChange={(value) => {
+                              setEndDateInput(value);
+                              if (dateError) setDateError("");
+                            }}
+                            onHoverDate={setHoveredDate}
+                            onInputKeyDown={handleDateInputKeyDown}
+                            onSelectDate={selectDateFromCalendar}
+                            onStartInputChange={(value) => {
+                              setStartDateInput(value);
+                              if (dateError) setDateError("");
+                            }}
+                            onVisibleMonthChange={setVisibleMonth}
+                            previewEndDate={previewEndDate}
+                            startDate={startDateDraft}
+                            startInput={startDateInput}
+                            startInputRef={startDateTextInputRef}
+                            visibleMonth={visibleMonth}
+                          />
                           {canUpdateTripDateRange ? (
                             <TripDateChangePreview
                               isRemovalConfirmed={isDateRemovalConfirmed}
@@ -4660,7 +4967,10 @@ function DemoApp({ initialSection }) {
   const [activeSection, setActiveSection] = useState(initialSection || "timeline");
   const [activeDay, setActiveDay] = useState(0);
   const [isDemoMembersDialogOpen, setIsDemoMembersDialogOpen] = useState(false);
-  const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrip);
+  const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrips[0]);
+  const [isDemoSidebarCollapsed, setIsDemoSidebarCollapsed] = useState(false);
+  const [isDemoAccountMenuOpen, setIsDemoAccountMenuOpen] = useState(false);
+  const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
@@ -4673,6 +4983,10 @@ function DemoApp({ initialSection }) {
   const [focusedItemId, setFocusedItemId] = useState(null);
   const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
   const days = useMemo(() => tripDays(demoActiveTrip), [demoActiveTrip]);
+  useEffect(() => {
+    setIsDemoAccountMenuOpen(false);
+    setIsDemoSidebarTripMenuOpen(false);
+  }, [activeSection, demoActiveTrip.id, isDemoSidebarCollapsed]);
   const dayItems = useMemo(
     () => sortScheduleItems(timelineItems.filter((item) => item.day_index === activeDay)),
     [activeDay, timelineItems],
@@ -5109,39 +5423,106 @@ function DemoApp({ initialSection }) {
   }
 
   return (
-    <section className="demo-shell">
-      <aside className="demo-sidebar">
+    <Shell appLayout collapsed={isDemoSidebarCollapsed}>
+      <aside className={`sidebar demo-sidebar${isDemoSidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">TP</div>
+          <button
+            className="brand-mark"
+            type="button"
+            title={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到 Demo 行程"}
+            aria-label={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到 Demo 行程"}
+            onClick={() => {
+              if (isDemoSidebarCollapsed) {
+                setIsDemoSidebarCollapsed(false);
+                return;
+              }
+              changeSection("timeline");
+            }}
+          >
+            <span className="brand-logo-text">TP</span>
+            {isDemoSidebarCollapsed ? (
+              <PanelLeftOpen className="brand-logo-action" size={22} strokeWidth={2.2} aria-hidden="true" />
+            ) : null}
+          </button>
           <div className="brand-copy">
             <h1>旅遊規劃</h1>
             <p>展示模式</p>
           </div>
+          <button
+            className="mini-button sidebar-toggle"
+            type="button"
+            title={isDemoSidebarCollapsed ? "展開側欄" : "收合側欄"}
+            aria-label={isDemoSidebarCollapsed ? "展開側欄" : "收合側欄"}
+            aria-expanded={!isDemoSidebarCollapsed}
+            onClick={() => setIsDemoSidebarCollapsed((value) => !value)}
+          >
+            <PanelLeftClose size={18} strokeWidth={2.2} aria-hidden="true" />
+          </button>
         </div>
         <nav className="section-nav" aria-label="Demo 導覽">
-          {["timeline", "budget", "luggage"].map((section) => (
-            <button
-              className={`section-nav-button${activeSection === section ? " active" : ""}`}
-              key={section}
-              type="button"
-              onClick={() => changeSection(section)}
-            >
-              <span className="section-nav-icon" aria-hidden="true">
-                {section === "timeline" ? "程" : section === "budget" ? "$" : "李"}
-              </span>
-              <span className="nav-label">{demoSectionLabel(section)}</span>
-            </button>
-          ))}
+          {["timeline", "budget", "luggage"].map((section) => {
+            const navItem = desktopNavItems.find((item) => item.id === section);
+            const Icon = navItem ? desktopNavIcons[navItem.id] : null;
+            return (
+              <button
+                className={`section-nav-button${activeSection === section ? " active" : ""}`}
+                key={section}
+                type="button"
+                title={demoSectionLabel(section)}
+                aria-label={demoSectionLabel(section)}
+                aria-current={activeSection === section ? "page" : undefined}
+                onClick={() => changeSection(section)}
+              >
+                <span className="section-nav-icon" aria-hidden="true">
+                  {Icon ? <Icon size={15} strokeWidth={2.2} /> : navItem?.shortLabel}
+                </span>
+                <span className="nav-label">{demoSectionLabel(section)}</span>
+              </button>
+            );
+          })}
         </nav>
+        <SidebarTripSection
+          activeTripId={demoActiveTrip.id}
+          collapsed={isDemoSidebarCollapsed}
+          createDisabled
+          createTitle="Demo 模式不支援新增旅程"
+          flyoutId="demo-sidebar-trips-flyout"
+          headingId="demo-sidebar-trips-title"
+          isFlyoutOpen={isDemoSidebarTripMenuOpen}
+          onCloseFlyout={() => setIsDemoSidebarTripMenuOpen(false)}
+          onCreate={() => {}}
+          onSelect={(tripId) => {
+            const nextTrip = demoTrips.find((trip) => trip.id === tripId);
+            if (nextTrip) setDemoActiveTrip(nextTrip);
+          }}
+          onToggleFlyout={() => setIsDemoSidebarTripMenuOpen((value) => !value)}
+          trips={demoTrips.map((trip) => ({
+            ...trip,
+            membership: { role: "owner", status: "approved" },
+          }))}
+        />
+        <SidebarAccountMenu
+          collapsed={isDemoSidebarCollapsed}
+          email="demo@example.com"
+          initial="D"
+          isOpen={isDemoAccountMenuOpen}
+          name="Demo User"
+          onClose={() => setIsDemoAccountMenuOpen(false)}
+          onSettings={() => {}}
+          onSignOut={() => {}}
+          onToggle={() => setIsDemoAccountMenuOpen((value) => !value)}
+          settingsDisabled
+          signOutDisabled
+        />
       </aside>
       <main className="workspace demo-workspace">
-        <div className="demo-banner">Demo Mode：這是展示資料，操作不會永久保存。</div>
         <TripHeader
           activeSection={activeSection}
           trip={demoActiveTrip}
           members={demoMembers}
           days={days}
           dateChangePreviewData={tripDateChangePreviewData}
+          demoNotice="Demo Mode 資料不會永久保存。"
           canEditTrip
           canOpenMembers
           onDelete={() => {}}
@@ -5327,7 +5708,7 @@ function DemoApp({ initialSection }) {
           onUpdateRole={() => {}}
         />
       ) : null}
-    </section>
+    </Shell>
   );
 }
 
@@ -5861,7 +6242,21 @@ function LoginView({ onSignIn, notice }) {
   );
 }
 
-function TripList({ trips, activeTripId, onSelect }) {
+function getTripInitials(title = "") {
+  const compactTitle = title.trim();
+  if (!compactTitle) return "旅";
+  return Array.from(compactTitle).slice(0, 1).join("");
+}
+
+function TripList({ trips, activeTripId, compact = false, onCreate, onSelect }) {
+  if (!trips.length) {
+    return (
+      <button className="trip-empty-card" type="button" onClick={onCreate}>
+        + 建立第一個旅程
+      </button>
+    );
+  }
+
   return (
     <div className="trip-list" aria-label="旅程列表">
       {trips.map((trip) => (
@@ -5869,9 +6264,11 @@ function TripList({ trips, activeTripId, onSelect }) {
           className={`trip-card${trip.id === activeTripId ? " active" : ""}`}
           key={trip.id}
           type="button"
+          title={trip.title}
+          aria-label={`${trip.title}${trip.id === activeTripId ? "，目前旅程" : ""}`}
           onClick={() => onSelect(trip.id)}
         >
-          <strong>{trip.title}</strong>
+          <strong>{compact ? getTripInitials(trip.title) : trip.title}</strong>
           <span>
             {trip.destination} · {trip.start_date}
           </span>
@@ -10460,9 +10857,118 @@ function MembersPanel({ className = "", isOwner, members, onApprove, onReject })
 }
 
 function TripDialog({ form, onChange, onClose, onSubmit }) {
+  const [dateSelectionStep, setDateSelectionStep] = useState(() => initialDateSelectionStep(form.start_date, form.end_date));
+  const [startDateInput, setStartDateInput] = useState(() => formatHeaderDate(form.start_date) || "");
+  const [endDateInput, setEndDateInput] = useState(() => formatHeaderDate(form.end_date) || "");
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    startOfMonth(parseDateOnly(form.start_date) || parseDateOnly(todayInput()) || new Date()),
+  );
+  const [hoveredDate, setHoveredDate] = useState("");
+  const [dateError, setDateError] = useState("");
+  const startDateInputRef = useRef(null);
+  const tripDayCount = dateRangeDayCount(form.start_date, form.end_date);
+  const previewEndDate =
+    dateSelectionStep === "end" &&
+    form.start_date &&
+    !form.end_date &&
+    hoveredDate &&
+    !isDateBefore(hoveredDate, form.start_date)
+      ? hoveredDate
+      : "";
+  const previewDayCount = previewEndDate ? dateRangeDayCount(form.start_date, previewEndDate) : null;
+  const canSubmitDates = Boolean(form.start_date && form.end_date && !isDateBefore(form.end_date, form.start_date));
+
+  function updateDates(startDate, endDate) {
+    onChange({ ...form, end_date: endDate, start_date: startDate });
+  }
+
+  function selectDialogDate(dateKey) {
+    setDateError("");
+    setHoveredDate("");
+    if (dateSelectionStep === "start" || !form.start_date) {
+      updateDates(dateKey, "");
+      setStartDateInput(formatHeaderDate(dateKey));
+      setEndDateInput("");
+      setDateSelectionStep("end");
+      return;
+    }
+    if (isDateBefore(dateKey, form.start_date)) {
+      updateDates(dateKey, "");
+      setStartDateInput(formatHeaderDate(dateKey));
+      setEndDateInput("");
+      setDateSelectionStep("end");
+      return;
+    }
+    updateDates(form.start_date, dateKey);
+    setEndDateInput(formatHeaderDate(dateKey));
+    setDateSelectionStep("start");
+  }
+
+  function clearDialogDates() {
+    updateDates("", "");
+    setStartDateInput("");
+    setEndDateInput("");
+    setDateSelectionStep("start");
+    setHoveredDate("");
+    setDateError("");
+    requestAnimationFrame(() => {
+      startDateInputRef.current?.focus();
+    });
+  }
+
+  function commitDialogDateInput(field) {
+    const rawValue = field === "start" ? startDateInput : endDateInput;
+    if (!String(rawValue || "").trim()) {
+      if (field === "start") {
+        updateDates("", "");
+        setEndDateInput("");
+        setDateSelectionStep("start");
+      } else {
+        updateDates(form.start_date, "");
+        setDateSelectionStep(initialDateSelectionStep(form.start_date, ""));
+      }
+      setDateError("");
+      return true;
+    }
+    const normalized = parseDateTextInput(rawValue);
+    if (!normalized) {
+      setDateError("請輸入有效日期");
+      return false;
+    }
+    setDateError("");
+    setHoveredDate("");
+    setVisibleMonth(startOfMonth(parseDateOnly(normalized)));
+    if (field === "start") {
+      const nextEndDate = form.end_date && isDateBefore(form.end_date, normalized) ? "" : form.end_date;
+      updateDates(normalized, nextEndDate);
+      setStartDateInput(formatHeaderDate(normalized));
+      if (!nextEndDate) setEndDateInput("");
+      setDateSelectionStep("end");
+      return true;
+    }
+    if (form.start_date && isDateBefore(normalized, form.start_date)) {
+      updateDates(normalized, "");
+      setStartDateInput(formatHeaderDate(normalized));
+      setEndDateInput("");
+      setDateSelectionStep("end");
+      return true;
+    }
+    updateDates(form.start_date, normalized);
+    setEndDateInput(formatHeaderDate(normalized));
+    setDateSelectionStep("start");
+    return true;
+  }
+
+  function handleDialogDateInputKeyDown(event, field) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    event.stopPropagation();
+    commitDialogDateInput(field);
+  }
+
   return (
     <div className="modal-backdrop">
-      <form autoComplete="off" className="dialog-card" onSubmit={onSubmit}>
+      <form autoComplete="off" className="dialog-card create-trip-dialog" onSubmit={onSubmit}>
         <h2>新增旅程</h2>
         <label>
           旅程名稱
@@ -10482,33 +10988,56 @@ function TripDialog({ form, onChange, onClose, onSubmit }) {
             onChange={(event) => onChange({ ...form, destination: event.target.value })}
           />
         </label>
-        <div className="field-group form-grid wide">
-          <label>
-            開始日期
-            <input
-              autoComplete="off"
-              required
-              type="date"
-              value={form.start_date}
-              onChange={(event) => onChange({ ...form, start_date: event.target.value })}
-            />
-          </label>
-          <label>
-            結束日期
-            <input
-              autoComplete="off"
-              required
-              type="date"
-              value={form.end_date}
-              onChange={(event) => onChange({ ...form, end_date: event.target.value })}
-            />
-          </label>
+        <div className="create-trip-date-picker">
+          <TripDateRangeSelector
+            activeStep={dateSelectionStep}
+            endDate={form.end_date}
+            endInput={endDateInput}
+            errorId={dateError ? "create-trip-date-error" : undefined}
+            onCommitInput={commitDialogDateInput}
+            onEndInputChange={(value) => {
+              setEndDateInput(value);
+              if (dateError) setDateError("");
+            }}
+            onHoverDate={setHoveredDate}
+            onInputKeyDown={handleDialogDateInputKeyDown}
+            onSelectDate={selectDialogDate}
+            onStartInputChange={(value) => {
+              setStartDateInput(value);
+              if (dateError) setDateError("");
+            }}
+            onVisibleMonthChange={setVisibleMonth}
+            previewEndDate={previewEndDate}
+            startDate={form.start_date}
+            startInput={startDateInput}
+            startInputRef={startDateInputRef}
+            visibleMonth={visibleMonth}
+          />
+          {dateError ? (
+            <div className="trip-header-date-error" id="create-trip-date-error" role="alert">
+              {dateError}
+            </div>
+          ) : null}
+          <div className="trip-date-range-footer">
+            <div className="trip-header-date-summary" aria-live="polite">
+              旅程天數：
+              {tripDayCount ? `${tripDayCount} 天` : previewDayCount ? `${previewDayCount} 天（預覽）` : "—"}
+            </div>
+            <button
+              type="button"
+              className="ghost-button compact"
+              disabled={!form.start_date && !form.end_date}
+              onClick={clearDialogDates}
+            >
+              清除
+            </button>
+          </div>
         </div>
         <div className="form-actions">
           <button className="ghost-button" type="button" onClick={onClose}>
             取消
           </button>
-          <button className="primary-button compact" type="submit">
+          <button className="primary-button compact" type="submit" disabled={!canSubmitDates}>
             建立
           </button>
         </div>
