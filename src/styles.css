@@ -2151,19 +2151,21 @@ textarea {
 
 .day-tabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .day-tab {
-  min-width: 92px;
+  min-width: 78px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 7px;
   background: #fff;
   color: var(--ink);
-  padding: 10px 12px;
+  padding: 7px 10px;
+  font-size: 13px;
   font-weight: 800;
+  line-height: 1.15;
 }
 
 .day-tab.active {
@@ -2182,8 +2184,9 @@ textarea {
 .timeline-top-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   justify-content: flex-end;
+  margin-bottom: 12px;
 }
 
 .timeline-top-row .day-tabs {
@@ -2196,6 +2199,7 @@ textarea {
 }
 
 .timeline-workbench {
+  gap: 16px;
   position: relative;
 }
 
@@ -3843,7 +3847,7 @@ textarea {
 
 @media (min-width: 1101px) {
   .timeline-workbench {
-    grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr);
+    grid-template-columns: minmax(340px, 36fr) minmax(420px, 64fr);
   }
 
   .timeline-workbench.route-collapsed {
@@ -3851,8 +3855,12 @@ textarea {
   }
 
   .timeline-workbench .itinerary-panel {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
     max-height: calc(100vh - 250px);
     overflow-y: auto;
+    padding: 0 6px 0 0;
     scrollbar-gutter: stable;
   }
 
@@ -3863,6 +3871,7 @@ textarea {
     max-height: none;
     overflow-x: auto;
     overflow-y: clip;
+    padding: 0 0 8px;
     scrollbar-gutter: stable;
   }
 
@@ -3871,8 +3880,15 @@ textarea {
     top: 24px;
   }
 
+  .timeline-workbench .side-panels > .panel {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
   .timeline-workbench .route-map {
-    min-height: min(560px, calc(100vh - 250px));
+    min-height: min(640px, calc(100vh - 210px));
   }
 
   .timeline-workbench.route-collapsed .timeline-day-column,

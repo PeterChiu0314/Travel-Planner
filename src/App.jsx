@@ -646,6 +646,13 @@ function formatDate(date) {
   }).format(date);
 }
 
+function formatDayTabDate(date) {
+  return new Intl.DateTimeFormat("zh-TW", {
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+}
+
 function formatHeaderDate(value) {
   if (!value) return "";
   const date = parseDateOnly(value);
@@ -6681,7 +6688,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
   );
 }
 
-function DayTabs({ activeDay, dayPrefix = "Day", daySuffix = "", days, onActiveDay }) {
+function DayTabs({ activeDay, days, onActiveDay }) {
   return (
     <nav className="day-tabs" aria-label="日期切換">
       {days.map((date, index) => (
@@ -6691,7 +6698,7 @@ function DayTabs({ activeDay, dayPrefix = "Day", daySuffix = "", days, onActiveD
           type="button"
           onClick={() => onActiveDay(index)}
         >
-          {dayPrefix} {index + 1} {daySuffix} {formatDate(date)}
+          Day {index + 1} {formatDayTabDate(date)}
         </button>
       ))}
     </nav>
