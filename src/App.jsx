@@ -12,12 +12,14 @@ import {
   Map as MapIcon,
   PanelLeftClose,
   PanelLeftOpen,
+  Route,
   Settings,
   Wallet,
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
+import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
 const attachmentBucket = "trip-attachments";
 
@@ -1099,11 +1101,13 @@ const demoTrips = [
   {
     ...demoTrip,
     id: "demo-trip-kyoto",
-    title: "京都琵琶湖之旅-TEST",
-    destination: "京都・琵琶湖, 日本",
-    start_date: "2027-04-05",
-    end_date: "2027-04-10",
-    updated_at: "2026-06-15T10:00:00.000Z",
+    title: kyotoDemoTrip.title,
+    destination: kyotoDemoTrip.destination,
+    destination_city: kyotoDemoTrip.destination_city,
+    destination_country: kyotoDemoTrip.destination_country,
+    start_date: kyotoDemoTrip.start_date,
+    end_date: kyotoDemoTrip.end_date,
+    updated_at: kyotoDemoTrip.updated_at,
   },
   {
     ...demoTrip,
@@ -1142,92 +1146,31 @@ const demoMembers = [
   { user_id: "demo-d", display_name: "Dora", email: "dora@example.com", role: "viewer", status: "approved" },
 ];
 
+function normalizeDemoTime(value) {
+  return value ? String(value).slice(0, 5) : "";
+}
+
 function createDemoTimelineItems() {
-  return [
-    {
-      id: "demo-itinerary-1",
-      day_index: 0,
-      sort_order: 10,
-      item_type: "visit",
-      type: "transport",
-      start_time: "09:10",
-      end_time: "10:25",
-      title: "成田特快前往新宿",
-      location: "成田機場",
-      location_name: "成田機場",
-      address: "日本千葉縣成田市古込1-1",
-      map_url: "https://maps.google.com/?q=Narita+Airport",
-      description: "搭車前先領取 IC 卡，確認票券與座位。",
-      transportation_note: "NEX 指定席，建議提早 15 分鐘到月台。",
-      cost: 9600,
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-    {
-      id: "demo-transport-1",
-      day_index: 0,
-      sort_order: 15,
-      item_type: "transport",
-      type: "transport",
-      start_time: "10:25",
-      end_time: null,
-      title: "JR奈良線",
-      location: null,
-      location_name: null,
-      address: null,
-      map_url: "",
-      description: "新宿站轉乘前往下一站，先確認月台。",
-      transportation_note: "新宿站轉乘前往下一站，先確認月台。",
-      transport_category: "jr",
-      transport_name: "JR奈良線",
-      transport_duration_minutes: 25,
-      transport_note: "新宿站轉乘前往下一站，先確認月台。",
-      from_item_id: "demo-itinerary-1",
-      to_item_id: "demo-itinerary-2",
-      from_snapshot_start_time: "09:10",
-      from_snapshot_end_time: "10:25",
-      from_snapshot_destination: "成田機場",
-      to_snapshot_start_time: "12:30",
-      to_snapshot_end_time: "13:30",
-      to_snapshot_destination: "新宿",
-      cost: 0,
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-    {
-      id: "demo-itinerary-2",
-      day_index: 0,
-      sort_order: 20,
-      item_type: "visit",
-      type: "food",
-      start_time: "12:30",
-      end_time: "13:30",
-      title: "新宿車站附近午餐",
-      location: "新宿",
-      location_name: "新宿",
-      address: "日本東京都新宿區",
-      map_url: "https://maps.google.com/?q=Shinjuku+Tokyo",
-      description: "依抵達時間彈性調整餐廳。",
-      transportation_note: "從車站東口步行前往。",
-      cost: 2400,
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-    {
-      id: "demo-itinerary-3",
-      day_index: 1,
-      item_type: "visit",
-      type: "attraction",
-      start_time: "10:00",
-      end_time: "12:00",
-      title: "明治神宮散步",
-      location: "原宿",
-      location_name: "明治神宮",
-      address: "日本東京都澀谷區代代木神園町1-1",
-      map_url: "https://maps.google.com/?q=Meiji+Shrine",
-      description: "早上散步與拍照，節奏放慢一點。",
-      transportation_note: "搭 JR 山手線到原宿站。",
-      cost: 0,
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-  ];
+  return [...(kyotoDemoTrip.itinerary_items || [])]
+    .map((item, index) => ({
+      ...item,
+      trip_id: "demo-trip-kyoto",
+      sort_order: Number.isFinite(Number(item.sort_order)) ? Number(item.sort_order) : index,
+      item_type: item.item_type || "visit",
+      start_time: normalizeDemoTime(item.start_time),
+      end_time: normalizeDemoTime(item.end_time),
+      from_snapshot_start_time: normalizeDemoTime(item.from_snapshot_start_time),
+      from_snapshot_end_time: normalizeDemoTime(item.from_snapshot_end_time),
+      to_snapshot_start_time: normalizeDemoTime(item.to_snapshot_start_time),
+      to_snapshot_end_time: normalizeDemoTime(item.to_snapshot_end_time),
+      note: item.note || "",
+      description: item.description || item.note || "",
+      transportation_note: item.transportation_note || item.transport_note || "",
+      cost: Number(item.cost || 0),
+      locked_by: null,
+      locked_at: null,
+    }))
+    .sort((a, b) => a.day_index - b.day_index || a.sort_order - b.sort_order || (a.start_time || "").localeCompare(b.start_time || ""));
 }
 
 function createDemoBudgetItems() {
@@ -5547,8 +5490,18 @@ function DemoApp({ initialSection }) {
           <>
             <div className="timeline-top-row">
               <DayTabs activeDay={activeDay} dayPrefix="第" daySuffix="天" days={days} onActiveDay={selectTimelineDay} />
-              <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
-                {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+              <button
+                className="ghost-button compact timeline-map-toggle"
+                type="button"
+                title={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+                aria-label={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+                onClick={() => setIsRouteCollapsed((value) => !value)}
+              >
+                {isRouteCollapsed ? (
+                  <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
+                ) : (
+                  <Route size={18} strokeWidth={2.2} aria-hidden="true" />
+                )}
               </button>
             </div>
             <div className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}`}>
@@ -6431,8 +6384,18 @@ function TripWorkspace(props) {
       {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
         <div className="timeline-top-row">
           <DayTabs activeDay={activeDay} days={days} onActiveDay={selectTimelineDay} />
-          <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
-            {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+          <button
+            className="ghost-button compact timeline-map-toggle"
+            type="button"
+            title={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+            aria-label={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+            onClick={() => setIsRouteCollapsed((value) => !value)}
+          >
+            {isRouteCollapsed ? (
+              <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
+            ) : (
+              <Route size={18} strokeWidth={2.2} aria-hidden="true" />
+            )}
           </button>
         </div>
       )}
@@ -6689,16 +6652,104 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
 }
 
 function DayTabs({ activeDay, days, onActiveDay }) {
+  const dragStateRef = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, lastX: 0, lastTime: 0, velocity: 0 });
+  const momentumFrameRef = useRef(null);
+  const suppressClickRef = useRef(false);
+
+  function stopMomentum() {
+    if (momentumFrameRef.current) {
+      window.cancelAnimationFrame(momentumFrameRef.current);
+      momentumFrameRef.current = null;
+    }
+  }
+
+  function glideTabs(nav, velocity) {
+    if (Math.abs(velocity) < 0.02) {
+      momentumFrameRef.current = null;
+      return;
+    }
+    nav.scrollLeft -= velocity * 16;
+    momentumFrameRef.current = window.requestAnimationFrame(() => glideTabs(nav, velocity * 0.92));
+  }
+
+  function startDrag(event) {
+    const nav = event.currentTarget;
+    stopMomentum();
+    dragStateRef.current = {
+      isDragging: true,
+      startX: event.clientX,
+      scrollLeft: nav.scrollLeft,
+      moved: false,
+      lastX: event.clientX,
+      lastTime: performance.now(),
+      velocity: 0,
+    };
+    nav.setPointerCapture(event.pointerId);
+  }
+
+  function dragTabs(event) {
+    const dragState = dragStateRef.current;
+    if (!dragState.isDragging) return;
+    const now = performance.now();
+    const distance = event.clientX - dragState.startX;
+    const elapsed = Math.max(now - dragState.lastTime, 1);
+    if (Math.abs(distance) > 12) dragState.moved = true;
+    dragState.velocity = (event.clientX - dragState.lastX) / elapsed;
+    dragState.lastX = event.clientX;
+    dragState.lastTime = now;
+    event.currentTarget.scrollLeft = dragState.scrollLeft - distance;
+  }
+
+  function endDrag(event) {
+    const nav = event.currentTarget;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (dragStateRef.current.moved) {
+      suppressClickRef.current = true;
+      glideTabs(nav, dragStateRef.current.velocity);
+    } else {
+      const hitTarget = document.elementFromPoint(event.clientX, event.clientY);
+      const tab = hitTarget ? hitTarget.closest(".day-tab") : null;
+      const dayIndex = tab ? Number(tab.dataset.dayIndex) : NaN;
+      if (Number.isInteger(dayIndex)) onActiveDay(dayIndex);
+    }
+    dragStateRef.current.isDragging = false;
+  }
+
+  function selectDay(index) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    onActiveDay(index);
+  }
+
   return (
-    <nav className="day-tabs" aria-label="日期切換">
+    <nav
+      className="day-tabs"
+      aria-label="日期切換"
+      onPointerDown={startDrag}
+      onPointerMove={dragTabs}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onPointerLeave={(event) => {
+        if (dragStateRef.current.isDragging) endDrag(event);
+      }}
+    >
       {days.map((date, index) => (
         <button
           className={`day-tab${index === activeDay ? " active" : ""}`}
+          data-day-index={index}
           key={date.toISOString()}
           type="button"
-          onClick={() => onActiveDay(index)}
+          onClick={() => selectDay(index)}
         >
-          Day {index + 1} {formatDayTabDate(date)}
+          <span className="day-tab-index">Day {index + 1}</span>
+          <span className="day-tab-separator" aria-hidden="true">
+            ·
+          </span>
+          <span className="day-tab-date">{formatDayTabDate(date)}</span>
         </button>
       ))}
     </nav>
@@ -8146,7 +8197,7 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
 function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
   const stops = sortedVisitItems(dayItems).filter((item) => item.location_name || item.location);
   return (
-    <section className="panel">
+    <section className="panel route-panel">
       <div className="panel-heading tight">
         <div>
           <p className="eyebrow">{headingEyebrow}</p>

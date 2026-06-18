@@ -81,7 +81,7 @@ test("demo timeline renders without authentication", async ({ page }) => {
   await expect(page.getByRole("button", { name: "京都琵琶湖之旅-TEST，目前旅程" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "我的旅程" })).toBeVisible();
   await expect(page.getByText("Demo User")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "成田機場" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "平安出國停車場" })).toBeVisible();
   await expect(page.getByRole("button", { name: /隱藏地圖|顯示地圖/ })).toBeVisible();
   expect(failures).toEqual([]);
 });
