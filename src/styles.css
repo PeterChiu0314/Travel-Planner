@@ -3852,6 +3852,10 @@ textarea {
 }
 
 @media (min-width: 1101px) {
+  .app-shell-workspace .workspace:has(.timeline-workbench:not(.route-collapsed):not(.hidden-section)) {
+    overflow-y: hidden;
+  }
+
   .timeline-workbench {
     grid-template-columns: minmax(340px, 36fr) minmax(420px, 64fr);
     height: calc(100dvh - 112px);
@@ -3903,6 +3907,15 @@ textarea {
     height: 100%;
     min-height: 0;
     padding: 0;
+    position: relative;
+  }
+
+  .timeline-workbench .side-panels .panel-heading.tight {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    z-index: 2;
+    margin: 0;
   }
 
   .timeline-workbench .route-map {
