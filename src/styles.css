@@ -1998,7 +1998,7 @@ code {
 }
 
 .trip-editor:has(.timeline-workbench:not(.hidden-section)) {
-  gap: 6px;
+  gap: 0px;
 }
 
 .field-group {
@@ -3915,8 +3915,8 @@ textarea {
   }
 
   .app-shell-workspace .trip-editor:has(.timeline-workbench:not(.hidden-section)) .timeline-workbench {
-    height: calc(100dvh - 156px);
-    max-height: calc(100dvh - 156px);
+    height: calc(100dvh - 150px);
+    max-height: calc(100dvh - 150px);
   }
 
   .timeline-workbench .itinerary-panel {
