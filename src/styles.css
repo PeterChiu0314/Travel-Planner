@@ -3916,6 +3916,7 @@ textarea {
     left: 16px;
     z-index: 2;
     margin: 0;
+    pointer-events: none;
   }
 
   .timeline-workbench .route-map {
@@ -3923,7 +3924,7 @@ textarea {
     min-height: 0;
     border-color: rgba(95, 143, 184, 0.24);
     border-radius: 7px;
-    padding: 12px;
+    padding: 72px 18px 18px;
   }
 
   .timeline-workbench.route-collapsed .timeline-day-column,
