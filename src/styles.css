@@ -3915,8 +3915,8 @@ textarea {
   }
 
   .app-shell-workspace .trip-editor:has(.timeline-workbench:not(.hidden-section)) .timeline-workbench {
-    height: calc(100dvh - 168px);
-    max-height: calc(100dvh - 168px);
+    height: calc(100dvh - 156px);
+    max-height: calc(100dvh - 156px);
   }
 
   .timeline-workbench .itinerary-panel {
