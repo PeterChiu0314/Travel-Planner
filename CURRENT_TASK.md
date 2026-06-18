@@ -12,6 +12,65 @@ Read these for phase handoff and operating context:
 - `docs/PHASE_2_SIDEBAR_HANDOFF.md`
 - `docs/PHASE_1_8_WORK_LOG.md`
 
+## Latest Status - 2026-06-18 Office Wrap-up
+
+Branch:
+
+```text
+codex/app-layout-phase-3-workspace
+```
+
+Status:
+
+```text
+App Layout Phase 3 Timeline Workspace - audit and light/full-height polish pushed, ready to continue at home
+```
+
+Latest pushed commits:
+
+- `0db4e95 docs: add phase 3 workspace audit`
+- `066a51b style: polish timeline workspace layout`
+- `ac9656a style: fit timeline workspace height`
+- `9b62ed2 style: pin timeline map workspace`
+- `ff7b2b1 style: adjust timeline map overlay spacing`
+
+Completed in this office-side wrap-up:
+
+- Phase 3.1 Timeline Workspace Audit was documented in `docs/PHASE_3_WORKSPACE_AUDIT.md`.
+- Phase 3.2 Timeline Workspace light polish was implemented:
+  - Day tabs display was simplified to `Day N M/D`.
+  - Timeline workspace ratio was adjusted toward left Day Board / right route-map context.
+  - Timeline-specific panel surfaces were weakened without changing global `.panel` or `.content-grid`.
+  - Formal Timeline and `/demo/timeline` share the same Timeline workspace styling.
+- Phase 3.2b Timeline Workspace full-height fit was implemented:
+  - Day Board and route/map context now fill the available desktop workspace height.
+  - Map-expanded workspace prevents whole-workspace vertical scrolling; only the left Day Board scrolls.
+  - Route heading is overlaid at the map area top-left.
+  - Route list is pushed below the overlaid heading.
+  - The right route/map area keeps a full-height grid background as a future Google Map placeholder.
+
+Validation completed:
+
+- `npm.cmd run build` passed.
+- `git diff --check` passed, with only Windows LF/CRLF warnings.
+- `npm.cmd run test:e2e` passed, 12/12, after Playwright Chromium was installed on this office machine.
+
+Home continuation:
+
+- Pull `codex/app-layout-phase-3-workspace` before continuing.
+- Continue from `ff7b2b1 style: adjust timeline map overlay spacing` unless newer remote commits exist.
+- Manually verify the Timeline workspace visual fit on the home machine:
+  - Formal Timeline with map expanded.
+  - `/demo/timeline` with map expanded.
+  - Map hidden / multi-day Day Board mode.
+  - Left Day Board vertical scrolling while the right map area remains fixed.
+- The current height and sticky values are visual-tuning candidates:
+  - `.timeline-workbench { height: calc(100dvh - 112px); }`
+  - `.timeline-workbench .side-panels { top: 74px; }`
+  - `.timeline-workbench .route-map { padding: 72px 18px 18px; }`
+- Keep the next work as CSS / tiny JSX polish unless explicitly scoped otherwise.
+- Do not add Google Map API or Timeline Phase 4 transportation creation in this phase.
+
 ## Latest Status - 2026-06-17 Home Wrap-up
 
 Branch:
