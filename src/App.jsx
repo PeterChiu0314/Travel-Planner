@@ -801,7 +801,7 @@ function useDayBoardNavigation(activeDay, isEnabled) {
         const column = board?.querySelector(`[data-day-index="${dayIndex}"]`);
         if (!board || !column) return;
         board.scrollTo({
-          left: column.offsetLeft - board.offsetLeft,
+          left: Math.max(0, column.offsetLeft - board.offsetLeft - 10),
           behavior: "smooth",
         });
         requestAnimationFrame(updateScrollState);
@@ -6668,6 +6668,17 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
   const momentumFrameRef = useRef(null);
   const navRef = useRef(null);
   const suppressClickRef = useRef(false);
+  const [tabScrollState, setTabScrollState] = useState({ left: false, right: false });
+
+  function updateTabScrollState() {
+    const nav = navRef.current;
+    if (!nav) return;
+    const maxScrollLeft = Math.max(0, nav.scrollWidth - nav.clientWidth);
+    setTabScrollState({
+      left: nav.scrollLeft > 1,
+      right: nav.scrollLeft < maxScrollLeft - 1,
+    });
+  }
 
   function stopMomentum() {
     if (momentumFrameRef.current) {
@@ -6761,13 +6772,27 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
       activeTab?.scrollIntoView({ block: "nearest", inline: "nearest" });
     }
     alignActiveTab();
-    const frame = window.requestAnimationFrame(alignActiveTab);
+    updateTabScrollState();
+    const frame = window.requestAnimationFrame(() => {
+      alignActiveTab();
+      updateTabScrollState();
+    });
     return () => window.cancelAnimationFrame(frame);
   }, [activeDay, days.length, layoutMode]);
 
+  useEffect(() => {
+    updateTabScrollState();
+    window.addEventListener("resize", updateTabScrollState);
+    return () => window.removeEventListener("resize", updateTabScrollState);
+  }, [days.length, layoutMode]);
+
   return (
-    <div className={`day-tabs-shell${layoutMode === "expanded" ? " with-edge-controls" : ""}`}>
-      {layoutMode === "expanded" ? (
+    <div
+      className={`day-tabs-shell ${layoutMode === "collapsed" ? "is-collapsed" : "is-expanded"}${
+        tabScrollState.left || tabScrollState.right ? " with-edge-controls" : ""
+      }`}
+    >
+      {tabScrollState.left ? (
         <button className="day-tabs-edge left" type="button" aria-label="向左滑動日期" onClick={() => scrollTabs(-1)}>
           ‹
         </button>
@@ -6780,6 +6805,7 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
       onPointerMove={dragTabs}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onScroll={updateTabScrollState}
       onPointerLeave={(event) => {
         if (dragStateRef.current.isDragging) endDrag(event);
       }}
@@ -6800,7 +6826,7 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
         </button>
       ))}
       </nav>
-      {layoutMode === "expanded" ? (
+      {tabScrollState.right ? (
         <button className="day-tabs-edge right" type="button" aria-label="向右滑動日期" onClick={() => scrollTabs(1)}>
           ›
         </button>
