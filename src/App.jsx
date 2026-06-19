@@ -644,7 +644,7 @@ function formatDate(date) {
   return new Intl.DateTimeFormat("zh-TW", {
     month: "numeric",
     day: "numeric",
-    weekday: "short",
+    weekday: "long",
   }).format(date);
 }
 
@@ -5527,7 +5527,7 @@ function DemoApp({ initialSection }) {
                   dayItems={dayItems}
                   dayDateLabel={days[activeDay] ? formatDate(days[activeDay]) : ""}
                   dayLabel={days[activeDay] ? `第 ${activeDay + 1} 天 / ${formatDate(days[activeDay])}` : ""}
-                  dayTitle={`Day ${activeDay + 1}`}
+                  dayTitle={`DAY ${activeDay + 1}`}
                   disableDraftAutosave
                   focusedItemId={focusedItemId}
                   headingEyebrow="行程"
@@ -6520,7 +6520,7 @@ function TripWorkspace(props) {
                 dayItems={dayItems}
                 dayDateLabel={days[activeDay] ? formatDate(days[activeDay]) : ""}
                 dayLabel={days[activeDay] ? `Day ${activeDay + 1} · ${formatDate(days[activeDay])}` : ""}
-                dayTitle={`Day ${activeDay + 1}`}
+                dayTitle={`DAY ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
                 onApplyAlternative={onApplyAlternative}
                 onConfirmTransportWarning={onConfirmTransportWarning}
@@ -6745,7 +6745,7 @@ function DayTabs({ activeDay, days, onActiveDay }) {
           type="button"
           onClick={() => selectDay(index)}
         >
-          <span className="day-tab-index">Day {index + 1}</span>
+          <span className="day-tab-index">DAY {index + 1}</span>
           <span className="day-tab-separator" aria-hidden="true">
             ·
           </span>
@@ -7834,7 +7834,7 @@ function ItineraryTimeline({
     ) : null}
     <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
-        <div>
+        <div className="timeline-column-title">
           <p className="eyebrow">{dayTitle || headingEyebrow}</p>
           <h3>{dayDateLabel || dayLabel}</h3>
         </div>
