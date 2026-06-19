@@ -5488,8 +5488,15 @@ function DemoApp({ initialSection }) {
         />
         {activeSection === "timeline" ? (
           <>
-            <div className="timeline-top-row">
-              <DayTabs activeDay={activeDay} dayPrefix="第" daySuffix="天" days={days} onActiveDay={selectTimelineDay} />
+            <div className={`timeline-top-row${isRouteCollapsed ? " route-collapsed" : ""}`}>
+              <DayTabs
+                activeDay={activeDay}
+                dayPrefix="第"
+                daySuffix="天"
+                days={days}
+                layoutMode={isRouteCollapsed ? "collapsed" : "expanded"}
+                onActiveDay={selectTimelineDay}
+              />
               <button
                 className="ghost-button compact timeline-map-toggle"
                 type="button"
@@ -6382,8 +6389,13 @@ function TripWorkspace(props) {
       ) : null}
 
       {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
-        <div className="timeline-top-row">
-          <DayTabs activeDay={activeDay} days={days} onActiveDay={selectTimelineDay} />
+        <div className={`timeline-top-row${isRouteCollapsed ? " route-collapsed" : ""}`}>
+          <DayTabs
+            activeDay={activeDay}
+            days={days}
+            layoutMode={isRouteCollapsed ? "collapsed" : "expanded"}
+            onActiveDay={selectTimelineDay}
+          />
           <button
             className="ghost-button compact timeline-map-toggle"
             type="button"
@@ -6651,9 +6663,10 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
   );
 }
 
-function DayTabs({ activeDay, days, onActiveDay }) {
+function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
   const dragStateRef = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, lastX: 0, lastTime: 0, velocity: 0 });
   const momentumFrameRef = useRef(null);
+  const navRef = useRef(null);
   const suppressClickRef = useRef(false);
 
   function stopMomentum() {
@@ -6725,9 +6738,43 @@ function DayTabs({ activeDay, days, onActiveDay }) {
     onActiveDay(index);
   }
 
+  function scrollTabs(direction) {
+    const nav = navRef.current;
+    if (!nav) return;
+    stopMomentum();
+    nav.scrollBy({ left: direction * Math.max(nav.clientWidth * 0.72, 160), behavior: "smooth" });
+  }
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    function alignActiveTab() {
+      if (activeDay === 0) {
+        nav.scrollLeft = 0;
+        return;
+      }
+      if (activeDay === days.length - 1) {
+        nav.scrollLeft = nav.scrollWidth - nav.clientWidth;
+        return;
+      }
+      const activeTab = nav.querySelector(`[data-day-index="${activeDay}"]`);
+      activeTab?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    alignActiveTab();
+    const frame = window.requestAnimationFrame(alignActiveTab);
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeDay, days.length, layoutMode]);
+
   return (
-    <nav
+    <div className={`day-tabs-shell${layoutMode === "expanded" ? " with-edge-controls" : ""}`}>
+      {layoutMode === "expanded" ? (
+        <button className="day-tabs-edge left" type="button" aria-label="向左滑動日期" onClick={() => scrollTabs(-1)}>
+          ‹
+        </button>
+      ) : null}
+      <nav
       className="day-tabs"
+      ref={navRef}
       aria-label="日期切換"
       onPointerDown={startDrag}
       onPointerMove={dragTabs}
@@ -6752,7 +6799,13 @@ function DayTabs({ activeDay, days, onActiveDay }) {
           <span className="day-tab-date">{formatDayTabDate(date)}</span>
         </button>
       ))}
-    </nav>
+      </nav>
+      {layoutMode === "expanded" ? (
+        <button className="day-tabs-edge right" type="button" aria-label="向右滑動日期" onClick={() => scrollTabs(1)}>
+          ›
+        </button>
+      ) : null}
+    </div>
   );
 }
 
