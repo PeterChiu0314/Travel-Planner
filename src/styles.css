@@ -2172,6 +2172,28 @@ textarea {
   width: 100%;
 }
 
+.day-tabs-shell.has-left-edge .day-tabs,
+.day-tabs-shell.has-right-edge .day-tabs {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 1%,
+    rgb(0 0 0 / 70%) 20px,
+    #000 26px,
+    #000 calc(100% - 26px),
+    rgb(0 0 0 / 70%) calc(100% - 20px),
+    transparent 99%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 1%,
+    rgb(0 0 0 / 70%) 20px,
+    #000 26px,
+    #000 calc(100% - 26px),
+    rgb(0 0 0 / 70%) calc(100% - 20px),
+    transparent 99%
+  );
+}
+
 .day-tabs-edge {
   position: absolute;
   top: 0;
@@ -2180,6 +2202,7 @@ textarea {
   display: grid;
   width: 30px;
   border: 0;
+  background: transparent;
   color: var(--ink);
   font-size: 30px;
   font-weight: 400;
@@ -2188,24 +2211,14 @@ textarea {
 
 .day-tabs-edge.left {
   left: 0;
-  background: linear-gradient(90deg, #eaeee7 30%, #f7f9f4ad 65%, #f7f9f400 100%);
-  padding-left: 8px;
+  padding-left: 6px;
   justify-items: start;
 }
 
 .day-tabs-edge.right {
   right: 0;
-  background: linear-gradient(270deg, #f4f4ed 30%, #f7f9f4ad 65%, #f7f9f400 100%);
-  padding-right: 8px;
+  padding-right: 6px;
   justify-items: end;
-}
-
-.day-tabs-shell.is-collapsed .day-tabs-edge.left {
-  background: linear-gradient(90deg, #eaeee7 30%, #f7f9f4ad 65%, #f7f9f400 100%);
-}
-
-.day-tabs-shell.is-collapsed .day-tabs-edge.right {
-  background: linear-gradient(270deg, #f4eae2 30%, rgb(244 234 226 / 72%) 65%, rgba(247, 245, 239, 0) 100%);
 }
 
 .day-tabs-edge:hover,
@@ -2300,7 +2313,7 @@ textarea {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 0px 10px;
+  padding: 0px 12px;
   pointer-events: auto;
 }
 

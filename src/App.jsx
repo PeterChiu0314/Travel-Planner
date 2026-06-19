@@ -6789,8 +6789,8 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
   return (
     <div
       className={`day-tabs-shell ${layoutMode === "collapsed" ? "is-collapsed" : "is-expanded"}${
-        tabScrollState.left || tabScrollState.right ? " with-edge-controls" : ""
-      }`}
+        tabScrollState.left ? " has-left-edge" : ""
+      }${tabScrollState.right ? " has-right-edge" : ""}`}
     >
       {tabScrollState.left ? (
         <button className="day-tabs-edge left" type="button" aria-label="向左滑動日期" onClick={() => scrollTabs(-1)}>
