@@ -2172,25 +2172,58 @@ textarea {
   width: 100%;
 }
 
-.day-tabs-shell.has-left-edge .day-tabs,
-.day-tabs-shell.has-right-edge .day-tabs {
+.day-tabs-shell.has-left-edge .day-tabs {
   -webkit-mask-image: linear-gradient(
     to right,
-    transparent 1%,
-    rgb(0 0 0 / 70%) 20px,
-    #000 26px,
-    #000 calc(100% - 26px),
-    rgb(0 0 0 / 70%) calc(100% - 20px),
-    transparent 99%
+    transparent 0%,
+    rgb(0 0 0 / 6%) 18px,
+    #000 32px,
+    #000 100%
   );
   mask-image: linear-gradient(
     to right,
-    transparent 1%,
-    rgb(0 0 0 / 70%) 20px,
-    #000 26px,
-    #000 calc(100% - 26px),
-    rgb(0 0 0 / 70%) calc(100% - 20px),
-    transparent 99%
+    transparent 0%,
+    rgb(0 0 0 / 6%) 18px,
+    #000 32px,
+    #000 100%
+  );
+}
+
+.day-tabs-shell.has-right-edge .day-tabs {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 calc(100% - 32px),
+    rgb(0 0 0 / 6%) calc(100% - 18px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 calc(100% - 32px),
+    rgb(0 0 0 / 6%) calc(100% - 18px),
+    transparent 100%
+  );
+}
+
+.day-tabs-shell.has-left-edge.has-right-edge .day-tabs {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgb(0 0 0 / 6%) 18px,
+    #000 32px,
+    #000 calc(100% - 32px),
+    rgb(0 0 0 / 6%) calc(100% - 18px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgb(0 0 0 / 6%) 18px,
+    #000 32px,
+    #000 calc(100% - 32px),
+    rgb(0 0 0 / 6%) calc(100% - 18px),
+    transparent 100%
   );
 }
 
