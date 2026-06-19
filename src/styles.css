@@ -2210,25 +2210,25 @@ textarea {
 
 .timeline-toolbar,
 .timeline-top-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
   align-items: center;
   gap: 10px;
-  justify-content: flex-end;
   margin: 0 -14px 10px;
+  overflow: hidden;
 }
 
 .timeline-top-row .day-tabs {
-  flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
 .timeline-top-row .ghost-button {
-  flex: 0 0 auto;
+  justify-self: end;
 }
 
 .timeline-map-toggle {
   display: inline-grid;
-  flex-basis: 36px;
   width: 36px;
   height: 36px;
   min-width: 36px;
