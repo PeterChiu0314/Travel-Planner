@@ -860,6 +860,43 @@ function useDayBoardNavigation(activeDay, isEnabled) {
   return { boardRef, scrollByDirection, scrollState, scrollToDay };
 }
 
+const timelineMapTransitionMs = 220;
+
+function useTimelineMapTransition() {
+  const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
+  const [isMapClosing, setIsMapClosing] = useState(false);
+  const closeTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) window.clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
+
+  const toggleRouteMap = useCallback(() => {
+    if (isMapClosing) return;
+    if (isRouteCollapsed) {
+      setIsRouteCollapsed(false);
+      return;
+    }
+
+    setIsMapClosing(true);
+    const closeDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : timelineMapTransitionMs;
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setIsRouteCollapsed(true);
+      setIsMapClosing(false);
+      closeTimeoutRef.current = null;
+    }, closeDelay);
+  }, [isMapClosing, isRouteCollapsed]);
+
+  return {
+    isMapClosing,
+    isRouteCollapsed,
+    isRouteLayoutCollapsed: isRouteCollapsed,
+    toggleRouteMap,
+  };
+}
+
 function tripDays(trip) {
   if (!trip?.start_date || !trip?.end_date) return [];
   const start = new Date(`${trip.start_date}T00:00:00`);
@@ -4948,7 +4985,7 @@ function DemoApp({ initialSection }) {
   const [luggageItems, setLuggageItems] = useState(() => createDemoLuggageItems());
   const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
   const [focusedItemId, setFocusedItemId] = useState(null);
-  const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
+  const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const days = useMemo(() => tripDays(demoActiveTrip), [demoActiveTrip]);
   useEffect(() => {
     setIsDemoAccountMenuOpen(false);
@@ -4962,7 +4999,7 @@ function DemoApp({ initialSection }) {
     () => days.map((_, index) => sortScheduleItems(timelineItems.filter((item) => item.day_index === index))),
     [days, timelineItems],
   );
-  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteCollapsed);
+  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteLayoutCollapsed);
   const budgetsByItem = useMemo(() => {
     const byId = new Map(budgetItems.map((budget) => [budget.id, budget]));
     const next = {};
@@ -4998,7 +5035,7 @@ function DemoApp({ initialSection }) {
 
   function selectTimelineDay(dayIndex) {
     setActiveDay(dayIndex);
-    if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
+    if (isRouteLayoutCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
 
   function updateDemoTripDateRange({ confirmTimelineRemoval = false, startDate, endDate }) {
@@ -5505,13 +5542,13 @@ function DemoApp({ initialSection }) {
         />
         {activeSection === "timeline" ? (
           <>
-            <div className={`timeline-top-row${isRouteCollapsed ? " route-collapsed" : ""}`}>
+            <div className={`timeline-top-row${isRouteLayoutCollapsed ? " route-collapsed" : ""}`}>
               <DayTabs
                 activeDay={activeDay}
                 dayPrefix="第"
                 daySuffix="天"
                 days={days}
-                layoutMode={isRouteCollapsed ? "collapsed" : "expanded"}
+                layoutMode={isRouteLayoutCollapsed ? "collapsed" : "expanded"}
                 onActiveDay={selectTimelineDay}
               />
               <button
@@ -5519,7 +5556,7 @@ function DemoApp({ initialSection }) {
                 type="button"
                 title={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
                 aria-label={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
-                onClick={() => setIsRouteCollapsed((value) => !value)}
+                onClick={toggleRouteMap}
               >
                 {isRouteCollapsed ? (
                   <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
@@ -5528,8 +5565,8 @@ function DemoApp({ initialSection }) {
                 )}
               </button>
             </div>
-            <div className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}`}>
-              {isRouteCollapsed ? (
+            <div className={`content-grid timeline-workbench${isRouteLayoutCollapsed ? " route-collapsed" : ""}`}>
+              {isRouteLayoutCollapsed ? (
                 <button
                   className="board-scroll-button left"
                   disabled={!dayBoardNavigation.scrollState.left}
@@ -5568,7 +5605,7 @@ function DemoApp({ initialSection }) {
                   restoreDrafts={false}
                   useEditLocks={false}
                 />
-                {isRouteCollapsed ? (
+                {isRouteLayoutCollapsed ? (
                   <MultiDayTimelineColumns
                     activeDay={activeDay}
                     days={days}
@@ -5579,7 +5616,7 @@ function DemoApp({ initialSection }) {
                 />
               ) : null}
               </section>
-              {isRouteCollapsed ? (
+              {isRouteLayoutCollapsed ? (
                 <button
                   className="board-scroll-button right"
                   disabled={!dayBoardNavigation.scrollState.right}
@@ -5590,8 +5627,8 @@ function DemoApp({ initialSection }) {
                   <ChevronRight aria-hidden="true" />
                 </button>
               ) : null}
-              {isRouteCollapsed ? null : (
-                <aside className="side-panels">
+              {isRouteLayoutCollapsed ? null : (
+                <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
                   <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" onFocusItem={setFocusedItemId} />
                 </aside>
               )}
@@ -6354,7 +6391,7 @@ function TripWorkspace(props) {
   const isLuggageMode = activeSection === "luggage";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
-  const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
+  const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const alternativesByItem = useMemo(() => {
     const next = {};
     alternatives.forEach((alternative) => {
@@ -6376,11 +6413,11 @@ function TripWorkspace(props) {
     () => days.map((_, index) => sortScheduleItems(items.filter((item) => item.day_index === index))),
     [days, items],
   );
-  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteCollapsed);
+  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteLayoutCollapsed);
 
   function selectTimelineDay(dayIndex) {
     onActiveDay(dayIndex);
-    if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
+    if (isRouteLayoutCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
 
   return (
@@ -6406,11 +6443,11 @@ function TripWorkspace(props) {
       ) : null}
 
       {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
-        <div className={`timeline-top-row${isRouteCollapsed ? " route-collapsed" : ""}`}>
+        <div className={`timeline-top-row${isRouteLayoutCollapsed ? " route-collapsed" : ""}`}>
           <DayTabs
             activeDay={activeDay}
             days={days}
-            layoutMode={isRouteCollapsed ? "collapsed" : "expanded"}
+            layoutMode={isRouteLayoutCollapsed ? "collapsed" : "expanded"}
             onActiveDay={selectTimelineDay}
           />
           <button
@@ -6418,7 +6455,7 @@ function TripWorkspace(props) {
             type="button"
             title={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
             aria-label={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
-            onClick={() => setIsRouteCollapsed((value) => !value)}
+            onClick={toggleRouteMap}
           >
             {isRouteCollapsed ? (
               <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
@@ -6520,13 +6557,13 @@ function TripWorkspace(props) {
       </div>
 
       <div
-        className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}${
+        className={`content-grid timeline-workbench${isRouteLayoutCollapsed ? " route-collapsed" : ""}${
           isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode
             ? " hidden-section"
             : ""
         }`}
       >
-        {isRouteCollapsed ? (
+        {isRouteLayoutCollapsed ? (
           <button
             className="board-scroll-button left"
             disabled={!dayBoardNavigation.scrollState.left}
@@ -6562,7 +6599,7 @@ function TripWorkspace(props) {
                 onToggleItemFixed={onToggleItemFixed}
                 restoreDrafts={activeSection === "timeline"}
               />
-              {isRouteCollapsed ? (
+              {isRouteLayoutCollapsed ? (
                 <MultiDayTimelineColumns
                   activeDay={activeDay}
                   days={days}
@@ -6574,7 +6611,7 @@ function TripWorkspace(props) {
               ) : null}
             </section>
 
-            {isRouteCollapsed ? (
+            {isRouteLayoutCollapsed ? (
               <button
                 className="board-scroll-button right"
                 disabled={!dayBoardNavigation.scrollState.right}
@@ -6585,8 +6622,8 @@ function TripWorkspace(props) {
                 <ChevronRight aria-hidden="true" />
               </button>
             ) : null}
-            {isRouteCollapsed ? null : (
-              <aside className="side-panels">
+            {isRouteLayoutCollapsed ? null : (
+              <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
                 <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
               </aside>
             )}
@@ -8169,7 +8206,9 @@ function ItineraryTimeline({
               {isExpanded && !isAlternativeFormFace ? (
                 <div className="item-expanded-content">
                   <div className="item-details">
-                    {displayItem.description || displayItem.note ? <p>{displayItem.description || displayItem.note}</p> : null}
+                    {displayItem.description || displayItem.note ? (
+                      <p className="item-detail-note">{displayItem.description || displayItem.note}</p>
+                    ) : null}
                     {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
                     {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
                     {displayItem.map_url ? (

@@ -1274,7 +1274,7 @@ code {
   background: transparent;
   color: var(--ink);
   font-size: clamp(24px, 2.4vw, 32px);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.12;
   overflow: hidden;
   padding: 2px 6px;
@@ -1352,8 +1352,9 @@ code {
   min-width: 0;
   color: var(--muted);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.35;
+  margin-left: 2px;
 }
 
 .trip-header-meta-action,
@@ -1372,7 +1373,7 @@ code {
   color: inherit;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
+  font-weight: 600;
   padding: 2px 5px;
 }
 
@@ -2404,6 +2405,8 @@ textarea {
 
 .timeline-workbench {
   --timeline-columns: minmax(380px, 30fr) minmax(420px, 70fr);
+  --timeline-map-transition-duration: 220ms;
+  --timeline-map-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --timeline-top-row-offset: 46px;
   --timeline-map-lift: 64px;
   --board-scrollbar-width: 0px;
@@ -2487,6 +2490,30 @@ textarea {
 .side-panels {
   display: grid;
   gap: 18px;
+}
+
+@keyframes timeline-map-reveal {
+  from {
+    clip-path: inset(0 0 0 100%);
+    opacity: 0.72;
+  }
+
+  to {
+    clip-path: inset(0);
+    opacity: 1;
+  }
+}
+
+@keyframes timeline-map-conceal {
+  from {
+    clip-path: inset(0);
+    opacity: 1;
+  }
+
+  to {
+    clip-path: inset(0 0 0 100%);
+    opacity: 0.72;
+  }
 }
 
 .timeline-day-preview {
@@ -2849,8 +2876,8 @@ textarea {
 .transport-warning-detail {
   color: var(--coral);
   display: none;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
   margin: 0;
   white-space: normal;
 }
@@ -2869,11 +2896,12 @@ textarea {
 
 .transport-card-details {
   display: grid;
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 12px;
   align-items: start;
   border-top: 1px solid var(--line);
+  margin: 0 28px;
   padding-top: 10px;
 }
 
@@ -2881,13 +2909,13 @@ textarea {
   max-height: 120px;
   overflow: auto;
   font-size: 13px;
-  line-height: 1.5;
   white-space: normal;
 }
 
-.transport-note-detail {
+.transport-card-details .transport-note-detail {
   grid-column: 1;
   color: var(--muted);
+  white-space: pre-line;
 }
 
 .transport-budget-links {
@@ -3040,6 +3068,10 @@ textarea {
   white-space: normal;
 }
 
+.item-details .item-detail-note {
+  white-space: pre-line;
+}
+
 .item-details a {
   color: var(--mint-dark);
   font-weight: 900;
@@ -3049,6 +3081,7 @@ textarea {
 .alternative-list {
   display: grid;
   gap: 4px;
+  margin-right: 50px;
 }
 
 .linked-budget-list {
@@ -3083,7 +3116,6 @@ textarea {
   color: var(--ink);
   font-size: 14px;
   font-weight: 500;
-  margin-right: 34px;
   margin-top: 6px;
   padding: 4px 4px 4px 12px;
 }
@@ -4197,12 +4229,17 @@ textarea {
 
   .timeline-workbench .side-panels {
     display: grid;
+    animation: timeline-map-reveal var(--timeline-map-transition-duration) var(--timeline-map-transition-easing) both;
     height: calc(100% + var(--timeline-map-lift, 64px));
     margin-top: calc(-1 * var(--timeline-map-lift, 64px));
     min-height: 0;
     position: sticky;
     top: 74px;
     z-index: 1;
+  }
+
+  .timeline-workbench .side-panels.is-closing {
+    animation-name: timeline-map-conceal;
   }
 
   .timeline-workbench .side-panels > .route-panel {
@@ -4271,9 +4308,14 @@ textarea {
   .timeline-workbench.route-collapsed .timeline-column-header {
     align-items: flex-start;
     min-height: 36px;
-    margin-bottom: 12px;
   }
 
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-workbench .side-panels {
+    animation: none;
+  }
 }
 
 @media (max-width: 1100px) {
