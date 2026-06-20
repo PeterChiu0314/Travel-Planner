@@ -2,18 +2,28 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import {
   Bed,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   ClipboardCheck,
   HandCoins,
   LayoutDashboard,
   LayoutList,
+  Lock,
+  LockOpen,
   LogOut,
   Luggage,
   Map as MapIcon,
+  MapPin,
+  MessageCircleWarning,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
+  Plus,
+  Repeat2,
   Route,
   Settings,
+  Trash2,
   Wallet,
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
@@ -787,6 +797,10 @@ function useDayBoardNavigation(activeDay, isEnabled) {
       setScrollState({ left: false, right: false });
       return;
     }
+    const hasVerticalScrollbar = board.scrollHeight > board.clientHeight + 1;
+    const measuredScrollbarWidth = Math.max(0, board.offsetWidth - board.clientWidth);
+    const scrollbarWidth = hasVerticalScrollbar ? Math.max(12, measuredScrollbarWidth) : 0;
+    board.closest(".timeline-workbench")?.style.setProperty("--board-scrollbar-width", `${scrollbarWidth}px`);
     setScrollState({
       left: board.scrollLeft > 4,
       right: board.scrollLeft + board.clientWidth < board.scrollWidth - 4,
@@ -801,7 +815,7 @@ function useDayBoardNavigation(activeDay, isEnabled) {
         const column = board?.querySelector(`[data-day-index="${dayIndex}"]`);
         if (!board || !column) return;
         board.scrollTo({
-          left: Math.max(0, column.offsetLeft - board.offsetLeft - 10),
+          left: Math.max(0, column.offsetLeft - board.offsetLeft - 50),
           behavior: "smooth",
         });
         requestAnimationFrame(updateScrollState);
@@ -833,10 +847,13 @@ function useDayBoardNavigation(activeDay, isEnabled) {
     if (!board || !isEnabled) return;
     board.addEventListener("scroll", updateScrollState, { passive: true });
     window.addEventListener("resize", updateScrollState);
+    const resizeObserver = new ResizeObserver(updateScrollState);
+    resizeObserver.observe(board);
     updateScrollState();
     return () => {
       board.removeEventListener("scroll", updateScrollState);
       window.removeEventListener("resize", updateScrollState);
+      resizeObserver.disconnect();
     };
   }, [isEnabled, updateScrollState]);
 
@@ -5520,7 +5537,7 @@ function DemoApp({ initialSection }) {
                   aria-label="前一天"
                   onClick={() => dayBoardNavigation.scrollByDirection(-1)}
                 >
-                  ←
+                  <ChevronLeft aria-hidden="true" />
                 </button>
               ) : null}
               <section className="panel itinerary-panel" ref={dayBoardNavigation.boardRef}>
@@ -5570,7 +5587,7 @@ function DemoApp({ initialSection }) {
                   aria-label="後一天"
                   onClick={() => dayBoardNavigation.scrollByDirection(1)}
                 >
-                  →
+                  <ChevronRight aria-hidden="true" />
                 </button>
               ) : null}
               {isRouteCollapsed ? null : (
@@ -6517,7 +6534,7 @@ function TripWorkspace(props) {
             aria-label="前一天"
             onClick={() => dayBoardNavigation.scrollByDirection(-1)}
           >
-            ←
+            <ChevronLeft aria-hidden="true" />
           </button>
         ) : null}
         <section className="panel itinerary-panel" ref={dayBoardNavigation.boardRef}>
@@ -6565,7 +6582,7 @@ function TripWorkspace(props) {
                 aria-label="後一天"
                 onClick={() => dayBoardNavigation.scrollByDirection(1)}
               >
-                →
+                <ChevronRight aria-hidden="true" />
               </button>
             ) : null}
             {isRouteCollapsed ? null : (
@@ -7553,7 +7570,7 @@ function ItineraryTimeline({
           <strong>{transportCardTitle(item)}</strong>
           {hasWarning ? (
             <span className="transport-warning-badge" aria-label="交通資訊需確認">
-              <span aria-hidden="true">⚠</span>
+              <MessageCircleWarning aria-hidden="true" />
             </span>
           ) : null}
         </div>
@@ -7612,7 +7629,7 @@ function ItineraryTimeline({
                   openEditItem(item);
                 }}
               >
-                E
+                <Pencil aria-hidden="true" />
               </button>
               <button
                 className="mini-button"
@@ -7624,7 +7641,7 @@ function ItineraryTimeline({
                   requestDeleteItem(item);
                 }}
               >
-                X
+                <Trash2 aria-hidden="true" />
               </button>
             </div>
           </>
@@ -7851,6 +7868,21 @@ function ItineraryTimeline({
 
   function renderAlternativeSummary(item, alternative, isAlternativeFace) {
     const alternativeError = alternativeErrorByItem[item.id];
+    const alternativeFlipButton = !item.is_fixed ? (
+      <button
+        className="alternative-flip-button"
+        disabled={!canEdit}
+        type="button"
+        title={alternative ? "Toggle primary / alternative" : "Create alternative"}
+        aria-label={alternative ? "切換原行程與備案" : "建立備案"}
+        onClick={(event) => {
+          event.stopPropagation();
+          flipAlternativeFace(item, alternative);
+        }}
+      >
+        <Repeat2 aria-hidden="true" />
+      </button>
+    ) : null;
     return (
       <div className="alternative-list compact">
         {alternativeError ? (
@@ -7861,23 +7893,31 @@ function ItineraryTimeline({
         {isAlternativeFace && alternative ? (
           <div className="alternative-relation-row">
             <span>{`原行程：${visitDestination(item)}`}</span>
+            {alternativeFlipButton}
           </div>
         ) : (
           <div className="alternative-relation-row">
-            <span>{alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}</span>
-            {alternative && !item.is_fixed ? (
-              <button
-                className="mini-button"
-                disabled={!canEdit}
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  deleteAlternative(item.id, alternative.id);
-                }}
-              >
-                X
-              </button>
-            ) : null}
+            <span className={!alternative ? "alternative-empty-hint" : undefined}>
+              {alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}
+            </span>
+            <div className="alternative-relation-actions">
+              {alternative && !item.is_fixed ? (
+                <button
+                  className="mini-button"
+                  disabled={!canEdit}
+                  aria-label="刪除備案"
+                  title="刪除備案"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    deleteAlternative(item.id, alternative.id);
+                  }}
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+              ) : null}
+              {alternativeFlipButton}
+            </div>
           </div>
         )}
       </div>
@@ -7917,8 +7957,16 @@ function ItineraryTimeline({
           <p className="eyebrow">{dayTitle || headingEyebrow}</p>
           <h3>{dayDateLabel || dayLabel}</h3>
         </div>
-        <button className="icon-button" disabled={!canEdit} type="button" title="新增行程" onClick={openNewItem}>
-          +
+        <button
+          className="icon-button timeline-add-button"
+          disabled={!canEdit}
+          type="button"
+          title="新增行程"
+          aria-label="新增行程"
+          onClick={openNewItem}
+        >
+          <Plus aria-hidden="true" />
+          <MapPin aria-hidden="true" />
         </button>
       </div>
 
@@ -8045,31 +8093,6 @@ function ItineraryTimeline({
                   ) : null}
                 </div>
                 {lockedByOther ? <div className="lock-note">{memberName(locker)} 正在編輯這筆資料</div> : null}
-                {isExpanded ? (
-                  <div className="item-details">
-                    {displayItem.description || displayItem.note ? <p>{displayItem.description || displayItem.note}</p> : null}
-                    {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
-                    {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
-                    {displayItem.map_url ? (
-                      <a href={displayItem.map_url} rel="noreferrer" target="_blank">
-                        開啟地圖
-                      </a>
-                    ) : null}
-                    <div className="linked-budget-list">
-                      <strong>連動預算</strong>
-                      {(budgetsByItem[item.id] || []).length ? (
-                        (budgetsByItem[item.id] || []).map((budget) => (
-                          <span className="pill" key={budget.id}>
-                            {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="muted-text">尚未連動預算</span>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-                    {isExpanded ? renderAlternativeSummary(item, alternative, isAlternativeFace) : null}
                   </>
                 )}
               </div>
@@ -8085,7 +8108,7 @@ function ItineraryTimeline({
                       toggleItemFixed(item);
                     }}
                   >
-                    {isItemFixed ? "🔒" : "🔓"}
+                    {isItemFixed ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
                   </button>
                 ) : null}
                 {!isAlternativeFace && !isItemFixed ? (
@@ -8099,7 +8122,7 @@ function ItineraryTimeline({
                       openEditItem(item);
                     }}
                   >
-                    E
+                    <Pencil aria-hidden="true" />
                   </button>
                 ) : null}
                 {isAlternativeFace && alternative && !isAlternativeFormFace && !isItemFixed ? (
@@ -8115,7 +8138,7 @@ function ItineraryTimeline({
                       resetAlternativeError(item.id);
                     }}
                   >
-                    E
+                    <Pencil aria-hidden="true" />
                   </button>
                 ) : null}
                 {!isItemFixed ? (
@@ -8139,24 +8162,35 @@ function ItineraryTimeline({
                       }
                     }}
                   >
-                    X
+                    <Trash2 aria-hidden="true" />
                   </button>
                 ) : null}
               </div>
-              {isExpanded && !isItemFixed ? (
-                <div className="alternative-card-footer">
-                  <button
-                    className="alternative-flip-button"
-                    disabled={!canEdit}
-                    type="button"
-                    title={alternative ? "Toggle primary / alternative" : "Create alternative"}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      flipAlternativeFace(item, alternative);
-                    }}
-                  >
-                    ↻
-                  </button>
+              {isExpanded && !isAlternativeFormFace ? (
+                <div className="item-expanded-content">
+                  <div className="item-details">
+                    {displayItem.description || displayItem.note ? <p>{displayItem.description || displayItem.note}</p> : null}
+                    {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
+                    {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
+                    {displayItem.map_url ? (
+                      <a href={displayItem.map_url} rel="noreferrer" target="_blank">
+                        開啟地圖
+                      </a>
+                    ) : null}
+                    <div className="linked-budget-list">
+                      <strong>連動預算</strong>
+                      {(budgetsByItem[item.id] || []).length ? (
+                        (budgetsByItem[item.id] || []).map((budget) => (
+                          <span className="pill" key={budget.id}>
+                            {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="muted-text">尚未連動預算</span>
+                      )}
+                    </div>
+                  </div>
+                  {renderAlternativeSummary(item, alternative, isAlternativeFace)}
                 </div>
               ) : null}
             </article>
