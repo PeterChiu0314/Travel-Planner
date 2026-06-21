@@ -75,7 +75,7 @@ test("phase 2.3 app shell owns desktop scroll and demo sidebar uses local parity
   expect(appSource).toContain("const demoTrips = [");
   expect(appSource).toContain('className={`sidebar demo-sidebar${isDemoSidebarCollapsed ? " collapsed" : ""}`}');
   expect(appSource).toContain('headingId="demo-sidebar-trips-title"');
-  expect(appSource).toContain("Demo User");
+  expect(appSource).toContain("Click to return to login");
   expect(appSource).toContain('className={`app-shell${appLayout ? " app-shell-workspace" : ""}${collapsed ? " sidebar-collapsed" : ""}`}');
   expect(styleSource).toContain(".app-shell-workspace {");
   expect(styleSource).toContain("height: 100dvh;");

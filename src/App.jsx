@@ -11,6 +11,7 @@ import {
   LayoutList,
   Lock,
   LockOpen,
+  LogIn,
   LogOut,
   Luggage,
   Map as MapIcon,
@@ -4973,7 +4974,6 @@ function DemoApp({ initialSection }) {
   const [isDemoMembersDialogOpen, setIsDemoMembersDialogOpen] = useState(false);
   const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrips[0]);
   const [isDemoSidebarCollapsed, setIsDemoSidebarCollapsed] = useState(false);
-  const [isDemoAccountMenuOpen, setIsDemoAccountMenuOpen] = useState(false);
   const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
@@ -4988,7 +4988,6 @@ function DemoApp({ initialSection }) {
   const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const days = useMemo(() => tripDays(demoActiveTrip), [demoActiveTrip]);
   useEffect(() => {
-    setIsDemoAccountMenuOpen(false);
     setIsDemoSidebarTripMenuOpen(false);
   }, [activeSection, demoActiveTrip.id, isDemoSidebarCollapsed]);
   const dayItems = useMemo(
@@ -5031,6 +5030,10 @@ function DemoApp({ initialSection }) {
   function changeSection(section) {
     setActiveSection(section);
     window.history.pushState({}, "", `/demo/${section}`);
+  }
+
+  function returnToLogin() {
+    window.location.assign("/");
   }
 
   function selectTimelineDay(dayIndex) {
@@ -5433,14 +5436,14 @@ function DemoApp({ initialSection }) {
           <button
             className="brand-mark"
             type="button"
-            title={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到 Demo 行程"}
-            aria-label={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到 Demo 行程"}
+            title={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到登入介面"}
+            aria-label={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到登入介面"}
             onClick={() => {
               if (isDemoSidebarCollapsed) {
                 setIsDemoSidebarCollapsed(false);
                 return;
               }
-              changeSection("timeline");
+              returnToLogin();
             }}
           >
             <span className="brand-logo-text">TP</span>
@@ -5505,19 +5508,23 @@ function DemoApp({ initialSection }) {
             membership: { role: "owner", status: "approved" },
           }))}
         />
-        <SidebarAccountMenu
-          collapsed={isDemoSidebarCollapsed}
-          email="demo@example.com"
-          initial="D"
-          isOpen={isDemoAccountMenuOpen}
-          name="Demo User"
-          onClose={() => setIsDemoAccountMenuOpen(false)}
-          onSettings={() => {}}
-          onSignOut={() => {}}
-          onToggle={() => setIsDemoAccountMenuOpen((value) => !value)}
-          settingsDisabled
-          signOutDisabled
-        />
+        <div className="user-box demo-login-return">
+          <button
+            className="user-box-card"
+            type="button"
+            title="回到登入介面"
+            aria-label="Return to login"
+            onClick={returnToLogin}
+          >
+            <span className="user-avatar" aria-hidden="true">
+              <LogIn size={17} strokeWidth={2.1} />
+            </span>
+            <span className="user-account">
+              <strong className="nav-label">回到登入</strong>
+              <span className="user-email nav-label">Click to return to login</span>
+            </span>
+          </button>
+        </div>
       </aside>
       <main className="workspace demo-workspace">
         <TripHeader

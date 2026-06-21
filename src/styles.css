@@ -898,6 +898,10 @@ code {
   outline: 0;
 }
 
+.demo-login-return .user-box-card {
+  grid-template-columns: 32px minmax(0, 1fr);
+}
+
 .user-avatar {
   display: grid;
   width: 32px;
