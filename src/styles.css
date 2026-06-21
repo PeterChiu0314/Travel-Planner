@@ -2425,9 +2425,9 @@ textarea {
   height: 50px;
   place-items: center;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--paper);
   box-shadow: var(--shadow);
-  color: var(--mint-dark);
+  color: var(--ink);
   transform: translateY(-50%);
 }
 
@@ -2523,7 +2523,7 @@ textarea {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
   cursor: pointer;
-  padding: 12px;
+  padding: 10px;
 }
 
 .timeline-day-column {
@@ -2567,7 +2567,8 @@ textarea {
 .timeline-preview-card {
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr);
-  gap: 10px;
+  gap: 12px;
+  align-items: center;
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2575,6 +2576,10 @@ textarea {
   color: var(--ink);
   padding: 10px;
   text-align: left;
+}
+
+.timeline-preview-card:not(.transport-preview-card) {
+  height: 110px;
 }
 
 .timeline-preview-card.focused {
@@ -2585,16 +2590,33 @@ textarea {
 .timeline-preview-card strong,
 .timeline-preview-card em {
   display: block;
+  font-size: 15px;
+  font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .timeline-preview-card em {
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--muted);
   font-size: 12px;
   font-style: normal;
+}
+
+.timeline-preview-content {
+  min-width: 0;
+}
+
+.timeline-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.timeline-preview-meta .pill {
+  display: inline-flex;
 }
 
 .timeline-empty.compact {
@@ -2995,10 +3017,6 @@ textarea {
   min-width: 0;
 }
 
-.timeline-item.expanded .item-main {
-  justify-content: flex-start;
-}
-
 .timeline-title-button {
   display: grid;
   gap: 4px;
@@ -3205,9 +3223,9 @@ textarea {
   border-radius: 999px;
   background: #edf3ef;
   color: var(--mint-dark);
-  padding: 4px 9px;
+  padding: 1px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .item-actions {
@@ -4279,8 +4297,8 @@ textarea {
 
   .timeline-workbench.route-collapsed .timeline-day-column,
   .timeline-workbench.route-collapsed .timeline-day-preview {
-    flex: 0 0 340px;
-    width: 340px;
+    flex: 0 0 320px;
+    width: 320px;
     max-height: none;
     overflow-y: visible;
   }
