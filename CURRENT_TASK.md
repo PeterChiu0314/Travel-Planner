@@ -10,11 +10,12 @@
 - `docs/gpt/2026-06-19-phase-3-2a-map-first-tabs-summary.md`
 - `docs/gpt/2026-06-20-phase-3-2a-timeline-workspace-summary.md`
 - `docs/gpt/2026-06-21-phase-3-2a-closeout-summary.md`
+- `docs/gpt/2026-06-21-phase-3-3-final-qa-handoff.md`
 
 ## Current Phase
 
 ```text
-App Layout Phase 3.2a - Timeline Workspace closeout
+App Layout Phase 3.3 - Completed / User Verified
 ```
 
 Branch:
@@ -26,20 +27,17 @@ codex/app-layout-phase-3-workspace
 Status:
 
 ```text
-Phase 3.2a implementation and visual polish are nearly complete.
-Only final manual verification and small Timeline-specific corrections remain before closeout.
-Formal Timeline and /demo/timeline must remain visually and behaviorally aligned.
+Phase 3.2a is completed and user verified.
+Phase 3.3 Demo QA, automated validation, and authenticated Formal Timeline visual verification all passed.
+Timeline Workspace Final QA is closed and approved for merge to main.
 ```
 
 ## Git Reference Points
 
-- Latest pushed commit: `9b88931 tune collapsed day board layout`
-- Today's earlier pushed commits:
-  - `d225daf refine timeline details and map motion`
-  - `5506a00 refine multi-day timeline previews`
-- Current local documentation changes are not pushed yet:
-  - `docs/gpt/2026-06-21-phase-3-2a-closeout-summary.md`
-  - `CURRENT_TASK.md`
+- Latest pushed commit: `217e2d4 add development version dialog`
+- Phase 3.2a closeout commit: `a85d368 close out phase 3.2 timeline polish`
+- Final QA baseline: `217e2d4 add development version dialog`
+- Final handoff: `docs/gpt/2026-06-21-phase-3-3-final-qa-handoff.md`
 - `test-results/` is generated output and must not be committed.
 
 ## Current Layout
@@ -49,6 +47,7 @@ Formal Timeline and /demo/timeline must remain visually and behaviorally aligned
   - Route / future Map surface fills the right side from below the Header.
   - Day Board / Map ratio is approximately `30 / 70`.
   - Minimum widths are `380px` for Day Board and `420px` for Map.
+  - Day Board maximum width is `550px`; additional wide-screen space belongs to the Map.
 - Map collapsed:
   - Day Tabs and multi-day Day Board use the full workspace width.
   - Horizontal scrolling belongs to the inner Day Board rail.
@@ -85,21 +84,24 @@ Formal Timeline and /demo/timeline must remain visually and behaviorally aligned
   - Unselected Day Boards never retain focused-card styling.
 - Formal and Demo use the same Timeline components and shared CSS for these changes.
 
-## Manual Verification
+## Phase 3.3 QA Result
 
-The user currently owns visual verification. Do not automatically run build/E2E for each CSS/layout tweak unless requested; provide a focused manual checklist instead.
+Completed in Demo and source / render-path audit:
 
-Check both Formal Timeline and `/demo/timeline`:
+1. Map-expanded and Map-collapsed layout rendered without console errors.
+2. Visit and transportation multiline notes preserved line breaks.
+3. Alternative flip control matched the visit card lower-right corner with no border gap.
+4. Multi-Day preview sizes, metadata, transportation alignment, and focus cleanup passed.
+5. Day Tabs and Day Board edge controls scrolled and updated their edge states correctly.
+6. Demo remained isolated from Supabase, Auth, Realtime, Storage, Draft Autosave, and Edit Lock.
+7. Build passed; E2E passed `13/13`; `git diff --check` passed.
 
-1. Map expanded: confirm the 30/70 boundary and Top Row / Map alignment.
-2. Map collapsed: confirm cards keep the same typography, padding, and action sizes.
-3. Day Tabs: verify click, drag, momentum, arrows, first/last mask behavior, and Map open/close transitions.
-4. Day Board navigation: verify half-circle buttons with and without a vertical scrollbar.
-5. Day selection: verify the selected board leaves about `340px` for the previous Day Board when available.
-6. Card details: verify expanded visit and transportation notes preserve line breaks and use the wider layout.
-7. Icons: verify Lock, LockOpen, Pencil, Trash2, Plus, and MapPin hover/disabled/click behavior.
-8. Alternatives: verify empty, created, edit, delete, and flip states.
-9. Multi-Day preview: verify labels, `320px` width, `110px` visit cards, transportation alignment, and no stale focused styling.
+Authenticated Formal Timeline manual sign-off completed by the user on 2026-06-21:
+
+1. Map open / close animation accepted.
+2. Formal Map-expanded and Map-collapsed layout accepted.
+3. Visit, transportation, and alternative controls accepted.
+4. Multi-Day previews, Day switching, and edge controls accepted.
 
 ## Protected Scope
 
@@ -117,7 +119,7 @@ Do not modify unless explicitly requested:
 - Broad `src/App.jsx` architecture
 - Global `.panel` or `.content-grid` behavior without a Timeline-specific selector
 
-## Out of Scope for Phase 3.2a
+## Out of Scope for Phase 3.3
 
 - Google Map API integration
 - Map marker interaction
@@ -127,10 +129,8 @@ Do not modify unless explicitly requested:
 
 ## Next Steps
 
-1. Run the final manual visual pass using `docs/gpt/2026-06-21-phase-3-2a-closeout-summary.md`.
-2. Verify Formal / Demo parity, Map animation, multiline details, Multi-Day previews, and Day Board navigation.
-3. Mark Phase 3.2a completed and user-verified after the layout is accepted.
-4. Commit and push the closeout documentation when the user approves.
-5. Proceed to Phase 3.3 Demo Parity / Final QA only after Phase 3.2a is closed.
+1. Merge `codex/app-layout-phase-3-workspace` into `main`.
+2. Push the verified merge to `origin/main`.
+3. Start the next project phase from the updated `main` baseline with a new handoff.
 
 Keep all remaining work small, targeted, and limited to Timeline CSS or small JSX presentation changes.
