@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { spawn } from "node:child_process";
+import { roundMinutesUpToStep } from "../src/lib/timelineTime.js";
 
 const baseUrl = "http://127.0.0.1:5173";
 let viteServer = null;
@@ -88,6 +89,106 @@ test("demo timeline renders without authentication", async ({ page }) => {
 
   await page.getByRole("button", { name: "Return to login" }).click();
   await expect(page).toHaveURL(/\/$/);
+});
+
+test("demo trip switch resets an out-of-range selected day board", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
+
+  await page.goto("/demo/timeline");
+
+  const daySixTab = page.locator('.day-tab[data-day-index="5"]');
+  await expect(daySixTab).toHaveCount(1);
+  await daySixTab.click();
+  await expect(page.locator('.timeline-day-column.active[data-day-index="5"]')).toHaveCount(1);
+
+  await page.getByRole("button", { name: "A_TEST" }).click();
+
+  await expect(page.getByRole("button", { name: "A_TEST", exact: true })).toBeVisible();
+  await expect(page.locator(".day-tab")).toHaveCount(3);
+  await expect(page.locator('.day-tab.active[data-day-index="0"]')).toHaveCount(1);
+  await expect(page.locator('.timeline-day-column.active[data-day-index="0"]')).toHaveCount(1);
+  await expect(page.locator('.timeline-day-column[data-day-index="5"]')).toHaveCount(0);
+  expect(supabaseRequests).toEqual([]);
+  expect(failures).toEqual([]);
+});
+
+for (const scenario of [
+  { durationMinutes: "1", expectedStartTime: "21:35", label: "rounds one minute up to five minutes" },
+  { durationMinutes: "17", expectedStartTime: "21:50", label: "rounds up to the next five-minute step" },
+  { durationMinutes: "15", expectedStartTime: "21:45", label: "keeps an exact five-minute step" },
+  { durationMinutes: "23", expectedStartTime: "21:55", label: "rounds twenty-three minutes up to twenty-five" },
+]) {
+  test(`demo tail transportation ${scenario.label}`, async ({ page }) => {
+    const failures = collectConsoleFailures(page);
+    const supabaseRequests = collectSupabaseRequests(page);
+
+    await page.goto("/demo/timeline");
+
+    const lastVisit = page.locator(".timeline .timeline-item").last();
+    await lastVisit.click();
+    await lastVisit.getByTitle("編輯").click();
+    await page.locator('select[name="end_time"]').selectOption("21:30");
+    await page.locator(".item-form").getByRole("button", { name: "儲存" }).click();
+
+    await page.getByRole("button", { name: "新增尾端交通" }).click({ force: true });
+    await page.locator('input[name="transport_duration_minutes"]').fill(scenario.durationMinutes);
+    await page.locator('input[name="transport_name"]').fill("前往下一站");
+    await page.locator(".transport-editor-form").getByRole("button", { name: "保存" }).click();
+
+    await expect(page.getByText("下一目的地尚未設定", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "新增行程" }).click();
+    const startTimeSelect = page.locator('select[name="start_time"]');
+    await expect(startTimeSelect).toHaveValue(scenario.expectedStartTime);
+    await startTimeSelect.selectOption("22:00");
+    await expect(startTimeSelect).toHaveValue("22:00");
+    expect(supabaseRequests).toEqual([]);
+    expect(failures).toEqual([]);
+  });
+}
+
+test("tail transportation rounding covers zero and exact five-minute boundaries", () => {
+  const previousEnd = 10 * 60;
+  expect([0, 1, 15, 17, 23].map((duration) => roundMinutesUpToStep(previousEnd + duration))).toEqual([
+    10 * 60,
+    10 * 60 + 5,
+    10 * 60 + 15,
+    10 * 60 + 20,
+    10 * 60 + 25,
+  ]);
+});
+
+test("demo timed visit drag swaps destination content without moving time slots", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
+
+  await page.goto("/demo/timeline");
+
+  const source = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
+  const target = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
+  await expect(source).toHaveCount(1);
+  await expect(target).toHaveCount(1);
+
+  await source.click();
+  await source.getByTitle("編輯").click();
+  await expect(page.locator('.timeline-item[draggable="true"]')).toHaveCount(0);
+  await page.locator(".item-form").getByRole("button", { name: "取消" }).click();
+  await expect(source).toHaveAttribute("draggable", "true");
+
+  await source.dragTo(target);
+
+  const firstSlot = page.locator(".timeline-item").filter({ hasText: "02:20" });
+  const secondSlot = page.locator(".timeline-item").filter({ hasText: "06:40" });
+  await expect(firstSlot.getByRole("heading", { name: "桃園機場" })).toBeVisible();
+  await expect(secondSlot.getByRole("heading", { name: "平安出國停車場" })).toBeVisible();
+  await expect(firstSlot.locator(".time-block")).toContainText("02:20");
+  await expect(secondSlot.locator(".time-block")).toContainText("06:40");
+  await expect(page.locator(".transport-warning-stack")).toHaveCount(0);
+
+  await firstSlot.getByTitle("鎖定").click();
+  await expect(firstSlot).toHaveAttribute("draggable", "false");
+  expect(supabaseRequests).toEqual([]);
+  expect(failures).toEqual([]);
 });
 
 test("demo navigation can switch to budget and luggage", async ({ page }) => {

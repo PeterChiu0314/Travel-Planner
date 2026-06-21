@@ -29,8 +29,10 @@ import {
   Wallet,
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
+import { swapDestinationPackagesInItems, swapItineraryParentIds } from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
+import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
 const attachmentBucket = "trip-attachments";
@@ -505,6 +507,44 @@ function sortedVisitItems(items) {
   return sortScheduleItems(items.filter((item) => !isTransportationCard(item)));
 }
 
+function lastTimedVisit(items) {
+  return [...sortedVisitItems(items)].reverse().find((item) => item.start_time) || null;
+}
+
+function tailTransportContext(items) {
+  const fromItem = lastTimedVisit(items);
+  if (!fromItem) return { fromItem: null, transportItem: null };
+  const transportItem =
+    items.find(
+      (item) =>
+        isTransportationCard(item) &&
+        item.from_item_id === fromItem.id &&
+        !item.to_item_id,
+    ) || null;
+  return { fromItem, transportItem };
+}
+
+function suggestedStartTimeFromTailTransport(items) {
+  const { fromItem, transportItem } = tailTransportContext(items);
+  if (!fromItem?.end_time || !transportItem) return "";
+  const previousEnd = timeToMinutes(fromItem.end_time);
+  const durationMinutes = Number(transportItem.transport_duration_minutes || 0);
+  if (previousEnd === null || !Number.isFinite(durationMinutes) || durationMinutes < 0) return "";
+  return minutesToTimeValue(roundMinutesUpToStep(previousEnd + durationMinutes, 5));
+}
+
+function destinationSwapErrorMessage(error) {
+  const message = String(error?.message || "");
+  if (message.includes("permission_denied")) return "你沒有交換這兩個行程的權限。";
+  if (message.includes("item_not_found")) return "找不到要交換的行程，請重新整理後再試。";
+  if (message.includes("different_trip_or_day")) return "只能交換同一天的有時間行程。";
+  if (message.includes("timed_visit_required")) return "只能交換兩個有時間的景點。";
+  if (message.includes("fixed_item")) return "固定行程不可拖曳或作為交換目標。";
+  if (message.includes("item_locked")) return "其中一個行程目前正由其他成員編輯。";
+  if (message.includes("stale_item")) return "行程已被其他成員更新，請重新整理後再試。";
+  return message || "目的地內容交換失敗，請稍後再試。";
+}
+
 function transportPairKey(fromItemId, toItemId) {
   return `${fromItemId || ""}->${toItemId || ""}`;
 }
@@ -557,14 +597,24 @@ function buildTransportPairState(items, visits) {
   });
 
   const adjacentTransportByPair = {};
+  const tailTransportByFrom = {};
   const invalidTransportItems = [];
+  const finalTimedVisit = [...visits].reverse().find((item) => item.start_time) || null;
   items
     .filter((item) => isTransportationCard(item))
     .forEach((item) => {
       const hasPair = item.from_item_id && item.to_item_id;
+      const isTail = item.from_item_id && !item.to_item_id;
       const pairKey = hasPair ? transportPairKey(item.from_item_id, item.to_item_id) : "";
       const pairExists = hasPair && visitIds.has(item.from_item_id) && visitIds.has(item.to_item_id);
       const pairIsAdjacent = pairExists && adjacentKeys.has(pairKey);
+
+      if (isTail && visitIds.has(item.from_item_id) && item.from_item_id === finalTimedVisit?.id) {
+        if (!tailTransportByFrom[item.from_item_id]) {
+          tailTransportByFrom[item.from_item_id] = item;
+          return;
+        }
+      }
 
       if (pairIsAdjacent) {
         if (!adjacentTransportByPair[pairKey]) adjacentTransportByPair[pairKey] = item;
@@ -574,7 +624,7 @@ function buildTransportPairState(items, visits) {
       invalidTransportItems.push(item);
     });
 
-  return { adjacentTransportByPair, invalidTransportItems };
+  return { adjacentTransportByPair, invalidTransportItems, tailTransportByFrom };
 }
 
 function transportPairNeedsReview(transportItem, fromItem, toItem) {
@@ -2215,6 +2265,17 @@ export default function App() {
     }
     if (editingId && !(await ensureItineraryItemEditable(editingId))) return { ok: false, fixed: true };
     const normalizedPayload = normalizeItemPayload(payload);
+    if (!editingId && isTransportationCard(normalizedPayload) && normalizedPayload.from_item_id && !normalizedPayload.to_item_id) {
+      const { fromItem, transportItem } = tailTransportContext(dayItems);
+      if (!fromItem || normalizedPayload.from_item_id !== fromItem.id) {
+        setNotice("尾端交通只能新增在最後一個有時間行程之後。");
+        return { ok: false };
+      }
+      if (transportItem) {
+        setNotice("最後一個行程後方已經有尾端交通資訊。");
+        return { ok: false };
+      }
+    }
     const invalidTimeRange = !isTransportationCard(normalizedPayload) && isInvalidTimeRange(normalizedPayload.start_time, normalizedPayload.end_time);
     if (invalidTimeRange) {
       setNotice("結束時間必須晚於開始時間。");
@@ -2239,16 +2300,59 @@ export default function App() {
     }
 
     const sortOrder = (dayItems.filter((item) => !isTransportationCard(item)).length + 1) * 10;
-    const { error } = await supabase.from("itinerary_items").insert({
-      ...normalizedPayload,
-      trip_id: activeTrip.id,
-      day_index: activeDay,
-      date: days[activeDay] ? dateToInputValue(days[activeDay]) : null,
-      sort_order: sortOrder,
-    });
-    if (error) setNotice(error.message);
-    else await loadTripData(activeTrip.id);
-    return { ok: !error, error };
+    const insertResult = await supabase
+      .from("itinerary_items")
+      .insert({
+        ...normalizedPayload,
+        trip_id: activeTrip.id,
+        day_index: activeDay,
+        date: days[activeDay] ? dateToInputValue(days[activeDay]) : null,
+        sort_order: sortOrder,
+      })
+      .select("*")
+      .single();
+    if (insertResult.error) {
+      setNotice(insertResult.error.message);
+      return { ok: false, error: insertResult.error };
+    }
+
+    const { fromItem: tailFromItem, transportItem: tailTransportItem } = tailTransportContext(dayItems);
+    const newVisitStart = timeToMinutes(insertResult.data?.start_time);
+    const tailFromEnd = timeToMinutes(tailFromItem?.end_time);
+    const shouldCompleteTailPair =
+      !isTransportationCard(insertResult.data) &&
+      tailTransportItem &&
+      newVisitStart !== null &&
+      (tailFromEnd === null || newVisitStart >= tailFromEnd);
+
+    if (shouldCompleteTailPair) {
+      const tailUpdate = await supabase
+        .from("itinerary_items")
+        .update({
+          to_item_id: insertResult.data.id,
+          ...buildTransportPairSnapshot(tailFromItem, insertResult.data),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", tailTransportItem.id)
+        .eq("trip_id", activeTrip.id);
+      if (tailUpdate.error) {
+        const rollback = await supabase
+          .from("itinerary_items")
+          .delete()
+          .eq("id", insertResult.data.id)
+          .eq("trip_id", activeTrip.id);
+        setNotice(
+          rollback.error
+            ? `新增行程後無法完成尾端交通配對，且復原失敗：${tailUpdate.error.message}`
+            : `無法完成尾端交通配對：${tailUpdate.error.message}`,
+        );
+        await loadTripData(activeTrip.id);
+        return { ok: false, error: tailUpdate.error };
+      }
+    }
+
+    await loadTripData(activeTrip.id);
+    return { ok: true, data: insertResult.data };
   }
 
   async function saveAlternative(itemId, payload, editingId) {
@@ -2820,30 +2924,35 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function reorderItem(draggedId, targetId) {
-    if (!canEditActiveTripContent || draggedId === targetId) return;
-    const nextItems = [...dayItems];
-    const from = nextItems.findIndex((item) => item.id === draggedId);
-    const to = nextItems.findIndex((item) => item.id === targetId);
-    if (from < 0 || to < 0) return;
-    if (nextItems[from]?.is_fixed || nextItems[to]?.is_fixed) {
-      setNotice("固定行程不可拖曳或作為排序目標。");
-      return;
+  async function swapDestinationPackages(sourceItemId, targetItemId) {
+    if (!activeTrip || !canEditActiveTripContent || sourceItemId === targetItemId) return { ok: false };
+    const sourceItem = items.find((item) => item.id === sourceItemId);
+    const targetItem = items.find((item) => item.id === targetItemId);
+    if (!sourceItem || !targetItem) return { ok: false };
+    if (sourceItem.is_fixed || targetItem.is_fixed) {
+      const errorMessage = "固定行程不可拖曳或作為交換目標。";
+      setNotice(errorMessage);
+      return { ok: false, errorMessage };
     }
-    const [dragged] = nextItems.splice(from, 1);
-    nextItems.splice(to, 0, dragged);
-    const invalidItem = nextItems.find((item) => isInvalidTimeRange(item.start_time, item.end_time));
-    if (invalidItem) {
-      setNotice("結束時間必須晚於開始時間。");
-      return;
+    if (isLockedByAnotherUser(sourceItem, session?.user?.id) || isLockedByAnotherUser(targetItem, session?.user?.id)) {
+      const errorMessage = "其中一個行程目前正由其他成員編輯。";
+      setNotice(errorMessage);
+      return { ok: false, errorMessage };
     }
-    const updates = nextItems.map((item, index) =>
-      supabase.from("itinerary_items").update({ sort_order: index }).eq("id", item.id),
-    );
-    const results = await Promise.all(updates);
-    const error = results.find((result) => result.error)?.error;
-    if (error) setNotice(error.message);
-    else await loadTripData(activeTrip.id);
+    const { data, error } = await supabase.rpc("swap_itinerary_destination_packages", {
+      source_item_id: sourceItem.id,
+      target_item_id: targetItem.id,
+      source_updated_at: sourceItem.updated_at,
+      target_updated_at: targetItem.updated_at,
+    });
+    if (error) {
+      const errorMessage = destinationSwapErrorMessage(error);
+      setNotice(errorMessage);
+      if (error.message?.includes("stale_item")) await loadTripData(activeTrip.id);
+      return { ok: false, error, errorMessage };
+    }
+    await loadTripData(activeTrip.id);
+    return { ok: true, data };
   }
 
   async function addPackItem(title) {
@@ -2979,7 +3088,11 @@ function exportTrip() {
   async function selectTrip(nextTripId) {
     if (nextTripId === activeTripId) return;
     const canContinue = await requestActiveEditorGuardResolution();
-    if (canContinue) setActiveTripId(nextTripId);
+    if (canContinue) {
+      const nextTrip = trips.find((trip) => trip.id === nextTripId);
+      setActiveDay(tripTodayIndex(nextTrip));
+      setActiveTripId(nextTripId);
+    }
   }
 
   if (isDemoMode) {
@@ -3194,7 +3307,7 @@ function exportTrip() {
             onDeleteSharedLuggageItem={deleteSharedLuggageItem}
             onDeleteTodo={deleteTodo}
             onRejectMember={rejectMember}
-            onReorderItem={reorderItem}
+            onSwapDestinationPackages={swapDestinationPackages}
             onSaveAlternative={saveAlternative}
             onSaveActualExpense={saveActualExpense}
             onSaveAccommodation={saveAccommodation}
@@ -5106,6 +5219,10 @@ function DemoApp({ initialSection }) {
       payload: nextPayload,
     });
     if (overlapItem) return { ok: false, overlapError: formatTimelineOverlapError(overlapItem) };
+    if (!editingId && isTransportationCard(nextPayload) && nextPayload.from_item_id && !nextPayload.to_item_id) {
+      const { fromItem, transportItem } = tailTransportContext(dayItems);
+      if (!fromItem || nextPayload.from_item_id !== fromItem.id || transportItem) return { ok: false };
+    }
     if (editingId) {
       setTimelineItems((current) =>
         current.map((item) =>
@@ -5120,21 +5237,67 @@ function DemoApp({ initialSection }) {
       );
       return { ok: true };
     }
+    const newItemId = demoId(nextPayload.item_type === "transport" ? "demo-transport" : "demo-itinerary");
     setTimelineItems((current) => {
       const currentDayVisits = sortedVisitItems(current.filter((item) => item.day_index === activeDay));
       const sortOrder = (currentDayVisits.length + 1) * 10;
+      const newItem = {
+        ...emptyItemForm,
+        ...nextPayload,
+        id: newItemId,
+        day_index: activeDay,
+        sort_order: sortOrder,
+        updated_at: new Date().toISOString(),
+      };
+      const currentDayItems = current.filter((item) => item.day_index === activeDay);
+      const { fromItem: tailFromItem, transportItem: tailTransportItem } = tailTransportContext(currentDayItems);
+      const newVisitStart = timeToMinutes(newItem.start_time);
+      const tailFromEnd = timeToMinutes(tailFromItem?.end_time);
+      const shouldCompleteTailPair =
+        !isTransportationCard(newItem) &&
+        tailTransportItem &&
+        newVisitStart !== null &&
+        (tailFromEnd === null || newVisitStart >= tailFromEnd);
+      const nextItems = shouldCompleteTailPair
+        ? current.map((item) =>
+            item.id === tailTransportItem.id
+              ? {
+                  ...item,
+                  to_item_id: newItem.id,
+                  ...buildTransportPairSnapshot(tailFromItem, newItem),
+                  updated_at: new Date().toISOString(),
+                }
+              : item,
+          )
+        : current;
       return [
-        ...current,
-        {
-          ...emptyItemForm,
-          ...nextPayload,
-          id: demoId(nextPayload.item_type === "transport" ? "demo-transport" : "demo-itinerary"),
-          day_index: activeDay,
-          sort_order: sortOrder,
-          updated_at: new Date().toISOString(),
-        },
+        ...nextItems,
+        newItem,
       ];
     });
+    return { ok: true, data: { id: newItemId } };
+  }
+
+  function swapTimelineDestinationPackages(sourceItemId, targetItemId) {
+    if (sourceItemId === targetItemId) return { ok: false };
+    const sourceItem = timelineItems.find((item) => item.id === sourceItemId);
+    const targetItem = timelineItems.find((item) => item.id === targetItemId);
+    if (
+      !sourceItem ||
+      !targetItem ||
+      isTransportationCard(sourceItem) ||
+      isTransportationCard(targetItem) ||
+      !sourceItem.start_time ||
+      !targetItem.start_time ||
+      sourceItem.day_index !== targetItem.day_index ||
+      sourceItem.is_fixed ||
+      targetItem.is_fixed
+    ) {
+      return { ok: false };
+    }
+    setTimelineItems((current) => swapDestinationPackagesInItems(current, sourceItemId, targetItemId));
+    setTimelineAlternatives((current) => swapItineraryParentIds(current, sourceItemId, targetItemId));
+    setItineraryBudgetLinks((current) => swapItineraryParentIds(current, sourceItemId, targetItemId));
     return { ok: true };
   }
 
@@ -5518,7 +5681,11 @@ function DemoApp({ initialSection }) {
           onCreate={() => {}}
           onSelect={(tripId) => {
             const nextTrip = demoTrips.find((trip) => trip.id === tripId);
-            if (nextTrip) setDemoActiveTrip(nextTrip);
+            if (nextTrip) {
+              setActiveDay(tripTodayIndex(nextTrip));
+              setFocusedItemId(null);
+              setDemoActiveTrip(nextTrip);
+            }
           }}
           onToggleFlyout={() => setIsDemoSidebarTripMenuOpen((value) => !value)}
           trips={demoTrips.map((trip) => ({
@@ -5623,7 +5790,7 @@ function DemoApp({ initialSection }) {
                   onDeleteAlternative={deleteTimelineAlternative}
                   onDeleteItem={deleteTimelineItem}
                   onFocusItem={setFocusedItemId}
-                  onReorderItem={() => {}}
+                  onSwapDestinationPackages={swapTimelineDestinationPackages}
                   onSaveAlternative={saveTimelineAlternative}
                   onSaveItem={saveTimelineItem}
                   onToggleItemFixed={toggleTimelineItemFixed}
@@ -6390,7 +6557,7 @@ function TripWorkspace(props) {
     onDeleteSharedLuggageItem,
     onDeleteTodo,
     onRejectMember,
-    onReorderItem,
+    onSwapDestinationPackages,
     onSaveAlternative,
     onSaveActualExpense,
     onSaveAccommodation,
@@ -6619,7 +6786,7 @@ function TripWorkspace(props) {
                 onDeleteAlternative={onDeleteAlternative}
                 onDeleteItem={onDeleteItem}
                 onFocusItem={setFocusedItemId}
-                onReorderItem={onReorderItem}
+                onSwapDestinationPackages={onSwapDestinationPackages}
                 onSaveAlternative={onSaveAlternative}
                 onSaveItem={onSaveItem}
                 onToggleItemFixed={onToggleItemFixed}
@@ -6982,7 +7149,7 @@ function ItineraryTimeline({
   onDeleteAlternative,
   onDeleteItem,
   onFocusItem,
-  onReorderItem,
+  onSwapDestinationPackages,
   onSaveAlternative,
   onSaveItem,
   onToggleItemFixed,
@@ -7005,6 +7172,9 @@ function ItineraryTimeline({
   const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
+  const [draggedVisitId, setDraggedVisitId] = useState(null);
+  const [dragTargetVisitId, setDragTargetVisitId] = useState(null);
+  const [isSwappingDestination, setIsSwappingDestination] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -7029,6 +7199,65 @@ function ItineraryTimeline({
   );
 
   useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
+
+  const hasBlockingTimelineEditor =
+    isOpen || hasActiveEditorGuard({ excludeId: activeEditorGuardId, tripId: activeTrip?.id });
+
+  function canDragSwapVisit(item) {
+    return (
+      canEdit &&
+      !hasBlockingTimelineEditor &&
+      !isSwappingDestination &&
+      !isTransportationCard(item) &&
+      Boolean(item?.start_time) &&
+      !item?.is_fixed &&
+      !(useEditLocks && isLockedByAnotherUser(item, currentUserId))
+    );
+  }
+
+  function beginVisitDrag(event, item) {
+    if (!canDragSwapVisit(item)) {
+      event.preventDefault();
+      if (hasBlockingTimelineEditor) setFixedNotice("請先儲存或放棄目前編輯，再交換景點內容。");
+      return;
+    }
+    setFixedNotice("");
+    setDraggedVisitId(item.id);
+    setDragTargetVisitId(null);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", item.id);
+  }
+
+  function updateVisitDragTarget(event, item) {
+    if (!draggedVisitId || draggedVisitId === item.id || !canDragSwapVisit(item)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragTargetVisitId(item.id);
+  }
+
+  function clearVisitDrag() {
+    setDraggedVisitId(null);
+    setDragTargetVisitId(null);
+  }
+
+  async function dropVisitContent(event, targetItem) {
+    event.preventDefault();
+    const sourceItemId = draggedVisitId || event.dataTransfer.getData("text/plain");
+    if (!sourceItemId || sourceItemId === targetItem.id || !canDragSwapVisit(targetItem)) {
+      clearVisitDrag();
+      return;
+    }
+    const sourceItem = dayItems.find((item) => item.id === sourceItemId);
+    if (!sourceItem || !canDragSwapVisit(sourceItem) || typeof onSwapDestinationPackages !== "function") {
+      clearVisitDrag();
+      return;
+    }
+    setIsSwappingDestination(true);
+    const result = await onSwapDestinationPackages(sourceItem.id, targetItem.id);
+    if (!result?.ok) setFixedNotice(result?.errorMessage || "目的地內容交換失敗，請稍後再試。");
+    setIsSwappingDestination(false);
+    clearVisitDrag();
+  }
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -7087,8 +7316,9 @@ function ItineraryTimeline({
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeEditor(true);
     }
-    const lastItem = dayItems[dayItems.length - 1];
-    const defaultStartTime = lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "";
+    const lastItem = sortedVisitItems(dayItems).at(-1);
+    const tailSuggestedStartTime = suggestedStartTimeFromTailTransport(dayItems);
+    const defaultStartTime = tailSuggestedStartTime || (lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "");
     const nextForm = { ...emptyItemForm, start_time: defaultStartTime };
     flushDraft();
     replaceForm(nextForm);
@@ -7137,7 +7367,7 @@ function ItineraryTimeline({
     setTimeError("");
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
-    setInsertionPair(previousItem && nextItem ? { fromId: previousItem.id, toId: nextItem.id } : null);
+    setInsertionPair(previousItem ? { fromId: previousItem.id, toId: nextItem?.id || null } : null);
     setRestoredDraftKey(null);
     setIsOpen(true);
     onFocusItem(nextItem?.id || previousItem?.id);
@@ -7345,7 +7575,8 @@ function ItineraryTimeline({
 
   const isTransportEditor = form.item_type === "transport";
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
-  const { adjacentTransportByPair, invalidTransportItems } = useMemo(
+  const lastTimedVisitItem = useMemo(() => lastTimedVisit(dayItems), [dayItems]);
+  const { adjacentTransportByPair, invalidTransportItems, tailTransportByFrom } = useMemo(
     () => buildTransportPairState(dayItems, visitItems),
     [dayItems, visitItems],
   );
@@ -7646,12 +7877,14 @@ function ItineraryTimeline({
     const fromItem = dayItems.find((dayItem) => dayItem.id === item.from_item_id);
     const toItem = dayItems.find((dayItem) => dayItem.id === item.to_item_id);
     const fromLabel = fromItem?.location_name || fromItem?.location || fromItem?.title || "已移除景點";
-    const toLabel = toItem?.location_name || toItem?.location || toItem?.title || "已移除景點";
+    const toLabel = item.to_item_id
+      ? toItem?.location_name || toItem?.location || toItem?.title || "已移除景點"
+      : "下一目的地尚未設定";
     return `${fromLabel} → ${toLabel}`;
   }
 
   function renderTransportCard(item, lockedByOther, options = {}) {
-    const { hasTimeShortage = false, warningType = "" } = options;
+    const { hasTimeShortage = false, isTail = false, warningType = "" } = options;
     const isInvalidWarning = warningType === "invalid";
     const isGeneralWarning = warningType === "general";
     const isShortageWarning = hasTimeShortage && !isInvalidWarning;
@@ -7678,6 +7911,7 @@ function ItineraryTimeline({
         </span>
         <div className="transport-card-main">
           <strong>{transportCardTitle(item)}</strong>
+          {isTail ? <span className="muted-text">下一目的地尚未設定</span> : null}
           {hasWarning ? (
             <span className="transport-warning-badge" aria-label="交通資訊需確認">
               <MessageCircleWarning aria-hidden="true" />
@@ -7767,6 +8001,18 @@ function ItineraryTimeline({
       <button className="transport-insert-zone" type="button" onClick={() => openNewTransport(previousItem, nextItem)}>
         <span className="transport-insert-icon">+</span>
         <span className="transport-insert-label">新增交通資訊</span>
+        <span className="transport-insert-line" aria-hidden="true" />
+      </button>
+    );
+  }
+
+  function renderTailTransportInsert(previousItem) {
+    if (!canEdit || isOpen || !previousItem || isTransportationCard(previousItem)) return null;
+    if (tailTransportByFrom[previousItem.id]) return null;
+    return (
+      <button className="transport-insert-zone tail" type="button" onClick={() => openNewTransport(previousItem, null)}>
+        <span className="transport-insert-icon">+</span>
+        <span className="transport-insert-label">新增尾端交通</span>
         <span className="transport-insert-line" aria-hidden="true" />
       </button>
     );
@@ -8153,8 +8399,23 @@ function ItineraryTimeline({
             const transportNeedsReview = transportItem && transportPairNeedsReview(transportItem, item, nextItem);
             const transportWarningType = transportNeedsReview ? "general" : hasTransportTimeShortage ? "shortage" : "";
             const isAddingTransportHere =
-              isOpen && isTransportEditor && !editingId && insertionPair?.fromId === item.id && insertionPair?.toId === nextItem?.id;
+              Boolean(nextItem) &&
+              isOpen &&
+              isTransportEditor &&
+              !editingId &&
+              insertionPair?.fromId === item.id &&
+              insertionPair?.toId === nextItem.id;
+            const tailTransportItem = tailTransportByFrom[item.id] || null;
+            const isTailPosition = lastTimedVisitItem?.id === item.id;
+            const isAddingTailHere =
+              isTailPosition &&
+              isOpen &&
+              isTransportEditor &&
+              !editingId &&
+              insertionPair?.fromId === item.id &&
+              insertionPair?.toId === null;
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
+            const isDragEnabled = canDragSwapVisit(item);
             return (
             <div className="timeline-flow-entry" key={item.id}>
             {isEditingVisitHere ? (
@@ -8163,7 +8424,15 @@ function ItineraryTimeline({
             <article
               className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${isExpanded ? " expanded" : ""}${
                 isItemFixed ? " fixed" : ""
+              }${isDragEnabled ? " drag-enabled" : ""}${draggedVisitId === item.id ? " dragging" : ""}${
+                dragTargetVisitId === item.id ? " drag-target" : ""
               }`}
+              draggable={isDragEnabled}
+              title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再交換景點內容" : undefined}
+              onDragEnd={clearVisitDrag}
+              onDragOver={(event) => updateVisitDragTarget(event, item)}
+              onDragStart={(event) => beginVisitDrag(event, item)}
+              onDrop={(event) => dropVisitContent(event, item)}
               onClick={() => {
                 setExpandedId(expandedId === item.id ? null : item.id);
                 onFocusItem(item.id);
@@ -8319,6 +8588,19 @@ function ItineraryTimeline({
               </div>
             ) : null}
             {!isAddingTransportHere && !transportItem ? renderTransportInsert(item, nextItem) : null}
+            {isAddingTailHere ? renderTransportEditorForm() : null}
+            {!isAddingTailHere && isTailPosition && tailTransportItem ? (
+              <div className="timeline-flow-entry" key={tailTransportItem.id}>
+                {isOpen && isTransportEditor && editingId === tailTransportItem.id
+                  ? renderTransportEditorForm()
+                  : renderTransportCard(
+                      tailTransportItem,
+                      useEditLocks && isLockedByAnotherUser(tailTransportItem, currentUserId),
+                      { isTail: true },
+                    )}
+              </div>
+            ) : null}
+            {!isAddingTailHere && isTailPosition && !tailTransportItem ? renderTailTransportInsert(item) : null}
             </div>
             );
           })
