@@ -2348,7 +2348,7 @@ textarea {
 
 .timeline-toolbar,
 .timeline-top-row {
-  --timeline-columns: minmax(380px, calc(30% + 6px)) minmax(420px, 1fr);
+  --timeline-columns: minmax(380px, min(556px, calc(30% + 6px))) minmax(420px, 1fr);
   --timeline-top-row-offset: 46px;
   --timeline-map-lift: 64px;
   display: grid;
@@ -2404,7 +2404,7 @@ textarea {
 }
 
 .timeline-workbench {
-  --timeline-columns: minmax(380px, 30fr) minmax(420px, 70fr);
+  --timeline-columns: minmax(380px, min(550px, 30%)) minmax(420px, 1fr);
   --timeline-map-transition-duration: 220ms;
   --timeline-map-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --timeline-top-row-offset: 46px;
