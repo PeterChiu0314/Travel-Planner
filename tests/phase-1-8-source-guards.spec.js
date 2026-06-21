@@ -75,7 +75,7 @@ test("phase 2.3 app shell owns desktop scroll and demo sidebar uses local parity
   expect(appSource).toContain("const demoTrips = [");
   expect(appSource).toContain('className={`sidebar demo-sidebar${isDemoSidebarCollapsed ? " collapsed" : ""}`}');
   expect(appSource).toContain('headingId="demo-sidebar-trips-title"');
-  expect(appSource).toContain("Demo User");
+  expect(appSource).toContain("Click to return to login");
   expect(appSource).toContain('className={`app-shell${appLayout ? " app-shell-workspace" : ""}${collapsed ? " sidebar-collapsed" : ""}`}');
   expect(styleSource).toContain(".app-shell-workspace {");
   expect(styleSource).toContain("height: 100dvh;");
@@ -89,6 +89,13 @@ test("phase 2.3 app shell owns desktop scroll and demo sidebar uses local parity
   expect(styleSource).toMatch(/\.app-shell-workspace\s*{\s*height:\s*auto;/);
   expect(styleSource).toMatch(/\.app-shell-workspace \.workspace\s*{\s*height:\s*auto;/);
   expect(styleSource).toMatch(/\.app-shell-workspace \.trip-header\s*{\s*position:\s*relative;/);
+});
+
+test("development version dialog stays in the formal account menu", () => {
+  expect(appSource).toContain("VersionInfoDialog");
+  expect(appSource).toContain("Development Preview");
+  expect(appSource).toContain("Collaborative Travel Web App");
+  expect(appSource).toContain("onVersion={() => setIsVersionDialogOpen(true)}");
 });
 
 test("phase 2.6 collapsed sidebar trip flyout stays local to formal and demo sidebars", () => {

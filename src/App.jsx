@@ -1,25 +1,40 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BadgeInfo,
   Bed,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   ClipboardCheck,
   HandCoins,
   LayoutDashboard,
   LayoutList,
+  Lock,
+  LockOpen,
+  LogIn,
   LogOut,
   Luggage,
   Map as MapIcon,
+  MapPin,
+  MessageCircleWarning,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
+  Plus,
+  Repeat2,
+  Route,
   Settings,
+  Trash2,
   Wallet,
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
+import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
 const attachmentBucket = "trip-attachments";
+const appVersion = "0.1.0";
 
 const desktopNavItems = [
   { id: "today", label: "總覽", shortLabel: "覽" },
@@ -642,7 +657,14 @@ function formatDate(date) {
   return new Intl.DateTimeFormat("zh-TW", {
     month: "numeric",
     day: "numeric",
-    weekday: "short",
+    weekday: "long",
+  }).format(date);
+}
+
+function formatDayTabDate(date) {
+  return new Intl.DateTimeFormat("zh-TW", {
+    month: "numeric",
+    day: "numeric",
   }).format(date);
 }
 
@@ -778,6 +800,10 @@ function useDayBoardNavigation(activeDay, isEnabled) {
       setScrollState({ left: false, right: false });
       return;
     }
+    const hasVerticalScrollbar = board.scrollHeight > board.clientHeight + 1;
+    const measuredScrollbarWidth = Math.max(0, board.offsetWidth - board.clientWidth);
+    const scrollbarWidth = hasVerticalScrollbar ? Math.max(12, measuredScrollbarWidth) : 0;
+    board.closest(".timeline-workbench")?.style.setProperty("--board-scrollbar-width", `${scrollbarWidth}px`);
     setScrollState({
       left: board.scrollLeft > 4,
       right: board.scrollLeft + board.clientWidth < board.scrollWidth - 4,
@@ -792,7 +818,7 @@ function useDayBoardNavigation(activeDay, isEnabled) {
         const column = board?.querySelector(`[data-day-index="${dayIndex}"]`);
         if (!board || !column) return;
         board.scrollTo({
-          left: column.offsetLeft - board.offsetLeft,
+          left: Math.max(0, column.offsetLeft - board.offsetLeft - 340),
           behavior: "smooth",
         });
         requestAnimationFrame(updateScrollState);
@@ -824,14 +850,54 @@ function useDayBoardNavigation(activeDay, isEnabled) {
     if (!board || !isEnabled) return;
     board.addEventListener("scroll", updateScrollState, { passive: true });
     window.addEventListener("resize", updateScrollState);
+    const resizeObserver = new ResizeObserver(updateScrollState);
+    resizeObserver.observe(board);
     updateScrollState();
     return () => {
       board.removeEventListener("scroll", updateScrollState);
       window.removeEventListener("resize", updateScrollState);
+      resizeObserver.disconnect();
     };
   }, [isEnabled, updateScrollState]);
 
   return { boardRef, scrollByDirection, scrollState, scrollToDay };
+}
+
+const timelineMapTransitionMs = 220;
+
+function useTimelineMapTransition() {
+  const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
+  const [isMapClosing, setIsMapClosing] = useState(false);
+  const closeTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) window.clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
+
+  const toggleRouteMap = useCallback(() => {
+    if (isMapClosing) return;
+    if (isRouteCollapsed) {
+      setIsRouteCollapsed(false);
+      return;
+    }
+
+    setIsMapClosing(true);
+    const closeDelay = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : timelineMapTransitionMs;
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setIsRouteCollapsed(true);
+      setIsMapClosing(false);
+      closeTimeoutRef.current = null;
+    }, closeDelay);
+  }, [isMapClosing, isRouteCollapsed]);
+
+  return {
+    isMapClosing,
+    isRouteCollapsed,
+    isRouteLayoutCollapsed: isRouteCollapsed,
+    toggleRouteMap,
+  };
 }
 
 function tripDays(trip) {
@@ -1092,11 +1158,13 @@ const demoTrips = [
   {
     ...demoTrip,
     id: "demo-trip-kyoto",
-    title: "京都琵琶湖之旅-TEST",
-    destination: "京都・琵琶湖, 日本",
-    start_date: "2027-04-05",
-    end_date: "2027-04-10",
-    updated_at: "2026-06-15T10:00:00.000Z",
+    title: kyotoDemoTrip.title,
+    destination: kyotoDemoTrip.destination,
+    destination_city: kyotoDemoTrip.destination_city,
+    destination_country: kyotoDemoTrip.destination_country,
+    start_date: kyotoDemoTrip.start_date,
+    end_date: kyotoDemoTrip.end_date,
+    updated_at: kyotoDemoTrip.updated_at,
   },
   {
     ...demoTrip,
@@ -1135,92 +1203,31 @@ const demoMembers = [
   { user_id: "demo-d", display_name: "Dora", email: "dora@example.com", role: "viewer", status: "approved" },
 ];
 
+function normalizeDemoTime(value) {
+  return value ? String(value).slice(0, 5) : "";
+}
+
 function createDemoTimelineItems() {
-  return [
-    {
-      id: "demo-itinerary-1",
-      day_index: 0,
-      sort_order: 10,
-      item_type: "visit",
-      type: "transport",
-      start_time: "09:10",
-      end_time: "10:25",
-      title: "成田特快前往新宿",
-      location: "成田機場",
-      location_name: "成田機場",
-      address: "日本千葉縣成田市古込1-1",
-      map_url: "https://maps.google.com/?q=Narita+Airport",
-      description: "搭車前先領取 IC 卡，確認票券與座位。",
-      transportation_note: "NEX 指定席，建議提早 15 分鐘到月台。",
-      cost: 9600,
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-    {
-      id: "demo-transport-1",
-      day_index: 0,
-      sort_order: 15,
-      item_type: "transport",
-      type: "transport",
-      start_time: "10:25",
-      end_time: null,
-      title: "JR奈良線",
-      location: null,
-      location_name: null,
-      address: null,
-      map_url: "",
-      description: "新宿站轉乘前往下一站，先確認月台。",
-      transportation_note: "新宿站轉乘前往下一站，先確認月台。",
-      transport_category: "jr",
-      transport_name: "JR奈良線",
-      transport_duration_minutes: 25,
-      transport_note: "新宿站轉乘前往下一站，先確認月台。",
-      from_item_id: "demo-itinerary-1",
-      to_item_id: "demo-itinerary-2",
-      from_snapshot_start_time: "09:10",
-      from_snapshot_end_time: "10:25",
-      from_snapshot_destination: "成田機場",
-      to_snapshot_start_time: "12:30",
-      to_snapshot_end_time: "13:30",
-      to_snapshot_destination: "新宿",
-      cost: 0,
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-    {
-      id: "demo-itinerary-2",
-      day_index: 0,
-      sort_order: 20,
-      item_type: "visit",
-      type: "food",
-      start_time: "12:30",
-      end_time: "13:30",
-      title: "新宿車站附近午餐",
-      location: "新宿",
-      location_name: "新宿",
-      address: "日本東京都新宿區",
-      map_url: "https://maps.google.com/?q=Shinjuku+Tokyo",
-      description: "依抵達時間彈性調整餐廳。",
-      transportation_note: "從車站東口步行前往。",
-      cost: 2400,
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-    {
-      id: "demo-itinerary-3",
-      day_index: 1,
-      item_type: "visit",
-      type: "attraction",
-      start_time: "10:00",
-      end_time: "12:00",
-      title: "明治神宮散步",
-      location: "原宿",
-      location_name: "明治神宮",
-      address: "日本東京都澀谷區代代木神園町1-1",
-      map_url: "https://maps.google.com/?q=Meiji+Shrine",
-      description: "早上散步與拍照，節奏放慢一點。",
-      transportation_note: "搭 JR 山手線到原宿站。",
-      cost: 0,
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-  ];
+  return [...(kyotoDemoTrip.itinerary_items || [])]
+    .map((item, index) => ({
+      ...item,
+      trip_id: "demo-trip-kyoto",
+      sort_order: Number.isFinite(Number(item.sort_order)) ? Number(item.sort_order) : index,
+      item_type: item.item_type || "visit",
+      start_time: normalizeDemoTime(item.start_time),
+      end_time: normalizeDemoTime(item.end_time),
+      from_snapshot_start_time: normalizeDemoTime(item.from_snapshot_start_time),
+      from_snapshot_end_time: normalizeDemoTime(item.from_snapshot_end_time),
+      to_snapshot_start_time: normalizeDemoTime(item.to_snapshot_start_time),
+      to_snapshot_end_time: normalizeDemoTime(item.to_snapshot_end_time),
+      note: item.note || "",
+      description: item.description || item.note || "",
+      transportation_note: item.transportation_note || item.transport_note || "",
+      cost: Number(item.cost || 0),
+      locked_by: null,
+      locked_at: null,
+    }))
+    .sort((a, b) => a.day_index - b.day_index || a.sort_order - b.sort_order || (a.start_time || "").localeCompare(b.start_time || ""));
 }
 
 function createDemoBudgetItems() {
@@ -1461,6 +1468,7 @@ export default function App() {
   const [luggageTab, setLuggageTab] = useState("personal");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
   const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
   const restoredDayRef = useRef(null);
   const [tripForm, setTripForm] = useState({
@@ -3012,6 +3020,7 @@ function exportTrip() {
 
   return (
     <Shell appLayout collapsed={isSidebarCollapsed}>
+      {isVersionDialogOpen ? <VersionInfoDialog onClose={() => setIsVersionDialogOpen(false)} /> : null}
       <aside className={`sidebar${isSidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand">
           <button
@@ -3089,6 +3098,7 @@ function exportTrip() {
           onSettings={() => setActiveSection("settings")}
           onSignOut={signOut}
           onToggle={() => setIsAccountMenuOpen((value) => !value)}
+          onVersion={() => setIsVersionDialogOpen(true)}
         />
       </aside>
 
@@ -3462,6 +3472,7 @@ function SidebarAccountMenu({
   onSettings,
   onSignOut,
   onToggle,
+  onVersion,
   settingsDisabled = false,
   signOutDisabled = false,
 }) {
@@ -3483,6 +3494,18 @@ function SidebarAccountMenu({
     <div className="user-box" ref={menuRef}>
       {isOpen ? (
         <div className="account-menu" role="menu" aria-label="帳號選單">
+          <button
+            className="account-menu-item"
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose();
+              onVersion();
+            }}
+          >
+            <BadgeInfo size={16} aria-hidden="true" strokeWidth={2.2} />
+            <span>版本</span>
+          </button>
           <button
             className="account-menu-item"
             type="button"
@@ -4969,7 +4992,6 @@ function DemoApp({ initialSection }) {
   const [isDemoMembersDialogOpen, setIsDemoMembersDialogOpen] = useState(false);
   const [demoActiveTrip, setDemoActiveTrip] = useState(() => demoTrips[0]);
   const [isDemoSidebarCollapsed, setIsDemoSidebarCollapsed] = useState(false);
-  const [isDemoAccountMenuOpen, setIsDemoAccountMenuOpen] = useState(false);
   const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
@@ -4981,10 +5003,9 @@ function DemoApp({ initialSection }) {
   const [luggageItems, setLuggageItems] = useState(() => createDemoLuggageItems());
   const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
   const [focusedItemId, setFocusedItemId] = useState(null);
-  const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
+  const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const days = useMemo(() => tripDays(demoActiveTrip), [demoActiveTrip]);
   useEffect(() => {
-    setIsDemoAccountMenuOpen(false);
     setIsDemoSidebarTripMenuOpen(false);
   }, [activeSection, demoActiveTrip.id, isDemoSidebarCollapsed]);
   const dayItems = useMemo(
@@ -4995,7 +5016,7 @@ function DemoApp({ initialSection }) {
     () => days.map((_, index) => sortScheduleItems(timelineItems.filter((item) => item.day_index === index))),
     [days, timelineItems],
   );
-  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteCollapsed);
+  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteLayoutCollapsed);
   const budgetsByItem = useMemo(() => {
     const byId = new Map(budgetItems.map((budget) => [budget.id, budget]));
     const next = {};
@@ -5029,9 +5050,13 @@ function DemoApp({ initialSection }) {
     window.history.pushState({}, "", `/demo/${section}`);
   }
 
+  function returnToLogin() {
+    window.location.assign("/");
+  }
+
   function selectTimelineDay(dayIndex) {
     setActiveDay(dayIndex);
-    if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
+    if (isRouteLayoutCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
 
   function updateDemoTripDateRange({ confirmTimelineRemoval = false, startDate, endDate }) {
@@ -5429,14 +5454,14 @@ function DemoApp({ initialSection }) {
           <button
             className="brand-mark"
             type="button"
-            title={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到 Demo 行程"}
-            aria-label={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到 Demo 行程"}
+            title={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到登入介面"}
+            aria-label={isDemoSidebarCollapsed ? "展開 Demo 側欄" : "回到登入介面"}
             onClick={() => {
               if (isDemoSidebarCollapsed) {
                 setIsDemoSidebarCollapsed(false);
                 return;
               }
-              changeSection("timeline");
+              returnToLogin();
             }}
           >
             <span className="brand-logo-text">TP</span>
@@ -5501,19 +5526,23 @@ function DemoApp({ initialSection }) {
             membership: { role: "owner", status: "approved" },
           }))}
         />
-        <SidebarAccountMenu
-          collapsed={isDemoSidebarCollapsed}
-          email="demo@example.com"
-          initial="D"
-          isOpen={isDemoAccountMenuOpen}
-          name="Demo User"
-          onClose={() => setIsDemoAccountMenuOpen(false)}
-          onSettings={() => {}}
-          onSignOut={() => {}}
-          onToggle={() => setIsDemoAccountMenuOpen((value) => !value)}
-          settingsDisabled
-          signOutDisabled
-        />
+        <div className="user-box demo-login-return">
+          <button
+            className="user-box-card"
+            type="button"
+            title="回到登入介面"
+            aria-label="Return to login"
+            onClick={returnToLogin}
+          >
+            <span className="user-avatar" aria-hidden="true">
+              <LogIn size={17} strokeWidth={2.1} />
+            </span>
+            <span className="user-account">
+              <strong className="nav-label">回到登入</strong>
+              <span className="user-email nav-label">Click to return to login</span>
+            </span>
+          </button>
+        </div>
       </aside>
       <main className="workspace demo-workspace">
         <TripHeader
@@ -5538,14 +5567,31 @@ function DemoApp({ initialSection }) {
         />
         {activeSection === "timeline" ? (
           <>
-            <div className="timeline-top-row">
-              <DayTabs activeDay={activeDay} dayPrefix="第" daySuffix="天" days={days} onActiveDay={selectTimelineDay} />
-              <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
-                {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+            <div className={`timeline-top-row${isRouteLayoutCollapsed ? " route-collapsed" : ""}`}>
+              <DayTabs
+                activeDay={activeDay}
+                dayPrefix="第"
+                daySuffix="天"
+                days={days}
+                layoutMode={isRouteLayoutCollapsed ? "collapsed" : "expanded"}
+                onActiveDay={selectTimelineDay}
+              />
+              <button
+                className="ghost-button compact timeline-map-toggle"
+                type="button"
+                title={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+                aria-label={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+                onClick={toggleRouteMap}
+              >
+                {isRouteCollapsed ? (
+                  <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
+                ) : (
+                  <Route size={18} strokeWidth={2.2} aria-hidden="true" />
+                )}
               </button>
             </div>
-            <div className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}`}>
-              {isRouteCollapsed ? (
+            <div className={`content-grid timeline-workbench${isRouteLayoutCollapsed ? " route-collapsed" : ""}`}>
+              {isRouteLayoutCollapsed ? (
                 <button
                   className="board-scroll-button left"
                   disabled={!dayBoardNavigation.scrollState.left}
@@ -5553,7 +5599,7 @@ function DemoApp({ initialSection }) {
                   aria-label="前一天"
                   onClick={() => dayBoardNavigation.scrollByDirection(-1)}
                 >
-                  ←
+                  <ChevronLeft aria-hidden="true" />
                 </button>
               ) : null}
               <section className="panel itinerary-panel" ref={dayBoardNavigation.boardRef}>
@@ -5567,7 +5613,7 @@ function DemoApp({ initialSection }) {
                   dayItems={dayItems}
                   dayDateLabel={days[activeDay] ? formatDate(days[activeDay]) : ""}
                   dayLabel={days[activeDay] ? `第 ${activeDay + 1} 天 / ${formatDate(days[activeDay])}` : ""}
-                  dayTitle={`Day ${activeDay + 1}`}
+                  dayTitle={`DAY ${activeDay + 1}`}
                   disableDraftAutosave
                   focusedItemId={focusedItemId}
                   headingEyebrow="行程"
@@ -5584,18 +5630,19 @@ function DemoApp({ initialSection }) {
                   restoreDrafts={false}
                   useEditLocks={false}
                 />
-                {isRouteCollapsed ? (
+                {isRouteLayoutCollapsed ? (
                   <MultiDayTimelineColumns
                     activeDay={activeDay}
+                    alternativesByItem={alternativesByItem}
+                    budgetsByItem={budgetsByItem}
                     days={days}
-                    focusedItemId={focusedItemId}
                     itemsByDay={itemsByDay}
                     onActiveDay={setActiveDay}
                   onFocusItem={setFocusedItemId}
                 />
               ) : null}
               </section>
-              {isRouteCollapsed ? (
+              {isRouteLayoutCollapsed ? (
                 <button
                   className="board-scroll-button right"
                   disabled={!dayBoardNavigation.scrollState.right}
@@ -5603,11 +5650,11 @@ function DemoApp({ initialSection }) {
                   aria-label="後一天"
                   onClick={() => dayBoardNavigation.scrollByDirection(1)}
                 >
-                  →
+                  <ChevronRight aria-hidden="true" />
                 </button>
               ) : null}
-              {isRouteCollapsed ? null : (
-                <aside className="side-panels">
+              {isRouteLayoutCollapsed ? null : (
+                <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
                   <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" onFocusItem={setFocusedItemId} />
                 </aside>
               )}
@@ -6370,7 +6417,7 @@ function TripWorkspace(props) {
   const isLuggageMode = activeSection === "luggage";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
-  const [isRouteCollapsed, setIsRouteCollapsed] = useState(false);
+  const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const alternativesByItem = useMemo(() => {
     const next = {};
     alternatives.forEach((alternative) => {
@@ -6392,11 +6439,11 @@ function TripWorkspace(props) {
     () => days.map((_, index) => sortScheduleItems(items.filter((item) => item.day_index === index))),
     [days, items],
   );
-  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteCollapsed);
+  const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteLayoutCollapsed);
 
   function selectTimelineDay(dayIndex) {
     onActiveDay(dayIndex);
-    if (isRouteCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
+    if (isRouteLayoutCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
 
   return (
@@ -6422,10 +6469,25 @@ function TripWorkspace(props) {
       ) : null}
 
       {isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode ? null : (
-        <div className="timeline-top-row">
-          <DayTabs activeDay={activeDay} days={days} onActiveDay={selectTimelineDay} />
-          <button className="ghost-button compact" type="button" onClick={() => setIsRouteCollapsed((value) => !value)}>
-            {isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+        <div className={`timeline-top-row${isRouteLayoutCollapsed ? " route-collapsed" : ""}`}>
+          <DayTabs
+            activeDay={activeDay}
+            days={days}
+            layoutMode={isRouteLayoutCollapsed ? "collapsed" : "expanded"}
+            onActiveDay={selectTimelineDay}
+          />
+          <button
+            className="ghost-button compact timeline-map-toggle"
+            type="button"
+            title={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+            aria-label={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
+            onClick={toggleRouteMap}
+          >
+            {isRouteCollapsed ? (
+              <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
+            ) : (
+              <Route size={18} strokeWidth={2.2} aria-hidden="true" />
+            )}
           </button>
         </div>
       )}
@@ -6521,13 +6583,13 @@ function TripWorkspace(props) {
       </div>
 
       <div
-        className={`content-grid timeline-workbench${isRouteCollapsed ? " route-collapsed" : ""}${
+        className={`content-grid timeline-workbench${isRouteLayoutCollapsed ? " route-collapsed" : ""}${
           isTodayMode || isBudgetMode || isAccommodationMode || isTodoMode || isLuggageMode || isSettlementMode
             ? " hidden-section"
             : ""
         }`}
       >
-        {isRouteCollapsed ? (
+        {isRouteLayoutCollapsed ? (
           <button
             className="board-scroll-button left"
             disabled={!dayBoardNavigation.scrollState.left}
@@ -6535,7 +6597,7 @@ function TripWorkspace(props) {
             aria-label="前一天"
             onClick={() => dayBoardNavigation.scrollByDirection(-1)}
           >
-            ←
+            <ChevronLeft aria-hidden="true" />
           </button>
         ) : null}
         <section className="panel itinerary-panel" ref={dayBoardNavigation.boardRef}>
@@ -6550,7 +6612,7 @@ function TripWorkspace(props) {
                 dayItems={dayItems}
                 dayDateLabel={days[activeDay] ? formatDate(days[activeDay]) : ""}
                 dayLabel={days[activeDay] ? `Day ${activeDay + 1} · ${formatDate(days[activeDay])}` : ""}
-                dayTitle={`Day ${activeDay + 1}`}
+                dayTitle={`DAY ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
                 onApplyAlternative={onApplyAlternative}
                 onConfirmTransportWarning={onConfirmTransportWarning}
@@ -6563,11 +6625,12 @@ function TripWorkspace(props) {
                 onToggleItemFixed={onToggleItemFixed}
                 restoreDrafts={activeSection === "timeline"}
               />
-              {isRouteCollapsed ? (
+              {isRouteLayoutCollapsed ? (
                 <MultiDayTimelineColumns
                   activeDay={activeDay}
+                  alternativesByItem={alternativesByItem}
+                  budgetsByItem={budgetsByItem}
                   days={days}
-                  focusedItemId={focusedItemId}
                   itemsByDay={itemsByDay}
                   onActiveDay={onActiveDay}
                   onFocusItem={setFocusedItemId}
@@ -6575,7 +6638,7 @@ function TripWorkspace(props) {
               ) : null}
             </section>
 
-            {isRouteCollapsed ? (
+            {isRouteLayoutCollapsed ? (
               <button
                 className="board-scroll-button right"
                 disabled={!dayBoardNavigation.scrollState.right}
@@ -6583,11 +6646,11 @@ function TripWorkspace(props) {
                 aria-label="後一天"
                 onClick={() => dayBoardNavigation.scrollByDirection(1)}
               >
-                →
+                <ChevronRight aria-hidden="true" />
               </button>
             ) : null}
-            {isRouteCollapsed ? null : (
-              <aside className="side-panels">
+            {isRouteLayoutCollapsed ? null : (
+              <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
                 <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
               </aside>
             )}
@@ -6681,20 +6744,221 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
   );
 }
 
-function DayTabs({ activeDay, dayPrefix = "Day", daySuffix = "", days, onActiveDay }) {
+function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
+  const dragStateRef = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, lastX: 0, lastTime: 0, velocity: 0 });
+  const momentumFrameRef = useRef(null);
+  const navRef = useRef(null);
+  const suppressClickRef = useRef(false);
+  const [tabScrollState, setTabScrollState] = useState({ left: false, right: false });
+
+  function updateTabScrollState() {
+    const nav = navRef.current;
+    if (!nav) return;
+    const maxScrollLeft = Math.max(0, nav.scrollWidth - nav.clientWidth);
+    setTabScrollState({
+      left: nav.scrollLeft > 1,
+      right: nav.scrollLeft < maxScrollLeft - 1,
+    });
+  }
+
+  function stopMomentum() {
+    if (momentumFrameRef.current) {
+      window.cancelAnimationFrame(momentumFrameRef.current);
+      momentumFrameRef.current = null;
+    }
+  }
+
+  function glideTabs(nav, velocity) {
+    if (Math.abs(velocity) < 0.02) {
+      momentumFrameRef.current = null;
+      return;
+    }
+    nav.scrollLeft -= velocity * 16;
+    momentumFrameRef.current = window.requestAnimationFrame(() => glideTabs(nav, velocity * 0.92));
+  }
+
+  function startDrag(event) {
+    const nav = event.currentTarget;
+    stopMomentum();
+    dragStateRef.current = {
+      isDragging: true,
+      startX: event.clientX,
+      scrollLeft: nav.scrollLeft,
+      moved: false,
+      lastX: event.clientX,
+      lastTime: performance.now(),
+      velocity: 0,
+    };
+    nav.setPointerCapture(event.pointerId);
+  }
+
+  function dragTabs(event) {
+    const dragState = dragStateRef.current;
+    if (!dragState.isDragging) return;
+    const now = performance.now();
+    const distance = event.clientX - dragState.startX;
+    const elapsed = Math.max(now - dragState.lastTime, 1);
+    if (Math.abs(distance) > 12) dragState.moved = true;
+    dragState.velocity = (event.clientX - dragState.lastX) / elapsed;
+    dragState.lastX = event.clientX;
+    dragState.lastTime = now;
+    event.currentTarget.scrollLeft = dragState.scrollLeft - distance;
+  }
+
+  function endDrag(event) {
+    const nav = event.currentTarget;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (dragStateRef.current.moved) {
+      suppressClickRef.current = true;
+      glideTabs(nav, dragStateRef.current.velocity);
+    } else {
+      const hitTarget = document.elementFromPoint(event.clientX, event.clientY);
+      const tab = hitTarget ? hitTarget.closest(".day-tab") : null;
+      const dayIndex = tab ? Number(tab.dataset.dayIndex) : NaN;
+      if (Number.isInteger(dayIndex)) onActiveDay(dayIndex);
+    }
+    dragStateRef.current.isDragging = false;
+  }
+
+  function selectDay(index) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    onActiveDay(index);
+  }
+
+  function scrollTabs(direction) {
+    const nav = navRef.current;
+    if (!nav) return;
+    stopMomentum();
+    nav.scrollBy({ left: direction * Math.max(nav.clientWidth * 0.72, 160), behavior: "smooth" });
+  }
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    function alignActiveTab() {
+      if (activeDay === 0) {
+        nav.scrollLeft = 0;
+        return;
+      }
+      if (activeDay === days.length - 1) {
+        nav.scrollLeft = nav.scrollWidth - nav.clientWidth;
+        return;
+      }
+      const activeTab = nav.querySelector(`[data-day-index="${activeDay}"]`);
+      activeTab?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+    alignActiveTab();
+    updateTabScrollState();
+    const frame = window.requestAnimationFrame(() => {
+      alignActiveTab();
+      updateTabScrollState();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeDay, days.length, layoutMode]);
+
+  useEffect(() => {
+    updateTabScrollState();
+    window.addEventListener("resize", updateTabScrollState);
+    return () => window.removeEventListener("resize", updateTabScrollState);
+  }, [days.length, layoutMode]);
+
   return (
-    <nav className="day-tabs" aria-label="日期切換">
+    <div
+      className={`day-tabs-shell ${layoutMode === "collapsed" ? "is-collapsed" : "is-expanded"}${
+        tabScrollState.left ? " has-left-edge" : ""
+      }${tabScrollState.right ? " has-right-edge" : ""}`}
+    >
+      {tabScrollState.left ? (
+        <button className="day-tabs-edge left" type="button" aria-label="向左滑動日期" onClick={() => scrollTabs(-1)}>
+          ‹
+        </button>
+      ) : null}
+      <nav
+      className="day-tabs"
+      ref={navRef}
+      aria-label="日期切換"
+      onPointerDown={startDrag}
+      onPointerMove={dragTabs}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onScroll={updateTabScrollState}
+      onPointerLeave={(event) => {
+        if (dragStateRef.current.isDragging) endDrag(event);
+      }}
+    >
       {days.map((date, index) => (
         <button
           className={`day-tab${index === activeDay ? " active" : ""}`}
+          data-day-index={index}
           key={date.toISOString()}
           type="button"
-          onClick={() => onActiveDay(index)}
+          onClick={() => selectDay(index)}
         >
-          {dayPrefix} {index + 1} {daySuffix} {formatDate(date)}
+          <span className="day-tab-index">DAY {index + 1}</span>
+          <span className="day-tab-separator" aria-hidden="true">
+            ·
+          </span>
+          <span className="day-tab-date">{formatDayTabDate(date)}</span>
         </button>
       ))}
-    </nav>
+      </nav>
+      {tabScrollState.right ? (
+        <button className="day-tabs-edge right" type="button" aria-label="向右滑動日期" onClick={() => scrollTabs(1)}>
+          ›
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function VersionInfoDialog({ onClose }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="dialog-card version-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="version-dialog-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="version-dialog-logo" aria-hidden="true">TP</div>
+        <div className="version-dialog-heading">
+          <span className="version-dialog-stage">Development Preview</span>
+          <h2 id="version-dialog-title">旅程規劃室</h2>
+          <p>Travel Planner</p>
+        </div>
+        <dl className="version-dialog-facts">
+          <div>
+            <dt>當前版本</dt>
+            <dd>v{appVersion}</dd>
+          </div>
+          <div>
+            <dt>產品類型</dt>
+            <dd>Collaborative Travel Web App</dd>
+          </div>
+          <div>
+            <dt>開發者</dt>
+            <dd>PeterChiu</dd>
+          </div>
+        </dl>
+        <button className="ghost-button version-dialog-close" type="button" onClick={onClose}>
+          關閉
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -7416,7 +7680,7 @@ function ItineraryTimeline({
           <strong>{transportCardTitle(item)}</strong>
           {hasWarning ? (
             <span className="transport-warning-badge" aria-label="交通資訊需確認">
-              <span aria-hidden="true">⚠</span>
+              <MessageCircleWarning aria-hidden="true" />
             </span>
           ) : null}
         </div>
@@ -7475,7 +7739,7 @@ function ItineraryTimeline({
                   openEditItem(item);
                 }}
               >
-                E
+                <Pencil aria-hidden="true" />
               </button>
               <button
                 className="mini-button"
@@ -7487,7 +7751,7 @@ function ItineraryTimeline({
                   requestDeleteItem(item);
                 }}
               >
-                X
+                <Trash2 aria-hidden="true" />
               </button>
             </div>
           </>
@@ -7714,6 +7978,21 @@ function ItineraryTimeline({
 
   function renderAlternativeSummary(item, alternative, isAlternativeFace) {
     const alternativeError = alternativeErrorByItem[item.id];
+    const alternativeFlipButton = !item.is_fixed ? (
+      <button
+        className="alternative-flip-button"
+        disabled={!canEdit}
+        type="button"
+        title={alternative ? "Toggle primary / alternative" : "Create alternative"}
+        aria-label={alternative ? "切換原行程與備案" : "建立備案"}
+        onClick={(event) => {
+          event.stopPropagation();
+          flipAlternativeFace(item, alternative);
+        }}
+      >
+        <Repeat2 aria-hidden="true" />
+      </button>
+    ) : null;
     return (
       <div className="alternative-list compact">
         {alternativeError ? (
@@ -7724,23 +8003,31 @@ function ItineraryTimeline({
         {isAlternativeFace && alternative ? (
           <div className="alternative-relation-row">
             <span>{`原行程：${visitDestination(item)}`}</span>
+            {alternativeFlipButton}
           </div>
         ) : (
           <div className="alternative-relation-row">
-            <span>{alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}</span>
-            {alternative && !item.is_fixed ? (
-              <button
-                className="mini-button"
-                disabled={!canEdit}
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  deleteAlternative(item.id, alternative.id);
-                }}
-              >
-                X
-              </button>
-            ) : null}
+            <span className={!alternative ? "alternative-empty-hint" : undefined}>
+              {alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}
+            </span>
+            <div className="alternative-relation-actions">
+              {alternative && !item.is_fixed ? (
+                <button
+                  className="mini-button"
+                  disabled={!canEdit}
+                  aria-label="刪除備案"
+                  title="刪除備案"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    deleteAlternative(item.id, alternative.id);
+                  }}
+                >
+                  <Trash2 aria-hidden="true" />
+                </button>
+              ) : null}
+              {alternativeFlipButton}
+            </div>
           </div>
         )}
       </div>
@@ -7776,12 +8063,20 @@ function ItineraryTimeline({
     ) : null}
     <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
-        <div>
+        <div className="timeline-column-title">
           <p className="eyebrow">{dayTitle || headingEyebrow}</p>
           <h3>{dayDateLabel || dayLabel}</h3>
         </div>
-        <button className="icon-button" disabled={!canEdit} type="button" title="新增行程" onClick={openNewItem}>
-          +
+        <button
+          className="icon-button timeline-add-button"
+          disabled={!canEdit}
+          type="button"
+          title="新增行程"
+          aria-label="新增行程"
+          onClick={openNewItem}
+        >
+          <Plus aria-hidden="true" />
+          <MapPin aria-hidden="true" />
         </button>
       </div>
 
@@ -7908,31 +8203,6 @@ function ItineraryTimeline({
                   ) : null}
                 </div>
                 {lockedByOther ? <div className="lock-note">{memberName(locker)} 正在編輯這筆資料</div> : null}
-                {isExpanded ? (
-                  <div className="item-details">
-                    {displayItem.description || displayItem.note ? <p>{displayItem.description || displayItem.note}</p> : null}
-                    {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
-                    {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
-                    {displayItem.map_url ? (
-                      <a href={displayItem.map_url} rel="noreferrer" target="_blank">
-                        開啟地圖
-                      </a>
-                    ) : null}
-                    <div className="linked-budget-list">
-                      <strong>連動預算</strong>
-                      {(budgetsByItem[item.id] || []).length ? (
-                        (budgetsByItem[item.id] || []).map((budget) => (
-                          <span className="pill" key={budget.id}>
-                            {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="muted-text">尚未連動預算</span>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-                    {isExpanded ? renderAlternativeSummary(item, alternative, isAlternativeFace) : null}
                   </>
                 )}
               </div>
@@ -7948,7 +8218,7 @@ function ItineraryTimeline({
                       toggleItemFixed(item);
                     }}
                   >
-                    {isItemFixed ? "🔒" : "🔓"}
+                    {isItemFixed ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
                   </button>
                 ) : null}
                 {!isAlternativeFace && !isItemFixed ? (
@@ -7962,7 +8232,7 @@ function ItineraryTimeline({
                       openEditItem(item);
                     }}
                   >
-                    E
+                    <Pencil aria-hidden="true" />
                   </button>
                 ) : null}
                 {isAlternativeFace && alternative && !isAlternativeFormFace && !isItemFixed ? (
@@ -7978,7 +8248,7 @@ function ItineraryTimeline({
                       resetAlternativeError(item.id);
                     }}
                   >
-                    E
+                    <Pencil aria-hidden="true" />
                   </button>
                 ) : null}
                 {!isItemFixed ? (
@@ -8002,24 +8272,37 @@ function ItineraryTimeline({
                       }
                     }}
                   >
-                    X
+                    <Trash2 aria-hidden="true" />
                   </button>
                 ) : null}
               </div>
-              {isExpanded && !isItemFixed ? (
-                <div className="alternative-card-footer">
-                  <button
-                    className="alternative-flip-button"
-                    disabled={!canEdit}
-                    type="button"
-                    title={alternative ? "Toggle primary / alternative" : "Create alternative"}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      flipAlternativeFace(item, alternative);
-                    }}
-                  >
-                    ↻
-                  </button>
+              {isExpanded && !isAlternativeFormFace ? (
+                <div className="item-expanded-content">
+                  <div className="item-details">
+                    {displayItem.description || displayItem.note ? (
+                      <p className="item-detail-note">{displayItem.description || displayItem.note}</p>
+                    ) : null}
+                    {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
+                    {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
+                    {displayItem.map_url ? (
+                      <a href={displayItem.map_url} rel="noreferrer" target="_blank">
+                        開啟地圖
+                      </a>
+                    ) : null}
+                    <div className="linked-budget-list">
+                      <strong>連動預算</strong>
+                      {(budgetsByItem[item.id] || []).length ? (
+                        (budgetsByItem[item.id] || []).map((budget) => (
+                          <span className="pill" key={budget.id}>
+                            {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="muted-text">尚未連動預算</span>
+                      )}
+                    </div>
+                  </div>
+                  {renderAlternativeSummary(item, alternative, isAlternativeFace)}
                 </div>
               ) : null}
             </article>
@@ -8048,7 +8331,15 @@ function ItineraryTimeline({
   );
 }
 
-function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, onActiveDay, onFocusItem }) {
+function MultiDayTimelineColumns({
+  activeDay,
+  alternativesByItem = {},
+  budgetsByItem = {},
+  days,
+  itemsByDay,
+  onActiveDay,
+  onFocusItem,
+}) {
   const otherDays = days
     .map((date, index) => ({ date, index, items: itemsByDay[index] || [] }))
     .filter((day) => day.index !== activeDay);
@@ -8076,7 +8367,7 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
           }}
         >
           <div className="timeline-day-preview-heading timeline-column-header">
-            <div>
+            <div className="timeline-column-title">
               <p className="eyebrow">Day {day.index + 1}</p>
               <h4>{formatDate(day.date)}</h4>
             </div>
@@ -8086,13 +8377,19 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
               visits.map((item, index) => {
                 const destination = item.location_name || item.location || item.title;
                 const secondaryText = item.note || item.description || item.transportation_note;
+                const linkedBudgetTotal = (budgetsByItem[item.id] || []).reduce(
+                  (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
+                  0,
+                );
+                const displayCost = linkedBudgetTotal || Number(item.cost || 0);
+                const hasAlternative = Boolean((alternativesByItem[item.id] || []).length);
                 const nextItem = visits[index + 1];
                 const pairKey = nextItem ? transportPairKey(item.id, nextItem.id) : "";
                 const transportItem = pairKey ? adjacentTransportByPair[pairKey] : null;
                 return (
                   <Fragment key={item.id}>
                   <button
-                    className={`timeline-preview-card${focusedItemId === item.id ? " focused" : ""}`}
+                    className="timeline-preview-card"
                     type="button"
                     onClick={() => {
                       onActiveDay(day.index);
@@ -8100,14 +8397,26 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
                     }}
                   >
                     <span className="time-block">{formatTimeDisplay(item.start_time) || "--:--"}</span>
-                    <span>
+                    <span className="timeline-preview-content">
                       <strong>{destination}</strong>
                       {secondaryText ? <em>{secondaryText}</em> : null}
+                      <span className="timeline-preview-meta">
+                        {typeLabels[item.type] ? (
+                          <span
+                            className="pill"
+                            style={{ background: `${typeColors[item.type]}22`, color: typeColors[item.type] }}
+                          >
+                            {typeLabels[item.type]}
+                          </span>
+                        ) : null}
+                        {displayCost > 0 ? <span className="pill">{formatMoney(displayCost)}</span> : null}
+                        {hasAlternative ? <span className="pill">備案</span> : null}
+                      </span>
                     </span>
                   </button>
                   {transportItem ? (
                     <button
-                      className={`timeline-preview-card transport-preview-card${focusedItemId === transportItem.id ? " focused" : ""}`}
+                      className="timeline-preview-card transport-preview-card"
                       type="button"
                       onClick={() => {
                         onActiveDay(day.index);
@@ -8139,7 +8448,7 @@ function MultiDayTimelineColumns({ activeDay, days, focusedItemId, itemsByDay, o
 function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
   const stops = sortedVisitItems(dayItems).filter((item) => item.location_name || item.location);
   return (
-    <section className="panel">
+    <section className="panel route-panel">
       <div className="panel-heading tight">
         <div>
           <p className="eyebrow">{headingEyebrow}</p>

@@ -70,6 +70,7 @@ test("app shell loads without crashing", async ({ page }) => {
     page.getByRole("heading", { name: /一起把旅程排好|需要 Supabase 設定/ }),
   ).toBeVisible();
   expect(failures).toEqual([]);
+
 });
 
 test("demo timeline renders without authentication", async ({ page }) => {
@@ -80,10 +81,13 @@ test("demo timeline renders without authentication", async ({ page }) => {
   await expect(page.getByText("Demo Mode 資料不會永久保存。")).toBeVisible();
   await expect(page.getByRole("button", { name: "京都琵琶湖之旅-TEST，目前旅程" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "我的旅程" })).toBeVisible();
-  await expect(page.getByText("Demo User")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "成田機場" })).toBeVisible();
+  await expect(page.getByText("回到登入", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "平安出國停車場" })).toBeVisible();
   await expect(page.getByRole("button", { name: /隱藏地圖|顯示地圖/ })).toBeVisible();
   expect(failures).toEqual([]);
+
+  await page.getByRole("button", { name: "Return to login" }).click();
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("demo navigation can switch to budget and luggage", async ({ page }) => {

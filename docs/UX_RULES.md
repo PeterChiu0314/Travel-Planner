@@ -101,6 +101,37 @@ Do not:
 - Hide the next stop behind too many taps.
 - Overload cards with every field by default.
 
+## Timeline Workspace UX Rules
+
+The desktop Timeline Workspace combines Day navigation, Day Boards, and route/map context. Its layout should stay stable while the map opens and closes.
+
+Do:
+
+- Keep Day Tabs outside the Header while visually aligning them directly below it.
+- When the map is expanded, limit Day Tabs to the Day Board column and let the map surface own the full right side from the top of the workspace.
+- When the map is collapsed, let Day Tabs and the multi-day Day Board use the full workspace width.
+- Keep the map toggle in a stable workspace-relative position; tab count and tab scrolling must not move it off screen.
+- Give Timeline scroll ownership to the inner Day Board. Avoid competing page, workspace, and panel scrollbars.
+- Keep Day Tabs clickable and draggable. Dragging must not accidentally switch days.
+- Use real transparency masks for overflowing Day Tabs; do not simulate fading by painting over tabs with guessed background colors.
+- Hide an edge hint when its corresponding scroll direction is no longer available.
+- Keep selected Day Boards slightly inset after automatic horizontal positioning so edge controls do not cover card content.
+- Keep Map-expanded and Map-collapsed visit cards on the same typography, spacing, and action-control system.
+- Let expanded visit details use the card width below the divider without changing the compact information layout above it.
+- Use familiar Lucide icons for lock, edit, delete, add, map, route, and directional actions, with accessible labels or tooltips.
+- Treat the future map area as a full workspace surface, not as a decorative nested card.
+- Use Timeline-specific selectors for layout overrides instead of changing global `.panel` or `.content-grid` behavior.
+- Keep Formal Timeline and `/demo/timeline` on shared components and shared Timeline CSS.
+
+Do not:
+
+- Put Day Tabs inside the Header merely to achieve visual continuity.
+- Let Map-expanded and Map-collapsed modes drift into separate card designs.
+- Add background-colored edge overlays that only match one workspace state.
+- Let navigation buttons cover visible scrollbars or important card content.
+- Create Demo-only workspace wrappers or grid rules that hide Formal layout regressions.
+- Introduce Google Map, route calculation, sorting, drag/drop, or transportation insertion behavior as part of layout-only polish.
+
 ## Transportation Card UX Rules
 
 Transportation cards complete the travel flow between visit cards.
