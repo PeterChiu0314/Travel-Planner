@@ -815,7 +815,7 @@ function useDayBoardNavigation(activeDay, isEnabled) {
         const column = board?.querySelector(`[data-day-index="${dayIndex}"]`);
         if (!board || !column) return;
         board.scrollTo({
-          left: Math.max(0, column.offsetLeft - board.offsetLeft - 50),
+          left: Math.max(0, column.offsetLeft - board.offsetLeft - 340),
           behavior: "smooth",
         });
         requestAnimationFrame(updateScrollState);
