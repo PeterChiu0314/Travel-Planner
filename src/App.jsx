@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BadgeInfo,
   Bed,
   ChevronDown,
   ChevronLeft,
@@ -33,6 +34,7 @@ import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
 const attachmentBucket = "trip-attachments";
+const appVersion = "0.1.0";
 
 const desktopNavItems = [
   { id: "today", label: "總覽", shortLabel: "覽" },
@@ -1466,6 +1468,7 @@ export default function App() {
   const [luggageTab, setLuggageTab] = useState("personal");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
   const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
   const restoredDayRef = useRef(null);
   const [tripForm, setTripForm] = useState({
@@ -3017,6 +3020,7 @@ function exportTrip() {
 
   return (
     <Shell appLayout collapsed={isSidebarCollapsed}>
+      {isVersionDialogOpen ? <VersionInfoDialog onClose={() => setIsVersionDialogOpen(false)} /> : null}
       <aside className={`sidebar${isSidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand">
           <button
@@ -3094,6 +3098,7 @@ function exportTrip() {
           onSettings={() => setActiveSection("settings")}
           onSignOut={signOut}
           onToggle={() => setIsAccountMenuOpen((value) => !value)}
+          onVersion={() => setIsVersionDialogOpen(true)}
         />
       </aside>
 
@@ -3467,6 +3472,7 @@ function SidebarAccountMenu({
   onSettings,
   onSignOut,
   onToggle,
+  onVersion,
   settingsDisabled = false,
   signOutDisabled = false,
 }) {
@@ -3488,6 +3494,18 @@ function SidebarAccountMenu({
     <div className="user-box" ref={menuRef}>
       {isOpen ? (
         <div className="account-menu" role="menu" aria-label="帳號選單">
+          <button
+            className="account-menu-item"
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose();
+              onVersion();
+            }}
+          >
+            <BadgeInfo size={16} aria-hidden="true" strokeWidth={2.2} />
+            <span>版本</span>
+          </button>
           <button
             className="account-menu-item"
             type="button"
@@ -6894,6 +6912,52 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
           ›
         </button>
       ) : null}
+    </div>
+  );
+}
+
+function VersionInfoDialog({ onClose }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="dialog-card version-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="version-dialog-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="version-dialog-logo" aria-hidden="true">TP</div>
+        <div className="version-dialog-heading">
+          <span className="version-dialog-stage">Development Preview</span>
+          <h2 id="version-dialog-title">旅程規劃室</h2>
+          <p>Travel Planner</p>
+        </div>
+        <dl className="version-dialog-facts">
+          <div>
+            <dt>當前版本</dt>
+            <dd>v{appVersion}</dd>
+          </div>
+          <div>
+            <dt>產品類型</dt>
+            <dd>Collaborative Travel Web App</dd>
+          </div>
+          <div>
+            <dt>開發者</dt>
+            <dd>PeterChiu</dd>
+          </div>
+        </dl>
+        <button className="ghost-button version-dialog-close" type="button" onClick={onClose}>
+          關閉
+        </button>
+      </div>
     </div>
   );
 }

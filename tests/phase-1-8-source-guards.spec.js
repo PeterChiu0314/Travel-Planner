@@ -91,6 +91,13 @@ test("phase 2.3 app shell owns desktop scroll and demo sidebar uses local parity
   expect(styleSource).toMatch(/\.app-shell-workspace \.trip-header\s*{\s*position:\s*relative;/);
 });
 
+test("development version dialog stays in the formal account menu", () => {
+  expect(appSource).toContain("VersionInfoDialog");
+  expect(appSource).toContain("Development Preview");
+  expect(appSource).toContain("Collaborative Travel Web App");
+  expect(appSource).toContain("onVersion={() => setIsVersionDialogOpen(true)}");
+});
+
 test("phase 2.6 collapsed sidebar trip flyout stays local to formal and demo sidebars", () => {
   expect(appSource).toContain("const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);");
   expect(appSource).toContain("const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);");
