@@ -2726,7 +2726,27 @@ textarea {
 
 .timeline-item.drag-target {
   border-color: var(--mint);
-  box-shadow: inset 4px 0 0 var(--mint), 0 0 0 2px rgba(47, 143, 114, 0.14);
+  box-shadow: 0 0 0 2px rgba(47, 143, 114, 0.14);
+}
+
+.timeline-item.drag-target::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  right: 8px;
+  left: 8px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--mint);
+  pointer-events: none;
+}
+
+.timeline-item.drag-before::before {
+  top: 0;
+}
+
+.timeline-item.drag-after::before {
+  bottom: 0;
 }
 
 .transport-insert-zone {

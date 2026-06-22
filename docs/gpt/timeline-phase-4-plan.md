@@ -1,6 +1,6 @@
 # Timeline Phase 4 Plan
 
-Date: 2026-06-21
+Date: 2026-06-22
 
 ## Phase Name
 
@@ -16,7 +16,7 @@ Phase 4 should now improve how users continue planning a day:
 
 - Add a transportation card at the end of a day even before the next destination is known.
 - Use that trailing transportation card to suggest the next visit start time.
-- Allow users to swap scheduled visit content without moving the time slots.
+- Allow users to insert/reorder scheduled destination packages without moving the time slots.
 - Warn users when adding or editing a visit would break an existing transportation pair.
 - Support local time continuation without automatically rebuilding the whole day.
 - Keep untimed visits available and ordered predictably.
@@ -31,7 +31,7 @@ The product direction remains travel-first: the Timeline should help users plan 
 Previous completed stage:
 
 ```text
-App Layout Phase 3.3 - Completed / User Verified
+Timeline Phase 4.2c - Implementation and Production RPC QA Completed
 ```
 
 Known verified baseline:
@@ -44,7 +44,7 @@ Known verified baseline:
 - Demo remains isolated from Supabase, Auth, Realtime, Storage, Draft Autosave, and Edit Lock.
 - Build and E2E passed in the previous closeout.
 
-Phase 4 must start from the updated, verified baseline.
+Phase 4.1, 4.2a, 4.2b, and 4.2c are complete. Production migrations `019`, `020`, and corrective `021` are applied and immutable. Phase 4.3 must start from the Phase 4.2c closeout handoff.
 
 ---
 
@@ -121,21 +121,23 @@ to_item_id = null
 
 Dragging timed visits in Phase 4 does not mean normal list sorting.
 
-For timed visits, drag should swap visit content while keeping the time slots in place:
+For timed visits, drag inserts destination-package content into a new package position while keeping the ordered time slots in place:
 
 ```text
 Before:
 09:00 A
 10:30 B
 13:00 C
+15:00 D
 
-Drag C onto A:
-09:00 C
-10:30 B
+Drag A after C:
+09:00 B
+10:30 C
 13:00 A
+15:00 D
 ```
 
-The time slots stay fixed. The visit contents move.
+The time slots and visit row IDs stay fixed. Destination packages move.
 
 This avoids fighting the existing `start_time` ordering model and avoids requiring a new `sort_order` field for timed visits.
 
@@ -338,9 +340,11 @@ The first implementation should prefer the existing nullable pair model and shou
 
 ---
 
-# Phase 4.2 - Drag Visit Content Swap
+# Phase 4.2 - Destination-Package Drag
 
 ## Goal
+
+Historical note: the original two-item swap wording below records the Phase 4.2b foundation. The Phase 4.2c Completion Addendum is the final user-facing behavior and takes precedence where the wording differs.
 
 Support intuitive rearrangement of timed visit content without moving the time slots.
 
@@ -420,6 +424,63 @@ This is a normal transportation warning, not a hard error.
 - Active editor blocks or resolves before swap.
 - Demo and Formal behavior match.
 - Existing save/edit/delete behavior still works.
+
+## Phase 4.2c Completion Addendum
+
+The final user-facing drag behavior is insertion-style destination-package reorder, not two-item swap:
+
+```text
+Before: A B C D
+Drag A to the gap after C
+After:  B C A D
+```
+
+Phase breakdown:
+
+- Phase 4.2a defined the destination-package allowlist and child relationship rules.
+- Phase 4.2b introduced immutable migration `019_swap_itinerary_destination_packages.sql` as the atomic two-item swap foundation.
+- Phase 4.2c replaced the UI gesture with insertion-style N-way reorder.
+- The 019 RPC remains deployed for compatibility, but the current UI calls only the 020 reorder RPC.
+
+Final 4.2c rules:
+
+- Timed visit IDs, `start_time`, `end_time`, and `sort_order` stay in their original slots.
+- Upper target half inserts before; lower target half inserts after.
+- Untimed visits and transportation cards are neither sources nor targets.
+- An unchanged permutation is a no-op with no confirmation and no RPC.
+- Any fixed timed visit or active foreign lock blocks the day reorder.
+- Any active Timeline editor blocks drag until Save or Discard.
+- Alternatives and linked budget rows follow their destination packages.
+- A normal transport is preserved only when its original packages remain adjacent in the same direction.
+- A tail transport is preserved only when its original from-package remains last.
+- Invalidated transport rows are deleted after confirmation; no replacement transport is synthesized.
+- Transport review snapshots remain unchanged and shortage remains warning-only.
+- Demo computes one pure local plan and remains isolated from production services.
+
+Production migrations and RPC:
+
+- `019_swap_itinerary_destination_packages.sql`: applied and immutable compatibility RPC.
+- `020_reorder_itinerary_destination_packages.sql`: applied N-way authoritative reorder RPC.
+- `021_fix_reorder_baseline_count.sql`: applied PostgreSQL baseline-cardinality correction.
+- Private implementation: `app_private.reorder_itinerary_destination_packages(...)`.
+- Authenticated wrapper: `public.reorder_itinerary_destination_packages(...)`.
+
+Completed validation:
+
+- `A B C D -> B C A D` and `A B C D -> A D B C`.
+- Slot IDs and time ranges unchanged.
+- Alternatives and linked budgets followed packages.
+- Preserved/remapped normal and tail transports; invalidated transports deleted.
+- Fixed, foreign-lock, stale-baseline, and wrong-manifest requests rejected with rollback.
+- Formal Production transaction QA passed without leaving fixture data.
+- Demo insertion/no-op E2E passed.
+- `npm.cmd run build`, Playwright 32/32, and `git diff --check` passed.
+
+Detailed references:
+
+- `docs/gpt/2026-06-21-phase-4-2-destination-package-analysis.md`
+- `docs/gpt/2026-06-21-phase-4-2c-drag-insert-reorder-analysis.md`
+- `docs/gpt/2026-06-22-phase-4-2c-closeout-handoff.md`
 
 ---
 
@@ -830,28 +891,30 @@ The handoff should include:
 
 ## Recommended Implementation Order
 
-Use this practical branch and dependency order:
+The accepted sequential phase order is:
 
 1. Phase 4.0 - Analysis and Handoff
 2. Phase 4.1 - Tail Transportation Card + New Visit Default Time
-3. Phase 4.2 - Drag Visit Content Swap
-4. Phase 4.5 - Untimed Visit Ordering Rules
-5. Phase 4.3 - Timed Visit Breaks Existing Transportation Pair Prompt
-6. Phase 4.4 - Local Auto-Continuation Time Adjustment
-7. Phase 4.6 - Map Integration Preparation
-8. Phase 4.7 - QA and Handoff
+3. Phase 4.2a - Destination-Package Analysis
+4. Phase 4.2b - Atomic Two-Item Swap Foundation
+5. Phase 4.2c - Insertion-Style N-Way Reorder
+6. Phase 4.3 - Timed Visit Breaks Existing Transportation Pair Prompt
+7. Phase 4.4 - Local Auto-Continuation Time Adjustment
+8. Phase 4.5 - Untimed Visit Ordering Rules
+9. Phase 4.6 - Map Integration Preparation
+10. Phase 4.7 - QA and Handoff
 
 Reason:
 
-- The current branch is intentionally limited to Phase 4.0, Phase 4.1, and Phase 4.2.
+- The current branch closes Phase 4.0, Phase 4.1, and Phase 4.2a/4.2b/4.2c.
 - Tail transportation is the foundation of later route flow.
-- Drag content swap remains isolated from generic ordering and must not pre-implement Phase 4.3 through Phase 4.5.
-- Untimed visit rules must be stabilized before pair-break prompts and local auto-continuation because both depend on formal timed ordering.
+- Destination-package insertion remains isolated from generic sorting and must not pre-implement Phase 4.3 through Phase 4.5.
 - Pair-break prompts should be stable before local time adjustment.
+- Untimed visit ordering remains a separate Phase 4.5 concern and does not participate in auto-continuation.
 - Map preparation should summarize the stabilized behavior instead of leading implementation.
 
 ---
 
 ## One-Sentence Phase 4 Definition
 
-Timeline Phase 4 separates scheduled time flow from travel movement: timed visits keep the formal schedule, untimed visits remain as manually ordered planning items, transportation cards describe movement between stops, tail transportation supports the next destination flow, and drag-swap changes visit content without moving time slots.
+Timeline Phase 4 separates scheduled time flow from travel movement: timed visits keep the formal schedule, untimed visits remain manually ordered planning items, transportation cards describe movement between stops, tail transportation supports the next destination flow, and destination-package insertion changes visit content order without moving time slots.

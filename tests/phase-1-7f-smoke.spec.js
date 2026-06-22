@@ -158,14 +158,14 @@ test("tail transportation rounding covers zero and exact five-minute boundaries"
   ]);
 });
 
-test("demo timed visit drag swaps destination content without moving time slots", async ({ page }) => {
+test("demo timed visit drag inserts destination content without moving time slots", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
   await page.goto("/demo/timeline");
 
   const source = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
-  const target = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
+  const target = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "關西機場" }) });
   await expect(source).toHaveCount(1);
   await expect(target).toHaveCount(1);
 
@@ -176,17 +176,42 @@ test("demo timed visit drag swaps destination content without moving time slots"
   await expect(source).toHaveAttribute("draggable", "true");
 
   await source.dragTo(target);
+  await expect(page.getByRole("heading", { name: "確認移動行程？" })).toBeVisible();
+  await expect(page.getByText("移動行程卡後，部分交通卡可能會自動移除")).toBeVisible();
+  await page.getByRole("button", { name: "確定" }).click();
 
   const firstSlot = page.locator(".timeline-item").filter({ hasText: "02:20" });
   const secondSlot = page.locator(".timeline-item").filter({ hasText: "06:40" });
+  const thirdSlot = page.locator(".timeline-item").filter({ hasText: "11:30" });
   await expect(firstSlot.getByRole("heading", { name: "桃園機場" })).toBeVisible();
   await expect(secondSlot.getByRole("heading", { name: "平安出國停車場" })).toBeVisible();
+  await expect(thirdSlot.getByRole("heading", { name: "關西機場" })).toBeVisible();
   await expect(firstSlot.locator(".time-block")).toContainText("02:20");
   await expect(secondSlot.locator(".time-block")).toContainText("06:40");
+  await expect(thirdSlot.locator(".time-block")).toContainText("11:30");
   await expect(page.locator(".transport-warning-stack")).toHaveCount(0);
 
   await firstSlot.getByTitle("鎖定").click();
-  await expect(firstSlot).toHaveAttribute("draggable", "false");
+  await expect(page.locator('.timeline-item[draggable="true"]')).toHaveCount(0);
+  expect(supabaseRequests).toEqual([]);
+  expect(failures).toEqual([]);
+});
+
+test("demo adjacent no-op drop does not open reorder confirmation", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
+
+  await page.goto("/demo/timeline");
+  const source = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
+  const target = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "關西機場" }) });
+  await expect(source).toHaveCount(1);
+  await expect(target).toHaveCount(1);
+
+  await source.dragTo(target);
+
+  await expect(page.getByRole("heading", { name: "確認移動行程？" })).toHaveCount(0);
+  await expect(page.locator(".timeline-item").filter({ hasText: "06:40" }).getByRole("heading", { name: "桃園機場" })).toBeVisible();
+  await expect(page.locator(".timeline-item").filter({ hasText: "11:30" }).getByRole("heading", { name: "關西機場" })).toBeVisible();
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });

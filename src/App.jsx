@@ -29,7 +29,11 @@ import {
   Wallet,
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
-import { swapDestinationPackagesInItems, swapItineraryParentIds } from "./lib/destinationPackages.js";
+import {
+  insertionPackageOrder,
+  isSamePackageOrder,
+  planDestinationPackageReorder,
+} from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
@@ -533,16 +537,19 @@ function suggestedStartTimeFromTailTransport(items) {
   return minutesToTimeValue(roundMinutesUpToStep(previousEnd + durationMinutes, 5));
 }
 
-function destinationSwapErrorMessage(error) {
+function destinationReorderErrorMessage(error) {
   const message = String(error?.message || "");
-  if (message.includes("permission_denied")) return "你沒有交換這兩個行程的權限。";
-  if (message.includes("item_not_found")) return "找不到要交換的行程，請重新整理後再試。";
-  if (message.includes("different_trip_or_day")) return "只能交換同一天的有時間行程。";
-  if (message.includes("timed_visit_required")) return "只能交換兩個有時間的景點。";
-  if (message.includes("fixed_item")) return "固定行程不可拖曳或作為交換目標。";
-  if (message.includes("item_locked")) return "其中一個行程目前正由其他成員編輯。";
-  if (message.includes("stale_item")) return "行程已被其他成員更新，請重新整理後再試。";
-  return message || "目的地內容交換失敗，請稍後再試。";
+  if (message.includes("permission_denied")) return "你沒有重排行程的權限。";
+  if (message.includes("invalid_day") || message.includes("different_trip_or_day")) return "只能重排同一天的有時間行程。";
+  if (message.includes("invalid_manifest") || message.includes("duplicate_item") || message.includes("manifest_not_permutation")) {
+    return "重排資料不完整，請重新整理後再試。";
+  }
+  if (message.includes("timed_visit_required")) return "只有同一天的有時間景點可參與重排。";
+  if (message.includes("fixed_item")) return "當天包含固定行程，無法進行插入式重排。";
+  if (message.includes("item_locked")) return "當天其中一個行程目前正由其他成員編輯。";
+  if (message.includes("transport_state_changed")) return "交通資訊已被其他成員更新，請重新整理後再試。";
+  if (message.includes("stale_item") || message.includes("stale_manifest")) return "行程內容已變更，請重新整理後再試。";
+  return message || "目的地內容重排失敗，請稍後再試。";
 }
 
 function transportPairKey(fromItemId, toItemId) {
@@ -2924,31 +2931,48 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function swapDestinationPackages(sourceItemId, targetItemId) {
-    if (!activeTrip || !canEditActiveTripContent || sourceItemId === targetItemId) return { ok: false };
-    const sourceItem = items.find((item) => item.id === sourceItemId);
-    const targetItem = items.find((item) => item.id === targetItemId);
-    if (!sourceItem || !targetItem) return { ok: false };
-    if (sourceItem.is_fixed || targetItem.is_fixed) {
-      const errorMessage = "固定行程不可拖曳或作為交換目標。";
+  async function reorderDestinationPackages({ dayIndex, packageSourceItemIds, slotItemIds }) {
+    if (!activeTrip || !canEditActiveTripContent || dayIndex !== activeDay) return { ok: false };
+    if (isSamePackageOrder(slotItemIds, packageSourceItemIds)) return { ok: true, noOp: true };
+    const timedVisits = sortedVisitItems(
+      items.filter(
+        (item) => item.day_index === dayIndex && !isTransportationCard(item) && Boolean(item.start_time),
+      ),
+    );
+    if (!isSamePackageOrder(timedVisits.map((item) => item.id), slotItemIds)) {
+      const errorMessage = "行程順序已變更，請重新整理後再試。";
       setNotice(errorMessage);
       return { ok: false, errorMessage };
     }
-    if (isLockedByAnotherUser(sourceItem, session?.user?.id) || isLockedByAnotherUser(targetItem, session?.user?.id)) {
-      const errorMessage = "其中一個行程目前正由其他成員編輯。";
+    if (timedVisits.some((item) => item.is_fixed)) {
+      const errorMessage = "當天包含固定行程，無法進行插入式重排。";
       setNotice(errorMessage);
       return { ok: false, errorMessage };
     }
-    const { data, error } = await supabase.rpc("swap_itinerary_destination_packages", {
-      source_item_id: sourceItem.id,
-      target_item_id: targetItem.id,
-      source_updated_at: sourceItem.updated_at,
-      target_updated_at: targetItem.updated_at,
+    if (timedVisits.some((item) => isLockedByAnotherUser(item, session?.user?.id))) {
+      const errorMessage = "當天其中一個行程目前正由其他成員編輯。";
+      setNotice(errorMessage);
+      return { ok: false, errorMessage };
+    }
+    const baselineRows = items.filter(
+      (item) =>
+        item.day_index === dayIndex &&
+        (isTransportationCard(item) || Boolean(item.start_time)),
+    );
+    const itemUpdatedAtBaselines = Object.fromEntries(
+      baselineRows.map((item) => [item.id, item.updated_at]),
+    );
+    const { data, error } = await supabase.rpc("reorder_itinerary_destination_packages", {
+      target_trip_id: activeTrip.id,
+      target_day_index: dayIndex,
+      slot_item_ids: slotItemIds,
+      package_source_item_ids: packageSourceItemIds,
+      item_updated_at_baselines: itemUpdatedAtBaselines,
     });
     if (error) {
-      const errorMessage = destinationSwapErrorMessage(error);
+      const errorMessage = destinationReorderErrorMessage(error);
       setNotice(errorMessage);
-      if (error.message?.includes("stale_item")) await loadTripData(activeTrip.id);
+      if (/stale_|transport_state_changed/.test(error.message || "")) await loadTripData(activeTrip.id);
       return { ok: false, error, errorMessage };
     }
     await loadTripData(activeTrip.id);
@@ -3307,7 +3331,7 @@ function exportTrip() {
             onDeleteSharedLuggageItem={deleteSharedLuggageItem}
             onDeleteTodo={deleteTodo}
             onRejectMember={rejectMember}
-            onSwapDestinationPackages={swapDestinationPackages}
+            onReorderDestinationPackages={reorderDestinationPackages}
             onSaveAlternative={saveAlternative}
             onSaveActualExpense={saveActualExpense}
             onSaveAccommodation={saveAccommodation}
@@ -5278,27 +5302,22 @@ function DemoApp({ initialSection }) {
     return { ok: true, data: { id: newItemId } };
   }
 
-  function swapTimelineDestinationPackages(sourceItemId, targetItemId) {
-    if (sourceItemId === targetItemId) return { ok: false };
-    const sourceItem = timelineItems.find((item) => item.id === sourceItemId);
-    const targetItem = timelineItems.find((item) => item.id === targetItemId);
-    if (
-      !sourceItem ||
-      !targetItem ||
-      isTransportationCard(sourceItem) ||
-      isTransportationCard(targetItem) ||
-      !sourceItem.start_time ||
-      !targetItem.start_time ||
-      sourceItem.day_index !== targetItem.day_index ||
-      sourceItem.is_fixed ||
-      targetItem.is_fixed
-    ) {
-      return { ok: false };
+  function reorderTimelineDestinationPackages({ dayIndex, packageSourceItemIds, slotItemIds }) {
+    if (dayIndex !== activeDay || isSamePackageOrder(slotItemIds, packageSourceItemIds)) {
+      return { ok: true, noOp: true };
     }
-    setTimelineItems((current) => swapDestinationPackagesInItems(current, sourceItemId, targetItemId));
-    setTimelineAlternatives((current) => swapItineraryParentIds(current, sourceItemId, targetItemId));
-    setItineraryBudgetLinks((current) => swapItineraryParentIds(current, sourceItemId, targetItemId));
-    return { ok: true };
+    const plan = planDestinationPackageReorder({
+      items: timelineItems,
+      alternatives: timelineAlternatives,
+      itineraryBudgetLinks,
+      slotItemIds,
+      packageSourceItemIds,
+    });
+    if (!plan.ok) return { ok: false, errorMessage: destinationReorderErrorMessage({ message: plan.errorCode }) };
+    setTimelineItems(plan.items);
+    setTimelineAlternatives(plan.alternatives);
+    setItineraryBudgetLinks(plan.itineraryBudgetLinks);
+    return { ok: true, data: plan };
   }
 
   function confirmTimelineTransportWarning(itemId) {
@@ -5790,7 +5809,7 @@ function DemoApp({ initialSection }) {
                   onDeleteAlternative={deleteTimelineAlternative}
                   onDeleteItem={deleteTimelineItem}
                   onFocusItem={setFocusedItemId}
-                  onSwapDestinationPackages={swapTimelineDestinationPackages}
+                  onReorderDestinationPackages={reorderTimelineDestinationPackages}
                   onSaveAlternative={saveTimelineAlternative}
                   onSaveItem={saveTimelineItem}
                   onToggleItemFixed={toggleTimelineItemFixed}
@@ -6557,7 +6576,7 @@ function TripWorkspace(props) {
     onDeleteSharedLuggageItem,
     onDeleteTodo,
     onRejectMember,
-    onSwapDestinationPackages,
+    onReorderDestinationPackages,
     onSaveAlternative,
     onSaveActualExpense,
     onSaveAccommodation,
@@ -6786,7 +6805,7 @@ function TripWorkspace(props) {
                 onDeleteAlternative={onDeleteAlternative}
                 onDeleteItem={onDeleteItem}
                 onFocusItem={setFocusedItemId}
-                onSwapDestinationPackages={onSwapDestinationPackages}
+                onReorderDestinationPackages={onReorderDestinationPackages}
                 onSaveAlternative={onSaveAlternative}
                 onSaveItem={onSaveItem}
                 onToggleItemFixed={onToggleItemFixed}
@@ -7149,7 +7168,7 @@ function ItineraryTimeline({
   onDeleteAlternative,
   onDeleteItem,
   onFocusItem,
-  onSwapDestinationPackages,
+  onReorderDestinationPackages,
   onSaveAlternative,
   onSaveItem,
   onToggleItemFixed,
@@ -7173,8 +7192,9 @@ function ItineraryTimeline({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
   const [draggedVisitId, setDraggedVisitId] = useState(null);
-  const [dragTargetVisitId, setDragTargetVisitId] = useState(null);
-  const [isSwappingDestination, setIsSwappingDestination] = useState(false);
+  const [dragTarget, setDragTarget] = useState(null);
+  const [reorderPreview, setReorderPreview] = useState(null);
+  const [isReorderingDestination, setIsReorderingDestination] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -7203,11 +7223,13 @@ function ItineraryTimeline({
   const hasBlockingTimelineEditor =
     isOpen || hasActiveEditorGuard({ excludeId: activeEditorGuardId, tripId: activeTrip?.id });
 
-  function canDragSwapVisit(item) {
+  function canDragReorderVisit(item) {
     return (
       canEdit &&
       !hasBlockingTimelineEditor &&
-      !isSwappingDestination &&
+      !isReorderingDestination &&
+      !timedVisitItems.some((visit) => visit.is_fixed) &&
+      !timedVisitItems.some((visit) => useEditLocks && isLockedByAnotherUser(visit, currentUserId)) &&
       !isTransportationCard(item) &&
       Boolean(item?.start_time) &&
       !item?.is_fixed &&
@@ -7216,47 +7238,80 @@ function ItineraryTimeline({
   }
 
   function beginVisitDrag(event, item) {
-    if (!canDragSwapVisit(item)) {
+    if (!canDragReorderVisit(item)) {
       event.preventDefault();
-      if (hasBlockingTimelineEditor) setFixedNotice("請先儲存或放棄目前編輯，再交換景點內容。");
+      if (hasBlockingTimelineEditor) setFixedNotice("請先儲存或放棄目前編輯，再重排行程。");
+      else if (timedVisitItems.some((visit) => visit.is_fixed)) setFixedNotice("當天包含固定行程，無法進行插入式重排。");
+      else if (timedVisitItems.some((visit) => useEditLocks && isLockedByAnotherUser(visit, currentUserId))) {
+        setFixedNotice("當天其中一個行程目前正由其他成員編輯。");
+      }
       return;
     }
     setFixedNotice("");
     setDraggedVisitId(item.id);
-    setDragTargetVisitId(null);
+    setDragTarget(null);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", item.id);
   }
 
   function updateVisitDragTarget(event, item) {
-    if (!draggedVisitId || draggedVisitId === item.id || !canDragSwapVisit(item)) return;
+    if (!draggedVisitId || draggedVisitId === item.id || !canDragReorderVisit(item)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-    setDragTargetVisitId(item.id);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const placement = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+    setDragTarget({ itemId: item.id, placement });
   }
 
   function clearVisitDrag() {
     setDraggedVisitId(null);
-    setDragTargetVisitId(null);
+    setDragTarget(null);
   }
 
-  async function dropVisitContent(event, targetItem) {
+  function dropVisitContent(event, targetItem) {
     event.preventDefault();
     const sourceItemId = draggedVisitId || event.dataTransfer.getData("text/plain");
-    if (!sourceItemId || sourceItemId === targetItem.id || !canDragSwapVisit(targetItem)) {
+    if (!sourceItemId || sourceItemId === targetItem.id || !canDragReorderVisit(targetItem)) {
       clearVisitDrag();
       return;
     }
     const sourceItem = dayItems.find((item) => item.id === sourceItemId);
-    if (!sourceItem || !canDragSwapVisit(sourceItem) || typeof onSwapDestinationPackages !== "function") {
+    if (!sourceItem || !canDragReorderVisit(sourceItem) || typeof onReorderDestinationPackages !== "function") {
       clearVisitDrag();
       return;
     }
-    setIsSwappingDestination(true);
-    const result = await onSwapDestinationPackages(sourceItem.id, targetItem.id);
-    if (!result?.ok) setFixedNotice(result?.errorMessage || "目的地內容交換失敗，請稍後再試。");
-    setIsSwappingDestination(false);
+    const slotItemIds = timedVisitItems.map((item) => item.id);
+    const placement = dragTarget?.itemId === targetItem.id ? dragTarget.placement : "after";
+    const packageSourceItemIds = insertionPackageOrder(slotItemIds, sourceItem.id, targetItem.id, placement);
+    if (isSamePackageOrder(slotItemIds, packageSourceItemIds)) {
+      clearVisitDrag();
+      return;
+    }
+    const previewPlan = planDestinationPackageReorder({
+      items: dayItems,
+      slotItemIds,
+      packageSourceItemIds,
+    });
+    if (!previewPlan.ok) {
+      setFixedNotice(destinationReorderErrorMessage({ message: previewPlan.errorCode }));
+      clearVisitDrag();
+      return;
+    }
+    setReorderPreview({
+      dayIndex: activeDay,
+      packageSourceItemIds,
+      slotItemIds,
+    });
     clearVisitDrag();
+  }
+
+  async function confirmDestinationReorder() {
+    if (!reorderPreview || typeof onReorderDestinationPackages !== "function") return;
+    setIsReorderingDestination(true);
+    const result = await onReorderDestinationPackages(reorderPreview);
+    if (!result?.ok) setFixedNotice(result?.errorMessage || "目的地內容重排失敗，請稍後再試。");
+    if (result?.ok) setReorderPreview(null);
+    setIsReorderingDestination(false);
   }
 
   useEffect(() => {
@@ -7575,6 +7630,7 @@ function ItineraryTimeline({
 
   const isTransportEditor = form.item_type === "transport";
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
+  const timedVisitItems = useMemo(() => visitItems.filter((item) => Boolean(item.start_time)), [visitItems]);
   const lastTimedVisitItem = useMemo(() => lastTimedVisit(dayItems), [dayItems]);
   const { adjacentTransportByPair, invalidTransportItems, tailTransportByFrom } = useMemo(
     () => buildTransportPairState(dayItems, visitItems),
@@ -8288,7 +8344,6 @@ function ItineraryTimeline({
     : deleteRelatedTransports.length
       ? "關聯的交通卡將被一併移除，此操作無法復原。"
       : "此操作無法復原。";
-
   return (
     <>
     {deleteTarget ? (
@@ -8302,6 +8357,32 @@ function ItineraryTimeline({
             </button>
             <button className="primary-button compact" type="button" onClick={confirmDeleteTarget}>
               確認刪除
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    {reorderPreview ? (
+      <div className="modal-backdrop">
+        <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="reorder-confirm-title">
+          <h2 id="reorder-confirm-title">確認移動行程？</h2>
+          <p>移動行程卡後，部分交通卡可能會自動移除</p>
+          <div className="form-actions">
+            <button
+              className="ghost-button"
+              disabled={isReorderingDestination}
+              type="button"
+              onClick={() => setReorderPreview(null)}
+            >
+              取消
+            </button>
+            <button
+              className="primary-button compact"
+              disabled={isReorderingDestination}
+              type="button"
+              onClick={confirmDestinationReorder}
+            >
+              確定
             </button>
           </div>
         </div>
@@ -8415,7 +8496,8 @@ function ItineraryTimeline({
               insertionPair?.fromId === item.id &&
               insertionPair?.toId === null;
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
-            const isDragEnabled = canDragSwapVisit(item);
+            const isDragEnabled = canDragReorderVisit(item);
+            const dragPlacement = dragTarget?.itemId === item.id ? dragTarget.placement : "";
             return (
             <div className="timeline-flow-entry" key={item.id}>
             {isEditingVisitHere ? (
@@ -8425,10 +8507,10 @@ function ItineraryTimeline({
               className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${isExpanded ? " expanded" : ""}${
                 isItemFixed ? " fixed" : ""
               }${isDragEnabled ? " drag-enabled" : ""}${draggedVisitId === item.id ? " dragging" : ""}${
-                dragTargetVisitId === item.id ? " drag-target" : ""
+                dragPlacement ? ` drag-target drag-${dragPlacement}` : ""
               }`}
               draggable={isDragEnabled}
-              title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再交換景點內容" : undefined}
+              title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
               onDragEnd={clearVisitDrag}
               onDragOver={(event) => updateVisitDragTarget(event, item)}
               onDragStart={(event) => beginVisitDrag(event, item)}
