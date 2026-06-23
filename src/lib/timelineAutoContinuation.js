@@ -47,32 +47,25 @@ export function planTimelineAutoContinuation({ candidate, dayIndex, editedItemId
   const followingVisits = timedVisits.slice(editedIndex + 1);
   if (!followingVisits.length) return { shouldPrompt: false, canAutoContinue: false, updates: [] };
 
-  const fixedVisit = followingVisits.find((item) => item.is_fixed);
-  if (fixedVisit) {
-    return {
-      shouldPrompt: true,
-      canAutoContinue: false,
-      blockReason: "fixed_visit",
-      fixedVisitId: fixedVisit.id,
-      followingVisitIds: followingVisits.map((item) => item.id),
-      updates: [],
-    };
-  }
+  const fixedVisitIndex = followingVisits.findIndex((item) => item.is_fixed);
+  const fixedVisit = fixedVisitIndex >= 0 ? followingVisits[fixedVisitIndex] : null;
+  const movableVisits = fixedVisit ? followingVisits.slice(0, fixedVisitIndex) : followingVisits;
+  const fixedStart = fixedVisit ? timeToMinutes(fixedVisit.start_time) : null;
 
   const updates = [];
   let previousOriginal = editedItem;
   let previousNewEnd = candidateEnd;
-  for (const [visitIndex, visit] of followingVisits.entries()) {
+  for (const [visitIndex, visit] of movableVisits.entries()) {
     const previousOriginalEnd = timeToMinutes(previousOriginal.end_time);
     const originalVisitStart = timeToMinutes(visit.start_time);
     const originalVisitEnd = timeToMinutes(visit.end_time);
-    const isFinalOpenEndedVisit = originalVisitEnd === null && visitIndex === followingVisits.length - 1;
+    const isFinalOpenEndedVisit = originalVisitEnd === null && visitIndex === movableVisits.length - 1 && !fixedVisit;
     if (previousOriginalEnd === null || originalVisitStart === null || (originalVisitEnd === null && !isFinalOpenEndedVisit)) {
       return {
         shouldPrompt: true,
         canAutoContinue: false,
         blockReason: "incomplete_time",
-        followingVisitIds: followingVisits.map((item) => item.id),
+        followingVisitIds: movableVisits.map((item) => item.id),
         updates: [],
       };
     }
@@ -80,6 +73,19 @@ export function planTimelineAutoContinuation({ candidate, dayIndex, editedItemId
     const durationMinutes = isFinalOpenEndedVisit ? null : originalVisitEnd - originalVisitStart;
     const nextStartMinutes = previousNewEnd + gapMinutes;
     const nextEndMinutes = isFinalOpenEndedVisit ? null : nextStartMinutes + durationMinutes;
+    if (fixedStart !== null && nextEndMinutes > fixedStart) {
+      for (const overflowVisit of movableVisits.slice(visitIndex)) {
+        updates.push({
+          id: overflowVisit.id,
+          start_time: null,
+          end_time: null,
+          original_start_time: overflowVisit.start_time,
+          original_end_time: overflowVisit.end_time,
+          updated_at: overflowVisit.updated_at || null,
+        });
+      }
+      break;
+    }
     const nextStartTime = minutesToTime(nextStartMinutes);
     const nextEndTime = isFinalOpenEndedVisit ? null : minutesToTime(nextEndMinutes);
     if (gapMinutes < 0 || (!isFinalOpenEndedVisit && durationMinutes <= 0) || !nextStartTime || (!isFinalOpenEndedVisit && !nextEndTime)) {
@@ -87,7 +93,7 @@ export function planTimelineAutoContinuation({ candidate, dayIndex, editedItemId
         shouldPrompt: true,
         canAutoContinue: false,
         blockReason: "invalid_result",
-        followingVisitIds: followingVisits.map((item) => item.id),
+        followingVisitIds: movableVisits.map((item) => item.id),
         updates: [],
       };
     }
@@ -106,7 +112,8 @@ export function planTimelineAutoContinuation({ candidate, dayIndex, editedItemId
   return {
     shouldPrompt: true,
     canAutoContinue: true,
-    followingVisitIds: followingVisits.map((item) => item.id),
+    fixedVisitId: fixedVisit?.id || null,
+    followingVisitIds: movableVisits.map((item) => item.id),
     updates,
   };
 }

@@ -7808,11 +7808,14 @@ function ItineraryTimeline({
       if (brokenPair) {
         setTimeError("");
         setForm(submittedForm);
-        setTransportPairConflict(brokenPair);
+        setTransportPairConflict({
+          ...brokenPair,
+          continuationRequested: Boolean(options.requestAutoContinuation),
+        });
         return false;
       }
     }
-    if (editingId && submittedForm.item_type !== "transport" && !options.skipAutoContinuation) {
+    if (editingId && submittedForm.item_type !== "transport" && options.requestAutoContinuation) {
       const continuationPlan = planTimelineAutoContinuation({
         candidate: submittedForm,
         dayIndex: activeDay,
@@ -7907,18 +7910,17 @@ function ItineraryTimeline({
   async function confirmBrokenTransportationPairDeletion() {
     if (!transportPairConflict?.transportItem || isResolvingTransportPairConflict) return;
     setIsResolvingTransportPairConflict(true);
-    await saveCurrentEditor(new FormData(), { transportConflict: transportPairConflict.transportItem });
+    await saveCurrentEditor(new FormData(), {
+      requestAutoContinuation: Boolean(transportPairConflict.continuationRequested),
+      transportConflict: transportPairConflict.transportItem,
+    });
     setIsResolvingTransportPairConflict(false);
   }
 
-  async function saveCurrentVisitWithoutContinuation() {
-    if (!autoContinuationPrompt || isSavingAutoContinuation) return;
-    setIsSavingAutoContinuation(true);
-    await saveCurrentEditor(new FormData(), {
-      skipAutoContinuation: true,
-      transportConflict: autoContinuationPrompt.transportConflict,
-    });
-    setIsSavingAutoContinuation(false);
+  function cancelAutoContinuation() {
+    if (isSavingAutoContinuation) return;
+    setTimeError("");
+    setAutoContinuationPrompt(null);
   }
 
   async function saveWithAutoContinuation() {
@@ -7932,14 +7934,34 @@ function ItineraryTimeline({
     setIsSavingAutoContinuation(false);
   }
 
+  async function requestAutoContinuation(event) {
+    await saveCurrentEditor(new FormData(event.currentTarget.form), { requestAutoContinuation: true });
+  }
+
   async function submit(event) {
     event.preventDefault();
-    await saveCurrentEditor(new FormData(event.currentTarget));
+    await saveCurrentEditor(new FormData(event.currentTarget), { skipAutoContinuation: true });
   }
 
   const isTransportEditor = form.item_type === "transport";
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
   const timedVisitItems = useMemo(() => visitItems.filter((item) => Boolean(item.start_time)), [visitItems]);
+  const editedTimedVisitIndex = timedVisitItems.findIndex((item) => item.id === editingId);
+  const editedTimedVisit = editedTimedVisitIndex >= 0 ? timedVisitItems[editedTimedVisitIndex] : null;
+  const editedVisitTimeChanged =
+    Boolean(editedTimedVisit) &&
+    (formatTimeDisplay(editedTimedVisit.start_time) !== form.start_time ||
+      formatTimeDisplay(editedTimedVisit.end_time) !== form.end_time);
+  const canRequestAutoContinuation =
+    editingId &&
+    !isTransportEditor &&
+    editedTimedVisitIndex >= 0 &&
+    editedTimedVisitIndex < timedVisitItems.length - 1 &&
+    editedVisitTimeChanged &&
+    Boolean(editedTimedVisit.start_time) &&
+    Boolean(editedTimedVisit.end_time) &&
+    Boolean(form.start_time) &&
+    Boolean(form.end_time);
   const lastTimedVisitItem = useMemo(() => lastTimedVisit(dayItems), [dayItems]);
   const { adjacentTransportByPair, invalidTransportItems, tailTransportByFrom } = useMemo(
     () => buildTransportPairState(dayItems, visitItems),
@@ -8514,6 +8536,16 @@ function ItineraryTimeline({
           <button className="ghost-button" type="button" onClick={() => closeEditor()}>
             取消
           </button>
+          {editingId && !isTransportEditor ? (
+            <button
+              className="ghost-button compact"
+              disabled={!canRequestAutoContinuation}
+              type="button"
+              onClick={requestAutoContinuation}
+            >
+              接續
+            </button>
+          ) : null}
           <button className="primary-button compact" type="submit">
             儲存
           </button>
@@ -8680,15 +8712,9 @@ function ItineraryTimeline({
           aria-modal="true"
           aria-labelledby="auto-continuation-title"
         >
-          <h2 id="auto-continuation-title">是否自動接續後續行程時間？</h2>
-          <p>
-            你修改了「{autoContinuationPrompt.title || "此行程"}」的時間。
-            系統可以依照原本行程間隔，自動調整後續有時間的行程。
-          </p>
-          <p>未設定時間的行程不會被調整。</p>
-          {autoContinuationPrompt.plan.blockReason === "fixed_visit" ? (
-            <p className="notice inline-error">後續行程包含固定行程，無法自動接續時間。請先解除固定，或手動調整後續時間。</p>
-          ) : null}
+          <h2 id="auto-continuation-title">自動接續後續行程？</h2>
+          <p>後續有時間的行程會依原本停留時間與間隔自動調整。</p>
+          <p>固定行程不會移動，放不下的行程會改為未設定時間。</p>
           {autoContinuationPrompt.plan.blockReason === "locked_visit" ? (
             <p className="notice inline-error">後續行程目前由其他成員編輯，無法自動接續時間。</p>
           ) : null}
@@ -8701,9 +8727,9 @@ function ItineraryTimeline({
               className="ghost-button"
               disabled={isSavingAutoContinuation}
               type="button"
-              onClick={saveCurrentVisitWithoutContinuation}
+              onClick={cancelAutoContinuation}
             >
-              只儲存此行程
+              取消
             </button>
             <button
               className="primary-button compact"
@@ -8711,7 +8737,7 @@ function ItineraryTimeline({
               type="button"
               onClick={saveWithAutoContinuation}
             >
-              自動接續後續行程
+              確定接續
             </button>
           </div>
         </div>

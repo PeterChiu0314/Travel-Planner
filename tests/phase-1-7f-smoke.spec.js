@@ -329,12 +329,12 @@ test("demo time edit can save only the current visit", async ({ page }) => {
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+  await expect(form.getByRole("button")).toHaveText(["取消", "接續", "儲存"]);
+  await expect(form.getByRole("button", { name: "接續", exact: true })).toBeDisabled();
   await form.locator('select[name="start_time"]').selectOption("02:30");
-  await form.locator('button[type="submit"]').click();
-
-  const dialog = page.getByTestId("auto-continuation-dialog");
-  await expect(dialog.getByRole("heading", { name: "是否自動接續後續行程時間？" })).toBeVisible();
-  await dialog.getByRole("button", { name: "只儲存此行程" }).click();
+  await expect(form.getByRole("button", { name: "接續", exact: true })).toBeEnabled();
+  await form.getByRole("button", { name: "儲存", exact: true }).click();
+  await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
 
   const updatedFirst = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
   const unchangedSecond = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
@@ -356,8 +356,10 @@ test("demo auto continuation preserves downstream durations and gaps", async ({ 
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await form.locator('select[name="start_time"]').selectOption("02:30");
-  await form.locator('button[type="submit"]').click();
-  await page.getByTestId("auto-continuation-dialog").getByRole("button", { name: "自動接續後續行程" }).click();
+  await form.getByRole("button", { name: "接續", exact: true }).click();
+  const dialog = page.getByTestId("auto-continuation-dialog");
+  await expect(dialog.getByRole("heading", { name: "自動接續後續行程？" })).toBeVisible();
+  await dialog.getByRole("button", { name: "確定接續" }).click();
 
   const shiftedSecond = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
   const shiftedThird = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "關西機場" }) });
@@ -370,29 +372,63 @@ test("demo auto continuation preserves downstream durations and gaps", async ({ 
   expect(failures).toEqual([]);
 });
 
-test("demo fixed follower disables auto continuation but allows current-only save", async ({ page }) => {
+test("demo continuation can be cancelled without saving", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
   await page.goto("/demo/timeline");
-  const secondVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
-  await secondVisit.click();
-  await secondVisit.getByTitle("鎖定").click();
-
   const firstVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await form.locator('select[name="start_time"]').selectOption("02:30");
-  await form.locator('button[type="submit"]').click();
+  await form.getByRole("button", { name: "接續", exact: true }).click();
+  await page.getByTestId("auto-continuation-dialog").getByRole("button", { name: "取消" }).click();
 
-  const dialog = page.getByTestId("auto-continuation-dialog");
-  await expect(dialog).toContainText("後續行程包含固定行程，無法自動接續時間");
-  await expect(dialog.getByRole("button", { name: "自動接續後續行程" })).toBeDisabled();
-  await dialog.getByRole("button", { name: "只儲存此行程" }).click();
-  await expect(page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) }).locator(".time-block")).toContainText("06:40");
+  await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
+  await expect(form).toBeVisible();
+  await expect(form.locator('select[name="start_time"]')).toHaveValue("02:30");
+  page.once("dialog", (dialog) => dialog.accept());
+  await form.getByRole("button", { name: "取消", exact: true }).click();
+  await expect(firstVisit.locator(".time-block")).toContainText("02:20");
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
+});
+
+test("demo fixed anchor stays put and overflowing followers become untimed", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
+
+  await page.goto("/demo/timeline");
+  const fixedVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "關西機場" }) });
+  await fixedVisit.click();
+  await fixedVisit.getByTitle("鎖定").click();
+
+  const firstVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
+  await firstVisit.click();
+  await firstVisit.getByTitle("編輯").click();
+  const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+  await form.locator('select[name="end_time"]').selectOption("06:40");
+  await form.getByRole("button", { name: "接續", exact: true }).click();
+
+  const dialog = page.getByTestId("auto-continuation-dialog");
+  await expect(dialog).toContainText("固定行程不會移動，放不下的行程會改為未設定時間");
+  await dialog.getByRole("button", { name: "確定接續" }).click();
+
+  const overflowVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
+  await expect(overflowVisit.locator(".time-block")).toContainText("--:--");
+  await expect(fixedVisit.locator(".time-block")).toContainText("11:30");
+  expect(supabaseRequests).toEqual([]);
+  expect(failures).toEqual([]);
+});
+
+test("demo continuation is disabled when there is no later timed visit", async ({ page }) => {
+  await page.goto("/demo/timeline");
+  const finalVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "京都山科山樂酒店" }) }).filter({ hasText: "21:00" });
+  await finalVisit.click();
+  await finalVisit.getByTitle("編輯").click();
+  const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+  await expect(form.getByRole("button", { name: "接續", exact: true })).toBeDisabled();
 });
 
 test("demo navigation can switch to budget and luggage", async ({ page }) => {
