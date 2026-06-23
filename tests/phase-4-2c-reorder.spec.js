@@ -211,7 +211,7 @@ test("020 RPC is transactional, manifest-based, collision-safe, and least-privil
   expect(migration).toContain("security definer");
   expect(migration).toContain("set search_path = public, app_private");
   expect(migration).toContain("pg_advisory_xact_lock");
-  expect(migration).toContain("order by item.id\n  for update");
+  expect(migration).toMatch(/order by item\.id\r?\n  for update/);
   expect(migration).toContain("authoritative_slot_ids is distinct from slot_item_ids");
   expect(migration).toContain("manifest_not_permutation");
   expect(migration).toContain("raise exception 'fixed_item'");

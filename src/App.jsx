@@ -36,6 +36,7 @@ import {
 } from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
+import { findBrokenTransportationPair } from "./lib/timelineTransportationConflicts.js";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
@@ -2255,11 +2256,41 @@ export default function App() {
     let query = supabase.from(table).update(payload).eq("id", editingId);
     if (meta.tripId) query = query.eq("trip_id", meta.tripId);
     if (meta.baseUpdatedAt) query = query.eq("updated_at", meta.baseUpdatedAt);
-    const result = await query.select("id").maybeSingle();
+    const result = await query.select("id, updated_at").maybeSingle();
     if (result.error) return { ok: false, error: result.error };
     if (!result.data) return { ok: false, conflict: true };
-    await releaseEditLock({ recordId: editingId, supabase, table, userId: session?.user?.id });
-    return { ok: true };
+    if (!meta.deferEditLockRelease) {
+      await releaseEditLock({ recordId: editingId, supabase, table, userId: session?.user?.id });
+    }
+    return { ok: true, data: result.data };
+  }
+
+  async function deleteBrokenTransportationPair(transportConflict) {
+    if (!transportConflict?.id || !transportConflict?.updated_at) {
+      return { ok: false, error: { message: "交通卡資料不完整，請重新整理後再試。" } };
+    }
+    const deleteResult = await supabase
+      .from("itinerary_items")
+      .delete()
+      .eq("id", transportConflict.id)
+      .eq("trip_id", activeTrip.id)
+      .eq("item_type", "transport")
+      .eq("updated_at", transportConflict.updated_at)
+      .select("id")
+      .maybeSingle();
+    if (deleteResult.error) return { ok: false, error: deleteResult.error };
+    if (deleteResult.data) return { ok: true };
+
+    const currentTransport = await supabase
+      .from("itinerary_items")
+      .select("id")
+      .eq("id", transportConflict.id)
+      .eq("trip_id", activeTrip.id)
+      .eq("item_type", "transport")
+      .maybeSingle();
+    if (currentTransport.error) return { ok: false, error: currentTransport.error };
+    if (!currentTransport.data) return { ok: true };
+    return { ok: false, error: { message: "這張交通卡已由其他成員更新，請重新整理後再試。" } };
   }
 
   async function saveItem(payload, editingId, meta = {}) {
@@ -2298,11 +2329,50 @@ export default function App() {
       const overlapError = formatTimelineOverlapError(overlapItem);
       return { ok: false, overlapError };
     }
+    const transportConflict = meta.transportConflict || null;
     if (editingId) {
-      const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, meta);
+      const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, {
+        ...meta,
+        deferEditLockRelease: Boolean(transportConflict),
+      });
       if (result.error) setNotice(result.error.message);
       else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
-      else await loadTripData(activeTrip.id);
+      else if (transportConflict) {
+        const transportDelete = await deleteBrokenTransportationPair(transportConflict);
+        if (!transportDelete.ok) {
+          const rollbackPayload = Object.fromEntries(
+            Object.keys(normalizedPayload).map((field) => [field, editingItem?.[field] ?? null]),
+          );
+          const rollback = await supabase
+            .from("itinerary_items")
+            .update(rollbackPayload)
+            .eq("id", editingId)
+            .eq("trip_id", activeTrip.id)
+            .eq("updated_at", result.data?.updated_at)
+            .select("id, updated_at")
+            .maybeSingle();
+          const rollbackSucceeded = !rollback.error && Boolean(rollback.data);
+          const errorMessage = rollbackSucceeded
+            ? `交通卡刪除失敗，行程變更未儲存：${transportDelete.error.message}`
+            : `交通卡刪除失敗，且行程變更無法自動回復：${transportDelete.error.message}`;
+          setNotice(errorMessage);
+          return {
+            ok: false,
+            error: transportDelete.error,
+            errorMessage,
+            baseUpdatedAt: rollback.data?.updated_at || result.data?.updated_at || null,
+            rollbackFailed: !rollbackSucceeded,
+            visitSaved: !rollbackSucceeded,
+          };
+        }
+        await releaseEditLock({
+          recordId: editingId,
+          supabase,
+          table: "itinerary_items",
+          userId: session?.user?.id,
+        });
+        await loadTripData(activeTrip.id);
+      } else await loadTripData(activeTrip.id);
       return result;
     }
 
@@ -2321,6 +2391,23 @@ export default function App() {
     if (insertResult.error) {
       setNotice(insertResult.error.message);
       return { ok: false, error: insertResult.error };
+    }
+
+    if (transportConflict) {
+      const transportDelete = await deleteBrokenTransportationPair(transportConflict);
+      if (!transportDelete.ok) {
+        const rollback = await supabase
+          .from("itinerary_items")
+          .delete()
+          .eq("id", insertResult.data.id)
+          .eq("trip_id", activeTrip.id);
+        const errorMessage = rollback.error
+          ? `交通卡刪除失敗，且新增行程無法回復：${transportDelete.error.message}`
+          : `交通卡刪除失敗，新增行程未儲存：${transportDelete.error.message}`;
+        setNotice(errorMessage);
+        await loadTripData(activeTrip.id);
+        return { ok: false, error: transportDelete.error, errorMessage, rollbackFailed: Boolean(rollback.error) };
+      }
     }
 
     const { fromItem: tailFromItem, transportItem: tailTransportItem } = tailTransportContext(dayItems);
@@ -5229,6 +5316,7 @@ function DemoApp({ initialSection }) {
 
   function saveTimelineItem(payload, editingId, meta = {}) {
     const nextPayload = normalizeItemPayload(payload);
+    const brokenTransportId = meta.transportConflict?.id || null;
     if (!nextPayload.title.trim()) return;
     const editingItem = editingId ? timelineItems.find((item) => item.id === editingId) : null;
     if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
@@ -5249,7 +5337,7 @@ function DemoApp({ initialSection }) {
     }
     if (editingId) {
       setTimelineItems((current) =>
-        current.map((item) =>
+        current.filter((item) => item.id !== brokenTransportId).map((item) =>
           item.id === editingId
             ? {
                 ...item,
@@ -5263,7 +5351,8 @@ function DemoApp({ initialSection }) {
     }
     const newItemId = demoId(nextPayload.item_type === "transport" ? "demo-transport" : "demo-itinerary");
     setTimelineItems((current) => {
-      const currentDayVisits = sortedVisitItems(current.filter((item) => item.day_index === activeDay));
+      const currentWithoutBrokenTransport = current.filter((item) => item.id !== brokenTransportId);
+      const currentDayVisits = sortedVisitItems(currentWithoutBrokenTransport.filter((item) => item.day_index === activeDay));
       const sortOrder = (currentDayVisits.length + 1) * 10;
       const newItem = {
         ...emptyItemForm,
@@ -5273,7 +5362,7 @@ function DemoApp({ initialSection }) {
         sort_order: sortOrder,
         updated_at: new Date().toISOString(),
       };
-      const currentDayItems = current.filter((item) => item.day_index === activeDay);
+      const currentDayItems = currentWithoutBrokenTransport.filter((item) => item.day_index === activeDay);
       const { fromItem: tailFromItem, transportItem: tailTransportItem } = tailTransportContext(currentDayItems);
       const newVisitStart = timeToMinutes(newItem.start_time);
       const tailFromEnd = timeToMinutes(tailFromItem?.end_time);
@@ -5283,7 +5372,7 @@ function DemoApp({ initialSection }) {
         newVisitStart !== null &&
         (tailFromEnd === null || newVisitStart >= tailFromEnd);
       const nextItems = shouldCompleteTailPair
-        ? current.map((item) =>
+        ? currentWithoutBrokenTransport.map((item) =>
             item.id === tailTransportItem.id
               ? {
                   ...item,
@@ -5293,7 +5382,7 @@ function DemoApp({ initialSection }) {
                 }
               : item,
           )
-        : current;
+        : currentWithoutBrokenTransport;
       return [
         ...nextItems,
         newItem,
@@ -7195,6 +7284,8 @@ function ItineraryTimeline({
   const [dragTarget, setDragTarget] = useState(null);
   const [reorderPreview, setReorderPreview] = useState(null);
   const [isReorderingDestination, setIsReorderingDestination] = useState(false);
+  const [transportPairConflict, setTransportPairConflict] = useState(null);
+  const [isResolvingTransportPairConflict, setIsResolvingTransportPairConflict] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -7324,6 +7415,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setTransportPairConflict(null);
     setEditingId(null);
     setEditorTripId(null);
     setInsertionPair(null);
@@ -7353,6 +7445,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingItem?.updated_at || null);
     setConflict(false);
     setTimeError("");
+    setTransportPairConflict(null);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
     setInsertionPair(null);
@@ -7381,6 +7474,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setTransportPairConflict(null);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
     setInsertionPair(null);
@@ -7420,6 +7514,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setTransportPairConflict(null);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
     setInsertionPair(previousItem ? { fromId: previousItem.id, toId: nextItem?.id || null } : null);
@@ -7487,6 +7582,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
     setConflict(false);
     setTimeError("");
+    setTransportPairConflict(null);
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || null);
     setInsertionPair(null);
@@ -7503,6 +7599,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setTransportPairConflict(null);
     setEditingId(null);
     setEditorTripId(null);
     setInsertionPair(null);
@@ -7510,7 +7607,7 @@ function ItineraryTimeline({
     setIsOpen(false);
   }
 
-  async function saveCurrentEditor(formData = new FormData()) {
+  async function saveCurrentEditor(formData = new FormData(), options = {}) {
     const itemType = String(formData.get("item_type") ?? form.item_type ?? "visit");
     const editingItem = editingId ? dayItems.find((item) => item.id === editingId) : null;
     if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
@@ -7570,6 +7667,31 @@ function ItineraryTimeline({
       setForm(submittedForm);
       return false;
     }
+    const overlapItem = findOverlappingVisitItem({
+      dayIndex: activeDay,
+      editingId,
+      items: dayItems,
+      payload: submittedForm,
+    });
+    if (overlapItem) {
+      setTimeError(formatTimelineOverlapError(overlapItem));
+      setForm(submittedForm);
+      return false;
+    }
+    if (submittedForm.item_type !== "transport" && !options.transportConflict) {
+      const brokenPair = findBrokenTransportationPair({
+        candidate: submittedForm,
+        dayIndex: activeDay,
+        editingId,
+        items: dayItems,
+      });
+      if (brokenPair) {
+        setTimeError("");
+        setForm(submittedForm);
+        setTransportPairConflict(brokenPair);
+        return false;
+      }
+    }
     setTimeError("");
     const result = await onSaveItem(
       {
@@ -7595,7 +7717,16 @@ function ItineraryTimeline({
         cost: Number(submittedForm.cost || 0),
       },
       editingId,
-      { baseUpdatedAt, tripId: editorTripId },
+      {
+        baseUpdatedAt,
+        tripId: editorTripId,
+        transportConflict: options.transportConflict
+          ? {
+              id: options.transportConflict.id,
+              updated_at: options.transportConflict.updated_at,
+            }
+          : null,
+      },
     );
     if (!result?.ok) {
       if (result?.fixed) {
@@ -7606,6 +7737,8 @@ function ItineraryTimeline({
         setTimeError(result.overlapError);
         setForm(submittedForm);
       }
+      if (result?.baseUpdatedAt) setBaseUpdatedAt(result.baseUpdatedAt);
+      if (result?.errorMessage) setTimeError(result.errorMessage);
       if (result?.conflict) setConflict(true);
       return false;
     }
@@ -7615,12 +7748,20 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setTransportPairConflict(null);
     setEditingId(null);
     setEditorTripId(null);
     setInsertionPair(null);
     setRestoredDraftKey(null);
     setIsOpen(false);
     return true;
+  }
+
+  async function confirmBrokenTransportationPairDeletion() {
+    if (!transportPairConflict?.transportItem || isResolvingTransportPairConflict) return;
+    setIsResolvingTransportPairConflict(true);
+    await saveCurrentEditor(new FormData(), { transportConflict: transportPairConflict.transportItem });
+    setIsResolvingTransportPairConflict(false);
   }
 
   async function submit(event) {
@@ -8357,6 +8498,43 @@ function ItineraryTimeline({
             </button>
             <button className="primary-button compact" type="button" onClick={confirmDeleteTarget}>
               確認刪除
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    {transportPairConflict ? (
+      <div className="modal-backdrop">
+        <div
+          className="dialog-card"
+          data-testid="transport-pair-conflict-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="transport-pair-conflict-title"
+        >
+          <h2 id="transport-pair-conflict-title">這個時間會插入既有交通卡中間</h2>
+          <p>
+            原本「{visitDestination(transportPairConflict.fromItem)}」到「
+            {visitDestination(transportPairConflict.toItem)}」之間已有交通卡。
+            如果保留這個時間，該交通卡將不再相鄰。
+          </p>
+          <p>請選擇要恢復原本時間，或刪除這張交通卡。</p>
+          <div className="form-actions">
+            <button
+              className="ghost-button"
+              disabled={isResolvingTransportPairConflict}
+              type="button"
+              onClick={() => setTransportPairConflict(null)}
+            >
+              恢復
+            </button>
+            <button
+              className="primary-button compact"
+              disabled={isResolvingTransportPairConflict}
+              type="button"
+              onClick={confirmBrokenTransportationPairDeletion}
+            >
+              刪除交通卡
             </button>
           </div>
         </div>
