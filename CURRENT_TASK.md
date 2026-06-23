@@ -7,11 +7,12 @@
 - `docs/BUGS.md`
 - `docs/gpt/timeline-phase-4-plan.md`
 - `docs/gpt/2026-06-22-phase-4-2c-closeout-handoff.md`
+- `docs/gpt/2026-06-23-phase-4-4-closeout-handoff.md`
 
 ## Current Phase
 
 ```text
-Timeline Phase 4.4 - Completed / Verified
+Timeline Phase 4.4 - Completed / Automated QA Passed / User Verified
 ```
 
 Next phase:
@@ -51,17 +52,24 @@ codex/timeline-phase-4-0-to-4-2
 
 ### Phase 4.4
 
-- Added local auto-continuation after editing an existing timed visit's `start_time` or `end_time`.
-- The prompt appears only after invalid-time, overlap, and Phase 4.3 transportation-pair checks pass.
-- `只儲存此行程` updates only the edited visit.
-- `自動接續後續行程` shifts following timed visits while preserving each original visit duration and the original gap between visits.
+- Added explicit local auto-continuation after editing an existing timed visit's `start_time` or `end_time`.
+- The editor actions are ordered `取消 / 接續 / 儲存`.
+- Normal Save updates only the edited visit and never opens the continuation prompt.
+- Continue is enabled only after the existing timed visit's time changes and a later timed visit exists.
+- Continue runs invalid-time, overlap, and Phase 4.3 transportation-pair checks before showing the confirmation.
+- Cancelling the continuation confirmation returns to the active editor without saving.
+- Confirming continuation shifts following timed visits while preserving each original visit duration and the original gap between visits.
 - Earlier visits and untimed visits are never shifted.
 - A final open-ended timed visit may move while keeping `end_time = null`.
-- Fixed, foreign-locked, incomplete, invalid, or day-overflow followers block automatic continuation while still allowing current-only save.
+- The first following fixed visit is a time anchor and is never moved.
+- Movable visits that cannot fit before the fixed anchor, plus the remaining affected visits before that anchor, become untimed.
+- Continuation stops at the fixed anchor; visits after it are unchanged.
+- Foreign-locked, incomplete, invalid, or unsafe continuation data still blocks the batch safely.
 - Formal validates trip/day/type/fixed/lock/`updated_at` baselines and defers lock release until the combined operation completes.
 - Formal uses best-effort compensation if a downstream update or Phase 4.3 transportation deletion fails.
 - Demo shares the pure continuation planner and applies the result in one local React-state update.
 - No database migration or RPC change was required.
+- User manually verified the final Phase 4.4 UX on 2026-06-23.
 
 ## Production Migration State
 
@@ -88,20 +96,25 @@ Important:
 - `tests/phase-4-3-transport-conflict.spec.js`
 - `tests/phase-4-4-auto-continuation.spec.js`
 - `CURRENT_TASK.md`
+- `docs/gpt/2026-06-23-phase-4-4-closeout-handoff.md`
 
 ## Verification
 
-Latest checks on 2026-06-23:
+Final checks on 2026-06-23:
 
 ```text
 npm.cmd run build       passed
-npx.cmd playwright test passed 51/51
+npx.cmd playwright test passed 54/54
 git diff --check        passed
+manual user verification passed
 ```
 
 Browser verification also passed on `/demo/timeline`:
 
-- The Phase 4.4 dialog rendered with both actions enabled for a valid edit.
+- The editor rendered `取消 / 接續 / 儲存` in the required order.
+- Save did not open the continuation prompt.
+- Continue opened the short confirmation only after a valid time change.
+- Fixed-anchor overflow converted affected movable visits to untimed without moving the fixed visit.
 - The page had meaningful content and no Vite error overlay.
 - No browser console errors were detected.
 - Demo made no Supabase/Auth/Realtime/Storage/Draft/Edit Lock requests in automated coverage.
