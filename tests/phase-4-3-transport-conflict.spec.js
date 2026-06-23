@@ -112,7 +112,7 @@ test("unchanged edit position does not prompt", () => {
 
 test("formal resolution guards transport deletion and compensates failed combined saves", () => {
   expect(appSource).toContain('.eq("updated_at", transportConflict.updated_at)');
-  expect(appSource).toContain("deferEditLockRelease: Boolean(transportConflict)");
+  expect(appSource).toContain("deferEditLockRelease: requiresDeferredCompletion");
   expect(appSource).toContain("行程變更未儲存");
   expect(appSource).toContain("新增行程未儲存");
 });

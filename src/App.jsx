@@ -36,6 +36,7 @@ import {
 } from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
+import { planTimelineAutoContinuation } from "./lib/timelineAutoContinuation.js";
 import { findBrokenTransportationPair } from "./lib/timelineTransportationConflicts.js";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import kyotoDemoTrip from "./demo-kyoto-trip.json";
@@ -2293,6 +2294,66 @@ export default function App() {
     return { ok: false, error: { message: "這張交通卡已由其他成員更新，請重新整理後再試。" } };
   }
 
+  async function applyItineraryTimeContinuation(updates = []) {
+    const applied = [];
+    for (const update of updates) {
+      const result = await supabase
+        .from("itinerary_items")
+        .update({ start_time: update.start_time, end_time: update.end_time })
+        .eq("id", update.id)
+        .eq("trip_id", activeTrip.id)
+        .eq("day_index", activeDay)
+        .neq("item_type", "transport")
+        .eq("is_fixed", false)
+        .eq("updated_at", update.updated_at)
+        .select("id, updated_at")
+        .maybeSingle();
+      if (result.error || !result.data) {
+        return {
+          ok: false,
+          applied,
+          error: result.error || { message: "後續行程已由其他成員更新，請重新整理後再試。" },
+        };
+      }
+      applied.push({ ...update, applied_updated_at: result.data.updated_at });
+    }
+    return { ok: true, applied };
+  }
+
+  async function rollbackItineraryTimeContinuation(applied = []) {
+    let rollbackFailed = false;
+    let latestUpdatedAt = null;
+    for (const update of [...applied].reverse()) {
+      const result = await supabase
+        .from("itinerary_items")
+        .update({ start_time: update.original_start_time, end_time: update.original_end_time })
+        .eq("id", update.id)
+        .eq("trip_id", activeTrip.id)
+        .eq("day_index", activeDay)
+        .eq("updated_at", update.applied_updated_at)
+        .select("id, updated_at")
+        .maybeSingle();
+      if (result.error || !result.data) rollbackFailed = true;
+      else latestUpdatedAt = result.data.updated_at;
+    }
+    return { ok: !rollbackFailed, latestUpdatedAt };
+  }
+
+  async function rollbackEditedItineraryItem({ editingId, editingItem, normalizedPayload, updatedAt }) {
+    const rollbackPayload = Object.fromEntries(
+      Object.keys(normalizedPayload).map((field) => [field, editingItem?.[field] ?? null]),
+    );
+    const rollback = await supabase
+      .from("itinerary_items")
+      .update(rollbackPayload)
+      .eq("id", editingId)
+      .eq("trip_id", activeTrip.id)
+      .eq("updated_at", updatedAt)
+      .select("id, updated_at")
+      .maybeSingle();
+    return { ok: !rollback.error && Boolean(rollback.data), data: rollback.data, error: rollback.error };
+  }
+
   async function saveItem(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
@@ -2330,40 +2391,78 @@ export default function App() {
       return { ok: false, overlapError };
     }
     const transportConflict = meta.transportConflict || null;
+    const autoContinuationUpdates = Array.isArray(meta.autoContinuationUpdates) ? meta.autoContinuationUpdates : [];
     if (editingId) {
+      const invalidContinuationItem = autoContinuationUpdates.find((update) => {
+        const item = items.find((candidate) => candidate.id === update.id);
+        return (
+          !item ||
+          item.trip_id !== activeTrip.id ||
+          Number(item.day_index) !== Number(activeDay) ||
+          isTransportationCard(item) ||
+          item.is_fixed ||
+          isLockedByAnotherUser(item, session?.user?.id) ||
+          !update.updated_at
+        );
+      });
+      if (invalidContinuationItem) {
+        const errorMessage = "後續行程包含固定、鎖定或已變更的資料，無法自動接續時間。";
+        setNotice(errorMessage);
+        return { ok: false, errorMessage };
+      }
+      const requiresDeferredCompletion = Boolean(transportConflict) || autoContinuationUpdates.length > 0;
       const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, {
         ...meta,
-        deferEditLockRelease: Boolean(transportConflict),
+        deferEditLockRelease: requiresDeferredCompletion,
       });
       if (result.error) setNotice(result.error.message);
       else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
-      else if (transportConflict) {
-        const transportDelete = await deleteBrokenTransportationPair(transportConflict);
-        if (!transportDelete.ok) {
-          const rollbackPayload = Object.fromEntries(
-            Object.keys(normalizedPayload).map((field) => [field, editingItem?.[field] ?? null]),
-          );
-          const rollback = await supabase
-            .from("itinerary_items")
-            .update(rollbackPayload)
-            .eq("id", editingId)
-            .eq("trip_id", activeTrip.id)
-            .eq("updated_at", result.data?.updated_at)
-            .select("id, updated_at")
-            .maybeSingle();
-          const rollbackSucceeded = !rollback.error && Boolean(rollback.data);
+      else if (requiresDeferredCompletion) {
+        const continuationResult = await applyItineraryTimeContinuation(autoContinuationUpdates);
+        if (!continuationResult.ok) {
+          const continuationRollback = await rollbackItineraryTimeContinuation(continuationResult.applied);
+          const editedRollback = await rollbackEditedItineraryItem({
+            editingId,
+            editingItem,
+            normalizedPayload,
+            updatedAt: result.data?.updated_at,
+          });
+          const rollbackSucceeded = continuationRollback.ok && editedRollback.ok;
           const errorMessage = rollbackSucceeded
-            ? `交通卡刪除失敗，行程變更未儲存：${transportDelete.error.message}`
-            : `交通卡刪除失敗，且行程變更無法自動回復：${transportDelete.error.message}`;
+            ? `後續行程自動接續失敗，本次時間變更未儲存：${continuationResult.error.message}`
+            : `後續行程自動接續失敗，且部分時間無法自動回復：${continuationResult.error.message}`;
           setNotice(errorMessage);
           return {
             ok: false,
-            error: transportDelete.error,
+            error: continuationResult.error,
             errorMessage,
-            baseUpdatedAt: rollback.data?.updated_at || result.data?.updated_at || null,
+            baseUpdatedAt: editedRollback.data?.updated_at || result.data?.updated_at || null,
             rollbackFailed: !rollbackSucceeded,
-            visitSaved: !rollbackSucceeded,
           };
+        }
+        if (transportConflict) {
+          const transportDelete = await deleteBrokenTransportationPair(transportConflict);
+          if (!transportDelete.ok) {
+            const continuationRollback = await rollbackItineraryTimeContinuation(continuationResult.applied);
+            const editedRollback = await rollbackEditedItineraryItem({
+              editingId,
+              editingItem,
+              normalizedPayload,
+              updatedAt: result.data?.updated_at,
+            });
+            const rollbackSucceeded = continuationRollback.ok && editedRollback.ok;
+            const errorMessage = rollbackSucceeded
+              ? `交通卡刪除失敗，行程變更未儲存：${transportDelete.error.message}`
+              : `交通卡刪除失敗，且部分行程時間無法自動回復：${transportDelete.error.message}`;
+            setNotice(errorMessage);
+            return {
+              ok: false,
+              error: transportDelete.error,
+              errorMessage,
+              baseUpdatedAt: editedRollback.data?.updated_at || result.data?.updated_at || null,
+              rollbackFailed: !rollbackSucceeded,
+            };
+          }
         }
         await releaseEditLock({
           recordId: editingId,
@@ -5317,6 +5416,9 @@ function DemoApp({ initialSection }) {
   function saveTimelineItem(payload, editingId, meta = {}) {
     const nextPayload = normalizeItemPayload(payload);
     const brokenTransportId = meta.transportConflict?.id || null;
+    const continuationById = new Map(
+      (meta.autoContinuationUpdates || []).map((update) => [update.id, update]),
+    );
     if (!nextPayload.title.trim()) return;
     const editingItem = editingId ? timelineItems.find((item) => item.id === editingId) : null;
     if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
@@ -5337,15 +5439,25 @@ function DemoApp({ initialSection }) {
     }
     if (editingId) {
       setTimelineItems((current) =>
-        current.filter((item) => item.id !== brokenTransportId).map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                ...nextPayload,
-                updated_at: new Date().toISOString(),
-              }
-            : item,
-        ),
+        current.filter((item) => item.id !== brokenTransportId).map((item) => {
+          const continuation = continuationById.get(item.id);
+          if (item.id === editingId) {
+            return {
+              ...item,
+              ...nextPayload,
+              updated_at: new Date().toISOString(),
+            };
+          }
+          if (continuation) {
+            return {
+              ...item,
+              start_time: continuation.start_time,
+              end_time: continuation.end_time,
+              updated_at: new Date().toISOString(),
+            };
+          }
+          return item;
+        }),
       );
       return { ok: true };
     }
@@ -7286,6 +7398,8 @@ function ItineraryTimeline({
   const [isReorderingDestination, setIsReorderingDestination] = useState(false);
   const [transportPairConflict, setTransportPairConflict] = useState(null);
   const [isResolvingTransportPairConflict, setIsResolvingTransportPairConflict] = useState(false);
+  const [autoContinuationPrompt, setAutoContinuationPrompt] = useState(null);
+  const [isSavingAutoContinuation, setIsSavingAutoContinuation] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -7416,6 +7530,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setTransportPairConflict(null);
+    setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(null);
     setInsertionPair(null);
@@ -7446,6 +7561,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setTransportPairConflict(null);
+    setAutoContinuationPrompt(null);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
     setInsertionPair(null);
@@ -7475,6 +7591,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setTransportPairConflict(null);
+    setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
     setInsertionPair(null);
@@ -7515,6 +7632,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setTransportPairConflict(null);
+    setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
     setInsertionPair(previousItem ? { fromId: previousItem.id, toId: nextItem?.id || null } : null);
@@ -7583,6 +7701,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setTransportPairConflict(null);
+    setAutoContinuationPrompt(null);
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || null);
     setInsertionPair(null);
@@ -7600,6 +7719,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setTransportPairConflict(null);
+    setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(null);
     setInsertionPair(null);
@@ -7692,6 +7812,31 @@ function ItineraryTimeline({
         return false;
       }
     }
+    if (editingId && submittedForm.item_type !== "transport" && !options.skipAutoContinuation) {
+      const continuationPlan = planTimelineAutoContinuation({
+        candidate: submittedForm,
+        dayIndex: activeDay,
+        editedItemId: editingId,
+        items: dayItems,
+      });
+      if (continuationPlan.shouldPrompt) {
+        const hasForeignLock = (continuationPlan.followingVisitIds || []).some((itemId) => {
+          const item = dayItems.find((candidate) => candidate.id === itemId);
+          return useEditLocks && isLockedByAnotherUser(item, currentUserId);
+        });
+        setTimeError("");
+        setForm(submittedForm);
+        setTransportPairConflict(null);
+        setAutoContinuationPrompt({
+          plan: hasForeignLock
+            ? { ...continuationPlan, canAutoContinue: false, blockReason: "locked_visit", updates: [] }
+            : continuationPlan,
+          title: submittedForm.location_name || submittedForm.location || submittedForm.title,
+          transportConflict: options.transportConflict || null,
+        });
+        return false;
+      }
+    }
     setTimeError("");
     const result = await onSaveItem(
       {
@@ -7726,6 +7871,7 @@ function ItineraryTimeline({
               updated_at: options.transportConflict.updated_at,
             }
           : null,
+        autoContinuationUpdates: options.autoContinuationUpdates || [],
       },
     );
     if (!result?.ok) {
@@ -7749,6 +7895,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setTransportPairConflict(null);
+    setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(null);
     setInsertionPair(null);
@@ -7762,6 +7909,27 @@ function ItineraryTimeline({
     setIsResolvingTransportPairConflict(true);
     await saveCurrentEditor(new FormData(), { transportConflict: transportPairConflict.transportItem });
     setIsResolvingTransportPairConflict(false);
+  }
+
+  async function saveCurrentVisitWithoutContinuation() {
+    if (!autoContinuationPrompt || isSavingAutoContinuation) return;
+    setIsSavingAutoContinuation(true);
+    await saveCurrentEditor(new FormData(), {
+      skipAutoContinuation: true,
+      transportConflict: autoContinuationPrompt.transportConflict,
+    });
+    setIsSavingAutoContinuation(false);
+  }
+
+  async function saveWithAutoContinuation() {
+    if (!autoContinuationPrompt?.plan?.canAutoContinue || isSavingAutoContinuation) return;
+    setIsSavingAutoContinuation(true);
+    await saveCurrentEditor(new FormData(), {
+      skipAutoContinuation: true,
+      transportConflict: autoContinuationPrompt.transportConflict,
+      autoContinuationUpdates: autoContinuationPrompt.plan.updates,
+    });
+    setIsSavingAutoContinuation(false);
   }
 
   async function submit(event) {
@@ -8498,6 +8666,52 @@ function ItineraryTimeline({
             </button>
             <button className="primary-button compact" type="button" onClick={confirmDeleteTarget}>
               確認刪除
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    {autoContinuationPrompt ? (
+      <div className="modal-backdrop">
+        <div
+          className="dialog-card"
+          data-testid="auto-continuation-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auto-continuation-title"
+        >
+          <h2 id="auto-continuation-title">是否自動接續後續行程時間？</h2>
+          <p>
+            你修改了「{autoContinuationPrompt.title || "此行程"}」的時間。
+            系統可以依照原本行程間隔，自動調整後續有時間的行程。
+          </p>
+          <p>未設定時間的行程不會被調整。</p>
+          {autoContinuationPrompt.plan.blockReason === "fixed_visit" ? (
+            <p className="notice inline-error">後續行程包含固定行程，無法自動接續時間。請先解除固定，或手動調整後續時間。</p>
+          ) : null}
+          {autoContinuationPrompt.plan.blockReason === "locked_visit" ? (
+            <p className="notice inline-error">後續行程目前由其他成員編輯，無法自動接續時間。</p>
+          ) : null}
+          {["incomplete_time", "invalid_result"].includes(autoContinuationPrompt.plan.blockReason) ? (
+            <p className="notice inline-error">後續行程的時間資料無法安全接續，請手動調整。</p>
+          ) : null}
+          {timeError ? <p className="notice inline-error">{timeError}</p> : null}
+          <div className="form-actions">
+            <button
+              className="ghost-button"
+              disabled={isSavingAutoContinuation}
+              type="button"
+              onClick={saveCurrentVisitWithoutContinuation}
+            >
+              只儲存此行程
+            </button>
+            <button
+              className="primary-button compact"
+              disabled={isSavingAutoContinuation || !autoContinuationPrompt.plan.canAutoContinue}
+              type="button"
+              onClick={saveWithAutoContinuation}
+            >
+              自動接續後續行程
             </button>
           </div>
         </div>
