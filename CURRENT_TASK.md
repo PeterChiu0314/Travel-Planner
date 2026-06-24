@@ -8,7 +8,9 @@
 - `docs/2026-06-22-phase-4-2c-closeout-handoff.md`
 - `docs/2026-06-23-phase-4-4-closeout-handoff.md`
 - `docs/2026-06-24-phase-4-5-closeout-handoff.md`
-- `docs/timeline-phase-4-drag-reorder-rules-draft-v3.md`
+- `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
+- `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v5.md` (latest working draft)
 
 Archive rule:
 
@@ -19,13 +21,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.5 + Partial-Time/Passive-Transport Hotfix - Implemented / Automated and Browser QA Passed / Manual Verification Pending
+Timeline Phase 4.5 Stabilization + Hotfixes 1-3 - Implemented / Browser and Build QA Passed / Final Manual Verification Pending
 ```
 
 Next phase:
 
 ```text
-Awaiting Phase 4.5 Hotfix manual verification or next explicit direction
+Paused after the 2026-06-25 stabilization closeout; awaiting final manual verification or next explicit direction
 ```
 
 Branch:
@@ -93,10 +95,39 @@ codex/timeline-phase-4-0-to-4-2
 - Clearing either time in the editor immediately clears the other; Formal and Demo save normalization persists either a complete pair or `null/null`.
 - Partial visits do not participate in timed sorting, overlap, auto-continuation, transportation shortage, timed adjacency, or timed destination-package manifests.
 - Passive untimed conversion is separate from active untimed drag. Existing transportation is not deleted, hidden, promoted to the top warning stack, rewritten as tail, or replaced.
+- A timed visit that passively becomes untimed immediately receives an encoded untimed `sort_order` for its current display gap, so it remains in place instead of falling to the legacy untimed tail position.
+- Phase 4.4 fixed-anchor overflow applies the same preservation rule to every converted visit while retaining their relative order.
+- Every later timed-to-untimed conversion rebases all existing untimed gap encodings for that day from the pre-save display order. An earlier overflow visit therefore remains before its fixed anchor even when another timed visit above it later becomes untimed.
+- Untimed visits never auto-fill or compact into newly available gaps. When visits change between timed and untimed in either direction, rebasing preserves the complete pre-save display order of every remaining untimed visit.
+- While a retained transportation still has an untimed endpoint, a staged time restore preserves the transportation direction when its `from` and `to` visits would otherwise become reverse-adjacent. Restoring A and then B therefore keeps `A -> B` in order and returns the card to the normal adjacent flow once both are timed.
 - Transportation with an existing untimed/partial endpoint stays anchored after its `from_item_id` visit and shows the existing compact warning UI: `目的地時間未設定，請重新確認交通卡。`
 - Phase 4.4 fixed-anchor overflow and manual time clearing therefore preserve related transportation for manual review.
 - No migration, RPC, or production DB change was required. Applied migrations 019/020/021 remain immutable.
 - Hotfix commit: `5b75450 Fix Timeline Phase 4.5 partial time handling`.
+
+### Phase 4.5 Hotfix 2
+
+- Passive conversion to untimed still preserves existing transportation and its compact warning.
+- Active drag of an untimed visit still rejects a target that would break an existing valid timed transportation pair before any confirmation appears.
+- If the untimed source visit itself is linked by any transportation `from_item_id` or `to_item_id`, a legal drop now opens the existing `確認移動行程？` dialog.
+- Cancel leaves the visit, transportation rows, local state, and Formal persistence unchanged.
+- Confirm moves only the untimed source visit, deletes every transportation row linked to that source, and creates or rewrites no transportation.
+- Formal validates the source and linked-transport baselines before writing, persists the source `sort_order`, deletes only the confirmed linked transportation IDs, and reloads authoritative trip data after success or failure.
+- Demo performs the confirmed move and linked-transport deletion in one local React-state update without production-service calls.
+- Timed visit times, Phase 4.4 auto-continuation, and the Phase 4.2c reorder RPC remain untouched.
+- No migration or RPC change was required; applied migrations 019/020/021 remain immutable.
+
+### Phase 4.5 Hotfix 3
+
+- A retained tail transport remains a passive untimed warning while its endpoint is untimed.
+- When that endpoint becomes timed again and is still the final timed visit, the same row automatically returns to the valid tail flow instead of the invalid transport stack.
+- Tail restore does not delete, rewrite, or convert the transport into a normal pair.
+- Editing a timed visit across a fixed timed visit disables only the `接續` action.
+- The disabled continuation action explains: `跨越固定行程時無法接續。`
+- Direct `儲存` remains enabled and succeeds when existing invalid-time and overlap validation pass.
+- Phase 4.3 conflict detection now covers both inserting a new timed visit between an existing transportation pair and editing either endpoint so the original valid pair is no longer adjacent.
+- Endpoint edits that break a pair open the existing Restore / Delete Transportation dialog before persistence; passive conversion to untimed remains outside this prompt.
+- No migration, RPC, schema, production DB, or Playwright test change was made.
 
 ## Production Migration State
 
@@ -127,7 +158,11 @@ Important:
 - `tests/phase-4-5-untimed-ordering.spec.js`
 - `CURRENT_TASK.md`
 - `docs/2026-06-24-phase-4-5-closeout-handoff.md`
+- `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
+- `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v3.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v4.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v5.md`
 
 ## Verification
 
@@ -151,6 +186,33 @@ manual user verification pending
 ```
 
 Hotfix browser verification confirmed that clearing one time cleared both form values, the saved visit became untimed, the existing transportation stayed anchored after the from visit, the compact warning rendered, no transport moved into the top invalid stack, and the console had no warnings/errors.
+
+Phase 4.5 Hotfix 2 checks on 2026-06-24:
+
+```text
+npm.cmd run build passed
+git diff --check  passed
+Demo consecutive passive-conversion browser QA passed
+Demo fixed-anchor overflow and non-compacting restore QA passed
+Demo tail restore and fixed-crossing continuation QA passed
+Demo transportation-endpoint conflict prompt QA passed
+automated tests     not added or modified per user instruction
+manual verification pending
+```
+
+Phase 4.5 stabilization closeout checks on 2026-06-25:
+
+```text
+npm.cmd run build passed
+git diff --check  passed
+Demo browser QA    passed for passive untimed position preservation, no-compaction,
+                   tail restore, fixed-crossing continuation guard, and
+                   transportation endpoint conflict confirmation
+Playwright tests   intentionally not run or modified per user instruction
+final manual verification pending
+```
+
+This closeout preserves the existing Hotfix work, adds no migration/RPC/schema change, and does not begin Phase 4.6 or Phase 4.7.
 
 The Vite build still reports the existing large-chunk warning; it is not a Phase 4.4 regression.
 
@@ -177,7 +239,8 @@ Phase 4.5 and its Hotfix did not redesign or extend:
 - The existing native HTML drag accessibility limitations from Phase 4.2c remain outside Phase 4.4.
 - Legacy DB rows with only one time are treated safely as untimed in the UI but are not automatically written back. The next explicit save normalizes them to `null/null`.
 - Because applied RPC migrations 020/021 are immutable and their server manifest predates this Hotfix, a legacy start-only row can cause timed reorder to reject safely as stale until that row is explicitly normalized.
+- Hotfix 2 Formal persistence uses a guarded source-row update followed by one scoped transportation delete statement because no new RPC was approved. If deletion fails, it attempts to restore the original `sort_order` before authoritative reload; an extreme network or concurrent-write failure during both deletion and compensation can still leave a partial authoritative result.
 
 ## Next Step
 
-Wait for Phase 4.5 Hotfix manual verification or the next explicitly approved Timeline phase. Do not infer Phase 4.6 scheduling, fixed-card drag, presence, map, transportation repair, or database changes.
+Wait for final Phase 4.5 stabilization manual verification or the next explicitly approved Timeline phase. Do not infer Phase 4.6 scheduling, fixed-card drag, presence, map, transportation repair, or database changes.

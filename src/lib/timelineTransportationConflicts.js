@@ -10,10 +10,6 @@ function compareTimedVisits(a, b) {
   return timeSort || orderSort || String(a?.id || "").localeCompare(String(b?.id || ""));
 }
 
-function pairKey(fromItemId, toItemId) {
-  return `${fromItemId || ""}->${toItemId || ""}`;
-}
-
 export function findBrokenTransportationPair({ candidate, dayIndex, editingId = null, items = [] }) {
   if (!candidate || isTransportationCard(candidate) || !isTimedVisit(candidate)) return null;
 
@@ -25,9 +21,6 @@ export function findBrokenTransportationPair({ candidate, dayIndex, editingId = 
         Number(item.day_index) === Number(dayIndex),
     )
     .sort(compareTimedVisits);
-  const currentAdjacentPairs = new Set(
-    currentTimedVisits.slice(0, -1).map((item, index) => pairKey(item.id, currentTimedVisits[index + 1].id)),
-  );
   const editingItem = editingId ? currentTimedVisits.find((item) => item.id === editingId) : null;
   const candidateItem = {
     ...(editingItem || {}),
@@ -42,22 +35,21 @@ export function findBrokenTransportationPair({ candidate, dayIndex, editingId = 
     ...currentTimedVisits.filter((item) => item.id !== editingId),
     candidateItem,
   ].sort(compareTimedVisits);
-  const candidateIndex = candidateOrder.findIndex((item) => item.id === candidateItem.id);
-  if (candidateIndex <= 0 || candidateIndex >= candidateOrder.length - 1) return null;
-
-  const fromItem = candidateOrder[candidateIndex - 1];
-  const toItem = candidateOrder[candidateIndex + 1];
-  const originalPairKey = pairKey(fromItem.id, toItem.id);
-  if (!currentAdjacentPairs.has(originalPairKey)) return null;
-
-  const transportItem = items.find(
+  const currentIndexById = new Map(currentTimedVisits.map((item, index) => [item.id, index]));
+  const candidateIndexById = new Map(candidateOrder.map((item, index) => [item.id, index]));
+  const brokenTransport = items.find(
     (item) =>
       isTransportationCard(item) &&
       Number(item.day_index) === Number(dayIndex) &&
-      item.from_item_id === fromItem.id &&
-      item.to_item_id === toItem.id,
+      item.from_item_id &&
+      item.to_item_id &&
+      currentIndexById.get(item.to_item_id) === currentIndexById.get(item.from_item_id) + 1 &&
+      candidateIndexById.get(item.to_item_id) !== candidateIndexById.get(item.from_item_id) + 1,
   );
-  if (!transportItem) return null;
+  if (!brokenTransport) return null;
 
-  return { fromItem, toItem, transportItem };
+  const fromItem = currentTimedVisits.find((item) => item.id === brokenTransport.from_item_id);
+  const toItem = currentTimedVisits.find((item) => item.id === brokenTransport.to_item_id);
+  if (!fromItem || !toItem) return null;
+  return { fromItem, toItem, transportItem: brokenTransport };
 }

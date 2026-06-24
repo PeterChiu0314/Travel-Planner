@@ -51,6 +51,12 @@ The shared helper reserves a negative integer range for encoded untimed position
 
 Legacy untimed rows whose `sort_order` is not encoded remain at the end of the timed schedule until the user drags them. This gives existing production data a safe backward-compatible fallback.
 
+When a currently timed visit becomes untimed through manual time clearing, partial-time normalization during save, or Phase 4.4 fixed-anchor overflow, the save flow immediately encodes its current display gap. The converted visit therefore stays in its existing visual position instead of entering the legacy tail fallback. When multiple overflow visits convert together, their relative order is preserved.
+
+Because gap numbers are relative to the remaining timed visits, every later timed-to-untimed conversion also rebases existing untimed rows from the current display order. This prevents an earlier fixed-anchor overflow visit from moving below its anchor when another timed visit above it subsequently becomes untimed.
+
+The same rebasing applies when an untimed visit becomes timed again. It preserves the absolute pre-save display order of every remaining untimed visit; untimed cards do not auto-fill or compact upward into gaps created or removed by timing changes.
+
 Timed visits never use the untimed encoding for their display order. Their primary ordering remains `start_time`, with existing `sort_order` and ID tie-breakers only when needed.
 
 The shared pure helper is:
@@ -187,6 +193,10 @@ If the guarded update returns no row or fails:
 Realtime reload therefore preserves the persisted untimed position without introducing a new table or RPC.
 
 Formal and Demo visit saves both normalize partial time to `null/null`. Passive conversion does not pass a Phase 4.3 Delete intent, so the existing transportation row is preserved.
+
+Passive conversion also persists an encoded untimed `sort_order` for the visit's current display position. This position update does not count as an active untimed drag and does not remove transportation.
+
+When transportation endpoints are restored to timed in separate saves, the mixed display order keeps a still-untimed reverse-adjacent endpoint in the transportation's `from -> to` direction. This prevents the intermediate restore state from turning the retained pair into an invalid transportation card before both endpoints are timed again.
 
 Applied migrations 019, 020, and 021 remain unchanged and immutable. No migration 022 was created, and production DB was not modified during Phase 4.5.
 

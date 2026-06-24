@@ -1,0 +1,1385 @@
+# Timeline Phase 4 拖曳重排 / 多人協作 / 固定卡 / 未設時間規則草稿
+
+Date: 2026-06-23
+Status: Draft for discussion / updated with Collaborative Drag Presence + active/passive untimed rules + untimed slot rebase rules
+
+> 本文件整理目前討論過的 Timeline Phase 4 後續規則。
+> 目前專案已完成至 Phase 4.5；本次補上 active untimed drag、passive untimed conversion，以及 untimed slot rebase / no-compact 規則。
+> 本文件不是最終實作指令，後續可再拆成 Codex prompt 或正式 handoff。
+
+---
+
+## 0. 目前 Phase 重新排序建議
+
+目前已完成：
+
+```text
+Phase 4.3：新增 / 編輯景點時間插入既有交通 pair 提示
+```
+
+後續建議拆分：
+
+```text
+Phase 4.4：修改時間後，局部自動接續時間
+Phase 4.5：未設定時間景點排序規則
+Phase 4.6：拖曳 timed visit 後，自動調整時間
+Phase 4.7：固定行程卡作為時間錨點的拖曳規則
+Phase 4.8：Collaborative Drag Presence，多人拖曳中狀態提示
+Phase 4.9：Map 整合前置設計
+Phase 4.10：QA 與交接
+```
+
+拆分原因：
+
+- 不把拖曳、自動時間、固定卡、未設時間卡、交通卡限制全部塞進同一個 Phase。
+- 先定義 untimed visits，後面固定卡「塞不下轉 untimed」才有基礎。
+- 先做一般拖曳自動時間，再做固定卡錨點進階規則。
+- 多人拖曳中的 presence 只做暫時視覺狀態，不混入正式 reorder RPC。
+- 4.4b 原本討論的內容建議拆成 4.6 + 4.7，協作拖曳視覺狀態另拆到 4.8。
+
+---
+
+## 1. 名詞定義
+
+### timed visit
+
+有 `start_time` / `end_time` 的目的地行程卡。
+
+例如：
+
+```text
+09:00 ~ 10:00 台北車站
+```
+
+### untimed visit
+
+沒有完整設定 `start_time` / `end_time` 的目的地行程卡。
+
+判定規則：
+
+```text
+只要 start_time 或 end_time 任一個不存在 / 未設定 / null，該 visit 就視為 untimed visit。
+```
+
+也就是：
+
+| start_time | end_time | 判定 |
+|---|---|---|
+| 有 | 有 | timed visit |
+| 無 | 無 | untimed visit |
+| 有 | 無 | untimed visit |
+| 無 | 有 | untimed visit |
+
+原因：
+
+- 沒有 `start_time`，系統無法判斷排序時間點。
+- 沒有 `end_time`，系統無法計算停留時長。
+- 只有其中一個時間時，不能參與 overlap、auto-continuation、transport shortage 或 timed adjacency 判斷。
+
+儲存建議：
+
+```text
+若使用者將 start_time 或 end_time 任一個設為未設定，另一個也應同步清除，避免留下 partial timed state。
+```
+
+它代表：
+
+```text
+使用者想把這個目的地放在行程順序裡，但時間還沒決定。
+```
+
+### transportation card
+
+兩張 timed visits 之間的交通卡。
+
+例如：
+
+```text
+A → B，捷運 20 分鐘
+```
+
+### fixed timed visit
+
+已被使用者鎖定的 timed visit。
+
+固定卡代表：
+
+- 目的地資料不動
+- `start_time / end_time` 不動
+- 不可拖曳
+- 不可被自動時間接續推動
+
+### destination package
+
+一張行程卡中會跟著目的地移動的內容資料。
+
+包含：
+
+- title / location / note / cost
+- map fields
+- alternatives
+- linked budget rows
+
+但不包含：
+
+- row id
+- day identity
+- fixed state
+- edit lock state
+- created_at
+
+### transaction RPC
+
+資料庫函式，一次完成多個資料變更。
+
+原則：
+
+```text
+全部成功 → commit
+任一步失敗 → rollback，資料回到原狀
+```
+
+用於避免拖曳重排時出現半完成狀態。
+
+### timed manifest
+
+使用者拖曳當下看到的同一天 timed visits 清單快照。
+
+用來確認資料庫目前狀態是否仍和使用者畫面一致。
+
+若 manifest 不一致，代表使用者畫面過期，拖曳應被拒絕。
+
+### updated_at baseline
+
+使用者開始操作時看到的資料版本時間。
+
+用來確認該資料在使用者操作期間是否被其他人修改。
+
+若資料庫中的 `updated_at` 與 baseline 不一致，代表資料已過期，本次操作應被拒絕。
+
+### active foreign edit lock
+
+其他使用者正在編輯某張卡，且該 edit lock 還沒過期。
+
+- active：仍有效
+- foreign：不是自己，是其他人
+- edit lock：該卡正在被編輯
+
+---
+
+## 2. Phase 4.6：拖曳 timed visit 後，自動調整時間
+
+> 原本討論中的 4.4b 基本規則，建議拆到 Phase 4.6。
+
+### 核心概念
+
+移動 timed visit 後：
+
+- 目的地順序改變
+- 每張行程保留原本停留時間
+- 系統依新順序自動接續時間
+
+總結：
+
+```text
+拖曳移動後，目的地順序改變；
+每張行程保留原本停留時長；
+原本同方向仍相鄰的段落保留原本間隔；
+新相鄰或方向反轉則直接接續；
+不再相鄰的交通卡自動移除；
+不新增交通卡。
+```
+
+---
+
+### 時間規則
+
+#### 1. 新順序第一張
+
+新順序的第一張 timed visit，使用原本第一張 timed visit 的開始時間。
+
+例如：
+
+```text
+原本第一張從 09:00 開始
+移動後新的第一張也從 09:00 開始
+```
+
+#### 2. 停留時間
+
+每張 timed visit 保留自己原本的停留時長。
+
+例如：
+
+```text
+A 原本停 50 分
+移動後 A 仍停 50 分
+```
+
+#### 3. 原本仍相鄰的行程
+
+如果兩張 timed visits 在移動前後都保持同方向相鄰，就保留原本總間隔。
+
+例如：
+
+```text
+移動前：B → C
+移動後：B → C
+```
+
+保留：
+
+```text
+B.end_time 到 C.start_time 的總間隔
+```
+
+總間隔包含：
+
+- 交通時間
+- 空白等待時間
+- 即使中間沒有交通卡，也保留原本空白
+
+#### 4. 新形成的相鄰行程
+
+如果兩張 timed visits 是移動後才變成相鄰，就直接接續。
+
+例如：
+
+```text
+原本不是 C → A
+移動後變成 C → A
+```
+
+則：
+
+```text
+C 結束後，A 直接開始
+```
+
+不自動補交通時間，也不自動留空白。
+
+#### 5. 方向反轉
+
+如果原本是：
+
+```text
+B → C
+```
+
+移動後變成：
+
+```text
+C → B
+```
+
+不保留原本間隔。
+
+方向反轉視為新相鄰，所以直接接續。
+
+---
+
+### 交通卡規則
+
+#### 6. 仍相鄰的交通卡保留
+
+原本的交通卡，如果移動後兩個目的地仍然同方向相鄰，就保留。
+
+```text
+原本：B → C
+移動後：B → C
+交通卡保留
+```
+
+#### 7. 不再相鄰的交通卡移除
+
+如果交通卡兩端的目的地移動後不再相鄰，就自動移除。
+
+```text
+原本：A → B
+移動後：B C A D
+A 和 B 不相鄰
+所以 A → B 交通卡移除
+```
+
+#### 8. 不自動新增交通卡
+
+新形成的相鄰關係，不會自動建立交通卡。
+
+```text
+移動後形成 C → A
+系統不會自動新增 C → A 交通卡
+```
+
+---
+
+### 其他限制
+
+#### 9. untimed visits 不參與時間接續
+
+未設定時間的卡不參與 timed auto-continuation。
+
+#### 10. 有 active editor 時禁止拖曳
+
+有行程正在新增或編輯時，不允許拖曳移動。
+
+目的：
+
+```text
+避免未儲存資料被 reorder / refetch / package movement 覆蓋。
+```
+
+---
+
+## 3. 多人協作時拖曳重排的保護規則
+
+### 核心概念
+
+多人協作時，拖曳重排不是即時共同編輯。
+
+系統不嘗試合併多位使用者的拖曳意圖。
+
+採用：
+
+```text
+先成功者優先，後送出的舊狀態操作拒絕。
+```
+
+也就是：
+
+```text
+使用者 A 先完成拖曳重排
+使用者 B 仍用舊畫面送出拖曳
+B 的操作應被拒絕，並重新載入最新行程資料
+```
+
+---
+
+### 目前 4.2c 已有的保護
+
+以下屬於 Phase 4.2c 已有概念：
+
+- 拖曳重排走 RPC，不是純前端更新
+- 驗證完整 timed manifest
+- 驗證 visit / transportation `updated_at` baseline
+- 使用 trip/day transaction lock 或 advisory lock
+- fixed timed visit 會禁止當天 reorder（4.2c 現況）
+- active foreign lock 會禁止 reorder
+- active Timeline editor 會阻止 drag
+- stale baseline / wrong manifest 會 rollback
+- 失效交通卡會依規則刪除
+- 成功後 reload authoritative trip data
+
+---
+
+### Phase 4.6 / 4.7 需要延續或加強的保護
+
+因為 4.6 / 4.7 會自動調整多張時間，正式版不建議使用前端多次 update 完成。
+
+建議：
+
+```text
+新增 022+ migration / 新 RPC
+用 transaction RPC 一次完成 reorder + time recalculation + transport cleanup
+```
+
+RPC 應驗證：
+
+- 使用者 edit permission
+- timed manifest
+- package permutation
+- all related updated_at baseline
+- fixed state
+- edit lock state
+- transportation baseline
+- 原始 start_time / end_time
+- 原始 duration
+- 原始 adjacency / gap
+
+只要任一條件不符：
+
+```text
+拒絕本次拖曳
+rollback
+重新載入最新資料
+```
+
+---
+
+### 衝突處理
+
+#### 正常情況
+
+```text
+使用者 A 拖曳成功
+資料庫一次完成 reorder / time recalculation / transportation cleanup
+其他使用者透過 Realtime 或 reload 看到最新結果
+```
+
+#### 衝突情況
+
+```text
+使用者 A 拖曳成功
+使用者 B 使用舊畫面拖曳
+B 的 RPC 被拒絕
+B 看到提示並重新載入最新資料
+B 可以在最新資料上重新操作
+```
+
+建議提示：
+
+```text
+此日行程已被其他成員更新，已為你載入最新版本，請重新操作。
+```
+
+---
+
+### 不做的事情
+
+多人拖曳保護不做以下事情：
+
+- 不即時合併兩個人的拖曳意圖
+- 不做 Google Docs 式同步拖曳
+- 不讓前端自行判斷覆蓋誰的結果
+- 不在衝突時自動選擇某個順序
+- 不用多次前端 update 模擬 transaction
+- 不在 Demo 接 Supabase / Realtime / Edit Lock
+- 不修改已套用的 019 / 020 / 021 migrations
+
+---
+
+## 4. Phase 4.7：固定行程卡作為時間錨點的拖曳規則
+
+> 此為討論中的新方向。
+> 它會取代目前 4.2c「當天有 fixed timed visit 就禁止整日拖曳」的保守規則。
+> 建議拆到 Phase 4.7，不要塞進 4.6 基本拖曳自動時間。
+
+### 核心概念
+
+固定卡本身不動，但其他卡可以跨過固定卡。
+
+固定卡是：
+
+```text
+時間錨點 / 區隔線
+```
+
+固定卡：
+
+- 資料不動
+- 時間不動
+- 不可拖曳
+- 不被其他卡拖曳流程推動
+
+其他非固定卡：
+
+- 可以自由拖曳
+- 可以跨過固定卡
+- 若移動後時間塞得下，保留 timed 狀態並給新時間
+- 若塞不下或會重疊，移動卡變成 untimed visit
+
+---
+
+### 固定卡規則
+
+#### 1. 固定卡本身不變
+
+固定卡代表：
+
+- 目的地資料固定
+- `start_time / end_time` 固定
+- 不可拖曳
+- 不可因其他卡拖曳而改變資料或時間
+
+#### 2. 其他卡可以跨過固定卡
+
+非固定 timed visit 可以拖到固定卡前後。
+
+允許：
+
+- 從固定卡前拖到固定卡後
+- 從固定卡後拖到固定卡前
+- 插入兩張固定卡之間
+- 插入固定卡與一般 timed visit 之間
+
+但固定卡本身不動。
+
+---
+
+### 固定卡時間錨點規則
+
+#### 3. 無固定卡影響時
+
+照 Phase 4.6 基本拖曳自動時間規則。
+
+#### 4. 有固定卡影響時
+
+固定卡優先。
+
+跨固定卡拖曳時，不再套用整日自動接續。
+
+改用固定錨點插入規則：
+
+```text
+系統檢查目標位置前後的可用時間空間。
+```
+
+#### 5. 若時間空間足夠
+
+移動卡：
+
+- 保留原本停留時長
+- 保留 timed 狀態
+- 取得新的 `start_time / end_time`
+
+通常新形成相鄰時，直接從前一個時間錨點後方開始。
+
+例如：
+
+```text
+GE 🔒 11:00~12:00
+RE 14:00~14:20
+```
+
+把 BB 拖到 GE 下方，BB 原本停留 30 分鐘。
+
+GE 到 RE 有可用時間：
+
+```text
+12:00 ~ 14:00
+```
+
+所以 BB 變成：
+
+```text
+BB 12:00~12:30
+```
+
+RE 不動。
+
+#### 6. 若時間不足或會重疊
+
+若移動過去後：
+
+- 時間空間不足
+- 會撞到固定卡
+- 會與既有 timed visit 重疊
+
+則移動卡：
+
+- 清除 `start_time / end_time`
+- 變成 untimed visit
+- 保留在拖曳後的位置
+
+例如：
+
+```text
+GE 🔒 11:00~12:00
+RE 14:00~14:20
+```
+
+GE 到 RE 只有 2 小時空間。
+若 BB 停留超過 2 小時，拖到 GE 下方後：
+
+```text
+BB 變成未設定時間
+RE 不動
+GE 不動
+```
+
+#### 7. 兩張固定卡之間無空白時間
+
+如果兩張固定卡之間完全沒有空白時間，則不可插入。
+
+例如：
+
+```text
+A 🔒 10:00~11:00
+B 🔒 11:00~12:00
+```
+
+中間沒有任何空白。
+
+此時若想插入 timed visit，應直接拒絕。
+
+建議提示：
+
+```text
+此區段沒有可插入的時間空間，請先調整固定行程，或改放到其他位置。
+```
+
+#### 8. 兩張固定卡之間有空白時間
+
+如果兩張固定卡之間有空白時間，允許插入。
+
+- 若移動卡停留時間放得下，保留 timed 並給新時間。
+- 若有空白但時間不足，移動卡轉成 untimed。
+
+---
+
+### 固定卡範例
+
+原本：
+
+```text
+AA 07:00~09:00
+G 交通卡 20 分鐘
+BB 10:00~10:30
+GE 🔒 11:00~12:00
+RE 14:00~14:20
+```
+
+把 BB 拖到 GE 下方：
+
+```text
+AA
+GE 🔒 11:00~12:00
+BB 12:00~12:30
+RE 14:00~14:20
+```
+
+結果：
+
+- GE 固定，時間不變
+- RE 時間不變
+- BB 保留 30 分鐘停留時長
+- BB 取得新時間 `12:00~12:30`
+- 原本 G 交通卡移除
+- 不自動新增交通卡
+
+若 BB 停留超過 2 小時：
+
+```text
+AA
+GE 🔒 11:00~12:00
+BB 未設定時間
+RE 14:00~14:20
+```
+
+結果：
+
+- BB 變成 untimed
+- GE / RE 不動
+- 交通卡依規則移除
+
+---
+
+## 5. Phase 4.5：未設定時間景點排序規則
+
+> 這原本計畫在 4.5 處理，但因為 4.7 固定卡會把 timed visit 轉成 untimed，所以需要先給定義。
+
+### 核心概念
+
+未設時間卡可以混在行程內。
+
+它代表：
+
+```text
+使用者想把這個目的地放在這個位置附近，但時間還沒決定。
+```
+
+拖曳時：
+
+```text
+untimed visit 只改變自己的位置，不影響其他 timed visits 的時間變動。
+```
+
+---
+
+### 顯示與排序規則
+
+#### 0. Partial time 一律視為 untimed
+
+若一張 visit 只有 `start_time` 或只有 `end_time`，不顯示成半套 timed card。
+
+應視為 untimed visit：
+
+- 不參與 timed sorting
+- 不參與 overlap validation
+- 不參與 auto-continuation
+- 不參與 transport shortage 計算
+- 不作為有效 timed adjacency 端點
+
+資料層建議直接清除另一個時間欄位，避免畫面出現 `--:--` 搭配單一時間的狀態。
+
+#### 1. 未設時間卡可以混在行程內
+
+untimed visit 不需要強制集中在最下面。
+
+可以出現在：
+
+- timed visit 前面
+- timed visit 後面
+- fixed visit 前後
+- 兩張 timed visits 中間
+- 兩張 fixed visits 中間
+
+#### 2. 拖曳 untimed visit 只改位置
+
+拖曳 untimed visit 時：
+
+- 只改變它在畫面上的位置
+- 不改變其他 timed visits 的 `start_time / end_time`
+- 不觸發 Phase 4.6 自動時間接續
+- 不新增交通卡
+- 不刪除交通卡
+- 不影響固定卡時間
+
+#### 3. untimed visit 不參與時間接續
+
+Phase 4.6 / 4.7 計算時間時，只看 timed visits。
+
+untimed visit：
+
+- 不產生 gap
+- 不保留 gap
+- 不造成 overlap
+- 不參與 timed adjacency
+
+#### 4. timed visit 轉成 untimed
+
+若 timed visit 因固定卡時間空間不足而轉成 untimed：
+
+- 清除 `start_time / end_time`
+- 保留在拖曳後的位置
+- 立即退出本次 timed auto-continuation
+- 應提示使用者該卡已轉為未設定時間
+
+建議提示：
+
+```text
+此行程無法在固定行程之間保留原停留時間，已改為未設定時間。
+```
+
+---
+
+### 5. Untimed slot / rebase 規則
+
+> Phase 4.5 stabilization 補充。
+> 這一段用來避免 untimed visit 因 timed gaps 改變而跳位。
+
+#### 5.1 Untimed slot 計算只看同一天
+
+untimed visit 的 position / slot 計算必須限定在同一天的 `dayItems`。
+
+不可以使用整個 trip 的全部 items 來計算 untimed slot。
+
+原因：
+
+```text
+不同天的 sort_order / untimed slot 不應影響當天行程的顯示位置。
+```
+
+錯誤情境：
+
+```text
+Day 1 的 untimed slot 影響 Day 2 的 untimed visit，
+導致該 visit 被解讀到尾端或錯誤區段。
+```
+
+正確規則：
+
+- 同一天內計算 display order。
+- 同一天內計算 timed gaps。
+- 同一天內計算 untimed slot。
+- 跨日資料不可影響當日 untimed visit 的位置。
+
+#### 5.2 Rebase 的目的
+
+rebase 不是自動整理排序，也不是自動 compact。
+
+rebase 的目的只有一個：
+
+```text
+避免既有 untimed visit 因 timed gap 結構改變，而被舊 slot 編碼錯誤解讀到其他位置。
+```
+
+例如：
+
+```text
+A timed
+B timed
+C timed
+D fixed
+```
+
+A 修改時間並按「接續」後，C 撞到 D，因此 C 變 untimed 並留在 D 前。
+
+接著 B 也變 untimed，當日 timed gaps 改變。
+
+此時必須 rebase 既有 untimed C，讓 C 仍維持在 D 前，而不是被舊 slot 解讀到 D 後。
+
+#### 5.3 timed → untimed 時可以 rebase
+
+當同一天內有 visit 從 timed 變成 untimed 時，系統可以同步 rebase 當日既有 untimed visits。
+
+適用情境：
+
+- 使用者手動將 timed visit 改為未設定時間。
+- Phase 4.4 auto-continuation 撞到 fixed anchor，導致後續 visit 轉為 untimed。
+- partial time 正規化後，原本被視為 timed 的 visit 轉為 untimed。
+
+rebase 後的目標：
+
+- 既有 untimed visits 保持原本視覺位置附近。
+- 既有 untimed visits 不應因 timed gaps 改變而跳到 fixed visit 後方。
+- 既有 untimed visits 不應掉到尾端。
+- passive transportation warning flow 不被破壞。
+- invalid transport stack 不應因 rebase 產生假陽性。
+
+#### 5.4 untimed → timed 時不可自動 compact 其他 untimed
+
+當某張 untimed visit 被重新設定完整 `start_time / end_time`，並恢復為 timed visit 時：
+
+```text
+只移動 / 更新被恢復為 timed 的那張 visit。
+其他既有 untimed visits 不應自動往上補位。
+```
+
+不允許的行為：
+
+```text
+B、C 原本因 fixed anchor overflow 變成 untimed。
+使用者逐一恢復 B、C 的時間。
+下方其他 untimed visits 因為 B、C 離開 untimed layer 而逐步往上位移。
+```
+
+原因：
+
+```text
+untimed visit 的位置代表使用者手動安排或系統保留的視覺意圖，
+不應因其他卡恢復時間而自動 compact。
+```
+
+核心規則：
+
+```text
+rebase ≠ compact
+```
+
+- rebase：保護既有 untimed 不被錯誤解讀。
+- compact：自動把 untimed 卡片排緊、補空位。Phase 4.5 不做 compact。
+
+#### 5.5 staged restore 時保留交通方向
+
+若 untimed visit 與既有交通卡有 `from_item_id / to_item_id` 關係，在逐步恢復時間的 staged restore 過程中，系統必須保留原交通方向的相對順序。
+
+例如原本：
+
+```text
+A
+transport A → B
+B
+```
+
+A、B 都轉成 untimed 後，仍應維持：
+
+```text
+A
+transport A → B
+B
+```
+
+若使用者先恢復 A，B 仍然是 untimed：
+
+```text
+A timed
+transport A → B warning
+B untimed
+```
+
+B 不可暫時跑到 A 前面。
+
+若再恢復 B，且 A / B 重新形成合理相鄰關係：
+
+```text
+A timed
+transport A → B
+B timed
+```
+
+交通卡應回到正常相鄰位置，不應進入 invalid transport stack。
+
+若恢復後時間間隔不足，可以顯示「交通時間不足」warning；這不是 invalid transport。
+
+#### 5.6 Rebase 觸發時機整理
+
+| 情境 | 是否允許 rebase 其他 untimed | 說明 |
+|---|---|---|
+| timed → untimed | 可以 | 用來避免既有 untimed 被錯誤解讀到其他 gap |
+| auto-continuation overflow → untimed | 可以 | 例如 C 撞 fixed D 後留在 D 前 |
+| partial time 正規化為 untimed | 可以 | 若原本影響 timed gap 結構，需保護既有 untimed |
+| untimed → timed | 不應 compact | 只更新被恢復時間的那張，不讓其他 untimed 自動補位 |
+| 使用者主動拖曳 untimed | 只更新被拖曳那張 | 不新增 / 不刪交通卡，依主動拖曳規則 |
+| passive transport warning flow | 不應破壞 | rebase 不應讓交通卡消失、置頂或進 invalid stack |
+
+---
+
+## 6. Untimed visit 與交通卡規則
+
+### 核心概念
+
+未設時間卡可以混在行程內，但要區分兩種完全不同的情境：
+
+```text
+主動 untimed drag：使用者拖曳一張已經 untimed 的 visit 到新位置。
+被動 untimed conversion：原本在行程順序中的 timed visit 因接續、固定卡或手動清除時間而變成 untimed。
+```
+
+先前「untimed visit 不可插入已有 transportation pair 中間」只適用於 **主動 untimed drag**。
+
+被動 untimed conversion 不是插入新卡，而是既有行程失去時間，因此與它相連的既有交通卡不應自動消失、刪除或移到置頂。
+
+---
+
+### A. 主動 untimed drag 規則
+
+#### 1. 有交通卡的 pair，中間不可插入 untimed visit
+
+如果兩張 timed visits 之間已有交通卡，代表使用者已經明確建立：
+
+```text
+A → B
+```
+
+這段移動關係。
+
+原本：
+
+```text
+A 09:00~10:00
+交通卡 A → B
+B 11:00~12:00
+```
+
+不允許主動拖曳成：
+
+```text
+A 09:00~10:00
+C 未設定時間
+交通卡 A → B
+B 11:00~12:00
+```
+
+也不允許：
+
+```text
+A 09:00~10:00
+交通卡 A → B
+C 未設定時間
+B 11:00~12:00
+```
+
+#### 2. 沒有交通卡的空白間隔，可以插入 untimed visit
+
+如果 A 和 B 中間沒有交通卡：
+
+```text
+A 09:00~10:00
+B 11:00~12:00
+```
+
+則可以主動拖曳插入：
+
+```text
+A 09:00~10:00
+C 未設定時間
+B 11:00~12:00
+```
+
+#### 3. 主動 untimed 插入交通 pair 時直接拒絕
+
+untimed visit 不提供 Phase 4.3 的 Restore / Delete flow。
+
+只要目標位置在已有交通卡的 pair 中間，就直接禁止插入。
+
+拒絕時：
+
+- 不改 local state
+- 不寫資料庫
+- 不新增交通卡
+- 不刪除交通卡
+- 不移動既有交通卡
+
+建議提示：
+
+```text
+這裡已有交通卡連接，無法插入未設時間行程。
+請先刪除交通卡，或將行程放到其他位置。
+```
+
+---
+
+### B. 被動 untimed conversion 規則
+
+#### 4. 被動變成 untimed 不等於主動插入交通 pair
+
+以下情境屬於被動 untimed conversion：
+
+- Phase 4.4 自動接續時，後續行程撞到 fixed anchor，因此被清除時間。
+- 使用者手動將某張行程的 `start_time` 或 `end_time` 設為未設定。
+- 系統因資料安全規則將 partial timed state 正規化為 untimed。
+
+這些情境不是「把 untimed 卡插入交通 pair 中間」，而是既有行程失去時間。
+
+#### 5. 既有交通卡不自動刪除、不隱藏、不置頂
+
+若原本存在交通卡：
+
+```text
+A → B
+```
+
+而 A 或 B 其中一張被動變成 untimed，則該交通卡：
+
+- 不自動刪除
+- 不自動隱藏
+- 不自動移到列表置頂
+- 不自動改成 tail transport
+- 不自動新增 replacement transport
+
+交通卡應保留在原本 pair 關係附近，並顯示 warning，交由使用者人工處理。
+
+#### 6. 被動 untimed 的交通卡顯示位置
+
+若 `from_item_id` / `to_item_id` 指向的 visits 仍存在，即使其中一端已變成 untimed，交通卡仍應依 pair 關係渲染。
+
+建議 anchor：
+
+- 優先靠近 `from_item_id` 對應的 visit 後方。
+- 若 from visit 不存在但 to visit 存在，則靠近 `to_item_id` 對應的 visit 前方或附近。
+- 不應因為端點 untimed 而掉到列表最上方。
+- 不應只因 timed adjacency 不成立就從畫面消失。
+
+#### 7. 被動 untimed 的交通卡 warning
+
+當交通卡任一端點已 untimed 或 partial time 被正規化為 untimed，交通卡應顯示時間相關 warning。
+
+建議文案：
+
+```text
+目的地時間未設定，請重新確認交通卡。
+```
+
+或：
+
+```text
+關聯行程時間已變更，請重新確認交通時間。
+```
+
+#### 8. 真正可視為 invalid 的情境
+
+只有以下情境才應視為交通卡已無法維持基本關聯：
+
+- `from_item_id` 或 `to_item_id` 指向的 visit 已被刪除。
+- 使用者明確刪除交通卡。
+- timed drag reorder 規則明確判定交通卡不再相鄰且本次操作屬於 timed reorder cleanup。
+
+被動 untimed conversion 本身不應直接觸發交通卡刪除或隱藏。
+
+---
+
+## 7. 交通卡整體規則整理
+
+### timed visit 拖曳
+
+- 原本交通卡兩端仍同方向相鄰 → 保留
+- 原本交通卡兩端不再相鄰 → 移除
+- 新形成相鄰關係 → 不自動新增交通卡
+
+### 主動 untimed visit 拖曳
+
+- 只改 untimed visit 的位置
+- 不新增交通卡
+- 不刪除交通卡
+- 不影響 timed visits 時間
+- 不可插入已有交通卡連接的 pair 中間
+
+### 被動 timed visit 轉成 untimed
+
+若 timed visit 因自動接續、fixed anchor、手動清除時間或 partial time 正規化而轉成 untimed：
+
+- 該卡不再參與 timed adjacency / overlap / auto-continuation
+- 與該卡相關的既有 transportation 不自動刪除
+- 與該卡相關的既有 transportation 不自動隱藏
+- 與該卡相關的既有 transportation 不應掉到列表置頂
+- 交通卡保留在 pair 關係附近並顯示 warning
+- 使用者後續可手動調整、刪除或重新建立交通卡
+
+### partial time
+
+若一張 visit 只有 `start_time` 或只有 `end_time`：
+
+- 判定為 untimed
+- 儲存時建議同步清除另一個時間欄位
+- 不參與 timed ordering
+- 不作為有效 transport shortage 計算端點
+- 若已有相關交通卡，依被動 untimed conversion 規則保留並 warning
+
+### untimed slot / rebase
+
+- untimed slot 計算只看同一天 `dayItems`
+- timed → untimed 時，可以 rebase 當日既有 untimed visits，避免舊 slot 被錯誤解讀
+- rebase 的目的不是 compact，而是保護原位置
+- untimed → timed 時，不可自動 compact 其他 untimed visits
+- staged restore 過程中，若存在 `A → B` 交通卡，必須保留 A 在 B 前方的相對方向
+- 恢復時間後若交通時間不足，只顯示 transportation shortage warning，不應變成 invalid transport
+
+---
+
+
+## 8. Phase 4.8：Collaborative Drag Presence
+
+> 此階段放在固定卡拖曳規則之後。
+> 它處理「拖曳中的多人視覺狀態」，不代表正式資料已更新。
+> 正式資料仍以 reorder RPC 成功結果為準。
+
+### 核心概念
+
+當某位成員正在拖曳某一天的 timed visit 時，其他成員可以看到拖曳狀態，但不能同時拖曳該日行程。
+
+這只是拖曳中的暫時視覺狀態：
+
+```text
+拖曳中 presence ≠ 正式資料更新
+正式結果 = 拖曳者放開後確認 + reorder RPC 成功
+```
+
+---
+
+### 保守規則
+
+#### 1. 同一天只允許一位成員拖曳
+
+同一天的 timed visit 拖曳採保守模式：
+
+```text
+若偵測到其他成員正在拖曳該日行程，
+本機使用者的該日拖曳功能暫時 disabled。
+```
+
+目的：
+
+- 避免兩人同時拖曳同一天造成 UI 期待混亂
+- 降低 stale / conflict 發生頻率
+- 讓正式資料仍由 reorder RPC 決定
+
+#### 2. 不合併拖曳意圖
+
+Collaborative Drag Presence 不做 Google Docs 式拖曳合併。
+
+不做：
+
+- 不即時合併兩個人的拖曳順序
+- 不讓其他人的畫面真的跟著重排
+- 不在 presence 階段推測最終順序
+- 不取代 reorder RPC 的 manifest / baseline / conflict 驗證
+
+---
+
+### 視覺第一版
+
+#### 3. 顯示拖曳者狀態
+
+在被拖曳卡片旁顯示：
+
+```text
+{userName} 正在拖曳
+```
+
+#### 4. 顯示淡淡插入線
+
+在目標插入位置顯示淡淡的插入線。
+
+規則：
+
+- 插入線不顯示文字
+- 插入線只是 preview，不代表正式資料已更新
+- 不讓其他使用者畫面中的卡片真的跟著重排
+
+#### 5. 不使用大型干擾 UI
+
+不顯示：
+
+- 大型 modal
+- toast
+- error banner
+- 全寬警告區塊
+
+拖曳 presence 應該是輕量、安靜、不中斷規劃的視覺提示。
+
+---
+
+### 資料規則
+
+拖曳中 presence 階段不可寫入正式行程資料。
+
+拖曳中不做：
+
+- 不寫入 `itinerary_items`
+- 不更新 `start_time / end_time`
+- 不刪除 transportation cards
+- 不新增 transportation cards
+- 不清除 draft
+- 不釋放 edit lock
+- 不移動 alternatives / linked budgets
+
+presence 只是一個暫時狀態，不是資料提交。
+
+---
+
+### 正式儲存
+
+#### 6. 只有拖曳者確認後才呼叫 reorder RPC
+
+流程：
+
+```text
+拖曳開始
+→ 發送 drag presence
+→ 其他成員該日拖曳 disabled
+→ 拖曳者放開
+→ 顯示確認提示
+→ 拖曳者確認
+→ 呼叫 reorder RPC
+```
+
+#### 7. RPC 成功後才更新正式結果
+
+RPC 成功後：
+
+- 資料庫寫入正式 reorder 結果
+- 所有人透過 Realtime / reload 看到正式結果
+- presence 狀態清除
+
+#### 8. RPC 失敗時走既有 conflict 規則
+
+RPC 失敗時：
+
+- 不套用拖曳結果
+- 清除本次 presence
+- 依既有 stale / conflict 規則處理
+- 重新載入 authoritative trip data
+
+建議提示：
+
+```text
+此日行程已被其他成員更新，已為你載入最新版本，請重新操作。
+```
+
+---
+
+### 和多人協作保護規則的關係
+
+Collaborative Drag Presence 是「操作前與操作中的 UX 保護」。
+
+transaction RPC / timed manifest / updated_at baseline 是「正式儲存時的資料安全保護」。
+
+兩者都需要：
+
+```text
+presence：減少同時拖曳與降低使用者困惑
+RPC validation：保證正式資料不被舊狀態覆蓋
+```
+
+---
+
+## 9. 建議實作順序
+
+### Phase 4.4
+
+修改時間後，局部自動接續時間。
+
+範圍：
+
+- 只處理編輯 start_time / end_time 後的後續 timed visits
+- 不處理 drag reorder
+- 不處理 untimed mixed sorting
+- 不處理 fixed anchor 跨區拖曳
+
+### Phase 4.5
+
+未設定時間景點排序規則。
+
+範圍：
+
+- untimed visit 可以混在行程內
+- untimed visit 拖曳只改位置
+- untimed visit 不影響 timed auto-continuation
+- untimed visit 不可插入已有交通卡的 pair 中間
+
+### Phase 4.6
+
+拖曳 timed visit 後，自動調整時間。
+
+範圍：
+
+- 無固定卡或不涉及固定卡的基本 timed drag auto-continuation
+- 每張卡保留 duration
+- 原本仍同方向相鄰保留 gap
+- 新相鄰 / 方向反轉直接接續
+- 交通卡保留 / 移除 / 不新增
+- 多人協作保護需要 transaction RPC 設計
+
+### Phase 4.7
+
+固定卡作為時間錨點的拖曳規則。
+
+範圍：
+
+- 固定卡本身不可拖曳，資料與時間不動
+- 其他卡可以跨固定卡
+- 能塞入固定卡時間空間則給新時間
+- 塞不下或重疊則移動卡轉 untimed
+- 兩張固定卡無空白時間時不可插入
+
+### Phase 4.8
+
+Collaborative Drag Presence。
+
+範圍：
+
+- 拖曳中 presence 只做暫時視覺狀態
+- 同一天只允許一位成員拖曳
+- 其他成員看到「{userName} 正在拖曳」與淡淡插入線
+- 其他成員該日拖曳暫時 disabled
+- 拖曳中不寫入 itinerary_items、不改時間、不刪交通卡、不清 draft、不釋放 edit lock
+- 正式結果仍以 reorder RPC 成功為準
+
+### Phase 4.9
+
+Map 整合前置設計。
+
+### Phase 4.10
+
+QA 與交接。
+
+---
+
+## 9. 待確認事項
+
+以下細節後續仍可再討論：
+
+1. 固定卡邏輯是否要和 Phase 4.6 同時實作，或明確拆到 Phase 4.7。
+2. 被動 untimed conversion 後，交通卡 warning 的最終 UI 樣式與文案。
+3. untimed visit 混在行程中時，視覺上是否需要特別標示「未設定時間」。
+4. timed visit 轉 untimed 後，是否需要顯示一次性提示或在卡片上保留 warning。
+5. fixed card 前後若存在 transportation card，跨固定卡拖曳時是否需要更嚴格保護。
+6. Phase 4.6 / 4.7 是否需要新 migration 022+ 與新 RPC。初步建議需要。
+7. Collaborative Drag Presence 的技術實作要使用 Supabase Realtime presence、獨立 presence table，或既有 Realtime channel metadata，待實作前確認。
+8. presence timeout / tab close / drag cancel 後的清除策略，待實作前確認。
+9. Phase 4.5 untimed slot rebase 是否需要長期改成更明確的 order model，而不是只使用負值 sort_order 編碼，待 Phase 4.5 stabilization 後評估。
+
+---
+
+## 10. 一句話總結
+
+```text
+Phase 4 後續應拆開處理：
+4.4 先做修改時間後局部接續；
+4.5 定義未設時間卡可混排行程但不影響時間，主動拖曳不可插入交通 pair，被動轉 untimed 則保留既有交通卡並 warning；同時補上 untimed slot rebase 規則：timed→untimed 可 rebase 保護位置，untimed→timed 不可 compact 其他未設定時間卡；
+4.6 再做 timed visit 拖曳後自動調整時間；
+4.7 處理固定卡作為時間錨點，允許其他卡跨過固定卡，塞得下給時間，塞不下轉未設定時間；
+4.8 加入 Collaborative Drag Presence，讓多人協作時可看到拖曳中狀態並暫時禁止同日多人同時拖曳；
+4.9 再進 Map 整合前置設計；
+4.10 最後做 QA 與交接。
+```

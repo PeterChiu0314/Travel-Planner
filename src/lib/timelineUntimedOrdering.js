@@ -81,7 +81,66 @@ export function buildTimelineVisitDisplayOrder(items = []) {
     ordered.push(...(untimedBySlot.get(slot) || []).map((entry) => entry.item));
     if (slot < timedVisits.length) ordered.push(timedVisits[slot]);
   }
+  items
+    .filter((item) => isTransportationCard(item) && item.from_item_id && item.to_item_id)
+    .forEach((transport) => {
+      const fromIndex = ordered.findIndex((item) => item.id === transport.from_item_id);
+      const toIndex = ordered.findIndex((item) => item.id === transport.to_item_id);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex !== toIndex + 1) return;
+      const fromItem = ordered[fromIndex];
+      const toItem = ordered[toIndex];
+      if (!isUntimedVisit(fromItem) && !isUntimedVisit(toItem)) return;
+      ordered[toIndex] = fromItem;
+      ordered[fromIndex] = toItem;
+    });
   return ordered;
+}
+
+export function planTimelineTimingChangeSortOrders({ items = [], replacements = [] }) {
+  const replacementById = new Map(replacements.map((replacement) => [replacement.id, replacement]));
+  const currentVisits = buildTimelineVisitDisplayOrder(items);
+  if (replacementById.size !== replacements.length || replacements.some((replacement) => !currentVisits.some((item) => item.id === replacement.id))) {
+    return { errorCode: "invalid_timing_change", ok: false, sortOrders: {} };
+  }
+  const finalItem = (item) => ({ ...item, ...(replacementById.get(item.id) || {}) });
+
+  const untimedAfterConversion = currentVisits.filter((item) => isUntimedVisit(finalItem(item)));
+  const untimedBySlot = new Map();
+  untimedAfterConversion.forEach((item) => {
+    const itemIndex = currentVisits.findIndex((candidate) => candidate.id === item.id);
+    const slot = currentVisits
+      .slice(0, itemIndex)
+      .filter((candidate) => isTimedVisit(finalItem(candidate))).length;
+    const entries = untimedBySlot.get(slot) || [];
+    entries.push(item);
+    untimedBySlot.set(slot, entries);
+  });
+  const sortOrders = {};
+  for (const [slot, entries] of untimedBySlot.entries()) {
+    const rankStep = Math.floor(untimedSortStride / (entries.length + 1));
+    if (rankStep <= 0) return { errorCode: "order_space_exhausted", ok: false, sortOrders: {} };
+    for (let index = 0; index < entries.length; index += 1) {
+        const rank = rankStep * (index + 1);
+        const sortOrder = encodeUntimedSortOrder(slot, rank);
+        if (sortOrder === null) return { errorCode: "order_space_exhausted", ok: false, sortOrders: {} };
+        sortOrders[entries[index].id] = sortOrder;
+      }
+  }
+
+  return { ok: true, sortOrders };
+}
+
+export function planUntimedConversionSortOrders({ items = [], sourceItemIds = [] }) {
+  const sourceIds = new Set(sourceItemIds);
+  const currentVisits = buildTimelineVisitDisplayOrder(items);
+  const convertedVisits = currentVisits.filter((item) => sourceIds.has(item.id) && isTimedVisit(item));
+  if (convertedVisits.length !== sourceIds.size) {
+    return { errorCode: "timed_source_required", ok: false, sortOrders: {} };
+  }
+  return planTimelineTimingChangeSortOrders({
+    items,
+    replacements: convertedVisits.map((item) => ({ id: item.id, start_time: null, end_time: null })),
+  });
 }
 
 function validTransportationPairs(items, visits) {

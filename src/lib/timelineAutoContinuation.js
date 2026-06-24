@@ -1,4 +1,4 @@
-import { isTimedVisit } from "./timelineUntimedOrdering.js";
+import { isTimedVisit, planUntimedConversionSortOrders } from "./timelineUntimedOrdering.js";
 
 function timeToMinutes(value) {
   if (!value) return null;
@@ -55,6 +55,7 @@ export function planTimelineAutoContinuation({ candidate, dayIndex, editedItemId
   const fixedStart = fixedVisit ? timeToMinutes(fixedVisit.start_time) : null;
 
   const updates = [];
+  const additionalAffectedIds = new Set();
   let previousOriginal = editedItem;
   let previousNewEnd = candidateEnd;
   for (const [visitIndex, visit] of movableVisits.entries()) {
@@ -76,16 +77,45 @@ export function planTimelineAutoContinuation({ candidate, dayIndex, editedItemId
     const nextStartMinutes = previousNewEnd + gapMinutes;
     const nextEndMinutes = isFinalOpenEndedVisit ? null : nextStartMinutes + durationMinutes;
     if (fixedStart !== null && nextEndMinutes > fixedStart) {
-      for (const overflowVisit of movableVisits.slice(visitIndex)) {
+      const overflowVisits = movableVisits.slice(visitIndex);
+      const conversionPlan = planUntimedConversionSortOrders({
+        items,
+        sourceItemIds: overflowVisits.map((item) => item.id),
+      });
+      if (!conversionPlan.ok) {
+        return {
+          shouldPrompt: true,
+          canAutoContinue: false,
+          blockReason: conversionPlan.errorCode,
+          followingVisitIds: movableVisits.map((item) => item.id),
+          updates: [],
+        };
+      }
+      for (const overflowVisit of overflowVisits) {
         updates.push({
           id: overflowVisit.id,
           start_time: null,
           end_time: null,
           original_start_time: overflowVisit.start_time,
           original_end_time: overflowVisit.end_time,
+          original_sort_order: overflowVisit.sort_order,
+          sort_order: conversionPlan.sortOrders[overflowVisit.id],
           updated_at: overflowVisit.updated_at || null,
         });
       }
+      const overflowIds = new Set(overflowVisits.map((item) => item.id));
+      Object.entries(conversionPlan.sortOrders).forEach(([itemId, sortOrder]) => {
+        if (overflowIds.has(itemId)) return;
+        const item = items.find((candidate) => candidate.id === itemId);
+        if (!item || item.sort_order === sortOrder) return;
+        additionalAffectedIds.add(itemId);
+        updates.push({
+          id: itemId,
+          original_sort_order: item.sort_order,
+          sort_order: sortOrder,
+          updated_at: item.updated_at || null,
+        });
+      });
       break;
     }
     const nextStartTime = minutesToTime(nextStartMinutes);
@@ -115,7 +145,7 @@ export function planTimelineAutoContinuation({ candidate, dayIndex, editedItemId
     shouldPrompt: true,
     canAutoContinue: true,
     fixedVisitId: fixedVisit?.id || null,
-    followingVisitIds: movableVisits.map((item) => item.id),
+    followingVisitIds: [...new Set([...movableVisits.map((item) => item.id), ...additionalAffectedIds])],
     updates,
   };
 }

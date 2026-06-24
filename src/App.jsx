@@ -43,6 +43,7 @@ import {
   buildTimelineVisitDisplayOrder,
   isTimedVisit,
   isUntimedVisit,
+  planTimelineTimingChangeSortOrders,
   planUntimedVisitReorder,
   untimedOrderingErrorMessage,
 } from "./lib/timelineUntimedOrdering.js";
@@ -2337,9 +2338,13 @@ export default function App() {
   async function applyItineraryTimeContinuation(updates = []) {
     const applied = [];
     for (const update of updates) {
+      const updatePayload = {};
+      if (Object.hasOwn(update, "start_time")) updatePayload.start_time = update.start_time;
+      if (Object.hasOwn(update, "end_time")) updatePayload.end_time = update.end_time;
+      if (Number.isInteger(update.sort_order)) updatePayload.sort_order = update.sort_order;
       const result = await supabase
         .from("itinerary_items")
-        .update({ start_time: update.start_time, end_time: update.end_time })
+        .update(updatePayload)
         .eq("id", update.id)
         .eq("trip_id", activeTrip.id)
         .eq("day_index", activeDay)
@@ -2364,9 +2369,13 @@ export default function App() {
     let rollbackFailed = false;
     let latestUpdatedAt = null;
     for (const update of [...applied].reverse()) {
+      const rollbackPayload = {};
+      if (Object.hasOwn(update, "original_start_time")) rollbackPayload.start_time = update.original_start_time;
+      if (Object.hasOwn(update, "original_end_time")) rollbackPayload.end_time = update.original_end_time;
+      if (Number.isInteger(update.original_sort_order)) rollbackPayload.sort_order = update.original_sort_order;
       const result = await supabase
         .from("itinerary_items")
-        .update({ start_time: update.original_start_time, end_time: update.original_end_time })
+        .update(rollbackPayload)
         .eq("id", update.id)
         .eq("trip_id", activeTrip.id)
         .eq("day_index", activeDay)
@@ -2404,6 +2413,32 @@ export default function App() {
     }
     if (editingId && !(await ensureItineraryItemEditable(editingId))) return { ok: false, fixed: true };
     const normalizedPayload = normalizeItemPayload(payload);
+    let passiveUntimedPositionUpdates = [];
+    if (editingItem && isTimedVisit(editingItem) !== isTimedVisit(normalizedPayload)) {
+      const conversionPlan = planTimelineTimingChangeSortOrders({
+        items: dayItems,
+        replacements: [{ id: editingItem.id, start_time: normalizedPayload.start_time, end_time: normalizedPayload.end_time }],
+      });
+      if (!conversionPlan.ok) {
+        const errorMessage = "目前無法保留這張未設定時間行程的位置，請重新整理後再試。";
+        setNotice(errorMessage);
+        return { ok: false, errorMessage };
+      }
+      if (Number.isInteger(conversionPlan.sortOrders[editingItem.id])) {
+        normalizedPayload.sort_order = conversionPlan.sortOrders[editingItem.id];
+      }
+      passiveUntimedPositionUpdates = Object.entries(conversionPlan.sortOrders)
+        .filter(([itemId, sortOrder]) => itemId !== editingItem.id && items.find((item) => item.id === itemId)?.sort_order !== sortOrder)
+        .map(([itemId, sortOrder]) => {
+          const item = items.find((candidate) => candidate.id === itemId);
+          return {
+            id: itemId,
+            original_sort_order: item?.sort_order,
+            sort_order: sortOrder,
+            updated_at: item?.updated_at || null,
+          };
+        });
+    }
     if (!editingId && isTransportationCard(normalizedPayload) && normalizedPayload.from_item_id && !normalizedPayload.to_item_id) {
       const { fromItem, transportItem } = tailTransportContext(dayItems);
       if (!fromItem || normalizedPayload.from_item_id !== fromItem.id) {
@@ -2432,8 +2467,9 @@ export default function App() {
     }
     const transportConflict = meta.transportConflict || null;
     const autoContinuationUpdates = Array.isArray(meta.autoContinuationUpdates) ? meta.autoContinuationUpdates : [];
+    const followUpUpdates = [...autoContinuationUpdates, ...passiveUntimedPositionUpdates];
     if (editingId) {
-      const invalidContinuationItem = autoContinuationUpdates.find((update) => {
+      const invalidContinuationItem = followUpUpdates.find((update) => {
         const item = items.find((candidate) => candidate.id === update.id);
         return (
           !item ||
@@ -2450,7 +2486,7 @@ export default function App() {
         setNotice(errorMessage);
         return { ok: false, errorMessage };
       }
-      const requiresDeferredCompletion = Boolean(transportConflict) || autoContinuationUpdates.length > 0;
+      const requiresDeferredCompletion = Boolean(transportConflict) || followUpUpdates.length > 0;
       const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, {
         ...meta,
         deferEditLockRelease: requiresDeferredCompletion,
@@ -2458,7 +2494,7 @@ export default function App() {
       if (result.error) setNotice(result.error.message);
       else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
       else if (requiresDeferredCompletion) {
-        const continuationResult = await applyItineraryTimeContinuation(autoContinuationUpdates);
+        const continuationResult = await applyItineraryTimeContinuation(followUpUpdates);
         if (!continuationResult.ok) {
           const continuationRollback = await rollbackItineraryTimeContinuation(continuationResult.applied);
           const editedRollback = await rollbackEditedItineraryItem({
@@ -2468,9 +2504,10 @@ export default function App() {
             updatedAt: result.data?.updated_at,
           });
           const rollbackSucceeded = continuationRollback.ok && editedRollback.ok;
+          const failureLabel = passiveUntimedPositionUpdates.length ? "未設定時間行程位置更新" : "後續行程自動接續";
           const errorMessage = rollbackSucceeded
-            ? `後續行程自動接續失敗，本次時間變更未儲存：${continuationResult.error.message}`
-            : `後續行程自動接續失敗，且部分時間無法自動回復：${continuationResult.error.message}`;
+            ? `${failureLabel}失敗，本次時間變更未儲存：${continuationResult.error.message}`
+            : `${failureLabel}失敗，且部分資料無法自動回復：${continuationResult.error.message}`;
           setNotice(errorMessage);
           return {
             ok: false,
@@ -3205,13 +3242,52 @@ export default function App() {
     return { ok: true, data };
   }
 
-  async function reorderUntimedVisit({ dayIndex, itemId, sortOrder, updatedAt }) {
+  async function reorderUntimedVisit({ dayIndex, itemId, sortOrder, transportBaselines = [], updatedAt }) {
     if (!activeTrip || !canEditActiveTripContent || dayIndex !== activeDay) return { ok: false };
     const item = items.find((candidate) => candidate.id === itemId);
     if (!item || !isUntimedVisit(item) || item.is_fixed || isLockedByAnotherUser(item, session?.user?.id)) {
       const errorMessage = "這張未設定時間行程目前無法移動。";
       setNotice(errorMessage);
       return { ok: false, errorMessage };
+    }
+    const linkedTransports = items.filter(
+      (candidate) =>
+        isTransportationCard(candidate) &&
+        (candidate.from_item_id === itemId || candidate.to_item_id === itemId),
+    );
+    const expectedTransportById = new Map(
+      transportBaselines.map((transport) => [transport.id, transport.updatedAt]),
+    );
+    const transportManifestMatches =
+      linkedTransports.length === expectedTransportById.size &&
+      linkedTransports.every(
+        (transport) => expectedTransportById.get(transport.id) === transport.updated_at,
+      );
+    if (!transportManifestMatches) {
+      const errorMessage = "交通資訊已由其他成員更新，請重新整理後再試。";
+      setNotice(errorMessage);
+      await loadTripData(activeTrip.id);
+      return { conflict: true, errorMessage, ok: false };
+    }
+    if (transportBaselines.length) {
+      const baselineResult = await supabase
+        .from("itinerary_items")
+        .select("id, updated_at")
+        .eq("trip_id", activeTrip.id)
+        .eq("day_index", dayIndex)
+        .eq("item_type", "transport")
+        .or(`from_item_id.eq.${itemId},to_item_id.eq.${itemId}`);
+      const baselineById = new Map((baselineResult.data || []).map((transport) => [transport.id, transport.updated_at]));
+      const baselineMatches =
+        !baselineResult.error &&
+        baselineById.size === expectedTransportById.size &&
+        transportBaselines.every((transport) => baselineById.get(transport.id) === transport.updatedAt);
+      if (!baselineMatches) {
+        const errorMessage = baselineResult.error?.message || "交通資訊已由其他成員更新，請重新整理後再試。";
+        setNotice(errorMessage);
+        await loadTripData(activeTrip.id);
+        return { conflict: !baselineResult.error, error: baselineResult.error, errorMessage, ok: false };
+      }
     }
     const result = await supabase
       .from("itinerary_items")
@@ -3220,7 +3296,7 @@ export default function App() {
       .eq("trip_id", activeTrip.id)
       .eq("day_index", dayIndex)
       .neq("item_type", "transport")
-      .is("start_time", null)
+      .or("start_time.is.null,end_time.is.null")
       .eq("is_fixed", false)
       .eq("updated_at", updatedAt)
       .select("id, sort_order, updated_at")
@@ -3230,6 +3306,31 @@ export default function App() {
       setNotice(errorMessage);
       await loadTripData(activeTrip.id);
       return { conflict: !result.error, error: result.error, errorMessage, ok: false };
+    }
+    if (transportBaselines.length) {
+      const deleteResult = await supabase
+        .from("itinerary_items")
+        .delete()
+        .eq("trip_id", activeTrip.id)
+        .eq("day_index", dayIndex)
+        .eq("item_type", "transport")
+        .in("id", transportBaselines.map((transport) => transport.id))
+        .select("id");
+      if (deleteResult.error || deleteResult.data?.length !== transportBaselines.length) {
+        const compensationResult = await supabase
+          .from("itinerary_items")
+          .update({ sort_order: item.sort_order })
+          .eq("id", itemId)
+          .eq("trip_id", activeTrip.id)
+          .eq("updated_at", result.data.updated_at);
+        const errorMessage =
+          deleteResult.error?.message ||
+          compensationResult.error?.message ||
+          "交通卡未能完整移除，已重新載入最新行程。";
+        setNotice(errorMessage);
+        await loadTripData(activeTrip.id);
+        return { error: deleteResult.error || compensationResult.error, errorMessage, ok: false };
+      }
     }
     await loadTripData(activeTrip.id);
     return { data: result.data, ok: true };
@@ -5487,6 +5588,7 @@ function DemoApp({ initialSection }) {
 
   function saveTimelineItem(payload, editingId, meta = {}) {
     const nextPayload = normalizeItemPayload(payload);
+    let passiveUntimedSortOrders = {};
     const brokenTransportId = meta.transportConflict?.id || null;
     const continuationById = new Map(
       (meta.autoContinuationUpdates || []).map((update) => [update.id, update]),
@@ -5495,6 +5597,17 @@ function DemoApp({ initialSection }) {
     const editingItem = editingId ? timelineItems.find((item) => item.id === editingId) : null;
     if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
       return { ok: false, fixed: true };
+    }
+    if (editingItem && isTimedVisit(editingItem) !== isTimedVisit(nextPayload)) {
+      const conversionPlan = planTimelineTimingChangeSortOrders({
+        items: dayItems,
+        replacements: [{ id: editingItem.id, start_time: nextPayload.start_time, end_time: nextPayload.end_time }],
+      });
+      if (!conversionPlan.ok) return { ok: false, errorMessage: "目前無法保留這張未設定時間行程的位置，請重新整理後再試。" };
+      if (Number.isInteger(conversionPlan.sortOrders[editingItem.id])) {
+        nextPayload.sort_order = conversionPlan.sortOrders[editingItem.id];
+      }
+      passiveUntimedSortOrders = conversionPlan.sortOrders;
     }
     const invalidTimeRange = nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time);
     if (invalidTimeRange) return { ok: false };
@@ -5525,6 +5638,18 @@ function DemoApp({ initialSection }) {
               ...item,
               start_time: continuation.start_time,
               end_time: continuation.end_time,
+              ...(Number.isInteger(continuation.sort_order)
+                ? { sort_order: continuation.sort_order }
+                : Number.isInteger(passiveUntimedSortOrders[item.id])
+                  ? { sort_order: passiveUntimedSortOrders[item.id] }
+                  : {}),
+              updated_at: new Date().toISOString(),
+            };
+          }
+          if (Number.isInteger(passiveUntimedSortOrders[item.id]) && item.sort_order !== passiveUntimedSortOrders[item.id]) {
+            return {
+              ...item,
+              sort_order: passiveUntimedSortOrders[item.id],
               updated_at: new Date().toISOString(),
             };
           }
@@ -5593,16 +5718,33 @@ function DemoApp({ initialSection }) {
     return { ok: true, data: plan };
   }
 
-  function reorderTimelineUntimedVisit({ dayIndex, itemId, sortOrder, updatedAt }) {
+  function reorderTimelineUntimedVisit({ dayIndex, itemId, sortOrder, transportBaselines = [], updatedAt }) {
     if (dayIndex !== activeDay) return { ok: false };
     const item = timelineItems.find((candidate) => candidate.id === itemId);
     if (!item || !isUntimedVisit(item) || item.updated_at !== updatedAt || item.is_fixed) return { ok: false, conflict: true };
+    const linkedTransportIds = timelineItems
+      .filter(
+        (candidate) =>
+          isTransportationCard(candidate) &&
+          (candidate.from_item_id === itemId || candidate.to_item_id === itemId),
+      )
+      .map((transport) => transport.id);
+    const requestedTransportIds = transportBaselines.map((transport) => transport.id);
+    if (
+      linkedTransportIds.length !== requestedTransportIds.length ||
+      linkedTransportIds.some((transportId) => !requestedTransportIds.includes(transportId))
+    ) {
+      return { ok: false, conflict: true };
+    }
+    const deletedTransportIds = new Set(requestedTransportIds);
     setTimelineItems((current) =>
-      current.map((candidate) =>
-        candidate.id === itemId
-          ? { ...candidate, sort_order: sortOrder, updated_at: new Date().toISOString() }
-          : candidate,
-      ),
+      current
+        .filter((candidate) => !deletedTransportIds.has(candidate.id))
+        .map((candidate) =>
+          candidate.id === itemId
+            ? { ...candidate, sort_order: sortOrder, updated_at: new Date().toISOString() }
+            : candidate,
+        ),
     );
     return { ok: true };
   }
@@ -7622,13 +7764,27 @@ function ItineraryTimeline({
         setUntimedDropNotice("未設定時間行程移動失敗，請稍後再試。");
         return;
       }
-      setIsReorderingUntimed(true);
-      const result = await onReorderUntimedVisit({
+      const transportBaselines = dayItems
+        .filter(
+          (item) =>
+            isTransportationCard(item) &&
+            (item.from_item_id === sourceItem.id || item.to_item_id === sourceItem.id),
+        )
+        .map((transport) => ({ id: transport.id, updatedAt: transport.updated_at }));
+      const untimedReorder = {
         dayIndex: activeDay,
         itemId: sourceItem.id,
+        kind: "untimed",
         sortOrder: plan.sortOrder,
+        transportBaselines,
         updatedAt: sourceItem.updated_at,
-      });
+      };
+      if (transportBaselines.length) {
+        setReorderPreview(untimedReorder);
+        return;
+      }
+      setIsReorderingUntimed(true);
+      const result = await onReorderUntimedVisit(untimedReorder);
       if (!result?.ok) setUntimedDropNotice(result?.errorMessage || "未設定時間行程移動失敗，請稍後再試。");
       else setUntimedDropNotice("");
       setIsReorderingUntimed(false);
@@ -7660,14 +7816,28 @@ function ItineraryTimeline({
     }
     setReorderPreview({
       dayIndex: activeDay,
+      kind: "timed",
       packageSourceItemIds,
       slotItemIds,
     });
     clearVisitDrag();
   }
 
-  async function confirmDestinationReorder() {
-    if (!reorderPreview || typeof onReorderDestinationPackages !== "function") return;
+  async function confirmMoveReorder() {
+    if (!reorderPreview) return;
+    if (reorderPreview.kind === "untimed") {
+      if (typeof onReorderUntimedVisit !== "function") return;
+      setIsReorderingUntimed(true);
+      const result = await onReorderUntimedVisit(reorderPreview);
+      if (!result?.ok) setUntimedDropNotice(result?.errorMessage || "未設定時間行程移動失敗，請稍後再試。");
+      else {
+        setUntimedDropNotice("");
+        setReorderPreview(null);
+      }
+      setIsReorderingUntimed(false);
+      return;
+    }
+    if (typeof onReorderDestinationPackages !== "function") return;
     setIsReorderingDestination(true);
     const result = await onReorderDestinationPackages(reorderPreview);
     if (!result?.ok) setFixedNotice(result?.errorMessage || "目的地內容重排失敗，請稍後再試。");
@@ -8112,6 +8282,21 @@ function ItineraryTimeline({
     Boolean(editedTimedVisit) &&
     (formatTimeDisplay(editedTimedVisit.start_time) !== form.start_time ||
       formatTimeDisplay(editedTimedVisit.end_time) !== form.end_time);
+  const crossesFixedVisitForContinuation = Boolean(editedTimedVisit) && timedVisitItems.some((fixedVisit) => {
+    if (!fixedVisit.is_fixed || fixedVisit.id === editedTimedVisit.id) return false;
+    const originalStart = timeToMinutes(editedTimedVisit.start_time);
+    const originalEnd = timeToMinutes(editedTimedVisit.end_time);
+    const candidateStart = timeToMinutes(form.start_time);
+    const candidateEnd = timeToMinutes(form.end_time);
+    const fixedStart = timeToMinutes(fixedVisit.start_time);
+    const fixedEnd = timeToMinutes(fixedVisit.end_time);
+    if ([originalStart, originalEnd, candidateStart, candidateEnd, fixedStart, fixedEnd].some((value) => value === null)) {
+      return false;
+    }
+    const movedFromBeforeToAfter = originalEnd <= fixedStart && candidateStart >= fixedEnd;
+    const movedFromAfterToBefore = originalStart >= fixedEnd && candidateEnd <= fixedStart;
+    return movedFromBeforeToAfter || movedFromAfterToBefore;
+  });
   const canRequestAutoContinuation =
     editingId &&
     !isTransportEditor &&
@@ -8121,7 +8306,8 @@ function ItineraryTimeline({
     Boolean(editedTimedVisit.start_time) &&
     Boolean(editedTimedVisit.end_time) &&
     Boolean(form.start_time) &&
-    Boolean(form.end_time);
+    Boolean(form.end_time) &&
+    !crossesFixedVisitForContinuation;
   const lastTimedVisitItem = useMemo(() => lastTimedVisit(dayItems), [dayItems]);
   const { adjacentTransportByPair, invalidTransportItems, passiveUntimedTransportByFrom, tailTransportByFrom } = useMemo(
     () => buildTransportPairState(dayItems, visitItems),
@@ -8709,6 +8895,7 @@ function ItineraryTimeline({
             <button
               className="ghost-button compact"
               disabled={!canRequestAutoContinuation}
+              title={crossesFixedVisitForContinuation ? "跨越固定行程時無法接續。" : undefined}
               type="button"
               onClick={requestAutoContinuation}
             >
@@ -8957,7 +9144,7 @@ function ItineraryTimeline({
           <div className="form-actions">
             <button
               className="ghost-button"
-              disabled={isReorderingDestination}
+              disabled={isReorderingDestination || isReorderingUntimed}
               type="button"
               onClick={() => setReorderPreview(null)}
             >
@@ -8965,9 +9152,9 @@ function ItineraryTimeline({
             </button>
             <button
               className="primary-button compact"
-              disabled={isReorderingDestination}
+              disabled={isReorderingDestination || isReorderingUntimed}
               type="button"
-              onClick={confirmDestinationReorder}
+              onClick={confirmMoveReorder}
             >
               確定
             </button>
