@@ -218,7 +218,7 @@ Applied migrations 019, 020, and 021 remain unchanged and immutable. No migratio
 - `src/styles.css`
 - `tests/phase-4-5-untimed-ordering.spec.js`
 - `tests/phase-1-7f-smoke.spec.js`
-- `docs/gpt/2026-06-24-phase-4-5-closeout-handoff.md`
+- `docs/2026-06-24-phase-4-5-closeout-handoff.md`
 
 The existing Demo trip-switch smoke assertion was made date-robust: it now verifies that exactly one valid day is active and that the old out-of-range Day 6 board is gone, rather than assuming the current trip day must always be Day 1.
 

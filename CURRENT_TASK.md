@@ -5,11 +5,16 @@
 - `AGENT.md`
 - `docs/UX_RULES.md`
 - `docs/BUGS.md`
-- `docs/gpt/timeline-phase-4-plan.md`
-- `docs/gpt/2026-06-22-phase-4-2c-closeout-handoff.md`
-- `docs/gpt/2026-06-23-phase-4-4-closeout-handoff.md`
-- `docs/gpt/2026-06-24-phase-4-5-closeout-handoff.md`
-- `docs/gpt/timeline-phase-4-drag-reorder-rules-draft-v3.md`
+- `docs/2026-06-22-phase-4-2c-closeout-handoff.md`
+- `docs/2026-06-23-phase-4-4-closeout-handoff.md`
+- `docs/2026-06-24-phase-4-5-closeout-handoff.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v3.md`
+
+Archive rule:
+
+- `docs/archive/` contains historical discussions, superseded handoffs, and old drafts.
+- Do not read archived files by default; consult them only when a task specifically needs older context.
+- `docs/gpt/` no longer exists and must not be recreated.
 
 ## Current Phase
 
@@ -121,8 +126,8 @@ Important:
 - `tests/phase-1-7f-smoke.spec.js`
 - `tests/phase-4-5-untimed-ordering.spec.js`
 - `CURRENT_TASK.md`
-- `docs/gpt/2026-06-24-phase-4-5-closeout-handoff.md`
-- `docs/gpt/timeline-phase-4-drag-reorder-rules-draft-v3.md`
+- `docs/2026-06-24-phase-4-5-closeout-handoff.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v3.md`
 
 ## Verification
 

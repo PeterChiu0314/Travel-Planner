@@ -161,7 +161,7 @@ Demo does not call:
 - `tests/phase-4-3-transport-conflict.spec.js`
 - `tests/phase-4-4-auto-continuation.spec.js`
 - `CURRENT_TASK.md`
-- `docs/gpt/2026-06-23-phase-4-4-closeout-handoff.md`
+- `docs/2026-06-23-phase-4-4-closeout-handoff.md`
 
 ## Verification
 

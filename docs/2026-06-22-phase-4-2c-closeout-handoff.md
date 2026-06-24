@@ -228,9 +228,9 @@ The Vite large-chunk warning remains pre-existing and non-blocking.
 - `tests/phase-4-2c-reorder.spec.js`
 - `supabase/migrations/020_reorder_itinerary_destination_packages.sql`
 - `supabase/migrations/021_fix_reorder_baseline_count.sql`
-- `docs/gpt/timeline-phase-4-plan.md`
+- `docs/archive/Timeline_Phase4/timeline-phase-4-plan.md` (historical; consult only when needed)
 - `CURRENT_TASK.md`
-- `docs/gpt/2026-06-22-phase-4-2c-closeout-handoff.md`
+- `docs/2026-06-22-phase-4-2c-closeout-handoff.md`
 
 Generated `test-results/` remains untracked and must not be committed.
 
