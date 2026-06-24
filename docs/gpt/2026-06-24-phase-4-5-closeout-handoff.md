@@ -8,6 +8,7 @@ Date: 2026-06-24
 Timeline Phase 4.5 - Implemented
 Automated QA - Passed
 Browser QA - Passed
+Partial-Time/Passive-Transport Hotfix - Implemented
 User manual verification - Pending
 ```
 
@@ -17,12 +18,20 @@ Branch:
 codex/timeline-phase-4-0-to-4-2
 ```
 
+Relevant commits:
+
+```text
+e2a6033 Implement Timeline Phase 4.5 untimed ordering
+5b75450 Fix Timeline Phase 4.5 partial time handling
+```
+
 ## Final Product Decision
 
 Phase 4.5 lets untimed destination visits participate in the same-day Timeline display order without changing the timed schedule.
 
-- A timed visit is still ordered naturally by `start_time`.
-- An untimed visit has no `start_time` or `end_time` and can appear before, after, or between timed visits.
+- A visit is timed only when both `start_time` and `end_time` exist, and is ordered naturally by `start_time`.
+- Missing either time—including start-only and end-only legacy data—makes the visit untimed.
+- An untimed visit can appear before, after, or between timed visits.
 - Dragging an untimed visit changes only its persisted manual display position.
 - Timed visit times, destination packages, alternatives, linked budgets, and transportation cards do not move with an untimed drag.
 - Phase 4.2c timed destination-package reorder and Phase 4.4 auto-continuation remain separate operations.
@@ -59,6 +68,30 @@ It owns:
 - encoded `sort_order` generation;
 - shared error-message mapping.
 
+## Phase 4.5 Hotfix: Complete-Time Contract
+
+The final classification contract is:
+
+| start_time | end_time | classification |
+|---|---|---|
+| set | set | timed |
+| missing | missing | untimed |
+| set | missing | untimed |
+| missing | set | untimed |
+
+`isTimedVisit` and `isUntimedVisit` in `timelineUntimedOrdering.js` are shared by mixed display ordering, active drag, destination-package planning, Phase 4.3 transportation conflict detection, and Phase 4.4 auto-continuation.
+
+Partial visits do not participate in:
+
+- timed natural sorting;
+- overlap validation;
+- auto-continuation;
+- transportation-duration shortage;
+- timed adjacency;
+- the frontend timed destination-package manifest.
+
+The visit editor immediately clears both form values when the user clears either start or end. `normalizeItemPayload` repeats the invariant at the Formal/Demo save boundary, so persisted visit data is either a complete pair or `null/null`.
+
 ## Untimed Drag Rules
 
 An untimed visit can be dragged when:
@@ -94,13 +127,41 @@ The planner compares the current valid pair adjacency with the proposed display 
 - the UI shows a compact inline hint:
 
 ```text
-這裡已有交通卡連接，無法插入未設定時間行程。
+這裡已有交通卡連接，無法插入未設時間行程。
 請先刪除交通卡，或將行程放到其他位置。
 ```
 
 Transportation insertion controls are now shown only between two adjacent timed visits. Untimed adjacency does not expose a transportation insertion control.
 
-Tail transportation behavior is unchanged.
+Tail transportation data behavior is unchanged. If its from visit passively becomes untimed, it is rendered as an anchored warning instead of being treated as a new tail or moved to the top invalid stack.
+
+## Active Drag vs Passive Untimed Conversion
+
+Phase 4.5 now explicitly separates two operations.
+
+### Active untimed drag
+
+The user deliberately moves an already untimed visit. The original Phase 4.5 protection remains unchanged: it cannot be inserted between a currently valid transportation pair. Rejection changes no local state, performs no Supabase write, and does not add, delete, move, or rewrite transportation.
+
+### Passive untimed conversion
+
+A timed visit can passively become untimed because:
+
+- Phase 4.4 fixed-anchor overflow clears its times;
+- the user manually clears either time;
+- legacy partial data is normalized during save.
+
+This is not an active insertion into a transportation pair. If a transportation card's referenced visits still exist and either endpoint is untimed/partial, the card:
+
+- remains in data and in the Timeline;
+- is not deleted or hidden;
+- is not moved into the top invalid-transport stack;
+- is not rewritten as tail transportation;
+- does not create a replacement;
+- is anchored after its existing `from_item_id` visit;
+- uses the existing compact warning card with `目的地時間未設定，請重新確認交通卡。`
+
+Only missing referenced visits, explicit deletion, Phase 4.3 Delete, or an approved timed-reorder cleanup can remove the relationship through their existing flows.
 
 ## Formal Save Safety
 
@@ -124,6 +185,8 @@ If the guarded update returns no row or fails:
 - the callback returns a failed/conflict result.
 
 Realtime reload therefore preserves the persisted untimed position without introducing a new table or RPC.
+
+Formal and Demo visit saves both normalize partial time to `null/null`. Passive conversion does not pass a Phase 4.3 Delete intent, so the existing transportation row is preserved.
 
 Applied migrations 019, 020, and 021 remain unchanged and immutable. No migration 022 was created, and production DB was not modified during Phase 4.5.
 
@@ -149,6 +212,9 @@ Applied migrations 019, 020, and 021 remain unchanged and immutable. No migratio
 
 - `src/App.jsx`
 - `src/lib/timelineUntimedOrdering.js`
+- `src/lib/destinationPackages.js`
+- `src/lib/timelineAutoContinuation.js`
+- `src/lib/timelineTransportationConflicts.js`
 - `src/styles.css`
 - `tests/phase-4-5-untimed-ordering.spec.js`
 - `tests/phase-1-7f-smoke.spec.js`
@@ -177,6 +243,20 @@ Browser verification on `/demo/timeline` confirmed:
 
 The existing Vite large-chunk warning remains non-blocking and is not a Phase 4.5 regression.
 
+### Hotfix verification
+
+The Hotfix intentionally followed the user-requested reduced test flow:
+
+```text
+targeted pure-helper sanity passed
+Demo browser verification passed
+npm.cmd run build        passed
+git diff --check         passed
+full Playwright rerun    not requested / not run
+```
+
+Browser verification manually cleared the end time of a visit connected by transportation. The start time cleared immediately, the saved visit became untimed, the transportation remained in the from visit's flow entry with an `untimed-warning`, the top invalid stack stayed empty, and no console warnings/errors appeared.
+
 ## Test Workflow Note
 
 Future Timeline phases should use a layered workflow to reduce runtime and token output:
@@ -192,6 +272,8 @@ Future Timeline phases should use a layered workflow to reduce runtime and token
 - Native HTML drag remains primarily mouse/desktop oriented. Touch and keyboard-accessible reordering require a separately approved interaction design.
 - The integer gap encoding intentionally leaves large rank spacing. Extremely repeated insertions into the exact same narrow position can eventually exhaust the available midpoint; the planner then rejects safely and asks for a refresh instead of corrupting order.
 - Formal ordering is a guarded single-row update, not a multi-row transaction. This is appropriate because Phase 4.5 changes only the dragged untimed row.
+- Legacy partial DB rows are treated as untimed immediately but are written back as `null/null` only on the next explicit save.
+- Applied RPC migrations 020/021 predate the complete-time contract and cannot be edited. A legacy start-only row may make timed reorder reject safely as stale until the row is explicitly normalized.
 - User manual verification is still pending.
 
 ## Next Step Boundary
