@@ -47,13 +47,17 @@ function encodeUntimedSortOrder(slot, rank) {
   return untimedSortBase + slot * untimedSortStride + rank;
 }
 
+export function isTimedVisit(item) {
+  return Boolean(item) && !isTransportationCard(item) && Boolean(item.start_time) && Boolean(item.end_time);
+}
+
 export function isUntimedVisit(item) {
-  return Boolean(item) && !isTransportationCard(item) && !item.start_time;
+  return Boolean(item) && !isTransportationCard(item) && !isTimedVisit(item);
 }
 
 export function buildTimelineVisitDisplayOrder(items = []) {
   const visits = items.filter((item) => !isTransportationCard(item));
-  const timedVisits = visits.filter((item) => Boolean(item.start_time)).sort(compareTimedVisits);
+  const timedVisits = visits.filter(isTimedVisit).sort(compareTimedVisits);
   const untimedBySlot = new Map();
 
   visits.filter(isUntimedVisit).forEach((item) => {
@@ -90,8 +94,8 @@ function validTransportationPairs(items, visits) {
         item.to_item_id &&
         indexById.has(item.from_item_id) &&
         indexById.has(item.to_item_id) &&
-        visits[indexById.get(item.from_item_id)]?.start_time &&
-        visits[indexById.get(item.to_item_id)]?.start_time &&
+        isTimedVisit(visits[indexById.get(item.from_item_id)]) &&
+        isTimedVisit(visits[indexById.get(item.to_item_id)]) &&
         indexById.get(item.to_item_id) === indexById.get(item.from_item_id) + 1,
     )
     .map((item) => ({ fromItemId: item.from_item_id, id: item.id, toItemId: item.to_item_id }));
@@ -126,16 +130,17 @@ export function planUntimedVisitReorder({ items = [], placement = "after", sourc
   if (brokenPair) return { brokenTransportId: brokenPair.id, errorCode: "transport_pair_blocked", ok: false };
 
   const sourceIndex = nextVisits.findIndex((item) => item.id === source.id);
-  const slot = nextVisits.slice(0, sourceIndex).filter((item) => Boolean(item.start_time)).length;
+  const slot = nextVisits.slice(0, sourceIndex).filter(isTimedVisit).length;
   const untimedInSlot = nextVisits.filter((item, index) => {
     if (!isUntimedVisit(item)) return false;
-    return nextVisits.slice(0, index).filter((candidate) => Boolean(candidate.start_time)).length === slot;
+    return nextVisits.slice(0, index).filter(isTimedVisit).length === slot;
   });
   const sourceSlotIndex = untimedInSlot.findIndex((item) => item.id === source.id);
   const previous = untimedInSlot[sourceSlotIndex - 1] || null;
   const next = untimedInSlot[sourceSlotIndex + 1] || null;
-  const previousRank = previous ? untimedPlacement(previous, currentVisits.filter((item) => item.start_time).length).rank : 0;
-  const nextRank = next ? untimedPlacement(next, currentVisits.filter((item) => item.start_time).length).rank : untimedSortStride;
+  const timedCount = currentVisits.filter(isTimedVisit).length;
+  const previousRank = previous ? untimedPlacement(previous, timedCount).rank : 0;
+  const nextRank = next ? untimedPlacement(next, timedCount).rank : untimedSortStride;
   const rank = Math.floor((previousRank + nextRank) / 2);
   const sortOrder = encodeUntimedSortOrder(slot, rank);
   if (sortOrder === null || rank <= previousRank || rank >= nextRank) {
@@ -152,7 +157,7 @@ export function planUntimedVisitReorder({ items = [], placement = "after", sourc
 
 export function untimedOrderingErrorMessage(errorCode) {
   if (errorCode === "transport_pair_blocked") {
-    return "這裡已有交通卡連接，無法插入未設定時間行程。請先刪除交通卡，或將行程放到其他位置。";
+    return "這裡已有交通卡連接，無法插入未設時間行程。請先刪除交通卡，或將行程放到其他位置。";
   }
   if (errorCode === "fixed_item") return "固定行程無法調整位置。";
   if (errorCode === "order_space_exhausted") return "這個位置暫時無法插入，請重新整理後再試。";

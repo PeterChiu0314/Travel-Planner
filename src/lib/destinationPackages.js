@@ -1,3 +1,5 @@
+import { isTimedVisit } from "./timelineUntimedOrdering.js";
+
 export const destinationPackageFields = [
   "type",
   "title",
@@ -89,7 +91,7 @@ export function planDestinationPackageReorder({
         item.trip_id !== tripId ||
         item.day_index !== dayIndex ||
         item.item_type === "transport" ||
-        !item.start_time,
+        !isTimedVisit(item),
     )
   ) {
     return { ok: false, errorCode: "timed_visit_required" };
@@ -101,8 +103,7 @@ export function planDestinationPackageReorder({
       (item) =>
         item.trip_id === tripId &&
         item.day_index === dayIndex &&
-        item.item_type !== "transport" &&
-        Boolean(item.start_time),
+        isTimedVisit(item),
     )
     .sort((a, b) => {
       const timeSort = String(a.start_time).localeCompare(String(b.start_time));

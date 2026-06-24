@@ -1,3 +1,5 @@
+import { isTimedVisit } from "./timelineUntimedOrdering.js";
+
 function timeToMinutes(value) {
   if (!value) return null;
   const [hours, minutes] = String(value).split(":");
@@ -25,7 +27,7 @@ export function planTimelineAutoContinuation({ candidate, dayIndex, editedItemId
     .filter(
       (item) =>
         item?.item_type !== "transport" &&
-        Boolean(item?.start_time) &&
+        isTimedVisit(item) &&
         Number(item?.day_index) === Number(dayIndex),
     )
     .sort(compareTimedVisits);

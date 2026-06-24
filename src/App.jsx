@@ -41,6 +41,7 @@ import { findBrokenTransportationPair } from "./lib/timelineTransportationConfli
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import {
   buildTimelineVisitDisplayOrder,
+  isTimedVisit,
   isUntimedVisit,
   planUntimedVisitReorder,
   untimedOrderingErrorMessage,
@@ -509,7 +510,7 @@ function dateTimeLocalInput(date = new Date()) {
 
 function sortScheduleItems(items) {
   return [...items].sort((a, b) => {
-    const timeSort = (a.start_time || "99:99").localeCompare(b.start_time || "99:99");
+    const timeSort = (isTimedVisit(a) ? a.start_time : "99:99").localeCompare(isTimedVisit(b) ? b.start_time : "99:99");
     const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
     return timeSort || orderSort;
   });
@@ -520,7 +521,7 @@ function sortedVisitItems(items) {
 }
 
 function lastTimedVisit(items) {
-  return [...sortedVisitItems(items)].reverse().find((item) => item.start_time) || null;
+  return [...sortedVisitItems(items)].reverse().find(isTimedVisit) || null;
 }
 
 function tailTransportContext(items) {
@@ -612,9 +613,11 @@ function buildTransportPairState(items, visits) {
   });
 
   const adjacentTransportByPair = {};
+  const passiveUntimedTransportByFrom = {};
   const tailTransportByFrom = {};
   const invalidTransportItems = [];
-  const finalTimedVisit = [...visits].reverse().find((item) => item.start_time) || null;
+  const visitById = new Map(visits.map((item) => [item.id, item]));
+  const finalTimedVisit = [...visits].reverse().find(isTimedVisit) || null;
   items
     .filter((item) => isTransportationCard(item))
     .forEach((item) => {
@@ -623,8 +626,22 @@ function buildTransportPairState(items, visits) {
       const pairKey = hasPair ? transportPairKey(item.from_item_id, item.to_item_id) : "";
       const pairExists = hasPair && visitIds.has(item.from_item_id) && visitIds.has(item.to_item_id);
       const pairIsAdjacent = pairExists && adjacentKeys.has(pairKey);
+      const fromVisit = visitById.get(item.from_item_id) || null;
+      const toVisit = visitById.get(item.to_item_id) || null;
+      const hasPassiveUntimedEndpoint =
+        Boolean(fromVisit) &&
+        ((hasPair && Boolean(toVisit) && (!isTimedVisit(fromVisit) || !isTimedVisit(toVisit))) ||
+          (isTail && !isTimedVisit(fromVisit)));
 
-      if (isTail && visitIds.has(item.from_item_id) && item.from_item_id === finalTimedVisit?.id) {
+      if (hasPassiveUntimedEndpoint) {
+        passiveUntimedTransportByFrom[item.from_item_id] = [
+          ...(passiveUntimedTransportByFrom[item.from_item_id] || []),
+          item,
+        ];
+        return;
+      }
+
+      if (isTail && isTimedVisit(fromVisit) && item.from_item_id === finalTimedVisit?.id) {
         if (!tailTransportByFrom[item.from_item_id]) {
           tailTransportByFrom[item.from_item_id] = item;
           return;
@@ -639,7 +656,7 @@ function buildTransportPairState(items, visits) {
       invalidTransportItems.push(item);
     });
 
-  return { adjacentTransportByPair, invalidTransportItems, tailTransportByFrom };
+  return { adjacentTransportByPair, invalidTransportItems, passiveUntimedTransportByFrom, tailTransportByFrom };
 }
 
 function transportPairNeedsReview(transportItem, fromItem, toItem) {
@@ -3145,7 +3162,7 @@ export default function App() {
     if (isSamePackageOrder(slotItemIds, packageSourceItemIds)) return { ok: true, noOp: true };
     const timedVisits = sortedVisitItems(
       items.filter(
-        (item) => item.day_index === dayIndex && !isTransportationCard(item) && Boolean(item.start_time),
+        (item) => item.day_index === dayIndex && isTimedVisit(item),
       ),
     );
     if (!isSamePackageOrder(timedVisits.map((item) => item.id), slotItemIds)) {
@@ -3166,7 +3183,7 @@ export default function App() {
     const baselineRows = items.filter(
       (item) =>
         item.day_index === dayIndex &&
-        (isTransportationCard(item) || Boolean(item.start_time)),
+        (isTransportationCard(item) || isTimedVisit(item)),
     );
     const itemUpdatedAtBaselines = Object.fromEntries(
       baselineRows.map((item) => [item.id, item.updated_at]),
@@ -3682,6 +3699,7 @@ function normalizeItemPayload(payload) {
   }
   const locationName = payload.location_name || payload.location;
   const description = payload.description || payload.note;
+  const hasCompleteTime = Boolean(payload.start_time) && Boolean(payload.end_time);
   return {
     ...payload,
     item_type: payload.item_type || "visit",
@@ -3690,8 +3708,8 @@ function normalizeItemPayload(payload) {
     location_name: locationName,
     note: description,
     description,
-    start_time: payload.start_time || null,
-    end_time: payload.end_time || null,
+    start_time: hasCompleteTime ? payload.start_time : null,
+    end_time: hasCompleteTime ? payload.end_time : null,
     address: payload.address || null,
     map_url: payload.map_url || null,
     transportation_note: payload.transportation_note || null,
@@ -7122,7 +7140,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
   const currentTime = currentTimeInput();
   const isCalendarToday = day ? dateToInputValue(day) === todayInput() : false;
   const nextStop =
-    items.find((item) => !isCalendarToday || !item.start_time || item.start_time >= currentTime) || items[0] || null;
+    items.find((item) => !isCalendarToday || !isTimedVisit(item) || item.start_time >= currentTime) || items[0] || null;
   const hotelItem = [...items].reverse().find((item) => item.type === "hotel");
   const todayBudget = items.reduce((sum, item) => sum + Number(item.cost || 0), 0);
   const pendingPackItems = packItems.filter((item) => !item.done);
@@ -7151,7 +7169,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
             <ol className="today-schedule">
               {items.slice(0, 4).map((item) => (
                 <li key={item.id}>
-                  <time>{formatTimeDisplay(item.start_time) || "--:--"}</time>
+                  <time>{isTimedVisit(item) ? formatTimeDisplay(item.start_time) : "--:--"}</time>
                   <div>
                     <strong>{item.title}</strong>
                     {item.location ? <span>{item.location}</span> : null}
@@ -7167,7 +7185,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
         <article className="today-card">
           <span>下一站</span>
           <strong>{nextStop?.title || "尚未安排"}</strong>
-          <p>{nextStop?.location || formatTimeDisplay(nextStop?.start_time) || "新增行程後會顯示"}</p>
+          <p>{nextStop?.location || (isTimedVisit(nextStop) ? formatTimeDisplay(nextStop.start_time) : "") || "新增行程後會顯示"}</p>
         </article>
 
         <article className="today-card">
@@ -7509,8 +7527,7 @@ function ItineraryTimeline({
       !isReorderingDestination &&
       !timedVisitItems.some((visit) => visit.is_fixed) &&
       !timedVisitItems.some((visit) => useEditLocks && isLockedByAnotherUser(visit, currentUserId)) &&
-      !isTransportationCard(item) &&
-      Boolean(item?.start_time) &&
+      isTimedVisit(item) &&
       !item?.is_fixed &&
       !(useEditLocks && isLockedByAnotherUser(item, currentUserId))
     );
@@ -7908,6 +7925,10 @@ function ItineraryTimeline({
       submittedForm.note = submittedForm.transport_note.trim();
       submittedForm.description = submittedForm.transport_note.trim();
     } else {
+      if (!submittedForm.start_time || !submittedForm.end_time) {
+        submittedForm.start_time = "";
+        submittedForm.end_time = "";
+      }
       submittedForm.address = "";
       submittedForm.transportation_note = "";
       submittedForm.cost = "0";
@@ -8084,7 +8105,7 @@ function ItineraryTimeline({
 
   const isTransportEditor = form.item_type === "transport";
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
-  const timedVisitItems = useMemo(() => visitItems.filter((item) => Boolean(item.start_time)), [visitItems]);
+  const timedVisitItems = useMemo(() => visitItems.filter(isTimedVisit), [visitItems]);
   const editedTimedVisitIndex = timedVisitItems.findIndex((item) => item.id === editingId);
   const editedTimedVisit = editedTimedVisitIndex >= 0 ? timedVisitItems[editedTimedVisitIndex] : null;
   const editedVisitTimeChanged =
@@ -8102,7 +8123,7 @@ function ItineraryTimeline({
     Boolean(form.start_time) &&
     Boolean(form.end_time);
   const lastTimedVisitItem = useMemo(() => lastTimedVisit(dayItems), [dayItems]);
-  const { adjacentTransportByPair, invalidTransportItems, tailTransportByFrom } = useMemo(
+  const { adjacentTransportByPair, invalidTransportItems, passiveUntimedTransportByFrom, tailTransportByFrom } = useMemo(
     () => buildTransportPairState(dayItems, visitItems),
     [dayItems, visitItems],
   );
@@ -8413,6 +8434,7 @@ function ItineraryTimeline({
     const { hasTimeShortage = false, isTail = false, warningType = "" } = options;
     const isInvalidWarning = warningType === "invalid";
     const isGeneralWarning = warningType === "general";
+    const isUntimedWarning = warningType === "untimed";
     const isShortageWarning = hasTimeShortage && !isInvalidWarning;
     const hasWarning = Boolean(warningType) || isShortageWarning;
     const warningClass = isInvalidWarning ? "invalid" : isGeneralWarning ? "general" : isShortageWarning ? "shortage" : warningType;
@@ -8460,6 +8482,9 @@ function ItineraryTimeline({
                   ? "行程時間或目的地已變更，請確認交通資訊。"
                   : `${transportPairLabel(item)} 的行程時間或目的地已變更，請確認交通資訊。`}
               </p>
+            ) : null}
+            {isUntimedWarning ? (
+              <p className="transport-warning-detail">目的地時間未設定，請重新確認交通卡。</p>
             ) : null}
             <div className="transport-card-details">
               <p className="transport-note-detail">{note || "尚未填寫"}</p>
@@ -8591,6 +8616,10 @@ function ItineraryTimeline({
               onChange={(event) => {
                 setTimeError("");
                 const nextStart = event.target.value;
+                if (!nextStart) {
+                  setForm({ ...form, start_time: "", end_time: "" });
+                  return;
+                }
                 const duration = Number(getDurationMinutes(form.start_time, form.end_time));
                 const startMinutes = timeToMinutes(nextStart);
                 const nextEnd =
@@ -8615,7 +8644,8 @@ function ItineraryTimeline({
               value={form.end_time}
               onChange={(event) => {
                 setTimeError("");
-                setForm({ ...form, end_time: event.target.value });
+                const nextEnd = event.target.value;
+                setForm(nextEnd ? { ...form, end_time: nextEnd } : { ...form, start_time: "", end_time: "" });
               }}
             >
               <option value="">未設定</option>
@@ -9037,7 +9067,7 @@ function ItineraryTimeline({
             );
             const displayCost = linkedBudgetTotal || Number(displayItem.cost || 0);
             const nextItem = visitItems[index + 1];
-            const isTimedPair = Boolean(item.start_time && nextItem?.start_time);
+            const isTimedPair = isTimedVisit(item) && isTimedVisit(nextItem);
             const pairKey = isTimedPair ? transportPairKey(item.id, nextItem.id) : "";
             const transportItem = pairKey ? adjacentTransportByPair[pairKey] : null;
             const hasTransportTimeShortage = transportItem ? transportTimeShortageMinutes(transportItem, item, nextItem) > 0 : false;
@@ -9051,6 +9081,7 @@ function ItineraryTimeline({
               insertionPair?.fromId === item.id &&
               insertionPair?.toId === nextItem.id;
             const tailTransportItem = tailTransportByFrom[item.id] || null;
+            const passiveUntimedTransportItems = passiveUntimedTransportByFrom[item.id] || [];
             const isTailPosition = lastTimedVisitItem?.id === item.id;
             const isAddingTailHere =
               isTailPosition &&
@@ -9074,7 +9105,7 @@ function ItineraryTimeline({
               }${isDragEnabled ? " drag-enabled" : ""}${draggedVisitId === item.id ? " dragging" : ""}${
                 dragPlacement ? ` drag-target drag-${dragPlacement}` : ""
               }${isDisabledDragTarget ? " drag-target-disabled" : ""}`}
-              data-timing={item.start_time ? "timed" : "untimed"}
+              data-timing={isTimedVisit(item) ? "timed" : "untimed"}
               draggable={isDragEnabled}
               title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
               onDragEnd={clearVisitDrag}
@@ -9087,9 +9118,9 @@ function ItineraryTimeline({
               }}
             >
               <div className="time-block">
-                <span>{formatTimeDisplay(item.start_time) || "--:--"}</span>
+                <span>{isTimedVisit(item) ? formatTimeDisplay(item.start_time) : "--:--"}</span>
                 <span className="time-connector" aria-hidden="true" />
-                <span>{formatTimeDisplay(item.end_time)}</span>
+                <span>{isTimedVisit(item) ? formatTimeDisplay(item.end_time) : ""}</span>
               </div>
               <div className="item-main">
                 <h4>{destination}</h4>
@@ -9236,6 +9267,17 @@ function ItineraryTimeline({
               </div>
             ) : null}
             {!isAddingTransportHere && isTimedPair && !transportItem ? renderTransportInsert(item, nextItem) : null}
+            {passiveUntimedTransportItems.map((passiveTransportItem) => (
+              <div className="timeline-flow-entry" key={passiveTransportItem.id}>
+                {isOpen && isTransportEditor && editingId === passiveTransportItem.id
+                  ? renderTransportEditorForm()
+                  : renderTransportCard(
+                      passiveTransportItem,
+                      useEditLocks && isLockedByAnotherUser(passiveTransportItem, currentUserId),
+                      { warningType: "untimed" },
+                    )}
+              </div>
+            ))}
             {isAddingTailHere ? renderTransportEditorForm() : null}
             {!isAddingTailHere && isTailPosition && tailTransportItem ? (
               <div className="timeline-flow-entry" key={tailTransportItem.id}>
@@ -9326,7 +9368,7 @@ function MultiDayTimelineColumns({
                       onFocusItem(item.id);
                     }}
                   >
-                    <span className="time-block">{formatTimeDisplay(item.start_time) || "--:--"}</span>
+                    <span className="time-block">{isTimedVisit(item) ? formatTimeDisplay(item.start_time) : "--:--"}</span>
                     <span className="timeline-preview-content">
                       <strong>{destination}</strong>
                       {secondaryText ? <em>{secondaryText}</em> : null}
@@ -12707,8 +12749,8 @@ function ShareView({ error, loading, snapshot }) {
                 {dayItemsForShare.map((item) => (
                   <article className="share-card" key={item.id}>
                     <div className="share-time">
-                      <strong>{formatTimeDisplay(item.start_time) || "--:--"}</strong>
-                      {item.end_time ? <span>{formatTimeDisplay(item.end_time)}</span> : null}
+                      <strong>{isTimedVisit(item) ? formatTimeDisplay(item.start_time) : "--:--"}</strong>
+                      {isTimedVisit(item) ? <span>{formatTimeDisplay(item.end_time)}</span> : null}
                     </div>
                     <div>
                       <h4>{item.title}</h4>

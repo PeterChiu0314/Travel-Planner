@@ -1,3 +1,5 @@
+import { isTimedVisit } from "./timelineUntimedOrdering.js";
+
 function isTransportationCard(item) {
   return item?.item_type === "transport";
 }
@@ -13,13 +15,13 @@ function pairKey(fromItemId, toItemId) {
 }
 
 export function findBrokenTransportationPair({ candidate, dayIndex, editingId = null, items = [] }) {
-  if (!candidate || isTransportationCard(candidate) || !candidate.start_time) return null;
+  if (!candidate || isTransportationCard(candidate) || !isTimedVisit(candidate)) return null;
 
   const currentTimedVisits = items
     .filter(
       (item) =>
         !isTransportationCard(item) &&
-        Boolean(item.start_time) &&
+        isTimedVisit(item) &&
         Number(item.day_index) === Number(dayIndex),
     )
     .sort(compareTimedVisits);
