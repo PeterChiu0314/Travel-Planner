@@ -1,0 +1,208 @@
+# Timeline Phase 4.5 Closeout and Handoff
+
+Date: 2026-06-24
+
+## Status
+
+```text
+Timeline Phase 4.5 - Implemented
+Automated QA - Passed
+Browser QA - Passed
+User manual verification - Pending
+```
+
+Branch:
+
+```text
+codex/timeline-phase-4-0-to-4-2
+```
+
+## Final Product Decision
+
+Phase 4.5 lets untimed destination visits participate in the same-day Timeline display order without changing the timed schedule.
+
+- A timed visit is still ordered naturally by `start_time`.
+- An untimed visit has no `start_time` or `end_time` and can appear before, after, or between timed visits.
+- Dragging an untimed visit changes only its persisted manual display position.
+- Timed visit times, destination packages, alternatives, linked budgets, and transportation cards do not move with an untimed drag.
+- Phase 4.2c timed destination-package reorder and Phase 4.4 auto-continuation remain separate operations.
+
+## Persisted Ordering Model
+
+No schema change was required. Phase 4.5 reuses the existing integer field:
+
+```text
+itinerary_items.sort_order
+```
+
+The shared helper reserves a negative integer range for encoded untimed positions. The encoding stores:
+
+- the gap/slot relative to the naturally sorted timed visits;
+- the untimed visit's manual rank among other untimed visits in that gap.
+
+Legacy untimed rows whose `sort_order` is not encoded remain at the end of the timed schedule until the user drags them. This gives existing production data a safe backward-compatible fallback.
+
+Timed visits never use the untimed encoding for their display order. Their primary ordering remains `start_time`, with existing `sort_order` and ID tie-breakers only when needed.
+
+The shared pure helper is:
+
+```text
+src/lib/timelineUntimedOrdering.js
+```
+
+It owns:
+
+- mixed timed/untimed visit display order;
+- untimed source validation;
+- before/after insertion planning;
+- transportation-pair protection;
+- encoded `sort_order` generation;
+- shared error-message mapping.
+
+## Untimed Drag Rules
+
+An untimed visit can be dragged when:
+
+- the current user can edit;
+- there is no active Timeline editor;
+- the source is not fixed;
+- the source is not locked by another user;
+- no other untimed or timed reorder is currently being saved.
+
+A successful untimed drag:
+
+- updates only the source visit's `sort_order`;
+- preserves all timed `start_time` / `end_time` values;
+- does not call the Phase 4.2c destination-package reorder RPC;
+- does not trigger Phase 4.4 auto-continuation;
+- does not add, delete, or rewrite transportation cards;
+- does not clear drafts or release edit locks.
+
+The existing active-editor guard disables both timed and untimed drag until the editor is resolved.
+
+## Transportation Pair Protection
+
+For a currently valid normal transportation card `A -> B`, where A and B are adjacent timed visits, an untimed visit cannot be inserted between them.
+
+The planner compares the current valid pair adjacency with the proposed display order. If the proposed order separates A and B:
+
+- the plan returns `transport_pair_blocked` and the blocking transportation ID;
+- local item state is not changed;
+- Formal does not call Supabase;
+- the transportation card is neither deleted nor rewritten;
+- no replacement transportation is created;
+- the UI shows a compact inline hint:
+
+```text
+這裡已有交通卡連接，無法插入未設定時間行程。
+請先刪除交通卡，或將行程放到其他位置。
+```
+
+Transportation insertion controls are now shown only between two adjacent timed visits. Untimed adjacency does not expose a transportation insertion control.
+
+Tail transportation behavior is unchanged.
+
+## Formal Save Safety
+
+Formal persistence updates one `itinerary_items` row through the existing Supabase table path.
+
+The update is constrained by:
+
+- active `trip_id`;
+- active `day_index`;
+- source item ID;
+- non-transport item type;
+- `start_time is null`;
+- `is_fixed = false`;
+- the source row's `updated_at` baseline.
+
+If the guarded update returns no row or fails:
+
+- the UI does not claim success;
+- the lightweight failure message remains visible;
+- authoritative trip data is reloaded;
+- the callback returns a failed/conflict result.
+
+Realtime reload therefore preserves the persisted untimed position without introducing a new table or RPC.
+
+Applied migrations 019, 020, and 021 remain unchanged and immutable. No migration 022 was created, and production DB was not modified during Phase 4.5.
+
+## Demo Parity
+
+`/demo/timeline` uses the same Timeline component and `timelineUntimedOrdering.js` planner.
+
+- A Day 6 mock untimed visit demonstrates mixed ordering.
+- Demo persistence uses local React state only.
+- Demo changes only the source item's `sort_order` and local `updated_at`.
+- Demo never calls Supabase, Auth, Realtime, Storage, Draft Autosave, Edit Lock, or `localStorage`.
+
+## Phase 4.2c / 4.3 / 4.4 Compatibility
+
+- Phase 4.2c continues to accept timed visits only and still calls the 020/021 RPC path.
+- Untimed visits remain outside the destination-package reorder manifest.
+- Phase 4.3 timed insertion conflict behavior is unchanged.
+- Phase 4.4 excludes untimed visits from continuation.
+- Visits converted to untimed by the Phase 4.4 fixed-anchor rule now participate in the Phase 4.5 display helper as legacy untimed visits and can be manually repositioned.
+- Fixed timed visits are not moved or modified by an untimed drag.
+
+## Files Changed
+
+- `src/App.jsx`
+- `src/lib/timelineUntimedOrdering.js`
+- `src/styles.css`
+- `tests/phase-4-5-untimed-ordering.spec.js`
+- `tests/phase-1-7f-smoke.spec.js`
+- `docs/gpt/2026-06-24-phase-4-5-closeout-handoff.md`
+
+The existing Demo trip-switch smoke assertion was made date-robust: it now verifies that exactly one valid day is active and that the old out-of-range Day 6 board is gone, rather than assuming the current trip day must always be Day 1.
+
+## Verification
+
+Final automated checks on 2026-06-24:
+
+```text
+npm.cmd run build       passed
+npx.cmd playwright test passed 61/61
+git diff --check        passed
+```
+
+Browser verification on `/demo/timeline` confirmed:
+
+- meaningful Timeline content rendered;
+- timed and untimed cards appeared in one mixed list;
+- no Vite error overlay was present;
+- no browser console warnings or errors were detected;
+- Phase 4.5 drag behavior used local Demo state;
+- the screenshot command itself timed out in the in-app browser, but DOM, console, overlay, and Playwright verification completed successfully.
+
+The existing Vite large-chunk warning remains non-blocking and is not a Phase 4.5 regression.
+
+## Test Workflow Note
+
+Future Timeline phases should use a layered workflow to reduce runtime and token output:
+
+1. Run the new helper/phase tests while implementing.
+2. Run directly related regression files only after UI wiring changes.
+3. Re-run only failed cases during diagnosis.
+4. Run the full Playwright suite once at final closeout.
+5. Keep successful logs summarized rather than printing full DOM snapshots or complete diffs.
+
+## Residual Risks
+
+- Native HTML drag remains primarily mouse/desktop oriented. Touch and keyboard-accessible reordering require a separately approved interaction design.
+- The integer gap encoding intentionally leaves large rank spacing. Extremely repeated insertions into the exact same narrow position can eventually exhaust the available midpoint; the planner then rejects safely and asks for a refresh instead of corrupting order.
+- Formal ordering is a guarded single-row update, not a multi-row transaction. This is appropriate because Phase 4.5 changes only the dragged untimed row.
+- User manual verification is still pending.
+
+## Next Step Boundary
+
+Phase 4.5 does not implement:
+
+- timed drag followed by automatic time adjustment;
+- dragging across fixed-card scheduling regions;
+- untimed/timed automatic scheduling;
+- transportation creation, deletion, splitting, or route calculation;
+- Collaborative Drag Presence;
+- Google Maps integration.
+
+Wait for explicit Phase 4.6 direction before extending timed drag or scheduling behavior.

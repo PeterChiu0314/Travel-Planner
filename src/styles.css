@@ -2724,6 +2724,24 @@ textarea {
   opacity: 0.55;
 }
 
+.timeline-drag-hint {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(141, 103, 38, 0.1);
+  color: #72551f;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.timeline-item.drag-target-disabled {
+  cursor: not-allowed;
+  border-color: rgba(141, 103, 38, 0.35);
+  box-shadow: none;
+}
+
 .timeline-item.drag-target {
   border-color: var(--mint);
   box-shadow: 0 0 0 2px rgba(47, 143, 114, 0.14);

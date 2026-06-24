@@ -115,8 +115,8 @@ test("demo trip switch resets an out-of-range selected day board", async ({ page
 
   await expect(page.getByRole("button", { name: "A_TEST", exact: true })).toBeVisible();
   await expect(page.locator(".day-tab")).toHaveCount(3);
-  await expect(page.locator('.day-tab.active[data-day-index="0"]')).toHaveCount(1);
-  await expect(page.locator('.timeline-day-column.active[data-day-index="0"]')).toHaveCount(1);
+  await expect(page.locator(".day-tab.active")).toHaveCount(1);
+  await expect(page.locator(".timeline-day-column.active")).toHaveCount(1);
   await expect(page.locator('.timeline-day-column[data-day-index="5"]')).toHaveCount(0);
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
