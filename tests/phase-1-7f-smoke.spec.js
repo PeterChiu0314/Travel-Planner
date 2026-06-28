@@ -185,9 +185,9 @@ test("demo timed visit drag inserts destination content without moving time slot
   await expect(source).toHaveAttribute("draggable", "true");
 
   await source.dragTo(target);
-  await expect(page.getByRole("heading", { name: "確認移動行程？" })).toBeVisible();
-  await expect(page.getByText("移動行程卡後，部分交通卡可能會自動移除")).toBeVisible();
-  await page.getByRole("button", { name: "確定" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.locator(".primary-button").click();
 
   const firstSlot = page.locator(".timeline-item").filter({ hasText: "02:20" });
   const secondSlot = page.locator(".timeline-item").filter({ hasText: "06:40" });
@@ -201,7 +201,7 @@ test("demo timed visit drag inserts destination content without moving time slot
   await expect(page.locator(".transport-warning-stack")).toHaveCount(0);
 
   await firstSlot.getByTitle("鎖定").click();
-  await expect(page.locator('.timeline-item[draggable="true"]')).toHaveCount(0);
+  await expect(page.locator('.timeline-item[data-timing="timed"][draggable="true"]')).toHaveCount(0);
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });
@@ -422,13 +422,13 @@ test("demo fixed anchor stays put and overflowing followers become untimed", asy
   expect(failures).toEqual([]);
 });
 
-test("demo continuation is disabled when there is no later timed visit", async ({ page }) => {
+test("demo partial-time visit is treated as untimed", async ({ page }) => {
   await page.goto("/demo/timeline");
-  const finalVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "京都山科山樂酒店" }) }).filter({ hasText: "21:00" });
-  await finalVisit.click();
-  await finalVisit.getByTitle("編輯").click();
-  const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
-  await expect(form.getByRole("button", { name: "接續", exact: true })).toBeDisabled();
+  const partialTimeVisit = page
+    .locator('.timeline-item[data-timing="untimed"]')
+    .filter({ has: page.getByRole("heading", { name: "京都山科山樂酒店" }) });
+  await expect(partialTimeVisit).toBeVisible();
+  await expect(partialTimeVisit.locator(".time-block")).toContainText("--:--");
 });
 
 test("demo navigation can switch to budget and luggage", async ({ page }) => {

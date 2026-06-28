@@ -1,11 +1,9 @@
+import { isEstablishedTransportPair, isTransportationCard } from "./timelineTransportationRoles.js";
+
 const untimedSortBase = -2_000_000_000;
 const untimedSortStride = 1_000_000;
 const untimedSortMaxSlot = 1_900;
 const legacyRankBase = 500_000;
-
-function isTransportationCard(item) {
-  return item?.item_type === "transport";
-}
 
 function stableId(item) {
   return String(item?.id || "");
@@ -149,6 +147,7 @@ function validTransportationPairs(items, visits) {
     .filter(
       (item) =>
         isTransportationCard(item) &&
+        isEstablishedTransportPair(item) &&
         item.from_item_id &&
         item.to_item_id &&
         indexById.has(item.from_item_id) &&
@@ -158,6 +157,14 @@ function validTransportationPairs(items, visits) {
         indexById.get(item.to_item_id) === indexById.get(item.from_item_id) + 1,
     )
     .map((item) => ({ fromItemId: item.from_item_id, id: item.id, toItemId: item.to_item_id }));
+}
+
+function brokenTransportationPairIds(items, currentVisits, nextVisits) {
+  const protectedPairs = validTransportationPairs(items, currentVisits);
+  const nextIndexById = new Map(nextVisits.map((item, index) => [item.id, index]));
+  return protectedPairs
+    .filter((pair) => nextIndexById.get(pair.toItemId) !== nextIndexById.get(pair.fromItemId) + 1)
+    .map((pair) => pair.id);
 }
 
 function sameOrder(left, right) {
@@ -181,12 +188,7 @@ export function planUntimedVisitReorder({ items = [], placement = "after", sourc
     return { noOp: true, ok: true, sortOrder: source.sort_order };
   }
 
-  const protectedPairs = validTransportationPairs(items, currentVisits);
-  const nextIndexById = new Map(nextVisits.map((item, index) => [item.id, index]));
-  const brokenPair = protectedPairs.find(
-    (pair) => nextIndexById.get(pair.toItemId) !== nextIndexById.get(pair.fromItemId) + 1,
-  );
-  if (brokenPair) return { brokenTransportId: brokenPair.id, errorCode: "transport_pair_blocked", ok: false };
+  const brokenTransportIds = brokenTransportationPairIds(items, currentVisits, nextVisits);
 
   const sourceIndex = nextVisits.findIndex((item) => item.id === source.id);
   const slot = nextVisits.slice(0, sourceIndex).filter(isTimedVisit).length;
@@ -208,9 +210,67 @@ export function planUntimedVisitReorder({ items = [], placement = "after", sourc
 
   return {
     nextVisitIds: nextVisits.map((item) => item.id),
+    brokenTransportId: brokenTransportIds[0] || null,
+    brokenTransportIds,
     ok: true,
     sortOrder,
     sourceItemId: source.id,
+  };
+}
+
+export function planMixedTimedVisitReorder({ items = [], placement = "after", sourceItemId, targetItemId }) {
+  const currentVisits = buildTimelineVisitDisplayOrder(items);
+  const source = currentVisits.find((item) => item.id === sourceItemId);
+  const target = currentVisits.find((item) => item.id === targetItemId);
+  if (!source || !isTimedVisit(source)) return { errorCode: "timed_source_required", ok: false };
+  if (!target || target.id === source.id || isTransportationCard(target)) return { errorCode: "invalid_target", ok: false };
+  if (source.is_fixed) return { errorCode: "fixed_item", ok: false };
+
+  const nextVisits = currentVisits.filter((item) => item.id !== source.id);
+  const targetIndex = nextVisits.findIndex((item) => item.id === target.id);
+  const insertIndex = targetIndex + (placement === "before" ? 0 : 1);
+  nextVisits.splice(insertIndex, 0, source);
+
+  const currentVisitIds = currentVisits.map((item) => item.id);
+  const nextVisitIds = nextVisits.map((item) => item.id);
+  const slotItemIds = currentVisits.filter(isTimedVisit).map((item) => item.id);
+  const packageSourceItemIds = nextVisits.filter(isTimedVisit).map((item) => item.id);
+  const untimedBySlot = new Map();
+  nextVisits.filter(isUntimedVisit).forEach((item) => {
+    const itemIndex = nextVisits.findIndex((candidate) => candidate.id === item.id);
+    const slot = nextVisits.slice(0, itemIndex).filter(isTimedVisit).length;
+    const entries = untimedBySlot.get(slot) || [];
+    entries.push(item);
+    untimedBySlot.set(slot, entries);
+  });
+
+  const untimedSortOrderUpdates = [];
+  for (const [slot, entries] of untimedBySlot.entries()) {
+    const rankStep = Math.floor(untimedSortStride / (entries.length + 1));
+    if (rankStep <= 0) return { errorCode: "order_space_exhausted", ok: false };
+    for (let index = 0; index < entries.length; index += 1) {
+      const sortOrder = encodeUntimedSortOrder(slot, rankStep * (index + 1));
+      if (sortOrder === null) return { errorCode: "order_space_exhausted", ok: false };
+      if (entries[index].sort_order !== sortOrder) {
+        untimedSortOrderUpdates.push({
+          id: entries[index].id,
+          original_sort_order: entries[index].sort_order,
+          sort_order: sortOrder,
+          updated_at: entries[index].updated_at || null,
+        });
+      }
+    }
+  }
+
+  return {
+    noOp: sameOrder(currentVisitIds, nextVisitIds),
+    brokenTransportIds: brokenTransportationPairIds(items, currentVisits, nextVisits),
+    ok: true,
+    packageSourceItemIds,
+    slotItemIds,
+    sourceItemId: source.id,
+    targetItemId: target.id,
+    untimedSortOrderUpdates,
   };
 }
 

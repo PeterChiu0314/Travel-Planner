@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import {
-  insertionPackageOrder,
   isSamePackageOrder,
   planDestinationPackageReorder,
 } from "./lib/destinationPackages.js";
@@ -38,11 +37,21 @@ import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/e
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import { planTimelineAutoContinuation } from "./lib/timelineAutoContinuation.js";
 import { findBrokenTransportationPair } from "./lib/timelineTransportationConflicts.js";
+import {
+  isEstablishedTransportPair,
+  isTailPendingTransport,
+  isTailPromotedTransportPair,
+  isTransportationCard,
+  normalizeTransportRole,
+  transportRoleForPayload,
+  transportRoles,
+} from "./lib/timelineTransportationRoles.js";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import {
   buildTimelineVisitDisplayOrder,
   isTimedVisit,
   isUntimedVisit,
+  planMixedTimedVisitReorder,
   planTimelineTimingChangeSortOrders,
   planUntimedVisitReorder,
   untimedOrderingErrorMessage,
@@ -476,10 +485,6 @@ function getDurationMinutes(startTime, endTime) {
   return String(end - start);
 }
 
-function isTransportationCard(item) {
-  return item?.item_type === "transport";
-}
-
 function transportCategoryMeta(category) {
   return transportCategories.find((item) => item.value === category) || transportCategories[transportCategories.length - 1];
 }
@@ -532,6 +537,7 @@ function tailTransportContext(items) {
     items.find(
       (item) =>
         isTransportationCard(item) &&
+        isTailPendingTransport(item) &&
         item.from_item_id === fromItem.id &&
         !item.to_item_id,
     ) || null;
@@ -543,6 +549,26 @@ function suggestedStartTimeFromTailTransport(items) {
   if (!fromItem?.end_time || !transportItem) return "";
   const previousEnd = timeToMinutes(fromItem.end_time);
   const durationMinutes = Number(transportItem.transport_duration_minutes || 0);
+  if (previousEnd === null || !Number.isFinite(durationMinutes) || durationMinutes < 0) return "";
+  return minutesToTimeValue(roundMinutesUpToStep(previousEnd + durationMinutes, 5));
+}
+
+function suggestedStartTimeForUntimedAfterTailTransport(items, targetItem) {
+  if (!targetItem || isTransportationCard(targetItem) || isTimedVisit(targetItem)) return "";
+  const visits = sortedVisitItems(items);
+  const targetIndex = visits.findIndex((item) => item.id === targetItem.id);
+  const previousVisit = targetIndex > 0 ? visits[targetIndex - 1] : null;
+  if (!isTimedVisit(previousVisit)) return "";
+  const tailTransport = items.find(
+    (item) =>
+      isTransportationCard(item) &&
+      isTailPendingTransport(item) &&
+      item.from_item_id === previousVisit.id &&
+      !item.to_item_id,
+  );
+  if (!previousVisit.end_time || !tailTransport) return "";
+  const previousEnd = timeToMinutes(previousVisit.end_time);
+  const durationMinutes = Number(tailTransport.transport_duration_minutes || 0);
   if (previousEnd === null || !Number.isFinite(durationMinutes) || durationMinutes < 0) return "";
   return minutesToTimeValue(roundMinutesUpToStep(previousEnd + durationMinutes, 5));
 }
@@ -597,7 +623,7 @@ function buildAdjacentTransportMap(items, visits) {
   });
   const next = {};
   items
-    .filter((item) => isTransportationCard(item) && item.from_item_id && item.to_item_id)
+    .filter((item) => isTransportationCard(item) && isEstablishedTransportPair(item) && item.from_item_id && item.to_item_id)
     .forEach((item) => {
       const key = transportPairKey(item.from_item_id, item.to_item_id);
       if (adjacentKeys.has(key) && !next[key]) next[key] = item;
@@ -619,11 +645,13 @@ function buildTransportPairState(items, visits) {
   const invalidTransportItems = [];
   const visitById = new Map(visits.map((item) => [item.id, item]));
   const finalTimedVisit = [...visits].reverse().find(isTimedVisit) || null;
+  const visitIndexById = new Map(visits.map((item, index) => [item.id, index]));
   items
     .filter((item) => isTransportationCard(item))
     .forEach((item) => {
-      const hasPair = item.from_item_id && item.to_item_id;
-      const isTail = item.from_item_id && !item.to_item_id;
+      const role = normalizeTransportRole(item);
+      const hasPair = isEstablishedTransportPair(item) && item.from_item_id && item.to_item_id;
+      const isTail = role === transportRoles.tailPending && item.from_item_id && !item.to_item_id;
       const pairKey = hasPair ? transportPairKey(item.from_item_id, item.to_item_id) : "";
       const pairExists = hasPair && visitIds.has(item.from_item_id) && visitIds.has(item.to_item_id);
       const pairIsAdjacent = pairExists && adjacentKeys.has(pairKey);
@@ -640,6 +668,17 @@ function buildTransportPairState(items, visits) {
           item,
         ];
         return;
+      }
+
+      if (isTail && isTimedVisit(fromVisit)) {
+        const nextVisit = visits[visitIndexById.get(item.from_item_id) + 1] || null;
+        if (isUntimedVisit(nextVisit)) {
+          passiveUntimedTransportByFrom[item.from_item_id] = [
+            ...(passiveUntimedTransportByFrom[item.from_item_id] || []),
+            item,
+          ];
+          return;
+        }
       }
 
       if (isTail && isTimedVisit(fromVisit) && item.from_item_id === finalTimedVisit?.id) {
@@ -674,6 +713,104 @@ function transportTimeShortageMinutes(transportItem, fromItem, toItem) {
   if (previousEnd === null || nextStart === null) return 0;
   const gapMinutes = nextStart - previousEnd;
   return Math.max(0, transportMinutes - gapMinutes);
+}
+
+function planTransportationRoleUpdatesForTimingChange({ dayIndex, editingId, items = [], normalizedPayload }) {
+  if (!editingId || isTransportationCard(normalizedPayload)) return [];
+  const editingItem = items.find((item) => item.id === editingId);
+  if (!editingItem) return [];
+  const dayVisits = items
+    .filter((item) => Number(item.day_index) === Number(dayIndex) && !isTransportationCard(item))
+    .map((item) => (item.id === editingId ? { ...item, ...normalizedPayload, id: editingId } : item));
+  const timedVisits = dayVisits.filter(isTimedVisit).sort((a, b) => {
+    const timeSort = String(a.start_time || "").localeCompare(String(b.start_time || ""));
+    const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
+    return timeSort || orderSort || String(a.id || "").localeCompare(String(b.id || ""));
+  });
+  const timedIndexById = new Map(timedVisits.map((item, index) => [item.id, index]));
+  const currentById = new Map(items.map((item) => [item.id, item]));
+  const updates = [];
+
+  items
+    .filter(
+      (item) =>
+        isTransportationCard(item) &&
+        Number(item.day_index) === Number(dayIndex) &&
+        (item.from_item_id === editingId ||
+          item.to_item_id === editingId ||
+          (isTailPendingTransport(item) && !item.to_item_id)),
+    )
+    .forEach((transportItem) => {
+      if (isTailPromotedTransportPair(transportItem) && transportItem.to_item_id === editingId) {
+        const fromIndex = timedIndexById.get(transportItem.from_item_id);
+        const toIndex = timedIndexById.get(transportItem.to_item_id);
+        const fromVisit = timedVisits[fromIndex];
+        const toVisit = timedVisits[toIndex];
+        const remainsPromoted =
+          Number.isInteger(fromIndex) &&
+          Number.isInteger(toIndex) &&
+          toIndex === fromIndex + 1 &&
+          timeToMinutes(toVisit?.start_time) !== null &&
+          (timeToMinutes(fromVisit?.end_time) === null || timeToMinutes(toVisit.start_time) >= timeToMinutes(fromVisit.end_time));
+        if (!remainsPromoted) {
+          updates.push({
+            id: transportItem.id,
+            original: {
+              to_item_id: transportItem.to_item_id || null,
+              to_snapshot_start_time: transportItem.to_snapshot_start_time || null,
+              to_snapshot_end_time: transportItem.to_snapshot_end_time || null,
+              to_snapshot_destination: transportItem.to_snapshot_destination || null,
+              transport_role: normalizeTransportRole(transportItem),
+              updated_at: transportItem.updated_at || null,
+            },
+            payload: {
+              to_item_id: null,
+              to_snapshot_start_time: null,
+              to_snapshot_end_time: null,
+              to_snapshot_destination: null,
+              transport_role: transportRoles.tailPending,
+              updated_at: new Date().toISOString(),
+            },
+            updated_at: transportItem.updated_at || null,
+          });
+        }
+      }
+
+      if (isTailPendingTransport(transportItem) && !transportItem.to_item_id && isTimedVisit(normalizedPayload)) {
+        const fromIndex = timedIndexById.get(transportItem.from_item_id);
+        const toIndex = timedIndexById.get(editingId);
+        const fromVisit = timedVisits[fromIndex];
+        const toVisit = timedVisits[toIndex];
+        const shouldPromote =
+          Number.isInteger(fromIndex) &&
+          Number.isInteger(toIndex) &&
+          toIndex === fromIndex + 1 &&
+          timeToMinutes(toVisit?.start_time) !== null &&
+          (timeToMinutes(fromVisit?.end_time) === null || timeToMinutes(toVisit.start_time) >= timeToMinutes(fromVisit.end_time));
+        if (shouldPromote) {
+          updates.push({
+            id: transportItem.id,
+            original: {
+              to_item_id: transportItem.to_item_id || null,
+              to_snapshot_start_time: transportItem.to_snapshot_start_time || null,
+              to_snapshot_end_time: transportItem.to_snapshot_end_time || null,
+              to_snapshot_destination: transportItem.to_snapshot_destination || null,
+              transport_role: normalizeTransportRole(transportItem),
+              updated_at: transportItem.updated_at || null,
+            },
+            payload: {
+              to_item_id: editingId,
+              transport_role: transportRoles.tailPromotedPair,
+              ...buildTransportPairSnapshot(currentById.get(transportItem.from_item_id), toVisit),
+              updated_at: new Date().toISOString(),
+            },
+            updated_at: transportItem.updated_at || null,
+          });
+        }
+      }
+    });
+
+  return updates;
 }
 
 function memberName(member) {
@@ -2388,6 +2525,53 @@ export default function App() {
     return { ok: !rollbackFailed, latestUpdatedAt };
   }
 
+  async function applyTransportationRoleUpdates(updates = []) {
+    const applied = [];
+    for (const update of updates) {
+      const result = await supabase
+        .from("itinerary_items")
+        .update(update.payload)
+        .eq("id", update.id)
+        .eq("trip_id", activeTrip.id)
+        .eq("day_index", activeDay)
+        .eq("item_type", "transport")
+        .eq("updated_at", update.updated_at)
+        .select("id, updated_at")
+        .maybeSingle();
+      if (result.error || !result.data) {
+        return {
+          applied,
+          error: result.error || { message: "transport_role_update_conflict" },
+          ok: false,
+        };
+      }
+      applied.push({ ...update, applied_updated_at: result.data.updated_at });
+    }
+    return { applied, ok: true };
+  }
+
+  async function rollbackTransportationRoleUpdates(applied = []) {
+    let rollbackFailed = false;
+    for (const update of [...applied].reverse()) {
+      const result = await supabase
+        .from("itinerary_items")
+        .update({
+          to_item_id: update.original.to_item_id,
+          to_snapshot_start_time: update.original.to_snapshot_start_time,
+          to_snapshot_end_time: update.original.to_snapshot_end_time,
+          to_snapshot_destination: update.original.to_snapshot_destination,
+          transport_role: update.original.transport_role,
+        })
+        .eq("id", update.id)
+        .eq("trip_id", activeTrip.id)
+        .eq("updated_at", update.applied_updated_at)
+        .select("id")
+        .maybeSingle();
+      if (result.error || !result.data) rollbackFailed = true;
+    }
+    return { ok: !rollbackFailed };
+  }
+
   async function rollbackEditedItineraryItem({ editingId, editingItem, normalizedPayload, updatedAt }) {
     const rollbackPayload = Object.fromEntries(
       Object.keys(normalizedPayload).map((field) => [field, editingItem?.[field] ?? null]),
@@ -2468,6 +2652,12 @@ export default function App() {
     const transportConflict = meta.transportConflict || null;
     const autoContinuationUpdates = Array.isArray(meta.autoContinuationUpdates) ? meta.autoContinuationUpdates : [];
     const followUpUpdates = [...autoContinuationUpdates, ...passiveUntimedPositionUpdates];
+    const transportationRoleUpdates = planTransportationRoleUpdatesForTimingChange({
+      dayIndex: activeDay,
+      editingId,
+      items,
+      normalizedPayload,
+    });
     if (editingId) {
       const invalidContinuationItem = followUpUpdates.find((update) => {
         const item = items.find((candidate) => candidate.id === update.id);
@@ -2486,7 +2676,7 @@ export default function App() {
         setNotice(errorMessage);
         return { ok: false, errorMessage };
       }
-      const requiresDeferredCompletion = Boolean(transportConflict) || followUpUpdates.length > 0;
+      const requiresDeferredCompletion = Boolean(transportConflict) || followUpUpdates.length > 0 || transportationRoleUpdates.length > 0;
       const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, {
         ...meta,
         deferEditLockRelease: requiresDeferredCompletion,
@@ -2517,17 +2707,41 @@ export default function App() {
             rollbackFailed: !rollbackSucceeded,
           };
         }
+        const roleUpdateResult = await applyTransportationRoleUpdates(transportationRoleUpdates);
+        if (!roleUpdateResult.ok) {
+          const continuationRollback = await rollbackItineraryTimeContinuation(continuationResult.applied);
+          const roleRollback = await rollbackTransportationRoleUpdates(roleUpdateResult.applied);
+          const editedRollback = await rollbackEditedItineraryItem({
+            editingId,
+            editingItem,
+            normalizedPayload,
+            updatedAt: result.data?.updated_at,
+          });
+          const rollbackSucceeded = continuationRollback.ok && roleRollback.ok && editedRollback.ok;
+          const errorMessage = rollbackSucceeded
+            ? `transport role update failed and itinerary change was rolled back: ${roleUpdateResult.error.message}`
+            : `transport role update failed and rollback needs review: ${roleUpdateResult.error.message}`;
+          setNotice(errorMessage);
+          return {
+            ok: false,
+            error: roleUpdateResult.error,
+            errorMessage,
+            baseUpdatedAt: editedRollback.data?.updated_at || result.data?.updated_at || null,
+            rollbackFailed: !rollbackSucceeded,
+          };
+        }
         if (transportConflict) {
           const transportDelete = await deleteBrokenTransportationPair(transportConflict);
           if (!transportDelete.ok) {
             const continuationRollback = await rollbackItineraryTimeContinuation(continuationResult.applied);
+            const roleRollback = await rollbackTransportationRoleUpdates(roleUpdateResult.applied);
             const editedRollback = await rollbackEditedItineraryItem({
               editingId,
               editingItem,
               normalizedPayload,
               updatedAt: result.data?.updated_at,
             });
-            const rollbackSucceeded = continuationRollback.ok && editedRollback.ok;
+            const rollbackSucceeded = continuationRollback.ok && roleRollback.ok && editedRollback.ok;
             const errorMessage = rollbackSucceeded
               ? `交通卡刪除失敗，行程變更未儲存：${transportDelete.error.message}`
               : `交通卡刪除失敗，且部分行程時間無法自動回復：${transportDelete.error.message}`;
@@ -2600,6 +2814,7 @@ export default function App() {
         .from("itinerary_items")
         .update({
           to_item_id: insertResult.data.id,
+          transport_role: transportRoles.tailPromotedPair,
           ...buildTransportPairSnapshot(tailFromItem, insertResult.data),
           updated_at: new Date().toISOString(),
         })
@@ -3194,9 +3409,16 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function reorderDestinationPackages({ dayIndex, packageSourceItemIds, slotItemIds }) {
+  async function reorderDestinationPackages({
+    dayIndex,
+    packageSourceItemIds,
+    slotItemIds,
+    transportBaselines = [],
+    untimedSortOrderUpdates = [],
+  }) {
     if (!activeTrip || !canEditActiveTripContent || dayIndex !== activeDay) return { ok: false };
-    if (isSamePackageOrder(slotItemIds, packageSourceItemIds)) return { ok: true, noOp: true };
+    const hasTimedReorder = !isSamePackageOrder(slotItemIds, packageSourceItemIds);
+    if (!hasTimedReorder && !untimedSortOrderUpdates.length && !transportBaselines.length) return { ok: true, noOp: true };
     const timedVisits = sortedVisitItems(
       items.filter(
         (item) => item.day_index === dayIndex && isTimedVisit(item),
@@ -3217,6 +3439,78 @@ export default function App() {
       setNotice(errorMessage);
       return { ok: false, errorMessage };
     }
+    const invalidUntimedUpdate = untimedSortOrderUpdates.find((update) => {
+      const item = items.find((candidate) => candidate.id === update.id);
+      return (
+        !item ||
+        item.trip_id !== activeTrip.id ||
+        Number(item.day_index) !== Number(dayIndex) ||
+        !isUntimedVisit(item) ||
+        item.is_fixed ||
+        isLockedByAnotherUser(item, session?.user?.id) ||
+        item.updated_at !== update.updated_at
+      );
+    });
+    if (invalidUntimedUpdate) {
+      const errorMessage = "untimed_sort_order_stale";
+      setNotice(errorMessage);
+      await loadTripData(activeTrip.id);
+      return { ok: false, errorMessage };
+    }
+    const explicitTransportIds = transportBaselines.map((transport) => transport.id);
+    const explicitTransports = explicitTransportIds.length
+      ? items.filter(
+          (item) =>
+            item.trip_id === activeTrip.id &&
+            Number(item.day_index) === Number(dayIndex) &&
+            isTransportationCard(item) &&
+            explicitTransportIds.includes(item.id),
+        )
+      : [];
+    const expectedExplicitTransportById = new Map(
+      transportBaselines.map((transport) => [transport.id, transport.updatedAt]),
+    );
+    const explicitTransportManifestMatches =
+      explicitTransports.length === expectedExplicitTransportById.size &&
+      explicitTransports.every(
+        (transport) => expectedExplicitTransportById.get(transport.id) === transport.updated_at,
+      );
+    if (!explicitTransportManifestMatches) {
+      const errorMessage = "transport_state_changed";
+      setNotice(errorMessage);
+      await loadTripData(activeTrip.id);
+      return { ok: false, errorMessage };
+    }
+
+    const untimedUpdateResult = await applyItineraryTimeContinuation(untimedSortOrderUpdates);
+    if (!untimedUpdateResult.ok) {
+      const errorMessage = untimedUpdateResult.error?.message || "untimed_sort_order_update_failed";
+      setNotice(errorMessage);
+      await loadTripData(activeTrip.id);
+      return { ok: false, error: untimedUpdateResult.error, errorMessage };
+    }
+    if (!hasTimedReorder) {
+      if (explicitTransportIds.length) {
+        const deleteResult = await supabase
+          .from("itinerary_items")
+          .delete()
+          .eq("trip_id", activeTrip.id)
+          .eq("day_index", dayIndex)
+          .eq("item_type", "transport")
+          .in("id", explicitTransportIds)
+          .select("id");
+        if (deleteResult.error || deleteResult.data?.length !== explicitTransportIds.length) {
+          const rollback = await rollbackItineraryTimeContinuation(untimedUpdateResult.applied);
+          const errorMessage = deleteResult.error?.message || "transport_delete_failed";
+          setNotice(rollback.ok ? errorMessage : `${errorMessage} / untimed_rollback_failed`);
+          await loadTripData(activeTrip.id);
+          return { ok: false, error: deleteResult.error, errorMessage, rollbackFailed: !rollback.ok };
+        }
+      }
+      await loadTripData(activeTrip.id);
+      return { ok: true, data: { updatedUntimedCount: untimedSortOrderUpdates.length } };
+    }
+
     const baselineRows = items.filter(
       (item) =>
         item.day_index === dayIndex &&
@@ -3233,10 +3527,27 @@ export default function App() {
       item_updated_at_baselines: itemUpdatedAtBaselines,
     });
     if (error) {
+      const rollback = await rollbackItineraryTimeContinuation(untimedUpdateResult.applied);
       const errorMessage = destinationReorderErrorMessage(error);
-      setNotice(errorMessage);
+      setNotice(rollback.ok ? errorMessage : `${errorMessage} / untimed_rollback_failed`);
       if (/stale_|transport_state_changed/.test(error.message || "")) await loadTripData(activeTrip.id);
-      return { ok: false, error, errorMessage };
+      return { ok: false, error, errorMessage, rollbackFailed: !rollback.ok };
+    }
+    if (explicitTransportIds.length) {
+      const deleteResult = await supabase
+        .from("itinerary_items")
+        .delete()
+        .eq("trip_id", activeTrip.id)
+        .eq("day_index", dayIndex)
+        .eq("item_type", "transport")
+        .in("id", explicitTransportIds)
+        .select("id");
+      if (deleteResult.error || deleteResult.data?.length !== explicitTransportIds.length) {
+        const errorMessage = deleteResult.error?.message || "transport_delete_failed";
+        setNotice(errorMessage);
+        await loadTripData(activeTrip.id);
+        return { ok: false, error: deleteResult.error, errorMessage };
+      }
     }
     await loadTripData(activeTrip.id);
     return { ok: true, data };
@@ -3250,17 +3561,22 @@ export default function App() {
       setNotice(errorMessage);
       return { ok: false, errorMessage };
     }
-    const linkedTransports = items.filter(
-      (candidate) =>
-        isTransportationCard(candidate) &&
-        (candidate.from_item_id === itemId || candidate.to_item_id === itemId),
-    );
     const expectedTransportById = new Map(
       transportBaselines.map((transport) => [transport.id, transport.updatedAt]),
     );
+    const requestedTransportIds = transportBaselines.map((transport) => transport.id);
+    const requestedTransports = requestedTransportIds.length
+      ? items.filter(
+          (candidate) =>
+            candidate.trip_id === activeTrip.id &&
+            Number(candidate.day_index) === Number(dayIndex) &&
+            isTransportationCard(candidate) &&
+            requestedTransportIds.includes(candidate.id),
+        )
+      : [];
     const transportManifestMatches =
-      linkedTransports.length === expectedTransportById.size &&
-      linkedTransports.every(
+      requestedTransports.length === expectedTransportById.size &&
+      requestedTransports.every(
         (transport) => expectedTransportById.get(transport.id) === transport.updated_at,
       );
     if (!transportManifestMatches) {
@@ -3276,7 +3592,7 @@ export default function App() {
         .eq("trip_id", activeTrip.id)
         .eq("day_index", dayIndex)
         .eq("item_type", "transport")
-        .or(`from_item_id.eq.${itemId},to_item_id.eq.${itemId}`);
+        .in("id", requestedTransportIds);
       const baselineById = new Map((baselineResult.data || []).map((transport) => [transport.id, transport.updated_at]));
       const baselineMatches =
         !baselineResult.error &&
@@ -3786,6 +4102,7 @@ function normalizeItemPayload(payload) {
       transport_note: transportNote || null,
       from_item_id: payload.from_item_id || null,
       to_item_id: payload.to_item_id || null,
+      transport_role: transportRoleForPayload(payload),
       from_snapshot_start_time: payload.from_snapshot_start_time || null,
       from_snapshot_end_time: payload.from_snapshot_end_time || null,
       from_snapshot_destination: payload.from_snapshot_destination || null,
@@ -3820,6 +4137,7 @@ function normalizeItemPayload(payload) {
     transport_note: null,
     from_item_id: null,
     to_item_id: null,
+    transport_role: null,
     from_snapshot_start_time: null,
     from_snapshot_end_time: null,
     from_snapshot_destination: null,
@@ -5618,18 +5936,35 @@ function DemoApp({ initialSection }) {
       payload: nextPayload,
     });
     if (overlapItem) return { ok: false, overlapError: formatTimelineOverlapError(overlapItem) };
+    const transportationRoleUpdates = planTransportationRoleUpdatesForTimingChange({
+      dayIndex: activeDay,
+      editingId,
+      items: timelineItems,
+      normalizedPayload: nextPayload,
+    });
     if (!editingId && isTransportationCard(nextPayload) && nextPayload.from_item_id && !nextPayload.to_item_id) {
       const { fromItem, transportItem } = tailTransportContext(dayItems);
       if (!fromItem || nextPayload.from_item_id !== fromItem.id || transportItem) return { ok: false };
     }
     if (editingId) {
+      const transportationRoleUpdateById = new Map(
+        transportationRoleUpdates.map((update) => [update.id, update.payload]),
+      );
       setTimelineItems((current) =>
         current.filter((item) => item.id !== brokenTransportId).map((item) => {
           const continuation = continuationById.get(item.id);
+          const transportationRoleUpdate = transportationRoleUpdateById.get(item.id);
           if (item.id === editingId) {
             return {
               ...item,
               ...nextPayload,
+              updated_at: new Date().toISOString(),
+            };
+          }
+          if (transportationRoleUpdate) {
+            return {
+              ...item,
+              ...transportationRoleUpdate,
               updated_at: new Date().toISOString(),
             };
           }
@@ -5686,6 +6021,7 @@ function DemoApp({ initialSection }) {
               ? {
                   ...item,
                   to_item_id: newItem.id,
+                  transport_role: transportRoles.tailPromotedPair,
                   ...buildTransportPairSnapshot(tailFromItem, newItem),
                   updated_at: new Date().toISOString(),
                 }
@@ -5700,19 +6036,39 @@ function DemoApp({ initialSection }) {
     return { ok: true, data: { id: newItemId } };
   }
 
-  function reorderTimelineDestinationPackages({ dayIndex, packageSourceItemIds, slotItemIds }) {
-    if (dayIndex !== activeDay || isSamePackageOrder(slotItemIds, packageSourceItemIds)) {
+  function reorderTimelineDestinationPackages({
+    dayIndex,
+    packageSourceItemIds,
+    slotItemIds,
+    transportBaselines = [],
+    untimedSortOrderUpdates = [],
+  }) {
+    if (dayIndex !== activeDay) return { ok: false };
+    const hasTimedReorder = !isSamePackageOrder(slotItemIds, packageSourceItemIds);
+    if (!hasTimedReorder && !untimedSortOrderUpdates.length && !transportBaselines.length) {
       return { ok: true, noOp: true };
     }
-    const plan = planDestinationPackageReorder({
-      items: timelineItems,
-      alternatives: timelineAlternatives,
-      itineraryBudgetLinks,
-      slotItemIds,
-      packageSourceItemIds,
-    });
+    const plan = hasTimedReorder
+      ? planDestinationPackageReorder({
+          items: timelineItems,
+          alternatives: timelineAlternatives,
+          itineraryBudgetLinks,
+          slotItemIds,
+          packageSourceItemIds,
+        })
+      : { ok: true, alternatives: timelineAlternatives, itineraryBudgetLinks, items: timelineItems };
     if (!plan.ok) return { ok: false, errorMessage: destinationReorderErrorMessage({ message: plan.errorCode }) };
-    setTimelineItems(plan.items);
+    const untimedSortOrderById = new Map(untimedSortOrderUpdates.map((update) => [update.id, update.sort_order]));
+    const deletedTransportIds = new Set(transportBaselines.map((transport) => transport.id));
+    setTimelineItems(
+      plan.items
+        .filter((item) => !deletedTransportIds.has(item.id))
+        .map((item) =>
+          untimedSortOrderById.has(item.id)
+            ? { ...item, sort_order: untimedSortOrderById.get(item.id), updated_at: new Date().toISOString() }
+            : item,
+        ),
+    );
     setTimelineAlternatives(plan.alternatives);
     setItineraryBudgetLinks(plan.itineraryBudgetLinks);
     return { ok: true, data: plan };
@@ -5722,17 +6078,20 @@ function DemoApp({ initialSection }) {
     if (dayIndex !== activeDay) return { ok: false };
     const item = timelineItems.find((candidate) => candidate.id === itemId);
     if (!item || !isUntimedVisit(item) || item.updated_at !== updatedAt || item.is_fixed) return { ok: false, conflict: true };
-    const linkedTransportIds = timelineItems
-      .filter(
-        (candidate) =>
-          isTransportationCard(candidate) &&
-          (candidate.from_item_id === itemId || candidate.to_item_id === itemId),
-      )
-      .map((transport) => transport.id);
     const requestedTransportIds = transportBaselines.map((transport) => transport.id);
+    const currentTransportById = new Map(
+      timelineItems
+        .filter(
+          (candidate) =>
+            isTransportationCard(candidate) &&
+            candidate.day_index === dayIndex &&
+            requestedTransportIds.includes(candidate.id),
+        )
+        .map((transport) => [transport.id, transport]),
+    );
     if (
-      linkedTransportIds.length !== requestedTransportIds.length ||
-      linkedTransportIds.some((transportId) => !requestedTransportIds.includes(transportId))
+      currentTransportById.size !== requestedTransportIds.length ||
+      transportBaselines.some((transport) => currentTransportById.get(transport.id)?.updated_at !== transport.updatedAt)
     ) {
       return { ok: false, conflict: true };
     }
@@ -7694,7 +8053,7 @@ function ItineraryTimeline({
   function canTargetDraggedVisit(item) {
     const source = dayItems.find((candidate) => candidate.id === draggedVisitId);
     if (!source || source.id === item?.id || isTransportationCard(item)) return false;
-    return isUntimedVisit(source) ? true : canDragReorderVisit(item);
+    return isUntimedVisit(source) ? true : canDragReorderVisit(source);
   }
 
   function beginVisitDrag(event, item) {
@@ -7723,10 +8082,9 @@ function ItineraryTimeline({
     const source = dayItems.find((candidate) => candidate.id === draggedVisitId);
     if (isUntimedVisit(source)) {
       const plan = planUntimedVisitReorder({ items: dayItems, placement, sourceItemId: source.id, targetItemId: item.id });
-      const disabled = !plan.ok && plan.errorCode === "transport_pair_blocked";
       event.dataTransfer.dropEffect = "move";
-      setUntimedDropNotice(disabled ? untimedOrderingErrorMessage(plan.errorCode) : "");
-      setDragTarget({ disabled, errorCode: plan.errorCode || "", itemId: item.id, placement });
+      setUntimedDropNotice(plan.ok ? "" : untimedOrderingErrorMessage(plan.errorCode));
+      setDragTarget({ disabled: !plan.ok, errorCode: plan.errorCode || "", itemId: item.id, placement });
       return;
     }
     event.dataTransfer.dropEffect = "move";
@@ -7764,12 +8122,9 @@ function ItineraryTimeline({
         setUntimedDropNotice("未設定時間行程移動失敗，請稍後再試。");
         return;
       }
+      const brokenTransportIds = new Set(plan.brokenTransportIds || []);
       const transportBaselines = dayItems
-        .filter(
-          (item) =>
-            isTransportationCard(item) &&
-            (item.from_item_id === sourceItem.id || item.to_item_id === sourceItem.id),
-        )
+        .filter((item) => isTransportationCard(item) && brokenTransportIds.has(item.id))
         .map((transport) => ({ id: transport.id, updatedAt: transport.updated_at }));
       const untimedReorder = {
         dayIndex: activeDay,
@@ -7790,20 +8145,22 @@ function ItineraryTimeline({
       setIsReorderingUntimed(false);
       return;
     }
-    if (!canDragReorderVisit(targetItem)) {
-      clearVisitDrag();
-      return;
-    }
     if (!sourceItem || !canDragReorderVisit(sourceItem) || typeof onReorderDestinationPackages !== "function") {
       clearVisitDrag();
       return;
     }
-    const slotItemIds = timedVisitItems.map((item) => item.id);
-    const packageSourceItemIds = insertionPackageOrder(slotItemIds, sourceItem.id, targetItem.id, placement);
-    if (isSamePackageOrder(slotItemIds, packageSourceItemIds)) {
+    const mixedPlan = planMixedTimedVisitReorder({
+      items: dayItems,
+      placement,
+      sourceItemId: sourceItem.id,
+      targetItemId: targetItem.id,
+    });
+    if (!mixedPlan.ok) {
+      setFixedNotice(destinationReorderErrorMessage({ message: mixedPlan.errorCode }));
       clearVisitDrag();
       return;
     }
+    const { brokenTransportIds = [], packageSourceItemIds, slotItemIds, untimedSortOrderUpdates } = mixedPlan;
     const previewPlan = planDestinationPackageReorder({
       items: dayItems,
       slotItemIds,
@@ -7814,13 +8171,31 @@ function ItineraryTimeline({
       clearVisitDrag();
       return;
     }
-    setReorderPreview({
+    const previewDeletedTransportIds = new Set(previewPlan.deletedTransportIds);
+    const explicitTransportBaselines = [...new Set(brokenTransportIds)]
+      .filter((transportId) => !previewDeletedTransportIds.has(transportId))
+      .map((transportId) => {
+        const transport = dayItems.find((item) => item.id === transportId);
+        return transport ? { id: transport.id, updatedAt: transport.updated_at } : null;
+      })
+      .filter(Boolean);
+    const timedReorder = {
       dayIndex: activeDay,
       kind: "timed",
       packageSourceItemIds,
       slotItemIds,
-    });
+      transportBaselines: explicitTransportBaselines,
+      untimedSortOrderUpdates,
+    };
     clearVisitDrag();
+    if (previewPlan.deletedTransportIds.length || explicitTransportBaselines.length) {
+      setReorderPreview(timedReorder);
+      return;
+    }
+    setIsReorderingDestination(true);
+    const result = await onReorderDestinationPackages(timedReorder);
+    if (!result?.ok) setFixedNotice(result?.errorMessage || destinationReorderErrorMessage(result?.error));
+    setIsReorderingDestination(false);
   }
 
   async function confirmMoveReorder() {
@@ -7990,10 +8365,11 @@ function ItineraryTimeline({
       if (lockResult.lockedByAnotherUser) return;
       lockedItem = lockResult.data || item;
     }
+    const suggestedUntimedStartTime = suggestedStartTimeForUntimedAfterTailTransport(dayItems, item);
     const nextForm = {
       item_type: item.item_type || "visit",
       type: item.type,
-      start_time: formatTimeDisplay(item.start_time),
+      start_time: formatTimeDisplay(item.start_time) || suggestedUntimedStartTime,
       end_time: formatTimeDisplay(item.end_time),
       title: item.title,
       location: item.location_name || item.location || "",
@@ -9260,6 +9636,9 @@ function ItineraryTimeline({
             const hasTransportTimeShortage = transportItem ? transportTimeShortageMinutes(transportItem, item, nextItem) > 0 : false;
             const transportNeedsReview = transportItem && transportPairNeedsReview(transportItem, item, nextItem);
             const transportWarningType = transportNeedsReview ? "general" : hasTransportTimeShortage ? "shortage" : "";
+            const tailTransportItem = tailTransportByFrom[item.id] || null;
+            const passiveUntimedTransportItems = passiveUntimedTransportByFrom[item.id] || [];
+            const hasPassiveTransportAfterItem = passiveUntimedTransportItems.length > 0;
             const isAddingTransportHere =
               isTimedPair &&
               isOpen &&
@@ -9267,11 +9646,10 @@ function ItineraryTimeline({
               !editingId &&
               insertionPair?.fromId === item.id &&
               insertionPair?.toId === nextItem.id;
-            const tailTransportItem = tailTransportByFrom[item.id] || null;
-            const passiveUntimedTransportItems = passiveUntimedTransportByFrom[item.id] || [];
             const isTailPosition = lastTimedVisitItem?.id === item.id;
             const isAddingTailHere =
               isTailPosition &&
+              !hasPassiveTransportAfterItem &&
               isOpen &&
               isTransportEditor &&
               !editingId &&
@@ -9477,7 +9855,7 @@ function ItineraryTimeline({
                     )}
               </div>
             ) : null}
-            {!isAddingTailHere && isTailPosition && !tailTransportItem ? renderTailTransportInsert(item) : null}
+            {!isAddingTailHere && isTailPosition && !tailTransportItem && !hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null}
             </div>
             );
           })

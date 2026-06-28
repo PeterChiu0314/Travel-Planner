@@ -17,7 +17,7 @@ function visit(id, startTime, endTime, sortOrder) {
   };
 }
 
-function transport(id, fromItemId, toItemId) {
+function transport(id, fromItemId, toItemId, extra = {}) {
   return {
     id,
     trip_id: "trip-1",
@@ -29,6 +29,7 @@ function transport(id, fromItemId, toItemId) {
     from_item_id: fromItemId,
     to_item_id: toItemId,
     updated_at: "2026-06-23T00:00:00.000Z",
+    ...extra,
   };
 }
 
@@ -106,6 +107,17 @@ test("unchanged edit position does not prompt", () => {
       dayIndex: 0,
       editingId: "a",
       items: [a, pair, b],
+    }),
+  ).toBeNull();
+});
+
+test("tail promoted pairs do not open the normal pair conflict prompt", () => {
+  expect(
+    findBrokenTransportationPair({
+      candidate: { ...b, start_time: "08:00", end_time: "08:30" },
+      dayIndex: 0,
+      editingId: "b",
+      items: [a, transport("tail-ab", "a", "b", { transport_role: "tail_promoted_pair" }), b],
     }),
   ).toBeNull();
 });

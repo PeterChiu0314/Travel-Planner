@@ -60,7 +60,7 @@ test("editing a middle visit leaves earlier visits untouched and shifts only fol
   expect(plan.followingVisitIds).not.toContain("a");
 });
 
-test("untimed visits are excluded and a final open-ended timed visit keeps a null end", () => {
+test("untimed and partially timed visits are excluded from auto continuation", () => {
   const items = [
     visit("a", "09:00", "10:00", 10),
     visit("untimed", null, null, 15),
@@ -76,9 +76,9 @@ test("untimed visits are excluded and a final open-ended timed visit keeps a nul
 
   expect(plan.updates.map((item) => [item.id, item.start_time, item.end_time])).toEqual([
     ["b", "10:45", "11:45"],
-    ["c", "12:15", null],
   ]);
   expect(plan.followingVisitIds).not.toContain("untimed");
+  expect(plan.followingVisitIds).not.toContain("c");
 });
 
 test("fixed follower is an anchor and later visits are not crossed", () => {

@@ -1,8 +1,5 @@
 import { isTimedVisit } from "./timelineUntimedOrdering.js";
-
-function isTransportationCard(item) {
-  return item?.item_type === "transport";
-}
+import { isNormalTransportPair, isTransportationCard } from "./timelineTransportationRoles.js";
 
 function compareTimedVisits(a, b) {
   const timeSort = String(a?.start_time || "99:99").localeCompare(String(b?.start_time || "99:99"));
@@ -40,6 +37,7 @@ export function findBrokenTransportationPair({ candidate, dayIndex, editingId = 
   const brokenTransport = items.find(
     (item) =>
       isTransportationCard(item) &&
+      isNormalTransportPair(item) &&
       Number(item.day_index) === Number(dayIndex) &&
       item.from_item_id &&
       item.to_item_id &&
