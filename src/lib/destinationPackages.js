@@ -1,5 +1,7 @@
 import {
+  buildTimelineVisitDisplayOrder,
   isTimedVisit,
+  isUntimedVisit,
   planUntimedSortOrdersForVisualOrder,
 } from "./timelineUntimedOrdering.js";
 
@@ -62,6 +64,12 @@ export function isSamePackageOrder(slotItemIds, packageSourceItemIds) {
   );
 }
 
+export function hasTimedDragOrderChange({ currentTimedItemIds = [], orderedTimedItemIds = null, packageSourceItemIds, slotItemIds }) {
+  if (!isSamePackageOrder(slotItemIds, packageSourceItemIds)) return true;
+  if (!Array.isArray(orderedTimedItemIds)) return false;
+  return !isSamePackageOrder(currentTimedItemIds, orderedTimedItemIds);
+}
+
 function timeToMinutes(value) {
   if (!value) return null;
   const [hours, minutes] = String(value).split(":");
@@ -76,6 +84,27 @@ function minutesToTime(totalMinutes) {
   const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
   const minutes = String(totalMinutes % 60).padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+function completeVisitVisualOrderIds(items, projectedVisitIds) {
+  const visitIds = new Set(items.filter((item) => !isTransportationCardLike(item)).map((item) => item.id));
+  const orderedIds = [];
+  const seenIds = new Set();
+  for (const itemId of projectedVisitIds) {
+    if (!visitIds.has(itemId) || seenIds.has(itemId)) continue;
+    orderedIds.push(itemId);
+    seenIds.add(itemId);
+  }
+  for (const item of buildTimelineVisitDisplayOrder(items)) {
+    if (seenIds.has(item.id)) continue;
+    orderedIds.push(item.id);
+    seenIds.add(item.id);
+  }
+  return orderedIds;
+}
+
+function isTransportationCardLike(item) {
+  return item?.item_type === "transport";
 }
 
 function isFixedAnchor(item) {
@@ -139,6 +168,7 @@ export function planTimedDragAutoContinuation({
     const updatesBySlotId = {};
     const convertedSlotIds = [];
     const convertedSourceIds = new Set();
+    const untimedSortOrderUpdates = [];
     let segment = [];
     let leftFixed = null;
 
@@ -235,11 +265,18 @@ export function planTimedDragAutoContinuation({
       const finalVisitIds = Array.isArray(orderedVisitItemIds) ? orderedVisitItemIds : nextTimedIds;
       const finalSlotBySourceId = new Map(packageSourceItemIds.map((sourceId, index) => [sourceId, slotItemIds[index]]));
       const projectedVisitIds = finalVisitIds.map((itemId) => finalSlotBySourceId.get(itemId) || itemId);
-      const sortPlan = planUntimedSortOrdersForVisualOrder({
+      let sortPlan = planUntimedSortOrdersForVisualOrder({
         items,
         nextVisitIds: projectedVisitIds,
         replacements: convertedSlotIds.map((slotId) => ({ id: slotId, end_time: null, start_time: null })),
       });
+      if (!sortPlan.ok && sortPlan.errorCode === "invalid_timing_change") {
+        sortPlan = planUntimedSortOrdersForVisualOrder({
+          items,
+          nextVisitIds: completeVisitVisualOrderIds(items, projectedVisitIds),
+          replacements: convertedSlotIds.map((slotId) => ({ id: slotId, end_time: null, start_time: null })),
+        });
+      }
       if (!sortPlan.ok) return { ok: false, errorCode: sortPlan.errorCode, updatesBySlotId: {} };
       for (const slotId of convertedSlotIds) {
         updatesBySlotId[slotId] = {
@@ -248,9 +285,19 @@ export function planTimedDragAutoContinuation({
           sort_order: sortPlan.sortOrders[slotId],
         };
       }
+      for (const [itemId, sortOrder] of Object.entries(sortPlan.sortOrders)) {
+        const item = itemById.get(itemId);
+        if (!item || convertedSlotIds.includes(itemId) || !isUntimedVisit(item) || item.sort_order === sortOrder) continue;
+        untimedSortOrderUpdates.push({
+          id: item.id,
+          original_sort_order: item.sort_order,
+          sort_order: sortOrder,
+          updated_at: item.updated_at || null,
+        });
+      }
     }
 
-    return { ok: true, convertedSlotIds, convertedSourceIds: [...convertedSourceIds], updatesBySlotId };
+    return { ok: true, convertedSlotIds, convertedSourceIds: [...convertedSourceIds], untimedSortOrderUpdates, updatesBySlotId };
   }
 
   const originalIndexBySourceIdLegacy = new Map(slotItemIds.map((itemId, index) => [itemId, index]));
@@ -446,9 +493,16 @@ export function planDestinationPackageReorder({
 
   const preservedTransportById = new Map(preservedTransportItems.map((item) => [item.id, item]));
   const deletedTransportIdSet = new Set(deletedTransportIds);
+  const timingUntimedSortOrderById = new Map(
+    (timingPlan.untimedSortOrderUpdates || []).map((update) => [update.id, update.sort_order]),
+  );
   const nextItems = items
     .filter((item) => !deletedTransportIdSet.has(item.id))
-    .map((item) => nextItemsById.get(item.id) || preservedTransportById.get(item.id) || item);
+    .map((item) => {
+      const nextItem = nextItemsById.get(item.id) || preservedTransportById.get(item.id) || item;
+      if (!timingUntimedSortOrderById.has(item.id)) return nextItem;
+      return { ...nextItem, sort_order: timingUntimedSortOrderById.get(item.id), updated_at: updatedAt };
+    });
   const remapParent = (record) => ({
     ...record,
     itinerary_item_id: newSlotBySourceId.get(record.itinerary_item_id) || record.itinerary_item_id,
@@ -462,6 +516,8 @@ export function planDestinationPackageReorder({
     packageSourceItemIds: [...packageSourceItemIds],
     slotItemIds: [...slotItemIds],
     timedAutoContinuationUpdates: timingPlan.updatesBySlotId,
+    convertedSlotIds: timingPlan.convertedSlotIds || [],
+    untimedSortOrderUpdates: timingPlan.untimedSortOrderUpdates || [],
     preservedTransportIds: preservedTransportItems.map((item) => item.id),
     deletedTransportIds,
     updatedVisitCount: slotItemIds.length,

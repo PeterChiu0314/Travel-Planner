@@ -1,11 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import {
+  hasTimedDragOrderChange,
   insertionPackageOrder,
   isSamePackageOrder,
   planDestinationPackageReorder,
   planTimedDragAutoContinuation,
 } from "../src/lib/destinationPackages.js";
+import { buildTimelineVisitDisplayOrder, planMixedTimedVisitReorder } from "../src/lib/timelineUntimedOrdering.js";
 
 const migration = readFileSync("supabase/migrations/020_reorder_itinerary_destination_packages.sql", "utf8");
 const baselineCountFixMigration = readFileSync("supabase/migrations/021_fix_reorder_baseline_count.sql", "utf8");
@@ -296,6 +298,181 @@ test("Phase 4.7 rejects inserting timed visits between fixed anchors with no spa
       timedAutoContinuation: true,
     }),
   ).toMatchObject({ ok: false, errorCode: "fixed_segment_no_space" });
+});
+
+function planFixedAdjacentDrag(items, sourceItemId, targetItemId, placement) {
+  const mixedPlan = planMixedTimedVisitReorder({ items, placement, sourceItemId, targetItemId });
+  expect(mixedPlan.ok).toBe(true);
+  expect(
+    hasTimedDragOrderChange({
+      currentTimedItemIds: items.filter((item) => item.start_time && item.end_time).map((item) => item.id),
+      orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
+      packageSourceItemIds: mixedPlan.packageSourceItemIds,
+      slotItemIds: mixedPlan.slotItemIds,
+    }),
+  ).toBe(true);
+  return planDestinationPackageReorder({
+    items,
+    orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
+    orderedVisitItemIds: mixedPlan.orderedVisitItemIds,
+    slotItemIds: mixedPlan.slotItemIds,
+    packageSourceItemIds: mixedPlan.packageSourceItemIds,
+    timedAutoContinuation: true,
+  });
+}
+
+function planAppTimedDrag(items, sourceItemId, targetItemId, placement) {
+  const mixedPlan = planMixedTimedVisitReorder({ items, placement, sourceItemId, targetItemId });
+  expect(mixedPlan.ok).toBe(true);
+  const plan = planDestinationPackageReorder({
+    items,
+    orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
+    orderedVisitItemIds: mixedPlan.orderedVisitItemIds,
+    slotItemIds: mixedPlan.slotItemIds,
+    packageSourceItemIds: mixedPlan.packageSourceItemIds,
+    timedAutoContinuation: true,
+  });
+  if (!plan.ok) return plan;
+  const finalUntimedSortOrderUpdates = plan.convertedSlotIds?.length
+    ? plan.untimedSortOrderUpdates || []
+    : mixedPlan.untimedSortOrderUpdates || [];
+  const sortOrderById = new Map(finalUntimedSortOrderUpdates.map((update) => [update.id, update.sort_order]));
+  return {
+    ...plan,
+    items: plan.items.map((item) => (sortOrderById.has(item.id) ? { ...item, sort_order: sortOrderById.get(item.id) } : item)),
+    untimedSortOrderUpdates: finalUntimedSortOrderUpdates,
+  };
+}
+
+test("Phase 4.7a fixed-adjacent timed drop gaps are valid reorder targets", () => {
+  const fixedBoundedItems = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "09:30" }),
+    visit("fixed-1", "F", "10:00", 20, { end_time: "10:15", is_fixed: true }),
+    visit("slot-b", "B", "10:30", 30, { end_time: "11:00" }),
+    visit("slot-c", "C", "11:15", 40, { end_time: "12:00" }),
+    visit("fixed-2", "F2", "13:00", 50, { end_time: "13:15", is_fixed: true }),
+    visit("slot-d", "D", "14:00", 60, { end_time: "14:20" }),
+  ];
+
+  const beforeRightAnchor = planFixedAdjacentDrag(fixedBoundedItems, "slot-d", "fixed-2", "before");
+  expect(beforeRightAnchor.ok).toBe(true);
+  expect(beforeRightAnchor.items.find((item) => item.id === "slot-d")).toMatchObject({
+    start_time: "11:45",
+    end_time: "12:05",
+    title: "D",
+  });
+
+  const afterRightAnchor = planFixedAdjacentDrag(fixedBoundedItems, "slot-c", "fixed-2", "after");
+  expect(afterRightAnchor.ok).toBe(true);
+  expect(afterRightAnchor.items.find((item) => item.id === "slot-c")).toMatchObject({
+    start_time: "13:15",
+    end_time: "14:00",
+    title: "C",
+  });
+
+  const afterLeftAnchor = planFixedAdjacentDrag(fixedBoundedItems, "slot-a", "fixed-1", "after");
+  expect(afterLeftAnchor.ok).toBe(true);
+  expect(afterLeftAnchor.items.find((item) => item.id === "slot-a")).toMatchObject({
+    start_time: "10:15",
+    end_time: "10:45",
+    title: "A",
+  });
+
+  const tailItems = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "09:30" }),
+    visit("slot-b", "B", "10:00", 20, { end_time: "10:30" }),
+    visit("fixed-1", "F", "11:00", 30, { end_time: "11:15", is_fixed: true }),
+    visit("slot-c", "C", "12:00", 40, { end_time: "12:30" }),
+  ];
+  const beforeFixed = planFixedAdjacentDrag(tailItems, "slot-c", "fixed-1", "before");
+  expect(beforeFixed.ok).toBe(true);
+  expect(beforeFixed.items.find((item) => item.id === "slot-c")).toMatchObject({
+    start_time: "10:30",
+    end_time: "11:00",
+    title: "C",
+  });
+});
+
+test("Phase 4.7a no-space fixed-fixed gap still rejects only the closed fixed segment", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "09:30" }),
+    visit("slot-b", "B", "10:00", 20, { end_time: "10:30" }),
+    visit("fixed-1", "F", "10:30", 30, { end_time: "10:45", is_fixed: true }),
+    visit("fixed-2", "F2", "10:45", 40, { end_time: "11:00", is_fixed: true }),
+    visit("slot-c", "C", "12:00", 50, { end_time: "12:30" }),
+  ];
+
+  expect(planFixedAdjacentDrag(items, "slot-c", "fixed-1", "before")).toMatchObject({ ok: true });
+  expect(planFixedAdjacentDrag(items, "slot-c", "fixed-2", "before")).toMatchObject({
+    ok: false,
+    errorCode: "fixed_segment_no_space",
+  });
+});
+
+function untimedSortOrderForSlot(slot, rank = 500_000) {
+  return -2_000_000_000 + slot * 1_000_000 + rank;
+}
+
+function planOverflowBeforeFixed({ cEndTime, fixedStartTime }) {
+  const items = [
+    visit("slot-a", "A", "01:00", 10, { end_time: "01:30" }),
+    visit("slot-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
+    visit("fixed-1", "F", fixedStartTime, 30, { end_time: "02:10", is_fixed: true }),
+    visit("slot-c", "C", "01:50", 40, { end_time: cEndTime }),
+    visit("fixed-2", "F2", "09:00", 50, { end_time: "10:00", is_fixed: true }),
+  ];
+  return planAppTimedDrag(items, "slot-c", "slot-a", "before");
+}
+
+test("Phase 4.7b fixed segment overflow converts timed visits to untimed and preserves mixed visual order", () => {
+  const cFitsAOverflows = planOverflowBeforeFixed({ cEndTime: "02:10", fixedStartTime: "01:45" });
+  expect(cFitsAOverflows.ok).toBe(true);
+  expect(buildTimelineVisitDisplayOrder(cFitsAOverflows.items).map((item) => [item.title, item.start_time, item.end_time])).toEqual([
+    ["C", "01:00", "01:20"],
+    ["A", null, null],
+    ["B", null, null],
+    ["F", "01:45", "02:10"],
+    ["F2", "09:00", "10:00"],
+  ]);
+  expect(cFitsAOverflows.untimedSortOrderUpdates).toEqual([
+    expect.objectContaining({ id: "slot-b", sort_order: untimedSortOrderForSlot(1, 666_666) }),
+  ]);
+
+  const cAlsoOverflows = planOverflowBeforeFixed({ cEndTime: "02:50", fixedStartTime: "01:40" });
+  expect(cAlsoOverflows.ok).toBe(true);
+  expect(buildTimelineVisitDisplayOrder(cAlsoOverflows.items).map((item) => [item.title, item.start_time, item.end_time])).toEqual([
+    ["C", null, null],
+    ["A", null, null],
+    ["B", null, null],
+    ["F", "01:40", "02:10"],
+    ["F2", "09:00", "10:00"],
+  ]);
+  expect(cAlsoOverflows.errorCode).not.toBe("invalid_timing_change");
+
+  const enoughSpace = planOverflowBeforeFixed({ cEndTime: "02:10", fixedStartTime: "02:00" });
+  expect(enoughSpace.ok).toBe(true);
+  expect(buildTimelineVisitDisplayOrder(enoughSpace.items).map((item) => [item.title, item.start_time, item.end_time])).toEqual([
+    ["C", "01:00", "01:20"],
+    ["A", "01:20", "01:50"],
+    ["B", null, null],
+    ["F", "02:00", "02:10"],
+    ["F2", "09:00", "10:00"],
+  ]);
+});
+
+test("Phase 4.7b Formal and Demo use the overflow rebase payload instead of the pre-conversion untimed slot", () => {
+  const plan = planOverflowBeforeFixed({ cEndTime: "02:10", fixedStartTime: "01:45" });
+  expect(plan.ok).toBe(true);
+  expect(plan.convertedSlotIds).toEqual(["slot-c"]);
+  expect(plan.untimedSortOrderUpdates).toEqual([
+    expect.objectContaining({
+      id: "slot-b",
+      original_sort_order: untimedSortOrderForSlot(1),
+      sort_order: untimedSortOrderForSlot(1, 666_666),
+    }),
+  ]);
+  expect(appSource).toContain("finalUntimedSortOrderUpdates");
+  expect(appSource).toContain("previewPlan.convertedSlotIds");
 });
 
 test("reorder preserves only original directed adjacent transports and remaps anchors", () => {

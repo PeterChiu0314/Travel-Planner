@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import {
+  hasTimedDragOrderChange,
   isSamePackageOrder,
   planDestinationPackageReorder,
 } from "./lib/destinationPackages.js";
@@ -3429,13 +3430,18 @@ export default function App() {
     untimedSortOrderUpdates = [],
   }) {
     if (!activeTrip || !canEditActiveTripContent || dayIndex !== activeDay) return { ok: false };
-    const hasTimedReorder = !isSamePackageOrder(slotItemIds, packageSourceItemIds);
-    if (!hasTimedReorder && !untimedSortOrderUpdates.length && !transportBaselines.length) return { ok: true, noOp: true };
     const timedVisits = sortedVisitItems(
       items.filter(
         (item) => item.day_index === dayIndex && isTimedVisit(item),
       ),
     );
+    const hasTimedReorder = hasTimedDragOrderChange({
+      currentTimedItemIds: timedVisits.map((item) => item.id),
+      orderedTimedItemIds,
+      packageSourceItemIds,
+      slotItemIds,
+    });
+    if (!hasTimedReorder && !untimedSortOrderUpdates.length && !transportBaselines.length) return { ok: true, noOp: true };
     const movableTimedVisitIds = timedVisits.filter((item) => !isEffectiveFixedVisit(item)).map((item) => item.id);
     if (!isSamePackageOrder(movableTimedVisitIds, slotItemIds)) {
       const errorMessage = "行程順序已變更，請重新整理後再試。";
@@ -6074,7 +6080,15 @@ function DemoApp({ initialSection }) {
     untimedSortOrderUpdates = [],
   }) {
     if (dayIndex !== activeDay) return { ok: false };
-    const hasTimedReorder = !isSamePackageOrder(slotItemIds, packageSourceItemIds);
+    const currentTimedItemIds = sortedVisitItems(
+      timelineItems.filter((item) => item.day_index === dayIndex && isTimedVisit(item)),
+    ).map((item) => item.id);
+    const hasTimedReorder = hasTimedDragOrderChange({
+      currentTimedItemIds,
+      orderedTimedItemIds,
+      packageSourceItemIds,
+      slotItemIds,
+    });
     if (!hasTimedReorder && !untimedSortOrderUpdates.length && !transportBaselines.length) {
       return { ok: true, noOp: true };
     }
@@ -8205,6 +8219,9 @@ function ItineraryTimeline({
       clearVisitDrag();
       return;
     }
+    const finalUntimedSortOrderUpdates = previewPlan.convertedSlotIds?.length
+      ? previewPlan.untimedSortOrderUpdates || []
+      : untimedSortOrderUpdates;
     const previewDeletedTransportIds = new Set(previewPlan.deletedTransportIds);
     const explicitTransportBaselines = [...new Set(brokenTransportIds)]
       .filter((transportId) => !previewDeletedTransportIds.has(transportId))
@@ -8222,7 +8239,7 @@ function ItineraryTimeline({
       slotItemIds,
       timedAutoContinuation: true,
       transportBaselines: explicitTransportBaselines,
-      untimedSortOrderUpdates,
+      untimedSortOrderUpdates: finalUntimedSortOrderUpdates,
     };
     clearVisitDrag();
     if (previewPlan.deletedTransportIds.length || explicitTransportBaselines.length) {
