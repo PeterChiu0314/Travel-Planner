@@ -10,15 +10,21 @@ Root Markdown files are entry points:
 - `CURRENT_TASK.md`: current project status and active phase handoff.
 - `README.md`: general project README.
 
-Detailed project documents live in `docs/`:
+Current working documents live in `docs/`:
 
 - `docs/BUGS.md`
 - `docs/UX_RULES.md`
 - `docs/DEV_SETUP_WINDOWS.md`
-- `docs/PHASE_1_8_WORK_LOG.md`
-- `docs/PHASE_2_SIDEBAR_HANDOFF.md`
+- Current phase analyses, rules, and closeout handoffs that are still actively referenced.
 
-When starting a new phase, read `CURRENT_TASK.md` first, then the relevant files under `docs/`.
+Historical documents live in `docs/archive/`, grouped by project area:
+
+- Old discussions, superseded handoffs, completed layout audits, and obsolete drafts belong in `docs/archive/`.
+- Do not read `docs/archive/` by default when starting a task.
+- Consult archived files only when the current task requires historical context that is not available in `CURRENT_TASK.md` or the active `docs/` files.
+- The old `docs/gpt/` folder has been removed. Do not recreate it; place active documents in `docs/` and historical documents in `docs/archive/`.
+
+When starting a new phase, read `CURRENT_TASK.md` first, then only the relevant active files under `docs/`.
 
 ## 1. Product Philosophy
 

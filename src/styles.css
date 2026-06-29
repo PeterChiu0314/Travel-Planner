@@ -2712,6 +2712,61 @@ textarea {
   background: #fbfcfa;
 }
 
+.timeline-item.drag-enabled {
+  cursor: grab;
+}
+
+.timeline-item.drag-enabled:active {
+  cursor: grabbing;
+}
+
+.timeline-item.dragging {
+  opacity: 0.55;
+}
+
+.timeline-drag-hint {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(141, 103, 38, 0.1);
+  color: #72551f;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.timeline-item.drag-target-disabled {
+  cursor: not-allowed;
+  border-color: rgba(141, 103, 38, 0.35);
+  box-shadow: none;
+}
+
+.timeline-item.drag-target {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 2px rgba(47, 143, 114, 0.14);
+}
+
+.timeline-item.drag-target::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  right: 8px;
+  left: 8px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--mint);
+  pointer-events: none;
+}
+
+.timeline-item.drag-before::before {
+  top: 0;
+}
+
+.timeline-item.drag-after::before {
+  bottom: 0;
+}
+
 .transport-insert-zone {
   display: grid;
   grid-template-columns: 22px max-content minmax(24px, 1fr);

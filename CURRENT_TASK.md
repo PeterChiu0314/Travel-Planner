@@ -5,132 +5,287 @@
 - `AGENT.md`
 - `docs/UX_RULES.md`
 - `docs/BUGS.md`
-- `docs/PHASE_3_WORKSPACE_AUDIT.md`
-- `docs/gpt/2026-06-19-phase-3-timeline-workspace-polish.md`
-- `docs/gpt/2026-06-19-phase-3-2a-map-first-tabs-summary.md`
-- `docs/gpt/2026-06-20-phase-3-2a-timeline-workspace-summary.md`
-- `docs/gpt/2026-06-21-phase-3-2a-closeout-summary.md`
-- `docs/gpt/2026-06-21-phase-3-3-final-qa-handoff.md`
+- `docs/2026-06-22-phase-4-2c-closeout-handoff.md`
+- `docs/2026-06-23-phase-4-4-closeout-handoff.md`
+- `docs/2026-06-24-phase-4-5-closeout-handoff.md`
+- `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
+- `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v5.md` (latest working draft)
+
+Archive rule:
+
+- `docs/archive/` contains historical discussions, superseded handoffs, and old drafts.
+- Do not read archived files by default; consult them only when a task specifically needs older context.
+- `docs/gpt/` no longer exists and must not be recreated.
 
 ## Current Phase
 
 ```text
-App Layout Phase 3.3 - Completed / User Verified
+Timeline Phase 4.6 Timed Visit Drag Auto-Continuation - Implemented / Build and Full E2E QA Passed
+```
+
+Next phase:
+
+```text
+Timeline Phase 4.7 fixed-anchor drag rules, after Phase 4.6 final verification/manual review.
 ```
 
 Branch:
 
 ```text
-codex/app-layout-phase-3-workspace
+codex/timeline-phase-4-0-to-4-2
 ```
 
-Status:
+## Completed Scope
+
+### Phase 4.0 to 4.2c
+
+- Completed Phase 4 analysis and protected-scope audit.
+- Added valid tail transportation cards with `to_item_id = null`.
+- Defined destination packages and child relationship behavior.
+- Added insertion-style timed-visit destination-package reorder.
+- Kept visit IDs and time slots fixed during reorder.
+- Alternatives and linked budgets follow destination packages.
+- Invalidated transportation cards are removed; replacements are never generated automatically.
+- Formal reorder uses the applied 020/021 RPC path; Demo uses shared pure planning logic and local React state.
+
+### Phase 4.3
+
+- Added the timed-visit prompt when a new or edited visit breaks an existing normal transportation pair `A -> B`.
+- Existing invalid-time and same-day-overlap validation remains higher priority.
+- Restore keeps the editor open without saving or deleting transportation.
+- Delete Transportation saves the visit and removes the broken transportation card.
+- Formal preserves draft, edit-lock, optimistic-locking, Realtime reload, and failure safety behavior.
+- Demo provides matching behavior using mock data and local React state only.
+- Tail transportation is outside the Phase 4.3 prompt scope.
+
+### Phase 4.4
+
+- Added explicit local auto-continuation after editing an existing timed visit's `start_time` or `end_time`.
+- The editor actions are ordered `取消 / 接續 / 儲存`.
+- Normal Save updates only the edited visit and never opens the continuation prompt.
+- Continue is enabled only after the existing timed visit's time changes and a later timed visit exists.
+- Continue runs invalid-time, overlap, and Phase 4.3 transportation-pair checks before showing the confirmation.
+- Cancelling the continuation confirmation returns to the active editor without saving.
+- Confirming continuation shifts following timed visits while preserving each original visit duration and the original gap between visits.
+- Earlier visits and untimed visits are never shifted.
+- The original open-ended timed-visit behavior was superseded by the Phase 4.5 Hotfix: a visit missing either time is untimed.
+- The first following fixed visit is a time anchor and is never moved.
+- Movable visits that cannot fit before the fixed anchor, plus the remaining affected visits before that anchor, become untimed.
+- Continuation stops at the fixed anchor; visits after it are unchanged.
+- Foreign-locked, incomplete, invalid, or unsafe continuation data still blocks the batch safely.
+- Formal validates trip/day/type/fixed/lock/`updated_at` baselines and defers lock release until the combined operation completes.
+- Formal uses best-effort compensation if a downstream update or Phase 4.3 transportation deletion fails.
+- Demo shares the pure continuation planner and applies the result in one local React-state update.
+- No database migration or RPC change was required.
+- User manually verified the final Phase 4.4 UX on 2026-06-23.
+
+### Phase 4.5
+
+- Added mixed same-day ordering for timed and untimed visits using the existing `itinerary_items.sort_order` field.
+- Timed visits remain naturally ordered by `start_time`; untimed visits use a reserved negative `sort_order` encoding for their manual gap and rank.
+- Active untimed drag changes only the source visit's display position and does not change timed visit times, destination packages, transportation cards, drafts, or locks.
+- Active untimed drag into an existing valid transportation pair remains blocked with a lightweight inline message and no local/DB mutation.
+- Formal untimed reorder is a guarded single-row update using trip/day/type/fixed/lock and `updated_at` checks; Demo uses shared pure planning and React local state only.
+- Phase 4.5 initial automated QA passed 61/61 Playwright tests.
+
+### Phase 4.5 Hotfix
+
+- A visit is timed only when both `start_time` and `end_time` exist; all four complete/partial/empty combinations now use one shared classification.
+- Clearing either time in the editor immediately clears the other; Formal and Demo save normalization persists either a complete pair or `null/null`.
+- Partial visits do not participate in timed sorting, overlap, auto-continuation, transportation shortage, timed adjacency, or timed destination-package manifests.
+- Passive untimed conversion is separate from active untimed drag. Existing transportation is not deleted, hidden, promoted to the top warning stack, rewritten as tail, or replaced.
+- A timed visit that passively becomes untimed immediately receives an encoded untimed `sort_order` for its current display gap, so it remains in place instead of falling to the legacy untimed tail position.
+- Phase 4.4 fixed-anchor overflow applies the same preservation rule to every converted visit while retaining their relative order.
+- Every later timed-to-untimed conversion rebases all existing untimed gap encodings for that day from the pre-save display order. An earlier overflow visit therefore remains before its fixed anchor even when another timed visit above it later becomes untimed.
+- Untimed visits never auto-fill or compact into newly available gaps. When visits change between timed and untimed in either direction, rebasing preserves the complete pre-save display order of every remaining untimed visit.
+- While a retained transportation still has an untimed endpoint, a staged time restore preserves the transportation direction when its `from` and `to` visits would otherwise become reverse-adjacent. Restoring A and then B therefore keeps `A -> B` in order and returns the card to the normal adjacent flow once both are timed.
+- Transportation with an existing untimed/partial endpoint stays anchored after its `from_item_id` visit and shows the existing compact warning UI: `目的地時間未設定，請重新確認交通卡。`
+- Phase 4.4 fixed-anchor overflow and manual time clearing therefore preserve related transportation for manual review.
+- No migration, RPC, or production DB change was required. Applied migrations 019/020/021 remain immutable.
+- Hotfix commit: `5b75450 Fix Timeline Phase 4.5 partial time handling`.
+
+### Phase 4.5 Hotfix 2
+
+- Passive conversion to untimed still preserves existing transportation and its compact warning.
+- Active drag of an untimed visit still rejects a target that would break an existing valid timed transportation pair before any confirmation appears.
+- If the untimed source visit itself is linked by any transportation `from_item_id` or `to_item_id`, a legal drop now opens the existing `確認移動行程？` dialog.
+- Cancel leaves the visit, transportation rows, local state, and Formal persistence unchanged.
+- Confirm moves only the untimed source visit, deletes every transportation row linked to that source, and creates or rewrites no transportation.
+- Formal validates the source and linked-transport baselines before writing, persists the source `sort_order`, deletes only the confirmed linked transportation IDs, and reloads authoritative trip data after success or failure.
+- Demo performs the confirmed move and linked-transport deletion in one local React-state update without production-service calls.
+- Timed visit times, Phase 4.4 auto-continuation, and the Phase 4.2c reorder RPC remain untouched.
+- No migration or RPC change was required; applied migrations 019/020/021 remain immutable.
+
+### Phase 4.5 Hotfix 3
+
+- A retained tail transport remains a passive untimed warning while its endpoint is untimed.
+- When that endpoint becomes timed again and is still the final timed visit, the same row automatically returns to the valid tail flow instead of the invalid transport stack.
+- Tail restore does not delete, rewrite, or convert the transport into a normal pair.
+- Editing a timed visit across a fixed timed visit disables only the `接續` action.
+- The disabled continuation action explains: `跨越固定行程時無法接續。`
+- Direct `儲存` remains enabled and succeeds when existing invalid-time and overlap validation pass.
+- Phase 4.3 conflict detection now covers both inserting a new timed visit between an existing transportation pair and editing either endpoint so the original valid pair is no longer adjacent.
+- Endpoint edits that break a pair open the existing Restore / Delete Transportation dialog before persistence; passive conversion to untimed remains outside this prompt.
+- No migration, RPC, schema, production DB, or Playwright test change was made.
+
+### Phase 4.6
+
+- Timed visit drag now recalculates `start_time` / `end_time` instead of only swapping destination package content across existing time slots.
+- Phase 4.6 timing only uses complete timed visits: rows missing either `start_time` or `end_time` stay untimed / partial and do not participate in duration-based continuation.
+- Each moved/reordered timed destination package preserves its own original duration.
+- The new first timed package starts at the original first complete timed visit start time.
+- Same-direction adjacent pairs that remain adjacent preserve their original total gap.
+- New adjacencies and direction reversals directly continue from the previous package end time.
+- Untimed visits still use mixed visual order for drop target / display only; they do not create timing gaps and do not affect duration calculation.
+- Formal timed drag calls the new transactional RPC `reorder_itinerary_timed_auto_continuation`.
+- Demo timed drag uses the same pure planner via `timedAutoContinuation: true`.
+- Existing `brokenTransportIds` confirmation / cleanup remains the transport removal gate.
+- No automatic transportation card creation was added.
+- Fixed card drag and fixed-anchor scheduling remain deferred to Phase 4.7.
+
+New migration applied to production Supabase project `lqvuqamzmchepgxkftcw`:
 
 ```text
-Phase 3.2a is completed and user verified.
-Phase 3.3 Demo QA, automated validation, and authenticated Formal Timeline visual verification all passed.
-Timeline Workspace Final QA is closed and approved for merge to main.
+023 / 20260629014908 / reorder_itinerary_timed_auto_continuation
 ```
 
-## Git Reference Points
+New/updated files:
 
-- Latest pushed commit: `217e2d4 add development version dialog`
-- Phase 3.2a closeout commit: `a85d368 close out phase 3.2 timeline polish`
-- Final QA baseline: `217e2d4 add development version dialog`
-- Final handoff: `docs/gpt/2026-06-21-phase-3-3-final-qa-handoff.md`
-- `test-results/` is generated output and must not be committed.
+- `src/lib/destinationPackages.js`
+- `src/App.jsx`
+- `supabase/migrations/023_reorder_itinerary_timed_auto_continuation.sql`
+- `tests/phase-4-2c-reorder.spec.js`
+- `tests/phase-1-7f-smoke.spec.js`
+- `docs/2026-06-29-phase-4-6-closeout-handoff.md`
 
-## Current Layout
+## Production Migration State
 
-- Map expanded:
-  - Day Tabs only occupy the left Day Board column.
-  - Route / future Map surface fills the right side from below the Header.
-  - Day Board / Map ratio is approximately `30 / 70`.
-  - Minimum widths are `380px` for Day Board and `420px` for Map.
-  - Day Board maximum width is `550px`; additional wide-screen space belongs to the Map.
-- Map collapsed:
-  - Day Tabs and multi-day Day Board use the full workspace width.
-  - Horizontal scrolling belongs to the inner Day Board rail.
-  - Left/right navigation uses scrollbar-aware edge half-circle buttons.
-- Workspace owns no competing outer Timeline scroll; Day Board owns its internal scrolling.
-- Demo uses the full six-day Kyoto/Biwako fixture from `src/demo-kyoto-trip.json`.
+Applied immutable migrations:
 
-## Recent Completed Polish
+```text
+019 / 20260621131905 / swap_itinerary_destination_packages
+020 / 20260622130246 / reorder_itinerary_destination_packages
+021 / 20260622131013 / fix_reorder_baseline_count
+022 / 20260629012151 / add_transport_role_to_itinerary_items
+023 / 20260629014908 / reorder_itinerary_timed_auto_continuation
+project: lqvuqamzmchepgxkftcw
+```
 
-- Day Tabs:
-  - Drag, momentum, click selection, smooth arrow scrolling, and active-tab alignment are preserved.
-  - Edge fading uses `mask-image` / `-webkit-mask-image`, not background-color overlays.
-  - First day only fades on the right, last day only fades on the left, middle positions fade on both sides.
-- Day Board navigation:
-  - Edge buttons use Lucide chevrons and attach to the viewport/workspace edge.
-  - The right button detects vertical scrollbar width and does not cover the scrollbar.
-  - Clicking a Day Tab leaves about `340px` on the left so the previous `320px` Day Board remains available as a quick preview when possible.
-- Timeline cards:
-  - Map expanded and collapsed states now share the same card sizing and typography.
-  - Expanded details below the divider span the full card grid with dedicated horizontal padding.
-  - Expanded visit and transportation notes preserve entered line breaks.
-  - Transportation details use the full card grid with centered horizontal insets.
-  - Empty alternative hints have a separate muted style and do not affect saved alternative titles.
-- Timeline actions:
-  - Lock state uses Lucide `Lock / LockOpen`.
-  - Edit and delete use Lucide `Pencil / Trash2`.
-  - New itinerary uses a `Plus + MapPin` icon combination.
-- Map motion:
-  - Map reveal and conceal use a lightweight `220ms` animation.
-  - The future complete animation may coordinate Day Board and Map grid widths.
-- Multi-Day preview:
-  - Unselected Day Boards show destination title, compact note, type, budget/cost, and alternative pills.
-  - Unselected Day Boards are `320px` wide and visit previews are `110px` high.
-  - Unselected Day Boards never retain focused-card styling.
-- Formal and Demo use the same Timeline components and shared CSS for these changes.
+Important:
 
-## Phase 3.3 QA Result
+- Never edit applied migrations 019, 020, 021, 022, or 023 in place.
+- Any future schema/RPC/permission correction must use migration 024+.
+- Phase 4.3, 4.4, 4.5, and the Phase 4.5 Hotfix required no migration.
 
-Completed in Demo and source / render-path audit:
+## Phase 4.5 and Hotfix Changed Files
 
-1. Map-expanded and Map-collapsed layout rendered without console errors.
-2. Visit and transportation multiline notes preserved line breaks.
-3. Alternative flip control matched the visit card lower-right corner with no border gap.
-4. Multi-Day preview sizes, metadata, transportation alignment, and focus cleanup passed.
-5. Day Tabs and Day Board edge controls scrolled and updated their edge states correctly.
-6. Demo remained isolated from Supabase, Auth, Realtime, Storage, Draft Autosave, and Edit Lock.
-7. Build passed; E2E passed `13/13`; `git diff --check` passed.
+- `src/App.jsx`
+- `src/lib/destinationPackages.js`
+- `src/lib/timelineAutoContinuation.js`
+- `src/lib/timelineTransportationConflicts.js`
+- `src/lib/timelineUntimedOrdering.js`
+- `src/styles.css`
+- `tests/phase-1-7f-smoke.spec.js`
+- `tests/phase-4-5-untimed-ordering.spec.js`
+- `CURRENT_TASK.md`
+- `docs/2026-06-24-phase-4-5-closeout-handoff.md`
+- `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
+- `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v3.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v4.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v5.md`
 
-Authenticated Formal Timeline manual sign-off completed by the user on 2026-06-21:
+## Verification
 
-1. Map open / close animation accepted.
-2. Formal Map-expanded and Map-collapsed layout accepted.
-3. Visit, transportation, and alternative controls accepted.
-4. Multi-Day previews, Day switching, and edge controls accepted.
+Phase 4.5 initial checks on 2026-06-24:
 
-## Protected Scope
+```text
+npm.cmd run build       passed
+npx.cmd playwright test passed 61/61
+git diff --check        passed
+```
 
-Do not modify unless explicitly requested:
+Phase 4.5 Hotfix checks on 2026-06-24:
 
-- Supabase schema, migrations, RLS, or RPC
+```text
+targeted pure-helper sanity passed
+Demo browser verification passed
+npm.cmd run build        passed
+git diff --check         passed
+full Playwright rerun    intentionally not run per user instruction
+manual user verification pending
+```
+
+Hotfix browser verification confirmed that clearing one time cleared both form values, the saved visit became untimed, the existing transportation stayed anchored after the from visit, the compact warning rendered, no transport moved into the top invalid stack, and the console had no warnings/errors.
+
+Phase 4.5 Hotfix 2 checks on 2026-06-24:
+
+```text
+npm.cmd run build passed
+git diff --check  passed
+Demo consecutive passive-conversion browser QA passed
+Demo fixed-anchor overflow and non-compacting restore QA passed
+Demo tail restore and fixed-crossing continuation QA passed
+Demo transportation-endpoint conflict prompt QA passed
+automated tests     not added or modified per user instruction
+manual verification pending
+```
+
+Phase 4.5 stabilization closeout checks on 2026-06-25:
+
+```text
+npm.cmd run build passed
+git diff --check  passed
+Demo browser QA    passed for passive untimed position preservation, no-compaction,
+                   tail restore, fixed-crossing continuation guard, and
+                   transportation endpoint conflict confirmation
+Playwright tests   intentionally not run or modified per user instruction
+final manual verification pending
+```
+
+Phase 4.6 closeout checks on 2026-06-29:
+
+```text
+npm.cmd run build passed
+targeted Playwright passed 36/36
+npm.cmd run test:e2e passed 71/71
+git diff --check passed with Windows LF/CRLF notices only
+```
+
+Phase 4.6 preserves the existing Phase 4.5b / 4.5c transportation and mixed-order behavior, adds migration/RPC 023, and does not begin Phase 4.7 or Phase 4.8.
+
+The Vite build still reports the existing large-chunk warning; it is not a Phase 4.6 regression.
+
+## Protected Scope Preserved
+
+Phase 4.6 did not redesign or extend:
+
 - Auth / Google OAuth
-- Realtime subscriptions
-- Draft Autosave or Edit Lock behavior
-- Share / Invite / member data flow
-- Timeline data model
-- Transportation pair, warning, or route logic
-- Budget data flow
-- `.hidden-section` mounting strategy
-- Broad `src/App.jsx` architecture
-- Global `.panel` or `.content-grid` behavior without a Timeline-specific selector
+- Realtime subscription architecture
+- Draft Autosave or Edit Lock architecture
+- Share / Invite / member flow
+- Budget core data flow
+- Phase 4.2c destination-package reorder RPC behavior
+- generic `sort_order` architecture
+- transportation pair splitting or creation
+- Google Map API or route calculation
+- cross-day scheduling
+- fixed-anchor drag behavior
+- collaborative drag presence
+- Demo isolation
 
-## Out of Scope for Phase 3.3
+## Residual Risks
 
-- Google Map API integration
-- Map marker interaction
-- Transportation route calculation
-- Timeline Phase 4 end-of-day transportation creation
-- Automatic sorting, drag/drop ordering, or transportation insertion logic
+- Formal continuation currently uses guarded client-side row updates rather than a database transaction because Phase 4.4 explicitly required no migration. Failure handling performs best-effort reverse compensation, but an extreme network failure during both the forward update and compensation can still leave partial authoritative updates.
+- Concurrent changes are guarded by `updated_at`, fixed-state, and active-lock validation, but unrelated writers that do not participate in those contracts remain an external risk.
+- The existing native HTML drag accessibility limitations from Phase 4.2c remain outside Phase 4.4.
+- Legacy DB rows with only one time are treated safely as untimed in the UI but are not automatically written back. The next explicit save normalizes them to `null/null`.
+- Because applied RPC migrations 020/021 are immutable and their server manifest predates this Hotfix, a legacy start-only row can cause timed reorder to reject safely as stale until that row is explicitly normalized.
+- Hotfix 2 Formal persistence uses a guarded source-row update followed by one scoped transportation delete statement because no new RPC was approved. If deletion fails, it attempts to restore the original `sort_order` before authoritative reload; an extreme network or concurrent-write failure during both deletion and compensation can still leave a partial authoritative result.
+- Phase 4.6 Formal timed drag now uses a transactional RPC, but manual authenticated Formal UI verification is still recommended after deployment.
+- Fixed card drag remains intentionally deferred; Phase 4.6 rejects fixed timed manifests rather than applying fixed-anchor scheduling.
 
-## Next Steps
+## Next Step
 
-1. Merge `codex/app-layout-phase-3-workspace` into `main`.
-2. Push the verified merge to `origin/main`.
-3. Start the next project phase from the updated `main` baseline with a new handoff.
-
-Keep all remaining work small, targeted, and limited to Timeline CSS or small JSX presentation changes.
+Manual review Phase 4.6 timed drag in Demo and Formal. If accepted, proceed to Phase 4.7 fixed-anchor drag rules. Do not infer Phase 4.8 presence, Phase 4.9 map integration, transportation repair, or additional database changes.
