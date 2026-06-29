@@ -10,7 +10,7 @@
 - `docs/2026-06-24-phase-4-5-closeout-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
-- `docs/timeline-phase-4-drag-reorder-rules-draft-v5.md` (latest working draft)
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v11.md` (latest working draft)
 
 Archive rule:
 
@@ -21,19 +21,19 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.6 Timed Visit Drag Auto-Continuation - Implemented / Build and Full E2E QA Passed
+Timeline Phase 4.7 Fixed Anchor Drag Continuation Segments - Implemented Locally / Build and Full E2E QA Passed / Production Migration 024 Applied
 ```
 
 Next phase:
 
 ```text
-Timeline Phase 4.7 fixed-anchor drag rules, after Phase 4.6 final verification/manual review.
+Verify Formal fixed-anchor drag against production data after Supabase migration 024 application.
 ```
 
 Branch:
 
 ```text
-codex/timeline-phase-4-0-to-4-2
+codex/timeline-phase-4-7
 ```
 
 ## Completed Scope
@@ -159,6 +159,45 @@ New/updated files:
 - `tests/phase-1-7f-smoke.spec.js`
 - `docs/2026-06-29-phase-4-6-closeout-handoff.md`
 
+### Phase 4.7
+
+- Fixed anchors are now true segment boundaries for timed drag continuation.
+- A fixed anchor is only a complete timed visit with `is_fixed = true`.
+- Untimed, partial-time, and legacy fixed untimed visits do not act as anchors.
+- Fixed anchors themselves are not draggable and are not included in movable timed manifests.
+- Non-fixed complete timed visits can be dragged across fixed anchors.
+- A day is split into fixed-bounded recalculation segments.
+- Segment timing reuses Phase 4.6 duration-preserving rules: original package duration is preserved, same-direction adjacent source pairs preserve original total gap, and new/reversed adjacencies directly continue.
+- A segment with a left fixed anchor starts from that anchor's `end_time`.
+- A segment without a left fixed anchor keeps Phase 4.6's original first-slot start rule.
+- A segment with a right fixed anchor cannot pass that anchor's `start_time`.
+- If a segment overflows into the next fixed anchor, the first non-fitting timed visit and the rest of that segment become untimed while preserving post-drag mixed visual order.
+- If two fixed anchors have no available time space, the move is rejected with a friendly user-facing message.
+- Demo and Formal both use the same fixed-aware pure planner.
+- Formal timed drag now targets the new transactional RPC `reorder_itinerary_fixed_anchor_continuation`.
+- Formal RPC payload includes package move, fixed-aware time recalculation, overflow untimed conversion, existing untimed sort rebase, and transport cleanup in one transaction.
+- Existing `brokenTransportIds` confirmation remains the cleanup gate; cancelling the confirmation still avoids local state, DB, and transportation changes.
+- No transportation cards are automatically created.
+
+New migration file:
+
+```text
+supabase/migrations/024_reorder_itinerary_fixed_anchor_continuation.sql
+```
+
+Important: migration 024 was syntax-validated on Supabase with `BEGIN; ... ROLLBACK;`, then applied to production project `lqvuqamzmchepgxkftcw` as `20260629065754 / timeline_phase_4_7_fixed_anchor_continuation`. PostgREST schema cache reload was requested with `notify pgrst, 'reload schema';`.
+
+New/updated files:
+
+- `src/lib/destinationPackages.js`
+- `src/lib/timelineUntimedOrdering.js`
+- `src/App.jsx`
+- `supabase/migrations/024_reorder_itinerary_fixed_anchor_continuation.sql`
+- `tests/phase-4-2c-reorder.spec.js`
+- `tests/phase-4-5-untimed-ordering.spec.js`
+- `tests/phase-1-7f-smoke.spec.js`
+- `docs/2026-06-29-phase-4-7-closeout-handoff.md`
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -169,13 +208,20 @@ Applied immutable migrations:
 021 / 20260622131013 / fix_reorder_baseline_count
 022 / 20260629012151 / add_transport_role_to_itinerary_items
 023 / 20260629014908 / reorder_itinerary_timed_auto_continuation
+024 / 20260629065754 / timeline_phase_4_7_fixed_anchor_continuation
 project: lqvuqamzmchepgxkftcw
+```
+
+No pending production migration:
+
+```text
+none
 ```
 
 Important:
 
-- Never edit applied migrations 019, 020, 021, 022, or 023 in place.
-- Any future schema/RPC/permission correction must use migration 024+.
+- Never edit applied migrations 019, 020, 021, 022, 023, or 024 in place.
+- Any future schema/RPC/permission correction after Phase 4.7 must use migration 025+.
 - Phase 4.3, 4.4, 4.5, and the Phase 4.5 Hotfix required no migration.
 
 ## Phase 4.5 and Hotfix Changed Files
@@ -257,9 +303,31 @@ Phase 4.6 preserves the existing Phase 4.5b / 4.5c transportation and mixed-orde
 
 The Vite build still reports the existing large-chunk warning; it is not a Phase 4.6 regression.
 
+Phase 4.7 closeout checks on 2026-06-29:
+
+```text
+npm.cmd run build passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 16/16
+npx.cmd playwright test tests/phase-4-5-untimed-ordering.spec.js --grep-invert demo passed 12/12
+npx.cmd playwright test tests/phase-4-4-auto-continuation.spec.js passed 7/7
+npx.cmd playwright test tests/phase-4-3-transport-conflict.spec.js passed 7/7
+npx.cmd playwright test tests/phase-4-5-untimed-ordering.spec.js --grep demo passed 2/2
+npx.cmd playwright test tests/phase-1-7f-smoke.spec.js --grep "demo timed visit drag recalculates" passed 1/1
+npm.cmd run test:e2e passed 77/77
+git diff --check passed with Windows LF/CRLF notices only
+Supabase 024 SQL compile check passed with BEGIN/ROLLBACK on project lqvuqamzmchepgxkftcw
+Supabase 024 production migration applied as 20260629065754 / timeline_phase_4_7_fixed_anchor_continuation
+Supabase RPC signatures verified in app_private and public schemas
+PostgREST schema cache reload requested with notify pgrst, 'reload schema'
+```
+
+Phase 4.7 preserves Phase 4.6 no-fixed timed drag behavior, Phase 4.5 untimed mixed ordering, Phase 4.4 edit continuation, and Phase 4.3 transportation conflict behavior.
+
+The Vite build still reports the existing large-chunk warning; it is not a Phase 4.7 regression.
+
 ## Protected Scope Preserved
 
-Phase 4.6 did not redesign or extend:
+Phase 4.7 did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -271,7 +339,6 @@ Phase 4.6 did not redesign or extend:
 - transportation pair splitting or creation
 - Google Map API or route calculation
 - cross-day scheduling
-- fixed-anchor drag behavior
 - collaborative drag presence
 - Demo isolation
 
@@ -283,9 +350,9 @@ Phase 4.6 did not redesign or extend:
 - Legacy DB rows with only one time are treated safely as untimed in the UI but are not automatically written back. The next explicit save normalizes them to `null/null`.
 - Because applied RPC migrations 020/021 are immutable and their server manifest predates this Hotfix, a legacy start-only row can cause timed reorder to reject safely as stale until that row is explicitly normalized.
 - Hotfix 2 Formal persistence uses a guarded source-row update followed by one scoped transportation delete statement because no new RPC was approved. If deletion fails, it attempts to restore the original `sort_order` before authoritative reload; an extreme network or concurrent-write failure during both deletion and compensation can still leave a partial authoritative result.
-- Phase 4.6 Formal timed drag now uses a transactional RPC, but manual authenticated Formal UI verification is still recommended after deployment.
-- Fixed card drag remains intentionally deferred; Phase 4.6 rejects fixed timed manifests rather than applying fixed-anchor scheduling.
+- Phase 4.7 Formal timed drag now has its transactional RPC applied in production, but it has not been exercised against real production trip data in this session.
+- Manual authenticated Formal UI verification is still recommended after applying migration 024.
 
 ## Next Step
 
-Manual review Phase 4.6 timed drag in Demo and Formal. If accepted, proceed to Phase 4.7 fixed-anchor drag rules. Do not infer Phase 4.8 presence, Phase 4.9 map integration, transportation repair, or additional database changes.
+Verify Formal fixed-anchor drag on a test trip before pushing/deploying. Do not infer Phase 4.8 presence, Phase 4.9 map integration, transportation repair, or additional database changes.

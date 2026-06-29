@@ -1,4 +1,7 @@
-import { isTimedVisit } from "./timelineUntimedOrdering.js";
+import {
+  isTimedVisit,
+  planUntimedSortOrdersForVisualOrder,
+} from "./timelineUntimedOrdering.js";
 
 export const destinationPackageFields = [
   "type",
@@ -75,18 +78,182 @@ function minutesToTime(totalMinutes) {
   return `${hours}:${minutes}`;
 }
 
-export function planTimedDragAutoContinuation({ items = [], packageSourceItemIds, slotItemIds }) {
+function isFixedAnchor(item) {
+  return Boolean(item?.is_fixed) && isTimedVisit(item);
+}
+
+export function planTimedDragAutoContinuation({
+  items = [],
+  orderedTimedItemIds = null,
+  orderedVisitItemIds = null,
+  packageSourceItemIds,
+  slotItemIds,
+}) {
   if (!validPermutation(slotItemIds, packageSourceItemIds)) {
     return { ok: false, errorCode: "invalid_manifest", updatesBySlotId: {} };
   }
 
+  const itemById = new Map(items.map((item) => [item.id, item]));
   const slotItems = slotItemIds.map((itemId) => items.find((item) => item.id === itemId));
   const sourceItems = packageSourceItemIds.map((itemId) => items.find((item) => item.id === itemId));
   if (slotItems.some((item) => !isTimedVisit(item)) || sourceItems.some((item) => !isTimedVisit(item))) {
     return { ok: false, errorCode: "timed_visit_required", updatesBySlotId: {} };
   }
+  if (slotItems.some(isFixedAnchor) || sourceItems.some(isFixedAnchor)) {
+    return { ok: false, errorCode: "fixed_item", updatesBySlotId: {} };
+  }
 
-  const originalIndexBySourceId = new Map(slotItemIds.map((itemId, index) => [itemId, index]));
+  const authoritativeTimedIds = [...items]
+    .filter((item) => slotItems.some((slot) => slot.trip_id === item.trip_id && Number(slot.day_index) === Number(item.day_index)) && isTimedVisit(item))
+    .sort((a, b) => {
+      const timeSort = String(a.start_time).localeCompare(String(b.start_time));
+      const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
+      return timeSort || orderSort || String(a.id).localeCompare(String(b.id));
+    })
+    .map((item) => item.id);
+  const nextTimedIds = Array.isArray(orderedTimedItemIds) ? orderedTimedItemIds : packageSourceItemIds;
+  const fixedIds = authoritativeTimedIds.filter((itemId) => isFixedAnchor(itemById.get(itemId)));
+  const nonFixedTimedIds = authoritativeTimedIds.filter((itemId) => !isFixedAnchor(itemById.get(itemId)));
+
+  if (!isSamePackageOrder(nonFixedTimedIds, slotItemIds)) {
+    return { ok: false, errorCode: "stale_manifest", updatesBySlotId: {} };
+  }
+  if (
+    nextTimedIds.length !== authoritativeTimedIds.length ||
+    new Set(nextTimedIds).size !== nextTimedIds.length ||
+    !authoritativeTimedIds.every((itemId) => nextTimedIds.includes(itemId)) ||
+    nextTimedIds.some((itemId) => {
+      const item = itemById.get(itemId);
+      return !item || !isTimedVisit(item);
+    })
+  ) {
+    return { ok: false, errorCode: "invalid_manifest", updatesBySlotId: {} };
+  }
+  if (!isSamePackageOrder(nextTimedIds.filter((itemId) => !fixedIds.includes(itemId)), packageSourceItemIds)) {
+    return { ok: false, errorCode: "invalid_manifest", updatesBySlotId: {} };
+  }
+
+  const originalIndexBySourceId = new Map(authoritativeTimedIds.map((itemId, index) => [itemId, index]));
+  if (fixedIds.length) {
+    const slotBySourceId = new Map(packageSourceItemIds.map((sourceId, index) => [sourceId, slotItemIds[index]]));
+    const updatesBySlotId = {};
+    const convertedSlotIds = [];
+    const convertedSourceIds = new Set();
+    let segment = [];
+    let leftFixed = null;
+
+    const flushSegment = (rightFixed) => {
+      if (!segment.length) return { ok: true };
+      if (leftFixed && rightFixed) {
+        const leftEnd = timeToMinutes(leftFixed.end_time);
+        const rightStart = timeToMinutes(rightFixed.start_time);
+        if (leftEnd === null || rightStart === null || rightStart <= leftEnd) {
+          return { ok: false, errorCode: "fixed_segment_no_space" };
+        }
+      }
+
+      let nextStart = leftFixed ? timeToMinutes(leftFixed.end_time) : timeToMinutes(itemById.get(slotBySourceId.get(segment[0]))?.start_time);
+      if (nextStart === null) return { ok: false, errorCode: "invalid_time" };
+      const rightStart = rightFixed ? timeToMinutes(rightFixed.start_time) : null;
+      let previousSource = null;
+
+      for (let index = 0; index < segment.length; index += 1) {
+        const sourceId = segment[index];
+        const slotId = slotBySourceId.get(sourceId);
+        const source = itemById.get(sourceId);
+        const slot = itemById.get(slotId);
+        const sourceStart = timeToMinutes(source?.start_time);
+        const sourceEnd = timeToMinutes(source?.end_time);
+        if (!slot || sourceStart === null || sourceEnd === null || sourceEnd <= sourceStart) {
+          return { ok: false, errorCode: "invalid_time" };
+        }
+
+        if (previousSource) {
+          const previousOriginalIndex = originalIndexBySourceId.get(previousSource.id);
+          const currentOriginalIndex = originalIndexBySourceId.get(source.id);
+          if (currentOriginalIndex === previousOriginalIndex + 1) {
+            const previousOriginalEnd = timeToMinutes(previousSource.end_time);
+            const originalGap = sourceStart - previousOriginalEnd;
+            if (previousOriginalEnd === null || originalGap < 0) {
+              return { ok: false, errorCode: "invalid_gap" };
+            }
+            nextStart += originalGap;
+          }
+        }
+
+        const duration = sourceEnd - sourceStart;
+        const nextEnd = nextStart + duration;
+        if (rightStart !== null && nextEnd > rightStart) {
+          for (const overflowingSourceId of segment.slice(index)) {
+            const overflowingSlotId = slotBySourceId.get(overflowingSourceId);
+            convertedSlotIds.push(overflowingSlotId);
+            convertedSourceIds.add(overflowingSourceId);
+            updatesBySlotId[overflowingSlotId] = {
+              end_time: null,
+              original_end_time: itemById.get(overflowingSlotId)?.end_time,
+              original_start_time: itemById.get(overflowingSlotId)?.start_time,
+              source_item_id: overflowingSourceId,
+              start_time: null,
+            };
+          }
+          return { ok: true };
+        }
+
+        const nextStartTime = minutesToTime(nextStart);
+        const nextEndTime = minutesToTime(nextEnd);
+        if (!nextStartTime || !nextEndTime) {
+          return { ok: false, errorCode: "invalid_time" };
+        }
+        updatesBySlotId[slotId] = {
+          end_time: nextEndTime,
+          original_end_time: slot.end_time,
+          original_start_time: slot.start_time,
+          source_item_id: source.id,
+          start_time: nextStartTime,
+        };
+        nextStart = nextEnd;
+        previousSource = source;
+      }
+      return { ok: true };
+    };
+
+    for (const itemId of nextTimedIds) {
+      const item = itemById.get(itemId);
+      if (isFixedAnchor(item)) {
+        const result = flushSegment(item);
+        if (!result.ok) return { ...result, updatesBySlotId: {} };
+        leftFixed = item;
+        segment = [];
+      } else {
+        segment.push(itemId);
+      }
+    }
+    const finalSegmentResult = flushSegment(null);
+    if (!finalSegmentResult.ok) return { ...finalSegmentResult, updatesBySlotId: {} };
+
+    if (convertedSlotIds.length) {
+      const finalVisitIds = Array.isArray(orderedVisitItemIds) ? orderedVisitItemIds : nextTimedIds;
+      const finalSlotBySourceId = new Map(packageSourceItemIds.map((sourceId, index) => [sourceId, slotItemIds[index]]));
+      const projectedVisitIds = finalVisitIds.map((itemId) => finalSlotBySourceId.get(itemId) || itemId);
+      const sortPlan = planUntimedSortOrdersForVisualOrder({
+        items,
+        nextVisitIds: projectedVisitIds,
+        replacements: convertedSlotIds.map((slotId) => ({ id: slotId, end_time: null, start_time: null })),
+      });
+      if (!sortPlan.ok) return { ok: false, errorCode: sortPlan.errorCode, updatesBySlotId: {} };
+      for (const slotId of convertedSlotIds) {
+        updatesBySlotId[slotId] = {
+          ...updatesBySlotId[slotId],
+          original_sort_order: itemById.get(slotId)?.sort_order,
+          sort_order: sortPlan.sortOrders[slotId],
+        };
+      }
+    }
+
+    return { ok: true, convertedSlotIds, convertedSourceIds: [...convertedSourceIds], updatesBySlotId };
+  }
+
+  const originalIndexBySourceIdLegacy = new Map(slotItemIds.map((itemId, index) => [itemId, index]));
   const firstOriginalStart = timeToMinutes(slotItems[0].start_time);
   if (firstOriginalStart === null) return { ok: false, errorCode: "invalid_time", updatesBySlotId: {} };
 
@@ -102,8 +269,8 @@ export function planTimedDragAutoContinuation({ items = [], packageSourceItemIds
     }
 
     if (previousSource) {
-      const previousOriginalIndex = originalIndexBySourceId.get(previousSource.id);
-      const currentOriginalIndex = originalIndexBySourceId.get(source.id);
+      const previousOriginalIndex = originalIndexBySourceIdLegacy.get(previousSource.id);
+      const currentOriginalIndex = originalIndexBySourceIdLegacy.get(source.id);
       if (currentOriginalIndex === previousOriginalIndex + 1) {
         const previousOriginalEnd = timeToMinutes(previousSource.end_time);
         const originalGap = sourceStart - previousOriginalEnd;
@@ -150,6 +317,8 @@ export function planDestinationPackageReorder({
   alternatives = [],
   itineraryBudgetLinks = [],
   items = [],
+  orderedTimedItemIds = null,
+  orderedVisitItemIds = null,
   packageSourceItemIds,
   slotItemIds,
   timedAutoContinuation = false,
@@ -169,19 +338,20 @@ export function planDestinationPackageReorder({
         item.trip_id !== tripId ||
         item.day_index !== dayIndex ||
         item.item_type === "transport" ||
-        !isTimedVisit(item),
+        !isTimedVisit(item) ||
+        isFixedAnchor(item),
     )
   ) {
     return { ok: false, errorCode: "timed_visit_required" };
   }
-  if (slotItems.some((item) => item.is_fixed)) return { ok: false, errorCode: "fixed_item" };
 
   const authoritativeSlotIds = items
     .filter(
       (item) =>
         item.trip_id === tripId &&
         item.day_index === dayIndex &&
-        isTimedVisit(item),
+        isTimedVisit(item) &&
+        !isFixedAnchor(item),
     )
     .sort((a, b) => {
       const timeSort = String(a.start_time).localeCompare(String(b.start_time));
@@ -194,7 +364,7 @@ export function planDestinationPackageReorder({
   }
 
   const timingPlan = timedAutoContinuation
-    ? planTimedDragAutoContinuation({ items, packageSourceItemIds, slotItemIds })
+    ? planTimedDragAutoContinuation({ items, orderedTimedItemIds, orderedVisitItemIds, packageSourceItemIds, slotItemIds })
     : { ok: true, updatesBySlotId: {} };
   if (!timingPlan.ok) return { ok: false, errorCode: timingPlan.errorCode };
 
@@ -211,6 +381,9 @@ export function planDestinationPackageReorder({
           ? {
               end_time: timingPlan.updatesBySlotId[slotId].end_time,
               start_time: timingPlan.updatesBySlotId[slotId].start_time,
+              ...(Number.isInteger(timingPlan.updatesBySlotId[slotId].sort_order)
+                ? { sort_order: timingPlan.updatesBySlotId[slotId].sort_order }
+                : {}),
             }
           : {}),
         updated_at: updatedAt,
@@ -221,21 +394,45 @@ export function planDestinationPackageReorder({
   const transportItems = items.filter(
     (item) => item.trip_id === tripId && item.day_index === dayIndex && item.item_type === "transport",
   );
+  const slotBySourceId = new Map(packageSourceItemIds.map((sourceId, index) => [sourceId, slotItemIds[index]]));
+  const convertedSourceIds = new Set(timingPlan.convertedSourceIds || []);
+  const finalVisitSourceIds = Array.isArray(orderedVisitItemIds) ? orderedVisitItemIds : packageSourceItemIds;
+  const finalTimedSourceIds = (Array.isArray(orderedTimedItemIds) ? orderedTimedItemIds : packageSourceItemIds).filter(
+    (itemId) => !convertedSourceIds.has(itemId),
+  );
+  const finalVisitIndexBySourceId = new Map(finalVisitSourceIds.map((itemId, index) => [itemId, index]));
+  const finalTimedIndexBySourceId = new Map(finalTimedSourceIds.map((itemId, index) => [itemId, index]));
+  const finalIdForSourceId = (sourceId) => slotBySourceId.get(sourceId) || sourceId;
+  const isFinalTimedSource = (sourceId) => {
+    const mappedId = finalIdForSourceId(sourceId);
+    const item = nextItemsById.get(mappedId) || items.find((candidate) => candidate.id === mappedId);
+    return isTimedVisit(item);
+  };
   const preservedTransportItems = [];
   const deletedTransportIds = [];
   const finalTransportPairKeys = new Set();
   for (const transportItem of transportItems) {
-    const fromIndex = newIndexBySourceId.get(transportItem.from_item_id);
-    const toIndex = newIndexBySourceId.get(transportItem.to_item_id);
+    const fromIndex = finalVisitIndexBySourceId.get(transportItem.from_item_id);
+    const toIndex = finalVisitIndexBySourceId.get(transportItem.to_item_id);
     const isTail = Boolean(transportItem.from_item_id) && !transportItem.to_item_id;
-    const preserveNormal = Number.isInteger(fromIndex) && Number.isInteger(toIndex) && toIndex === fromIndex + 1;
-    const preserveTail = isTail && Number.isInteger(fromIndex) && fromIndex === packageSourceItemIds.length - 1;
+    const preserveNormal =
+      Number.isInteger(fromIndex) &&
+      Number.isInteger(toIndex) &&
+      toIndex === fromIndex + 1 &&
+      isFinalTimedSource(transportItem.from_item_id) &&
+      isFinalTimedSource(transportItem.to_item_id);
+    const fromTimedIndex = finalTimedIndexBySourceId.get(transportItem.from_item_id);
+    const preserveTail =
+      isTail &&
+      Number.isInteger(fromTimedIndex) &&
+      fromTimedIndex === finalTimedSourceIds.length - 1 &&
+      isFinalTimedSource(transportItem.from_item_id);
     if (!preserveNormal && !preserveTail) {
       deletedTransportIds.push(transportItem.id);
       continue;
     }
-    const nextFromId = newSlotBySourceId.get(transportItem.from_item_id);
-    const nextToId = preserveTail ? null : newSlotBySourceId.get(transportItem.to_item_id);
+    const nextFromId = finalIdForSourceId(transportItem.from_item_id);
+    const nextToId = preserveTail ? null : finalIdForSourceId(transportItem.to_item_id);
     const pairKey = `${nextFromId || ""}->${nextToId || ""}`;
     if (finalTransportPairKeys.has(pairKey)) return { ok: false, errorCode: "transport_state_changed" };
     finalTransportPairKeys.add(pairKey);

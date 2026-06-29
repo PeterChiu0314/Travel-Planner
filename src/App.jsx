@@ -575,6 +575,7 @@ function suggestedStartTimeForUntimedAfterTailTransport(items, targetItem) {
 
 function destinationReorderErrorMessage(error) {
   const message = String(error?.message || "");
+  if (message.includes("fixed_segment_no_space")) return "此區段沒有可插入的時間空間，請先調整固定行程，或改放到其他位置。";
   if (message.includes("permission_denied")) return "你沒有重排行程的權限。";
   if (message.includes("invalid_day") || message.includes("different_trip_or_day")) return "只能重排同一天的有時間行程。";
   if (message.includes("invalid_manifest") || message.includes("duplicate_item") || message.includes("manifest_not_permutation")) {
@@ -3419,6 +3420,8 @@ export default function App() {
 
   async function reorderDestinationPackages({
     dayIndex,
+    orderedTimedItemIds = null,
+    orderedVisitItemIds = null,
     packageSourceItemIds,
     slotItemIds,
     timedAutoContinuation = false,
@@ -3433,17 +3436,13 @@ export default function App() {
         (item) => item.day_index === dayIndex && isTimedVisit(item),
       ),
     );
-    if (!isSamePackageOrder(timedVisits.map((item) => item.id), slotItemIds)) {
+    const movableTimedVisitIds = timedVisits.filter((item) => !isEffectiveFixedVisit(item)).map((item) => item.id);
+    if (!isSamePackageOrder(movableTimedVisitIds, slotItemIds)) {
       const errorMessage = "行程順序已變更，請重新整理後再試。";
       setNotice(errorMessage);
       return { ok: false, errorMessage };
     }
-    if (timedVisits.some((item) => item.is_fixed)) {
-      const errorMessage = "當天包含固定行程，無法進行插入式重排。";
-      setNotice(errorMessage);
-      return { ok: false, errorMessage };
-    }
-    if (timedVisits.some((item) => isLockedByAnotherUser(item, session?.user?.id))) {
+    if (timedVisits.some((item) => !isEffectiveFixedVisit(item) && isLockedByAnotherUser(item, session?.user?.id))) {
       const errorMessage = "當天其中一個行程目前正由其他成員編輯。";
       setNotice(errorMessage);
       return { ok: false, errorMessage };
@@ -3490,7 +3489,10 @@ export default function App() {
       return { ok: false, errorMessage };
     }
 
-    const untimedUpdateResult = await applyItineraryTimeContinuation(untimedSortOrderUpdates);
+    const shouldApplyUntimedBeforeRpc = !timedAutoContinuation;
+    const untimedUpdateResult = shouldApplyUntimedBeforeRpc
+      ? await applyItineraryTimeContinuation(untimedSortOrderUpdates)
+      : { ok: true, applied: [] };
     if (!untimedUpdateResult.ok) {
       const errorMessage = untimedUpdateResult.error?.message || "untimed_sort_order_update_failed";
       setNotice(errorMessage);
@@ -3522,21 +3524,29 @@ export default function App() {
     const baselineRows = items.filter(
       (item) =>
         item.day_index === dayIndex &&
-        (isTransportationCard(item) || isTimedVisit(item)),
+        (isTransportationCard(item) ||
+          isTimedVisit(item) ||
+          untimedSortOrderUpdates.some((update) => update.id === item.id)),
     );
     const itemUpdatedAtBaselines = Object.fromEntries(
       baselineRows.map((item) => [item.id, item.updated_at]),
     );
     const reorderRpc = timedAutoContinuation
-      ? "reorder_itinerary_timed_auto_continuation"
+      ? "reorder_itinerary_fixed_anchor_continuation"
       : "reorder_itinerary_destination_packages";
-    const { data, error } = await supabase.rpc(reorderRpc, {
+    const reorderArgs = {
       target_trip_id: activeTrip.id,
       target_day_index: dayIndex,
       slot_item_ids: slotItemIds,
       package_source_item_ids: packageSourceItemIds,
       item_updated_at_baselines: itemUpdatedAtBaselines,
-    });
+    };
+    if (timedAutoContinuation) {
+      reorderArgs.ordered_timed_item_ids = orderedTimedItemIds;
+      reorderArgs.ordered_visit_item_ids = orderedVisitItemIds;
+      reorderArgs.untimed_sort_order_updates = untimedSortOrderUpdates;
+    }
+    const { data, error } = await supabase.rpc(reorderRpc, reorderArgs);
     if (error) {
       const rollback = await rollbackItineraryTimeContinuation(untimedUpdateResult.applied);
       const errorMessage = destinationReorderErrorMessage(error);
@@ -3544,7 +3554,7 @@ export default function App() {
       if (/stale_|transport_state_changed/.test(error.message || "")) await loadTripData(activeTrip.id);
       return { ok: false, error, errorMessage, rollbackFailed: !rollback.ok };
     }
-    if (explicitTransportIds.length) {
+    if (!timedAutoContinuation && explicitTransportIds.length) {
       const deleteResult = await supabase
         .from("itinerary_items")
         .delete()
@@ -6055,6 +6065,8 @@ function DemoApp({ initialSection }) {
 
   function reorderTimelineDestinationPackages({
     dayIndex,
+    orderedTimedItemIds = null,
+    orderedVisitItemIds = null,
     packageSourceItemIds,
     slotItemIds,
     timedAutoContinuation = false,
@@ -6071,6 +6083,8 @@ function DemoApp({ initialSection }) {
           items: timelineItems,
           alternatives: timelineAlternatives,
           itineraryBudgetLinks,
+          orderedTimedItemIds,
+          orderedVisitItemIds,
           slotItemIds,
           packageSourceItemIds,
           timedAutoContinuation,
@@ -8046,8 +8060,6 @@ function ItineraryTimeline({
       canEdit &&
       !hasBlockingTimelineEditor &&
       !isReorderingDestination &&
-      !timedVisitItems.some((visit) => visit.is_fixed) &&
-      !timedVisitItems.some((visit) => useEditLocks && isLockedByAnotherUser(visit, currentUserId)) &&
       isTimedVisit(item) &&
       !isEffectiveFixedVisit(item) &&
       !(useEditLocks && isLockedByAnotherUser(item, currentUserId))
@@ -8182,6 +8194,8 @@ function ItineraryTimeline({
     const { brokenTransportIds = [], packageSourceItemIds, slotItemIds, untimedSortOrderUpdates } = mixedPlan;
     const previewPlan = planDestinationPackageReorder({
       items: dayItems,
+      orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
+      orderedVisitItemIds: mixedPlan.orderedVisitItemIds,
       slotItemIds,
       packageSourceItemIds,
       timedAutoContinuation: true,
@@ -8202,6 +8216,8 @@ function ItineraryTimeline({
     const timedReorder = {
       dayIndex: activeDay,
       kind: "timed",
+      orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
+      orderedVisitItemIds: mixedPlan.orderedVisitItemIds,
       packageSourceItemIds,
       slotItemIds,
       timedAutoContinuation: true,

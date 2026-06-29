@@ -13,6 +13,10 @@ const timedAutoContinuationMigration = readFileSync(
   "supabase/migrations/023_reorder_itinerary_timed_auto_continuation.sql",
   "utf8",
 );
+const fixedAnchorContinuationMigration = readFileSync(
+  "supabase/migrations/024_reorder_itinerary_fixed_anchor_continuation.sql",
+  "utf8",
+);
 const appSource = readFileSync("src/App.jsx", "utf8");
 
 function visit(id, title, startTime, sortOrder, extra = {}) {
@@ -212,6 +216,88 @@ test("Phase 4.6 rejects partial-time rows before duration-based continuation", (
   ).toMatchObject({ errorCode: "timed_visit_required", ok: false });
 });
 
+test("Phase 4.7 fixed anchors split timed drag into continuation segments", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "09:30" }),
+    visit("fixed-1", "F1", "10:00", 20, { end_time: "10:15", is_fixed: true }),
+    visit("slot-b", "B", "10:30", 30, { end_time: "11:00" }),
+    visit("slot-c", "C", "11:15", 40, { end_time: "12:00" }),
+    visit("fixed-2", "F2", "13:00", 50, { end_time: "13:15", is_fixed: true }),
+    visit("slot-d", "D", "14:00", 60, { end_time: "14:20" }),
+  ];
+  const slots = ["slot-a", "slot-b", "slot-c", "slot-d"];
+  const sources = ["slot-a", "slot-d", "slot-b", "slot-c"];
+  const plan = planDestinationPackageReorder({
+    items,
+    orderedTimedItemIds: ["slot-a", "fixed-1", "slot-d", "slot-b", "slot-c", "fixed-2"],
+    orderedVisitItemIds: ["slot-a", "fixed-1", "slot-d", "slot-b", "slot-c", "fixed-2"],
+    slotItemIds: slots,
+    packageSourceItemIds: sources,
+    timedAutoContinuation: true,
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(slots.map((slotId) => {
+    const item = plan.items.find((candidate) => candidate.id === slotId);
+    return [item.title, item.start_time, item.end_time];
+  })).toEqual([
+    ["A", "09:00", "09:30"],
+    ["D", "10:15", "10:35"],
+    ["B", "10:35", "11:05"],
+    ["C", "11:20", "12:05"],
+  ]);
+  expect(plan.items.find((item) => item.id === "fixed-1")).toMatchObject({ start_time: "10:00", end_time: "10:15", title: "F1" });
+  expect(plan.items.find((item) => item.id === "fixed-2")).toMatchObject({ start_time: "13:00", end_time: "13:15", title: "F2" });
+});
+
+test("Phase 4.7 overflow converts the first non-fitting visit and the segment tail to untimed", () => {
+  const items = [
+    visit("fixed-1", "F1", "10:00", 10, { end_time: "10:15", is_fixed: true }),
+    visit("slot-b", "B", "10:30", 20, { end_time: "11:00" }),
+    visit("slot-c", "C", "11:15", 30, { end_time: "12:00" }),
+    visit("fixed-2", "F2", "11:10", 40, { end_time: "12:30", is_fixed: true }),
+    visit("slot-d", "D", "14:00", 50, { end_time: "14:20" }),
+  ];
+  const plan = planDestinationPackageReorder({
+    items,
+    orderedTimedItemIds: ["fixed-1", "slot-d", "slot-b", "slot-c", "fixed-2"],
+    orderedVisitItemIds: ["fixed-1", "slot-d", "slot-b", "slot-c", "fixed-2"],
+    slotItemIds: ["slot-b", "slot-c", "slot-d"],
+    packageSourceItemIds: ["slot-d", "slot-b", "slot-c"],
+    timedAutoContinuation: true,
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(["slot-b", "slot-c", "slot-d"].map((slotId) => {
+    const item = plan.items.find((candidate) => candidate.id === slotId);
+    return [item.title, item.start_time, item.end_time];
+  })).toEqual([
+    ["D", "10:15", "10:35"],
+    ["B", "10:35", "11:05"],
+    ["C", null, null],
+  ]);
+  expect(Number.isInteger(plan.items.find((item) => item.id === "slot-d").sort_order)).toBe(true);
+  expect(plan.timedAutoContinuationUpdates["slot-d"]).toMatchObject({ start_time: null, end_time: null, source_item_id: "slot-c" });
+});
+
+test("Phase 4.7 rejects inserting timed visits between fixed anchors with no space", () => {
+  const items = [
+    visit("fixed-1", "F1", "10:00", 10, { end_time: "10:15", is_fixed: true }),
+    visit("fixed-2", "F2", "10:15", 20, { end_time: "10:30", is_fixed: true }),
+    visit("slot-a", "A", "11:00", 30, { end_time: "11:30" }),
+  ];
+  expect(
+    planDestinationPackageReorder({
+      items,
+      orderedTimedItemIds: ["fixed-1", "slot-a", "fixed-2"],
+      orderedVisitItemIds: ["fixed-1", "slot-a", "fixed-2"],
+      slotItemIds: ["slot-a"],
+      packageSourceItemIds: ["slot-a"],
+      timedAutoContinuation: true,
+    }),
+  ).toMatchObject({ ok: false, errorCode: "fixed_segment_no_space" });
+});
+
 test("reorder preserves only original directed adjacent transports and remaps anchors", () => {
   const data = fixture();
   const slots = data.visits.map((item) => item.id);
@@ -276,7 +362,7 @@ test("tail is deleted when its original package is no longer last and no replace
   });
 });
 
-test("planner rejects incomplete manifests and any fixed timed visit", () => {
+test("planner rejects incomplete manifests and fixed timed slots", () => {
   const data = fixture();
   expect(
     planDestinationPackageReorder({
@@ -290,10 +376,10 @@ test("planner rejects incomplete manifests and any fixed timed visit", () => {
   expect(
     planDestinationPackageReorder({
       items: fixedItems,
-      slotItemIds: data.visits.map((item) => item.id),
-      packageSourceItemIds: ["slot-b", "slot-c", "slot-a", "slot-d"],
+      slotItemIds: ["slot-a", "slot-c", "slot-d"],
+      packageSourceItemIds: ["slot-c", "slot-a", "slot-d"],
     }),
-  ).toMatchObject({ ok: false, errorCode: "fixed_item" });
+  ).toMatchObject({ ok: false, errorCode: "timed_visit_required" });
 });
 
 test("020 RPC is transactional, manifest-based, collision-safe, and least-privilege", () => {
@@ -338,6 +424,20 @@ test("023 RPC performs Phase 4.6 timed auto-continuation transactionally", () =>
   expect(timedAutoContinuationMigration).toContain("source_position = previous_source_position + 1");
   expect(timedAutoContinuationMigration).toContain("start_time = time '00:00' + make_interval(mins => next_start_minutes)");
   expect(timedAutoContinuationMigration).toContain("grant execute on function public.reorder_itinerary_timed_auto_continuation");
-  expect(appSource).toContain("reorder_itinerary_timed_auto_continuation");
   expect(appSource).toContain("timedAutoContinuation: true");
+});
+
+test("024 RPC performs Phase 4.7 fixed-anchor continuation transactionally", () => {
+  expect(fixedAnchorContinuationMigration).toContain("app_private.reorder_itinerary_fixed_anchor_continuation");
+  expect(fixedAnchorContinuationMigration).toContain("public.reorder_itinerary_fixed_anchor_continuation");
+  expect(fixedAnchorContinuationMigration).toContain("ordered_timed_item_ids");
+  expect(fixedAnchorContinuationMigration).toContain("untimed_sort_order_updates");
+  expect(fixedAnchorContinuationMigration).toContain("fixed_segment_no_space");
+  expect(fixedAnchorContinuationMigration).toContain("converted_slot_ids");
+  expect(fixedAnchorContinuationMigration).toContain("start_time = null");
+  expect(fixedAnchorContinuationMigration).toContain("grant execute on function public.reorder_itinerary_fixed_anchor_continuation");
+  expect(appSource).toContain("reorder_itinerary_fixed_anchor_continuation");
+  expect(appSource).toContain("orderedTimedItemIds");
+  expect(appSource).toContain("orderedVisitItemIds");
+  expect(appSource).toContain("reorderArgs.untimed_sort_order_updates");
 });

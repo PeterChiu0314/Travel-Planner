@@ -188,6 +188,38 @@ test("timed drag treats fixed untimed legacy data as movable untimed", () => {
   ]);
 });
 
+test("timed drag can cross fixed timed anchors but cannot drag the anchor itself", () => {
+  const items = [
+    visit("a", "09:00", 10),
+    visit("fixed", "10:00", 20, { is_fixed: true }),
+    visit("b", "11:00", 30),
+    visit("c", "12:00", 40),
+  ];
+
+  expect(
+    planMixedTimedVisitReorder({
+      items,
+      placement: "after",
+      sourceItemId: "c",
+      targetItemId: "fixed",
+    }),
+  ).toMatchObject({
+    ok: true,
+    orderedTimedItemIds: ["a", "fixed", "c", "b"],
+    packageSourceItemIds: ["a", "c", "b"],
+    slotItemIds: ["a", "b", "c"],
+  });
+
+  expect(
+    planMixedTimedVisitReorder({
+      items,
+      placement: "after",
+      sourceItemId: "fixed",
+      targetItemId: "a",
+    }),
+  ).toMatchObject({ errorCode: "fixed_item", ok: false });
+});
+
 test("timed drag derives broken transports from before and after mixed visual order", () => {
   const items = [
     visit("a", "01:10", 10),

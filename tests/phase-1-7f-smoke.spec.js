@@ -202,7 +202,9 @@ test("demo timed visit drag recalculates times while preserving package duration
   await expect(page.locator(".transport-warning-stack")).toHaveCount(0);
 
   await airportCard.getByTitle("鎖定").click();
-  await expect(page.locator('.timeline-item[data-timing="timed"][draggable="true"]')).toHaveCount(0);
+  await expect(airportCard).toHaveAttribute("draggable", "false");
+  await expect(parkingCard).toHaveAttribute("draggable", "true");
+  await expect(lunchCard).toHaveAttribute("draggable", "true");
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });

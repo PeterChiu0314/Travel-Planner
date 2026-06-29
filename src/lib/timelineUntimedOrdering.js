@@ -128,6 +128,46 @@ export function planTimelineTimingChangeSortOrders({ items = [], replacements = 
   return { ok: true, sortOrders };
 }
 
+export function planUntimedSortOrdersForVisualOrder({ items = [], nextVisitIds = [], replacements = [] }) {
+  const replacementById = new Map(replacements.map((replacement) => [replacement.id, replacement]));
+  const visits = items.filter((item) => !isTransportationCard(item));
+  const visitById = new Map(visits.map((item) => [item.id, item]));
+  if (
+    new Set(nextVisitIds).size !== nextVisitIds.length ||
+    nextVisitIds.length !== visits.length ||
+    nextVisitIds.some((itemId) => !visitById.has(itemId))
+  ) {
+    return { errorCode: "invalid_timing_change", ok: false, sortOrders: {} };
+  }
+
+  const finalItem = (item) => ({ ...item, ...(replacementById.get(item.id) || {}) });
+  const untimedBySlot = new Map();
+  let timedBefore = 0;
+  for (const itemId of nextVisitIds) {
+    const item = visitById.get(itemId);
+    if (isTimedVisit(finalItem(item))) {
+      timedBefore += 1;
+      continue;
+    }
+    const entries = untimedBySlot.get(timedBefore) || [];
+    entries.push(item);
+    untimedBySlot.set(timedBefore, entries);
+  }
+
+  const sortOrders = {};
+  for (const [slot, entries] of untimedBySlot.entries()) {
+    const rankStep = Math.floor(untimedSortStride / (entries.length + 1));
+    if (rankStep <= 0) return { errorCode: "order_space_exhausted", ok: false, sortOrders: {} };
+    for (let index = 0; index < entries.length; index += 1) {
+      const sortOrder = encodeUntimedSortOrder(slot, rankStep * (index + 1));
+      if (sortOrder === null) return { errorCode: "order_space_exhausted", ok: false, sortOrders: {} };
+      sortOrders[entries[index].id] = sortOrder;
+    }
+  }
+
+  return { ok: true, sortOrders };
+}
+
 export function planUntimedConversionSortOrders({ items = [], sourceItemIds = [] }) {
   const sourceIds = new Set(sourceItemIds);
   const currentVisits = buildTimelineVisitDisplayOrder(items);
@@ -231,8 +271,9 @@ export function planMixedTimedVisitReorder({ items = [], placement = "after", so
 
   const currentVisitIds = currentVisits.map((item) => item.id);
   const nextVisitIds = nextVisits.map((item) => item.id);
-  const slotItemIds = currentVisits.filter(isTimedVisit).map((item) => item.id);
-  const packageSourceItemIds = nextVisits.filter(isTimedVisit).map((item) => item.id);
+  const isMovableTimedVisit = (item) => isTimedVisit(item) && !item.is_fixed;
+  const slotItemIds = currentVisits.filter(isMovableTimedVisit).map((item) => item.id);
+  const packageSourceItemIds = nextVisits.filter(isMovableTimedVisit).map((item) => item.id);
   const untimedBySlot = new Map();
   nextVisits.filter(isUntimedVisit).forEach((item) => {
     const itemIndex = nextVisits.findIndex((candidate) => candidate.id === item.id);
@@ -264,6 +305,8 @@ export function planMixedTimedVisitReorder({ items = [], placement = "after", so
     noOp: sameOrder(currentVisitIds, nextVisitIds),
     brokenTransportIds: brokenTransportationPairIds(items, currentVisits, nextVisits),
     ok: true,
+    orderedTimedItemIds: nextVisits.filter(isTimedVisit).map((item) => item.id),
+    orderedVisitItemIds: nextVisitIds,
     packageSourceItemIds,
     slotItemIds,
     sourceItemId: source.id,
