@@ -160,7 +160,7 @@ test("timed drag below an untimed target can move only the untimed slot", () => 
   expect(buildTimelineVisitDisplayOrder(nextItems).map((item) => item.id)).toEqual(["b", "a", "c"]);
 });
 
-test("timed drag rejects when it would rebase a fixed untimed visit", () => {
+test("timed drag treats fixed untimed legacy data as movable untimed", () => {
   const items = [
     visit("a", "09:00", 10),
     visit("u", null, -1_998_500_000, { is_fixed: true }),
@@ -174,7 +174,18 @@ test("timed drag rejects when it would rebase a fixed untimed visit", () => {
   });
 
   expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["a", "u", "b"]);
-  expect(plan).toMatchObject({ errorCode: "fixed_item", ok: false });
+  expect(plan).toMatchObject({
+    ok: true,
+    packageSourceItemIds: ["a", "b"],
+    slotItemIds: ["a", "b"],
+  });
+  expect(plan.untimedSortOrderUpdates).toEqual([
+    expect.objectContaining({
+      id: "u",
+      original_sort_order: -1_998_500_000,
+      sort_order: -1_997_500_000,
+    }),
+  ]);
 });
 
 test("timed drag derives broken transports from before and after mixed visual order", () => {
@@ -224,6 +235,9 @@ test("formal untimed persistence is baseline-guarded and does not call the desti
   expect(appSource).toContain("brokenTransportIds = []");
   expect(appSource).toContain("transportBaselines: explicitTransportBaselines");
   expect(appSource).toContain("previewPlan.deletedTransportIds.length || explicitTransportBaselines.length");
+  expect(appSource).toContain("function isEffectiveFixedVisit(item)");
+  expect(appSource).toContain("if (!isTimedVisit(item))");
+  expect(appSource).toContain("is_fixed: hasCompleteTime ? Boolean(payload.is_fixed) : false");
 });
 
 test("demo shows mixed untimed content and dragging it does not open continuation UI", async ({ page }) => {

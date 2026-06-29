@@ -63,7 +63,7 @@ test("editing a middle visit leaves earlier visits untouched and shifts only fol
 test("untimed and partially timed visits are excluded from auto continuation", () => {
   const items = [
     visit("a", "09:00", "10:00", 10),
-    visit("untimed", null, null, 15),
+    visit("untimed", null, null, 15, { is_fixed: true }),
     visit("b", "10:30", "11:30", 20),
     visit("c", "12:00", null, 30),
   ];
@@ -79,6 +79,7 @@ test("untimed and partially timed visits are excluded from auto continuation", (
   ]);
   expect(plan.followingVisitIds).not.toContain("untimed");
   expect(plan.followingVisitIds).not.toContain("c");
+  expect(plan.fixedVisitId).toBeNull();
 });
 
 test("fixed follower is an anchor and later visits are not crossed", () => {

@@ -177,8 +177,6 @@ export function planUntimedVisitReorder({ items = [], placement = "after", sourc
   const target = currentVisits.find((item) => item.id === targetItemId);
   if (!source || !isUntimedVisit(source)) return { errorCode: "untimed_source_required", ok: false };
   if (!target || target.id === source.id) return { errorCode: "invalid_target", ok: false };
-  if (source.is_fixed) return { errorCode: "fixed_item", ok: false };
-
   const nextVisits = currentVisits.filter((item) => item.id !== source.id);
   const targetIndex = nextVisits.findIndex((item) => item.id === target.id);
   const insertIndex = targetIndex + (placement === "before" ? 0 : 1);
@@ -252,7 +250,6 @@ export function planMixedTimedVisitReorder({ items = [], placement = "after", so
       const sortOrder = encodeUntimedSortOrder(slot, rankStep * (index + 1));
       if (sortOrder === null) return { errorCode: "order_space_exhausted", ok: false };
       if (entries[index].sort_order !== sortOrder) {
-        if (entries[index].is_fixed) return { errorCode: "fixed_item", ok: false };
         untimedSortOrderUpdates.push({
           id: entries[index].id,
           original_sort_order: entries[index].sort_order,

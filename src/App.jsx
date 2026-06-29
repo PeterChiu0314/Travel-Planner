@@ -588,6 +588,10 @@ function destinationReorderErrorMessage(error) {
   return message || "目的地內容重排失敗，請稍後再試。";
 }
 
+function isEffectiveFixedVisit(item) {
+  return Boolean(item?.is_fixed) && isTimedVisit(item);
+}
+
 function transportPairKey(fromItemId, toItemId) {
   return `${fromItemId || ""}->${toItemId || ""}`;
 }
@@ -1164,7 +1168,7 @@ function buildTimelineDayPreviewMap(items = [], alternatives = [], itineraryBudg
     counts.timeline += 1;
     if (isTransportationCard(item)) counts.transports += 1;
     else counts.visits += 1;
-    if (item?.is_fixed) counts.fixed += 1;
+    if (isEffectiveFixedVisit(item)) counts.fixed += 1;
     byPosition.set(position, counts);
     if (item?.id) itemPositionById.set(item.id, position);
   });
@@ -2591,7 +2595,7 @@ export default function App() {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const editingItem = editingId ? items.find((item) => item.id === editingId) : null;
-    if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
+    if (isEffectiveFixedVisit(editingItem)) {
       setNotice("此行程已固定，請先解鎖後再修改。");
       return { ok: false, fixed: true };
     }
@@ -2666,7 +2670,7 @@ export default function App() {
           item.trip_id !== activeTrip.id ||
           Number(item.day_index) !== Number(activeDay) ||
           isTransportationCard(item) ||
-          item.is_fixed ||
+          isEffectiveFixedVisit(item) ||
           isLockedByAnotherUser(item, session?.user?.id) ||
           !update.updated_at
         );
@@ -2843,7 +2847,7 @@ export default function App() {
   async function saveAlternative(itemId, payload, editingId) {
     if (!activeTrip || !canEditActiveTripContent) return { ok: false };
     const item = items.find((currentItem) => currentItem.id === itemId);
-    if (item?.is_fixed) {
+    if (isEffectiveFixedVisit(item)) {
       setNotice("此行程已固定，請先解鎖後再修改。");
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     }
@@ -2883,7 +2887,7 @@ export default function App() {
     if (!activeTrip || !canEditActiveTripContent) return { ok: false };
     const alternative = alternatives.find((item) => item.id === alternativeId);
     const parentItem = alternative ? items.find((item) => item.id === alternative.itinerary_item_id) : null;
-    if (parentItem?.is_fixed) {
+    if (isEffectiveFixedVisit(parentItem)) {
       setNotice("此行程已固定，請先解鎖後再修改。");
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     }
@@ -2898,7 +2902,7 @@ export default function App() {
 
   async function applyAlternative(item, alternative) {
     if (!activeTrip || !canEditActiveTripContent) return { ok: false };
-    if (item?.is_fixed) {
+    if (isEffectiveFixedVisit(item)) {
       setNotice("此行程已固定，請先解鎖後再修改。");
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     }
@@ -3339,7 +3343,7 @@ export default function App() {
   async function deleteItem(itemId) {
     if (!activeTrip || !canEditActiveTripContent) return;
     const item = items.find((currentItem) => currentItem.id === itemId);
-    if (item?.is_fixed && !isTransportationCard(item)) {
+    if (isEffectiveFixedVisit(item)) {
       setNotice("此行程已固定，請先解鎖後再修改。");
       return;
     }
@@ -3370,6 +3374,10 @@ export default function App() {
 
   async function toggleItemFixed(item) {
     if (!activeTrip || !canEditActiveTripContent || !item || isTransportationCard(item)) return { ok: false };
+    if (!isTimedVisit(item)) {
+      setNotice("未設定完整時間的行程不能固定。");
+      return { ok: false };
+    }
     if (!item.is_fixed && item.locked_by) {
       setNotice("此行程目前有人正在編輯，暫時無法鎖定。");
       return { ok: false };
@@ -3447,13 +3455,12 @@ export default function App() {
         item.trip_id !== activeTrip.id ||
         Number(item.day_index) !== Number(dayIndex) ||
         !isUntimedVisit(item) ||
-        item.is_fixed ||
         isLockedByAnotherUser(item, session?.user?.id) ||
         item.updated_at !== update.updated_at
       );
     });
     if (invalidUntimedUpdate) {
-      const errorMessage = "untimed_sort_order_stale";
+      const errorMessage = "未設定時間行程已被更新，請重新整理後再試。";
       setNotice(errorMessage);
       await loadTripData(activeTrip.id);
       return { ok: false, errorMessage };
@@ -3560,7 +3567,7 @@ export default function App() {
   async function reorderUntimedVisit({ dayIndex, itemId, sortOrder, transportBaselines = [], updatedAt }) {
     if (!activeTrip || !canEditActiveTripContent || dayIndex !== activeDay) return { ok: false };
     const item = items.find((candidate) => candidate.id === itemId);
-    if (!item || !isUntimedVisit(item) || item.is_fixed || isLockedByAnotherUser(item, session?.user?.id)) {
+    if (!item || !isUntimedVisit(item) || isLockedByAnotherUser(item, session?.user?.id)) {
       const errorMessage = "這張未設定時間行程目前無法移動。";
       setNotice(errorMessage);
       return { ok: false, errorMessage };
@@ -4115,6 +4122,9 @@ function normalizeItemPayload(payload) {
       to_snapshot_destination: payload.to_snapshot_destination || null,
       start_time: payload.start_time || null,
       end_time: null,
+      is_fixed: false,
+      fixed_at: null,
+      fixed_by: null,
       address: null,
       map_url: null,
     };
@@ -4132,6 +4142,9 @@ function normalizeItemPayload(payload) {
     description,
     start_time: hasCompleteTime ? payload.start_time : null,
     end_time: hasCompleteTime ? payload.end_time : null,
+    is_fixed: hasCompleteTime ? Boolean(payload.is_fixed) : false,
+    fixed_at: hasCompleteTime && payload.is_fixed ? payload.fixed_at || null : null,
+    fixed_by: hasCompleteTime && payload.is_fixed ? payload.fixed_by || null : null,
     address: payload.address || null,
     map_url: payload.map_url || null,
     transportation_note: payload.transportation_note || null,
@@ -5917,7 +5930,7 @@ function DemoApp({ initialSection }) {
     );
     if (!nextPayload.title.trim()) return;
     const editingItem = editingId ? timelineItems.find((item) => item.id === editingId) : null;
-    if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
+    if (isEffectiveFixedVisit(editingItem)) {
       return { ok: false, fixed: true };
     }
     if (editingItem && isTimedVisit(editingItem) !== isTimedVisit(nextPayload)) {
@@ -6083,7 +6096,7 @@ function DemoApp({ initialSection }) {
   function reorderTimelineUntimedVisit({ dayIndex, itemId, sortOrder, transportBaselines = [], updatedAt }) {
     if (dayIndex !== activeDay) return { ok: false };
     const item = timelineItems.find((candidate) => candidate.id === itemId);
-    if (!item || !isUntimedVisit(item) || item.updated_at !== updatedAt || item.is_fixed) return { ok: false, conflict: true };
+    if (!item || !isUntimedVisit(item) || item.updated_at !== updatedAt) return { ok: false, conflict: true };
     const requestedTransportIds = transportBaselines.map((transport) => transport.id);
     const currentTransportById = new Map(
       timelineItems
@@ -6132,7 +6145,7 @@ function DemoApp({ initialSection }) {
 
   function saveTimelineAlternative(itemId, payload, editingId) {
     const item = timelineItems.find((currentItem) => currentItem.id === itemId);
-    if (item?.is_fixed) return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
+    if (isEffectiveFixedVisit(item)) return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     const nextPayload = {
       title: payload.title.trim(),
       type: payload.type || "attraction",
@@ -6163,7 +6176,7 @@ function DemoApp({ initialSection }) {
   function deleteTimelineAlternative(alternativeId) {
     const alternative = timelineAlternatives.find((item) => item.id === alternativeId);
     const parentItem = alternative ? timelineItems.find((item) => item.id === alternative.itinerary_item_id) : null;
-    if (parentItem?.is_fixed) return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
+    if (isEffectiveFixedVisit(parentItem)) return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     setTimelineAlternatives((current) => current.filter((alternative) => alternative.id !== alternativeId));
     return { ok: true };
   }
@@ -6171,7 +6184,7 @@ function DemoApp({ initialSection }) {
   function deleteTimelineItem(itemId) {
     const deletedIds = new Set([itemId]);
     const deletedItem = timelineItems.find((item) => item.id === itemId);
-    if (deletedItem?.is_fixed && !isTransportationCard(deletedItem)) return;
+    if (isEffectiveFixedVisit(deletedItem)) return;
     if (deletedItem && !isTransportationCard(deletedItem)) {
       timelineItems.forEach((item) => {
         if (isTransportationCard(item) && (item.from_item_id === itemId || item.to_item_id === itemId)) {
@@ -6185,6 +6198,7 @@ function DemoApp({ initialSection }) {
 
   function toggleTimelineItemFixed(item) {
     if (!item || isTransportationCard(item)) return { ok: false };
+    if (!isTimedVisit(item)) return { ok: false };
     setTimelineItems((current) =>
       current.map((currentItem) =>
         currentItem.id === item.id
@@ -6202,7 +6216,7 @@ function DemoApp({ initialSection }) {
   }
 
   function applyTimelineAlternative(item, alternative) {
-    if (item?.is_fixed) return { ok: false };
+    if (isEffectiveFixedVisit(item)) return { ok: false };
     const oldMainPayload = {
       title: item.title,
       type: item.type || "attraction",
@@ -8035,7 +8049,7 @@ function ItineraryTimeline({
       !timedVisitItems.some((visit) => visit.is_fixed) &&
       !timedVisitItems.some((visit) => useEditLocks && isLockedByAnotherUser(visit, currentUserId)) &&
       isTimedVisit(item) &&
-      !item?.is_fixed &&
+      !isEffectiveFixedVisit(item) &&
       !(useEditLocks && isLockedByAnotherUser(item, currentUserId))
     );
   }
@@ -8047,7 +8061,6 @@ function ItineraryTimeline({
       !isReorderingDestination &&
       !isReorderingUntimed &&
       isUntimedVisit(item) &&
-      !item?.is_fixed &&
       !(useEditLocks && isLockedByAnotherUser(item, currentUserId))
     );
   }
@@ -8257,7 +8270,7 @@ function ItineraryTimeline({
     if (!latest) return;
     const matchingItem = dayItems.find((item) => item.id === latest.entityId);
     if (latest.entityId !== "new" && !matchingItem) return;
-    if (matchingItem?.is_fixed && !isTransportationCard(matchingItem)) return;
+    if (isEffectiveFixedVisit(matchingItem)) return;
     const nextForm = {
       ...latest.draft.form,
       start_time: formatTimeDisplay(latest.draft.form?.start_time),
@@ -8351,7 +8364,7 @@ function ItineraryTimeline({
   }
 
   async function openEditItem(item) {
-    if (item.is_fixed && !isTransportationCard(item)) {
+    if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
     }
@@ -8440,7 +8453,7 @@ function ItineraryTimeline({
   async function saveCurrentEditor(formData = new FormData(), options = {}) {
     const itemType = String(formData.get("item_type") ?? form.item_type ?? "visit");
     const editingItem = editingId ? dayItems.find((item) => item.id === editingId) : null;
-    if (editingItem?.is_fixed && !isTransportationCard(editingItem)) {
+    if (isEffectiveFixedVisit(editingItem)) {
       setTimeError("此行程已固定，請先解鎖後再修改。");
       return false;
     }
@@ -8667,7 +8680,7 @@ function ItineraryTimeline({
     (formatTimeDisplay(editedTimedVisit.start_time) !== form.start_time ||
       formatTimeDisplay(editedTimedVisit.end_time) !== form.end_time);
   const crossesFixedVisitForContinuation = Boolean(editedTimedVisit) && timedVisitItems.some((fixedVisit) => {
-    if (!fixedVisit.is_fixed || fixedVisit.id === editedTimedVisit.id) return false;
+    if (!isEffectiveFixedVisit(fixedVisit) || fixedVisit.id === editedTimedVisit.id) return false;
     const originalStart = timeToMinutes(editedTimedVisit.start_time);
     const originalEnd = timeToMinutes(editedTimedVisit.end_time);
     const candidateStart = timeToMinutes(form.start_time);
@@ -8763,7 +8776,7 @@ function ItineraryTimeline({
   }
 
   async function flipAlternativeFace(item, alternative) {
-    if (item?.is_fixed) {
+    if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
     }
@@ -8789,7 +8802,7 @@ function ItineraryTimeline({
   }
 
   async function saveAlternativeForm(item, alternative) {
-    if (item?.is_fixed) {
+    if (isEffectiveFixedVisit(item)) {
       setAlternativeErrorByItem((current) => ({
         ...current,
         [item.id]: "此行程已固定，請先解鎖後再修改。",
@@ -8833,7 +8846,7 @@ function ItineraryTimeline({
 
   async function deleteAlternative(itemId, alternativeId) {
     const parentItem = dayItems.find((item) => item.id === itemId);
-    if (parentItem?.is_fixed) {
+    if (isEffectiveFixedVisit(parentItem)) {
       setAlternativeErrorByItem((current) => ({
         ...current,
         [itemId]: "此行程已固定，請先解鎖後再修改。",
@@ -8866,7 +8879,7 @@ function ItineraryTimeline({
   }
 
   function requestDeleteItem(item) {
-    if (item?.is_fixed && !isTransportationCard(item)) {
+    if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
     }
@@ -8875,6 +8888,10 @@ function ItineraryTimeline({
 
   async function toggleItemFixed(item) {
     if (!item || isTransportationCard(item) || typeof onToggleItemFixed !== "function") return;
+    if (!isTimedVisit(item)) {
+      setFixedNotice("未設定完整時間的行程不能固定。");
+      return;
+    }
     if (!item.is_fixed) {
       if (editingId === item.id || (isOpen && form.item_type !== "transport" && editingId === item.id)) {
         setFixedNotice("此行程正在編輯中，請結束編輯後再鎖定。");
@@ -9361,7 +9378,7 @@ function ItineraryTimeline({
 
   function renderAlternativeSummary(item, alternative, isAlternativeFace) {
     const alternativeError = alternativeErrorByItem[item.id];
-    const alternativeFlipButton = !item.is_fixed ? (
+    const alternativeFlipButton = !isEffectiveFixedVisit(item) ? (
       <button
         className="alternative-flip-button"
         disabled={!canEdit}
@@ -9394,7 +9411,7 @@ function ItineraryTimeline({
               {alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}
             </span>
             <div className="alternative-relation-actions">
-              {alternative && !item.is_fixed ? (
+              {alternative && !isEffectiveFixedVisit(item) ? (
                 <button
                   className="mini-button"
                   disabled={!canEdit}
@@ -9604,7 +9621,7 @@ function ItineraryTimeline({
             const locker = memberById.get(item.locked_by);
             const alternative = (alternativesByItem[item.id] || [])[0] || null;
             const isExpanded = expandedId === item.id;
-            const isItemFixed = Boolean(item.is_fixed);
+            const isItemFixed = isEffectiveFixedVisit(item);
             const isAlternativeFace = isExpanded && Boolean(alternativeFaceByItem[item.id]);
             const isEditingAlternative = Boolean(editingAlternativeByItem[item.id]);
             const isAlternativeFormFace = isAlternativeFace && (!alternative || isEditingAlternative);
@@ -9728,7 +9745,7 @@ function ItineraryTimeline({
                 )}
               </div>
               <div className="item-actions">
-                {(!isAlternativeFace || isItemFixed) ? (
+                {isTimedVisit(item) && (!isAlternativeFace || isItemFixed) ? (
                   <button
                     className="mini-button lock-button"
                     disabled={!canEdit || (!isItemFixed && (lockedByOther || Boolean(item.locked_by)))}
