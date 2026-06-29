@@ -252,6 +252,7 @@ export function planMixedTimedVisitReorder({ items = [], placement = "after", so
       const sortOrder = encodeUntimedSortOrder(slot, rankStep * (index + 1));
       if (sortOrder === null) return { errorCode: "order_space_exhausted", ok: false };
       if (entries[index].sort_order !== sortOrder) {
+        if (entries[index].is_fixed) return { errorCode: "fixed_item", ok: false };
         untimedSortOrderUpdates.push({
           id: entries[index].id,
           original_sort_order: entries[index].sort_order,

@@ -160,6 +160,23 @@ test("timed drag below an untimed target can move only the untimed slot", () => 
   expect(buildTimelineVisitDisplayOrder(nextItems).map((item) => item.id)).toEqual(["b", "a", "c"]);
 });
 
+test("timed drag rejects when it would rebase a fixed untimed visit", () => {
+  const items = [
+    visit("a", "09:00", 10),
+    visit("u", null, -1_998_500_000, { is_fixed: true }),
+    visit("b", "11:00", 30),
+  ];
+  const plan = planMixedTimedVisitReorder({
+    items,
+    placement: "before",
+    sourceItemId: "b",
+    targetItemId: "u",
+  });
+
+  expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["a", "u", "b"]);
+  expect(plan).toMatchObject({ errorCode: "fixed_item", ok: false });
+});
+
 test("timed drag derives broken transports from before and after mixed visual order", () => {
   const items = [
     visit("a", "01:10", 10),
