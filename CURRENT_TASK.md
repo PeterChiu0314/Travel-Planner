@@ -21,13 +21,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.5 Stabilization + Hotfixes 1-3 - Implemented / Browser and Build QA Passed / Final Manual Verification Pending
+Timeline Phase 4.6 Timed Visit Drag Auto-Continuation - Implemented / Build and Full E2E QA Passed
 ```
 
 Next phase:
 
 ```text
-Paused after the 2026-06-25 stabilization closeout; awaiting final manual verification or next explicit direction
+Timeline Phase 4.7 fixed-anchor drag rules, after Phase 4.6 final verification/manual review.
 ```
 
 Branch:
@@ -129,6 +129,36 @@ codex/timeline-phase-4-0-to-4-2
 - Endpoint edits that break a pair open the existing Restore / Delete Transportation dialog before persistence; passive conversion to untimed remains outside this prompt.
 - No migration, RPC, schema, production DB, or Playwright test change was made.
 
+### Phase 4.6
+
+- Timed visit drag now recalculates `start_time` / `end_time` instead of only swapping destination package content across existing time slots.
+- Phase 4.6 timing only uses complete timed visits: rows missing either `start_time` or `end_time` stay untimed / partial and do not participate in duration-based continuation.
+- Each moved/reordered timed destination package preserves its own original duration.
+- The new first timed package starts at the original first complete timed visit start time.
+- Same-direction adjacent pairs that remain adjacent preserve their original total gap.
+- New adjacencies and direction reversals directly continue from the previous package end time.
+- Untimed visits still use mixed visual order for drop target / display only; they do not create timing gaps and do not affect duration calculation.
+- Formal timed drag calls the new transactional RPC `reorder_itinerary_timed_auto_continuation`.
+- Demo timed drag uses the same pure planner via `timedAutoContinuation: true`.
+- Existing `brokenTransportIds` confirmation / cleanup remains the transport removal gate.
+- No automatic transportation card creation was added.
+- Fixed card drag and fixed-anchor scheduling remain deferred to Phase 4.7.
+
+New migration applied to production Supabase project `lqvuqamzmchepgxkftcw`:
+
+```text
+023 / 20260629014908 / reorder_itinerary_timed_auto_continuation
+```
+
+New/updated files:
+
+- `src/lib/destinationPackages.js`
+- `src/App.jsx`
+- `supabase/migrations/023_reorder_itinerary_timed_auto_continuation.sql`
+- `tests/phase-4-2c-reorder.spec.js`
+- `tests/phase-1-7f-smoke.spec.js`
+- `docs/2026-06-29-phase-4-6-closeout-handoff.md`
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -137,13 +167,15 @@ Applied immutable migrations:
 019 / 20260621131905 / swap_itinerary_destination_packages
 020 / 20260622130246 / reorder_itinerary_destination_packages
 021 / 20260622131013 / fix_reorder_baseline_count
+022 / 20260629012151 / add_transport_role_to_itinerary_items
+023 / 20260629014908 / reorder_itinerary_timed_auto_continuation
 project: lqvuqamzmchepgxkftcw
 ```
 
 Important:
 
-- Never edit applied migrations 019, 020, or 021 in place.
-- Any future schema/RPC/permission correction must use migration 022+.
+- Never edit applied migrations 019, 020, 021, 022, or 023 in place.
+- Any future schema/RPC/permission correction must use migration 024+.
 - Phase 4.3, 4.4, 4.5, and the Phase 4.5 Hotfix required no migration.
 
 ## Phase 4.5 and Hotfix Changed Files
@@ -212,24 +244,35 @@ Playwright tests   intentionally not run or modified per user instruction
 final manual verification pending
 ```
 
-This closeout preserves the existing Hotfix work, adds no migration/RPC/schema change, and does not begin Phase 4.6 or Phase 4.7.
+Phase 4.6 closeout checks on 2026-06-29:
 
-The Vite build still reports the existing large-chunk warning; it is not a Phase 4.4 regression.
+```text
+npm.cmd run build passed
+targeted Playwright passed 36/36
+npm.cmd run test:e2e passed 71/71
+git diff --check passed with Windows LF/CRLF notices only
+```
+
+Phase 4.6 preserves the existing Phase 4.5b / 4.5c transportation and mixed-order behavior, adds migration/RPC 023, and does not begin Phase 4.7 or Phase 4.8.
+
+The Vite build still reports the existing large-chunk warning; it is not a Phase 4.6 regression.
 
 ## Protected Scope Preserved
 
-Phase 4.5 and its Hotfix did not redesign or extend:
+Phase 4.6 did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
 - Draft Autosave or Edit Lock architecture
 - Share / Invite / member flow
 - Budget core data flow
-- drag-reorder RPC behavior
+- Phase 4.2c destination-package reorder RPC behavior
 - generic `sort_order` architecture
 - transportation pair splitting or creation
 - Google Map API or route calculation
-- timed drag auto-continuation or cross-day scheduling
+- cross-day scheduling
+- fixed-anchor drag behavior
+- collaborative drag presence
 - Demo isolation
 
 ## Residual Risks
@@ -240,7 +283,9 @@ Phase 4.5 and its Hotfix did not redesign or extend:
 - Legacy DB rows with only one time are treated safely as untimed in the UI but are not automatically written back. The next explicit save normalizes them to `null/null`.
 - Because applied RPC migrations 020/021 are immutable and their server manifest predates this Hotfix, a legacy start-only row can cause timed reorder to reject safely as stale until that row is explicitly normalized.
 - Hotfix 2 Formal persistence uses a guarded source-row update followed by one scoped transportation delete statement because no new RPC was approved. If deletion fails, it attempts to restore the original `sort_order` before authoritative reload; an extreme network or concurrent-write failure during both deletion and compensation can still leave a partial authoritative result.
+- Phase 4.6 Formal timed drag now uses a transactional RPC, but manual authenticated Formal UI verification is still recommended after deployment.
+- Fixed card drag remains intentionally deferred; Phase 4.6 rejects fixed timed manifests rather than applying fixed-anchor scheduling.
 
 ## Next Step
 
-Wait for final Phase 4.5 stabilization manual verification or the next explicitly approved Timeline phase. Do not infer Phase 4.6 scheduling, fixed-card drag, presence, map, transportation repair, or database changes.
+Manual review Phase 4.6 timed drag in Demo and Formal. If accepted, proceed to Phase 4.7 fixed-anchor drag rules. Do not infer Phase 4.8 presence, Phase 4.9 map integration, transportation repair, or additional database changes.

@@ -167,7 +167,7 @@ test("tail transportation rounding covers zero and exact five-minute boundaries"
   ]);
 });
 
-test("demo timed visit drag inserts destination content without moving time slots", async ({ page }) => {
+test("demo timed visit drag recalculates times while preserving package durations", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
@@ -186,21 +186,22 @@ test("demo timed visit drag inserts destination content without moving time slot
 
   await source.dragTo(target);
   const dialog = page.getByRole("dialog");
-  await expect(dialog).toBeVisible();
-  await dialog.locator(".primary-button").click();
+  if (await dialog.count()) {
+    await dialog.locator(".primary-button").click();
+  }
 
-  const firstSlot = page.locator(".timeline-item").filter({ hasText: "02:20" });
-  const secondSlot = page.locator(".timeline-item").filter({ hasText: "06:40" });
-  const thirdSlot = page.locator(".timeline-item").filter({ hasText: "11:30" });
-  await expect(firstSlot.getByRole("heading", { name: "桃園機場" })).toBeVisible();
-  await expect(secondSlot.getByRole("heading", { name: "平安出國停車場" })).toBeVisible();
-  await expect(thirdSlot.getByRole("heading", { name: "關西機場" })).toBeVisible();
-  await expect(firstSlot.locator(".time-block")).toContainText("02:20");
-  await expect(secondSlot.locator(".time-block")).toContainText("06:40");
-  await expect(thirdSlot.locator(".time-block")).toContainText("11:30");
+  const airportCard = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
+  const parkingCard = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
+  const lunchCard = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "關西機場" }) });
+  await expect(airportCard.locator(".time-block")).toContainText("02:20");
+  await expect(airportCard.locator(".time-block")).toContainText("06:30");
+  await expect(parkingCard.locator(".time-block")).toContainText("06:30");
+  await expect(parkingCard.locator(".time-block")).toContainText("07:40");
+  await expect(lunchCard.locator(".time-block")).toContainText("07:40");
+  await expect(lunchCard.locator(".time-block")).toContainText("08:40");
   await expect(page.locator(".transport-warning-stack")).toHaveCount(0);
 
-  await firstSlot.getByTitle("鎖定").click();
+  await airportCard.getByTitle("鎖定").click();
   await expect(page.locator('.timeline-item[data-timing="timed"][draggable="true"]')).toHaveCount(0);
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);

@@ -3413,6 +3413,7 @@ export default function App() {
     dayIndex,
     packageSourceItemIds,
     slotItemIds,
+    timedAutoContinuation = false,
     transportBaselines = [],
     untimedSortOrderUpdates = [],
   }) {
@@ -3519,7 +3520,10 @@ export default function App() {
     const itemUpdatedAtBaselines = Object.fromEntries(
       baselineRows.map((item) => [item.id, item.updated_at]),
     );
-    const { data, error } = await supabase.rpc("reorder_itinerary_destination_packages", {
+    const reorderRpc = timedAutoContinuation
+      ? "reorder_itinerary_timed_auto_continuation"
+      : "reorder_itinerary_destination_packages";
+    const { data, error } = await supabase.rpc(reorderRpc, {
       target_trip_id: activeTrip.id,
       target_day_index: dayIndex,
       slot_item_ids: slotItemIds,
@@ -6040,6 +6044,7 @@ function DemoApp({ initialSection }) {
     dayIndex,
     packageSourceItemIds,
     slotItemIds,
+    timedAutoContinuation = false,
     transportBaselines = [],
     untimedSortOrderUpdates = [],
   }) {
@@ -6055,6 +6060,7 @@ function DemoApp({ initialSection }) {
           itineraryBudgetLinks,
           slotItemIds,
           packageSourceItemIds,
+          timedAutoContinuation,
         })
       : { ok: true, alternatives: timelineAlternatives, itineraryBudgetLinks, items: timelineItems };
     if (!plan.ok) return { ok: false, errorMessage: destinationReorderErrorMessage({ message: plan.errorCode }) };
@@ -8165,6 +8171,7 @@ function ItineraryTimeline({
       items: dayItems,
       slotItemIds,
       packageSourceItemIds,
+      timedAutoContinuation: true,
     });
     if (!previewPlan.ok) {
       setFixedNotice(destinationReorderErrorMessage({ message: previewPlan.errorCode }));
@@ -8184,6 +8191,7 @@ function ItineraryTimeline({
       kind: "timed",
       packageSourceItemIds,
       slotItemIds,
+      timedAutoContinuation: true,
       transportBaselines: explicitTransportBaselines,
       untimedSortOrderUpdates,
     };

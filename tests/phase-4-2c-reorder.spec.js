@@ -4,10 +4,16 @@ import {
   insertionPackageOrder,
   isSamePackageOrder,
   planDestinationPackageReorder,
+  planTimedDragAutoContinuation,
 } from "../src/lib/destinationPackages.js";
 
 const migration = readFileSync("supabase/migrations/020_reorder_itinerary_destination_packages.sql", "utf8");
 const baselineCountFixMigration = readFileSync("supabase/migrations/021_fix_reorder_baseline_count.sql", "utf8");
+const timedAutoContinuationMigration = readFileSync(
+  "supabase/migrations/023_reorder_itinerary_timed_auto_continuation.sql",
+  "utf8",
+);
+const appSource = readFileSync("src/App.jsx", "utf8");
 
 function visit(id, title, startTime, sortOrder, extra = {}) {
   return {
@@ -119,6 +125,91 @@ test("ABCD to BCAD keeps slots and moves destination packages and children", () 
     ["link-C", "slot-b", "2026-06-20T00:00:00.000Z"],
     ["link-D", "slot-d", "2026-06-20T00:00:00.000Z"],
   ]);
+});
+
+test("Phase 4.6 timed drag preserves each package duration instead of swapping time slots", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("slot-b", "B", "10:30", 20, { end_time: "11:00" }),
+    visit("slot-c", "C", "12:00", 30, { end_time: "13:30" }),
+  ];
+  const slots = items.map((item) => item.id);
+  const sources = ["slot-c", "slot-a", "slot-b"];
+  const timingPlan = planTimedDragAutoContinuation({ items, slotItemIds: slots, packageSourceItemIds: sources });
+
+  expect(timingPlan.ok).toBe(true);
+  expect(Object.values(timingPlan.updatesBySlotId).map((update) => [update.source_item_id, update.start_time, update.end_time])).toEqual([
+    ["slot-c", "09:00", "10:30"],
+    ["slot-a", "10:30", "11:30"],
+    ["slot-b", "12:00", "12:30"],
+  ]);
+
+  const reorderPlan = planDestinationPackageReorder({
+    items,
+    slotItemIds: slots,
+    packageSourceItemIds: sources,
+    timedAutoContinuation: true,
+  });
+  expect(slots.map((slotId) => {
+    const item = reorderPlan.items.find((candidate) => candidate.id === slotId);
+    return [item.title, item.start_time, item.end_time];
+  })).toEqual([
+    ["C", "09:00", "10:30"],
+    ["A", "10:30", "11:30"],
+    ["B", "12:00", "12:30"],
+  ]);
+});
+
+test("Phase 4.6 preserves same-direction gaps and directly continues reversed pairs", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("slot-b", "B", "10:30", 20, { end_time: "11:00" }),
+    visit("slot-c", "C", "12:00", 30, { end_time: "13:30" }),
+  ];
+  const slots = items.map((item) => item.id);
+
+  expect(
+    Object.values(
+      planTimedDragAutoContinuation({
+        items,
+        slotItemIds: slots,
+        packageSourceItemIds: ["slot-b", "slot-c", "slot-a"],
+      }).updatesBySlotId,
+    ).map((update) => [update.source_item_id, update.start_time, update.end_time]),
+  ).toEqual([
+    ["slot-b", "09:00", "09:30"],
+    ["slot-c", "10:30", "12:00"],
+    ["slot-a", "12:00", "13:00"],
+  ]);
+
+  expect(
+    Object.values(
+      planTimedDragAutoContinuation({
+        items,
+        slotItemIds: slots,
+        packageSourceItemIds: ["slot-b", "slot-a", "slot-c"],
+      }).updatesBySlotId,
+    ).map((update) => [update.source_item_id, update.start_time, update.end_time]),
+  ).toEqual([
+    ["slot-b", "09:00", "09:30"],
+    ["slot-a", "09:30", "10:30"],
+    ["slot-c", "10:30", "12:00"],
+  ]);
+});
+
+test("Phase 4.6 rejects partial-time rows before duration-based continuation", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("slot-b", "B", "10:30", 20, { end_time: null }),
+  ];
+
+  expect(
+    planTimedDragAutoContinuation({
+      items,
+      slotItemIds: ["slot-a", "slot-b"],
+      packageSourceItemIds: ["slot-b", "slot-a"],
+    }),
+  ).toMatchObject({ errorCode: "timed_visit_required", ok: false });
 });
 
 test("reorder preserves only original directed adjacent transports and remaps anchors", () => {
@@ -237,4 +328,16 @@ test("021 replaces the unsupported JSON baseline cardinality helper", () => {
   expect(baselineCountFixMigration).toContain(
     "revoke execute on function app_private.reorder_itinerary_destination_packages(uuid, integer, uuid[], uuid[], jsonb) from authenticated",
   );
+});
+
+test("023 RPC performs Phase 4.6 timed auto-continuation transactionally", () => {
+  expect(timedAutoContinuationMigration).toContain("app_private.reorder_itinerary_timed_auto_continuation");
+  expect(timedAutoContinuationMigration).toContain("public.reorder_itinerary_timed_auto_continuation");
+  expect(timedAutoContinuationMigration).toContain("and item.end_time is not null");
+  expect(timedAutoContinuationMigration).toContain("duration_minutes := source_end_minutes - source_start_minutes");
+  expect(timedAutoContinuationMigration).toContain("source_position = previous_source_position + 1");
+  expect(timedAutoContinuationMigration).toContain("start_time = time '00:00' + make_interval(mins => next_start_minutes)");
+  expect(timedAutoContinuationMigration).toContain("grant execute on function public.reorder_itinerary_timed_auto_continuation");
+  expect(appSource).toContain("reorder_itinerary_timed_auto_continuation");
+  expect(appSource).toContain("timedAutoContinuation: true");
 });

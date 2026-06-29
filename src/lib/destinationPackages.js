@@ -59,6 +59,83 @@ export function isSamePackageOrder(slotItemIds, packageSourceItemIds) {
   );
 }
 
+function timeToMinutes(value) {
+  if (!value) return null;
+  const [hours, minutes] = String(value).split(":");
+  const parsedHours = Number(hours);
+  const parsedMinutes = Number(minutes);
+  if (!Number.isFinite(parsedHours) || !Number.isFinite(parsedMinutes)) return null;
+  return parsedHours * 60 + parsedMinutes;
+}
+
+function minutesToTime(totalMinutes) {
+  if (!Number.isInteger(totalMinutes) || totalMinutes < 0 || totalMinutes >= 24 * 60) return null;
+  const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+  const minutes = String(totalMinutes % 60).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+export function planTimedDragAutoContinuation({ items = [], packageSourceItemIds, slotItemIds }) {
+  if (!validPermutation(slotItemIds, packageSourceItemIds)) {
+    return { ok: false, errorCode: "invalid_manifest", updatesBySlotId: {} };
+  }
+
+  const slotItems = slotItemIds.map((itemId) => items.find((item) => item.id === itemId));
+  const sourceItems = packageSourceItemIds.map((itemId) => items.find((item) => item.id === itemId));
+  if (slotItems.some((item) => !isTimedVisit(item)) || sourceItems.some((item) => !isTimedVisit(item))) {
+    return { ok: false, errorCode: "timed_visit_required", updatesBySlotId: {} };
+  }
+
+  const originalIndexBySourceId = new Map(slotItemIds.map((itemId, index) => [itemId, index]));
+  const firstOriginalStart = timeToMinutes(slotItems[0].start_time);
+  if (firstOriginalStart === null) return { ok: false, errorCode: "invalid_time", updatesBySlotId: {} };
+
+  const updatesBySlotId = {};
+  let nextStart = firstOriginalStart;
+  let previousSource = null;
+  for (let index = 0; index < packageSourceItemIds.length; index += 1) {
+    const source = sourceItems[index];
+    const sourceStart = timeToMinutes(source.start_time);
+    const sourceEnd = timeToMinutes(source.end_time);
+    if (sourceStart === null || sourceEnd === null || sourceEnd <= sourceStart) {
+      return { ok: false, errorCode: "invalid_time", updatesBySlotId: {} };
+    }
+
+    if (previousSource) {
+      const previousOriginalIndex = originalIndexBySourceId.get(previousSource.id);
+      const currentOriginalIndex = originalIndexBySourceId.get(source.id);
+      if (currentOriginalIndex === previousOriginalIndex + 1) {
+        const previousOriginalEnd = timeToMinutes(previousSource.end_time);
+        const originalGap = sourceStart - previousOriginalEnd;
+        if (previousOriginalEnd === null || originalGap < 0) {
+          return { ok: false, errorCode: "invalid_gap", updatesBySlotId: {} };
+        }
+        nextStart += originalGap;
+      }
+    }
+
+    const duration = sourceEnd - sourceStart;
+    const nextEnd = nextStart + duration;
+    const nextStartTime = minutesToTime(nextStart);
+    const nextEndTime = minutesToTime(nextEnd);
+    if (!nextStartTime || !nextEndTime) {
+      return { ok: false, errorCode: "invalid_time", updatesBySlotId: {} };
+    }
+
+    updatesBySlotId[slotItemIds[index]] = {
+      end_time: nextEndTime,
+      original_end_time: slotItems[index].end_time,
+      original_start_time: slotItems[index].start_time,
+      source_item_id: source.id,
+      start_time: nextStartTime,
+    };
+    nextStart = nextEnd;
+    previousSource = source;
+  }
+
+  return { ok: true, updatesBySlotId };
+}
+
 function validPermutation(slotItemIds, packageSourceItemIds) {
   if (!Array.isArray(slotItemIds) || !Array.isArray(packageSourceItemIds) || !slotItemIds.length) return false;
   if (slotItemIds.length !== packageSourceItemIds.length) return false;
@@ -75,6 +152,7 @@ export function planDestinationPackageReorder({
   items = [],
   packageSourceItemIds,
   slotItemIds,
+  timedAutoContinuation = false,
   updatedAt = new Date().toISOString(),
 }) {
   if (!validPermutation(slotItemIds, packageSourceItemIds)) {
@@ -115,6 +193,11 @@ export function planDestinationPackageReorder({
     return { ok: false, errorCode: "stale_manifest" };
   }
 
+  const timingPlan = timedAutoContinuation
+    ? planTimedDragAutoContinuation({ items, packageSourceItemIds, slotItemIds })
+    : { ok: true, updatesBySlotId: {} };
+  if (!timingPlan.ok) return { ok: false, errorCode: timingPlan.errorCode };
+
   const packageBySourceId = new Map(slotItems.map((item) => [item.id, destinationPackage(item)]));
   const newSlotBySourceId = new Map(packageSourceItemIds.map((sourceId, index) => [sourceId, slotItemIds[index]]));
   const newIndexBySourceId = new Map(packageSourceItemIds.map((sourceId, index) => [sourceId, index]));
@@ -124,6 +207,12 @@ export function planDestinationPackageReorder({
       {
         ...items.find((item) => item.id === slotId),
         ...packageBySourceId.get(packageSourceItemIds[index]),
+        ...(timingPlan.updatesBySlotId[slotId]
+          ? {
+              end_time: timingPlan.updatesBySlotId[slotId].end_time,
+              start_time: timingPlan.updatesBySlotId[slotId].start_time,
+            }
+          : {}),
         updated_at: updatedAt,
       },
     ]),
@@ -175,6 +264,7 @@ export function planDestinationPackageReorder({
     itineraryBudgetLinks: itineraryBudgetLinks.map(remapParent),
     packageSourceItemIds: [...packageSourceItemIds],
     slotItemIds: [...slotItemIds],
+    timedAutoContinuationUpdates: timingPlan.updatesBySlotId,
     preservedTransportIds: preservedTransportItems.map((item) => item.id),
     deletedTransportIds,
     updatedVisitCount: slotItemIds.length,
