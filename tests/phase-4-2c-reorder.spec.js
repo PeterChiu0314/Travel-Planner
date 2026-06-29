@@ -20,6 +20,8 @@ const fixedAnchorContinuationMigration = readFileSync(
   "utf8",
 );
 const appSource = readFileSync("src/App.jsx", "utf8");
+const packageSource = readFileSync("package.json", "utf8");
+const stylesSource = readFileSync("src/styles.css", "utf8");
 
 function visit(id, title, startTime, sortOrder, extra = {}) {
   return {
@@ -617,4 +619,32 @@ test("024 RPC performs Phase 4.7 fixed-anchor continuation transactionally", () 
   expect(appSource).toContain("orderedTimedItemIds");
   expect(appSource).toContain("orderedVisitItemIds");
   expect(appSource).toContain("reorderArgs.untimed_sort_order_updates");
+});
+
+test("Phase 4.8a dnd-kit local sortable ghost preview stays UI-only", () => {
+  expect(packageSource).toContain("\"@dnd-kit/core\"");
+  expect(packageSource).toContain("\"@dnd-kit/sortable\"");
+  expect(packageSource).toContain("\"@dnd-kit/utilities\"");
+  expect(appSource).toContain("DndContext");
+  expect(appSource).toContain("SortableContext");
+  expect(appSource).toContain("useSortable");
+  expect(appSource).toContain("verticalListSortingStrategy");
+  expect(appSource).toContain("DragOverlay");
+  expect(appSource).toContain("sortableKeyboardCoordinates");
+  expect(appSource).toContain("visitItemIds");
+  expect(appSource).toContain("disabled: { draggable: disabled, droppable: false }");
+  expect(appSource).not.toContain("dragPreviewVisitIds");
+  expect(appSource).not.toContain("setDragPreviewVisitIds");
+  expect(appSource).toContain("await commitVisitDrop(sourceItemId, targetItem, placement)");
+  expect(appSource).toContain("onReorderDestinationPackages(timedReorder)");
+  expect(appSource).toContain("onReorderUntimedVisit(untimedReorder)");
+  expect(stylesSource).toContain(".timeline-drag-overlay-card");
+  expect(stylesSource).toContain(".timeline-sortable-entry.sortable-active-placeholder");
+  expect(stylesSource).toContain(".timeline-sortable-entry");
+  expect(stylesSource).not.toContain(".timeline-drop-spacer");
+  expect(appSource).not.toContain("data-dnd-drop-spacer");
+  expect(appSource).not.toContain("dragPlaceholderHeight");
+  expect(stylesSource).not.toContain(".timeline-item.dnd-placeholder-card");
+  expect(stylesSource).not.toContain(".timeline-item.drag-target::before");
+  expect(fixedAnchorContinuationMigration).not.toContain("DragOverlay");
 });

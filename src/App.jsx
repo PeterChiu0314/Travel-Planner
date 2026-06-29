@@ -1,5 +1,21 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS as DndCSS } from "@dnd-kit/utilities";
+import {
   BadgeInfo,
   Bed,
   ChevronDown,
@@ -7987,6 +8003,33 @@ function VersionInfoDialog({ onClose }) {
   );
 }
 
+function SortableTimelineEntry({ children, disabled = false, id }) {
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ disabled: { draggable: disabled, droppable: false }, id });
+  const style = {
+    transform: DndCSS.Transform.toString(transform),
+    transition,
+  };
+  return (
+    <div
+      className={`timeline-flow-entry timeline-sortable-entry${isDragging ? " sortable-active-placeholder" : ""}`}
+      data-sortable-visit-id={id}
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+    >
+      {children}
+    </div>
+  );
+}
+
 function ItineraryTimeline({
   activeDay = 0,
   activeTrip,
@@ -8068,6 +8111,27 @@ function ItineraryTimeline({
 
   const hasBlockingTimelineEditor =
     isOpen || hasActiveEditorGuard({ excludeId: activeEditorGuardId, tripId: activeTrip?.id });
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const lastDndOverIdRef = useRef(null);
+
+  useEffect(() => {
+    clearVisitDrag();
+  }, [activeDay, activeTrip?.id]);
+
+  useEffect(() => {
+    if (!draggedVisitId) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") clearVisitDrag();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      lastDndOverIdRef.current = null;
+    };
+  }, [draggedVisitId]);
 
   function canDragReorderVisit(item) {
     return (
@@ -8095,10 +8159,87 @@ function ItineraryTimeline({
     return canDragReorderVisit(item) || canDragUntimedVisit(item);
   }
 
-  function canTargetDraggedVisit(item) {
-    const source = dayItems.find((candidate) => candidate.id === draggedVisitId);
+  function canTargetDraggedVisit(item, sourceId = draggedVisitId) {
+    const source = dayItems.find((candidate) => candidate.id === sourceId);
     if (!source || source.id === item?.id || isTransportationCard(item)) return false;
     return isUntimedVisit(source) ? true : canDragReorderVisit(source);
+  }
+
+  function sortableDropIntent(sourceItemId, targetItemId) {
+    if (!sourceItemId || !targetItemId || sourceItemId === targetItemId) return null;
+    const sourceIndex = visitItems.findIndex((item) => item.id === sourceItemId);
+    const targetIndex = visitItems.findIndex((item) => item.id === targetItemId);
+    if (sourceIndex < 0 || targetIndex < 0) return null;
+    return sourceIndex < targetIndex ? "after" : "before";
+  }
+
+  function previewSortableDrag(sourceItemId, targetItemId) {
+    const source = dayItems.find((candidate) => candidate.id === sourceItemId);
+    const target = dayItems.find((candidate) => candidate.id === targetItemId);
+    const placement = sortableDropIntent(sourceItemId, targetItemId);
+    if (!source || !target || !placement || !canTargetDraggedVisit(target, sourceItemId)) {
+      setDragTarget(targetItemId ? { disabled: true, errorCode: "invalid_target", itemId: targetItemId, placement: placement || "after" } : null);
+      return false;
+    }
+    if (isUntimedVisit(source)) {
+      const plan = planUntimedVisitReorder({ items: dayItems, placement, sourceItemId: source.id, targetItemId: target.id });
+      setUntimedDropNotice(plan.ok ? "" : untimedOrderingErrorMessage(plan.errorCode));
+      setDragTarget({ disabled: !plan.ok, errorCode: plan.errorCode || "", itemId: target.id, placement });
+      return plan.ok;
+    }
+    const plan = planMixedTimedVisitReorder({
+      items: dayItems,
+      placement,
+      sourceItemId: source.id,
+      targetItemId: target.id,
+    });
+    if (!plan.ok) {
+      setFixedNotice(destinationReorderErrorMessage({ message: plan.errorCode }));
+      setDragTarget({ disabled: true, errorCode: plan.errorCode || "", itemId: target.id, placement });
+      return false;
+    }
+    setFixedNotice("");
+    setDragTarget({ disabled: false, itemId: target.id, placement });
+    return true;
+  }
+
+  function handleSortableDragStart(event) {
+    const sourceItem = dayItems.find((item) => item.id === event.active.id);
+    if (!sourceItem || !canDragVisit(sourceItem)) return;
+    setFixedNotice("");
+    setUntimedDropNotice("");
+    setDraggedVisitId(sourceItem.id);
+    setDragTarget(null);
+    lastDndOverIdRef.current = null;
+  }
+
+  function handleSortableDragOver(event) {
+    const sourceItemId = event.active?.id;
+    const targetItemId = event.over?.id;
+    if (!sourceItemId || !targetItemId || sourceItemId === targetItemId) {
+      setDragTarget(null);
+      lastDndOverIdRef.current = targetItemId || null;
+      return;
+    }
+    if (lastDndOverIdRef.current === targetItemId) return;
+    lastDndOverIdRef.current = targetItemId;
+    previewSortableDrag(sourceItemId, targetItemId);
+  }
+
+  function handleSortableDragCancel() {
+    clearVisitDrag();
+  }
+
+  async function handleSortableDragEnd(event) {
+    const sourceItemId = event.active?.id;
+    const targetItemId = event.over?.id;
+    const targetItem = dayItems.find((item) => item.id === targetItemId);
+    const placement = sortableDropIntent(sourceItemId, targetItemId);
+    if (!sourceItemId || !targetItem || !placement || sourceItemId === targetItemId) {
+      clearVisitDrag();
+      return;
+    }
+    await commitVisitDrop(sourceItemId, targetItem, placement);
   }
 
   function beginVisitDrag(event, item) {
@@ -8139,17 +8280,19 @@ function ItineraryTimeline({
   function clearVisitDrag() {
     setDraggedVisitId(null);
     setDragTarget(null);
+    lastDndOverIdRef.current = null;
   }
 
-  async function dropVisitContent(event, targetItem) {
-    event.preventDefault();
-    const sourceItemId = draggedVisitId || event.dataTransfer.getData("text/plain");
+  async function commitVisitDrop(sourceItemId, targetItem, placement) {
     if (!sourceItemId || sourceItemId === targetItem.id) {
       clearVisitDrag();
       return;
     }
     const sourceItem = dayItems.find((item) => item.id === sourceItemId);
-    const placement = dragTarget?.itemId === targetItem.id ? dragTarget.placement : "after";
+    if (!sourceItem || !canTargetDraggedVisit(targetItem, sourceItem.id)) {
+      clearVisitDrag();
+      return;
+    }
     if (isUntimedVisit(sourceItem)) {
       const plan = planUntimedVisitReorder({
         items: dayItems,
@@ -8705,6 +8848,8 @@ function ItineraryTimeline({
 
   const isTransportEditor = form.item_type === "transport";
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
+  const visitItemIds = useMemo(() => visitItems.map((item) => item.id), [visitItems]);
+  const activeDragItem = draggedVisitId ? visitItems.find((item) => item.id === draggedVisitId) || null : null;
   const timedVisitItems = useMemo(() => visitItems.filter(isTimedVisit), [visitItems]);
   const editedTimedVisitIndex = timedVisitItems.findIndex((item) => item.id === editingId);
   const editedTimedVisit = editedTimedVisitIndex >= 0 ? timedVisitItems[editedTimedVisitIndex] : null;
@@ -9647,7 +9792,16 @@ function ItineraryTimeline({
 
       {isOpen && !isTransportEditor && !editingId ? renderVisitEditorForm() : null}
 
-      <div className="timeline">
+      <DndContext
+        collisionDetection={closestCenter}
+        onDragCancel={handleSortableDragCancel}
+        onDragEnd={handleSortableDragEnd}
+        onDragOver={handleSortableDragOver}
+        onDragStart={handleSortableDragStart}
+        sensors={dndSensors}
+      >
+      <SortableContext items={visitItemIds} strategy={verticalListSortingStrategy}>
+      <div className="timeline" data-dnd-preview={draggedVisitId ? "active" : undefined}>
         {visitItems.length ? (
           visitItems.map((item, index) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
@@ -9716,9 +9870,9 @@ function ItineraryTimeline({
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
             const isDragEnabled = canDragVisit(item);
             const isDisabledDragTarget = dragTarget?.itemId === item.id && dragTarget.disabled;
-            const dragPlacement = dragTarget?.itemId === item.id && !dragTarget.disabled ? dragTarget.placement : "";
             return (
-            <div className="timeline-flow-entry" key={item.id}>
+            <Fragment key={item.id}>
+            <SortableTimelineEntry disabled={!isDragEnabled} id={item.id}>
             {isEditingVisitHere ? (
               renderVisitEditorForm()
             ) : (
@@ -9726,15 +9880,11 @@ function ItineraryTimeline({
               className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${isExpanded ? " expanded" : ""}${
                 isItemFixed ? " fixed" : ""
               }${isDragEnabled ? " drag-enabled" : ""}${draggedVisitId === item.id ? " dragging" : ""}${
-                dragPlacement ? ` drag-target drag-${dragPlacement}` : ""
-              }${isDisabledDragTarget ? " drag-target-disabled" : ""}`}
+                isDisabledDragTarget ? " drag-target-disabled" : ""
+              }`}
+              data-dnd-overlay-source={draggedVisitId === item.id ? "true" : undefined}
               data-timing={isTimedVisit(item) ? "timed" : "untimed"}
-              draggable={isDragEnabled}
               title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
-              onDragEnd={clearVisitDrag}
-              onDragOver={(event) => updateVisitDragTarget(event, item)}
-              onDragStart={(event) => beginVisitDrag(event, item)}
-              onDrop={(event) => dropVisitContent(event, item)}
               onClick={() => {
                 setExpandedId(expandedId === item.id ? null : item.id);
                 onFocusItem(item.id);
@@ -9878,6 +10028,7 @@ function ItineraryTimeline({
               ) : null}
             </article>
             )}
+            </SortableTimelineEntry>
             {isAddingTransportHere ? renderTransportEditorForm() : null}
             {!isAddingTransportHere && transportItem ? (
               <div className="timeline-flow-entry" key={transportItem.id}>
@@ -9914,13 +10065,50 @@ function ItineraryTimeline({
               </div>
             ) : null}
             {!isAddingTailHere && isTailPosition && !tailTransportItem && !hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null}
-            </div>
+            </Fragment>
             );
           })
         ) : (
           <div className="timeline-empty">這一天還沒有行程</div>
         )}
       </div>
+      </SortableContext>
+      <DragOverlay dropAnimation={null}>
+        {activeDragItem ? (
+          <article
+            className="timeline-item timeline-drag-overlay-card"
+            data-dnd-drag-overlay="true"
+            data-timing={isTimedVisit(activeDragItem) ? "timed" : "untimed"}
+          >
+            <div className="time-block">
+              <span>{isTimedVisit(activeDragItem) ? formatTimeDisplay(activeDragItem.start_time) : "--:--"}</span>
+              <span className="time-connector" aria-hidden="true" />
+              <span>{isTimedVisit(activeDragItem) ? formatTimeDisplay(activeDragItem.end_time) : ""}</span>
+            </div>
+            <div className="item-main">
+              <h4>{visitDestination(activeDragItem)}</h4>
+              {activeDragItem.note || activeDragItem.description || activeDragItem.transportation_note ? (
+                <p className="item-summary">
+                  {activeDragItem.note || activeDragItem.description || activeDragItem.transportation_note}
+                </p>
+              ) : (
+                <p className="item-summary item-summary-placeholder" aria-hidden="true">
+                  &nbsp;
+                </p>
+              )}
+              <div className="item-meta">
+                <span
+                  className="pill"
+                  style={{ background: `${typeColors[activeDragItem.type]}22`, color: typeColors[activeDragItem.type] }}
+                >
+                  {typeLabels[activeDragItem.type]}
+                </span>
+              </div>
+            </div>
+          </article>
+        ) : null}
+      </DragOverlay>
+      </DndContext>
     </div>
     </>
   );
