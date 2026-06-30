@@ -8008,7 +8008,7 @@ function VersionInfoDialog({ onClose }) {
   );
 }
 
-function SortableTimelineEntry({ children, disabled = false, id }) {
+function SortableTimelineEntry({ children, disabled = false, hasFlowAttachments = false, id }) {
   const {
     attributes,
     isDragging,
@@ -8027,12 +8027,26 @@ function SortableTimelineEntry({ children, disabled = false, id }) {
   };
   return (
     <div
-      className={`timeline-flow-entry timeline-sortable-entry${isDragging ? " sortable-active-placeholder" : ""}`}
+      className={`timeline-flow-entry timeline-sortable-entry${hasFlowAttachments ? " has-flow-attachments" : ""}${
+        isDragging ? " sortable-active-placeholder" : ""
+      }`}
       data-sortable-visit-id={id}
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+    >
+      {children}
+    </div>
+  );
+}
+
+function TimelineFlowAttachment({ children }) {
+  return (
+    <div
+      className="timeline-flow-attachment"
+      onKeyDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
     >
       {children}
     </div>
@@ -9897,9 +9911,13 @@ function ItineraryTimeline({
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
             const isDragEnabled = canDragVisit(item);
             const isDisabledDragTarget = dragTarget?.itemId === item.id && dragTarget.disabled;
+            const hasAttachedTransportFlow =
+              (!isAddingTransportHere && Boolean(transportItem)) ||
+              passiveUntimedTransportItems.length > 0 ||
+              (!isAddingTailHere && isTailPosition && Boolean(tailTransportItem));
             return (
             <Fragment key={item.id}>
-            <SortableTimelineEntry disabled={!isDragEnabled} id={item.id}>
+            <SortableTimelineEntry disabled={!isDragEnabled} hasFlowAttachments={hasAttachedTransportFlow} id={item.id}>
             {isEditingVisitHere ? (
               renderVisitEditorForm()
             ) : (
@@ -10057,20 +10075,18 @@ function ItineraryTimeline({
             )}
             {!isAddingTransportHere && isTimedPair && !transportItem ? renderTransportInsert(item, nextItem) : null}
             {!isAddingTailHere && isTailPosition && !tailTransportItem && !hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null}
-            </SortableTimelineEntry>
-            {isAddingTransportHere ? renderTransportEditorForm() : null}
             {!isAddingTransportHere && transportItem ? (
-              <div className="timeline-flow-entry" key={transportItem.id}>
+              <TimelineFlowAttachment>
                 {isOpen && isTransportEditor && editingId === transportItem.id
                   ? renderTransportEditorForm()
                   : renderTransportCard(transportItem, useEditLocks && isLockedByAnotherUser(transportItem, currentUserId), {
                       hasTimeShortage: hasTransportTimeShortage,
                       warningType: transportWarningType,
                     })}
-              </div>
+              </TimelineFlowAttachment>
             ) : null}
             {passiveUntimedTransportItems.map((passiveTransportItem) => (
-              <div className="timeline-flow-entry" key={passiveTransportItem.id}>
+              <TimelineFlowAttachment key={passiveTransportItem.id}>
                 {isOpen && isTransportEditor && editingId === passiveTransportItem.id
                   ? renderTransportEditorForm()
                   : renderTransportCard(
@@ -10078,11 +10094,10 @@ function ItineraryTimeline({
                       useEditLocks && isLockedByAnotherUser(passiveTransportItem, currentUserId),
                       { warningType: "untimed" },
                     )}
-              </div>
+              </TimelineFlowAttachment>
             ))}
-            {isAddingTailHere ? renderTransportEditorForm() : null}
             {!isAddingTailHere && isTailPosition && tailTransportItem ? (
-              <div className="timeline-flow-entry" key={tailTransportItem.id}>
+              <TimelineFlowAttachment>
                 {isOpen && isTransportEditor && editingId === tailTransportItem.id
                   ? renderTransportEditorForm()
                   : renderTransportCard(
@@ -10090,8 +10105,11 @@ function ItineraryTimeline({
                       useEditLocks && isLockedByAnotherUser(tailTransportItem, currentUserId),
                       { isTail: true },
                     )}
-              </div>
+              </TimelineFlowAttachment>
             ) : null}
+            </SortableTimelineEntry>
+            {isAddingTransportHere ? renderTransportEditorForm() : null}
+            {isAddingTailHere ? renderTransportEditorForm() : null}
             </Fragment>
             );
           })

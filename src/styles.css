@@ -2686,6 +2686,14 @@ textarea {
   will-change: transform;
 }
 
+.timeline-sortable-entry.has-flow-attachments {
+  gap: 8px;
+}
+
+.timeline-flow-attachment {
+  display: grid;
+}
+
 .timeline-sortable-entry.sortable-active-placeholder::after {
   content: "";
   position: absolute;
@@ -2701,6 +2709,10 @@ textarea {
 }
 
 .timeline-sortable-entry.sortable-active-placeholder .timeline-item {
+  opacity: 0;
+}
+
+.timeline-sortable-entry.sortable-active-placeholder .timeline-flow-attachment {
   opacity: 0;
 }
 
