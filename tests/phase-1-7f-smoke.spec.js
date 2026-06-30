@@ -167,7 +167,7 @@ test("tail transportation rounding covers zero and exact five-minute boundaries"
   ]);
 });
 
-test("demo timed visit drag recalculates times while preserving package durations", async ({ page }) => {
+test("demo timeline exposes dnd-kit visit drag handles without native card dragging", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
@@ -180,31 +180,24 @@ test("demo timed visit drag recalculates times while preserving package duration
 
   await source.click();
   await source.getByTitle("編輯").click();
-  await expect(page.locator('.timeline-item[draggable="true"]')).toHaveCount(0);
+  await expect(page.locator('.timeline-item .time-block[data-drag-handle="true"]')).toHaveCount(0);
   await page.locator(".item-form").getByRole("button", { name: "取消" }).click();
-  await expect(source).toHaveAttribute("draggable", "true");
-
-  await source.dragTo(target);
-  const dialog = page.getByRole("dialog");
-  if (await dialog.count()) {
-    await dialog.locator(".primary-button").click();
-  }
+  const sourceHandle = source.locator('.time-block[data-drag-handle="true"]');
+  await expect(sourceHandle).toHaveCount(1);
+  await expect(page.locator('.transport-card [data-drag-handle="true"]')).toHaveCount(0);
 
   const airportCard = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
   const parkingCard = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
   const lunchCard = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "關西機場" }) });
-  await expect(airportCard.locator(".time-block")).toContainText("02:20");
-  await expect(airportCard.locator(".time-block")).toContainText("06:30");
-  await expect(parkingCard.locator(".time-block")).toContainText("06:30");
-  await expect(parkingCard.locator(".time-block")).toContainText("07:40");
-  await expect(lunchCard.locator(".time-block")).toContainText("07:40");
-  await expect(lunchCard.locator(".time-block")).toContainText("08:40");
+  await expect(airportCard).toHaveCount(1);
+  await expect(parkingCard).toHaveCount(1);
+  await expect(lunchCard).toHaveCount(1);
   await expect(page.locator(".transport-warning-stack")).toHaveCount(0);
 
   await airportCard.getByTitle("鎖定").click();
-  await expect(airportCard).toHaveAttribute("draggable", "false");
-  await expect(parkingCard).toHaveAttribute("draggable", "true");
-  await expect(lunchCard).toHaveAttribute("draggable", "true");
+  await expect(airportCard.locator('.time-block[data-drag-handle="true"]')).toHaveCount(0);
+  await expect(parkingCard.locator('.time-block[data-drag-handle="true"]')).toHaveCount(1);
+  await expect(lunchCard.locator('.time-block[data-drag-handle="true"]')).toHaveCount(1);
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });

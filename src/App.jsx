@@ -80,6 +80,9 @@ import kyotoDemoTrip from "./demo-kyoto-trip.json";
 const attachmentBucket = "trip-attachments";
 const appVersion = "0.1.0";
 const TimelineDragHandleContext = createContext(null);
+const timelineDragPresenceHeartbeatMs = 3000;
+const timelineDragPresenceStaleMs = 12000;
+const timelineDragPresenceMaxMs = 75000;
 
 function timelineAnimateLayoutChanges(args) {
   return args.isSorting ? defaultAnimateLayoutChanges(args) : false;
@@ -1866,7 +1869,14 @@ export default function App() {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
   const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
+  const [foreignDragPresence, setForeignDragPresence] = useState(null);
   const restoredDayRef = useRef(null);
+  const timelineDragPresenceChannelRef = useRef(null);
+  const localDragPresenceRef = useRef(null);
+  const localDragStartedAtRef = useRef(null);
+  const timelineDragPresenceSessionIdRef = useRef(
+    `timeline-drag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
     destination: "京都, 日本",
@@ -1895,6 +1905,11 @@ export default function App() {
   const userEmail = session?.user?.email || "";
   const userDisplayName = session?.user?.user_metadata?.full_name || userEmail;
   const userInitial = (userDisplayName.trim()[0] || "?").toUpperCase();
+  const currentTripMember = useMemo(
+    () => members.find((member) => member.user_id === session?.user?.id) || null,
+    [members, session?.user?.id],
+  );
+  const timelineDragPresenceUserName = currentTripMember ? memberName(currentTripMember) : userDisplayName || userEmail || "?";
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
   const canManageShareLinks = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
@@ -2378,6 +2393,113 @@ export default function App() {
 
     return () => supabase.removeChannel(channel);
   }, [activeTripId, loadTripData, loadTrips, session?.user]);
+
+  useEffect(() => {
+    if (!activeTripId || !session?.user || activeMembership?.status !== "approved") {
+      setForeignDragPresence(null);
+      return undefined;
+    }
+    const sessionId = timelineDragPresenceSessionIdRef.current;
+    const channel = supabase.channel(`timeline-drag:${activeTripId}:${activeDay}`, {
+      config: { presence: { key: sessionId } },
+    });
+    timelineDragPresenceChannelRef.current = channel;
+
+    const syncForeignPresence = () => {
+      const now = Date.now();
+      const state = channel.presenceState();
+      const payloads = Object.values(state)
+        .flat()
+        .filter((payload) => {
+          if (!payload || payload.userId === session.user.id) return false;
+          if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return false;
+          const lastSeenAt = Date.parse(payload.lastSeenAt || payload.startedAt || "");
+          return Number.isFinite(lastSeenAt) && now - lastSeenAt <= timelineDragPresenceStaleMs;
+        })
+        .sort((left, right) => Date.parse(right.lastSeenAt || right.startedAt || "") - Date.parse(left.lastSeenAt || left.startedAt || ""));
+      setForeignDragPresence(payloads[0] || null);
+    };
+
+    channel.on("presence", { event: "sync" }, syncForeignPresence).subscribe((status) => {
+      if (status === "SUBSCRIBED") syncForeignPresence();
+    });
+
+    return () => {
+      if (timelineDragPresenceChannelRef.current === channel) timelineDragPresenceChannelRef.current = null;
+      localDragPresenceRef.current = null;
+      localDragStartedAtRef.current = null;
+      setForeignDragPresence(null);
+      void channel.untrack();
+      void supabase.removeChannel(channel);
+    };
+  }, [activeDay, activeMembership?.status, activeTripId, session?.user]);
+
+  useEffect(() => {
+    if (!foreignDragPresence) return undefined;
+    const intervalId = window.setInterval(() => {
+      const lastSeenAt = Date.parse(foreignDragPresence.lastSeenAt || foreignDragPresence.startedAt || "");
+      if (!Number.isFinite(lastSeenAt) || Date.now() - lastSeenAt > timelineDragPresenceStaleMs) {
+        setForeignDragPresence(null);
+      }
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [foreignDragPresence]);
+
+  const clearDragPresence = useCallback(() => {
+    localDragPresenceRef.current = null;
+    localDragStartedAtRef.current = null;
+    const channel = timelineDragPresenceChannelRef.current;
+    if (channel) void channel.untrack();
+  }, []);
+
+  const publishDragPresence = useCallback(
+    (payload = {}) => {
+      if (!activeTripId || !session?.user || !canEditActiveTripContent) return;
+      const channel = timelineDragPresenceChannelRef.current;
+      if (!channel) return;
+      const now = new Date().toISOString();
+      const existing = localDragPresenceRef.current;
+      const startedAt = existing?.startedAt || payload.startedAt || now;
+      const dragId =
+        existing?.dragId ||
+        payload.dragId ||
+        `${timelineDragPresenceSessionIdRef.current}:${Date.now()}`;
+      const nextPayload = {
+        userId: session.user.id,
+        userName: timelineDragPresenceUserName,
+        sessionId: timelineDragPresenceSessionIdRef.current,
+        dragId,
+        tripId: activeTripId,
+        dayIndex: activeDay,
+        itemId: payload.itemId || existing?.itemId || null,
+        itemTitle: payload.itemTitle || existing?.itemTitle || "",
+        startedAt,
+        lastSeenAt: now,
+        overItemId: Object.prototype.hasOwnProperty.call(payload, "overItemId")
+          ? payload.overItemId
+          : existing?.overItemId || null,
+        placement: Object.prototype.hasOwnProperty.call(payload, "placement")
+          ? payload.placement
+          : existing?.placement || null,
+      };
+      localDragPresenceRef.current = nextPayload;
+      localDragStartedAtRef.current = Date.parse(startedAt) || Date.now();
+      void channel.track(nextPayload);
+    },
+    [activeDay, activeTripId, canEditActiveTripContent, session?.user, timelineDragPresenceUserName],
+  );
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (!localDragPresenceRef.current) return;
+      if (localDragStartedAtRef.current && Date.now() - localDragStartedAtRef.current > timelineDragPresenceMaxMs) {
+        clearDragPresence();
+        return;
+      }
+      publishDragPresence({});
+    }, timelineDragPresenceHeartbeatMs);
+    return () => window.clearInterval(intervalId);
+  }, [clearDragPresence, publishDragPresence]);
 
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -4200,6 +4322,8 @@ function exportTrip() {
             itineraryBudgetLinks={itineraryBudgetLinks}
             guideItems={guideItems}
             currentUserId={session.user.id}
+            foreignDragPresence={foreignDragPresence}
+            foreignSameDayDragActive={Boolean(foreignDragPresence)}
             luggageItems={luggageItems}
             luggageTab={luggageTab}
             members={members}
@@ -4225,9 +4349,11 @@ function exportTrip() {
             onDeletePackItem={deletePackItem}
             onDeleteSharedLuggageItem={deleteSharedLuggageItem}
             onDeleteTodo={deleteTodo}
+            onClearDragPresence={clearDragPresence}
             onRejectMember={rejectMember}
             onReorderDestinationPackages={reorderDestinationPackages}
             onReorderUntimedVisit={reorderUntimedVisit}
+            onPublishDragPresence={publishDragPresence}
             onSaveAlternative={saveAlternative}
             onSaveActualExpense={saveActualExpense}
             onSaveAccommodation={saveAccommodation}
@@ -7602,6 +7728,8 @@ function TripWorkspace(props) {
     itineraryBudgetLinks,
     guideItems,
     currentUserId,
+    foreignDragPresence,
+    foreignSameDayDragActive,
     luggageItems,
     luggageTab,
     members,
@@ -7627,9 +7755,11 @@ function TripWorkspace(props) {
     onDeletePackItem,
     onDeleteSharedLuggageItem,
     onDeleteTodo,
+    onClearDragPresence,
     onRejectMember,
     onReorderDestinationPackages,
     onReorderUntimedVisit,
+    onPublishDragPresence,
     onSaveAlternative,
     onSaveActualExpense,
     onSaveAccommodation,
@@ -7847,6 +7977,8 @@ function TripWorkspace(props) {
                 budgetsByItem={budgetsByItem}
                 canEdit={canEdit}
                 currentUserId={currentUserId}
+                foreignDragPresence={foreignDragPresence}
+                foreignSameDayDragActive={foreignSameDayDragActive}
                 members={members}
                 dayItems={dayItems}
                 dayDateLabel={days[activeDay] ? formatDate(days[activeDay]) : ""}
@@ -7854,10 +7986,12 @@ function TripWorkspace(props) {
                 dayTitle={`DAY ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
                 onApplyAlternative={onApplyAlternative}
+                onClearDragPresence={onClearDragPresence}
                 onConfirmTransportWarning={onConfirmTransportWarning}
                 onDeleteAlternative={onDeleteAlternative}
                 onDeleteItem={onDeleteItem}
                 onFocusItem={setFocusedItemId}
+                onPublishDragPresence={onPublishDragPresence}
                 onReorderDestinationPackages={onReorderDestinationPackages}
                 onReorderUntimedVisit={onReorderUntimedVisit}
                 onSaveAlternative={onSaveAlternative}
@@ -8274,13 +8408,17 @@ function ItineraryTimeline({
   dayTitle,
   disableDraftAutosave = false,
   focusedItemId,
+  foreignDragPresence = null,
+  foreignSameDayDragActive = false,
   headingEyebrow = "行程",
   members,
   onApplyAlternative,
+  onClearDragPresence,
   onConfirmTransportWarning,
   onDeleteAlternative,
   onDeleteItem,
   onFocusItem,
+  onPublishDragPresence,
   onReorderDestinationPackages,
   onReorderUntimedVisit,
   onSaveAlternative,
@@ -8328,6 +8466,10 @@ function ItineraryTimeline({
     userId: currentUserId,
   });
   const memberById = new Map((members || []).map((member) => [member.user_id, member]));
+  const foreignDragMember = foreignDragPresence?.userId ? memberById.get(foreignDragPresence.userId) : null;
+  const foreignDragUserName = foreignDragPresence?.userName || (foreignDragMember ? memberName(foreignDragMember) : "其他成員");
+  const foreignDragOverItemId = foreignSameDayDragActive ? foreignDragPresence?.overItemId : null;
+  const foreignDragPlacement = foreignSameDayDragActive ? foreignDragPresence?.placement : null;
   const activeEditorGuardId = `timeline:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
@@ -8386,6 +8528,7 @@ function ItineraryTimeline({
   function canDragReorderVisit(item) {
     return (
       canEdit &&
+      !foreignSameDayDragActive &&
       !hasBlockingTimelineEditor &&
       !isReorderingDestination &&
       isTimedVisit(item) &&
@@ -8397,6 +8540,7 @@ function ItineraryTimeline({
   function canDragUntimedVisit(item) {
     return (
       canEdit &&
+      !foreignSameDayDragActive &&
       !hasBlockingTimelineEditor &&
       !isReorderingDestination &&
       !isReorderingUntimed &&
@@ -8464,6 +8608,14 @@ function ItineraryTimeline({
     setUntimedDropNotice("");
     setDraggedVisitId(sourceItem.id);
     setDragTarget(null);
+    if (typeof onPublishDragPresence === "function") {
+      onPublishDragPresence({
+        itemId: sourceItem.id,
+        itemTitle: visitDestination(sourceItem),
+        overItemId: null,
+        placement: null,
+      });
+    }
     lastDndOverIdRef.current = null;
   }
 
@@ -8472,12 +8624,22 @@ function ItineraryTimeline({
     const targetItemId = event.over?.id;
     if (!sourceItemId || !targetItemId || sourceItemId === targetItemId) {
       setDragTarget(null);
+      if (typeof onPublishDragPresence === "function" && sourceItemId) {
+        onPublishDragPresence({ overItemId: null, placement: null });
+      }
       lastDndOverIdRef.current = targetItemId || null;
       return;
     }
     if (lastDndOverIdRef.current === targetItemId) return;
     lastDndOverIdRef.current = targetItemId;
-    previewSortableDrag(sourceItemId, targetItemId);
+    const previewOk = previewSortableDrag(sourceItemId, targetItemId);
+    const placement = sortableDropIntent(sourceItemId, targetItemId);
+    if (typeof onPublishDragPresence === "function") {
+      onPublishDragPresence({
+        overItemId: previewOk ? targetItemId : null,
+        placement: previewOk ? placement : null,
+      });
+    }
   }
 
   function handleSortableDragCancel() {
@@ -8536,6 +8698,7 @@ function ItineraryTimeline({
     setDragOverlaySize(null);
     setDragTarget(null);
     lastDndOverIdRef.current = null;
+    if (typeof onClearDragPresence === "function") onClearDragPresence();
   }
 
   async function commitVisitDrop(sourceItemId, targetItem, placement) {
@@ -10042,6 +10205,12 @@ function ItineraryTimeline({
         </p>
       ) : null}
 
+      {foreignSameDayDragActive ? (
+        <p className="timeline-remote-drag-hint" role="status">
+          {foreignDragUserName} 正在拖曳
+        </p>
+      ) : null}
+
       {invalidTransportItems.length ? (
         <div className="transport-warning-stack" aria-label="需確認交通資訊">
           {invalidTransportItems.map((item) => (
@@ -10145,6 +10314,9 @@ function ItineraryTimeline({
             return (
             <Fragment key={item.id}>
             <SortableTimelineEntry disabled={!isDragEnabled} hasFlowAttachments={hasAttachedTransportFlow} id={item.id}>
+            {foreignDragOverItemId === item.id && foreignDragPlacement === "before" ? (
+              <div className="timeline-remote-insertion-line" aria-hidden="true" />
+            ) : null}
             {isEditingVisitHere ? (
               renderVisitEditorForm()
             ) : (
@@ -10333,6 +10505,9 @@ function ItineraryTimeline({
                       { isTail: true },
                     )}
               </TimelineFlowAttachment>
+            ) : null}
+            {foreignDragOverItemId === item.id && foreignDragPlacement === "after" ? (
+              <div className="timeline-remote-insertion-line" aria-hidden="true" />
             ) : null}
             </SortableTimelineEntry>
             {isAddingTransportHere ? renderTransportEditorForm() : null}
