@@ -93,6 +93,9 @@ Do:
 - Let details expand from the card.
 - Keep map links easy to open.
 - Keep route/map context available on desktop.
+- For Timeline drag reorder, keep drag activation on an intentional handle such as the time block instead of the whole card, so normal card click/edit interactions stay predictable.
+- Keep local drag previews constrained to the active Day Board flow. The floating overlay should move vertically within the list/card area and should not cover the date header or neighboring day boards.
+- Keep transportation cards visually attached to their semantic visit pair during drag preview, but do not make transportation cards themselves draggable.
 
 Do not:
 
@@ -100,6 +103,8 @@ Do not:
 - Keep add/edit forms always visible if formal UI uses card actions.
 - Hide the next stop behind too many taps.
 - Overload cards with every field by default.
+- Let drag preview behavior write formal ordering data before drop.
+- Let a whole visit card become a drag handle if that interferes with expand, edit, delete, lock, or link interactions.
 
 ## Timeline Workspace UX Rules
 
@@ -130,7 +135,7 @@ Do not:
 - Add background-colored edge overlays that only match one workspace state.
 - Let navigation buttons cover visible scrollbars or important card content.
 - Create Demo-only workspace wrappers or grid rules that hide Formal layout regressions.
-- Introduce Google Map, route calculation, sorting, drag/drop, or transportation insertion behavior as part of layout-only polish.
+- Introduce Google Map, route calculation, new sorting semantics, or transportation insertion behavior as part of layout-only polish.
 
 ## Transportation Card UX Rules
 

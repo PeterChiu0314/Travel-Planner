@@ -2755,11 +2755,11 @@ textarea {
 }
 
 .timeline-item.drag-enabled {
-  cursor: grab;
+  cursor: pointer;
 }
 
 .timeline-item.drag-enabled:active {
-  cursor: grabbing;
+  cursor: pointer;
 }
 
 .timeline-item.dragging {
@@ -3098,6 +3098,15 @@ textarea {
   line-height: 1.2;
   padding: 0;
   text-align: center;
+}
+
+.time-block[data-drag-handle="true"] {
+  cursor: grab;
+  touch-action: none;
+}
+
+.time-block[data-drag-handle="true"]:active {
+  cursor: grabbing;
 }
 
 .time-connector {

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   closestCenter,
   DndContext,
@@ -79,6 +79,7 @@ import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
 const attachmentBucket = "trip-attachments";
 const appVersion = "0.1.0";
+const TimelineDragHandleContext = createContext(null);
 
 function timelineAnimateLayoutChanges(args) {
   return args.isSorting ? defaultAnimateLayoutChanges(args) : false;
@@ -8226,8 +8227,22 @@ function SortableTimelineEntry({ children, disabled = false, hasFlowAttachments 
       data-sortable-visit-id={id}
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+    >
+      <TimelineDragHandleContext.Provider value={disabled ? null : { attributes, listeners }}>
+        {children}
+      </TimelineDragHandleContext.Provider>
+    </div>
+  );
+}
+
+function TimelineDragHandle({ children, className = "" }) {
+  const dragHandle = useContext(TimelineDragHandleContext);
+  return (
+    <div
+      className={className}
+      data-drag-handle={dragHandle ? "true" : undefined}
+      {...(dragHandle?.attributes || {})}
+      {...(dragHandle?.listeners || {})}
     >
       {children}
     </div>
@@ -8333,6 +8348,24 @@ function ItineraryTimeline({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const lastDndOverIdRef = useRef(null);
+  const activeDayColumnRef = useRef(null);
+  const activeTimelineListRef = useRef(null);
+  const restrictTimelineDragToDayColumn = useCallback(
+    ({ activeNodeRect, overlayNodeRect, transform }) => {
+      const columnRect = activeDayColumnRef.current?.getBoundingClientRect();
+      const timelineRect = activeTimelineListRef.current?.getBoundingClientRect();
+      if (!columnRect || !activeNodeRect) return { ...transform, x: 0 };
+      const overlayHeight = overlayNodeRect?.height || dragOverlaySize?.height || activeNodeRect.height || 0;
+      const minY = (timelineRect?.top || columnRect.top) - activeNodeRect.top;
+      const maxY = columnRect.bottom - activeNodeRect.top - overlayHeight;
+      return {
+        ...transform,
+        x: 0,
+        y: Math.min(Math.max(transform.y, minY), Math.max(minY, maxY)),
+      };
+    },
+    [dragOverlaySize?.height],
+  );
 
   useEffect(() => {
     clearVisitDrag();
@@ -9975,7 +10008,7 @@ function ItineraryTimeline({
         </div>
       </div>
     ) : null}
-    <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
+    <div className="timeline-day-column active" data-day-index={activeDay} ref={activeDayColumnRef} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
         <div className="timeline-column-title">
           <p className="eyebrow">{dayTitle || headingEyebrow}</p>
@@ -10028,6 +10061,7 @@ function ItineraryTimeline({
 
       <DndContext
         collisionDetection={closestCenter}
+        modifiers={[restrictTimelineDragToDayColumn]}
         onDragCancel={handleSortableDragCancel}
         onDragEnd={handleSortableDragEnd}
         onDragOver={handleSortableDragOver}
@@ -10035,7 +10069,7 @@ function ItineraryTimeline({
         sensors={dndSensors}
       >
       <SortableContext items={visitItemIds} strategy={verticalListSortingStrategy}>
-      <div className="timeline" data-dnd-preview={draggedVisitId ? "active" : undefined}>
+      <div className="timeline" data-dnd-preview={draggedVisitId ? "active" : undefined} ref={activeTimelineListRef}>
         {visitItems.length ? (
           visitItems.map((item, index) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
@@ -10128,11 +10162,11 @@ function ItineraryTimeline({
                 onFocusItem(item.id);
               }}
             >
-              <div className="time-block">
+              <TimelineDragHandle className="time-block">
                 <span>{isTimedVisit(item) ? formatTimeDisplay(item.start_time) : "--:--"}</span>
                 <span className="time-connector" aria-hidden="true" />
                 <span>{isTimedVisit(item) ? formatTimeDisplay(item.end_time) : ""}</span>
-              </div>
+              </TimelineDragHandle>
               <div className="item-main">
                 <h4>{destination}</h4>
                 {isAlternativeFormFace ? (

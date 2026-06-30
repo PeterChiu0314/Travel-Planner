@@ -64,6 +64,7 @@ Actual current stack:
 - Plain JavaScript with JSX. There is no TypeScript in the repo right now.
 - Plain CSS in `src/styles.css`. There is no Tailwind setup right now.
 - Supabase JS client `@supabase/supabase-js` 2.45.x.
+- dnd-kit is used for Timeline sortable drag preview: `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities`.
 - Supabase Auth with Google OAuth.
 - Supabase Postgres with RLS.
 - Supabase Realtime through `postgres_changes`.
@@ -534,6 +535,7 @@ Completed or substantially implemented:
 - Owner approval/rejection.
 - Supabase Realtime subscriptions for trip-scoped tables.
 - Timeline CRUD.
+- Timeline drag reorder using dnd-kit local sortable preview, with Formal drop still routed through the existing Phase 4 reorder flows.
 - Timeline alternatives.
 - Timeline map URL/link fields.
 - Timeline to budget many-to-many links.
@@ -579,7 +581,7 @@ Reserved for later:
 - LINE/Email/Push notification.
 - AI itinerary generation.
 - Deep maps/routing API integration.
-- Drag/drop manual timeline sorting if explicitly reprioritized.
+- Collaborative drag presence and deeper drag collaboration semantics.
 
 ## 15. Known Issues and Risk Areas
 

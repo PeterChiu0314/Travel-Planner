@@ -10,7 +10,7 @@
 - `docs/2026-06-24-phase-4-5-closeout-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
-- `docs/timeline-phase-4-drag-reorder-rules-draft-v11.md` (latest working draft)
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
 
 Archive rule:
 
@@ -21,13 +21,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.8 Sortable Drag Preview - Implemented Locally / Build and Targeted QA Passed / No Migration
+Timeline Phase 4.8 Sortable Drag Preview + Demo Parity Polish - Implemented / Build and Targeted QA Passed / No Migration
 ```
 
 Next phase:
 
 ```text
-Continue Phase 4.8 visual QA on Formal authenticated data, then close out or proceed to the next Timeline polish slice.
+Continue Phase 4.8 authenticated Formal visual QA, then close out or proceed to Phase 4.8c collaborative drag presence only if explicitly requested.
 ```
 
 Branch:
@@ -214,14 +214,25 @@ New/updated files:
 - Timeline gap was set to `8px`; the hidden transportation insert affordance is nested under the sortable visit entry so it does not create extra direct `.timeline` grid gaps.
 - Transportation insert hover still expands between cards and is isolated from the sortable drag sensor via pointer/key event stop propagation.
 - Formal and Demo use the same `ItineraryTimeline` and CSS, so preview behavior remains shared.
+- Phase 4.8a follow-up keeps transportation cards as visual attachments of the previous destination sortable wrapper during drag preview; transportation cards still are not sortable items and are not draggable.
+- Phase 4.8b Demo Timeline Data Parity Polish aligns Demo transport fixture shape with Formal fields including `transport_role`, `from_item_id`, `to_item_id`, snapshots, fixed metadata, and trip/day/sort fields.
+- Demo newly added transportation cards now include `trip_id` and pair-adjacent `sort_order`, so the shared reorder planner preserves/remaps them like Formal data instead of leaving them outside the transport planning pass.
+- Tail-pending transport promotion now has one narrow untimed bypass: when adding a timed visit C after tail source A promotes `tail_pending` into `tail_promoted_pair A -> C`, only untimed visits blocking A/C adjacency are rebased after C. Normal pairs, existing promoted pairs, unrelated untimed visits, invalid time placement, and days without tail-pending transport remain unchanged.
+- Formal and Demo both use the same tail-pending promotion bypass helper; no Supabase migration, reorder RPC, or Phase 4.7 fixed-anchor/brokenTransportIds logic was changed.
+- Floating overlay drag is constrained to vertical movement inside the active day board. The top bound aligns to the first timeline card/list position below the date header, and the bottom bound stays inside the active day board.
+- Drag activation is limited to the left time block of a visit card. The rest of the card remains clickable for normal card interactions and does not start a drag.
 
 New/updated files:
 
 - `src/App.jsx`
 - `src/styles.css`
+- `src/lib/timelineUntimedOrdering.js`
 - `package.json`
 - `package-lock.json`
 - `tests/phase-4-2c-reorder.spec.js`
+- `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v12.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md`
 
 ## Production Migration State
 
@@ -362,6 +373,15 @@ Phase 4.8 preserves the Phase 4.7 timed reorder RPC path, Phase 4.5 untimed mixe
 
 The Vite build still reports the existing large-chunk warning; it is not a Phase 4.8 regression.
 
+Phase 4.8b / drag handle polish checks on 2026-06-30:
+
+```text
+npm.cmd run build passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 27/27
+git diff --check passed with Windows LF/CRLF notices only
+Manual user verification passed for Demo and Formal drag preview, Demo transport parity, tail_pending + untimed promotion bypass, vertical overlay constraint, day-board top/bottom overlay bounds, and time-block-only drag activation.
+```
+
 ## Protected Scope Preserved
 
 Phase 4.7 did not redesign or extend:
@@ -388,9 +408,9 @@ Phase 4.7 did not redesign or extend:
 - Because applied RPC migrations 020/021 are immutable and their server manifest predates this Hotfix, a legacy start-only row can cause timed reorder to reject safely as stale until that row is explicitly normalized.
 - Hotfix 2 Formal persistence uses a guarded source-row update followed by one scoped transportation delete statement because no new RPC was approved. If deletion fails, it attempts to restore the original `sort_order` before authoritative reload; an extreme network or concurrent-write failure during both deletion and compensation can still leave a partial authoritative result.
 - Phase 4.7 Formal timed drag has its transactional RPC applied in production, but this session focused on Demo/browser visual QA for Phase 4.8 sortable preview.
-- Manual authenticated Formal UI verification is still recommended for Phase 4.8 timed/untimed drag on a real test trip.
+- Authenticated Formal UI verification passed for the latest Phase 4.8b drag-preview and tail-pending bypass polish, but future drag animation changes should still be checked on a real test trip because pointer/scroll timing is browser-sensitive.
 - Drag animation feel is inherently browser/timing-sensitive; if future polish is needed, prefer dnd-kit `animateLayoutChanges` / sortable configuration over delaying Formal data writes or bypassing the existing reorder RPC flow.
 
 ## Next Step
 
-Verify Phase 4.8 on an authenticated Formal test trip, especially timed drag down/up across fixed anchors, untimed drag, invalid targets, transportation conflict confirmation, and Demo/Formal parity. Do not infer Phase 4.9 map integration, transportation repair, collaborative presence, or additional database changes.
+Close out Phase 4.8 documentation / final QA, or proceed to Phase 4.8c collaborative drag presence only if explicitly requested. Do not infer Phase 4.9 map integration, transportation repair, collaborative presence, or additional database changes.
