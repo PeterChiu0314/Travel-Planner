@@ -503,6 +503,50 @@ test("reorder preserves only original directed adjacent transports and remaps an
   expect(plan.items.some((item) => item.from_item_id === "slot-b" && item.to_item_id === "slot-c")).toBe(false);
 });
 
+test("Demo-added transport remains attached to its semantic pair after moving a neighboring visit", () => {
+  const items = [
+    visit("napoli", "Napoli", "11:00", 10),
+    visit("kasahara", "笠原桜公園", "12:00", 20),
+    visit("orix", "Orix Rent-a-car大津駅南口店", "13:00", 30),
+    visit("hachiman", "八幡堀", "14:00", 40),
+    visit("villa", "近江八幡夢園Villa", "15:00", 50),
+    transport("demo-transport-orix-hachiman", "orix", "hachiman", {
+      title: "5・5分鐘",
+      transport_duration_minutes: 5,
+      transport_role: "normal_pair",
+    }),
+  ];
+  const mixedPlan = planMixedTimedVisitReorder({
+    items,
+    placement: "after",
+    sourceItemId: "napoli",
+    targetItemId: "hachiman",
+  });
+  expect(mixedPlan.ok).toBe(true);
+
+  const plan = planDestinationPackageReorder({
+    items,
+    orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
+    orderedVisitItemIds: mixedPlan.orderedVisitItemIds,
+    packageSourceItemIds: mixedPlan.packageSourceItemIds,
+    slotItemIds: mixedPlan.slotItemIds,
+    timedAutoContinuation: true,
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.deletedTransportIds).not.toContain("demo-transport-orix-hachiman");
+  expect(plan.preservedTransportIds).toContain("demo-transport-orix-hachiman");
+  const transportItem = plan.items.find((item) => item.id === "demo-transport-orix-hachiman");
+  const fromVisit = plan.items.find((item) => item.id === transportItem.from_item_id);
+  const toVisit = plan.items.find((item) => item.id === transportItem.to_item_id);
+  expect([fromVisit.title, transportItem.title, toVisit.title]).toEqual([
+    "Orix Rent-a-car大津駅南口店",
+    "5・5分鐘",
+    "八幡堀",
+  ]);
+  expect(toVisit.title).not.toBe("Napoli");
+});
+
 test("D before B produces ADBC while untimed visits stay outside the manifest", () => {
   const data = fixture();
   const untimed = visit("untimed", "UNTIMED", null, 50);
@@ -647,4 +691,20 @@ test("Phase 4.8a dnd-kit local sortable ghost preview stays UI-only", () => {
   expect(stylesSource).not.toContain(".timeline-item.dnd-placeholder-card");
   expect(stylesSource).not.toContain(".timeline-item.drag-target::before");
   expect(fixedAnchorContinuationMigration).not.toContain("DragOverlay");
+});
+
+test("Phase 4.8b demo timeline fixtures model formal transportation roles", () => {
+  expect(appSource).toContain("createDemoTransportFixture");
+  expect(appSource).toContain("createDemoTransportFixtures");
+  expect(appSource).toContain("demoSortOrderForNewTimelineItem");
+  expect(appSource).toContain("trip_id: demoActiveTrip.id");
+  expect(appSource).toContain("demo-transport-day3-napoli-kasahara");
+  expect(appSource).toContain("demo-transport-day3-hachiman-tail");
+  expect(appSource).toContain("demo-transport-day2-tail-promoted-yamashina-rest");
+  expect(appSource).toContain("transportRoles.normalPair");
+  expect(appSource).toContain("transportRoles.tailPending");
+  expect(appSource).toContain("transportRoles.tailPromotedPair");
+  expect(appSource).toContain("normalizeTransportRole({ ...item, item_type: \"transport\" })");
+  expect(appSource).toContain("TimelineFlowAttachment");
+  expect(appSource).toContain("<SortableContext items={visitItemIds}");
 });

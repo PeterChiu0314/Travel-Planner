@@ -1454,8 +1454,117 @@ function normalizeDemoTime(value) {
   return value ? String(value).slice(0, 5) : "";
 }
 
-function createDemoTimelineItems() {
+const demoFixedVisitIds = new Set([
+  "1afc6297-cf0d-453f-ae3f-2b4e049508f4",
+  "926fe5ee-1973-44bb-ab63-634892943aa6",
+]);
+
+function createDemoTransportFixture(items, {
+  category = defaultTransportCategory,
+  durationMinutes = 20,
+  fromId,
+  id,
+  role = transportRoles.normalPair,
+  title,
+  toId = null,
+}) {
+  const fromItem = items.find((item) => item.id === fromId);
+  const toItem = toId ? items.find((item) => item.id === toId) : null;
+  if (!fromItem || (toId && !toItem)) return null;
+  return {
+    id,
+    trip_id: fromItem.trip_id,
+    day_index: fromItem.day_index,
+    sort_order: Number(fromItem.sort_order || 0) + 0.5,
+    item_type: "transport",
+    type: "transport",
+    title,
+    location: null,
+    note: null,
+    cost: 0,
+    created_by: "demo-peter",
+    created_at: "2026-06-30T00:00:00.000Z",
+    updated_at: "2026-06-30T00:00:00.000Z",
+    date: fromItem.date || null,
+    location_name: null,
+    address: null,
+    map_url: null,
+    latitude: null,
+    longitude: null,
+    description: null,
+    transportation_note: null,
+    locked_by: null,
+    locked_at: null,
+    transport_category: category,
+    transport_name: title,
+    transport_duration_minutes: durationMinutes,
+    transport_note: null,
+    from_item_id: fromId,
+    to_item_id: toId,
+    transport_role: role,
+    ...buildTransportPairSnapshot(fromItem, toItem),
+    is_fixed: false,
+    fixed_at: null,
+    fixed_by: null,
+  };
+}
+
+function createDemoTransportFixtures(items) {
   return [
+    createDemoTransportFixture(items, {
+      category: "car",
+      durationMinutes: 20,
+      fromId: "92b182ce-302c-469f-907b-14acda01aa1e",
+      id: "demo-transport-day3-napoli-kasahara",
+      role: transportRoles.normalPair,
+      title: "F・20分鐘",
+      toId: "8e3cd404-f6fe-4116-829d-5f218613b96d",
+    }),
+    createDemoTransportFixture(items, {
+      category: "car",
+      durationMinutes: 25,
+      fromId: "1ceb3a41-4633-4dee-9035-7085d0d7b4d2",
+      id: "demo-transport-day3-hachiman-tail",
+      role: transportRoles.tailPending,
+      title: "尾端交通・25分鐘",
+    }),
+    createDemoTransportFixture(items, {
+      category: "train",
+      durationMinutes: 15,
+      fromId: "a633aa05-d1e7-4027-a046-5674108c6040",
+      id: "demo-transport-day2-tail-promoted-yamashina-rest",
+      role: transportRoles.tailPromotedPair,
+      title: "尾端延伸・15分鐘",
+      toId: "3e62a2fc-244b-4774-8b9d-f0f45cf32ac5",
+    }),
+    createDemoTransportFixture(items, {
+      category: "walk",
+      durationMinutes: 12,
+      fromId: "f3973db2-8a80-444f-8108-7fe00c5c3f2a",
+      id: "demo-transport-day4-lunch-school",
+      role: transportRoles.normalPair,
+      title: "步行・12分鐘",
+      toId: "4b9e4e09-b699-45af-9545-79f13f0d522d",
+    }),
+  ].filter(Boolean);
+}
+
+function demoSortOrderForNewTimelineItem({ currentDayVisits = [], item }) {
+  if (isTransportationCard(item)) {
+    const fromItem = currentDayVisits.find((candidate) => candidate.id === item.from_item_id);
+    const toItem = currentDayVisits.find((candidate) => candidate.id === item.to_item_id);
+    const fromOrder = Number(fromItem?.sort_order);
+    const toOrder = Number(toItem?.sort_order);
+    if (Number.isFinite(fromOrder) && Number.isFinite(toOrder) && fromOrder !== toOrder) {
+      return (fromOrder + toOrder) / 2;
+    }
+    if (Number.isFinite(fromOrder)) return fromOrder + 0.5;
+  }
+  return (currentDayVisits.length + 1) * 10;
+}
+
+function createDemoTimelineItems() {
+  const baseItems = [
     ...(kyotoDemoTrip.itinerary_items || []),
     {
       id: "demo-untimed-philosophers-path",
@@ -1472,6 +1581,12 @@ function createDemoTimelineItems() {
       is_fixed: false,
       updated_at: "2026-06-24T00:00:00.000Z",
     },
+  ];
+  const demoTransportFixtures = createDemoTransportFixtures(baseItems);
+  const demoTransportFixtureIds = new Set(demoTransportFixtures.map((item) => item.id));
+  return [
+    ...baseItems.filter((item) => !demoTransportFixtureIds.has(item.id)),
+    ...demoTransportFixtures,
   ]
     .map((item, index) => ({
       ...item,
@@ -1488,6 +1603,21 @@ function createDemoTimelineItems() {
       description: item.description || item.note || "",
       transportation_note: item.transportation_note || item.transport_note || "",
       cost: Number(item.cost || 0),
+      transport_category: item.item_type === "transport" ? item.transport_category || defaultTransportCategory : item.transport_category || null,
+      transport_name: item.item_type === "transport" ? item.transport_name || item.title || "" : item.transport_name || null,
+      transport_duration_minutes:
+        item.item_type === "transport" && Number.isFinite(Number(item.transport_duration_minutes))
+          ? Number(item.transport_duration_minutes)
+          : item.item_type === "transport"
+            ? null
+            : item.transport_duration_minutes || null,
+      transport_note: item.item_type === "transport" ? item.transport_note || item.transportation_note || item.description || item.note || "" : item.transport_note || null,
+      from_item_id: item.item_type === "transport" ? item.from_item_id || null : item.from_item_id || null,
+      to_item_id: item.item_type === "transport" ? item.to_item_id || null : item.to_item_id || null,
+      transport_role: item.item_type === "transport" ? normalizeTransportRole({ ...item, item_type: "transport" }) : item.transport_role || null,
+      fixed_at: demoFixedVisitIds.has(item.id) ? item.fixed_at || "2026-06-30T00:00:00.000Z" : item.fixed_at || null,
+      fixed_by: demoFixedVisitIds.has(item.id) ? item.fixed_by || "demo-peter" : item.fixed_by || null,
+      is_fixed: demoFixedVisitIds.has(item.id) || Boolean(item.is_fixed),
       locked_by: null,
       locked_at: null,
     }))
@@ -6051,13 +6181,15 @@ function DemoApp({ initialSection }) {
     setTimelineItems((current) => {
       const currentWithoutBrokenTransport = current.filter((item) => item.id !== brokenTransportId);
       const currentDayVisits = sortedVisitItems(currentWithoutBrokenTransport.filter((item) => item.day_index === activeDay));
-      const sortOrder = (currentDayVisits.length + 1) * 10;
+      const sortOrder = demoSortOrderForNewTimelineItem({ currentDayVisits, item: nextPayload });
       const newItem = {
         ...emptyItemForm,
         ...nextPayload,
         id: newItemId,
+        trip_id: demoActiveTrip.id,
         day_index: activeDay,
         sort_order: sortOrder,
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
       const currentDayItems = currentWithoutBrokenTransport.filter((item) => item.day_index === activeDay);
