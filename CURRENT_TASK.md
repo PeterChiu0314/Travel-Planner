@@ -10,6 +10,7 @@
 - `docs/2026-06-24-phase-4-5-closeout-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
+- `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
 
 Archive rule:
@@ -21,13 +22,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.8 Sortable Drag Preview + Demo Parity Polish - Implemented / Build and Targeted QA Passed / No Migration
+Timeline Phase 4.8c Collaborative Drag Presence - Implemented / User Verified / Build Passed / No Migration
 ```
 
 Next phase:
 
 ```text
-Continue Phase 4.8 authenticated Formal visual QA, then close out or proceed to Phase 4.8c collaborative drag presence only if explicitly requested.
+Phase 4.8c is closed for now. Continue with final documentation/merge prep, or start Phase 4.9 Map integration only if explicitly requested.
 ```
 
 Branch:
@@ -222,6 +223,27 @@ New/updated files:
 - Floating overlay drag is constrained to vertical movement inside the active day board. The top bound aligns to the first timeline card/list position below the date header, and the bottom bound stays inside the active day board.
 - Drag activation is limited to the left time block of a visit card. The rest of the card remains clickable for normal card interactions and does not start a drag.
 
+### Phase 4.8c
+
+- Added authenticated Formal-only collaborative Timeline drag presence for active trip/day.
+- Channel scope is `timeline-drag:{tripId}:{dayIndex}`.
+- Supabase Realtime Presence is used only as a low-frequency soft lock for who is dragging.
+- Supabase Realtime Broadcast is used for drag updates, heartbeat, remote insertion target, and clear events.
+- Broadcast events:
+  - `timeline-drag-update`
+  - `timeline-drag-clear`
+- Drag start creates a fresh `dragId`, tracks basic presence, and broadcasts the first update.
+- Drag over broadcasts only target/placement changes.
+- Heartbeat broadcasts every 3 seconds and does not call Presence `track()`.
+- Drag cancel, invalid end, drop success/fail cleanup, unmount, day switch, trip switch, and logout cleanup broadcast clear and untrack presence.
+- Foreign same-day drag presence disables that day's destination drag handles through the shared drag eligibility conditions.
+- Foreign same-day drag presence shows the existing low-key `{userName} 正在拖曳` hint and muted insertion line.
+- Remote DragOverlay / ghost card / preview order is not rendered or synchronized.
+- B's list does not reorder from remote presence; official results still arrive only through the existing reorder RPC success plus Realtime/reload.
+- Debug logging is gated behind `?debugPresence=1`.
+- Demo remains local/unauthenticated and has no Supabase Presence or Broadcast wiring.
+- No migration, new table, new package, reorder RPC change, Phase 4.7 fixed-anchor logic change, or brokenTransportIds logic change was made.
+
 New/updated files:
 
 - `src/App.jsx`
@@ -231,6 +253,8 @@ New/updated files:
 - `package-lock.json`
 - `tests/phase-4-2c-reorder.spec.js`
 - `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
+- `docs/2026-06-30-phase-4-8c-collaborative-drag-presence-handoff.md`
+- `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v12.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md`
 
@@ -382,6 +406,19 @@ git diff --check passed with Windows LF/CRLF notices only
 Manual user verification passed for Demo and Formal drag preview, Demo transport parity, tail_pending + untimed promotion bypass, vertical overlay constraint, day-board top/bottom overlay bounds, and time-block-only drag activation.
 ```
 
+Phase 4.8c collaborative drag presence checks on 2026-06-30:
+
+```text
+npm.cmd run build passed
+npx.cmd playwright test tests/phase-1-7f-smoke.spec.js passed 22/22
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 27/27
+git diff --check passed with Windows LF/CRLF notices only
+Presence-only Vercel multi-account testing was unstable because sustained Presence track heartbeat could time out.
+Presence + Broadcast final build rerun passed after one Windows Node teardown assertion on the first run.
+git diff --check passed with Windows LF/CRLF notice only
+Manual Vercel multi-account user verification passed after switching heartbeat/dragOver updates to Broadcast.
+```
+
 ## Protected Scope Preserved
 
 Phase 4.7 did not redesign or extend:
@@ -396,7 +433,6 @@ Phase 4.7 did not redesign or extend:
 - transportation pair splitting or creation
 - Google Map API or route calculation
 - cross-day scheduling
-- collaborative drag presence
 - Demo isolation
 
 ## Residual Risks
@@ -410,7 +446,9 @@ Phase 4.7 did not redesign or extend:
 - Phase 4.7 Formal timed drag has its transactional RPC applied in production, but this session focused on Demo/browser visual QA for Phase 4.8 sortable preview.
 - Authenticated Formal UI verification passed for the latest Phase 4.8b drag-preview and tail-pending bypass polish, but future drag animation changes should still be checked on a real test trip because pointer/scroll timing is browser-sensitive.
 - Drag animation feel is inherently browser/timing-sensitive; if future polish is needed, prefer dnd-kit `animateLayoutChanges` / sortable configuration over delaying Formal data writes or bypassing the existing reorder RPC flow.
+- Phase 4.8c Realtime Broadcast delivery is best effort; the 12-second stale timeout is the fallback if a clear/update event is missed.
+- Phase 4.8c debug logs are gated behind `?debugPresence=1`. They are useful during rollout but expose ephemeral drag payloads in the browser console when enabled.
 
 ## Next Step
 
-Close out Phase 4.8 documentation / final QA, or proceed to Phase 4.8c collaborative drag presence only if explicitly requested. Do not infer Phase 4.9 map integration, transportation repair, collaborative presence, or additional database changes.
+Phase 4.8c is closed for now. Proceed with final merge/PR cleanup, optional debug-log cleanup, or Phase 4.9 Map integration only if explicitly requested. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, or additional database changes.

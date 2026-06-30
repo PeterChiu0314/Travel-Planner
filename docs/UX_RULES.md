@@ -96,6 +96,8 @@ Do:
 - For Timeline drag reorder, keep drag activation on an intentional handle such as the time block instead of the whole card, so normal card click/edit interactions stay predictable.
 - Keep local drag previews constrained to the active Day Board flow. The floating overlay should move vertically within the list/card area and should not cover the date header or neighboring day boards.
 - Keep transportation cards visually attached to their semantic visit pair during drag preview, but do not make transportation cards themselves draggable.
+- For collaborative drag presence, keep the remote signal quiet: show who is dragging, show a muted insertion line when available, and disable same-day destination drag handles only while the foreign drag is active.
+- Treat collaborative drag presence as a soft coordination hint, not as official order state.
 
 Do not:
 
@@ -105,6 +107,8 @@ Do not:
 - Overload cards with every field by default.
 - Let drag preview behavior write formal ordering data before drop.
 - Let a whole visit card become a drag handle if that interferes with expand, edit, delete, lock, or link interactions.
+- Render remote drag overlays, ghost cards, or remote preview reordering from presence/broadcast data.
+- Let collaborative drag presence replace reorder RPC validation or merge multiple users' local previews.
 
 ## Timeline Workspace UX Rules
 

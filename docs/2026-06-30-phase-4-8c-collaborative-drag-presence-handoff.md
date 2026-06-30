@@ -2,7 +2,18 @@
 
 Date: 2026-06-30
 Branch: `codex/timeline-phase-4-8`
-Target next work: continue **Timeline Phase 4.8c - Collaborative Drag Presence**
+Status: Superseded by implementation closeout
+Target next work: read `docs/2026-06-30-phase-4-8c-closeout-handoff.md` first
+
+---
+
+## Superseded Note
+
+This file is the pre-implementation 4.8c handoff and remains useful for original scope and guardrails.
+
+Implementation is now complete and user verified. The final technical shape changed from Presence-only to Presence + Broadcast after Vercel multi-account testing showed sustained Presence `track()` heartbeat/dragOver updates could time out.
+
+Use `docs/2026-06-30-phase-4-8c-closeout-handoff.md` as the current source of truth for Phase 4.8c status, payloads, cleanup, verification, and next steps.
 
 ---
 
