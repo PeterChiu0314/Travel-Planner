@@ -83,6 +83,56 @@ const TimelineDragHandleContext = createContext(null);
 const timelineDragPresenceHeartbeatMs = 3000;
 const timelineDragPresenceStaleMs = 12000;
 const timelineDragPresenceMaxMs = 75000;
+const timelineDragPresenceRefreshMs = 1000;
+
+function timelineDragPresenceDebug(label, details) {
+  // Temporary Phase 4.8c diagnostics; remove after live Realtime behavior is confirmed.
+  console.info(`[drag-presence] ${label}`, details);
+}
+
+function timelineDragPresenceDebugPayload(payload) {
+  if (!payload) return null;
+  return {
+    userId: payload.userId,
+    userName: payload.userName,
+    sessionId: payload.sessionId,
+    dragId: payload.dragId,
+    tripId: payload.tripId,
+    dayIndex: payload.dayIndex,
+    itemId: payload.itemId,
+    itemTitle: payload.itemTitle,
+    startedAt: payload.startedAt,
+    lastSeenAt: payload.lastSeenAt,
+    overItemId: payload.overItemId,
+    placement: payload.placement,
+  };
+}
+
+function timelineDragPresenceDebugState(state) {
+  return Object.fromEntries(
+    Object.entries(state || {}).map(([key, payloads]) => [
+      key,
+      (payloads || []).map((payload) => timelineDragPresenceDebugPayload(payload)),
+    ]),
+  );
+}
+
+function trackTimelineDragPresence(channel, payload, label) {
+  if (!channel || !payload) return;
+  timelineDragPresenceDebug(label, timelineDragPresenceDebugPayload(payload));
+  Promise.resolve(channel.track(payload))
+    .then((result) => {
+      if (result && result !== "ok") {
+        timelineDragPresenceDebug("track error", { result, payload: timelineDragPresenceDebugPayload(payload) });
+      }
+    })
+    .catch((error) => {
+      timelineDragPresenceDebug("track error", {
+        message: error?.message || String(error),
+        payload: timelineDragPresenceDebugPayload(payload),
+      });
+    });
+}
 
 function timelineAnimateLayoutChanges(args) {
   return args.isSorting ? defaultAnimateLayoutChanges(args) : false;
@@ -1903,12 +1953,13 @@ export default function App() {
   const canChangeTripDates = isOwner && !isTripDateLocked;
   const canInviteMembers = isOwner && !isTripDateLocked;
   const canOpenMembersDialog = activeMembership?.status === "approved";
+  const activeUserId = session?.user?.id || null;
   const userEmail = session?.user?.email || "";
   const userDisplayName = session?.user?.user_metadata?.full_name || userEmail;
   const userInitial = (userDisplayName.trim()[0] || "?").toUpperCase();
   const currentTripMember = useMemo(
-    () => members.find((member) => member.user_id === session?.user?.id) || null,
-    [members, session?.user?.id],
+    () => members.find((member) => member.user_id === activeUserId) || null,
+    [activeUserId, members],
   );
   const timelineDragPresenceUserName = currentTripMember ? memberName(currentTripMember) : userDisplayName || userEmail || "?";
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
@@ -2396,12 +2447,13 @@ export default function App() {
   }, [activeTripId, loadTripData, loadTrips, session?.user]);
 
   useEffect(() => {
-    if (!activeTripId || !session?.user || activeMembership?.status !== "approved") {
+    if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
       setForeignDragPresence(null);
       return undefined;
     }
     const sessionId = timelineDragPresenceSessionIdRef.current;
-    const channel = supabase.channel(`timeline-drag:${activeTripId}:${activeDay}`, {
+    const channelName = `timeline-drag:${activeTripId}:${activeDay}`;
+    const channel = supabase.channel(channelName, {
       config: { presence: { key: sessionId } },
     });
     timelineDragPresenceChannelRef.current = channel;
@@ -2410,17 +2462,75 @@ export default function App() {
     const syncForeignPresence = () => {
       const now = Date.now();
       const state = channel.presenceState();
+      timelineDragPresenceDebug("sync state", {
+        channelName,
+        state: timelineDragPresenceDebugState(state),
+      });
       const payloads = Object.values(state)
         .flat()
         .filter((payload) => {
-          if (!payload || payload.sessionId === sessionId) return false;
-          if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return false;
-          const lastSeenAt = Date.parse(payload.lastSeenAt || payload.startedAt || "");
-          return Number.isFinite(lastSeenAt) && now - lastSeenAt <= timelineDragPresenceStaleMs;
+          if (!payload) {
+            timelineDragPresenceDebug("stale filtered reason", { channelName, reason: "empty-payload" });
+            return false;
+          }
+          if (payload.sessionId === sessionId) {
+            return false;
+          }
+          if (payload.tripId !== activeTripId) {
+            timelineDragPresenceDebug("stale filtered reason", {
+              channelName,
+              expectedTripId: activeTripId,
+              payload: timelineDragPresenceDebugPayload(payload),
+              reason: "trip-mismatch",
+            });
+            return false;
+          }
+          if (Number(payload.dayIndex) !== Number(activeDay)) {
+            timelineDragPresenceDebug("stale filtered reason", {
+              channelName,
+              expectedDayIndex: activeDay,
+              payload: timelineDragPresenceDebugPayload(payload),
+              reason: "day-mismatch",
+            });
+            return false;
+          }
+          const rawLastSeenAt = payload.lastSeenAt || payload.startedAt || "";
+          const lastSeenAt = typeof rawLastSeenAt === "number" ? rawLastSeenAt : Date.parse(rawLastSeenAt);
+          if (!Number.isFinite(lastSeenAt)) {
+            timelineDragPresenceDebug("stale filtered reason", {
+              channelName,
+              payload: timelineDragPresenceDebugPayload(payload),
+              reason: "invalid-lastSeenAt",
+            });
+            return false;
+          }
+          if (now - lastSeenAt > timelineDragPresenceStaleMs) {
+            timelineDragPresenceDebug("stale filtered reason", {
+              ageMs: now - lastSeenAt,
+              channelName,
+              payload: timelineDragPresenceDebugPayload(payload),
+              reason: "stale-timeout",
+            });
+            return false;
+          }
+          return true;
         })
-        .sort((left, right) => Date.parse(right.lastSeenAt || right.startedAt || "") - Date.parse(left.lastSeenAt || left.startedAt || ""));
-      setForeignDragPresence(payloads[0] || null);
+        .sort((left, right) => {
+          const rightSeenAt = right.lastSeenAt || right.startedAt || "";
+          const leftSeenAt = left.lastSeenAt || left.startedAt || "";
+          const parsedRight = typeof rightSeenAt === "number" ? rightSeenAt : Date.parse(rightSeenAt);
+          const parsedLeft = typeof leftSeenAt === "number" ? leftSeenAt : Date.parse(leftSeenAt);
+          return parsedRight - parsedLeft;
+        });
+      const selectedPresence = payloads[0] || null;
+      timelineDragPresenceDebug("selected foreign presence", {
+        channelName,
+        payload: timelineDragPresenceDebugPayload(selectedPresence),
+      });
+      setForeignDragPresence(selectedPresence ? { ...selectedPresence } : null);
     };
+
+    const refreshIntervalId = window.setInterval(syncForeignPresence, timelineDragPresenceRefreshMs);
 
     channel
       .on("presence", { event: "sync" }, syncForeignPresence)
@@ -2429,15 +2539,21 @@ export default function App() {
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           timelineDragPresenceReadyRef.current = true;
-          if (localDragPresenceRef.current) void channel.track(localDragPresenceRef.current);
+          timelineDragPresenceDebug("subscribed", { channelName, sessionId });
+          if (localDragPresenceRef.current) {
+            trackTimelineDragPresence(channel, localDragPresenceRef.current, "track start payload");
+          }
           syncForeignPresence();
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           timelineDragPresenceReadyRef.current = false;
+          timelineDragPresenceDebug("track error", { channelName, status });
         }
       });
 
     return () => {
+      window.clearInterval(refreshIntervalId);
+      timelineDragPresenceDebug("stale filtered reason", { channelName, reason: "channel-cleanup" });
       if (timelineDragPresenceChannelRef.current === channel) timelineDragPresenceChannelRef.current = null;
       timelineDragPresenceReadyRef.current = false;
       localDragPresenceRef.current = null;
@@ -2446,13 +2562,19 @@ export default function App() {
       void channel.untrack();
       void supabase.removeChannel(channel);
     };
-  }, [activeDay, activeMembership?.status, activeTripId, session?.user]);
+  }, [activeDay, activeMembership?.status, activeTripId, activeUserId]);
 
   useEffect(() => {
     if (!foreignDragPresence) return undefined;
     const intervalId = window.setInterval(() => {
-      const lastSeenAt = Date.parse(foreignDragPresence.lastSeenAt || foreignDragPresence.startedAt || "");
+      const rawLastSeenAt = foreignDragPresence.lastSeenAt || foreignDragPresence.startedAt || "";
+      const lastSeenAt = typeof rawLastSeenAt === "number" ? rawLastSeenAt : Date.parse(rawLastSeenAt);
       if (!Number.isFinite(lastSeenAt) || Date.now() - lastSeenAt > timelineDragPresenceStaleMs) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          ageMs: Number.isFinite(lastSeenAt) ? Date.now() - lastSeenAt : null,
+          payload: timelineDragPresenceDebugPayload(foreignDragPresence),
+          reason: Number.isFinite(lastSeenAt) ? "state-stale-timeout" : "state-invalid-lastSeenAt",
+        });
         setForeignDragPresence(null);
       }
     }, 1000);
@@ -2463,23 +2585,37 @@ export default function App() {
     localDragPresenceRef.current = null;
     localDragStartedAtRef.current = null;
     const channel = timelineDragPresenceChannelRef.current;
-    if (channel) void channel.untrack();
+    if (channel) {
+      Promise.resolve(channel.untrack()).catch((error) => {
+        timelineDragPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
+      });
+    }
   }, []);
 
   const publishDragPresence = useCallback(
     (payload = {}) => {
-      if (!activeTripId || !session?.user || !canEditActiveTripContent) return;
+      if (!activeTripId || !activeUserId || !canEditActiveTripContent) return;
       const channel = timelineDragPresenceChannelRef.current;
       const now = new Date().toISOString();
       const existing = localDragPresenceRef.current;
       const resetDrag = Boolean(payload.resetDrag);
+      const hasDragOverPayload =
+        Object.prototype.hasOwnProperty.call(payload, "overItemId") ||
+        Object.prototype.hasOwnProperty.call(payload, "placement");
+      const trackLabel = resetDrag
+        ? "track start payload"
+        : payload.forceTrack
+          ? "heartbeat payload"
+          : hasDragOverPayload
+            ? "drag over payload"
+            : "track payload";
       const startedAt = resetDrag ? now : existing?.startedAt || payload.startedAt || now;
       const dragId =
         resetDrag || payload.dragId
           ? payload.dragId || `${timelineDragPresenceSessionIdRef.current}:${Date.now()}:${Math.random().toString(36).slice(2)}`
           : existing?.dragId || `${timelineDragPresenceSessionIdRef.current}:${Date.now()}`;
       const nextPayload = {
-        userId: session.user.id,
+        userId: activeUserId,
         userName: timelineDragPresenceUserName,
         sessionId: timelineDragPresenceSessionIdRef.current,
         dragId,
@@ -2498,9 +2634,11 @@ export default function App() {
       };
       localDragPresenceRef.current = nextPayload;
       localDragStartedAtRef.current = Date.parse(startedAt) || Date.now();
-      if (channel && timelineDragPresenceReadyRef.current) void channel.track(nextPayload);
+      if (channel && timelineDragPresenceReadyRef.current) {
+        trackTimelineDragPresence(channel, nextPayload, trackLabel);
+      }
     },
-    [activeDay, activeTripId, canEditActiveTripContent, session?.user, timelineDragPresenceUserName],
+    [activeDay, activeTripId, activeUserId, canEditActiveTripContent, timelineDragPresenceUserName],
   );
 
   useEffect(() => {
