@@ -1872,6 +1872,7 @@ export default function App() {
   const [foreignDragPresence, setForeignDragPresence] = useState(null);
   const restoredDayRef = useRef(null);
   const timelineDragPresenceChannelRef = useRef(null);
+  const timelineDragPresenceReadyRef = useRef(false);
   const localDragPresenceRef = useRef(null);
   const localDragStartedAtRef = useRef(null);
   const timelineDragPresenceSessionIdRef = useRef(
@@ -2404,6 +2405,7 @@ export default function App() {
       config: { presence: { key: sessionId } },
     });
     timelineDragPresenceChannelRef.current = channel;
+    timelineDragPresenceReadyRef.current = false;
 
     const syncForeignPresence = () => {
       const now = Date.now();
@@ -2420,12 +2422,24 @@ export default function App() {
       setForeignDragPresence(payloads[0] || null);
     };
 
-    channel.on("presence", { event: "sync" }, syncForeignPresence).subscribe((status) => {
-      if (status === "SUBSCRIBED") syncForeignPresence();
-    });
+    channel
+      .on("presence", { event: "sync" }, syncForeignPresence)
+      .on("presence", { event: "join" }, syncForeignPresence)
+      .on("presence", { event: "leave" }, syncForeignPresence)
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          timelineDragPresenceReadyRef.current = true;
+          if (localDragPresenceRef.current) void channel.track(localDragPresenceRef.current);
+          syncForeignPresence();
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          timelineDragPresenceReadyRef.current = false;
+        }
+      });
 
     return () => {
       if (timelineDragPresenceChannelRef.current === channel) timelineDragPresenceChannelRef.current = null;
+      timelineDragPresenceReadyRef.current = false;
       localDragPresenceRef.current = null;
       localDragStartedAtRef.current = null;
       setForeignDragPresence(null);
@@ -2456,7 +2470,6 @@ export default function App() {
     (payload = {}) => {
       if (!activeTripId || !session?.user || !canEditActiveTripContent) return;
       const channel = timelineDragPresenceChannelRef.current;
-      if (!channel) return;
       const now = new Date().toISOString();
       const existing = localDragPresenceRef.current;
       const startedAt = existing?.startedAt || payload.startedAt || now;
@@ -2484,7 +2497,7 @@ export default function App() {
       };
       localDragPresenceRef.current = nextPayload;
       localDragStartedAtRef.current = Date.parse(startedAt) || Date.now();
-      void channel.track(nextPayload);
+      if (channel && timelineDragPresenceReadyRef.current) void channel.track(nextPayload);
     },
     [activeDay, activeTripId, canEditActiveTripContent, session?.user, timelineDragPresenceUserName],
   );
