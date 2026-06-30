@@ -2413,7 +2413,7 @@ export default function App() {
       const payloads = Object.values(state)
         .flat()
         .filter((payload) => {
-          if (!payload || payload.userId === session.user.id) return false;
+          if (!payload || payload.sessionId === sessionId) return false;
           if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return false;
           const lastSeenAt = Date.parse(payload.lastSeenAt || payload.startedAt || "");
           return Number.isFinite(lastSeenAt) && now - lastSeenAt <= timelineDragPresenceStaleMs;
@@ -2472,11 +2472,12 @@ export default function App() {
       const channel = timelineDragPresenceChannelRef.current;
       const now = new Date().toISOString();
       const existing = localDragPresenceRef.current;
-      const startedAt = existing?.startedAt || payload.startedAt || now;
+      const resetDrag = Boolean(payload.resetDrag);
+      const startedAt = resetDrag ? now : existing?.startedAt || payload.startedAt || now;
       const dragId =
-        existing?.dragId ||
-        payload.dragId ||
-        `${timelineDragPresenceSessionIdRef.current}:${Date.now()}`;
+        resetDrag || payload.dragId
+          ? payload.dragId || `${timelineDragPresenceSessionIdRef.current}:${Date.now()}:${Math.random().toString(36).slice(2)}`
+          : existing?.dragId || `${timelineDragPresenceSessionIdRef.current}:${Date.now()}`;
       const nextPayload = {
         userId: session.user.id,
         userName: timelineDragPresenceUserName,
@@ -2509,7 +2510,7 @@ export default function App() {
         clearDragPresence();
         return;
       }
-      publishDragPresence({});
+      publishDragPresence({ forceTrack: true });
     }, timelineDragPresenceHeartbeatMs);
     return () => window.clearInterval(intervalId);
   }, [clearDragPresence, publishDragPresence]);
@@ -8623,6 +8624,8 @@ function ItineraryTimeline({
     setDragTarget(null);
     if (typeof onPublishDragPresence === "function") {
       onPublishDragPresence({
+        resetDrag: true,
+        forceTrack: true,
         itemId: sourceItem.id,
         itemTitle: visitDestination(sourceItem),
         overItemId: null,
