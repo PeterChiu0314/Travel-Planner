@@ -85,8 +85,13 @@ const timelineDragPresenceStaleMs = 12000;
 const timelineDragPresenceMaxMs = 75000;
 const timelineDragPresenceRefreshMs = 1000;
 
+function timelineDragPresenceDebugEnabled() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("debugPresence") === "1";
+}
+
 function timelineDragPresenceDebug(label, details) {
-  // Temporary Phase 4.8c diagnostics; remove after live Realtime behavior is confirmed.
+  if (!timelineDragPresenceDebugEnabled()) return;
   console.info(`[drag-presence] ${label}`, details);
 }
 
@@ -103,6 +108,7 @@ function timelineDragPresenceDebugPayload(payload) {
     itemTitle: payload.itemTitle,
     startedAt: payload.startedAt,
     lastSeenAt: payload.lastSeenAt,
+    sentAt: payload.sentAt,
     overItemId: payload.overItemId,
     placement: payload.placement,
   };
@@ -117,17 +123,55 @@ function timelineDragPresenceDebugState(state) {
   );
 }
 
+function timelineDragPresenceBasePayload(payload) {
+  if (!payload) return null;
+  return {
+    userId: payload.userId,
+    userName: payload.userName,
+    sessionId: payload.sessionId,
+    dragId: payload.dragId,
+    tripId: payload.tripId,
+    dayIndex: payload.dayIndex,
+    itemId: payload.itemId,
+    itemTitle: payload.itemTitle,
+    startedAt: payload.startedAt,
+  };
+}
+
 function trackTimelineDragPresence(channel, payload, label) {
   if (!channel || !payload) return;
-  timelineDragPresenceDebug(label, timelineDragPresenceDebugPayload(payload));
-  Promise.resolve(channel.track(payload))
+  const presencePayload = timelineDragPresenceBasePayload(payload);
+  timelineDragPresenceDebug(label, timelineDragPresenceDebugPayload(presencePayload));
+  Promise.resolve(channel.track(presencePayload))
     .then((result) => {
       if (result && result !== "ok") {
-        timelineDragPresenceDebug("track error", { result, payload: timelineDragPresenceDebugPayload(payload) });
+        timelineDragPresenceDebug("track error", { result, payload: timelineDragPresenceDebugPayload(presencePayload) });
       }
     })
     .catch((error) => {
       timelineDragPresenceDebug("track error", {
+        message: error?.message || String(error),
+        payload: timelineDragPresenceDebugPayload(presencePayload),
+      });
+    });
+}
+
+function broadcastTimelineDragPresence(channel, event, payload, label) {
+  if (!channel || !payload) return;
+  timelineDragPresenceDebug(label, timelineDragPresenceDebugPayload(payload));
+  Promise.resolve(channel.send({ type: "broadcast", event, payload }))
+    .then((result) => {
+      if (result && result !== "ok") {
+        timelineDragPresenceDebug("broadcast error", {
+          event,
+          result,
+          payload: timelineDragPresenceDebugPayload(payload),
+        });
+      }
+    })
+    .catch((error) => {
+      timelineDragPresenceDebug("broadcast error", {
+        event,
         message: error?.message || String(error),
         payload: timelineDragPresenceDebugPayload(payload),
       });
@@ -2459,6 +2503,79 @@ export default function App() {
     timelineDragPresenceChannelRef.current = channel;
     timelineDragPresenceReadyRef.current = false;
 
+    const isForeignSameDayPayload = (payload, now) => {
+      if (!payload) {
+        timelineDragPresenceDebug("stale filtered reason", { channelName, reason: "empty-payload" });
+        return false;
+      }
+      if (payload.sessionId === sessionId) return false;
+      if (payload.tripId !== activeTripId) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          channelName,
+          expectedTripId: activeTripId,
+          payload: timelineDragPresenceDebugPayload(payload),
+          reason: "trip-mismatch",
+        });
+        return false;
+      }
+      if (Number(payload.dayIndex) !== Number(activeDay)) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          channelName,
+          expectedDayIndex: activeDay,
+          payload: timelineDragPresenceDebugPayload(payload),
+          reason: "day-mismatch",
+        });
+        return false;
+      }
+      const rawLastSeenAt = payload.sentAt || payload.lastSeenAt || payload.startedAt || "";
+      const lastSeenAt = typeof rawLastSeenAt === "number" ? rawLastSeenAt : Date.parse(rawLastSeenAt);
+      if (!Number.isFinite(lastSeenAt)) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          channelName,
+          payload: timelineDragPresenceDebugPayload(payload),
+          reason: "invalid-lastSeenAt",
+        });
+        return false;
+      }
+      if (now - lastSeenAt > timelineDragPresenceStaleMs) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          ageMs: now - lastSeenAt,
+          channelName,
+          payload: timelineDragPresenceDebugPayload(payload),
+          reason: "stale-timeout",
+        });
+        return false;
+      }
+      return true;
+    };
+
+    const mergeForeignPresence = (payload, seenAt) => {
+      const nextSeenAt = seenAt || payload.sentAt || payload.lastSeenAt || payload.startedAt || new Date().toISOString();
+      const isLiveUpdate = Boolean(payload.sentAt || payload.lastSeenAt);
+      setForeignDragPresence((current) => {
+        if (current?.dragId === payload.dragId) {
+          return {
+            ...payload,
+            lastSeenAt: isLiveUpdate ? nextSeenAt : current.lastSeenAt || nextSeenAt,
+            overItemId: Object.prototype.hasOwnProperty.call(payload, "overItemId")
+              ? payload.overItemId
+              : current.overItemId || null,
+            placement: Object.prototype.hasOwnProperty.call(payload, "placement")
+              ? payload.placement
+              : current.placement || null,
+            sentAt: payload.sentAt || current.sentAt || nextSeenAt,
+          };
+        }
+        return {
+          ...payload,
+          lastSeenAt: nextSeenAt,
+          overItemId: Object.prototype.hasOwnProperty.call(payload, "overItemId") ? payload.overItemId : null,
+          placement: Object.prototype.hasOwnProperty.call(payload, "placement") ? payload.placement : null,
+          sentAt: payload.sentAt || nextSeenAt,
+        };
+      });
+    };
+
     const syncForeignPresence = () => {
       const now = Date.now();
       const state = channel.presenceState();
@@ -2468,56 +2585,10 @@ export default function App() {
       });
       const payloads = Object.values(state)
         .flat()
-        .filter((payload) => {
-          if (!payload) {
-            timelineDragPresenceDebug("stale filtered reason", { channelName, reason: "empty-payload" });
-            return false;
-          }
-          if (payload.sessionId === sessionId) {
-            return false;
-          }
-          if (payload.tripId !== activeTripId) {
-            timelineDragPresenceDebug("stale filtered reason", {
-              channelName,
-              expectedTripId: activeTripId,
-              payload: timelineDragPresenceDebugPayload(payload),
-              reason: "trip-mismatch",
-            });
-            return false;
-          }
-          if (Number(payload.dayIndex) !== Number(activeDay)) {
-            timelineDragPresenceDebug("stale filtered reason", {
-              channelName,
-              expectedDayIndex: activeDay,
-              payload: timelineDragPresenceDebugPayload(payload),
-              reason: "day-mismatch",
-            });
-            return false;
-          }
-          const rawLastSeenAt = payload.lastSeenAt || payload.startedAt || "";
-          const lastSeenAt = typeof rawLastSeenAt === "number" ? rawLastSeenAt : Date.parse(rawLastSeenAt);
-          if (!Number.isFinite(lastSeenAt)) {
-            timelineDragPresenceDebug("stale filtered reason", {
-              channelName,
-              payload: timelineDragPresenceDebugPayload(payload),
-              reason: "invalid-lastSeenAt",
-            });
-            return false;
-          }
-          if (now - lastSeenAt > timelineDragPresenceStaleMs) {
-            timelineDragPresenceDebug("stale filtered reason", {
-              ageMs: now - lastSeenAt,
-              channelName,
-              payload: timelineDragPresenceDebugPayload(payload),
-              reason: "stale-timeout",
-            });
-            return false;
-          }
-          return true;
-        })
+        .filter((payload) => isForeignSameDayPayload(payload, now))
         .sort((left, right) => {
-          const rightSeenAt = right.lastSeenAt || right.startedAt || "";
-          const leftSeenAt = left.lastSeenAt || left.startedAt || "";
+          const rightSeenAt = right.sentAt || right.lastSeenAt || right.startedAt || "";
+          const leftSeenAt = left.sentAt || left.lastSeenAt || left.startedAt || "";
           const parsedRight = typeof rightSeenAt === "number" ? rightSeenAt : Date.parse(rightSeenAt);
           const parsedLeft = typeof leftSeenAt === "number" ? leftSeenAt : Date.parse(leftSeenAt);
           return parsedRight - parsedLeft;
@@ -2527,7 +2598,7 @@ export default function App() {
         channelName,
         payload: timelineDragPresenceDebugPayload(selectedPresence),
       });
-      setForeignDragPresence(selectedPresence ? { ...selectedPresence } : null);
+      if (selectedPresence) mergeForeignPresence(selectedPresence, selectedPresence.startedAt);
     };
 
     const refreshIntervalId = window.setInterval(syncForeignPresence, timelineDragPresenceRefreshMs);
@@ -2536,12 +2607,40 @@ export default function App() {
       .on("presence", { event: "sync" }, syncForeignPresence)
       .on("presence", { event: "join" }, syncForeignPresence)
       .on("presence", { event: "leave" }, syncForeignPresence)
+      .on("broadcast", { event: "timeline-drag-update" }, (message) => {
+        const payload = message?.payload || null;
+        timelineDragPresenceDebug("broadcast received", {
+          channelName,
+          event: "timeline-drag-update",
+          payload: timelineDragPresenceDebugPayload(payload),
+        });
+        if (isForeignSameDayPayload(payload, Date.now())) {
+          mergeForeignPresence(payload, payload.sentAt || new Date().toISOString());
+        }
+      })
+      .on("broadcast", { event: "timeline-drag-clear" }, (message) => {
+        const payload = message?.payload || null;
+        timelineDragPresenceDebug("broadcast received", {
+          channelName,
+          event: "timeline-drag-clear",
+          payload: timelineDragPresenceDebugPayload(payload),
+        });
+        if (!payload || payload.sessionId === sessionId) return;
+        if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return;
+        setForeignDragPresence((current) => (!current || current.dragId === payload.dragId ? null : current));
+      })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           timelineDragPresenceReadyRef.current = true;
           timelineDragPresenceDebug("subscribed", { channelName, sessionId });
           if (localDragPresenceRef.current) {
             trackTimelineDragPresence(channel, localDragPresenceRef.current, "track start payload");
+            broadcastTimelineDragPresence(
+              channel,
+              "timeline-drag-update",
+              { ...localDragPresenceRef.current, sentAt: new Date().toISOString() },
+              "broadcast update",
+            );
           }
           syncForeignPresence();
         }
@@ -2554,12 +2653,22 @@ export default function App() {
     return () => {
       window.clearInterval(refreshIntervalId);
       timelineDragPresenceDebug("stale filtered reason", { channelName, reason: "channel-cleanup" });
+      if (localDragPresenceRef.current && timelineDragPresenceReadyRef.current) {
+        broadcastTimelineDragPresence(
+          channel,
+          "timeline-drag-clear",
+          { ...timelineDragPresenceBasePayload(localDragPresenceRef.current), sentAt: new Date().toISOString() },
+          "broadcast clear",
+        );
+      }
       if (timelineDragPresenceChannelRef.current === channel) timelineDragPresenceChannelRef.current = null;
       timelineDragPresenceReadyRef.current = false;
       localDragPresenceRef.current = null;
       localDragStartedAtRef.current = null;
       setForeignDragPresence(null);
-      void channel.untrack();
+      Promise.resolve(channel.untrack()).catch((error) => {
+        timelineDragPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
+      });
       void supabase.removeChannel(channel);
     };
   }, [activeDay, activeMembership?.status, activeTripId, activeUserId]);
@@ -2582,9 +2691,18 @@ export default function App() {
   }, [foreignDragPresence]);
 
   const clearDragPresence = useCallback(() => {
+    const currentPayload = localDragPresenceRef.current;
+    const channel = timelineDragPresenceChannelRef.current;
+    if (channel && timelineDragPresenceReadyRef.current && currentPayload) {
+      broadcastTimelineDragPresence(
+        channel,
+        "timeline-drag-clear",
+        { ...timelineDragPresenceBasePayload(currentPayload), sentAt: new Date().toISOString() },
+        "broadcast clear",
+      );
+    }
     localDragPresenceRef.current = null;
     localDragStartedAtRef.current = null;
-    const channel = timelineDragPresenceChannelRef.current;
     if (channel) {
       Promise.resolve(channel.untrack()).catch((error) => {
         timelineDragPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
@@ -2602,13 +2720,7 @@ export default function App() {
       const hasDragOverPayload =
         Object.prototype.hasOwnProperty.call(payload, "overItemId") ||
         Object.prototype.hasOwnProperty.call(payload, "placement");
-      const trackLabel = resetDrag
-        ? "track start payload"
-        : payload.forceTrack
-          ? "heartbeat payload"
-          : hasDragOverPayload
-            ? "drag over payload"
-            : "track payload";
+      const debugLabel = payload.forceTrack ? "heartbeat payload" : hasDragOverPayload ? "drag over payload" : "track start payload";
       const startedAt = resetDrag ? now : existing?.startedAt || payload.startedAt || now;
       const dragId =
         resetDrag || payload.dragId
@@ -2624,7 +2736,7 @@ export default function App() {
         itemId: payload.itemId || existing?.itemId || null,
         itemTitle: payload.itemTitle || existing?.itemTitle || "",
         startedAt,
-        lastSeenAt: now,
+        sentAt: now,
         overItemId: Object.prototype.hasOwnProperty.call(payload, "overItemId")
           ? payload.overItemId
           : existing?.overItemId || null,
@@ -2635,7 +2747,9 @@ export default function App() {
       localDragPresenceRef.current = nextPayload;
       localDragStartedAtRef.current = Date.parse(startedAt) || Date.now();
       if (channel && timelineDragPresenceReadyRef.current) {
-        trackTimelineDragPresence(channel, nextPayload, trackLabel);
+        if (resetDrag) trackTimelineDragPresence(channel, nextPayload, "track start payload");
+        timelineDragPresenceDebug(debugLabel, timelineDragPresenceDebugPayload(nextPayload));
+        broadcastTimelineDragPresence(channel, "timeline-drag-update", nextPayload, "broadcast update");
       }
     },
     [activeDay, activeTripId, activeUserId, canEditActiveTripContent, timelineDragPresenceUserName],
