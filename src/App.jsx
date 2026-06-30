@@ -9,6 +9,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
+  defaultAnimateLayoutChanges,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -77,6 +78,10 @@ import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
 const attachmentBucket = "trip-attachments";
 const appVersion = "0.1.0";
+
+function timelineAnimateLayoutChanges(args) {
+  return args.isSorting ? defaultAnimateLayoutChanges(args) : false;
+}
 
 const desktopNavItems = [
   { id: "today", label: "總覽", shortLabel: "覽" },
@@ -8011,7 +8016,11 @@ function SortableTimelineEntry({ children, disabled = false, id }) {
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ disabled: { draggable: disabled, droppable: false }, id });
+  } = useSortable({
+    animateLayoutChanges: timelineAnimateLayoutChanges,
+    disabled: { draggable: disabled, droppable: false },
+    id,
+  });
   const style = {
     transform: DndCSS.Transform.toString(transform),
     transition,
@@ -8075,6 +8084,7 @@ function ItineraryTimeline({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
   const [draggedVisitId, setDraggedVisitId] = useState(null);
+  const [dragOverlaySize, setDragOverlaySize] = useState(null);
   const [dragTarget, setDragTarget] = useState(null);
   const [reorderPreview, setReorderPreview] = useState(null);
   const [isReorderingDestination, setIsReorderingDestination] = useState(false);
@@ -8206,6 +8216,10 @@ function ItineraryTimeline({
   function handleSortableDragStart(event) {
     const sourceItem = dayItems.find((item) => item.id === event.active.id);
     if (!sourceItem || !canDragVisit(sourceItem)) return;
+    const sourceRect = event.active.rect.current.initial;
+    setDragOverlaySize(
+      sourceRect?.width && sourceRect?.height ? { height: sourceRect.height, width: sourceRect.width } : null,
+    );
     setFixedNotice("");
     setUntimedDropNotice("");
     setDraggedVisitId(sourceItem.id);
@@ -8279,6 +8293,7 @@ function ItineraryTimeline({
 
   function clearVisitDrag() {
     setDraggedVisitId(null);
+    setDragOverlaySize(null);
     setDragTarget(null);
     lastDndOverIdRef.current = null;
   }
@@ -9314,7 +9329,13 @@ function ItineraryTimeline({
     if (!canEdit || isOpen || !nextItem || isTransportationCard(previousItem) || isTransportationCard(nextItem)) return null;
     if (adjacentTransportByPair[transportPairKey(previousItem.id, nextItem.id)]) return null;
     return (
-      <button className="transport-insert-zone" type="button" onClick={() => openNewTransport(previousItem, nextItem)}>
+      <button
+        className="transport-insert-zone"
+        type="button"
+        onClick={() => openNewTransport(previousItem, nextItem)}
+        onKeyDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
         <span className="transport-insert-icon">+</span>
         <span className="transport-insert-label">新增交通資訊</span>
         <span className="transport-insert-line" aria-hidden="true" />
@@ -9326,7 +9347,13 @@ function ItineraryTimeline({
     if (!canEdit || isOpen || !previousItem || isTransportationCard(previousItem)) return null;
     if (tailTransportByFrom[previousItem.id]) return null;
     return (
-      <button className="transport-insert-zone tail" type="button" onClick={() => openNewTransport(previousItem, null)}>
+      <button
+        className="transport-insert-zone tail"
+        type="button"
+        onClick={() => openNewTransport(previousItem, null)}
+        onKeyDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
         <span className="transport-insert-icon">+</span>
         <span className="transport-insert-label">新增尾端交通</span>
         <span className="transport-insert-line" aria-hidden="true" />
@@ -10028,6 +10055,8 @@ function ItineraryTimeline({
               ) : null}
             </article>
             )}
+            {!isAddingTransportHere && isTimedPair && !transportItem ? renderTransportInsert(item, nextItem) : null}
+            {!isAddingTailHere && isTailPosition && !tailTransportItem && !hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null}
             </SortableTimelineEntry>
             {isAddingTransportHere ? renderTransportEditorForm() : null}
             {!isAddingTransportHere && transportItem ? (
@@ -10040,7 +10069,6 @@ function ItineraryTimeline({
                     })}
               </div>
             ) : null}
-            {!isAddingTransportHere && isTimedPair && !transportItem ? renderTransportInsert(item, nextItem) : null}
             {passiveUntimedTransportItems.map((passiveTransportItem) => (
               <div className="timeline-flow-entry" key={passiveTransportItem.id}>
                 {isOpen && isTransportEditor && editingId === passiveTransportItem.id
@@ -10064,7 +10092,6 @@ function ItineraryTimeline({
                     )}
               </div>
             ) : null}
-            {!isAddingTailHere && isTailPosition && !tailTransportItem && !hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null}
             </Fragment>
             );
           })
@@ -10079,6 +10106,14 @@ function ItineraryTimeline({
             className="timeline-item timeline-drag-overlay-card"
             data-dnd-drag-overlay="true"
             data-timing={isTimedVisit(activeDragItem) ? "timed" : "untimed"}
+            style={
+              dragOverlaySize
+                ? {
+                    "--timeline-drag-overlay-height": `${dragOverlaySize.height}px`,
+                    "--timeline-drag-overlay-width": `${dragOverlaySize.width}px`,
+                  }
+                : undefined
+            }
           >
             <div className="time-block">
               <span>{isTimedVisit(activeDragItem) ? formatTimeDisplay(activeDragItem.start_time) : "--:--"}</span>

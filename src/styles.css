@@ -2671,7 +2671,7 @@ textarea {
 
 .timeline {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .timeline-flow-entry {
@@ -2680,8 +2680,20 @@ textarea {
 }
 
 .timeline-sortable-entry {
+  gap: 0;
+  position: relative;
   touch-action: none;
   will-change: transform;
+}
+
+.timeline-sortable-entry.sortable-active-placeholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 1px solid rgba(93, 107, 99, 0.42);
+  border-radius: 8px;
+  pointer-events: none;
 }
 
 .timeline-sortable-entry.sortable-active-placeholder {
@@ -2744,7 +2756,8 @@ textarea {
 
 .timeline-drag-overlay-card {
   z-index: 3000;
-  width: min(560px, calc(100vw - 32px));
+  width: var(--timeline-drag-overlay-width, min(100%, calc(100vw - 32px)));
+  min-height: var(--timeline-drag-overlay-height, 118px);
   cursor: grabbing;
   border-color: rgba(47, 143, 114, 0.55);
   background: rgba(250, 255, 252, 0.98);

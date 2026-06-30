@@ -21,19 +21,19 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.7 Fixed Anchor Drag Continuation Segments - Implemented Locally / Build and Full E2E QA Passed / Production Migration 024 Applied
+Timeline Phase 4.8 Sortable Drag Preview - Implemented Locally / Build and Targeted QA Passed / No Migration
 ```
 
 Next phase:
 
 ```text
-Verify Formal fixed-anchor drag against production data after Supabase migration 024 application.
+Continue Phase 4.8 visual QA on Formal authenticated data, then close out or proceed to the next Timeline polish slice.
 ```
 
 Branch:
 
 ```text
-codex/timeline-phase-4-7
+codex/timeline-phase-4-8
 ```
 
 ## Completed Scope
@@ -198,6 +198,31 @@ New/updated files:
 - `tests/phase-1-7f-smoke.spec.js`
 - `docs/2026-06-29-phase-4-7-closeout-handoff.md`
 
+### Phase 4.8
+
+- Added dnd-kit Sortable interaction for Timeline visit cards.
+- Installed and uses `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities`.
+- Dragging a visit card now uses a floating `DragOverlay` while the source slot becomes an in-list placeholder.
+- Other visit cards slide open during drag preview through dnd-kit sortable transforms.
+- The floating overlay is measured from the original card so it matches the card width/height instead of becoming oversized.
+- Drag preview remains local UI only: no `itinerary_items` writes, no reorder RPC, no time changes, no untimed conversion, no transportation mutation, no draft clearing, and no migration during drag.
+- Drop still calls the existing Phase 4.7 timed reorder flow or the existing untimed reorder flow.
+- Cancel, invalid target, Esc, or drag end without a valid target clears local drag state and leaves authoritative order unchanged.
+- Fixed cards remain non-draggable.
+- Timed and untimed existing drag rules remain preserved.
+- Drop-after layout animation from dnd-kit is disabled through a custom `animateLayoutChanges` handler so cards keep the drag-preview feel without a second post-drop slide.
+- Timeline gap was set to `8px`; the hidden transportation insert affordance is nested under the sortable visit entry so it does not create extra direct `.timeline` grid gaps.
+- Transportation insert hover still expands between cards and is isolated from the sortable drag sensor via pointer/key event stop propagation.
+- Formal and Demo use the same `ItineraryTimeline` and CSS, so preview behavior remains shared.
+
+New/updated files:
+
+- `src/App.jsx`
+- `src/styles.css`
+- `package.json`
+- `package-lock.json`
+- `tests/phase-4-2c-reorder.spec.js`
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -325,6 +350,18 @@ Phase 4.7 preserves Phase 4.6 no-fixed timed drag behavior, Phase 4.5 untimed mi
 
 The Vite build still reports the existing large-chunk warning; it is not a Phase 4.7 regression.
 
+Phase 4.8 checks on 2026-06-30:
+
+```text
+npm.cmd run build passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8a" passed 1/1
+Playwright visual inspection on /demo/timeline confirmed drop-after wrappers become transform:none / transition:0s immediately after mouseup
+```
+
+Phase 4.8 preserves the Phase 4.7 timed reorder RPC path, Phase 4.5 untimed mixed ordering, transportation conflict confirmation gates, Demo isolation, draft autosave, edit locks, Realtime, and Supabase schema.
+
+The Vite build still reports the existing large-chunk warning; it is not a Phase 4.8 regression.
+
 ## Protected Scope Preserved
 
 Phase 4.7 did not redesign or extend:
@@ -350,9 +387,10 @@ Phase 4.7 did not redesign or extend:
 - Legacy DB rows with only one time are treated safely as untimed in the UI but are not automatically written back. The next explicit save normalizes them to `null/null`.
 - Because applied RPC migrations 020/021 are immutable and their server manifest predates this Hotfix, a legacy start-only row can cause timed reorder to reject safely as stale until that row is explicitly normalized.
 - Hotfix 2 Formal persistence uses a guarded source-row update followed by one scoped transportation delete statement because no new RPC was approved. If deletion fails, it attempts to restore the original `sort_order` before authoritative reload; an extreme network or concurrent-write failure during both deletion and compensation can still leave a partial authoritative result.
-- Phase 4.7 Formal timed drag now has its transactional RPC applied in production, but it has not been exercised against real production trip data in this session.
-- Manual authenticated Formal UI verification is still recommended after applying migration 024.
+- Phase 4.7 Formal timed drag has its transactional RPC applied in production, but this session focused on Demo/browser visual QA for Phase 4.8 sortable preview.
+- Manual authenticated Formal UI verification is still recommended for Phase 4.8 timed/untimed drag on a real test trip.
+- Drag animation feel is inherently browser/timing-sensitive; if future polish is needed, prefer dnd-kit `animateLayoutChanges` / sortable configuration over delaying Formal data writes or bypassing the existing reorder RPC flow.
 
 ## Next Step
 
-Verify Formal fixed-anchor drag on a test trip before pushing/deploying. Do not infer Phase 4.8 presence, Phase 4.9 map integration, transportation repair, or additional database changes.
+Verify Phase 4.8 on an authenticated Formal test trip, especially timed drag down/up across fixed anchors, untimed drag, invalid targets, transportation conflict confirmation, and Demo/Formal parity. Do not infer Phase 4.9 map integration, transportation repair, collaborative presence, or additional database changes.
