@@ -1,4 +1,4 @@
-import { isEstablishedTransportPair, isTransportationCard } from "./timelineTransportationRoles.js";
+import { isEstablishedTransportPair, isTailPendingTransport, isTransportationCard } from "./timelineTransportationRoles.js";
 
 const untimedSortBase = -2_000_000_000;
 const untimedSortStride = 1_000_000;
@@ -7,6 +7,15 @@ const legacyRankBase = 500_000;
 
 function stableId(item) {
   return String(item?.id || "");
+}
+
+function timeToMinutes(value) {
+  if (!value) return null;
+  const [hours, minutes] = String(value).split(":");
+  const parsedHours = Number(hours);
+  const parsedMinutes = Number(minutes);
+  if (!Number.isFinite(parsedHours) || !Number.isFinite(parsedMinutes)) return null;
+  return parsedHours * 60 + parsedMinutes;
 }
 
 function compareTimedVisits(a, b) {
@@ -166,6 +175,56 @@ export function planUntimedSortOrdersForVisualOrder({ items = [], nextVisitIds =
   }
 
   return { ok: true, sortOrders };
+}
+
+export function planTailPendingPromotionUntimedBypass({
+  items = [],
+  promotedFromItemId,
+  promotedToItemId,
+  tailTransportItem,
+}) {
+  if (!isTailPendingTransport(tailTransportItem)) return { ok: true, untimedSortOrderUpdates: [] };
+  if (!promotedFromItemId || !promotedToItemId || tailTransportItem.from_item_id !== promotedFromItemId) {
+    return { ok: true, untimedSortOrderUpdates: [] };
+  }
+
+  const currentVisits = buildTimelineVisitDisplayOrder(items);
+  const fromIndex = currentVisits.findIndex((item) => item.id === promotedFromItemId);
+  const targetIndex = currentVisits.findIndex((item) => item.id === promotedToItemId);
+  if (fromIndex < 0 || targetIndex < 0 || targetIndex <= fromIndex) return { ok: true, untimedSortOrderUpdates: [] };
+
+  const fromItem = currentVisits[fromIndex];
+  const targetItem = currentVisits[targetIndex];
+  if (!isTimedVisit(fromItem) || !isTimedVisit(targetItem)) return { ok: true, untimedSortOrderUpdates: [] };
+
+  const fromEnd = timeToMinutes(fromItem.end_time);
+  const targetStart = timeToMinutes(targetItem.start_time);
+  if (fromEnd !== null && targetStart !== null && targetStart < fromEnd) return { ok: true, untimedSortOrderUpdates: [] };
+
+  const blockingUntimedItems = currentVisits.slice(fromIndex + 1, targetIndex).filter(isUntimedVisit);
+  if (!blockingUntimedItems.length) return { ok: true, untimedSortOrderUpdates: [] };
+
+  const blockingUntimedIds = new Set(blockingUntimedItems.map((item) => item.id));
+  const nextVisitIds = currentVisits.map((item) => item.id).filter((itemId) => !blockingUntimedIds.has(itemId));
+  const nextTargetIndex = nextVisitIds.indexOf(promotedToItemId);
+  nextVisitIds.splice(nextTargetIndex + 1, 0, ...blockingUntimedItems.map((item) => item.id));
+
+  const sortPlan = planUntimedSortOrdersForVisualOrder({ items, nextVisitIds });
+  if (!sortPlan.ok) return sortPlan;
+  return {
+    ok: true,
+    untimedSortOrderUpdates: Object.entries(sortPlan.sortOrders)
+      .filter(([itemId]) => blockingUntimedIds.has(itemId))
+      .map(([itemId, sortOrder]) => {
+        const item = items.find((candidate) => candidate.id === itemId);
+        return {
+          id: itemId,
+          original_sort_order: item?.sort_order,
+          sort_order: sortOrder,
+          updated_at: item?.updated_at || null,
+        };
+      }),
+  };
 }
 
 export function planUntimedConversionSortOrders({ items = [], sourceItemIds = [] }) {

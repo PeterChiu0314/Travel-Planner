@@ -70,6 +70,7 @@ import {
   isTimedVisit,
   isUntimedVisit,
   planMixedTimedVisitReorder,
+  planTailPendingPromotionUntimedBypass,
   planTimelineTimingChangeSortOrders,
   planUntimedVisitReorder,
   untimedOrderingErrorMessage,
@@ -2965,6 +2966,46 @@ export default function App() {
       tailTransportItem &&
       newVisitStart !== null &&
       (tailFromEnd === null || newVisitStart >= tailFromEnd);
+    const tailBypassPlan = shouldCompleteTailPair
+      ? planTailPendingPromotionUntimedBypass({
+          items: [...dayItems, insertResult.data],
+          promotedFromItemId: tailFromItem.id,
+          promotedToItemId: insertResult.data.id,
+          tailTransportItem,
+        })
+      : { ok: true, untimedSortOrderUpdates: [] };
+    if (!tailBypassPlan.ok) {
+      const rollback = await supabase
+        .from("itinerary_items")
+        .delete()
+        .eq("id", insertResult.data.id)
+        .eq("trip_id", activeTrip.id);
+      const errorMessage = rollback.error
+        ? `tail pending untimed bypass failed and inserted item rollback failed: ${tailBypassPlan.errorCode || "order_space_exhausted"}`
+        : `tail pending untimed bypass failed: ${tailBypassPlan.errorCode || "order_space_exhausted"}`;
+      setNotice(errorMessage);
+      await loadTripData(activeTrip.id);
+      return { ok: false, errorMessage, rollbackFailed: Boolean(rollback.error) };
+    }
+    const tailBypassUpdates = tailBypassPlan.untimedSortOrderUpdates || [];
+    const tailBypassResult = tailBypassUpdates.length
+      ? await applyItineraryTimeContinuation(tailBypassUpdates)
+      : { ok: true, applied: [] };
+    if (!tailBypassResult.ok) {
+      const bypassRollback = await rollbackItineraryTimeContinuation(tailBypassResult.applied);
+      const insertRollback = await supabase
+        .from("itinerary_items")
+        .delete()
+        .eq("id", insertResult.data.id)
+        .eq("trip_id", activeTrip.id);
+      const rollbackFailed = !bypassRollback.ok || Boolean(insertRollback.error);
+      const errorMessage = rollbackFailed
+        ? `tail pending untimed bypass failed and rollback needs review: ${tailBypassResult.error.message}`
+        : `tail pending untimed bypass failed and inserted item was rolled back: ${tailBypassResult.error.message}`;
+      setNotice(errorMessage);
+      await loadTripData(activeTrip.id);
+      return { ok: false, error: tailBypassResult.error, errorMessage, rollbackFailed };
+    }
 
     if (shouldCompleteTailPair) {
       const tailUpdate = await supabase
@@ -2983,13 +3024,15 @@ export default function App() {
           .delete()
           .eq("id", insertResult.data.id)
           .eq("trip_id", activeTrip.id);
+        const bypassRollback = await rollbackItineraryTimeContinuation(tailBypassResult.applied);
+        const rollbackFailed = !bypassRollback.ok || Boolean(rollback.error);
         setNotice(
-          rollback.error
+          rollbackFailed
             ? `新增行程後無法完成尾端交通配對，且復原失敗：${tailUpdate.error.message}`
             : `無法完成尾端交通配對：${tailUpdate.error.message}`,
         );
         await loadTripData(activeTrip.id);
-        return { ok: false, error: tailUpdate.error };
+        return { ok: false, error: tailUpdate.error, rollbackFailed };
       }
     }
 
@@ -6201,6 +6244,18 @@ function DemoApp({ initialSection }) {
         tailTransportItem &&
         newVisitStart !== null &&
         (tailFromEnd === null || newVisitStart >= tailFromEnd);
+      const tailBypassPlan = shouldCompleteTailPair
+        ? planTailPendingPromotionUntimedBypass({
+            items: [...currentWithoutBrokenTransport, newItem],
+            promotedFromItemId: tailFromItem.id,
+            promotedToItemId: newItem.id,
+            tailTransportItem,
+          })
+        : { ok: true, untimedSortOrderUpdates: [] };
+      if (!tailBypassPlan.ok) return current;
+      const tailBypassSortOrderById = new Map(
+        (tailBypassPlan.untimedSortOrderUpdates || []).map((update) => [update.id, update.sort_order]),
+      );
       const nextItems = shouldCompleteTailPair
         ? currentWithoutBrokenTransport.map((item) =>
             item.id === tailTransportItem.id
@@ -6211,6 +6266,12 @@ function DemoApp({ initialSection }) {
                   ...buildTransportPairSnapshot(tailFromItem, newItem),
                   updated_at: new Date().toISOString(),
                 }
+              : tailBypassSortOrderById.has(item.id)
+                ? {
+                    ...item,
+                    sort_order: tailBypassSortOrderById.get(item.id),
+                    updated_at: new Date().toISOString(),
+                  }
               : item,
           )
         : currentWithoutBrokenTransport;

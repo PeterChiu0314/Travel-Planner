@@ -8,6 +8,7 @@ import {
   planTimedDragAutoContinuation,
 } from "../src/lib/destinationPackages.js";
 import { buildTimelineVisitDisplayOrder, planMixedTimedVisitReorder } from "../src/lib/timelineUntimedOrdering.js";
+import { planTailPendingPromotionUntimedBypass } from "../src/lib/timelineUntimedOrdering.js";
 
 const migration = readFileSync("supabase/migrations/020_reorder_itinerary_destination_packages.sql", "utf8");
 const baselineCountFixMigration = readFileSync("supabase/migrations/021_fix_reorder_baseline_count.sql", "utf8");
@@ -475,6 +476,92 @@ test("Phase 4.7b Formal and Demo use the overflow rebase payload instead of the 
   ]);
   expect(appSource).toContain("finalUntimedSortOrderUpdates");
   expect(appSource).toContain("previewPlan.convertedSlotIds");
+});
+
+test("Phase 4.8b tail_pending promotion bypasses only blocking untimed visits", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
+    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
+    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
+  ];
+  const plan = planTailPendingPromotionUntimedBypass({
+    items,
+    promotedFromItemId: "slot-a",
+    promotedToItemId: "slot-c",
+    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.untimedSortOrderUpdates).toEqual([
+    expect.objectContaining({ id: "untimed-b", sort_order: untimedSortOrderForSlot(2) }),
+  ]);
+  const nextItems = items.map((item) =>
+    item.id === "untimed-b"
+      ? { ...item, sort_order: plan.untimedSortOrderUpdates[0].sort_order }
+      : item.id === "transport-tail-a"
+        ? { ...item, to_item_id: "slot-c", transport_role: "tail_promoted_pair" }
+        : item,
+  );
+  expect(buildTimelineVisitDisplayOrder(nextItems).map((item) => item.id)).toEqual(["slot-a", "slot-c", "untimed-b"]);
+});
+
+test("Phase 4.8b tail_pending promotion does not rebase unrelated untimed visits", () => {
+  const items = [
+    visit("untimed-d", "D", null, untimedSortOrderForSlot(0), { end_time: null }),
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
+    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
+    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
+  ];
+  const plan = planTailPendingPromotionUntimedBypass({
+    items,
+    promotedFromItemId: "slot-a",
+    promotedToItemId: "slot-c",
+    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.untimedSortOrderUpdates.map((update) => update.id)).toEqual(["untimed-b"]);
+  expect(plan.untimedSortOrderUpdates.some((update) => update.id === "untimed-d")).toBe(false);
+});
+
+test("Phase 4.8b normal_pair transport does not use tail_pending untimed bypass", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
+    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
+    transport("transport-ac", "slot-a", "slot-c", { transport_role: "normal_pair" }),
+  ];
+  const plan = planTailPendingPromotionUntimedBypass({
+    items,
+    promotedFromItemId: "slot-a",
+    promotedToItemId: "slot-c",
+    tailTransportItem: items.find((item) => item.id === "transport-ac"),
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.untimedSortOrderUpdates).toEqual([]);
+  expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["slot-a", "untimed-b", "slot-c"]);
+});
+
+test("Phase 4.8b tail_pending bypass is skipped when the promoted timed visit is before the tail source", () => {
+  const items = [
+    visit("slot-c", "C", "08:30", 20, { end_time: "09:00" }),
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("untimed-b", "B", null, untimedSortOrderForSlot(2), { end_time: null }),
+    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
+  ];
+  const plan = planTailPendingPromotionUntimedBypass({
+    items,
+    promotedFromItemId: "slot-a",
+    promotedToItemId: "slot-c",
+    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.untimedSortOrderUpdates).toEqual([]);
+  expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["slot-c", "slot-a", "untimed-b"]);
 });
 
 test("reorder preserves only original directed adjacent transports and remaps anchors", () => {
