@@ -12,6 +12,7 @@
 - `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
 - `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
 - `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
+- `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
 
@@ -24,13 +25,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.8e Online Member Presence - Implemented / Build Passed / No Migration
+Timeline Phase 4.8f Remote Drag Visual Polish - User Verified / Pushed / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 4.8e is complete enough to hand off. Continue with final documentation/merge prep, optional debug-log cleanup after more manual verification, or start Phase 4.9 Map integration only if explicitly requested.
+Phase 4.8f is accepted. Continue to Phase 4.9 Map integration only when explicitly started. Begin Phase 4.9 with a read-only audit and implementation plan before changing map-related behavior.
 ```
 
 Branch:
@@ -294,6 +295,22 @@ New/updated files:
 - Demo remains local/unauthenticated and has no trip-level presence wiring.
 - No migration, RPC, reorder flow, DragOverlay/preview sync, schema change, database write, or package change was made.
 
+### Phase 4.8f
+
+- Added final remote-drag visual polish after collaborative drag presence user testing.
+- Foreign drag source destination cards remain in their original list position.
+- Foreign drag source cards now show the remote drag color border and reduced opacity.
+- Foreign drag source cards do not use soft shadow after final visual tuning.
+- Foreign drag source styling uses `timeline-item-remote-drag-source`.
+- Remote insertion lines keep the existing `timeline-remote-insertion-line` class, use the remote drag color, and have stronger opacity.
+- Insertion line margin was tuned back to `4px 10px` so the line stays visually centered inside the existing gap.
+- Foreign drag source highlight takes priority over remote selection styling while a foreign drag is active.
+- Remote selection remains broadcast-only and still supports destination and transport cards.
+- Transport cards are still not sortable and do not receive remote drag source highlight.
+- No remote DragOverlay, remote ghost card, remote placeholder, remote preview order, or remote list reflow was added.
+- No migration, RPC, reorder flow, Demo presence, Map integration, or data-flow change was made.
+- User verified Phase 4.8f as OK after the final visual tuning.
+
 New/updated files:
 
 - `src/App.jsx`
@@ -304,6 +321,7 @@ New/updated files:
 - `tests/phase-4-2c-reorder.spec.js`
 - `docs/BUGS.md`
 - `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
+- `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
 - `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
 - `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
@@ -487,6 +505,15 @@ git diff --check passed with Windows LF/CRLF notices only
 Manual user testing drove visual tuning for remote card selection labels, card selection border thickness, transport card selection support, online avatar border simplification, and Day Tab border display.
 ```
 
+Phase 4.8f remote drag visual polish checks on 2026-07-01:
+
+```text
+npm.cmd run build passed
+git diff --check passed with Windows LF/CRLF notices only
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8f|Phase 4.8c" passed 4/4
+Manual user verification passed for remote drag source card opacity/border, no soft shadow, and insertion line spacing.
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -523,7 +550,8 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 - Phase 4.8e trip-level online presence is best-effort Realtime UI state. Missing, delayed, or stale-filtered trip presence should not affect data correctness.
 - `BUG-025` remains Known Issue / Low Priority: foreign drag presence can occasionally clear by 12-second stale timeout instead of immediate clear, despite onDragEnd immediate clear mitigation.
 - Phase 4.8e Day Tab presence border shows a compact first-version representation using the first remote presence color for that day.
+- Phase 4.8f remote drag source and insertion-line visuals are presence-driven hints only. They must not be treated as authoritative reorder state.
 
 ## Next Step
 
-Phase 4.8e is complete enough to hand off. Proceed with final merge/PR cleanup, optional debug-log cleanup after more manual verification, or Phase 4.9 Map integration only if explicitly requested. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, or additional database changes.
+Phase 4.8f is accepted and handed off. Start Phase 4.9 Map integration only when explicitly requested, beginning with a read-only audit and implementation plan. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, remote preview reordering, or additional database changes.
