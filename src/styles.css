@@ -1781,6 +1781,11 @@ code {
   font-weight: 900;
 }
 
+.trip-header-member-preview.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .trip-header-member-preview::after {
   content: "";
   width: 1px;
@@ -1795,15 +1800,46 @@ code {
   color: var(--mint-dark);
 }
 
-.trip-header-member-preview:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
+.trip-header-member-preview.disabled:hover {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink);
 }
 
 .trip-header-member-avatars {
   display: inline-flex;
   align-items: center;
   min-width: 0;
+}
+
+.trip-header-member-avatar {
+  cursor: pointer;
+  padding: 0;
+}
+
+.trip-header-member-avatar:disabled {
+  cursor: not-allowed;
+}
+
+.trip-header-member-avatar.remote-online {
+  border-color: var(--trip-presence-color);
+  box-shadow: 0 0 0 2px #fffefa, 0 0 0 4px color-mix(in srgb, var(--trip-presence-color) 72%, transparent);
+}
+
+.trip-header-member-open-button {
+  display: inline-grid;
+  width: 24px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.trip-header-member-open-button:disabled {
+  cursor: not-allowed;
 }
 
 .trip-header-member-pending {
@@ -2297,6 +2333,7 @@ textarea {
 }
 
 .day-tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2341,6 +2378,24 @@ textarea {
 
 .day-tab-separator::before {
   content: "·";
+}
+
+.day-tab-presence-dots {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  display: inline-flex;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.day-tab-presence-dot {
+  width: 6px;
+  height: 6px;
+  border: 1px solid #fff;
+  border-radius: 999px;
+  background: var(--trip-presence-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--trip-presence-color) 60%, transparent);
 }
 
 .content-grid {

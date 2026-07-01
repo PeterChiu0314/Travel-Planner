@@ -85,6 +85,8 @@ const timelineDragPresenceStaleMs = 12000;
 const timelineDragPresenceMaxMs = 75000;
 const timelineDragPresenceRefreshMs = 1000;
 const timelineCardSelectionStaleMs = 30000;
+const tripPresenceHeartbeatMs = 28000;
+const tripPresenceStaleMs = 55000;
 const timelineCardSelectionColors = {
   blue: "#2f6df6",
   purple: "#7c4dff",
@@ -94,6 +96,28 @@ const timelineCardSelectionColors = {
   yellow: "#c99a00",
 };
 const timelineCardSelectionColorKeys = Object.keys(timelineCardSelectionColors);
+
+const tripPresencePageLabels = {
+  accommodation: "Accommodation",
+  budget: "Budget",
+  overview: "Overview",
+  packing: "Packing",
+  settings: "Settings",
+  settlement: "Settlement",
+  timeline: "Timeline",
+  todo: "Todo",
+};
+
+const tripPresencePageToSection = {
+  accommodation: "accommodation",
+  budget: "budget",
+  overview: "today",
+  packing: "luggage",
+  settings: "settings",
+  settlement: "settlement",
+  timeline: "timeline",
+  todo: "todo",
+};
 
 function timelineDragPresenceDebugEnabled() {
   if (typeof window === "undefined") return false;
@@ -136,6 +160,37 @@ function timelineCardSelectionColorKey(seed = "") {
 
 function timelineCardSelectionColor(colorKey) {
   return timelineCardSelectionColors[colorKey] || timelineCardSelectionColors.blue;
+}
+
+function tripPresencePageKey(section) {
+  if (section === "today") return "overview";
+  if (section === "luggage") return "packing";
+  return tripPresencePageLabels[section] ? section : "";
+}
+
+function tripPresencePageLabel(payload) {
+  const pageLabel = tripPresencePageLabels[payload?.pageKey] || payload?.pageKey || "Unknown";
+  if (payload?.pageKey === "timeline" && Number.isInteger(Number(payload.dayIndex))) {
+    return `${pageLabel} · Day ${Number(payload.dayIndex) + 1}`;
+  }
+  return pageLabel;
+}
+
+function tripPresenceDebugPayload(payload) {
+  if (!payload) return null;
+  return {
+    tripId: payload.tripId,
+    userId: payload.userId,
+    userName: payload.userName,
+    sessionId: payload.sessionId,
+    colorKey: payload.colorKey,
+    pageKey: payload.pageKey,
+    dayIndex: payload.dayIndex,
+    selectedItemId: payload.selectedItemId,
+    selectedItemType: payload.selectedItemType,
+    selectedItemTitle: payload.selectedItemTitle,
+    updatedAt: payload.updatedAt,
+  };
 }
 
 function timelineCardSelectionDebugPayload(payload) {
@@ -2016,7 +2071,13 @@ export default function App() {
   const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
   const [foreignDragPresence, setForeignDragPresence] = useState(null);
   const [foreignCardSelection, setForeignCardSelection] = useState(null);
+  const [remoteTripPresences, setRemoteTripPresences] = useState([]);
+  const [tripPresenceSelectedItem, setTripPresenceSelectedItem] = useState(null);
   const restoredDayRef = useRef(null);
+  const tripPresenceChannelRef = useRef(null);
+  const tripPresenceReadyRef = useRef(false);
+  const tripPresenceStatusRef = useRef("idle");
+  const tripPresencePayloadRef = useRef(null);
   const timelineDragPresenceChannelRef = useRef(null);
   const timelineDragPresenceReadyRef = useRef(false);
   const timelineDragPresenceStatusRef = useRef("idle");
@@ -2063,11 +2124,68 @@ export default function App() {
     [activeUserId, members],
   );
   const timelineDragPresenceUserName = currentTripMember ? memberName(currentTripMember) : userDisplayName || userEmail || "?";
+  const tripPresencePayload = useMemo(() => {
+    const pageKey = tripPresencePageKey(activeSection);
+    const selectedItem = pageKey === "timeline" ? tripPresenceSelectedItem : null;
+    return {
+      tripId: activeTripId,
+      userId: activeUserId,
+      userName: timelineDragPresenceUserName,
+      sessionId: timelineDragPresenceSessionIdRef.current,
+      colorKey: timelineCardSelectionColorKey(timelineDragPresenceSessionIdRef.current || activeUserId),
+      pageKey,
+      dayIndex: pageKey === "timeline" ? activeDay : null,
+      selectedItemId: selectedItem?.itemId || null,
+      selectedItemType: selectedItem?.itemType || null,
+      selectedItemTitle: selectedItem?.itemTitle || "",
+      updatedAt: new Date().toISOString(),
+    };
+  }, [activeDay, activeSection, activeTripId, activeUserId, timelineDragPresenceUserName, tripPresenceSelectedItem]);
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
   const canManageShareLinks = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
   const pendingMemberCount = isOwner ? members.filter((member) => member.status === "pending").length : 0;
+  const remoteTripPresenceByUser = useMemo(() => {
+    const byUser = new Map();
+    remoteTripPresences.forEach((presence) => {
+      if (!presence?.userId || presence.userId === activeUserId) return;
+      const current = byUser.get(presence.userId);
+      const currentUpdatedAt = current ? Date.parse(current.updatedAt || "") : 0;
+      const nextUpdatedAt = Date.parse(presence.updatedAt || "");
+      if (!current || nextUpdatedAt >= currentUpdatedAt) byUser.set(presence.userId, presence);
+    });
+    return byUser;
+  }, [activeUserId, remoteTripPresences]);
+  const timelinePresenceDotsByDay = useMemo(() => {
+    const byDay = new Map();
+    remoteTripPresences.forEach((presence) => {
+      if (presence?.pageKey !== "timeline" || presence.userId === activeUserId) return;
+      const dayIndex = Number(presence.dayIndex);
+      if (!Number.isInteger(dayIndex)) return;
+      const entries = byDay.get(dayIndex) || [];
+      if (!entries.some((entry) => entry.userId === presence.userId) && entries.length < 3) entries.push(presence);
+      byDay.set(dayIndex, entries);
+    });
+    timelineDragPresenceDebug("day tab presence dots", {
+      dots: Object.fromEntries([...byDay.entries()].map(([dayIndex, entries]) => [dayIndex, entries.map(tripPresenceDebugPayload)])),
+    });
+    return byDay;
+  }, [activeUserId, remoteTripPresences]);
+
+  const navigateToTripPresence = useCallback(
+    (presence) => {
+      if (!presence || presence.sessionId === timelineDragPresenceSessionIdRef.current || presence.userId === activeUserId) return;
+      const section = tripPresencePageToSection[presence.pageKey];
+      timelineDragPresenceDebug("avatar click navigation", { payload: tripPresenceDebugPayload(presence), section });
+      if (!section) return;
+      setActiveSection(section);
+      if (presence.pageKey === "timeline" && Number.isInteger(Number(presence.dayIndex))) {
+        setActiveDay(Number(presence.dayIndex));
+      }
+    },
+    [activeUserId],
+  );
 
   useEffect(() => {
     setIsAccountMenuOpen(false);
@@ -2077,6 +2195,37 @@ export default function App() {
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  useEffect(() => {
+    tripPresencePayloadRef.current = tripPresencePayload;
+  }, [tripPresencePayload]);
+
+  const publishTripPresence = useCallback((reason = "update") => {
+    const channel = tripPresenceChannelRef.current;
+    const payload = tripPresencePayloadRef.current;
+    if (!channel || !tripPresenceReadyRef.current || !payload?.tripId || !payload?.userId || !payload?.pageKey) return;
+    const nextPayload = { ...payload, updatedAt: new Date().toISOString() };
+    tripPresencePayloadRef.current = nextPayload;
+    timelineDragPresenceDebug("trip presence track", {
+      payload: tripPresenceDebugPayload(nextPayload),
+      reason,
+    });
+    Promise.resolve(channel.track(nextPayload))
+      .then((result) => {
+        if (result && result !== "ok") {
+          timelineDragPresenceDebug("trip presence track error", {
+            payload: tripPresenceDebugPayload(nextPayload),
+            result,
+          });
+        }
+      })
+      .catch((error) => {
+        timelineDragPresenceDebug("trip presence track error", {
+          message: error?.message || String(error),
+          payload: tripPresenceDebugPayload(nextPayload),
+        });
+      });
+  }, []);
 
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
@@ -2554,6 +2703,111 @@ export default function App() {
 
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
+      setRemoteTripPresences([]);
+      tripPresenceChannelRef.current = null;
+      tripPresenceReadyRef.current = false;
+      tripPresenceStatusRef.current = "idle";
+      return undefined;
+    }
+    const sessionId = timelineDragPresenceSessionIdRef.current;
+    const channelName = `trip-presence:${activeTripId}`;
+    const channel = supabase.channel(channelName, {
+      config: { presence: { key: sessionId } },
+    });
+    tripPresenceChannelRef.current = channel;
+    tripPresenceReadyRef.current = false;
+    tripPresenceStatusRef.current = "creating";
+
+    const syncTripPresence = () => {
+      const now = Date.now();
+      const state = channel.presenceState();
+      const bySession = new Map();
+      Object.values(state)
+        .flat()
+        .forEach((payload) => {
+          if (!payload || payload.sessionId === sessionId || payload.tripId !== activeTripId) return;
+          const rawUpdatedAt = payload.updatedAt || "";
+          const updatedAt = typeof rawUpdatedAt === "number" ? rawUpdatedAt : Date.parse(rawUpdatedAt);
+          if (!Number.isFinite(updatedAt) || now - updatedAt > tripPresenceStaleMs) {
+            timelineDragPresenceDebug("trip presence stale filtered", {
+              ageMs: Number.isFinite(updatedAt) ? now - updatedAt : null,
+              payload: tripPresenceDebugPayload(payload),
+            });
+            return;
+          }
+          const current = bySession.get(payload.sessionId);
+          const currentUpdatedAt = current ? Date.parse(current.updatedAt || "") : 0;
+          if (!current || updatedAt >= currentUpdatedAt) bySession.set(payload.sessionId, payload);
+        });
+      const nextPresences = [...bySession.values()].sort((left, right) =>
+        String(left.userName || left.userId || "").localeCompare(String(right.userName || right.userId || "")),
+      );
+      timelineDragPresenceDebug("trip presence sync state", {
+        channelName,
+        presences: nextPresences.map(tripPresenceDebugPayload),
+      });
+      setRemoteTripPresences(nextPresences);
+    };
+
+    channel
+      .on("presence", { event: "sync" }, syncTripPresence)
+      .on("presence", { event: "join" }, syncTripPresence)
+      .on("presence", { event: "leave" }, syncTripPresence)
+      .subscribe((status) => {
+        tripPresenceStatusRef.current = status;
+        timelineDragPresenceDebug("trip presence subscribed", { channelName, status });
+        if (status === "SUBSCRIBED") {
+          tripPresenceReadyRef.current = true;
+          publishTripPresence("subscribed");
+          syncTripPresence();
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          tripPresenceReadyRef.current = false;
+          if (tripPresenceChannelRef.current === channel) tripPresenceChannelRef.current = null;
+        }
+      });
+
+    return () => {
+      if (tripPresenceChannelRef.current === channel) tripPresenceChannelRef.current = null;
+      tripPresenceReadyRef.current = false;
+      setRemoteTripPresences([]);
+      Promise.resolve(channel.untrack()).catch((error) => {
+        timelineDragPresenceDebug("trip presence track error", { message: error?.message || String(error), phase: "untrack" });
+      });
+      void supabase.removeChannel(channel);
+    };
+  }, [activeMembership?.status, activeTripId, activeUserId, publishTripPresence]);
+
+  useEffect(() => {
+    if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") return;
+    publishTripPresence("location-change");
+  }, [activeDay, activeMembership?.status, activeSection, activeTripId, activeUserId, publishTripPresence, tripPresenceSelectedItem]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      publishTripPresence("heartbeat");
+      setRemoteTripPresences((current) => {
+        const now = Date.now();
+        const next = current.filter((payload) => {
+          const rawUpdatedAt = payload.updatedAt || "";
+          const updatedAt = typeof rawUpdatedAt === "number" ? rawUpdatedAt : Date.parse(rawUpdatedAt);
+          const isFresh = Number.isFinite(updatedAt) && now - updatedAt <= tripPresenceStaleMs;
+          if (!isFresh) {
+            timelineDragPresenceDebug("trip presence stale filtered", {
+              ageMs: Number.isFinite(updatedAt) ? now - updatedAt : null,
+              payload: tripPresenceDebugPayload(payload),
+            });
+          }
+          return isFresh;
+        });
+        return next.length === current.length ? current : next;
+      });
+    }, tripPresenceHeartbeatMs);
+    return () => window.clearInterval(intervalId);
+  }, [publishTripPresence]);
+
+  useEffect(() => {
+    if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
       setForeignDragPresence(null);
       setForeignCardSelection(null);
       timelineDragPresenceChannelRef.current = null;
@@ -3028,6 +3282,11 @@ export default function App() {
         sentAt: now,
       };
       localCardSelectionRef.current = nextPayload;
+      setTripPresenceSelectedItem({
+        itemId: nextPayload.itemId,
+        itemTitle: nextPayload.itemTitle,
+        itemType: nextPayload.itemType,
+      });
       if (!channel || !channelReady) {
         timelineDragPresenceDebug("selection ignored reason", {
           reason: !channel ? "missing-channel" : "channel-not-ready",
@@ -3041,8 +3300,15 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (activeSection !== "timeline") clearCardSelection();
+    if (activeSection !== "timeline") {
+      clearCardSelection();
+      setTripPresenceSelectedItem(null);
+    }
   }, [activeSection, clearCardSelection]);
+
+  useEffect(() => {
+    setTripPresenceSelectedItem(null);
+  }, [activeDay, activeTripId]);
 
   const publishDragPresence = useCallback(
     (payload = {}) => {
@@ -4885,6 +5151,7 @@ function exportTrip() {
           activeSection={activeSection}
           trip={activeTrip}
           members={members}
+          currentUserId={session.user.id}
           days={days}
           dateChangePreviewData={tripDateChangePreviewData}
           canChangeTripDates={canChangeTripDates}
@@ -4902,9 +5169,11 @@ function exportTrip() {
           onOpenMembers={() => {
             if (canOpenMembersDialog) setIsMembersDialogOpen(true);
           }}
+          onPresenceNavigate={navigateToTripPresence}
           onShare={() => {
             if (canOpenShareDialog) setIsShareDialogOpen(true);
           }}
+          remotePresenceByUser={remoteTripPresenceByUser}
           onUpdateTrip={updateTrip}
           onUpdateTripDateRange={updateTripDateRange}
           showDeveloperTools={isOwner}
@@ -4957,6 +5226,7 @@ function exportTrip() {
             todayDayIndex={todayDayIndex}
             todayItems={todayItems}
             todoItems={todoItems}
+            timelinePresenceDotsByDay={timelinePresenceDotsByDay}
             onActiveDay={setActiveDay}
             onAddPackItem={addPackItem}
             onApplyAlternative={applyAlternative}
@@ -5649,10 +5919,70 @@ function HeaderMemberPreview({ disabled, members = [], onOpen, pendingCount = 0 
   );
 }
 
+function HeaderMemberPresencePreview({
+  currentUserId,
+  disabled,
+  members = [],
+  onOpen,
+  onPresenceNavigate,
+  pendingCount = 0,
+  remotePresenceByUser = new Map(),
+}) {
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  const visibleMembers = approvedMembers.slice(0, 4);
+  const overflowCount = Math.max(approvedMembers.length - visibleMembers.length, 0);
+  return (
+    <div className={`trip-header-member-preview${disabled ? " disabled" : ""}`} title="成員與邀請" aria-label="成員與邀請">
+      <span className="trip-header-member-avatars">
+        {visibleMembers.map((member) => {
+          const presence = remotePresenceByUser.get(member.user_id) || null;
+          const isRemoteOnline = Boolean(presence && member.user_id !== currentUserId);
+          const pageLabel = presence ? tripPresencePageLabel(presence) : "";
+          const avatarTitle = presence ? `${presence.userName || memberName(member)} · ${pageLabel}` : memberName(member);
+          return (
+            <button
+              className={`member-avatar compact trip-header-member-avatar${isRemoteOnline ? " remote-online" : ""}`}
+              disabled={disabled}
+              key={member.id || member.user_id}
+              style={isRemoteOnline ? { "--trip-presence-color": timelineCardSelectionColor(presence.colorKey) } : undefined}
+              title={avatarTitle}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isRemoteOnline && typeof onPresenceNavigate === "function") {
+                  onPresenceNavigate(presence);
+                } else if (!disabled && typeof onOpen === "function") {
+                  onOpen();
+                }
+              }}
+            >
+              {memberInitial(member)}
+            </button>
+          );
+        })}
+        {overflowCount > 0 ? <span className="member-avatar compact more">+{overflowCount}</span> : null}
+      </span>
+      {pendingCount > 0 ? <span className="trip-header-member-pending">待審 {pendingCount}</span> : null}
+      <button
+        className="trip-header-member-open-button"
+        disabled={disabled}
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          if (!disabled && typeof onOpen === "function") onOpen();
+        }}
+      >
+        <TripHeaderIcon name="invite" />
+      </button>
+    </div>
+  );
+}
+
 function TripHeader({
   activeSection,
   trip,
   members = [],
+  currentUserId,
   days = [],
   dateChangePreviewData = {},
   demoNotice = "",
@@ -5667,9 +5997,11 @@ function TripHeader({
   onExport,
   onInvite,
   onOpenMembers,
+  onPresenceNavigate,
   onShare,
   onUpdateTrip,
   onUpdateTripDateRange,
+  remotePresenceByUser = new Map(),
   showDeveloperTools = false,
 }) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -6657,10 +6989,13 @@ function TripHeader({
       </div>
 
       <div className="trip-header-actions">
-        <HeaderMemberPreview
+        <HeaderMemberPresencePreview
+          currentUserId={currentUserId}
           disabled={!hasTrip || !canOpenMembers}
           members={members}
+          onPresenceNavigate={onPresenceNavigate}
           pendingCount={pendingMemberCount}
+          remotePresenceByUser={remotePresenceByUser}
           onOpen={onInvite}
         />
         <button
@@ -8366,6 +8701,7 @@ function TripWorkspace(props) {
     todayDayIndex,
     todayItems,
     todoItems,
+    timelinePresenceDotsByDay,
     onActiveDay,
     onAddPackItem,
     onApplyAlternative,
@@ -8474,6 +8810,7 @@ function TripWorkspace(props) {
             days={days}
             layoutMode={isRouteLayoutCollapsed ? "collapsed" : "expanded"}
             onActiveDay={selectTimelineDay}
+            presenceDotsByDay={timelinePresenceDotsByDay}
           />
           <button
             className="ghost-button compact timeline-map-toggle"
@@ -8751,7 +9088,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
   );
 }
 
-function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
+function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay, presenceDotsByDay = new Map() }) {
   const dragStateRef = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, lastX: 0, lastTime: 0, velocity: 0 });
   const momentumFrameRef = useRef(null);
   const navRef = useRef(null);
@@ -8911,6 +9248,20 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
             ·
           </span>
           <span className="day-tab-date">{formatDayTabDate(date)}</span>
+          {presenceDotsByDay.get(index)?.length ? (
+            <span className="day-tab-presence-dots" aria-hidden="true">
+              {presenceDotsByDay
+                .get(index)
+                .slice(0, 3)
+                .map((presence) => (
+                  <span
+                    className="day-tab-presence-dot"
+                    key={presence.sessionId}
+                    style={{ "--trip-presence-color": timelineCardSelectionColor(presence.colorKey) }}
+                  />
+                ))}
+            </span>
+          ) : null}
         </button>
       ))}
       </nav>

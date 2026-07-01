@@ -863,6 +863,38 @@ test("Phase 4.8d remote card selection is broadcast-only and does not lock the d
   expect(stylesSource).toContain("pointer-events: none");
 });
 
+test("Phase 4.8e trip-level online member presence stays navigation-only", () => {
+  expect(appSource).toContain("tripPresenceHeartbeatMs = 28000");
+  expect(appSource).toContain("tripPresenceStaleMs = 55000");
+  expect(appSource).toContain("trip-presence:${activeTripId}");
+  expect(appSource).toContain("trip presence subscribed");
+  expect(appSource).toContain("trip presence track");
+  expect(appSource).toContain("trip presence sync state");
+  expect(appSource).toContain("trip presence stale filtered");
+  expect(appSource).toContain("avatar click navigation");
+  expect(appSource).toContain("day tab presence dots");
+  expect(appSource).toContain("selectedItemType");
+  expect(appSource).toContain("selectedItemTitle");
+  expect(appSource).toContain("tripPresencePageToSection");
+  expect(appSource).toContain('overview: "today"');
+  expect(appSource).toContain('packing: "luggage"');
+  expect(appSource).toContain('timeline: "timeline"');
+  expect(appSource).toContain("HeaderMemberPresencePreview");
+  expect(appSource).toContain("remotePresenceByUser");
+  expect(appSource).toContain("timelinePresenceDotsByDay");
+  expect(appSource).toContain("presenceDotsByDay");
+  expect(appSource).toContain("tripPresenceSelectedItem");
+  expect(appSource).toContain("member.user_id !== currentUserId");
+  expect(appSource).toContain("setActiveSection(section)");
+  expect(appSource).toContain("setActiveDay(Number(presence.dayIndex))");
+  expect(appSource).toContain("channel.track(nextPayload)");
+  expect(appSource).toContain("channel.untrack()");
+  expect(appSource).not.toContain("trip-presence:${activeTripId}:${activeDay}");
+  expect(stylesSource).toContain(".trip-header-member-avatar.remote-online");
+  expect(stylesSource).toContain(".day-tab-presence-dot");
+  expect(stylesSource).toContain("--trip-presence-color");
+});
+
 test("Phase 4.8b demo timeline fixtures model formal transportation roles", () => {
   expect(appSource).toContain("createDemoTransportFixture");
   expect(appSource).toContain("createDemoTransportFixtures");
