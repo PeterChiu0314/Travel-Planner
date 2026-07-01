@@ -2766,6 +2766,50 @@ textarea {
   cursor: grabbing;
 }
 
+.timeline-item.timeline-item-remote-selected {
+  overflow: visible;
+  border-color: var(--timeline-remote-selection-color);
+  box-shadow: 0 0 0 2px var(--timeline-remote-selection-color-soft), var(--shadow);
+}
+
+.timeline-item.timeline-item-remote-selected::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: 1;
+  border: 2px solid var(--timeline-remote-selection-color);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.timeline-item.timeline-item-remote-selected::after {
+  content: attr(data-remote-selection-label);
+  position: absolute;
+  right: 10px;
+  bottom: -22px;
+  z-index: 2;
+  max-width: min(180px, calc(100% - 20px));
+  overflow: hidden;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--timeline-remote-selection-color);
+  color: #fff;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  transform: translateY(-2px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+.timeline-item.timeline-item-remote-selected:hover::after,
+.timeline-item.timeline-item-remote-selected:focus-within::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .timeline-drag-overlay-card {
   z-index: 3000;
   width: var(--timeline-drag-overlay-width, min(100%, calc(100vw - 32px)));

@@ -809,6 +809,33 @@ test("Phase 4.8c drag presence recreates closed channels without removing on dra
   expect(appSource).not.toContain("removeChannel(channel);\n    }\n  }, []);");
 });
 
+test("Phase 4.8d remote card selection is broadcast-only and does not lock the day", () => {
+  expect(appSource).toContain("timeline-card-selection-update");
+  expect(appSource).toContain("timeline-card-selection-clear");
+  expect(appSource).toContain("const timelineCardSelectionStaleMs = 30000");
+  expect(appSource).toContain("timelineCardSelectionColors");
+  expect(appSource).toContain('blue: "#2f6df6"');
+  expect(appSource).toContain('purple: "#7c4dff"');
+  expect(appSource).toContain('orange: "#e57a1f"');
+  expect(appSource).toContain('pink: "#d94d8c"');
+  expect(appSource).toContain('cyan: "#1598b7"');
+  expect(appSource).toContain('yellow: "#c99a00"');
+  expect(appSource).not.toContain("green:");
+  expect(appSource).toContain("payload.sessionId === sessionId");
+  expect(appSource).toContain("selection broadcast update");
+  expect(appSource).toContain("selection broadcast clear");
+  expect(appSource).toContain("selection received");
+  expect(appSource).toContain("selection ignored reason");
+  expect(appSource).toContain("data-remote-selection-label");
+  expect(appSource).toContain("timeline-item-remote-selected");
+  expect(appSource).toContain("!foreignSameDayDragActive &&");
+  expect(appSource).toContain('onClearCardSelection();');
+  expect(appSource).not.toContain("setForeignDragPresence(payload)");
+  expect(stylesSource).toContain(".timeline-item.timeline-item-remote-selected");
+  expect(stylesSource).toContain("content: attr(data-remote-selection-label)");
+  expect(stylesSource).toContain("pointer-events: none");
+});
+
 test("Phase 4.8b demo timeline fixtures model formal transportation roles", () => {
   expect(appSource).toContain("createDemoTransportFixture");
   expect(appSource).toContain("createDemoTransportFixtures");

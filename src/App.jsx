@@ -84,6 +84,16 @@ const timelineDragPresenceHeartbeatMs = 3000;
 const timelineDragPresenceStaleMs = 12000;
 const timelineDragPresenceMaxMs = 75000;
 const timelineDragPresenceRefreshMs = 1000;
+const timelineCardSelectionStaleMs = 30000;
+const timelineCardSelectionColors = {
+  blue: "#2f6df6",
+  purple: "#7c4dff",
+  orange: "#e57a1f",
+  pink: "#d94d8c",
+  cyan: "#1598b7",
+  yellow: "#c99a00",
+};
+const timelineCardSelectionColorKeys = Object.keys(timelineCardSelectionColors);
 
 function timelineDragPresenceDebugEnabled() {
   if (typeof window === "undefined") return false;
@@ -111,6 +121,35 @@ function timelineDragPresenceDebugPayload(payload) {
     sentAt: payload.sentAt,
     overItemId: payload.overItemId,
     placement: payload.placement,
+  };
+}
+
+function timelineCardSelectionColorKey(seed = "") {
+  const source = String(seed || "");
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 31 + source.charCodeAt(index)) >>> 0;
+  }
+  return timelineCardSelectionColorKeys[hash % timelineCardSelectionColorKeys.length] || "blue";
+}
+
+function timelineCardSelectionColor(colorKey) {
+  return timelineCardSelectionColors[colorKey] || timelineCardSelectionColors.blue;
+}
+
+function timelineCardSelectionDebugPayload(payload) {
+  if (!payload) return null;
+  return {
+    tripId: payload.tripId,
+    dayIndex: payload.dayIndex,
+    itemId: payload.itemId,
+    itemTitle: payload.itemTitle,
+    userId: payload.userId,
+    userName: payload.userName,
+    sessionId: payload.sessionId,
+    colorKey: payload.colorKey,
+    selectedAt: payload.selectedAt,
+    sentAt: payload.sentAt,
   };
 }
 
@@ -1974,11 +2013,14 @@ export default function App() {
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
   const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
   const [foreignDragPresence, setForeignDragPresence] = useState(null);
+  const [foreignCardSelection, setForeignCardSelection] = useState(null);
   const restoredDayRef = useRef(null);
   const timelineDragPresenceChannelRef = useRef(null);
   const timelineDragPresenceReadyRef = useRef(false);
   const timelineDragPresenceStatusRef = useRef("idle");
   const timelineDragPresenceReconnectRef = useRef(false);
+  const itemsRef = useRef([]);
+  const localCardSelectionRef = useRef(null);
   const localDragPresenceRef = useRef(null);
   const localDragStartedAtRef = useRef(null);
   const timelineDragPresenceSessionIdRef = useRef(
@@ -2029,6 +2071,11 @@ export default function App() {
     setIsAccountMenuOpen(false);
     setIsSidebarTripMenuOpen(false);
   }, [activeSection, activeTripId, isSidebarCollapsed]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
 
@@ -2506,9 +2553,11 @@ export default function App() {
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
       setForeignDragPresence(null);
+      setForeignCardSelection(null);
       timelineDragPresenceChannelRef.current = null;
       timelineDragPresenceReadyRef.current = false;
       timelineDragPresenceStatusRef.current = "idle";
+      localCardSelectionRef.current = null;
       return undefined;
     }
     const sessionId = timelineDragPresenceSessionIdRef.current;
@@ -2565,6 +2614,60 @@ export default function App() {
           channelName,
           payload: timelineDragPresenceDebugPayload(payload),
           reason: "stale-timeout",
+        });
+        return false;
+      }
+      return true;
+    };
+
+    const isForeignCardSelectionPayload = (payload, now) => {
+      if (!payload) {
+        timelineDragPresenceDebug("selection ignored reason", { channelName, reason: "empty-payload" });
+        return false;
+      }
+      if (payload.sessionId === sessionId) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          reason: "self",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      if (payload.tripId !== activeTripId) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          expectedTripId: activeTripId,
+          reason: "trip-mismatch",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      if (Number(payload.dayIndex) !== Number(activeDay)) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          expectedDayIndex: activeDay,
+          reason: "day-mismatch",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      const rawSelectedAt = payload.selectedAt || payload.sentAt || "";
+      const selectedAt = typeof rawSelectedAt === "number" ? rawSelectedAt : Date.parse(rawSelectedAt);
+      if (!Number.isFinite(selectedAt) || now - selectedAt > timelineCardSelectionStaleMs) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          ageMs: Number.isFinite(selectedAt) ? now - selectedAt : null,
+          channelName,
+          reason: Number.isFinite(selectedAt) ? "stale" : "invalid-selectedAt",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      const selectedItem = itemsRef.current.find((item) => item.id === payload.itemId);
+      if (!selectedItem || isTransportationCard(selectedItem)) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          reason: "missing-item",
+          payload: timelineCardSelectionDebugPayload(payload),
         });
         return false;
       }
@@ -2651,6 +2754,27 @@ export default function App() {
         if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return;
         setForeignDragPresence((current) => (!current || current.dragId === payload.dragId ? null : current));
       })
+      .on("broadcast", { event: "timeline-card-selection-update" }, (message) => {
+        const payload = message?.payload || null;
+        timelineDragPresenceDebug("selection received", {
+          channelName,
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        if (isForeignCardSelectionPayload(payload, Date.now())) {
+          setForeignCardSelection(payload);
+        }
+      })
+      .on("broadcast", { event: "timeline-card-selection-clear" }, (message) => {
+        const payload = message?.payload || null;
+        timelineDragPresenceDebug("selection received", {
+          channelName,
+          event: "timeline-card-selection-clear",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        if (!payload || payload.sessionId === sessionId) return;
+        if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return;
+        setForeignCardSelection((current) => (!current || current.sessionId === payload.sessionId ? null : current));
+      })
       .subscribe((status) => {
         timelineDragPresenceStatusRef.current = status;
         timelineDragPresenceDebug("subscribe status", {
@@ -2674,6 +2798,14 @@ export default function App() {
               "timeline-drag-update",
               { ...localDragPresenceRef.current, sentAt: new Date().toISOString() },
               "broadcast update",
+            );
+          }
+          if (localCardSelectionRef.current) {
+            broadcastTimelineDragPresence(
+              channel,
+              "timeline-card-selection-update",
+              { ...localCardSelectionRef.current, sentAt: new Date().toISOString() },
+              "selection broadcast update",
             );
           }
           syncForeignPresence();
@@ -2712,12 +2844,22 @@ export default function App() {
           "broadcast clear",
         );
       }
+      if (!isReconnectCleanup && localCardSelectionRef.current && timelineDragPresenceReadyRef.current) {
+        broadcastTimelineDragPresence(
+          channel,
+          "timeline-card-selection-clear",
+          { ...localCardSelectionRef.current, sentAt: new Date().toISOString() },
+          "selection broadcast clear",
+        );
+      }
       if (timelineDragPresenceChannelRef.current === channel) timelineDragPresenceChannelRef.current = null;
       timelineDragPresenceReadyRef.current = false;
       if (!isReconnectCleanup) {
         localDragPresenceRef.current = null;
         localDragStartedAtRef.current = null;
+        localCardSelectionRef.current = null;
         setForeignDragPresence(null);
+        setForeignCardSelection(null);
       }
       Promise.resolve(channel.untrack()).catch((error) => {
         timelineDragPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
@@ -2743,6 +2885,23 @@ export default function App() {
     }, 1000);
     return () => window.clearInterval(intervalId);
   }, [foreignDragPresence]);
+
+  useEffect(() => {
+    if (!foreignCardSelection) return undefined;
+    const intervalId = window.setInterval(() => {
+      const rawSelectedAt = foreignCardSelection.selectedAt || foreignCardSelection.sentAt || "";
+      const selectedAt = typeof rawSelectedAt === "number" ? rawSelectedAt : Date.parse(rawSelectedAt);
+      if (!Number.isFinite(selectedAt) || Date.now() - selectedAt > timelineCardSelectionStaleMs) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          ageMs: Number.isFinite(selectedAt) ? Date.now() - selectedAt : null,
+          payload: timelineCardSelectionDebugPayload(foreignCardSelection),
+          reason: Number.isFinite(selectedAt) ? "stale" : "invalid-selectedAt",
+        });
+        setForeignCardSelection(null);
+      }
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [foreignCardSelection]);
 
   const clearDragPresence = useCallback(() => {
     const currentPayload = localDragPresenceRef.current;
@@ -2771,6 +2930,65 @@ export default function App() {
       });
     }
   }, []);
+
+  const clearCardSelection = useCallback(() => {
+    const currentPayload = localCardSelectionRef.current;
+    const channel = timelineDragPresenceChannelRef.current;
+    const channelReady = timelineDragPresenceReadyRef.current;
+    if (channel && channelReady && currentPayload) {
+      broadcastTimelineDragPresence(
+        channel,
+        "timeline-card-selection-clear",
+        { ...currentPayload, sentAt: new Date().toISOString() },
+        "selection broadcast clear",
+      );
+    } else if (currentPayload) {
+      timelineDragPresenceDebug("selection ignored reason", {
+        phase: "clear",
+        reason: !channel ? "missing-channel" : "channel-not-ready",
+        payload: timelineCardSelectionDebugPayload(currentPayload),
+      });
+    }
+    localCardSelectionRef.current = null;
+  }, []);
+
+  const publishCardSelection = useCallback(
+    (item) => {
+      if (!activeTripId || !activeUserId || activeMembership?.status !== "approved" || activeSection !== "timeline") return;
+      if (!item || isTransportationCard(item)) return;
+      const channel = timelineDragPresenceChannelRef.current;
+      const channelReady = timelineDragPresenceReadyRef.current;
+      const now = new Date().toISOString();
+      const sessionId = timelineDragPresenceSessionIdRef.current;
+      const colorKey = timelineCardSelectionColorKey(sessionId || activeUserId);
+      const nextPayload = {
+        tripId: activeTripId,
+        dayIndex: activeDay,
+        itemId: item.id,
+        itemTitle: item.location_name || item.location || item.title || "",
+        userId: activeUserId,
+        userName: timelineDragPresenceUserName,
+        sessionId,
+        colorKey,
+        selectedAt: now,
+        sentAt: now,
+      };
+      localCardSelectionRef.current = nextPayload;
+      if (!channel || !channelReady) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          reason: !channel ? "missing-channel" : "channel-not-ready",
+          payload: timelineCardSelectionDebugPayload(nextPayload),
+        });
+        return;
+      }
+      broadcastTimelineDragPresence(channel, "timeline-card-selection-update", nextPayload, "selection broadcast update");
+    },
+    [activeDay, activeMembership?.status, activeSection, activeTripId, activeUserId, timelineDragPresenceUserName],
+  );
+
+  useEffect(() => {
+    if (activeSection !== "timeline") clearCardSelection();
+  }, [activeSection, clearCardSelection]);
 
   const publishDragPresence = useCallback(
     (payload = {}) => {
@@ -4674,6 +4892,7 @@ function exportTrip() {
             itineraryBudgetLinks={itineraryBudgetLinks}
             guideItems={guideItems}
             currentUserId={session.user.id}
+            foreignCardSelection={foreignCardSelection}
             foreignDragPresence={foreignDragPresence}
             foreignSameDayDragActive={Boolean(foreignDragPresence)}
             luggageItems={luggageItems}
@@ -4701,11 +4920,13 @@ function exportTrip() {
             onDeletePackItem={deletePackItem}
             onDeleteSharedLuggageItem={deleteSharedLuggageItem}
             onDeleteTodo={deleteTodo}
+            onClearCardSelection={clearCardSelection}
             onClearDragPresence={clearDragPresence}
             onRejectMember={rejectMember}
             onReorderDestinationPackages={reorderDestinationPackages}
             onReorderUntimedVisit={reorderUntimedVisit}
             onPublishDragPresence={publishDragPresence}
+            onPublishCardSelection={publishCardSelection}
             onSaveAlternative={saveAlternative}
             onSaveActualExpense={saveActualExpense}
             onSaveAccommodation={saveAccommodation}
@@ -8080,6 +8301,7 @@ function TripWorkspace(props) {
     itineraryBudgetLinks,
     guideItems,
     currentUserId,
+    foreignCardSelection,
     foreignDragPresence,
     foreignSameDayDragActive,
     luggageItems,
@@ -8107,11 +8329,13 @@ function TripWorkspace(props) {
     onDeletePackItem,
     onDeleteSharedLuggageItem,
     onDeleteTodo,
+    onClearCardSelection,
     onClearDragPresence,
     onRejectMember,
     onReorderDestinationPackages,
     onReorderUntimedVisit,
     onPublishDragPresence,
+    onPublishCardSelection,
     onSaveAlternative,
     onSaveActualExpense,
     onSaveAccommodation,
@@ -8329,6 +8553,7 @@ function TripWorkspace(props) {
                 budgetsByItem={budgetsByItem}
                 canEdit={canEdit}
                 currentUserId={currentUserId}
+                foreignCardSelection={foreignCardSelection}
                 foreignDragPresence={foreignDragPresence}
                 foreignSameDayDragActive={foreignSameDayDragActive}
                 members={members}
@@ -8342,7 +8567,9 @@ function TripWorkspace(props) {
                 onConfirmTransportWarning={onConfirmTransportWarning}
                 onDeleteAlternative={onDeleteAlternative}
                 onDeleteItem={onDeleteItem}
+                onClearCardSelection={onClearCardSelection}
                 onFocusItem={setFocusedItemId}
+                onPublishCardSelection={onPublishCardSelection}
                 onPublishDragPresence={onPublishDragPresence}
                 onReorderDestinationPackages={onReorderDestinationPackages}
                 onReorderUntimedVisit={onReorderUntimedVisit}
@@ -8760,6 +8987,7 @@ function ItineraryTimeline({
   dayTitle,
   disableDraftAutosave = false,
   focusedItemId,
+  foreignCardSelection = null,
   foreignDragPresence = null,
   foreignSameDayDragActive = false,
   headingEyebrow = "行程",
@@ -8769,7 +8997,9 @@ function ItineraryTimeline({
   onConfirmTransportWarning,
   onDeleteAlternative,
   onDeleteItem,
+  onClearCardSelection,
   onFocusItem,
+  onPublishCardSelection,
   onPublishDragPresence,
   onReorderDestinationPackages,
   onReorderUntimedVisit,
@@ -8822,6 +9052,12 @@ function ItineraryTimeline({
   const foreignDragUserName = foreignDragPresence?.userName || (foreignDragMember ? memberName(foreignDragMember) : "其他成員");
   const foreignDragOverItemId = foreignSameDayDragActive ? foreignDragPresence?.overItemId : null;
   const foreignDragPlacement = foreignSameDayDragActive ? foreignDragPresence?.placement : null;
+  const visibleForeignCardSelection =
+    !foreignSameDayDragActive &&
+    foreignCardSelection &&
+    Number(foreignCardSelection.dayIndex) === Number(activeDay)
+      ? foreignCardSelection
+      : null;
   const canMutateThisDay = canEdit && !foreignSameDayDragActive;
   const foreignDragReadOnlyMessage = foreignSameDayDragActive
     ? `${foreignDragUserName} 正在拖曳，暫時鎖定此日編輯。`
@@ -8955,6 +9191,7 @@ function ItineraryTimeline({
   function handleSortableDragStart(event) {
     const sourceItem = dayItems.find((item) => item.id === event.active.id);
     if (!sourceItem || !canDragVisit(sourceItem)) return;
+    if (typeof onClearCardSelection === "function") onClearCardSelection();
     const sourceRect = event.active.rect.current.initial;
     setDragOverlaySize(
       sourceRect?.width && sourceRect?.height ? { height: sourceRect.height, width: sourceRect.width } : null,
@@ -9025,6 +9262,7 @@ function ItineraryTimeline({
       }
       return;
     }
+    if (typeof onClearCardSelection === "function") onClearCardSelection();
     setFixedNotice("");
     setUntimedDropNotice("");
     setDraggedVisitId(item.id);
@@ -10671,7 +10909,14 @@ function ItineraryTimeline({
         sensors={dndSensors}
       >
       <SortableContext items={visitItemIds} strategy={verticalListSortingStrategy}>
-      <div className="timeline" data-dnd-preview={draggedVisitId ? "active" : undefined} ref={activeTimelineListRef}>
+      <div
+        className="timeline"
+        data-dnd-preview={draggedVisitId ? "active" : undefined}
+        ref={activeTimelineListRef}
+        onClick={(event) => {
+          if (event.target === event.currentTarget && typeof onClearCardSelection === "function") onClearCardSelection();
+        }}
+      >
         {visitItems.length ? (
           visitItems.map((item, index) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
@@ -10740,6 +10985,14 @@ function ItineraryTimeline({
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
             const isDragEnabled = canDragVisit(item);
             const isDisabledDragTarget = dragTarget?.itemId === item.id && dragTarget.disabled;
+            const remoteSelection = visibleForeignCardSelection?.itemId === item.id ? visibleForeignCardSelection : null;
+            const remoteSelectionColor = remoteSelection ? timelineCardSelectionColor(remoteSelection.colorKey) : "";
+            const remoteSelectionStyle = remoteSelection
+              ? {
+                  "--timeline-remote-selection-color": remoteSelectionColor,
+                  "--timeline-remote-selection-color-soft": `${remoteSelectionColor}18`,
+                }
+              : undefined;
             const hasAttachedTransportFlow =
               (!isAddingTransportHere && Boolean(transportItem)) ||
               passiveUntimedTransportItems.length > 0 ||
@@ -10758,13 +11011,16 @@ function ItineraryTimeline({
                 isItemFixed ? " fixed" : ""
               }${isDragEnabled ? " drag-enabled" : ""}${draggedVisitId === item.id ? " dragging" : ""}${
                 isDisabledDragTarget ? " drag-target-disabled" : ""
-              }`}
+              }${remoteSelection ? " timeline-item-remote-selected" : ""}`}
               data-dnd-overlay-source={draggedVisitId === item.id ? "true" : undefined}
+              data-remote-selection-label={remoteSelection?.userName || undefined}
               data-timing={isTimedVisit(item) ? "timed" : "untimed"}
+              style={remoteSelectionStyle}
               title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
               onClick={() => {
                 setExpandedId(expandedId === item.id ? null : item.id);
                 onFocusItem(item.id);
+                if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);
               }}
             >
               <TimelineDragHandle className="time-block">
