@@ -895,7 +895,8 @@ test("Phase 4.8e trip-level online member presence stays navigation-only", () =>
   expect(appSource).toContain("channel.untrack()");
   expect(appSource).not.toContain("trip-presence:${activeTripId}:${activeDay}");
   expect(stylesSource).toContain(".trip-header-member-avatar.remote-online");
-  expect(stylesSource).toContain(".day-tab-presence-dot");
+  expect(appSource).toContain("has-remote-presence");
+  expect(stylesSource).toContain(".day-tab.has-remote-presence");
   expect(stylesSource).toContain("--trip-presence-color");
 });
 

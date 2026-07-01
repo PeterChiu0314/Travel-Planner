@@ -9274,35 +9274,26 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay, presen
         if (dragStateRef.current.isDragging) endDrag(event);
       }}
     >
-      {days.map((date, index) => (
-        <button
-          className={`day-tab${index === activeDay ? " active" : ""}`}
-          data-day-index={index}
-          key={date.toISOString()}
-          type="button"
-          onClick={() => selectDay(index)}
-        >
+      {days.map((date, index) => {
+        const presences = presenceDotsByDay.get(index) || [];
+        const firstPresence = presences[0] || null;
+        return (
+          <button
+            className={`day-tab${index === activeDay ? " active" : ""}${firstPresence ? " has-remote-presence" : ""}`}
+            data-day-index={index}
+            key={date.toISOString()}
+            style={firstPresence ? { "--trip-presence-color": timelineCardSelectionColor(firstPresence.colorKey) } : undefined}
+            type="button"
+            onClick={() => selectDay(index)}
+          >
           <span className="day-tab-index">DAY {index + 1}</span>
           <span className="day-tab-separator" aria-hidden="true">
             ·
           </span>
           <span className="day-tab-date">{formatDayTabDate(date)}</span>
-          {presenceDotsByDay.get(index)?.length ? (
-            <span className="day-tab-presence-dots" aria-hidden="true">
-              {presenceDotsByDay
-                .get(index)
-                .slice(0, 3)
-                .map((presence) => (
-                  <span
-                    className="day-tab-presence-dot"
-                    key={presence.sessionId}
-                    style={{ "--trip-presence-color": timelineCardSelectionColor(presence.colorKey) }}
-                  />
-                ))}
-            </span>
-          ) : null}
-        </button>
-      ))}
+          </button>
+        );
+      })}
       </nav>
       {tabScrollState.right ? (
         <button className="day-tabs-edge right" type="button" aria-label="向右滑動日期" onClick={() => scrollTabs(1)}>

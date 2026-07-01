@@ -1822,8 +1822,8 @@ code {
 }
 
 .trip-header-member-avatar.remote-online {
-  border-color: var(--trip-presence-color);
-  box-shadow: 0 0 0 2px #fffefa, 0 0 0 4px color-mix(in srgb, var(--trip-presence-color) 72%, transparent);
+  border: 2px solid var(--trip-presence-color);
+  box-shadow: none;
 }
 
 .trip-header-member-open-button {
@@ -2357,6 +2357,10 @@ textarea {
   color: var(--ink);
 }
 
+.day-tab.has-remote-presence {
+  border: 2px solid var(--trip-presence-color);
+}
+
 .day-tab-index {
   font-weight: 800;
 }
@@ -2378,24 +2382,6 @@ textarea {
 
 .day-tab-separator::before {
   content: "·";
-}
-
-.day-tab-presence-dots {
-  position: absolute;
-  right: 8px;
-  bottom: 4px;
-  display: inline-flex;
-  gap: 3px;
-  pointer-events: none;
-}
-
-.day-tab-presence-dot {
-  width: 6px;
-  height: 6px;
-  border: 1px solid #fff;
-  border-radius: 999px;
-  background: var(--trip-presence-color);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--trip-presence-color) 60%, transparent);
 }
 
 .content-grid {
