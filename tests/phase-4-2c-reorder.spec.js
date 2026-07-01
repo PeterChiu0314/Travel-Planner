@@ -894,6 +894,9 @@ test("Phase 4.8e trip-level online member presence stays navigation-only", () =>
   expect(appSource).toContain("remotePresenceByUser");
   expect(appSource).toContain("timelineDayTabPresenceByDay");
   expect(appSource).toContain("dayTabPresenceByDay");
+  expect(appSource).toContain("dayBoardPresenceByDay");
+  expect(appSource).toContain("timeline-day-presence-dots");
+  expect(appSource).toContain("timeline-day-presence-dot");
   expect(appSource).toContain("tripPresenceSelectedItem");
   expect(appSource).toContain("member.user_id !== currentUserId");
   expect(appSource).toContain("setActiveSection(section)");
@@ -904,6 +907,7 @@ test("Phase 4.8e trip-level online member presence stays navigation-only", () =>
   expect(stylesSource).toContain(".trip-header-member-avatar.remote-online");
   expect(appSource).toContain("has-remote-presence");
   expect(stylesSource).toContain(".day-tab.has-remote-presence");
+  expect(stylesSource).toContain(".timeline-day-presence-dot");
   expect(stylesSource).toContain("--trip-presence-color");
 });
 

@@ -9090,6 +9090,7 @@ function TripWorkspace(props) {
                   budgetsByItem={budgetsByItem}
                   days={days}
                   itemsByDay={itemsByDay}
+                  dayBoardPresenceByDay={timelineDayTabPresenceByDay}
                   onActiveDay={onActiveDay}
                   onFocusItem={setFocusedItemId}
                 />
@@ -11804,6 +11805,7 @@ function MultiDayTimelineColumns({
   alternativesByItem = {},
   budgetsByItem = {},
   days,
+  dayBoardPresenceByDay = new Map(),
   itemsByDay,
   onActiveDay,
   onFocusItem,
@@ -11818,6 +11820,7 @@ function MultiDayTimelineColumns({
       {otherDays.map((day) => {
         const visits = sortedVisitItems(day.items);
         const adjacentTransportByPair = buildAdjacentTransportMap(day.items, visits);
+        const dayBoardPresences = (dayBoardPresenceByDay.get(day.index) || []).slice(0, 3);
         return (
         <section
           className="timeline-day-preview"
@@ -11839,6 +11842,18 @@ function MultiDayTimelineColumns({
               <p className="eyebrow">Day {day.index + 1}</p>
               <h4>{formatDate(day.date)}</h4>
             </div>
+            {dayBoardPresences.length ? (
+              <div className="timeline-day-presence-dots" aria-label="Remote members on this day">
+                {dayBoardPresences.map((presence) => (
+                  <span
+                    className="timeline-day-presence-dot"
+                    key={presence.sessionId || `${presence.userId}-${presence.colorKey}`}
+                    style={{ "--trip-presence-color": timelineCardSelectionColor(presence.colorKey) }}
+                    title={presence.userName || "Remote member"}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="timeline-preview-list">
             {visits.length ? (

@@ -2582,6 +2582,22 @@ textarea {
   gap: 10px;
 }
 
+.timeline-day-presence-dots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.timeline-day-presence-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  background: var(--trip-presence-color);
+}
+
 .timeline-column-header {
   min-height: 36px;
 }
