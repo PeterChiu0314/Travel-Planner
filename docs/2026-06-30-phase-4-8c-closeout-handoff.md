@@ -14,7 +14,7 @@ Status: Implemented / user verified / no migration
 - `docs/BUGS.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md`
 - `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
-- `docs/2026-06-30-phase-4-8c-collaborative-drag-presence-handoff.md`
+- `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
 
 Archive rule:
 

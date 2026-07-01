@@ -10,6 +10,7 @@
 - `docs/2026-06-24-phase-4-5-closeout-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
+- `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
 
@@ -22,13 +23,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.8c Collaborative Drag Presence - Implemented / User Verified / Build Passed / No Migration
+Timeline Phase 4.8c2 Collaborative Drag Presence Stabilization - Implemented / User Verified / Build Passed / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 4.8c is closed for now. Continue with final documentation/merge prep, or start Phase 4.9 Map integration only if explicitly requested.
+Phase 4.8c2 is closed for now. Continue with final documentation/merge prep, or start Phase 4.9 Map integration only if explicitly requested.
 ```
 
 Branch:
@@ -223,7 +224,7 @@ New/updated files:
 - Floating overlay drag is constrained to vertical movement inside the active day board. The top bound aligns to the first timeline card/list position below the date header, and the bottom bound stays inside the active day board.
 - Drag activation is limited to the left time block of a visit card. The rest of the card remains clickable for normal card interactions and does not start a drag.
 
-### Phase 4.8c
+### Phase 4.8c2
 
 - Added authenticated Formal-only collaborative Timeline drag presence for active trip/day.
 - Channel scope is `timeline-drag:{tripId}:{dayIndex}`.
@@ -238,6 +239,16 @@ New/updated files:
 - Drag cancel, invalid end, drop success/fail cleanup, unmount, day switch, trip switch, and logout cleanup broadcast clear and untrack presence.
 - Foreign same-day drag presence disables that day's destination drag handles through the shared drag eligibility conditions.
 - Foreign same-day drag presence shows the existing low-key `{userName} 正在拖曳` hint and muted insertion line.
+- Phase 4.8c2 extends foreign same-day drag presence into a temporary same-day readonly lock for Timeline data-changing actions.
+- Same-day readonly lock blocks destination drag, add/edit/delete itinerary items, add/edit/delete transportation cards, transportation warning confirmation, alternative add/edit/delete/swap, fixed toggle, auto-continuation save, and reorder confirmation save.
+- Same-day readonly lock still allows expand/collapse, content viewing, Day switching, and section/page switching.
+- If another user starts dragging while an editor is already open, the editor remains open and keeps its form content, but save/continuation actions are disabled and guarded with `此日行程正在被其他成員調整，請稍後再儲存。`
+- Foreign same-day drag presence now shows `{userName} 正在拖曳，暫時鎖定此日編輯。` and a muted insertion line.
+- Repeated same-account two-tab drag testing exposed a Realtime channel `CLOSED` state after several drags.
+- Phase 4.8c2 tracks channel status separately from readiness, clears stale closed channel refs, recreates the same trip/day channel, and replays the local drag payload after `SUBSCRIBED`.
+- Drag end/cancel/clear still does not remove the active timeline-drag channel; it only broadcasts clear, untracks presence, and clears local drag refs/state.
+- `removeChannel(channel)` remains limited to active trip/day/user scope cleanup, component unmount, or internal replacement of a closed/errored/timed-out channel.
+- `debugPresence=1` logs now include channel status on drag start, subscribe status, removeChannel reason, and skipped track reason.
 - Remote DragOverlay / ghost card / preview order is not rendered or synchronized.
 - B's list does not reorder from remote presence; official results still arrive only through the existing reorder RPC success plus Realtime/reload.
 - Debug logging is gated behind `?debugPresence=1`.
@@ -253,7 +264,7 @@ New/updated files:
 - `package-lock.json`
 - `tests/phase-4-2c-reorder.spec.js`
 - `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
-- `docs/2026-06-30-phase-4-8c-collaborative-drag-presence-handoff.md`
+- `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v12.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md`
@@ -406,7 +417,7 @@ git diff --check passed with Windows LF/CRLF notices only
 Manual user verification passed for Demo and Formal drag preview, Demo transport parity, tail_pending + untimed promotion bypass, vertical overlay constraint, day-board top/bottom overlay bounds, and time-block-only drag activation.
 ```
 
-Phase 4.8c collaborative drag presence checks on 2026-06-30:
+Phase 4.8c / 4.8c2 collaborative drag presence checks on 2026-06-30 and 2026-07-01:
 
 ```text
 npm.cmd run build passed
@@ -417,6 +428,10 @@ Presence-only Vercel multi-account testing was unstable because sustained Presen
 Presence + Broadcast final build rerun passed after one Windows Node teardown assertion on the first run.
 git diff --check passed with Windows LF/CRLF notice only
 Manual Vercel multi-account user verification passed after switching heartbeat/dragOver updates to Broadcast.
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8c" passed 2/2 for 4.8c2 readonly/channel lifecycle source smoke
+npm.cmd run build passed after 4.8c2 channel lifecycle recovery
+git diff --check passed with Windows LF/CRLF notice only after 4.8c2 channel lifecycle recovery
+Manual user verification passed for Phase 4.8c Presence + Broadcast repeated drag regression after CLOSED channel recovery.
 ```
 
 ## Protected Scope Preserved
@@ -446,9 +461,10 @@ Phase 4.7 did not redesign or extend:
 - Phase 4.7 Formal timed drag has its transactional RPC applied in production, but this session focused on Demo/browser visual QA for Phase 4.8 sortable preview.
 - Authenticated Formal UI verification passed for the latest Phase 4.8b drag-preview and tail-pending bypass polish, but future drag animation changes should still be checked on a real test trip because pointer/scroll timing is browser-sensitive.
 - Drag animation feel is inherently browser/timing-sensitive; if future polish is needed, prefer dnd-kit `animateLayoutChanges` / sortable configuration over delaying Formal data writes or bypassing the existing reorder RPC flow.
-- Phase 4.8c Realtime Broadcast delivery is best effort; the 12-second stale timeout is the fallback if a clear/update event is missed.
-- Phase 4.8c debug logs are gated behind `?debugPresence=1`. They are useful during rollout but expose ephemeral drag payloads in the browser console when enabled.
+- Phase 4.8c2 Realtime Broadcast delivery is best effort; the 12-second stale timeout is the fallback if a clear/update event is missed.
+- Phase 4.8c2 channel recreation handles observed `CLOSED` channel state, but future Realtime lifecycle changes should retest repeated same-trip/same-day drags in two tabs.
+- Phase 4.8c2 debug logs are gated behind `?debugPresence=1`. They are useful during rollout but expose ephemeral drag payload metadata in the browser console when enabled.
 
 ## Next Step
 
-Phase 4.8c is closed for now. Proceed with final merge/PR cleanup, optional debug-log cleanup, or Phase 4.9 Map integration only if explicitly requested. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, or additional database changes.
+Phase 4.8c2 is closed for now. Proceed with final merge/PR cleanup, optional debug-log cleanup, or Phase 4.9 Map integration only if explicitly requested. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, or additional database changes.
