@@ -2909,7 +2909,7 @@ textarea {
 
 .timeline-remote-insertion-line {
   height: 3px;
-  margin: 10px 12px;
+  margin: 4px 10px;
   border-radius: 999px;
   background: var(--timeline-remote-drag-color, #2f8f72);
   box-shadow: 0 0 0 2px var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14));
@@ -3218,7 +3218,7 @@ textarea {
 .timeline-item.focused.timeline-item-remote-drag-source {
   border: 2px solid var(--timeline-remote-drag-color, #2f8f72);
   background: linear-gradient(0deg, var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), transparent), #fff;
-  box-shadow: 0 0 0 2px var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), var(--shadow);
+  box-shadow: none;
   opacity: 0.56;
 }
 
