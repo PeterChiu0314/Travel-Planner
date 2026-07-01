@@ -10,7 +10,11 @@
 - `docs/2026-06-24-phase-4-5-closeout-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
-- `docs/timeline-phase-4-drag-reorder-rules-draft-v11.md` (latest working draft)
+- `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
+- `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
+- `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
+- `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
 
 Archive rule:
 
@@ -21,19 +25,19 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.7 Fixed Anchor Drag Continuation Segments - Implemented Locally / Build and Full E2E QA Passed / Production Migration 024 Applied
+Timeline Phase 4.8f Remote Drag Visual Polish - User Verified / Pushed / No Migration
 ```
 
 Next phase:
 
 ```text
-Verify Formal fixed-anchor drag against production data after Supabase migration 024 application.
+Phase 4.8f is accepted. Continue to Phase 4.9 Map integration only when explicitly started. Begin Phase 4.9 with a read-only audit and implementation plan before changing map-related behavior.
 ```
 
 Branch:
 
 ```text
-codex/timeline-phase-4-7
+codex/timeline-phase-4-8
 ```
 
 ## Completed Scope
@@ -198,6 +202,132 @@ New/updated files:
 - `tests/phase-1-7f-smoke.spec.js`
 - `docs/2026-06-29-phase-4-7-closeout-handoff.md`
 
+### Phase 4.8
+
+- Added dnd-kit Sortable interaction for Timeline visit cards.
+- Installed and uses `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities`.
+- Dragging a visit card now uses a floating `DragOverlay` while the source slot becomes an in-list placeholder.
+- Other visit cards slide open during drag preview through dnd-kit sortable transforms.
+- The floating overlay is measured from the original card so it matches the card width/height instead of becoming oversized.
+- Drag preview remains local UI only: no `itinerary_items` writes, no reorder RPC, no time changes, no untimed conversion, no transportation mutation, no draft clearing, and no migration during drag.
+- Drop still calls the existing Phase 4.7 timed reorder flow or the existing untimed reorder flow.
+- Cancel, invalid target, Esc, or drag end without a valid target clears local drag state and leaves authoritative order unchanged.
+- Fixed cards remain non-draggable.
+- Timed and untimed existing drag rules remain preserved.
+- Drop-after layout animation from dnd-kit is disabled through a custom `animateLayoutChanges` handler so cards keep the drag-preview feel without a second post-drop slide.
+- Timeline gap was set to `8px`; the hidden transportation insert affordance is nested under the sortable visit entry so it does not create extra direct `.timeline` grid gaps.
+- Transportation insert hover still expands between cards and is isolated from the sortable drag sensor via pointer/key event stop propagation.
+- Formal and Demo use the same `ItineraryTimeline` and CSS, so preview behavior remains shared.
+- Phase 4.8a follow-up keeps transportation cards as visual attachments of the previous destination sortable wrapper during drag preview; transportation cards still are not sortable items and are not draggable.
+- Phase 4.8b Demo Timeline Data Parity Polish aligns Demo transport fixture shape with Formal fields including `transport_role`, `from_item_id`, `to_item_id`, snapshots, fixed metadata, and trip/day/sort fields.
+- Demo newly added transportation cards now include `trip_id` and pair-adjacent `sort_order`, so the shared reorder planner preserves/remaps them like Formal data instead of leaving them outside the transport planning pass.
+- Tail-pending transport promotion now has one narrow untimed bypass: when adding a timed visit C after tail source A promotes `tail_pending` into `tail_promoted_pair A -> C`, only untimed visits blocking A/C adjacency are rebased after C. Normal pairs, existing promoted pairs, unrelated untimed visits, invalid time placement, and days without tail-pending transport remain unchanged.
+- Formal and Demo both use the same tail-pending promotion bypass helper; no Supabase migration, reorder RPC, or Phase 4.7 fixed-anchor/brokenTransportIds logic was changed.
+- Floating overlay drag is constrained to vertical movement inside the active day board. The top bound aligns to the first timeline card/list position below the date header, and the bottom bound stays inside the active day board.
+- Drag activation is limited to the left time block of a visit card. The rest of the card remains clickable for normal card interactions and does not start a drag.
+
+### Phase 4.8c2
+
+- Added authenticated Formal-only collaborative Timeline drag presence for active trip/day.
+- Channel scope is `timeline-drag:{tripId}:{dayIndex}`.
+- Supabase Realtime Presence is used only as a low-frequency soft lock for who is dragging.
+- Supabase Realtime Broadcast is used for drag updates, heartbeat, remote insertion target, and clear events.
+- Broadcast events:
+  - `timeline-drag-update`
+  - `timeline-drag-clear`
+- Drag start creates a fresh `dragId`, tracks basic presence, and broadcasts the first update.
+- Drag over broadcasts only target/placement changes.
+- Heartbeat broadcasts every 3 seconds and does not call Presence `track()`.
+- Drag cancel, invalid end, drop success/fail cleanup, unmount, day switch, trip switch, and logout cleanup broadcast clear and untrack presence.
+- Foreign same-day drag presence disables that day's destination drag handles through the shared drag eligibility conditions.
+- Foreign same-day drag presence shows the existing low-key `{userName} 正在拖曳` hint and muted insertion line.
+- Phase 4.8c2 extends foreign same-day drag presence into a temporary same-day readonly lock for Timeline data-changing actions.
+- Same-day readonly lock blocks destination drag, add/edit/delete itinerary items, add/edit/delete transportation cards, transportation warning confirmation, alternative add/edit/delete/swap, fixed toggle, auto-continuation save, and reorder confirmation save.
+- Same-day readonly lock still allows expand/collapse, content viewing, Day switching, and section/page switching.
+- If another user starts dragging while an editor is already open, the editor remains open and keeps its form content, but save/continuation actions are disabled and guarded with `此日行程正在被其他成員調整，請稍後再儲存。`
+- Foreign same-day drag presence now shows `{userName} 正在拖曳，暫時鎖定此日編輯。` and a muted insertion line.
+- Repeated same-account two-tab drag testing exposed a Realtime channel `CLOSED` state after several drags.
+- Phase 4.8c2 tracks channel status separately from readiness, clears stale closed channel refs, recreates the same trip/day channel, and replays the local drag payload after `SUBSCRIBED`.
+- Drag end/cancel/clear still does not remove the active timeline-drag channel; it only broadcasts clear, untracks presence, and clears local drag refs/state.
+- `removeChannel(channel)` remains limited to active trip/day/user scope cleanup, component unmount, or internal replacement of a closed/errored/timed-out channel.
+- `debugPresence=1` logs now include channel status on drag start, subscribe status, removeChannel reason, and skipped track reason.
+- Remote DragOverlay / ghost card / preview order is not rendered or synchronized.
+- B's list does not reorder from remote presence; official results still arrive only through the existing reorder RPC success plus Realtime/reload.
+- Debug logging is gated behind `?debugPresence=1`.
+- Demo remains local/unauthenticated and has no Supabase Presence or Broadcast wiring.
+- No migration, new table, new package, reorder RPC change, Phase 4.7 fixed-anchor logic change, or brokenTransportIds logic change was made.
+
+### Phase 4.8d
+
+- Added collaborative Timeline card selection presence for authenticated Formal users.
+- Selection is broadcast-only and never writes to the database.
+- Destination card selection and transport card selection are supported.
+- Broadcast payload includes `itemType: "destination" | "transport"`.
+- Remote selected cards show a colored border/ring using the existing non-green 4.8d palette.
+- Remote user name labels appear only on hover/focus and are positioned at the lower-right card edge.
+- Local selection keeps the existing local UI and does not add a local border or self label.
+- Same-account different-tab testing still treats the other tab as foreign by comparing `sessionId`, not only `userId`.
+- Selection clears on Timeline blank click, Day switch, Timeline unmount, logout/trip change, and local drag start.
+- Foreign selections stale out after 30 seconds.
+- Multiple remote users selecting the same card collapse to the most recent foreign selection for this first version.
+- Selection does not block editing, deleting, adding, drag, read-only lock, or reorder.
+- Transport cards remain non-draggable and are not added to `SortableContext.items`.
+- Demo remains disconnected from Supabase presence/broadcast.
+- No migration, RPC, reorder flow, DragOverlay/preview sync, or package change was made.
+
+### Phase 4.8e
+
+- Added trip-level online member presence for authenticated Formal users.
+- Channel scope is `trip-presence:{tripId}`.
+- This trip-level channel does not replace the day-scoped `timeline-drag:{tripId}:{dayIndex}` channel.
+- Presence payload tracks `tripId`, `userId`, `userName`, `sessionId`, `colorKey`, `pageKey`, `dayIndex`, selected Timeline item metadata, and `updatedAt`.
+- Presence tracks on subscribe, supported page switch, Timeline Day switch, Timeline card selection, and a 28-second heartbeat.
+- Remote trip presence older than 55 seconds is filtered from UI.
+- Supported page keys include `overview`, `timeline`, `budget`, `accommodation`, `packing`, `settlement`, `settings`, and `todo`.
+- Clicking another online member's avatar navigates to their supported page, and to their Timeline Day when `pageKey = "timeline"`.
+- Own avatar does not jump and keeps the existing local style.
+- Remote online member avatars use a single 2px non-green color border that replaces the default gray border.
+- Day Tabs use a single 2px non-green color border when a remote online member is currently on that Timeline day.
+- The earlier Day Tab small-dot indicator was removed after visual testing.
+- Online presence is navigation-only and does not enable read-only lock, edit lock, drag lock, reorder behavior, or database writes.
+- Trip-level debug logs use `[trip-presence] ...`, separate from `[drag-presence] ...`, and remain gated behind `?debugPresence=1`.
+- `docs/BUGS.md` records `BUG-025` as a Known Issue / Low Priority: occasional foreign drag presence can still clear by stale timeout instead of immediate clear.
+- Demo remains local/unauthenticated and has no trip-level presence wiring.
+- No migration, RPC, reorder flow, DragOverlay/preview sync, schema change, database write, or package change was made.
+
+### Phase 4.8f
+
+- Added final remote-drag visual polish after collaborative drag presence user testing.
+- Foreign drag source destination cards remain in their original list position.
+- Foreign drag source cards now show the remote drag color border and reduced opacity.
+- Foreign drag source cards do not use soft shadow after final visual tuning.
+- Foreign drag source styling uses `timeline-item-remote-drag-source`.
+- Remote insertion lines keep the existing `timeline-remote-insertion-line` class, use the remote drag color, and have stronger opacity.
+- Insertion line margin was tuned back to `4px 10px` so the line stays visually centered inside the existing gap.
+- Foreign drag source highlight takes priority over remote selection styling while a foreign drag is active.
+- Remote selection remains broadcast-only and still supports destination and transport cards.
+- Transport cards are still not sortable and do not receive remote drag source highlight.
+- No remote DragOverlay, remote ghost card, remote placeholder, remote preview order, or remote list reflow was added.
+- No migration, RPC, reorder flow, Demo presence, Map integration, or data-flow change was made.
+- User verified Phase 4.8f as OK after the final visual tuning.
+
+New/updated files:
+
+- `src/App.jsx`
+- `src/styles.css`
+- `src/lib/timelineUntimedOrdering.js`
+- `package.json`
+- `package-lock.json`
+- `tests/phase-4-2c-reorder.spec.js`
+- `docs/BUGS.md`
+- `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
+- `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
+- `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
+- `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
+- `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v12.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md`
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -325,9 +455,68 @@ Phase 4.7 preserves Phase 4.6 no-fixed timed drag behavior, Phase 4.5 untimed mi
 
 The Vite build still reports the existing large-chunk warning; it is not a Phase 4.7 regression.
 
+Phase 4.8 checks on 2026-06-30:
+
+```text
+npm.cmd run build passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8a" passed 1/1
+Playwright visual inspection on /demo/timeline confirmed drop-after wrappers become transform:none / transition:0s immediately after mouseup
+```
+
+Phase 4.8 preserves the Phase 4.7 timed reorder RPC path, Phase 4.5 untimed mixed ordering, transportation conflict confirmation gates, Demo isolation, draft autosave, edit locks, Realtime, and Supabase schema.
+
+The Vite build still reports the existing large-chunk warning; it is not a Phase 4.8 regression.
+
+Phase 4.8b / drag handle polish checks on 2026-06-30:
+
+```text
+npm.cmd run build passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 27/27
+git diff --check passed with Windows LF/CRLF notices only
+Manual user verification passed for Demo and Formal drag preview, Demo transport parity, tail_pending + untimed promotion bypass, vertical overlay constraint, day-board top/bottom overlay bounds, and time-block-only drag activation.
+```
+
+Phase 4.8c / 4.8c2 collaborative drag presence checks on 2026-06-30 and 2026-07-01:
+
+```text
+npm.cmd run build passed
+npx.cmd playwright test tests/phase-1-7f-smoke.spec.js passed 22/22
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 27/27
+git diff --check passed with Windows LF/CRLF notices only
+Presence-only Vercel multi-account testing was unstable because sustained Presence track heartbeat could time out.
+Presence + Broadcast final build rerun passed after one Windows Node teardown assertion on the first run.
+git diff --check passed with Windows LF/CRLF notice only
+Manual Vercel multi-account user verification passed after switching heartbeat/dragOver updates to Broadcast.
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8c" passed 2/2 for 4.8c2 readonly/channel lifecycle source smoke
+npm.cmd run build passed after 4.8c2 channel lifecycle recovery
+git diff --check passed with Windows LF/CRLF notice only after 4.8c2 channel lifecycle recovery
+Manual user verification passed for Phase 4.8c Presence + Broadcast repeated drag regression after CLOSED channel recovery.
+```
+
+Phase 4.8d / 4.8e collaborative selection and online presence checks on 2026-07-01:
+
+```text
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8d" passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8e" passed
+npx.cmd playwright test tests/phase-4-5-untimed-ordering.spec.js passed for targeted untimed ordering regression coverage
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8d|untimed|mixed" passed where applicable
+npm.cmd run build passed
+git diff --check passed with Windows LF/CRLF notices only
+Manual user testing drove visual tuning for remote card selection labels, card selection border thickness, transport card selection support, online avatar border simplification, and Day Tab border display.
+```
+
+Phase 4.8f remote drag visual polish checks on 2026-07-01:
+
+```text
+npm.cmd run build passed
+git diff --check passed with Windows LF/CRLF notices only
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8f|Phase 4.8c" passed 4/4
+Manual user verification passed for remote drag source card opacity/border, no soft shadow, and insertion line spacing.
+```
+
 ## Protected Scope Preserved
 
-Phase 4.7 did not redesign or extend:
+Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -339,8 +528,9 @@ Phase 4.7 did not redesign or extend:
 - transportation pair splitting or creation
 - Google Map API or route calculation
 - cross-day scheduling
-- collaborative drag presence
 - Demo isolation
+- schema/RPC/migration behavior
+- remote DragOverlay, ghost cards, preview order sync, scroll sync, or cursor sync
 
 ## Residual Risks
 
@@ -350,9 +540,18 @@ Phase 4.7 did not redesign or extend:
 - Legacy DB rows with only one time are treated safely as untimed in the UI but are not automatically written back. The next explicit save normalizes them to `null/null`.
 - Because applied RPC migrations 020/021 are immutable and their server manifest predates this Hotfix, a legacy start-only row can cause timed reorder to reject safely as stale until that row is explicitly normalized.
 - Hotfix 2 Formal persistence uses a guarded source-row update followed by one scoped transportation delete statement because no new RPC was approved. If deletion fails, it attempts to restore the original `sort_order` before authoritative reload; an extreme network or concurrent-write failure during both deletion and compensation can still leave a partial authoritative result.
-- Phase 4.7 Formal timed drag now has its transactional RPC applied in production, but it has not been exercised against real production trip data in this session.
-- Manual authenticated Formal UI verification is still recommended after applying migration 024.
+- Phase 4.7 Formal timed drag has its transactional RPC applied in production, but this session focused on Demo/browser visual QA for Phase 4.8 sortable preview.
+- Authenticated Formal UI verification passed for the latest Phase 4.8b drag-preview and tail-pending bypass polish, but future drag animation changes should still be checked on a real test trip because pointer/scroll timing is browser-sensitive.
+- Drag animation feel is inherently browser/timing-sensitive; if future polish is needed, prefer dnd-kit `animateLayoutChanges` / sortable configuration over delaying Formal data writes or bypassing the existing reorder RPC flow.
+- Phase 4.8c2 Realtime Broadcast delivery is best effort; the 12-second stale timeout is the fallback if a clear/update event is missed.
+- Phase 4.8c2 channel recreation handles observed `CLOSED` channel state, but future Realtime lifecycle changes should retest repeated same-trip/same-day drags in two tabs.
+- Phase 4.8c2 debug logs are gated behind `?debugPresence=1`. They are useful during rollout but expose ephemeral drag payload metadata in the browser console when enabled.
+- Phase 4.8d remote selection presence is intentionally visual-only. It can be missed or stale-filtered without affecting authoritative data.
+- Phase 4.8e trip-level online presence is best-effort Realtime UI state. Missing, delayed, or stale-filtered trip presence should not affect data correctness.
+- `BUG-025` remains Known Issue / Low Priority: foreign drag presence can occasionally clear by 12-second stale timeout instead of immediate clear, despite onDragEnd immediate clear mitigation.
+- Phase 4.8e Day Tab presence border shows a compact first-version representation using the first remote presence color for that day.
+- Phase 4.8f remote drag source and insertion-line visuals are presence-driven hints only. They must not be treated as authoritative reorder state.
 
 ## Next Step
 
-Verify Formal fixed-anchor drag on a test trip before pushing/deploying. Do not infer Phase 4.8 presence, Phase 4.9 map integration, transportation repair, or additional database changes.
+Phase 4.8f is accepted and handed off. Start Phase 4.9 Map integration only when explicitly requested, beginning with a read-only audit and implementation plan. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, remote preview reordering, or additional database changes.

@@ -186,6 +186,26 @@ Verification:
 
 # Risk Candidates / Needs Verification
 
+## BUG-025 | Timeline foreign drag presence may clear by stale timeout
+
+Priority: Low
+Status: Known Issue / does not block Phase 4.8e
+Discovered: 2026-07-01
+
+Description:
+During collaborative Timeline drag testing, foreign drag presence can still occasionally fail to clear immediately on the remote client after the local user drops or cancels a drag. When this happens, the remote same-day read-only state remains visible until the 12 second stale timeout clears it automatically.
+
+Current impact:
+This is a transient collaboration UI/presence issue only. It does not affect data correctness, persisted reorder results, RPC behavior, migrations, or Timeline item contents.
+
+Current mitigation:
+Phase 4.8c has already added immediate `onDragEnd` / cancel drag clear behavior, including local drag cleanup and `timeline-drag-clear` broadcast before confirmation or RPC flows. The stale timeout still provides a fallback if the remote client misses the clear.
+
+Next step:
+Do not block Phase 4.8e. If the frequency increases, investigate broadcast clear reliability, channel lifecycle, and `dragId` / `sessionId` matching around repeated drag sessions.
+
+---
+
 ## BUG-001 | Luggage draft restore risk
 
 Priority: P2

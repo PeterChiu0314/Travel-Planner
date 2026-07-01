@@ -160,6 +160,79 @@ test("timed drag below an untimed target can move only the untimed slot", () => 
   expect(buildTimelineVisitDisplayOrder(nextItems).map((item) => item.id)).toEqual(["b", "a", "c"]);
 });
 
+test("timed drag upward can land before an untimed target without transport confirmation", () => {
+  const items = [
+    visit("a", "09:00", 10),
+    visit("c", "10:30", 20),
+    visit("d", "11:10", 30),
+    visit("u", null, -1_996_500_000),
+    visit("e", "13:00", 40),
+  ];
+  expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["a", "c", "d", "u", "e"]);
+
+  const beforeUntimed = planMixedTimedVisitReorder({
+    items,
+    placement: "before",
+    sourceItemId: "e",
+    targetItemId: "u",
+  });
+
+  expect(beforeUntimed).toMatchObject({
+    brokenTransportIds: [],
+    ok: true,
+    orderedVisitItemIds: ["a", "c", "d", "e", "u"],
+    packageSourceItemIds: ["a", "c", "d", "e"],
+    slotItemIds: ["a", "c", "d", "e"],
+  });
+  const beforeUntimedUpdates = new Map(beforeUntimed.untimedSortOrderUpdates.map((update) => [update.id, update.sort_order]));
+  const beforeUntimedItems = items.map((item) =>
+    beforeUntimedUpdates.has(item.id) ? { ...item, sort_order: beforeUntimedUpdates.get(item.id) } : item,
+  );
+  expect(buildTimelineVisitDisplayOrder(beforeUntimedItems).map((item) => item.id)).toEqual(["a", "c", "d", "e", "u"]);
+});
+
+test("timed auto-continuation applies untimed-only rebase when timed manifest is unchanged", () => {
+  expect(appSource).toContain("const shouldApplyUntimedBeforeRpc = !timedAutoContinuation || !hasTimedReorder");
+  expect(appSource).toContain("if (!hasTimedReorder) {");
+  expect(appSource).toContain("updatedUntimedCount: untimedSortOrderUpdates.length");
+});
+
+test("timed drag upward can land around a timed card before an untimed slot", () => {
+  const items = [
+    visit("a", "09:00", 10),
+    visit("c", "10:30", 20),
+    visit("d", "11:10", 30),
+    visit("u", null, -1_996_500_000),
+    visit("e", "13:00", 40),
+  ];
+
+  const beforeTimed = planMixedTimedVisitReorder({
+    items,
+    placement: "before",
+    sourceItemId: "e",
+    targetItemId: "d",
+  });
+  expect(beforeTimed).toMatchObject({
+    brokenTransportIds: [],
+    ok: true,
+    orderedVisitItemIds: ["a", "c", "e", "d", "u"],
+    packageSourceItemIds: ["a", "c", "e", "d"],
+  });
+
+  const afterTimed = planMixedTimedVisitReorder({
+    items,
+    placement: "after",
+    sourceItemId: "e",
+    targetItemId: "d",
+  });
+  expect(afterTimed).toMatchObject({
+    brokenTransportIds: [],
+    ok: true,
+    orderedVisitItemIds: ["a", "c", "d", "e", "u"],
+    packageSourceItemIds: ["a", "c", "d", "e"],
+  });
+});
+
 test("timed drag treats fixed untimed legacy data as movable untimed", () => {
   const items = [
     visit("a", "09:00", 10),
@@ -278,10 +351,18 @@ test("demo shows mixed untimed content and dragging it does not open continuatio
   const untimed = page.locator('.timeline-item[data-timing="untimed"]', { hasText: "哲學之道" });
   const timed = page.locator('.timeline-item[data-timing="timed"]');
   await expect(untimed).toBeVisible();
-  await expect(untimed).toHaveAttribute("draggable", "true");
+  await expect(untimed).toHaveClass(/drag-enabled/);
 
   const originalTimedLabels = await timed.locator(".time-block").allTextContents();
-  await untimed.dragTo(timed.first(), { targetPosition: { x: 20, y: 2 } });
+  const sourceBox = await untimed.locator(".time-block").boundingBox();
+  const targetBox = await timed.first().boundingBox();
+  expect(sourceBox).not.toBeNull();
+  expect(targetBox).not.toBeNull();
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2 - 12);
+  await page.mouse.move(targetBox.x + 20, targetBox.y + 2, { steps: 8 });
+  await page.mouse.up();
   await expect(page.locator(".timeline .timeline-item").first()).toContainText("哲學之道");
   await expect(timed.locator(".time-block")).toHaveText(originalTimedLabels);
   await expect(page.getByRole("dialog", { name: "自動接續後續行程？" })).toHaveCount(0);
@@ -293,5 +374,5 @@ test("active editor disables untimed dragging in Demo", async ({ page }) => {
   const firstTimed = page.locator('.timeline-item[data-timing="timed"]').first();
   await firstTimed.click();
   await firstTimed.getByRole("button", { name: "編輯" }).click();
-  await expect(page.locator('.timeline-item[data-timing="untimed"]').first()).toHaveAttribute("draggable", "false");
+  await expect(page.locator('.timeline-item[data-timing="untimed"]').first()).not.toHaveClass(/drag-enabled/);
 });

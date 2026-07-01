@@ -1,4 +1,21 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  defaultAnimateLayoutChanges,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS as DndCSS } from "@dnd-kit/utilities";
 import {
   BadgeInfo,
   Bed,
@@ -53,6 +70,7 @@ import {
   isTimedVisit,
   isUntimedVisit,
   planMixedTimedVisitReorder,
+  planTailPendingPromotionUntimedBypass,
   planTimelineTimingChangeSortOrders,
   planUntimedVisitReorder,
   untimedOrderingErrorMessage,
@@ -61,6 +79,220 @@ import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
 const attachmentBucket = "trip-attachments";
 const appVersion = "0.1.0";
+const TimelineDragHandleContext = createContext(null);
+const timelineDragPresenceHeartbeatMs = 3000;
+const timelineDragPresenceStaleMs = 12000;
+const timelineDragPresenceMaxMs = 75000;
+const timelineDragPresenceRefreshMs = 1000;
+const timelineCardSelectionStaleMs = 30000;
+const tripPresenceHeartbeatMs = 28000;
+const tripPresenceStaleMs = 55000;
+const tripPresenceRecoverableStatuses = new Set(["CLOSED", "CHANNEL_ERROR", "TIMED_OUT"]);
+const timelineCardSelectionColors = {
+  blue: "#2f6df6",
+  purple: "#7c4dff",
+  orange: "#e57a1f",
+  pink: "#d94d8c",
+  cyan: "#1598b7",
+  yellow: "#c99a00",
+};
+const timelineCardSelectionColorKeys = Object.keys(timelineCardSelectionColors);
+
+const tripPresencePageLabels = {
+  accommodation: "Accommodation",
+  budget: "Budget",
+  overview: "Overview",
+  packing: "Packing",
+  settings: "Settings",
+  settlement: "Settlement",
+  timeline: "Timeline",
+  todo: "Todo",
+};
+
+const tripPresencePageToSection = {
+  accommodation: "accommodation",
+  budget: "budget",
+  overview: "today",
+  packing: "luggage",
+  settings: "settings",
+  settlement: "settlement",
+  timeline: "timeline",
+  todo: "todo",
+};
+
+function timelineDragPresenceDebugEnabled() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("debugPresence") === "1";
+}
+
+function timelineDragPresenceDebug(label, details) {
+  if (!timelineDragPresenceDebugEnabled()) return;
+  console.info(`[drag-presence] ${label}`, details);
+}
+
+function tripPresenceDebug(label, details) {
+  if (!timelineDragPresenceDebugEnabled()) return;
+  console.info(`[trip-presence] ${label}`, details);
+}
+
+function timelineDragPresenceDebugPayload(payload) {
+  if (!payload) return null;
+  return {
+    userId: payload.userId,
+    userName: payload.userName,
+    sessionId: payload.sessionId,
+    dragId: payload.dragId,
+    tripId: payload.tripId,
+    dayIndex: payload.dayIndex,
+    itemId: payload.itemId,
+    itemTitle: payload.itemTitle,
+    startedAt: payload.startedAt,
+    lastSeenAt: payload.lastSeenAt,
+    sentAt: payload.sentAt,
+    clearReason: payload.clearReason,
+    overItemId: payload.overItemId,
+    placement: payload.placement,
+  };
+}
+
+function timelineCardSelectionColorKey(seed = "") {
+  const source = String(seed || "");
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 31 + source.charCodeAt(index)) >>> 0;
+  }
+  return timelineCardSelectionColorKeys[hash % timelineCardSelectionColorKeys.length] || "blue";
+}
+
+function timelineCardSelectionColor(colorKey) {
+  return timelineCardSelectionColors[colorKey] || timelineCardSelectionColors.blue;
+}
+
+function tripPresencePageKey(section) {
+  if (section === "today") return "overview";
+  if (section === "luggage") return "packing";
+  return tripPresencePageLabels[section] ? section : "";
+}
+
+function tripPresencePageLabel(payload) {
+  const pageLabel = tripPresencePageLabels[payload?.pageKey] || payload?.pageKey || "Unknown";
+  if (payload?.pageKey === "timeline" && Number.isInteger(Number(payload.dayIndex))) {
+    return `${pageLabel} · Day ${Number(payload.dayIndex) + 1}`;
+  }
+  return pageLabel;
+}
+
+function tripPresenceDebugPayload(payload) {
+  if (!payload) return null;
+  return {
+    tripId: payload.tripId,
+    userId: payload.userId,
+    userName: payload.userName,
+    sessionId: payload.sessionId,
+    colorKey: payload.colorKey,
+    pageKey: payload.pageKey,
+    dayIndex: payload.dayIndex,
+    selectedItemId: payload.selectedItemId,
+    selectedItemType: payload.selectedItemType,
+    selectedItemTitle: payload.selectedItemTitle,
+    updatedAt: payload.updatedAt,
+  };
+}
+
+function timelineCardSelectionDebugPayload(payload) {
+  if (!payload) return null;
+  return {
+    tripId: payload.tripId,
+    dayIndex: payload.dayIndex,
+    itemId: payload.itemId,
+    itemType: payload.itemType,
+    itemTitle: payload.itemTitle,
+    userId: payload.userId,
+    userName: payload.userName,
+    sessionId: payload.sessionId,
+    colorKey: payload.colorKey,
+    selectedAt: payload.selectedAt,
+    sentAt: payload.sentAt,
+  };
+}
+
+function timelineDragPresenceDebugState(state) {
+  return Object.fromEntries(
+    Object.entries(state || {}).map(([key, payloads]) => [
+      key,
+      (payloads || []).map((payload) => timelineDragPresenceDebugPayload(payload)),
+    ]),
+  );
+}
+
+function timelineDragPresenceChannelSummary(channel, ready, status) {
+  return {
+    ready: Boolean(ready),
+    status: status || "",
+    channelState: channel?.state || channel?._state || "",
+    joinedOnce: Boolean(channel?.joinedOnce),
+    topic: channel?.topic || "",
+  };
+}
+
+function timelineDragPresenceBasePayload(payload) {
+  if (!payload) return null;
+  return {
+    userId: payload.userId,
+    userName: payload.userName,
+    sessionId: payload.sessionId,
+    dragId: payload.dragId,
+    tripId: payload.tripId,
+    dayIndex: payload.dayIndex,
+    itemId: payload.itemId,
+    itemTitle: payload.itemTitle,
+    startedAt: payload.startedAt,
+  };
+}
+
+function trackTimelineDragPresence(channel, payload, label) {
+  if (!channel || !payload) return;
+  const presencePayload = timelineDragPresenceBasePayload(payload);
+  timelineDragPresenceDebug(label, timelineDragPresenceDebugPayload(presencePayload));
+  Promise.resolve(channel.track(presencePayload))
+    .then((result) => {
+      if (result && result !== "ok") {
+        timelineDragPresenceDebug("track error", { result, payload: timelineDragPresenceDebugPayload(presencePayload) });
+      }
+    })
+    .catch((error) => {
+      timelineDragPresenceDebug("track error", {
+        message: error?.message || String(error),
+        payload: timelineDragPresenceDebugPayload(presencePayload),
+      });
+    });
+}
+
+function broadcastTimelineDragPresence(channel, event, payload, label) {
+  if (!channel || !payload) return;
+  timelineDragPresenceDebug(label, timelineDragPresenceDebugPayload(payload));
+  Promise.resolve(channel.send({ type: "broadcast", event, payload }))
+    .then((result) => {
+      if (result && result !== "ok") {
+        timelineDragPresenceDebug("broadcast error", {
+          event,
+          result,
+          payload: timelineDragPresenceDebugPayload(payload),
+        });
+      }
+    })
+    .catch((error) => {
+      timelineDragPresenceDebug("broadcast error", {
+        event,
+        message: error?.message || String(error),
+        payload: timelineDragPresenceDebugPayload(payload),
+      });
+    });
+}
+
+function timelineAnimateLayoutChanges(args) {
+  return args.isSorting ? defaultAnimateLayoutChanges(args) : false;
+}
 
 const desktopNavItems = [
   { id: "today", label: "總覽", shortLabel: "覽" },
@@ -1433,8 +1665,117 @@ function normalizeDemoTime(value) {
   return value ? String(value).slice(0, 5) : "";
 }
 
-function createDemoTimelineItems() {
+const demoFixedVisitIds = new Set([
+  "1afc6297-cf0d-453f-ae3f-2b4e049508f4",
+  "926fe5ee-1973-44bb-ab63-634892943aa6",
+]);
+
+function createDemoTransportFixture(items, {
+  category = defaultTransportCategory,
+  durationMinutes = 20,
+  fromId,
+  id,
+  role = transportRoles.normalPair,
+  title,
+  toId = null,
+}) {
+  const fromItem = items.find((item) => item.id === fromId);
+  const toItem = toId ? items.find((item) => item.id === toId) : null;
+  if (!fromItem || (toId && !toItem)) return null;
+  return {
+    id,
+    trip_id: fromItem.trip_id,
+    day_index: fromItem.day_index,
+    sort_order: Number(fromItem.sort_order || 0) + 0.5,
+    item_type: "transport",
+    type: "transport",
+    title,
+    location: null,
+    note: null,
+    cost: 0,
+    created_by: "demo-peter",
+    created_at: "2026-06-30T00:00:00.000Z",
+    updated_at: "2026-06-30T00:00:00.000Z",
+    date: fromItem.date || null,
+    location_name: null,
+    address: null,
+    map_url: null,
+    latitude: null,
+    longitude: null,
+    description: null,
+    transportation_note: null,
+    locked_by: null,
+    locked_at: null,
+    transport_category: category,
+    transport_name: title,
+    transport_duration_minutes: durationMinutes,
+    transport_note: null,
+    from_item_id: fromId,
+    to_item_id: toId,
+    transport_role: role,
+    ...buildTransportPairSnapshot(fromItem, toItem),
+    is_fixed: false,
+    fixed_at: null,
+    fixed_by: null,
+  };
+}
+
+function createDemoTransportFixtures(items) {
   return [
+    createDemoTransportFixture(items, {
+      category: "car",
+      durationMinutes: 20,
+      fromId: "92b182ce-302c-469f-907b-14acda01aa1e",
+      id: "demo-transport-day3-napoli-kasahara",
+      role: transportRoles.normalPair,
+      title: "F・20分鐘",
+      toId: "8e3cd404-f6fe-4116-829d-5f218613b96d",
+    }),
+    createDemoTransportFixture(items, {
+      category: "car",
+      durationMinutes: 25,
+      fromId: "1ceb3a41-4633-4dee-9035-7085d0d7b4d2",
+      id: "demo-transport-day3-hachiman-tail",
+      role: transportRoles.tailPending,
+      title: "尾端交通・25分鐘",
+    }),
+    createDemoTransportFixture(items, {
+      category: "train",
+      durationMinutes: 15,
+      fromId: "a633aa05-d1e7-4027-a046-5674108c6040",
+      id: "demo-transport-day2-tail-promoted-yamashina-rest",
+      role: transportRoles.tailPromotedPair,
+      title: "尾端延伸・15分鐘",
+      toId: "3e62a2fc-244b-4774-8b9d-f0f45cf32ac5",
+    }),
+    createDemoTransportFixture(items, {
+      category: "walk",
+      durationMinutes: 12,
+      fromId: "f3973db2-8a80-444f-8108-7fe00c5c3f2a",
+      id: "demo-transport-day4-lunch-school",
+      role: transportRoles.normalPair,
+      title: "步行・12分鐘",
+      toId: "4b9e4e09-b699-45af-9545-79f13f0d522d",
+    }),
+  ].filter(Boolean);
+}
+
+function demoSortOrderForNewTimelineItem({ currentDayVisits = [], item }) {
+  if (isTransportationCard(item)) {
+    const fromItem = currentDayVisits.find((candidate) => candidate.id === item.from_item_id);
+    const toItem = currentDayVisits.find((candidate) => candidate.id === item.to_item_id);
+    const fromOrder = Number(fromItem?.sort_order);
+    const toOrder = Number(toItem?.sort_order);
+    if (Number.isFinite(fromOrder) && Number.isFinite(toOrder) && fromOrder !== toOrder) {
+      return (fromOrder + toOrder) / 2;
+    }
+    if (Number.isFinite(fromOrder)) return fromOrder + 0.5;
+  }
+  return (currentDayVisits.length + 1) * 10;
+}
+
+function createDemoTimelineItems() {
+  const baseItems = [
     ...(kyotoDemoTrip.itinerary_items || []),
     {
       id: "demo-untimed-philosophers-path",
@@ -1451,6 +1792,12 @@ function createDemoTimelineItems() {
       is_fixed: false,
       updated_at: "2026-06-24T00:00:00.000Z",
     },
+  ];
+  const demoTransportFixtures = createDemoTransportFixtures(baseItems);
+  const demoTransportFixtureIds = new Set(demoTransportFixtures.map((item) => item.id));
+  return [
+    ...baseItems.filter((item) => !demoTransportFixtureIds.has(item.id)),
+    ...demoTransportFixtures,
   ]
     .map((item, index) => ({
       ...item,
@@ -1467,6 +1814,21 @@ function createDemoTimelineItems() {
       description: item.description || item.note || "",
       transportation_note: item.transportation_note || item.transport_note || "",
       cost: Number(item.cost || 0),
+      transport_category: item.item_type === "transport" ? item.transport_category || defaultTransportCategory : item.transport_category || null,
+      transport_name: item.item_type === "transport" ? item.transport_name || item.title || "" : item.transport_name || null,
+      transport_duration_minutes:
+        item.item_type === "transport" && Number.isFinite(Number(item.transport_duration_minutes))
+          ? Number(item.transport_duration_minutes)
+          : item.item_type === "transport"
+            ? null
+            : item.transport_duration_minutes || null,
+      transport_note: item.item_type === "transport" ? item.transport_note || item.transportation_note || item.description || item.note || "" : item.transport_note || null,
+      from_item_id: item.item_type === "transport" ? item.from_item_id || null : item.from_item_id || null,
+      to_item_id: item.item_type === "transport" ? item.to_item_id || null : item.to_item_id || null,
+      transport_role: item.item_type === "transport" ? normalizeTransportRole({ ...item, item_type: "transport" }) : item.transport_role || null,
+      fixed_at: demoFixedVisitIds.has(item.id) ? item.fixed_at || "2026-06-30T00:00:00.000Z" : item.fixed_at || null,
+      fixed_by: demoFixedVisitIds.has(item.id) ? item.fixed_by || "demo-peter" : item.fixed_by || null,
+      is_fixed: demoFixedVisitIds.has(item.id) || Boolean(item.is_fixed),
       locked_by: null,
       locked_at: null,
     }))
@@ -1713,13 +2075,35 @@ export default function App() {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
   const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
+  const [foreignDragPresence, setForeignDragPresence] = useState(null);
+  const [foreignCardSelection, setForeignCardSelection] = useState(null);
+  const [remoteTripPresences, setRemoteTripPresences] = useState([]);
+  const [tripPresenceSelectedItem, setTripPresenceSelectedItem] = useState(null);
   const restoredDayRef = useRef(null);
+  const tripPresenceChannelRef = useRef(null);
+  const tripPresenceReadyRef = useRef(false);
+  const tripPresenceStatusRef = useRef("idle");
+  const tripPresencePayloadRef = useRef(null);
+  const tripPresenceReconnectRef = useRef(false);
+  const timelineDragPresenceChannelRef = useRef(null);
+  const timelineDragPresenceReadyRef = useRef(false);
+  const timelineDragPresenceStatusRef = useRef("idle");
+  const timelineDragPresenceReconnectRef = useRef(false);
+  const itemsRef = useRef([]);
+  const localCardSelectionRef = useRef(null);
+  const localDragPresenceRef = useRef(null);
+  const localDragStartedAtRef = useRef(null);
+  const timelineDragPresenceSessionIdRef = useRef(
+    `timeline-drag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
     destination: "京都, 日本",
     start_date: todayInput(),
     end_date: todayInput(2),
   });
+  const [tripPresenceChannelVersion, setTripPresenceChannelVersion] = useState(0);
+  const [timelineDragPresenceChannelVersion, setTimelineDragPresenceChannelVersion] = useState(0);
 
   const activeTrip = useMemo(
     () => trips.find((trip) => trip.id === activeTripId) || null,
@@ -1739,19 +2123,158 @@ export default function App() {
   const canChangeTripDates = isOwner && !isTripDateLocked;
   const canInviteMembers = isOwner && !isTripDateLocked;
   const canOpenMembersDialog = activeMembership?.status === "approved";
+  const activeUserId = session?.user?.id || null;
   const userEmail = session?.user?.email || "";
   const userDisplayName = session?.user?.user_metadata?.full_name || userEmail;
   const userInitial = (userDisplayName.trim()[0] || "?").toUpperCase();
+  const currentTripMember = useMemo(
+    () => members.find((member) => member.user_id === activeUserId) || null,
+    [activeUserId, members],
+  );
+  const timelineDragPresenceUserName = currentTripMember ? memberName(currentTripMember) : userDisplayName || userEmail || "?";
+  const tripPresencePayload = useMemo(() => {
+    const pageKey = tripPresencePageKey(activeSection);
+    const selectedItem = pageKey === "timeline" ? tripPresenceSelectedItem : null;
+    return {
+      tripId: activeTripId,
+      userId: activeUserId,
+      userName: timelineDragPresenceUserName,
+      sessionId: timelineDragPresenceSessionIdRef.current,
+      colorKey: timelineCardSelectionColorKey(timelineDragPresenceSessionIdRef.current || activeUserId),
+      pageKey,
+      dayIndex: pageKey === "timeline" ? activeDay : null,
+      selectedItemId: selectedItem?.itemId || null,
+      selectedItemType: selectedItem?.itemType || null,
+      selectedItemTitle: selectedItem?.itemTitle || "",
+      updatedAt: new Date().toISOString(),
+    };
+  }, [activeDay, activeSection, activeTripId, activeUserId, timelineDragPresenceUserName, tripPresenceSelectedItem]);
   const canOpenShareDialog = isOwner || (activeMembership?.status === "approved" && activeMembership?.role === "editor");
   const canManageShareLinks = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
   const pendingMemberCount = isOwner ? members.filter((member) => member.status === "pending").length : 0;
+  const remoteTripPresenceByUser = useMemo(() => {
+    const byUser = new Map();
+    remoteTripPresences.forEach((presence) => {
+      if (!presence?.userId || presence.userId === activeUserId) return;
+      const current = byUser.get(presence.userId);
+      const currentUpdatedAt = current ? Date.parse(current.updatedAt || "") : 0;
+      const nextUpdatedAt = Date.parse(presence.updatedAt || "");
+      if (!current || nextUpdatedAt >= currentUpdatedAt) byUser.set(presence.userId, presence);
+    });
+    return byUser;
+  }, [activeUserId, remoteTripPresences]);
+  const timelineDayTabPresenceByDay = useMemo(() => {
+    const byDay = new Map();
+    remoteTripPresences.forEach((presence) => {
+      if (presence?.pageKey !== "timeline" || presence.userId === activeUserId) return;
+      const dayIndex = Number(presence.dayIndex);
+      if (!Number.isInteger(dayIndex)) return;
+      const entries = byDay.get(dayIndex) || [];
+      if (!entries.some((entry) => entry.userId === presence.userId) && entries.length < 3) entries.push(presence);
+      byDay.set(dayIndex, entries);
+    });
+    tripPresenceDebug("computed day tab presence", {
+      dayTabPresence: Object.fromEntries([...byDay.entries()].map(([dayIndex, entries]) => [dayIndex, entries.map(tripPresenceDebugPayload)])),
+    });
+    return byDay;
+  }, [activeUserId, remoteTripPresences]);
+
+  const navigateToTripPresence = useCallback(
+    (presence) => {
+      if (!presence || presence.sessionId === timelineDragPresenceSessionIdRef.current || presence.userId === activeUserId) return;
+      const section = tripPresencePageToSection[presence.pageKey];
+      tripPresenceDebug("avatar click navigation", { payload: tripPresenceDebugPayload(presence), section });
+      if (!section) return;
+      setActiveSection(section);
+      if (presence.pageKey === "timeline" && Number.isInteger(Number(presence.dayIndex))) {
+        setActiveDay(Number(presence.dayIndex));
+      }
+    },
+    [activeUserId],
+  );
 
   useEffect(() => {
     setIsAccountMenuOpen(false);
     setIsSidebarTripMenuOpen(false);
   }, [activeSection, activeTripId, isSidebarCollapsed]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    tripPresencePayloadRef.current = tripPresencePayload;
+  }, [tripPresencePayload]);
+
+  const requestTripPresenceReconnect = useCallback((reason = "unknown") => {
+    tripPresenceDebug("reconnect requested reason", {
+      alreadyPending: tripPresenceReconnectRef.current,
+      hasChannel: Boolean(tripPresenceChannelRef.current),
+      ready: tripPresenceReadyRef.current,
+      reason,
+      status: tripPresenceStatusRef.current,
+    });
+    if (tripPresenceReconnectRef.current) return;
+    tripPresenceReconnectRef.current = true;
+    setTripPresenceChannelVersion((current) => current + 1);
+  }, []);
+
+  const publishTripPresence = useCallback((reason = "update") => {
+    const channel = tripPresenceChannelRef.current;
+    const payload = tripPresencePayloadRef.current;
+    const status = tripPresenceStatusRef.current;
+    if (!channel || !tripPresenceReadyRef.current || !payload?.tripId || !payload?.userId || !payload?.pageKey) {
+      tripPresenceDebug("track skipped", {
+        reason,
+        hasChannel: Boolean(channel),
+        ready: tripPresenceReadyRef.current,
+        status,
+        payload: tripPresenceDebugPayload(payload),
+      });
+      const shouldReconnect =
+        !channel || tripPresenceRecoverableStatuses.has(status) || (!tripPresenceReadyRef.current && status !== "creating");
+      if (payload?.tripId && payload?.userId && payload?.pageKey && shouldReconnect) {
+        if (reason === "heartbeat") {
+          tripPresenceDebug("heartbeat requested reconnect", {
+            hasChannel: Boolean(channel),
+            ready: tripPresenceReadyRef.current,
+            status,
+          });
+        }
+        requestTripPresenceReconnect(reason);
+      }
+      return;
+    }
+    const nextPayload = { ...payload, updatedAt: new Date().toISOString() };
+    tripPresencePayloadRef.current = nextPayload;
+    tripPresenceDebug("track latest payload", {
+      payload: tripPresenceDebugPayload(nextPayload),
+      reason,
+    });
+    Promise.resolve(channel.track(nextPayload))
+      .then((result) => {
+        if (result && result !== "ok") {
+          tripPresenceDebug("track error", {
+            payload: tripPresenceDebugPayload(nextPayload),
+            result,
+          });
+        } else {
+          tripPresenceDebug("track result", {
+            payload: tripPresenceDebugPayload(nextPayload),
+            result: result || "ok",
+          });
+        }
+      })
+      .catch((error) => {
+        tripPresenceDebug("track error", {
+          message: error?.message || String(error),
+          payload: tripPresenceDebugPayload(nextPayload),
+        });
+      });
+  }, [requestTripPresenceReconnect]);
+
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
 
@@ -2225,6 +2748,762 @@ export default function App() {
 
     return () => supabase.removeChannel(channel);
   }, [activeTripId, loadTripData, loadTrips, session?.user]);
+
+  useEffect(() => {
+    if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
+      tripPresenceDebug("subscribe skipped", {
+        activeTripId,
+        activeUserId,
+        membershipStatus: activeMembership?.status || null,
+      });
+      setRemoteTripPresences([]);
+      tripPresenceChannelRef.current = null;
+      tripPresenceReadyRef.current = false;
+      tripPresenceStatusRef.current = "idle";
+      return undefined;
+    }
+    const sessionId = timelineDragPresenceSessionIdRef.current;
+    const channelName = `trip-presence:${activeTripId}`;
+    const channel = supabase.channel(channelName, {
+      config: { presence: { key: sessionId } },
+    });
+    tripPresenceChannelRef.current = channel;
+    tripPresenceReadyRef.current = false;
+    tripPresenceStatusRef.current = "creating";
+    tripPresenceReconnectRef.current = false;
+    tripPresenceDebug("recreate channel", {
+      channelName,
+      version: tripPresenceChannelVersion,
+    });
+    tripPresenceDebug("subscribe start", {
+      channelName,
+      sessionId,
+      payload: tripPresenceDebugPayload(tripPresencePayloadRef.current),
+    });
+
+    const syncTripPresence = () => {
+      const now = Date.now();
+      const state = channel.presenceState();
+      const bySession = new Map();
+      Object.values(state)
+        .flat()
+        .forEach((payload) => {
+          if (!payload || payload.sessionId === sessionId || payload.tripId !== activeTripId) return;
+          const rawUpdatedAt = payload.updatedAt || "";
+          const updatedAt = typeof rawUpdatedAt === "number" ? rawUpdatedAt : Date.parse(rawUpdatedAt);
+          if (!Number.isFinite(updatedAt) || now - updatedAt > tripPresenceStaleMs) {
+            tripPresenceDebug("stale filtered", {
+              ageMs: Number.isFinite(updatedAt) ? now - updatedAt : null,
+              payload: tripPresenceDebugPayload(payload),
+            });
+            return;
+          }
+          const current = bySession.get(payload.sessionId);
+          const currentUpdatedAt = current ? Date.parse(current.updatedAt || "") : 0;
+          if (!current || updatedAt >= currentUpdatedAt) bySession.set(payload.sessionId, payload);
+        });
+      const nextPresences = [...bySession.values()].sort((left, right) =>
+        String(left.userName || left.userId || "").localeCompare(String(right.userName || right.userId || "")),
+      );
+      tripPresenceDebug("sync state", {
+        channelName,
+        rawPresenceKeys: Object.keys(state),
+        presences: nextPresences.map(tripPresenceDebugPayload),
+      });
+      tripPresenceDebug("computed online members", {
+        count: nextPresences.length,
+        users: nextPresences.map((presence) => ({
+          userId: presence.userId,
+          userName: presence.userName,
+          pageKey: presence.pageKey,
+          dayIndex: presence.dayIndex,
+        })),
+      });
+      setRemoteTripPresences(nextPresences);
+    };
+
+    channel
+      .on("presence", { event: "sync" }, syncTripPresence)
+      .on("presence", { event: "join" }, syncTripPresence)
+      .on("presence", { event: "leave" }, syncTripPresence)
+      .subscribe((status) => {
+        tripPresenceStatusRef.current = status;
+        tripPresenceDebug("subscribed", { channelName, status });
+        if (status === "SUBSCRIBED") {
+          tripPresenceReadyRef.current = true;
+          tripPresenceDebug("replay track after subscribed", {
+            payload: tripPresenceDebugPayload(tripPresencePayloadRef.current),
+            status,
+          });
+          publishTripPresence("subscribed");
+          syncTripPresence();
+        }
+        if (tripPresenceRecoverableStatuses.has(status)) {
+          tripPresenceReadyRef.current = false;
+          if (tripPresenceChannelRef.current === channel) tripPresenceChannelRef.current = null;
+          requestTripPresenceReconnect(status);
+        }
+      });
+
+    return () => {
+      const preserveRemotePresences = tripPresenceReconnectRef.current;
+      if (tripPresenceChannelRef.current === channel) tripPresenceChannelRef.current = null;
+      tripPresenceReadyRef.current = false;
+      if (!preserveRemotePresences) setRemoteTripPresences([]);
+      Promise.resolve(channel.untrack()).catch((error) => {
+        tripPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
+      });
+      void supabase.removeChannel(channel);
+    };
+  }, [activeMembership?.status, activeTripId, activeUserId, publishTripPresence, requestTripPresenceReconnect, tripPresenceChannelVersion]);
+
+  useEffect(() => {
+    if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") return;
+    publishTripPresence("location-change");
+  }, [activeDay, activeMembership?.status, activeSection, activeTripId, activeUserId, publishTripPresence, tripPresenceSelectedItem]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      publishTripPresence("heartbeat");
+      setRemoteTripPresences((current) => {
+        const now = Date.now();
+        const next = current.filter((payload) => {
+          const rawUpdatedAt = payload.updatedAt || "";
+          const updatedAt = typeof rawUpdatedAt === "number" ? rawUpdatedAt : Date.parse(rawUpdatedAt);
+          const isFresh = Number.isFinite(updatedAt) && now - updatedAt <= tripPresenceStaleMs;
+          if (!isFresh) {
+            tripPresenceDebug("stale filtered", {
+              ageMs: Number.isFinite(updatedAt) ? now - updatedAt : null,
+              payload: tripPresenceDebugPayload(payload),
+            });
+          }
+          return isFresh;
+        });
+        return next.length === current.length ? current : next;
+      });
+    }, tripPresenceHeartbeatMs);
+    return () => window.clearInterval(intervalId);
+  }, [publishTripPresence]);
+
+  useEffect(() => {
+    if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") return undefined;
+    function recoverTripPresence(trigger) {
+      const channel = tripPresenceChannelRef.current;
+      const ready = tripPresenceReadyRef.current;
+      const status = tripPresenceStatusRef.current;
+      const needsReconnect = !channel || !ready || tripPresenceRecoverableStatuses.has(status);
+      tripPresenceDebug("focus/visibility recovery", {
+        hasChannel: Boolean(channel),
+        needsReconnect,
+        ready,
+        status,
+        trigger,
+      });
+      if (needsReconnect) {
+        requestTripPresenceReconnect(trigger);
+      } else {
+        publishTripPresence(trigger);
+      }
+    }
+    const handleFocus = () => recoverTripPresence("focus");
+    const handleOnline = () => recoverTripPresence("online");
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") recoverTripPresence("visible");
+    };
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeMembership?.status, activeTripId, activeUserId, publishTripPresence, requestTripPresenceReconnect]);
+
+  useEffect(() => {
+    if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
+      setForeignDragPresence(null);
+      setForeignCardSelection(null);
+      timelineDragPresenceChannelRef.current = null;
+      timelineDragPresenceReadyRef.current = false;
+      timelineDragPresenceStatusRef.current = "idle";
+      localCardSelectionRef.current = null;
+      return undefined;
+    }
+    const sessionId = timelineDragPresenceSessionIdRef.current;
+    const channelName = `timeline-drag:${activeTripId}:${activeDay}`;
+    const channel = supabase.channel(channelName, {
+      config: { presence: { key: sessionId } },
+    });
+    timelineDragPresenceChannelRef.current = channel;
+    timelineDragPresenceReadyRef.current = false;
+    timelineDragPresenceStatusRef.current = "creating";
+    timelineDragPresenceDebug("subscribe status", {
+      channelName,
+      sessionId,
+      summary: timelineDragPresenceChannelSummary(channel, false, timelineDragPresenceStatusRef.current),
+    });
+
+    const isForeignSameDayPayload = (payload, now) => {
+      if (!payload) {
+        timelineDragPresenceDebug("stale filtered reason", { channelName, reason: "empty-payload" });
+        return false;
+      }
+      if (payload.sessionId === sessionId) return false;
+      if (payload.tripId !== activeTripId) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          channelName,
+          expectedTripId: activeTripId,
+          payload: timelineDragPresenceDebugPayload(payload),
+          reason: "trip-mismatch",
+        });
+        return false;
+      }
+      if (Number(payload.dayIndex) !== Number(activeDay)) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          channelName,
+          expectedDayIndex: activeDay,
+          payload: timelineDragPresenceDebugPayload(payload),
+          reason: "day-mismatch",
+        });
+        return false;
+      }
+      const rawLastSeenAt = payload.sentAt || payload.lastSeenAt || payload.startedAt || "";
+      const lastSeenAt = typeof rawLastSeenAt === "number" ? rawLastSeenAt : Date.parse(rawLastSeenAt);
+      if (!Number.isFinite(lastSeenAt)) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          channelName,
+          payload: timelineDragPresenceDebugPayload(payload),
+          reason: "invalid-lastSeenAt",
+        });
+        return false;
+      }
+      if (now - lastSeenAt > timelineDragPresenceStaleMs) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          ageMs: now - lastSeenAt,
+          channelName,
+          payload: timelineDragPresenceDebugPayload(payload),
+          reason: "stale-timeout",
+        });
+        return false;
+      }
+      return true;
+    };
+
+    const isForeignCardSelectionPayload = (payload, now) => {
+      if (!payload) {
+        timelineDragPresenceDebug("selection ignored reason", { channelName, reason: "empty-payload" });
+        return false;
+      }
+      if (payload.sessionId === sessionId) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          reason: "self",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      if (payload.tripId !== activeTripId) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          expectedTripId: activeTripId,
+          reason: "trip-mismatch",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      if (Number(payload.dayIndex) !== Number(activeDay)) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          expectedDayIndex: activeDay,
+          reason: "day-mismatch",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      const rawSelectedAt = payload.selectedAt || payload.sentAt || "";
+      const selectedAt = typeof rawSelectedAt === "number" ? rawSelectedAt : Date.parse(rawSelectedAt);
+      if (!Number.isFinite(selectedAt) || now - selectedAt > timelineCardSelectionStaleMs) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          ageMs: Number.isFinite(selectedAt) ? now - selectedAt : null,
+          channelName,
+          reason: Number.isFinite(selectedAt) ? "stale" : "invalid-selectedAt",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      const selectedItem = itemsRef.current.find((item) => item.id === payload.itemId);
+      if (!selectedItem) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          reason: "missing-item",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      const selectedItemType = isTransportationCard(selectedItem) ? "transport" : "destination";
+      if (payload.itemType !== selectedItemType) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          expectedItemType: selectedItemType,
+          reason: "item-type-mismatch",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      return true;
+    };
+
+    const mergeForeignPresence = (payload, seenAt) => {
+      const nextSeenAt = seenAt || payload.sentAt || payload.lastSeenAt || payload.startedAt || new Date().toISOString();
+      const isLiveUpdate = Boolean(payload.sentAt || payload.lastSeenAt);
+      setForeignDragPresence((current) => {
+        if (current?.dragId === payload.dragId) {
+          return {
+            ...payload,
+            lastSeenAt: isLiveUpdate ? nextSeenAt : current.lastSeenAt || nextSeenAt,
+            overItemId: Object.prototype.hasOwnProperty.call(payload, "overItemId")
+              ? payload.overItemId
+              : current.overItemId || null,
+            placement: Object.prototype.hasOwnProperty.call(payload, "placement")
+              ? payload.placement
+              : current.placement || null,
+            sentAt: payload.sentAt || current.sentAt || nextSeenAt,
+          };
+        }
+        return {
+          ...payload,
+          lastSeenAt: nextSeenAt,
+          overItemId: Object.prototype.hasOwnProperty.call(payload, "overItemId") ? payload.overItemId : null,
+          placement: Object.prototype.hasOwnProperty.call(payload, "placement") ? payload.placement : null,
+          sentAt: payload.sentAt || nextSeenAt,
+        };
+      });
+    };
+
+    const syncForeignPresence = () => {
+      const now = Date.now();
+      const state = channel.presenceState();
+      timelineDragPresenceDebug("sync state", {
+        channelName,
+        state: timelineDragPresenceDebugState(state),
+      });
+      const payloads = Object.values(state)
+        .flat()
+        .filter((payload) => isForeignSameDayPayload(payload, now))
+        .sort((left, right) => {
+          const rightSeenAt = right.sentAt || right.lastSeenAt || right.startedAt || "";
+          const leftSeenAt = left.sentAt || left.lastSeenAt || left.startedAt || "";
+          const parsedRight = typeof rightSeenAt === "number" ? rightSeenAt : Date.parse(rightSeenAt);
+          const parsedLeft = typeof leftSeenAt === "number" ? leftSeenAt : Date.parse(leftSeenAt);
+          return parsedRight - parsedLeft;
+        });
+      const selectedPresence = payloads[0] || null;
+      timelineDragPresenceDebug("selected foreign presence", {
+        channelName,
+        payload: timelineDragPresenceDebugPayload(selectedPresence),
+      });
+      if (selectedPresence) mergeForeignPresence(selectedPresence, selectedPresence.startedAt);
+    };
+
+    const refreshIntervalId = window.setInterval(syncForeignPresence, timelineDragPresenceRefreshMs);
+
+    channel
+      .on("presence", { event: "sync" }, syncForeignPresence)
+      .on("presence", { event: "join" }, syncForeignPresence)
+      .on("presence", { event: "leave" }, syncForeignPresence)
+      .on("broadcast", { event: "timeline-drag-update" }, (message) => {
+        const payload = message?.payload || null;
+        timelineDragPresenceDebug("broadcast received", {
+          channelName,
+          event: "timeline-drag-update",
+          payload: timelineDragPresenceDebugPayload(payload),
+        });
+        if (isForeignSameDayPayload(payload, Date.now())) {
+          mergeForeignPresence(payload, payload.sentAt || new Date().toISOString());
+        }
+      })
+      .on("broadcast", { event: "timeline-drag-clear" }, (message) => {
+        const payload = message?.payload || null;
+        timelineDragPresenceDebug("broadcast clear received", {
+          channelName,
+          event: "timeline-drag-clear",
+          payload: timelineDragPresenceDebugPayload(payload),
+        });
+        if (!payload) {
+          timelineDragPresenceDebug("clear ignored reason", { channelName, reason: "empty-payload" });
+          return;
+        }
+        if (payload.sessionId === sessionId) {
+          timelineDragPresenceDebug("clear ignored reason", {
+            channelName,
+            payload: timelineDragPresenceDebugPayload(payload),
+            reason: "self",
+          });
+          return;
+        }
+        if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) {
+          timelineDragPresenceDebug("clear ignored reason", {
+            channelName,
+            expectedDayIndex: activeDay,
+            expectedTripId: activeTripId,
+            payload: timelineDragPresenceDebugPayload(payload),
+            reason: "scope-mismatch",
+          });
+          return;
+        }
+        setForeignDragPresence((current) => {
+          if (!current) return null;
+          if (current.dragId === payload.dragId || current.sessionId === payload.sessionId) return null;
+          timelineDragPresenceDebug("clear ignored reason", {
+            channelName,
+            current: timelineDragPresenceDebugPayload(current),
+            payload: timelineDragPresenceDebugPayload(payload),
+            reason: "drag-mismatch",
+          });
+          return current;
+        });
+      })
+      .on("broadcast", { event: "timeline-card-selection-update" }, (message) => {
+        const payload = message?.payload || null;
+        timelineDragPresenceDebug("selection received", {
+          channelName,
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        if (isForeignCardSelectionPayload(payload, Date.now())) {
+          setForeignCardSelection(payload);
+        }
+      })
+      .on("broadcast", { event: "timeline-card-selection-clear" }, (message) => {
+        const payload = message?.payload || null;
+        timelineDragPresenceDebug("selection received", {
+          channelName,
+          event: "timeline-card-selection-clear",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        if (!payload || payload.sessionId === sessionId) return;
+        if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return;
+        setForeignCardSelection((current) => (!current || current.sessionId === payload.sessionId ? null : current));
+      })
+      .subscribe((status) => {
+        timelineDragPresenceStatusRef.current = status;
+        timelineDragPresenceDebug("subscribe status", {
+          channelName,
+          sessionId,
+          status,
+          summary: timelineDragPresenceChannelSummary(channel, timelineDragPresenceReadyRef.current, status),
+        });
+        if (status === "SUBSCRIBED") {
+          timelineDragPresenceReadyRef.current = true;
+          timelineDragPresenceChannelRef.current = channel;
+          timelineDragPresenceDebug("subscribed", {
+            channelName,
+            sessionId,
+            summary: timelineDragPresenceChannelSummary(channel, true, status),
+          });
+          if (localDragPresenceRef.current) {
+            trackTimelineDragPresence(channel, localDragPresenceRef.current, "track start payload");
+            broadcastTimelineDragPresence(
+              channel,
+              "timeline-drag-update",
+              { ...localDragPresenceRef.current, sentAt: new Date().toISOString() },
+              "broadcast update",
+            );
+          }
+          if (localCardSelectionRef.current) {
+            broadcastTimelineDragPresence(
+              channel,
+              "timeline-card-selection-update",
+              { ...localCardSelectionRef.current, sentAt: new Date().toISOString() },
+              "selection broadcast update",
+            );
+          }
+          syncForeignPresence();
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          const isActiveChannel = timelineDragPresenceChannelRef.current === channel;
+          timelineDragPresenceReadyRef.current = false;
+          timelineDragPresenceDebug("track skipped reason", {
+            channelName,
+            reason: isActiveChannel ? "channel-not-usable" : "stale-channel-status",
+            status,
+            summary: timelineDragPresenceChannelSummary(channel, false, status),
+          });
+          if (isActiveChannel) {
+            timelineDragPresenceChannelRef.current = null;
+            timelineDragPresenceReconnectRef.current = true;
+            setTimelineDragPresenceChannelVersion((version) => version + 1);
+          }
+        }
+      });
+
+    return () => {
+      const isReconnectCleanup = timelineDragPresenceReconnectRef.current;
+      const removeReason = isReconnectCleanup ? "channel-reconnect" : "scope-or-unmount";
+      window.clearInterval(refreshIntervalId);
+      timelineDragPresenceDebug("removeChannel reason", {
+        channelName,
+        reason: removeReason,
+        summary: timelineDragPresenceChannelSummary(channel, timelineDragPresenceReadyRef.current, timelineDragPresenceStatusRef.current),
+      });
+      if (!isReconnectCleanup && localDragPresenceRef.current && timelineDragPresenceReadyRef.current) {
+        broadcastTimelineDragPresence(
+          channel,
+          "timeline-drag-clear",
+          { ...timelineDragPresenceBasePayload(localDragPresenceRef.current), sentAt: new Date().toISOString() },
+          "broadcast clear",
+        );
+      }
+      if (!isReconnectCleanup && localCardSelectionRef.current && timelineDragPresenceReadyRef.current) {
+        broadcastTimelineDragPresence(
+          channel,
+          "timeline-card-selection-clear",
+          { ...localCardSelectionRef.current, sentAt: new Date().toISOString() },
+          "selection broadcast clear",
+        );
+      }
+      if (timelineDragPresenceChannelRef.current === channel) timelineDragPresenceChannelRef.current = null;
+      timelineDragPresenceReadyRef.current = false;
+      if (!isReconnectCleanup) {
+        localDragPresenceRef.current = null;
+        localDragStartedAtRef.current = null;
+        localCardSelectionRef.current = null;
+        setForeignDragPresence(null);
+        setForeignCardSelection(null);
+      }
+      Promise.resolve(channel.untrack()).catch((error) => {
+        timelineDragPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
+      });
+      void supabase.removeChannel(channel);
+      if (isReconnectCleanup) timelineDragPresenceReconnectRef.current = false;
+    };
+  }, [activeDay, activeMembership?.status, activeTripId, activeUserId, timelineDragPresenceChannelVersion]);
+
+  useEffect(() => {
+    if (!foreignDragPresence) return undefined;
+    const intervalId = window.setInterval(() => {
+      const rawLastSeenAt = foreignDragPresence.lastSeenAt || foreignDragPresence.startedAt || "";
+      const lastSeenAt = typeof rawLastSeenAt === "number" ? rawLastSeenAt : Date.parse(rawLastSeenAt);
+      if (!Number.isFinite(lastSeenAt) || Date.now() - lastSeenAt > timelineDragPresenceStaleMs) {
+        timelineDragPresenceDebug("stale filtered reason", {
+          ageMs: Number.isFinite(lastSeenAt) ? Date.now() - lastSeenAt : null,
+          payload: timelineDragPresenceDebugPayload(foreignDragPresence),
+          reason: Number.isFinite(lastSeenAt) ? "state-stale-timeout" : "state-invalid-lastSeenAt",
+        });
+        setForeignDragPresence(null);
+      }
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [foreignDragPresence]);
+
+  useEffect(() => {
+    if (!foreignCardSelection) return undefined;
+    const intervalId = window.setInterval(() => {
+      const rawSelectedAt = foreignCardSelection.selectedAt || foreignCardSelection.sentAt || "";
+      const selectedAt = typeof rawSelectedAt === "number" ? rawSelectedAt : Date.parse(rawSelectedAt);
+      if (!Number.isFinite(selectedAt) || Date.now() - selectedAt > timelineCardSelectionStaleMs) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          ageMs: Number.isFinite(selectedAt) ? Date.now() - selectedAt : null,
+          payload: timelineCardSelectionDebugPayload(foreignCardSelection),
+          reason: Number.isFinite(selectedAt) ? "stale" : "invalid-selectedAt",
+        });
+        setForeignCardSelection(null);
+      }
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [foreignCardSelection]);
+
+  const clearDragPresence = useCallback((reason = "manual") => {
+    const currentPayload = localDragPresenceRef.current;
+    const channel = timelineDragPresenceChannelRef.current;
+    const channelStatus = timelineDragPresenceStatusRef.current;
+    const channelReady = timelineDragPresenceReadyRef.current;
+    timelineDragPresenceDebug("drag clear requested reason", {
+      payload: timelineDragPresenceDebugPayload(currentPayload),
+      reason,
+      summary: timelineDragPresenceChannelSummary(channel, channelReady, channelStatus),
+    });
+    if (channel && timelineDragPresenceReadyRef.current && currentPayload) {
+      timelineDragPresenceDebug("broadcast clear sent reason", {
+        payload: timelineDragPresenceDebugPayload(currentPayload),
+        reason,
+      });
+      broadcastTimelineDragPresence(
+        channel,
+        "timeline-drag-clear",
+        { ...timelineDragPresenceBasePayload(currentPayload), clearReason: reason, sentAt: new Date().toISOString() },
+        "broadcast clear",
+      );
+    } else if (currentPayload) {
+      timelineDragPresenceDebug("clear fallback local cleanup", {
+        phase: "clear",
+        reason: !channel ? "missing-channel" : !channelReady ? "channel-not-ready" : "no-payload",
+        requestedReason: reason,
+        summary: timelineDragPresenceChannelSummary(channel, channelReady, channelStatus),
+      });
+    }
+    localDragPresenceRef.current = null;
+    localDragStartedAtRef.current = null;
+    if (channel && channelReady) {
+      Promise.resolve(channel.untrack()).catch((error) => {
+        timelineDragPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
+      });
+    }
+  }, []);
+
+  const clearCardSelection = useCallback(() => {
+    const currentPayload = localCardSelectionRef.current;
+    const channel = timelineDragPresenceChannelRef.current;
+    const channelReady = timelineDragPresenceReadyRef.current;
+    if (channel && channelReady && currentPayload) {
+      broadcastTimelineDragPresence(
+        channel,
+        "timeline-card-selection-clear",
+        { ...currentPayload, sentAt: new Date().toISOString() },
+        "selection broadcast clear",
+      );
+    } else if (currentPayload) {
+      timelineDragPresenceDebug("selection ignored reason", {
+        phase: "clear",
+        reason: !channel ? "missing-channel" : "channel-not-ready",
+        payload: timelineCardSelectionDebugPayload(currentPayload),
+      });
+    }
+    localCardSelectionRef.current = null;
+  }, []);
+
+  const publishCardSelection = useCallback(
+    (item) => {
+      if (!activeTripId || !activeUserId || activeMembership?.status !== "approved" || activeSection !== "timeline") return;
+      if (!item) return;
+      const channel = timelineDragPresenceChannelRef.current;
+      const channelReady = timelineDragPresenceReadyRef.current;
+      const now = new Date().toISOString();
+      const sessionId = timelineDragPresenceSessionIdRef.current;
+      const colorKey = timelineCardSelectionColorKey(sessionId || activeUserId);
+      const itemType = isTransportationCard(item) ? "transport" : "destination";
+      const nextPayload = {
+        tripId: activeTripId,
+        dayIndex: activeDay,
+        itemId: item.id,
+        itemType,
+        itemTitle: itemType === "transport" ? transportCardTitle(item) : item.location_name || item.location || item.title || "",
+        userId: activeUserId,
+        userName: timelineDragPresenceUserName,
+        sessionId,
+        colorKey,
+        selectedAt: now,
+        sentAt: now,
+      };
+      localCardSelectionRef.current = nextPayload;
+      setTripPresenceSelectedItem({
+        itemId: nextPayload.itemId,
+        itemTitle: nextPayload.itemTitle,
+        itemType: nextPayload.itemType,
+      });
+      if (!channel || !channelReady) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          reason: !channel ? "missing-channel" : "channel-not-ready",
+          payload: timelineCardSelectionDebugPayload(nextPayload),
+        });
+        return;
+      }
+      broadcastTimelineDragPresence(channel, "timeline-card-selection-update", nextPayload, "selection broadcast update");
+    },
+    [activeDay, activeMembership?.status, activeSection, activeTripId, activeUserId, timelineDragPresenceUserName],
+  );
+
+  useEffect(() => {
+    if (activeSection !== "timeline") {
+      clearCardSelection();
+      setTripPresenceSelectedItem(null);
+    }
+  }, [activeSection, clearCardSelection]);
+
+  useEffect(() => {
+    setTripPresenceSelectedItem(null);
+  }, [activeDay, activeTripId]);
+
+  const publishDragPresence = useCallback(
+    (payload = {}) => {
+      if (!activeTripId || !activeUserId || !canEditActiveTripContent) return;
+      const channel = timelineDragPresenceChannelRef.current;
+      const channelStatus = timelineDragPresenceStatusRef.current;
+      const channelState = channel?.state || channel?._state || "";
+      const channelReady = timelineDragPresenceReadyRef.current;
+      const now = new Date().toISOString();
+      const existing = localDragPresenceRef.current;
+      const resetDrag = Boolean(payload.resetDrag);
+      const hasDragOverPayload =
+        Object.prototype.hasOwnProperty.call(payload, "overItemId") ||
+        Object.prototype.hasOwnProperty.call(payload, "placement");
+      const debugLabel = payload.forceTrack ? "heartbeat payload" : hasDragOverPayload ? "drag over payload" : "track start payload";
+      const startedAt = resetDrag ? now : existing?.startedAt || payload.startedAt || now;
+      const dragId =
+        resetDrag || payload.dragId
+          ? payload.dragId || `${timelineDragPresenceSessionIdRef.current}:${Date.now()}:${Math.random().toString(36).slice(2)}`
+          : existing?.dragId || `${timelineDragPresenceSessionIdRef.current}:${Date.now()}`;
+      const nextPayload = {
+        userId: activeUserId,
+        userName: timelineDragPresenceUserName,
+        sessionId: timelineDragPresenceSessionIdRef.current,
+        dragId,
+        tripId: activeTripId,
+        dayIndex: activeDay,
+        itemId: payload.itemId || existing?.itemId || null,
+        itemTitle: payload.itemTitle || existing?.itemTitle || "",
+        startedAt,
+        sentAt: now,
+        overItemId: Object.prototype.hasOwnProperty.call(payload, "overItemId")
+          ? payload.overItemId
+          : existing?.overItemId || null,
+        placement: Object.prototype.hasOwnProperty.call(payload, "placement")
+          ? payload.placement
+          : existing?.placement || null,
+      };
+      localDragPresenceRef.current = nextPayload;
+      localDragStartedAtRef.current = Date.parse(startedAt) || Date.now();
+      if (resetDrag) {
+        timelineDragPresenceDebug("channel status on dragStart", {
+          summary: timelineDragPresenceChannelSummary(channel, channelReady, channelStatus),
+        });
+      }
+      const channelClosed =
+        !channel ||
+        !channelReady ||
+        ["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(channelStatus) ||
+        ["closed", "errored"].includes(String(channelState).toLowerCase());
+      if (channelClosed) {
+        timelineDragPresenceDebug("track skipped reason", {
+          reason: !channel ? "missing-channel" : !channelReady ? "channel-not-ready" : "channel-closed",
+          summary: timelineDragPresenceChannelSummary(channel, channelReady, channelStatus),
+        });
+        if (resetDrag && (!channel || ["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(channelStatus))) {
+          timelineDragPresenceReconnectRef.current = true;
+          setTimelineDragPresenceChannelVersion((version) => version + 1);
+        }
+        return;
+      }
+      if (channel && channelReady) {
+        if (resetDrag) trackTimelineDragPresence(channel, nextPayload, "track start payload");
+        timelineDragPresenceDebug(debugLabel, timelineDragPresenceDebugPayload(nextPayload));
+        broadcastTimelineDragPresence(channel, "timeline-drag-update", nextPayload, "broadcast update");
+      }
+    },
+    [activeDay, activeTripId, activeUserId, canEditActiveTripContent, timelineDragPresenceUserName],
+  );
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (!localDragPresenceRef.current) return;
+      if (localDragStartedAtRef.current && Date.now() - localDragStartedAtRef.current > timelineDragPresenceMaxMs) {
+        clearDragPresence();
+        return;
+      }
+      publishDragPresence({ forceTrack: true });
+    }, timelineDragPresenceHeartbeatMs);
+    return () => window.clearInterval(intervalId);
+  }, [clearDragPresence, publishDragPresence]);
 
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -2814,6 +4093,46 @@ export default function App() {
       tailTransportItem &&
       newVisitStart !== null &&
       (tailFromEnd === null || newVisitStart >= tailFromEnd);
+    const tailBypassPlan = shouldCompleteTailPair
+      ? planTailPendingPromotionUntimedBypass({
+          items: [...dayItems, insertResult.data],
+          promotedFromItemId: tailFromItem.id,
+          promotedToItemId: insertResult.data.id,
+          tailTransportItem,
+        })
+      : { ok: true, untimedSortOrderUpdates: [] };
+    if (!tailBypassPlan.ok) {
+      const rollback = await supabase
+        .from("itinerary_items")
+        .delete()
+        .eq("id", insertResult.data.id)
+        .eq("trip_id", activeTrip.id);
+      const errorMessage = rollback.error
+        ? `tail pending untimed bypass failed and inserted item rollback failed: ${tailBypassPlan.errorCode || "order_space_exhausted"}`
+        : `tail pending untimed bypass failed: ${tailBypassPlan.errorCode || "order_space_exhausted"}`;
+      setNotice(errorMessage);
+      await loadTripData(activeTrip.id);
+      return { ok: false, errorMessage, rollbackFailed: Boolean(rollback.error) };
+    }
+    const tailBypassUpdates = tailBypassPlan.untimedSortOrderUpdates || [];
+    const tailBypassResult = tailBypassUpdates.length
+      ? await applyItineraryTimeContinuation(tailBypassUpdates)
+      : { ok: true, applied: [] };
+    if (!tailBypassResult.ok) {
+      const bypassRollback = await rollbackItineraryTimeContinuation(tailBypassResult.applied);
+      const insertRollback = await supabase
+        .from("itinerary_items")
+        .delete()
+        .eq("id", insertResult.data.id)
+        .eq("trip_id", activeTrip.id);
+      const rollbackFailed = !bypassRollback.ok || Boolean(insertRollback.error);
+      const errorMessage = rollbackFailed
+        ? `tail pending untimed bypass failed and rollback needs review: ${tailBypassResult.error.message}`
+        : `tail pending untimed bypass failed and inserted item was rolled back: ${tailBypassResult.error.message}`;
+      setNotice(errorMessage);
+      await loadTripData(activeTrip.id);
+      return { ok: false, error: tailBypassResult.error, errorMessage, rollbackFailed };
+    }
 
     if (shouldCompleteTailPair) {
       const tailUpdate = await supabase
@@ -2832,13 +4151,15 @@ export default function App() {
           .delete()
           .eq("id", insertResult.data.id)
           .eq("trip_id", activeTrip.id);
+        const bypassRollback = await rollbackItineraryTimeContinuation(tailBypassResult.applied);
+        const rollbackFailed = !bypassRollback.ok || Boolean(rollback.error);
         setNotice(
-          rollback.error
+          rollbackFailed
             ? `新增行程後無法完成尾端交通配對，且復原失敗：${tailUpdate.error.message}`
             : `無法完成尾端交通配對：${tailUpdate.error.message}`,
         );
         await loadTripData(activeTrip.id);
-        return { ok: false, error: tailUpdate.error };
+        return { ok: false, error: tailUpdate.error, rollbackFailed };
       }
     }
 
@@ -3495,7 +4816,7 @@ export default function App() {
       return { ok: false, errorMessage };
     }
 
-    const shouldApplyUntimedBeforeRpc = !timedAutoContinuation;
+    const shouldApplyUntimedBeforeRpc = !timedAutoContinuation || !hasTimedReorder;
     const untimedUpdateResult = shouldApplyUntimedBeforeRpc
       ? await applyItineraryTimeContinuation(untimedSortOrderUpdates)
       : { ok: true, applied: [] };
@@ -3944,6 +5265,7 @@ function exportTrip() {
           activeSection={activeSection}
           trip={activeTrip}
           members={members}
+          currentUserId={session.user.id}
           days={days}
           dateChangePreviewData={tripDateChangePreviewData}
           canChangeTripDates={canChangeTripDates}
@@ -3961,9 +5283,11 @@ function exportTrip() {
           onOpenMembers={() => {
             if (canOpenMembersDialog) setIsMembersDialogOpen(true);
           }}
+          onPresenceNavigate={navigateToTripPresence}
           onShare={() => {
             if (canOpenShareDialog) setIsShareDialogOpen(true);
           }}
+          remotePresenceByUser={remoteTripPresenceByUser}
           onUpdateTrip={updateTrip}
           onUpdateTripDateRange={updateTripDateRange}
           showDeveloperTools={isOwner}
@@ -4005,6 +5329,9 @@ function exportTrip() {
             itineraryBudgetLinks={itineraryBudgetLinks}
             guideItems={guideItems}
             currentUserId={session.user.id}
+            foreignCardSelection={foreignCardSelection}
+            foreignDragPresence={foreignDragPresence}
+            foreignSameDayDragActive={Boolean(foreignDragPresence)}
             luggageItems={luggageItems}
             luggageTab={luggageTab}
             members={members}
@@ -4013,6 +5340,7 @@ function exportTrip() {
             todayDayIndex={todayDayIndex}
             todayItems={todayItems}
             todoItems={todoItems}
+            timelineDayTabPresenceByDay={timelineDayTabPresenceByDay}
             onActiveDay={setActiveDay}
             onAddPackItem={addPackItem}
             onApplyAlternative={applyAlternative}
@@ -4030,9 +5358,13 @@ function exportTrip() {
             onDeletePackItem={deletePackItem}
             onDeleteSharedLuggageItem={deleteSharedLuggageItem}
             onDeleteTodo={deleteTodo}
+            onClearCardSelection={clearCardSelection}
+            onClearDragPresence={clearDragPresence}
             onRejectMember={rejectMember}
             onReorderDestinationPackages={reorderDestinationPackages}
             onReorderUntimedVisit={reorderUntimedVisit}
+            onPublishDragPresence={publishDragPresence}
+            onPublishCardSelection={publishCardSelection}
             onSaveAlternative={saveAlternative}
             onSaveActualExpense={saveActualExpense}
             onSaveAccommodation={saveAccommodation}
@@ -4701,10 +6033,70 @@ function HeaderMemberPreview({ disabled, members = [], onOpen, pendingCount = 0 
   );
 }
 
+function HeaderMemberPresencePreview({
+  currentUserId,
+  disabled,
+  members = [],
+  onOpen,
+  onPresenceNavigate,
+  pendingCount = 0,
+  remotePresenceByUser = new Map(),
+}) {
+  const approvedMembers = members.filter((member) => member.status === "approved");
+  const visibleMembers = approvedMembers.slice(0, 4);
+  const overflowCount = Math.max(approvedMembers.length - visibleMembers.length, 0);
+  return (
+    <div className={`trip-header-member-preview${disabled ? " disabled" : ""}`} title="成員與邀請" aria-label="成員與邀請">
+      <span className="trip-header-member-avatars">
+        {visibleMembers.map((member) => {
+          const presence = remotePresenceByUser.get(member.user_id) || null;
+          const isRemoteOnline = Boolean(presence && member.user_id !== currentUserId);
+          const pageLabel = presence ? tripPresencePageLabel(presence) : "";
+          const avatarTitle = presence ? `${presence.userName || memberName(member)} · ${pageLabel}` : memberName(member);
+          return (
+            <button
+              className={`member-avatar compact trip-header-member-avatar${isRemoteOnline ? " remote-online" : ""}`}
+              disabled={disabled}
+              key={member.id || member.user_id}
+              style={isRemoteOnline ? { "--trip-presence-color": timelineCardSelectionColor(presence.colorKey) } : undefined}
+              title={avatarTitle}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isRemoteOnline && typeof onPresenceNavigate === "function") {
+                  onPresenceNavigate(presence);
+                } else if (!disabled && typeof onOpen === "function") {
+                  onOpen();
+                }
+              }}
+            >
+              {memberInitial(member)}
+            </button>
+          );
+        })}
+        {overflowCount > 0 ? <span className="member-avatar compact more">+{overflowCount}</span> : null}
+      </span>
+      {pendingCount > 0 ? <span className="trip-header-member-pending">待審 {pendingCount}</span> : null}
+      <button
+        className="trip-header-member-open-button"
+        disabled={disabled}
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          if (!disabled && typeof onOpen === "function") onOpen();
+        }}
+      >
+        <TripHeaderIcon name="invite" />
+      </button>
+    </div>
+  );
+}
+
 function TripHeader({
   activeSection,
   trip,
   members = [],
+  currentUserId,
   days = [],
   dateChangePreviewData = {},
   demoNotice = "",
@@ -4719,9 +6111,11 @@ function TripHeader({
   onExport,
   onInvite,
   onOpenMembers,
+  onPresenceNavigate,
   onShare,
   onUpdateTrip,
   onUpdateTripDateRange,
+  remotePresenceByUser = new Map(),
   showDeveloperTools = false,
 }) {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -5709,10 +7103,13 @@ function TripHeader({
       </div>
 
       <div className="trip-header-actions">
-        <HeaderMemberPreview
+        <HeaderMemberPresencePreview
+          currentUserId={currentUserId}
           disabled={!hasTrip || !canOpenMembers}
           members={members}
+          onPresenceNavigate={onPresenceNavigate}
           pendingCount={pendingMemberCount}
+          remotePresenceByUser={remotePresenceByUser}
           onOpen={onInvite}
         />
         <button
@@ -6030,13 +7427,15 @@ function DemoApp({ initialSection }) {
     setTimelineItems((current) => {
       const currentWithoutBrokenTransport = current.filter((item) => item.id !== brokenTransportId);
       const currentDayVisits = sortedVisitItems(currentWithoutBrokenTransport.filter((item) => item.day_index === activeDay));
-      const sortOrder = (currentDayVisits.length + 1) * 10;
+      const sortOrder = demoSortOrderForNewTimelineItem({ currentDayVisits, item: nextPayload });
       const newItem = {
         ...emptyItemForm,
         ...nextPayload,
         id: newItemId,
+        trip_id: demoActiveTrip.id,
         day_index: activeDay,
         sort_order: sortOrder,
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
       const currentDayItems = currentWithoutBrokenTransport.filter((item) => item.day_index === activeDay);
@@ -6048,6 +7447,18 @@ function DemoApp({ initialSection }) {
         tailTransportItem &&
         newVisitStart !== null &&
         (tailFromEnd === null || newVisitStart >= tailFromEnd);
+      const tailBypassPlan = shouldCompleteTailPair
+        ? planTailPendingPromotionUntimedBypass({
+            items: [...currentWithoutBrokenTransport, newItem],
+            promotedFromItemId: tailFromItem.id,
+            promotedToItemId: newItem.id,
+            tailTransportItem,
+          })
+        : { ok: true, untimedSortOrderUpdates: [] };
+      if (!tailBypassPlan.ok) return current;
+      const tailBypassSortOrderById = new Map(
+        (tailBypassPlan.untimedSortOrderUpdates || []).map((update) => [update.id, update.sort_order]),
+      );
       const nextItems = shouldCompleteTailPair
         ? currentWithoutBrokenTransport.map((item) =>
             item.id === tailTransportItem.id
@@ -6058,6 +7469,12 @@ function DemoApp({ initialSection }) {
                   ...buildTransportPairSnapshot(tailFromItem, newItem),
                   updated_at: new Date().toISOString(),
                 }
+              : tailBypassSortOrderById.has(item.id)
+                ? {
+                    ...item,
+                    sort_order: tailBypassSortOrderById.get(item.id),
+                    updated_at: new Date().toISOString(),
+                  }
               : item,
           )
         : currentWithoutBrokenTransport;
@@ -7387,6 +8804,9 @@ function TripWorkspace(props) {
     itineraryBudgetLinks,
     guideItems,
     currentUserId,
+    foreignCardSelection,
+    foreignDragPresence,
+    foreignSameDayDragActive,
     luggageItems,
     luggageTab,
     members,
@@ -7395,6 +8815,7 @@ function TripWorkspace(props) {
     todayDayIndex,
     todayItems,
     todoItems,
+    timelineDayTabPresenceByDay,
     onActiveDay,
     onAddPackItem,
     onApplyAlternative,
@@ -7412,9 +8833,13 @@ function TripWorkspace(props) {
     onDeletePackItem,
     onDeleteSharedLuggageItem,
     onDeleteTodo,
+    onClearCardSelection,
+    onClearDragPresence,
     onRejectMember,
     onReorderDestinationPackages,
     onReorderUntimedVisit,
+    onPublishDragPresence,
+    onPublishCardSelection,
     onSaveAlternative,
     onSaveActualExpense,
     onSaveAccommodation,
@@ -7499,6 +8924,7 @@ function TripWorkspace(props) {
             days={days}
             layoutMode={isRouteLayoutCollapsed ? "collapsed" : "expanded"}
             onActiveDay={selectTimelineDay}
+            dayTabPresenceByDay={timelineDayTabPresenceByDay}
           />
           <button
             className="ghost-button compact timeline-map-toggle"
@@ -7632,6 +9058,9 @@ function TripWorkspace(props) {
                 budgetsByItem={budgetsByItem}
                 canEdit={canEdit}
                 currentUserId={currentUserId}
+                foreignCardSelection={foreignCardSelection}
+                foreignDragPresence={foreignDragPresence}
+                foreignSameDayDragActive={foreignSameDayDragActive}
                 members={members}
                 dayItems={dayItems}
                 dayDateLabel={days[activeDay] ? formatDate(days[activeDay]) : ""}
@@ -7639,10 +9068,14 @@ function TripWorkspace(props) {
                 dayTitle={`DAY ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
                 onApplyAlternative={onApplyAlternative}
+                onClearDragPresence={onClearDragPresence}
                 onConfirmTransportWarning={onConfirmTransportWarning}
                 onDeleteAlternative={onDeleteAlternative}
                 onDeleteItem={onDeleteItem}
+                onClearCardSelection={onClearCardSelection}
                 onFocusItem={setFocusedItemId}
+                onPublishCardSelection={onPublishCardSelection}
+                onPublishDragPresence={onPublishDragPresence}
                 onReorderDestinationPackages={onReorderDestinationPackages}
                 onReorderUntimedVisit={onReorderUntimedVisit}
                 onSaveAlternative={onSaveAlternative}
@@ -7657,6 +9090,7 @@ function TripWorkspace(props) {
                   budgetsByItem={budgetsByItem}
                   days={days}
                   itemsByDay={itemsByDay}
+                  dayBoardPresenceByDay={timelineDayTabPresenceByDay}
                   onActiveDay={onActiveDay}
                   onFocusItem={setFocusedItemId}
                 />
@@ -7769,7 +9203,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
   );
 }
 
-function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
+function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay, dayTabPresenceByDay = new Map() }) {
   const dragStateRef = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, lastX: 0, lastTime: 0, velocity: 0 });
   const momentumFrameRef = useRef(null);
   const navRef = useRef(null);
@@ -7916,21 +9350,26 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay }) {
         if (dragStateRef.current.isDragging) endDrag(event);
       }}
     >
-      {days.map((date, index) => (
-        <button
-          className={`day-tab${index === activeDay ? " active" : ""}`}
-          data-day-index={index}
-          key={date.toISOString()}
-          type="button"
-          onClick={() => selectDay(index)}
-        >
+      {days.map((date, index) => {
+        const presences = dayTabPresenceByDay.get(index) || [];
+        const firstPresence = presences[0] || null;
+        return (
+          <button
+            className={`day-tab${index === activeDay ? " active" : ""}${firstPresence ? " has-remote-presence" : ""}`}
+            data-day-index={index}
+            key={date.toISOString()}
+            style={firstPresence ? { "--trip-presence-color": timelineCardSelectionColor(firstPresence.colorKey) } : undefined}
+            type="button"
+            onClick={() => selectDay(index)}
+          >
           <span className="day-tab-index">DAY {index + 1}</span>
           <span className="day-tab-separator" aria-hidden="true">
             ·
           </span>
           <span className="day-tab-date">{formatDayTabDate(date)}</span>
-        </button>
-      ))}
+          </button>
+        );
+      })}
       </nav>
       {tabScrollState.right ? (
         <button className="day-tabs-edge right" type="button" aria-label="向右滑動日期" onClick={() => scrollTabs(1)}>
@@ -7987,6 +9426,65 @@ function VersionInfoDialog({ onClose }) {
   );
 }
 
+function SortableTimelineEntry({ children, disabled = false, hasFlowAttachments = false, id }) {
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({
+    animateLayoutChanges: timelineAnimateLayoutChanges,
+    disabled: { draggable: disabled, droppable: false },
+    id,
+  });
+  const style = {
+    transform: DndCSS.Transform.toString(transform),
+    transition,
+  };
+  return (
+    <div
+      className={`timeline-flow-entry timeline-sortable-entry${hasFlowAttachments ? " has-flow-attachments" : ""}${
+        isDragging ? " sortable-active-placeholder" : ""
+      }`}
+      data-sortable-visit-id={id}
+      ref={setNodeRef}
+      style={style}
+    >
+      <TimelineDragHandleContext.Provider value={disabled ? null : { attributes, listeners }}>
+        {children}
+      </TimelineDragHandleContext.Provider>
+    </div>
+  );
+}
+
+function TimelineDragHandle({ children, className = "" }) {
+  const dragHandle = useContext(TimelineDragHandleContext);
+  return (
+    <div
+      className={className}
+      data-drag-handle={dragHandle ? "true" : undefined}
+      {...(dragHandle?.attributes || {})}
+      {...(dragHandle?.listeners || {})}
+    >
+      {children}
+    </div>
+  );
+}
+
+function TimelineFlowAttachment({ children }) {
+  return (
+    <div
+      className="timeline-flow-attachment"
+      onKeyDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      {children}
+    </div>
+  );
+}
+
 function ItineraryTimeline({
   activeDay = 0,
   activeTrip,
@@ -8000,13 +9498,20 @@ function ItineraryTimeline({
   dayTitle,
   disableDraftAutosave = false,
   focusedItemId,
+  foreignCardSelection = null,
+  foreignDragPresence = null,
+  foreignSameDayDragActive = false,
   headingEyebrow = "行程",
   members,
   onApplyAlternative,
+  onClearDragPresence,
   onConfirmTransportWarning,
   onDeleteAlternative,
   onDeleteItem,
+  onClearCardSelection,
   onFocusItem,
+  onPublishCardSelection,
+  onPublishDragPresence,
   onReorderDestinationPackages,
   onReorderUntimedVisit,
   onSaveAlternative,
@@ -8032,6 +9537,7 @@ function ItineraryTimeline({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
   const [draggedVisitId, setDraggedVisitId] = useState(null);
+  const [dragOverlaySize, setDragOverlaySize] = useState(null);
   const [dragTarget, setDragTarget] = useState(null);
   const [reorderPreview, setReorderPreview] = useState(null);
   const [isReorderingDestination, setIsReorderingDestination] = useState(false);
@@ -8053,6 +9559,35 @@ function ItineraryTimeline({
     userId: currentUserId,
   });
   const memberById = new Map((members || []).map((member) => [member.user_id, member]));
+  const foreignDragMember = foreignDragPresence?.userId ? memberById.get(foreignDragPresence.userId) : null;
+  const foreignDragUserName = foreignDragPresence?.userName || (foreignDragMember ? memberName(foreignDragMember) : "其他成員");
+  const foreignDragOverItemId = foreignSameDayDragActive ? foreignDragPresence?.overItemId : null;
+  const foreignDragPlacement = foreignSameDayDragActive ? foreignDragPresence?.placement : null;
+  const foreignDragSourceItemId = foreignSameDayDragActive ? foreignDragPresence?.itemId : null;
+  const foreignDragColor = foreignSameDayDragActive
+    ? timelineCardSelectionColor(
+        timelineCardSelectionColorKey(
+          foreignDragPresence?.sessionId || foreignDragPresence?.userId || foreignDragPresence?.dragId,
+        ),
+      )
+    : "";
+  const foreignDragStyle = foreignDragColor
+    ? {
+        "--timeline-remote-drag-color": foreignDragColor,
+        "--timeline-remote-drag-color-soft": `${foreignDragColor}22`,
+      }
+    : undefined;
+  const visibleForeignCardSelection =
+    !foreignSameDayDragActive &&
+    foreignCardSelection &&
+    Number(foreignCardSelection.dayIndex) === Number(activeDay)
+      ? foreignCardSelection
+      : null;
+  const canMutateThisDay = canEdit && !foreignSameDayDragActive;
+  const foreignDragReadOnlyMessage = foreignSameDayDragActive
+    ? `${foreignDragUserName} 正在拖曳，暫時鎖定此日編輯。`
+    : "";
+  const foreignDragSaveBlockedMessage = "此日行程正在被其他成員調整，請稍後再儲存。";
   const activeEditorGuardId = `timeline:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
@@ -8068,10 +9603,49 @@ function ItineraryTimeline({
 
   const hasBlockingTimelineEditor =
     isOpen || hasActiveEditorGuard({ excludeId: activeEditorGuardId, tripId: activeTrip?.id });
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const lastDndOverIdRef = useRef(null);
+  const activeDayColumnRef = useRef(null);
+  const activeTimelineListRef = useRef(null);
+  const restrictTimelineDragToDayColumn = useCallback(
+    ({ activeNodeRect, overlayNodeRect, transform }) => {
+      const columnRect = activeDayColumnRef.current?.getBoundingClientRect();
+      const timelineRect = activeTimelineListRef.current?.getBoundingClientRect();
+      if (!columnRect || !activeNodeRect) return { ...transform, x: 0 };
+      const overlayHeight = overlayNodeRect?.height || dragOverlaySize?.height || activeNodeRect.height || 0;
+      const minY = (timelineRect?.top || columnRect.top) - activeNodeRect.top;
+      const maxY = columnRect.bottom - activeNodeRect.top - overlayHeight;
+      return {
+        ...transform,
+        x: 0,
+        y: Math.min(Math.max(transform.y, minY), Math.max(minY, maxY)),
+      };
+    },
+    [dragOverlaySize?.height],
+  );
+
+  useEffect(() => {
+    clearVisitDrag("scope-change");
+  }, [activeDay, activeTrip?.id]);
+
+  useEffect(() => {
+    if (!draggedVisitId) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") clearVisitDrag("escape");
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      lastDndOverIdRef.current = null;
+    };
+  }, [draggedVisitId]);
 
   function canDragReorderVisit(item) {
     return (
-      canEdit &&
+      canMutateThisDay &&
       !hasBlockingTimelineEditor &&
       !isReorderingDestination &&
       isTimedVisit(item) &&
@@ -8082,7 +9656,7 @@ function ItineraryTimeline({
 
   function canDragUntimedVisit(item) {
     return (
-      canEdit &&
+      canMutateThisDay &&
       !hasBlockingTimelineEditor &&
       !isReorderingDestination &&
       !isReorderingUntimed &&
@@ -8095,10 +9669,117 @@ function ItineraryTimeline({
     return canDragReorderVisit(item) || canDragUntimedVisit(item);
   }
 
-  function canTargetDraggedVisit(item) {
-    const source = dayItems.find((candidate) => candidate.id === draggedVisitId);
+  function canTargetDraggedVisit(item, sourceId = draggedVisitId) {
+    const source = dayItems.find((candidate) => candidate.id === sourceId);
     if (!source || source.id === item?.id || isTransportationCard(item)) return false;
     return isUntimedVisit(source) ? true : canDragReorderVisit(source);
+  }
+
+  function sortableDropIntent(sourceItemId, targetItemId) {
+    if (!sourceItemId || !targetItemId || sourceItemId === targetItemId) return null;
+    const sourceIndex = visitItems.findIndex((item) => item.id === sourceItemId);
+    const targetIndex = visitItems.findIndex((item) => item.id === targetItemId);
+    if (sourceIndex < 0 || targetIndex < 0) return null;
+    return sourceIndex < targetIndex ? "after" : "before";
+  }
+
+  function previewSortableDrag(sourceItemId, targetItemId) {
+    const source = dayItems.find((candidate) => candidate.id === sourceItemId);
+    const target = dayItems.find((candidate) => candidate.id === targetItemId);
+    const placement = sortableDropIntent(sourceItemId, targetItemId);
+    if (!source || !target || !placement || !canTargetDraggedVisit(target, sourceItemId)) {
+      setDragTarget(targetItemId ? { disabled: true, errorCode: "invalid_target", itemId: targetItemId, placement: placement || "after" } : null);
+      return false;
+    }
+    if (isUntimedVisit(source)) {
+      const plan = planUntimedVisitReorder({ items: dayItems, placement, sourceItemId: source.id, targetItemId: target.id });
+      setUntimedDropNotice(plan.ok ? "" : untimedOrderingErrorMessage(plan.errorCode));
+      setDragTarget({ disabled: !plan.ok, errorCode: plan.errorCode || "", itemId: target.id, placement });
+      return plan.ok;
+    }
+    const plan = planMixedTimedVisitReorder({
+      items: dayItems,
+      placement,
+      sourceItemId: source.id,
+      targetItemId: target.id,
+    });
+    if (!plan.ok) {
+      setFixedNotice(destinationReorderErrorMessage({ message: plan.errorCode }));
+      setDragTarget({ disabled: true, errorCode: plan.errorCode || "", itemId: target.id, placement });
+      return false;
+    }
+    setFixedNotice("");
+    setDragTarget({ disabled: false, itemId: target.id, placement });
+    return true;
+  }
+
+  function handleSortableDragStart(event) {
+    const sourceItem = dayItems.find((item) => item.id === event.active.id);
+    if (!sourceItem || !canDragVisit(sourceItem)) return;
+    if (typeof onClearCardSelection === "function") onClearCardSelection();
+    const sourceRect = event.active.rect.current.initial;
+    setDragOverlaySize(
+      sourceRect?.width && sourceRect?.height ? { height: sourceRect.height, width: sourceRect.width } : null,
+    );
+    setFixedNotice("");
+    setUntimedDropNotice("");
+    setDraggedVisitId(sourceItem.id);
+    setDragTarget(null);
+    if (typeof onPublishDragPresence === "function") {
+      onPublishDragPresence({
+        resetDrag: true,
+        forceTrack: true,
+        itemId: sourceItem.id,
+        itemTitle: visitDestination(sourceItem),
+        overItemId: null,
+        placement: null,
+      });
+    }
+    lastDndOverIdRef.current = null;
+  }
+
+  function handleSortableDragOver(event) {
+    const sourceItemId = event.active?.id;
+    const targetItemId = event.over?.id;
+    if (!sourceItemId || !targetItemId || sourceItemId === targetItemId) {
+      setDragTarget(null);
+      if (typeof onPublishDragPresence === "function" && sourceItemId) {
+        onPublishDragPresence({ overItemId: null, placement: null });
+      }
+      lastDndOverIdRef.current = targetItemId || null;
+      return;
+    }
+    if (lastDndOverIdRef.current === targetItemId) return;
+    lastDndOverIdRef.current = targetItemId;
+    const previewOk = previewSortableDrag(sourceItemId, targetItemId);
+    const placement = sortableDropIntent(sourceItemId, targetItemId);
+    if (typeof onPublishDragPresence === "function") {
+      onPublishDragPresence({
+        overItemId: previewOk ? targetItemId : null,
+        placement: previewOk ? placement : null,
+      });
+    }
+  }
+
+  function handleSortableDragCancel() {
+    timelineDragPresenceDebug("drag end branch name", { branch: "cancel" });
+    clearVisitDrag("cancel");
+  }
+
+  async function handleSortableDragEnd(event) {
+    const sourceItemId = event.active?.id;
+    const targetItemId = event.over?.id;
+    const targetItem = dayItems.find((item) => item.id === targetItemId);
+    const placement = sortableDropIntent(sourceItemId, targetItemId);
+    if (!sourceItemId || !targetItem || !placement || sourceItemId === targetItemId) {
+      const branch = sourceItemId && sourceItemId === targetItemId ? "noop" : "invalid";
+      timelineDragPresenceDebug("drag end branch name", { branch, sourceItemId, targetItemId });
+      clearVisitDrag(`drag-end-${branch}`);
+      return;
+    }
+    timelineDragPresenceDebug("drag end branch name", { branch: "drop", placement, sourceItemId, targetItemId });
+    clearVisitDrag("drag-end-drop");
+    await commitVisitDrop(sourceItemId, targetItem, placement);
   }
 
   function beginVisitDrag(event, item) {
@@ -8111,6 +9792,7 @@ function ItineraryTimeline({
       }
       return;
     }
+    if (typeof onClearCardSelection === "function") onClearCardSelection();
     setFixedNotice("");
     setUntimedDropNotice("");
     setDraggedVisitId(item.id);
@@ -8136,20 +9818,25 @@ function ItineraryTimeline({
     setDragTarget({ disabled: false, itemId: item.id, placement });
   }
 
-  function clearVisitDrag() {
+  function clearVisitDrag(reason = "manual") {
     setDraggedVisitId(null);
+    setDragOverlaySize(null);
     setDragTarget(null);
+    lastDndOverIdRef.current = null;
+    if (typeof onClearDragPresence === "function") onClearDragPresence(reason);
   }
 
-  async function dropVisitContent(event, targetItem) {
-    event.preventDefault();
-    const sourceItemId = draggedVisitId || event.dataTransfer.getData("text/plain");
+  async function commitVisitDrop(sourceItemId, targetItem, placement) {
     if (!sourceItemId || sourceItemId === targetItem.id) {
-      clearVisitDrag();
+      clearVisitDrag("commit-noop");
       return;
     }
     const sourceItem = dayItems.find((item) => item.id === sourceItemId);
-    const placement = dragTarget?.itemId === targetItem.id ? dragTarget.placement : "after";
+    if (!sourceItem || !canTargetDraggedVisit(targetItem, sourceItem.id)) {
+      timelineDragPresenceDebug("drag end branch name", { branch: "invalid-target", sourceItemId, targetItemId: targetItem.id });
+      clearVisitDrag("commit-invalid-target");
+      return;
+    }
     if (isUntimedVisit(sourceItem)) {
       const plan = planUntimedVisitReorder({
         items: dayItems,
@@ -8157,12 +9844,16 @@ function ItineraryTimeline({
         sourceItemId: sourceItem.id,
         targetItemId: targetItem.id,
       });
-      clearVisitDrag();
+      clearVisitDrag("commit-untimed-plan");
       if (!plan.ok) {
+        timelineDragPresenceDebug("drag end branch name", { branch: "untimed-blocked", errorCode: plan.errorCode });
         setUntimedDropNotice(untimedOrderingErrorMessage(plan.errorCode));
         return;
       }
-      if (plan.noOp) return;
+      if (plan.noOp) {
+        timelineDragPresenceDebug("drag end branch name", { branch: "untimed-noop" });
+        return;
+      }
       if (typeof onReorderUntimedVisit !== "function") {
         setUntimedDropNotice("未設定時間行程移動失敗，請稍後再試。");
         return;
@@ -8180,9 +9871,11 @@ function ItineraryTimeline({
         updatedAt: sourceItem.updated_at,
       };
       if (transportBaselines.length) {
+        timelineDragPresenceDebug("drag end branch name", { branch: "untimed-confirmation", transportCount: transportBaselines.length });
         setReorderPreview(untimedReorder);
         return;
       }
+      timelineDragPresenceDebug("drag end branch name", { branch: "untimed-rpc" });
       setIsReorderingUntimed(true);
       const result = await onReorderUntimedVisit(untimedReorder);
       if (!result?.ok) setUntimedDropNotice(result?.errorMessage || "未設定時間行程移動失敗，請稍後再試。");
@@ -8191,7 +9884,8 @@ function ItineraryTimeline({
       return;
     }
     if (!sourceItem || !canDragReorderVisit(sourceItem) || typeof onReorderDestinationPackages !== "function") {
-      clearVisitDrag();
+      timelineDragPresenceDebug("drag end branch name", { branch: "timed-blocked" });
+      clearVisitDrag("commit-timed-blocked");
       return;
     }
     const mixedPlan = planMixedTimedVisitReorder({
@@ -8202,7 +9896,8 @@ function ItineraryTimeline({
     });
     if (!mixedPlan.ok) {
       setFixedNotice(destinationReorderErrorMessage({ message: mixedPlan.errorCode }));
-      clearVisitDrag();
+      timelineDragPresenceDebug("drag end branch name", { branch: "timed-mixed-blocked", errorCode: mixedPlan.errorCode });
+      clearVisitDrag("commit-timed-mixed-blocked");
       return;
     }
     const { brokenTransportIds = [], packageSourceItemIds, slotItemIds, untimedSortOrderUpdates } = mixedPlan;
@@ -8216,7 +9911,8 @@ function ItineraryTimeline({
     });
     if (!previewPlan.ok) {
       setFixedNotice(destinationReorderErrorMessage({ message: previewPlan.errorCode }));
-      clearVisitDrag();
+      timelineDragPresenceDebug("drag end branch name", { branch: "timed-preview-blocked", errorCode: previewPlan.errorCode });
+      clearVisitDrag("commit-timed-preview-blocked");
       return;
     }
     const finalUntimedSortOrderUpdates = previewPlan.convertedSlotIds?.length
@@ -8241,11 +9937,16 @@ function ItineraryTimeline({
       transportBaselines: explicitTransportBaselines,
       untimedSortOrderUpdates: finalUntimedSortOrderUpdates,
     };
-    clearVisitDrag();
     if (previewPlan.deletedTransportIds.length || explicitTransportBaselines.length) {
+      timelineDragPresenceDebug("drag end branch name", {
+        branch: "timed-confirmation",
+        deletedTransportCount: previewPlan.deletedTransportIds.length,
+        transportCount: explicitTransportBaselines.length,
+      });
       setReorderPreview(timedReorder);
       return;
     }
+    timelineDragPresenceDebug("drag end branch name", { branch: "timed-rpc" });
     setIsReorderingDestination(true);
     const result = await onReorderDestinationPackages(timedReorder);
     if (!result?.ok) setFixedNotice(result?.errorMessage || destinationReorderErrorMessage(result?.error));
@@ -8254,6 +9955,10 @@ function ItineraryTimeline({
 
   async function confirmMoveReorder() {
     if (!reorderPreview) return;
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragSaveBlockedMessage);
+      return;
+    }
     if (reorderPreview.kind === "untimed") {
       if (typeof onReorderUntimedVisit !== "function") return;
       setIsReorderingUntimed(true);
@@ -8325,6 +10030,10 @@ function ItineraryTimeline({
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
   async function openNewItem() {
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
@@ -8355,6 +10064,10 @@ function ItineraryTimeline({
   }
 
   async function openNewTransport(previousItem, nextItem) {
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
@@ -8397,6 +10110,10 @@ function ItineraryTimeline({
   }
 
   async function openEditItem(item) {
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
@@ -8486,6 +10203,10 @@ function ItineraryTimeline({
   async function saveCurrentEditor(formData = new FormData(), options = {}) {
     const itemType = String(formData.get("item_type") ?? form.item_type ?? "visit");
     const editingItem = editingId ? dayItems.find((item) => item.id === editingId) : null;
+    if (foreignSameDayDragActive) {
+      setTimeError(foreignDragSaveBlockedMessage);
+      return false;
+    }
     if (isEffectiveFixedVisit(editingItem)) {
       setTimeError("此行程已固定，請先解鎖後再修改。");
       return false;
@@ -8669,6 +10390,10 @@ function ItineraryTimeline({
 
   async function confirmBrokenTransportationPairDeletion() {
     if (!transportPairConflict?.transportItem || isResolvingTransportPairConflict) return;
+    if (foreignSameDayDragActive) {
+      setTimeError(foreignDragSaveBlockedMessage);
+      return;
+    }
     setIsResolvingTransportPairConflict(true);
     await saveCurrentEditor(new FormData(), {
       requestAutoContinuation: Boolean(transportPairConflict.continuationRequested),
@@ -8685,6 +10410,10 @@ function ItineraryTimeline({
 
   async function saveWithAutoContinuation() {
     if (!autoContinuationPrompt?.plan?.canAutoContinue || isSavingAutoContinuation) return;
+    if (foreignSameDayDragActive) {
+      setTimeError(foreignDragSaveBlockedMessage);
+      return;
+    }
     setIsSavingAutoContinuation(true);
     await saveCurrentEditor(new FormData(), {
       skipAutoContinuation: true,
@@ -8695,6 +10424,10 @@ function ItineraryTimeline({
   }
 
   async function requestAutoContinuation(event) {
+    if (foreignSameDayDragActive) {
+      setTimeError(foreignDragSaveBlockedMessage);
+      return;
+    }
     await saveCurrentEditor(new FormData(event.currentTarget.form), { requestAutoContinuation: true });
   }
 
@@ -8705,6 +10438,8 @@ function ItineraryTimeline({
 
   const isTransportEditor = form.item_type === "transport";
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
+  const visitItemIds = useMemo(() => visitItems.map((item) => item.id), [visitItems]);
+  const activeDragItem = draggedVisitId ? visitItems.find((item) => item.id === draggedVisitId) || null : null;
   const timedVisitItems = useMemo(() => visitItems.filter(isTimedVisit), [visitItems]);
   const editedTimedVisitIndex = timedVisitItems.findIndex((item) => item.id === editingId);
   const editedTimedVisit = editedTimedVisitIndex >= 0 ? timedVisitItems[editedTimedVisitIndex] : null;
@@ -8809,6 +10544,13 @@ function ItineraryTimeline({
   }
 
   async function flipAlternativeFace(item, alternative) {
+    if (foreignSameDayDragActive) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [item.id]: foreignDragSaveBlockedMessage,
+      }));
+      return;
+    }
     if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
@@ -8835,6 +10577,13 @@ function ItineraryTimeline({
   }
 
   async function saveAlternativeForm(item, alternative) {
+    if (foreignSameDayDragActive) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [item.id]: foreignDragSaveBlockedMessage,
+      }));
+      return;
+    }
     if (isEffectiveFixedVisit(item)) {
       setAlternativeErrorByItem((current) => ({
         ...current,
@@ -8879,6 +10628,13 @@ function ItineraryTimeline({
 
   async function deleteAlternative(itemId, alternativeId) {
     const parentItem = dayItems.find((item) => item.id === itemId);
+    if (foreignSameDayDragActive) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [itemId]: foreignDragSaveBlockedMessage,
+      }));
+      return;
+    }
     if (isEffectiveFixedVisit(parentItem)) {
       setAlternativeErrorByItem((current) => ({
         ...current,
@@ -8912,6 +10668,10 @@ function ItineraryTimeline({
   }
 
   function requestDeleteItem(item) {
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
@@ -8921,6 +10681,10 @@ function ItineraryTimeline({
 
   async function toggleItemFixed(item) {
     if (!item || isTransportationCard(item) || typeof onToggleItemFixed !== "function") return;
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     if (!isTimedVisit(item)) {
       setFixedNotice("未設定完整時間的行程不能固定。");
       return;
@@ -8941,6 +10705,11 @@ function ItineraryTimeline({
 
   async function confirmDeleteTarget() {
     if (!deleteTarget) return;
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragSaveBlockedMessage);
+      setDeleteTarget(null);
+      return;
+    }
     const target = deleteTarget;
     setDeleteTarget(null);
     await onDeleteItem(target.id);
@@ -8962,13 +10731,18 @@ function ItineraryTimeline({
         <input name="to_snapshot_end_time" type="hidden" value={form.to_snapshot_end_time || ""} />
         <input name="to_snapshot_destination" type="hidden" value={form.to_snapshot_destination || ""} />
         {conflict ? <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} /> : null}
+        {foreignSameDayDragActive ? (
+          <div className="notice inline-error" role="alert">
+            <span>{foreignDragSaveBlockedMessage}</span>
+          </div>
+        ) : null}
         <div className="transport-editor-heading">
           <span className="transport-icon" aria-hidden="true">
             {transportCategoryMeta(category).icon}
           </span>
           <strong>{transportCardTitle(form) || "新增交通資訊"}</strong>
           <div className="transport-editor-actions">
-            <button className="primary-button compact" type="submit">
+            <button className="primary-button compact" disabled={!canMutateThisDay} type="submit">
               ✓ 保存
             </button>
             <button className="mini-button" type="button" onClick={() => closeEditor()}>
@@ -9062,14 +10836,25 @@ function ItineraryTimeline({
     const budgets = budgetsByItem[item.id] || [];
     const category = item.transport_category || defaultTransportCategory;
     const note = item.transport_note || item.transportation_note || item.description || item.note;
+    const remoteSelection = visibleForeignCardSelection?.itemId === item.id ? visibleForeignCardSelection : null;
+    const remoteSelectionColor = remoteSelection ? timelineCardSelectionColor(remoteSelection.colorKey) : "";
+    const remoteSelectionStyle = remoteSelection
+      ? {
+          "--timeline-remote-selection-color": remoteSelectionColor,
+          "--timeline-remote-selection-color-soft": `${remoteSelectionColor}18`,
+        }
+      : undefined;
     return (
       <article
         className={`transport-card${focusedItemId === item.id ? " focused" : ""}${expanded ? " expanded" : ""}${
           hasWarning ? ` warning ${warningClass}-warning` : ""
-        }`}
+        }${remoteSelection ? " timeline-item-remote-selected" : ""}`}
+        data-remote-selection-label={remoteSelection?.userName || undefined}
+        style={remoteSelectionStyle}
         onClick={() => {
           setExpandedId(expanded ? null : item.id);
           onFocusItem(item.id);
+          if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);
         }}
       >
         <span className="transport-card-icon" aria-hidden="true">
@@ -9124,7 +10909,7 @@ function ItineraryTimeline({
               {isGeneralWarning ? (
                 <button
                   className="mini-button"
-                  disabled={!canEdit || lockedByOther}
+                  disabled={!canMutateThisDay || lockedByOther}
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -9136,7 +10921,7 @@ function ItineraryTimeline({
               ) : null}
               <button
                 className="mini-button"
-                disabled={!canEdit || lockedByOther}
+                disabled={!canMutateThisDay || lockedByOther}
                 type="button"
                 title="編輯"
                 onClick={(event) => {
@@ -9148,7 +10933,7 @@ function ItineraryTimeline({
               </button>
               <button
                 className="mini-button"
-                disabled={!canEdit}
+                disabled={!canMutateThisDay}
                 type="button"
                 title="刪除"
                 onClick={(event) => {
@@ -9166,10 +10951,16 @@ function ItineraryTimeline({
   }
 
   function renderTransportInsert(previousItem, nextItem) {
-    if (!canEdit || isOpen || !nextItem || isTransportationCard(previousItem) || isTransportationCard(nextItem)) return null;
+    if (!canMutateThisDay || isOpen || !nextItem || isTransportationCard(previousItem) || isTransportationCard(nextItem)) return null;
     if (adjacentTransportByPair[transportPairKey(previousItem.id, nextItem.id)]) return null;
     return (
-      <button className="transport-insert-zone" type="button" onClick={() => openNewTransport(previousItem, nextItem)}>
+      <button
+        className="transport-insert-zone"
+        type="button"
+        onClick={() => openNewTransport(previousItem, nextItem)}
+        onKeyDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
         <span className="transport-insert-icon">+</span>
         <span className="transport-insert-label">新增交通資訊</span>
         <span className="transport-insert-line" aria-hidden="true" />
@@ -9178,10 +10969,16 @@ function ItineraryTimeline({
   }
 
   function renderTailTransportInsert(previousItem) {
-    if (!canEdit || isOpen || !previousItem || isTransportationCard(previousItem)) return null;
+    if (!canMutateThisDay || isOpen || !previousItem || isTransportationCard(previousItem)) return null;
     if (tailTransportByFrom[previousItem.id]) return null;
     return (
-      <button className="transport-insert-zone tail" type="button" onClick={() => openNewTransport(previousItem, null)}>
+      <button
+        className="transport-insert-zone tail"
+        type="button"
+        onClick={() => openNewTransport(previousItem, null)}
+        onKeyDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
         <span className="transport-insert-icon">+</span>
         <span className="transport-insert-label">新增尾端交通</span>
         <span className="transport-insert-line" aria-hidden="true" />
@@ -9200,6 +10997,11 @@ function ItineraryTimeline({
         {timeError ? (
           <div className="notice inline-error" role="alert">
             <span>{timeError}</span>
+          </div>
+        ) : null}
+        {foreignSameDayDragActive ? (
+          <div className="notice inline-error" role="alert">
+            <span>{foreignDragSaveBlockedMessage}</span>
           </div>
         ) : null}
         <div className="field-group form-grid wide single destination-field">
@@ -9328,7 +11130,7 @@ function ItineraryTimeline({
           {editingId && !isTransportEditor ? (
             <button
               className="ghost-button compact"
-              disabled={!canRequestAutoContinuation}
+              disabled={!canMutateThisDay || !canRequestAutoContinuation}
               title={crossesFixedVisitForContinuation ? "跨越固定行程時無法接續。" : undefined}
               type="button"
               onClick={requestAutoContinuation}
@@ -9336,7 +11138,7 @@ function ItineraryTimeline({
               接續
             </button>
           ) : null}
-          <button className="primary-button compact" type="submit">
+          <button className="primary-button compact" disabled={!canMutateThisDay} type="submit">
             儲存
           </button>
         </div>
@@ -9401,7 +11203,7 @@ function ItineraryTimeline({
           <button className="ghost-button compact" type="button" onClick={() => cancelAlternativeFace(item.id, Boolean(alternative))}>
             取消
           </button>
-          <button className="primary-button compact" disabled={!canEdit || !formValue.location_name.trim()} type="submit">
+          <button className="primary-button compact" disabled={!canMutateThisDay || !formValue.location_name.trim()} type="submit">
             儲存備案
           </button>
         </div>
@@ -9414,7 +11216,7 @@ function ItineraryTimeline({
     const alternativeFlipButton = !isEffectiveFixedVisit(item) ? (
       <button
         className="alternative-flip-button"
-        disabled={!canEdit}
+        disabled={!canMutateThisDay}
         type="button"
         title={alternative ? "Toggle primary / alternative" : "Create alternative"}
         aria-label={alternative ? "切換原行程與備案" : "建立備案"}
@@ -9447,7 +11249,7 @@ function ItineraryTimeline({
               {alternative && !isEffectiveFixedVisit(item) ? (
                 <button
                   className="mini-button"
-                  disabled={!canEdit}
+                  disabled={!canMutateThisDay}
                   aria-label="刪除備案"
                   title="刪除備案"
                   type="button"
@@ -9486,7 +11288,7 @@ function ItineraryTimeline({
             <button className="ghost-button" type="button" onClick={() => setDeleteTarget(null)}>
               取消
             </button>
-            <button className="primary-button compact" type="button" onClick={confirmDeleteTarget}>
+            <button className="primary-button compact" disabled={!canMutateThisDay} type="button" onClick={confirmDeleteTarget}>
               確認刪除
             </button>
           </div>
@@ -9523,7 +11325,7 @@ function ItineraryTimeline({
             </button>
             <button
               className="primary-button compact"
-              disabled={isSavingAutoContinuation || !autoContinuationPrompt.plan.canAutoContinue}
+              disabled={!canMutateThisDay || isSavingAutoContinuation || !autoContinuationPrompt.plan.canAutoContinue}
               type="button"
               onClick={saveWithAutoContinuation}
             >
@@ -9560,7 +11362,7 @@ function ItineraryTimeline({
             </button>
             <button
               className="primary-button compact"
-              disabled={isResolvingTransportPairConflict}
+              disabled={!canMutateThisDay || isResolvingTransportPairConflict}
               type="button"
               onClick={confirmBrokenTransportationPairDeletion}
             >
@@ -9586,7 +11388,7 @@ function ItineraryTimeline({
             </button>
             <button
               className="primary-button compact"
-              disabled={isReorderingDestination || isReorderingUntimed}
+              disabled={!canMutateThisDay || isReorderingDestination || isReorderingUntimed}
               type="button"
               onClick={confirmMoveReorder}
             >
@@ -9596,7 +11398,7 @@ function ItineraryTimeline({
         </div>
       </div>
     ) : null}
-    <div className="timeline-day-column active" data-day-index={activeDay} style={{ order: activeDay }}>
+    <div className="timeline-day-column active" data-day-index={activeDay} ref={activeDayColumnRef} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
         <div className="timeline-column-title">
           <p className="eyebrow">{dayTitle || headingEyebrow}</p>
@@ -9604,7 +11406,7 @@ function ItineraryTimeline({
         </div>
         <button
           className="icon-button timeline-add-button"
-          disabled={!canEdit}
+          disabled={!canMutateThisDay}
           type="button"
           title="新增行程"
           aria-label="新增行程"
@@ -9630,6 +11432,12 @@ function ItineraryTimeline({
         </p>
       ) : null}
 
+      {foreignSameDayDragActive ? (
+        <p className="timeline-remote-drag-hint" role="status">
+          {foreignDragReadOnlyMessage}
+        </p>
+      ) : null}
+
       {invalidTransportItems.length ? (
         <div className="transport-warning-stack" aria-label="需確認交通資訊">
           {invalidTransportItems.map((item) => (
@@ -9647,7 +11455,24 @@ function ItineraryTimeline({
 
       {isOpen && !isTransportEditor && !editingId ? renderVisitEditorForm() : null}
 
-      <div className="timeline">
+      <DndContext
+        collisionDetection={closestCenter}
+        modifiers={[restrictTimelineDragToDayColumn]}
+        onDragCancel={handleSortableDragCancel}
+        onDragEnd={handleSortableDragEnd}
+        onDragOver={handleSortableDragOver}
+        onDragStart={handleSortableDragStart}
+        sensors={dndSensors}
+      >
+      <SortableContext items={visitItemIds} strategy={verticalListSortingStrategy}>
+      <div
+        className="timeline"
+        data-dnd-preview={draggedVisitId ? "active" : undefined}
+        ref={activeTimelineListRef}
+        onClick={(event) => {
+          if (event.target === event.currentTarget && typeof onClearCardSelection === "function") onClearCardSelection();
+        }}
+      >
         {visitItems.length ? (
           visitItems.map((item, index) => {
             const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
@@ -9716,9 +11541,25 @@ function ItineraryTimeline({
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
             const isDragEnabled = canDragVisit(item);
             const isDisabledDragTarget = dragTarget?.itemId === item.id && dragTarget.disabled;
-            const dragPlacement = dragTarget?.itemId === item.id && !dragTarget.disabled ? dragTarget.placement : "";
+            const isForeignDragSource = foreignDragSourceItemId === item.id;
+            const remoteSelection = visibleForeignCardSelection?.itemId === item.id ? visibleForeignCardSelection : null;
+            const remoteSelectionColor = remoteSelection ? timelineCardSelectionColor(remoteSelection.colorKey) : "";
+            const remoteSelectionStyle = remoteSelection
+              ? {
+                  "--timeline-remote-selection-color": remoteSelectionColor,
+                  "--timeline-remote-selection-color-soft": `${remoteSelectionColor}18`,
+                }
+              : undefined;
+            const hasAttachedTransportFlow =
+              (!isAddingTransportHere && Boolean(transportItem)) ||
+              passiveUntimedTransportItems.length > 0 ||
+              (!isAddingTailHere && isTailPosition && Boolean(tailTransportItem));
             return (
-            <div className="timeline-flow-entry" key={item.id}>
+            <Fragment key={item.id}>
+            <SortableTimelineEntry disabled={!isDragEnabled} hasFlowAttachments={hasAttachedTransportFlow} id={item.id}>
+            {foreignDragOverItemId === item.id && foreignDragPlacement === "before" ? (
+              <div className="timeline-remote-insertion-line" aria-hidden="true" style={foreignDragStyle} />
+            ) : null}
             {isEditingVisitHere ? (
               renderVisitEditorForm()
             ) : (
@@ -9726,25 +11567,26 @@ function ItineraryTimeline({
               className={`timeline-item${focusedItemId === item.id ? " focused" : ""}${isExpanded ? " expanded" : ""}${
                 isItemFixed ? " fixed" : ""
               }${isDragEnabled ? " drag-enabled" : ""}${draggedVisitId === item.id ? " dragging" : ""}${
-                dragPlacement ? ` drag-target drag-${dragPlacement}` : ""
-              }${isDisabledDragTarget ? " drag-target-disabled" : ""}`}
+                isDisabledDragTarget ? " drag-target-disabled" : ""
+              }${remoteSelection ? " timeline-item-remote-selected" : ""}${
+                isForeignDragSource ? " timeline-item-remote-drag-source" : ""
+              }`}
+              data-dnd-overlay-source={draggedVisitId === item.id ? "true" : undefined}
+              data-remote-selection-label={remoteSelection?.userName || undefined}
               data-timing={isTimedVisit(item) ? "timed" : "untimed"}
-              draggable={isDragEnabled}
+              style={isForeignDragSource ? foreignDragStyle : remoteSelectionStyle}
               title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
-              onDragEnd={clearVisitDrag}
-              onDragOver={(event) => updateVisitDragTarget(event, item)}
-              onDragStart={(event) => beginVisitDrag(event, item)}
-              onDrop={(event) => dropVisitContent(event, item)}
               onClick={() => {
                 setExpandedId(expandedId === item.id ? null : item.id);
                 onFocusItem(item.id);
+                if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);
               }}
             >
-              <div className="time-block">
+              <TimelineDragHandle className="time-block">
                 <span>{isTimedVisit(item) ? formatTimeDisplay(item.start_time) : "--:--"}</span>
                 <span className="time-connector" aria-hidden="true" />
                 <span>{isTimedVisit(item) ? formatTimeDisplay(item.end_time) : ""}</span>
-              </div>
+              </TimelineDragHandle>
               <div className="item-main">
                 <h4>{destination}</h4>
                 {isAlternativeFormFace ? (
@@ -9781,7 +11623,7 @@ function ItineraryTimeline({
                 {isTimedVisit(item) && (!isAlternativeFace || isItemFixed) ? (
                   <button
                     className="mini-button lock-button"
-                    disabled={!canEdit || (!isItemFixed && (lockedByOther || Boolean(item.locked_by)))}
+                    disabled={!canMutateThisDay || (!isItemFixed && (lockedByOther || Boolean(item.locked_by)))}
                     type="button"
                     title={isItemFixed ? "解鎖" : "鎖定"}
                     onClick={(event) => {
@@ -9795,7 +11637,7 @@ function ItineraryTimeline({
                 {!isAlternativeFace && !isItemFixed ? (
                   <button
                     className="mini-button"
-                    disabled={!canEdit || lockedByOther}
+                    disabled={!canMutateThisDay || lockedByOther}
                     type="button"
                     title="編輯"
                     onClick={(event) => {
@@ -9809,7 +11651,7 @@ function ItineraryTimeline({
                 {isAlternativeFace && alternative && !isAlternativeFormFace && !isItemFixed ? (
                   <button
                     className="mini-button"
-                    disabled={!canEdit || lockedByOther}
+                    disabled={!canMutateThisDay || lockedByOther}
                     type="button"
                     title="Edit alternative"
                     onClick={(event) => {
@@ -9825,7 +11667,7 @@ function ItineraryTimeline({
                 {!isItemFixed ? (
                   <button
                     className="mini-button"
-                    disabled={!canEdit}
+                    disabled={!canMutateThisDay}
                     type="button"
                     title="刪除"
                     onClick={(event) => {
@@ -9878,20 +11720,20 @@ function ItineraryTimeline({
               ) : null}
             </article>
             )}
-            {isAddingTransportHere ? renderTransportEditorForm() : null}
+            {!isAddingTransportHere && isTimedPair && !transportItem ? renderTransportInsert(item, nextItem) : null}
+            {!isAddingTailHere && isTailPosition && !tailTransportItem && !hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null}
             {!isAddingTransportHere && transportItem ? (
-              <div className="timeline-flow-entry" key={transportItem.id}>
+              <TimelineFlowAttachment>
                 {isOpen && isTransportEditor && editingId === transportItem.id
                   ? renderTransportEditorForm()
                   : renderTransportCard(transportItem, useEditLocks && isLockedByAnotherUser(transportItem, currentUserId), {
                       hasTimeShortage: hasTransportTimeShortage,
                       warningType: transportWarningType,
                     })}
-              </div>
+              </TimelineFlowAttachment>
             ) : null}
-            {!isAddingTransportHere && isTimedPair && !transportItem ? renderTransportInsert(item, nextItem) : null}
             {passiveUntimedTransportItems.map((passiveTransportItem) => (
-              <div className="timeline-flow-entry" key={passiveTransportItem.id}>
+              <TimelineFlowAttachment key={passiveTransportItem.id}>
                 {isOpen && isTransportEditor && editingId === passiveTransportItem.id
                   ? renderTransportEditorForm()
                   : renderTransportCard(
@@ -9899,11 +11741,10 @@ function ItineraryTimeline({
                       useEditLocks && isLockedByAnotherUser(passiveTransportItem, currentUserId),
                       { warningType: "untimed" },
                     )}
-              </div>
+              </TimelineFlowAttachment>
             ))}
-            {isAddingTailHere ? renderTransportEditorForm() : null}
             {!isAddingTailHere && isTailPosition && tailTransportItem ? (
-              <div className="timeline-flow-entry" key={tailTransportItem.id}>
+              <TimelineFlowAttachment>
                 {isOpen && isTransportEditor && editingId === tailTransportItem.id
                   ? renderTransportEditorForm()
                   : renderTransportCard(
@@ -9911,16 +11752,66 @@ function ItineraryTimeline({
                       useEditLocks && isLockedByAnotherUser(tailTransportItem, currentUserId),
                       { isTail: true },
                     )}
-              </div>
+              </TimelineFlowAttachment>
             ) : null}
-            {!isAddingTailHere && isTailPosition && !tailTransportItem && !hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null}
-            </div>
+            {foreignDragOverItemId === item.id && foreignDragPlacement === "after" ? (
+              <div className="timeline-remote-insertion-line" aria-hidden="true" style={foreignDragStyle} />
+            ) : null}
+            </SortableTimelineEntry>
+            {isAddingTransportHere ? renderTransportEditorForm() : null}
+            {isAddingTailHere ? renderTransportEditorForm() : null}
+            </Fragment>
             );
           })
         ) : (
           <div className="timeline-empty">這一天還沒有行程</div>
         )}
       </div>
+      </SortableContext>
+      <DragOverlay dropAnimation={null}>
+        {activeDragItem ? (
+          <article
+            className="timeline-item timeline-drag-overlay-card"
+            data-dnd-drag-overlay="true"
+            data-timing={isTimedVisit(activeDragItem) ? "timed" : "untimed"}
+            style={
+              dragOverlaySize
+                ? {
+                    "--timeline-drag-overlay-height": `${dragOverlaySize.height}px`,
+                    "--timeline-drag-overlay-width": `${dragOverlaySize.width}px`,
+                  }
+                : undefined
+            }
+          >
+            <div className="time-block">
+              <span>{isTimedVisit(activeDragItem) ? formatTimeDisplay(activeDragItem.start_time) : "--:--"}</span>
+              <span className="time-connector" aria-hidden="true" />
+              <span>{isTimedVisit(activeDragItem) ? formatTimeDisplay(activeDragItem.end_time) : ""}</span>
+            </div>
+            <div className="item-main">
+              <h4>{visitDestination(activeDragItem)}</h4>
+              {activeDragItem.note || activeDragItem.description || activeDragItem.transportation_note ? (
+                <p className="item-summary">
+                  {activeDragItem.note || activeDragItem.description || activeDragItem.transportation_note}
+                </p>
+              ) : (
+                <p className="item-summary item-summary-placeholder" aria-hidden="true">
+                  &nbsp;
+                </p>
+              )}
+              <div className="item-meta">
+                <span
+                  className="pill"
+                  style={{ background: `${typeColors[activeDragItem.type]}22`, color: typeColors[activeDragItem.type] }}
+                >
+                  {typeLabels[activeDragItem.type]}
+                </span>
+              </div>
+            </div>
+          </article>
+        ) : null}
+      </DragOverlay>
+      </DndContext>
     </div>
     </>
   );
@@ -9931,6 +11822,7 @@ function MultiDayTimelineColumns({
   alternativesByItem = {},
   budgetsByItem = {},
   days,
+  dayBoardPresenceByDay = new Map(),
   itemsByDay,
   onActiveDay,
   onFocusItem,
@@ -9945,6 +11837,7 @@ function MultiDayTimelineColumns({
       {otherDays.map((day) => {
         const visits = sortedVisitItems(day.items);
         const adjacentTransportByPair = buildAdjacentTransportMap(day.items, visits);
+        const dayBoardPresences = (dayBoardPresenceByDay.get(day.index) || []).slice(0, 3);
         return (
         <section
           className="timeline-day-preview"
@@ -9966,6 +11859,18 @@ function MultiDayTimelineColumns({
               <p className="eyebrow">Day {day.index + 1}</p>
               <h4>{formatDate(day.date)}</h4>
             </div>
+            {dayBoardPresences.length ? (
+              <div className="timeline-day-presence-dots" aria-label="Remote members on this day">
+                {dayBoardPresences.map((presence) => (
+                  <span
+                    className="timeline-day-presence-dot"
+                    key={presence.sessionId || `${presence.userId}-${presence.colorKey}`}
+                    style={{ "--trip-presence-color": timelineCardSelectionColor(presence.colorKey) }}
+                    title={presence.userName || "Remote member"}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="timeline-preview-list">
             {visits.length ? (

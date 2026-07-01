@@ -64,9 +64,11 @@ Actual current stack:
 - Plain JavaScript with JSX. There is no TypeScript in the repo right now.
 - Plain CSS in `src/styles.css`. There is no Tailwind setup right now.
 - Supabase JS client `@supabase/supabase-js` 2.45.x.
+- dnd-kit is used for Timeline sortable drag preview: `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities`.
 - Supabase Auth with Google OAuth.
 - Supabase Postgres with RLS.
 - Supabase Realtime through `postgres_changes`.
+- Supabase Realtime Presence + Broadcast for authenticated Formal Timeline drag presence.
 - Supabase Storage for attachments.
 - Vercel for production deployment.
 - Vercel SPA rewrites in `vercel.json`.
@@ -317,6 +319,23 @@ The channel is named `trip-${activeTripId}` and listens to `postgres_changes` fo
 
 Most events call `loadTripData(activeTripId)`. Trip and membership changes may also call `loadTrips(activeTripId)`.
 
+Timeline collaborative drag presence uses a separate per-day channel:
+
+```text
+timeline-drag:{tripId}:{dayIndex}
+```
+
+Rules for Timeline drag presence:
+
+- Formal authenticated app only.
+- Demo must not connect to Supabase Presence or Broadcast.
+- Presence is only the low-frequency "who is dragging" soft lock.
+- Broadcast carries drag heartbeat, target/placement updates, and clear events.
+- Remote drag presence disables same-day destination drag handles, but does not disable edit/delete/expand.
+- Remote drag presence must not render a remote `DragOverlay`, ghost card, or local preview reorder.
+- Official ordering still depends on existing reorder RPC success and the normal Realtime/reload path.
+- Debug logs are gated behind `?debugPresence=1`.
+
 Rules:
 
 - Realtime sync is card/record-level, not text-level collaboration.
@@ -534,6 +553,8 @@ Completed or substantially implemented:
 - Owner approval/rejection.
 - Supabase Realtime subscriptions for trip-scoped tables.
 - Timeline CRUD.
+- Timeline drag reorder using dnd-kit local sortable preview, with Formal drop still routed through the existing Phase 4 reorder flows.
+- Timeline collaborative drag presence for authenticated Formal users, using Realtime Presence + Broadcast without database writes.
 - Timeline alternatives.
 - Timeline map URL/link fields.
 - Timeline to budget many-to-many links.
@@ -579,7 +600,7 @@ Reserved for later:
 - LINE/Email/Push notification.
 - AI itinerary generation.
 - Deep maps/routing API integration.
-- Drag/drop manual timeline sorting if explicitly reprioritized.
+- Deeper drag collaboration semantics beyond same-day soft locking and presence hints.
 
 ## 15. Known Issues and Risk Areas
 

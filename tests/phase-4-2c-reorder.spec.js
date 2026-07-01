@@ -8,6 +8,7 @@ import {
   planTimedDragAutoContinuation,
 } from "../src/lib/destinationPackages.js";
 import { buildTimelineVisitDisplayOrder, planMixedTimedVisitReorder } from "../src/lib/timelineUntimedOrdering.js";
+import { planTailPendingPromotionUntimedBypass } from "../src/lib/timelineUntimedOrdering.js";
 
 const migration = readFileSync("supabase/migrations/020_reorder_itinerary_destination_packages.sql", "utf8");
 const baselineCountFixMigration = readFileSync("supabase/migrations/021_fix_reorder_baseline_count.sql", "utf8");
@@ -20,6 +21,8 @@ const fixedAnchorContinuationMigration = readFileSync(
   "utf8",
 );
 const appSource = readFileSync("src/App.jsx", "utf8");
+const packageSource = readFileSync("package.json", "utf8");
+const stylesSource = readFileSync("src/styles.css", "utf8");
 
 function visit(id, title, startTime, sortOrder, extra = {}) {
   return {
@@ -475,6 +478,92 @@ test("Phase 4.7b Formal and Demo use the overflow rebase payload instead of the 
   expect(appSource).toContain("previewPlan.convertedSlotIds");
 });
 
+test("Phase 4.8b tail_pending promotion bypasses only blocking untimed visits", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
+    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
+    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
+  ];
+  const plan = planTailPendingPromotionUntimedBypass({
+    items,
+    promotedFromItemId: "slot-a",
+    promotedToItemId: "slot-c",
+    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.untimedSortOrderUpdates).toEqual([
+    expect.objectContaining({ id: "untimed-b", sort_order: untimedSortOrderForSlot(2) }),
+  ]);
+  const nextItems = items.map((item) =>
+    item.id === "untimed-b"
+      ? { ...item, sort_order: plan.untimedSortOrderUpdates[0].sort_order }
+      : item.id === "transport-tail-a"
+        ? { ...item, to_item_id: "slot-c", transport_role: "tail_promoted_pair" }
+        : item,
+  );
+  expect(buildTimelineVisitDisplayOrder(nextItems).map((item) => item.id)).toEqual(["slot-a", "slot-c", "untimed-b"]);
+});
+
+test("Phase 4.8b tail_pending promotion does not rebase unrelated untimed visits", () => {
+  const items = [
+    visit("untimed-d", "D", null, untimedSortOrderForSlot(0), { end_time: null }),
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
+    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
+    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
+  ];
+  const plan = planTailPendingPromotionUntimedBypass({
+    items,
+    promotedFromItemId: "slot-a",
+    promotedToItemId: "slot-c",
+    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.untimedSortOrderUpdates.map((update) => update.id)).toEqual(["untimed-b"]);
+  expect(plan.untimedSortOrderUpdates.some((update) => update.id === "untimed-d")).toBe(false);
+});
+
+test("Phase 4.8b normal_pair transport does not use tail_pending untimed bypass", () => {
+  const items = [
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
+    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
+    transport("transport-ac", "slot-a", "slot-c", { transport_role: "normal_pair" }),
+  ];
+  const plan = planTailPendingPromotionUntimedBypass({
+    items,
+    promotedFromItemId: "slot-a",
+    promotedToItemId: "slot-c",
+    tailTransportItem: items.find((item) => item.id === "transport-ac"),
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.untimedSortOrderUpdates).toEqual([]);
+  expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["slot-a", "untimed-b", "slot-c"]);
+});
+
+test("Phase 4.8b tail_pending bypass is skipped when the promoted timed visit is before the tail source", () => {
+  const items = [
+    visit("slot-c", "C", "08:30", 20, { end_time: "09:00" }),
+    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
+    visit("untimed-b", "B", null, untimedSortOrderForSlot(2), { end_time: null }),
+    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
+  ];
+  const plan = planTailPendingPromotionUntimedBypass({
+    items,
+    promotedFromItemId: "slot-a",
+    promotedToItemId: "slot-c",
+    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.untimedSortOrderUpdates).toEqual([]);
+  expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["slot-c", "slot-a", "untimed-b"]);
+});
+
 test("reorder preserves only original directed adjacent transports and remaps anchors", () => {
   const data = fixture();
   const slots = data.visits.map((item) => item.id);
@@ -499,6 +588,50 @@ test("reorder preserves only original directed adjacent transports and remaps an
     to_item_id: null,
   });
   expect(plan.items.some((item) => item.from_item_id === "slot-b" && item.to_item_id === "slot-c")).toBe(false);
+});
+
+test("Demo-added transport remains attached to its semantic pair after moving a neighboring visit", () => {
+  const items = [
+    visit("napoli", "Napoli", "11:00", 10),
+    visit("kasahara", "笠原桜公園", "12:00", 20),
+    visit("orix", "Orix Rent-a-car大津駅南口店", "13:00", 30),
+    visit("hachiman", "八幡堀", "14:00", 40),
+    visit("villa", "近江八幡夢園Villa", "15:00", 50),
+    transport("demo-transport-orix-hachiman", "orix", "hachiman", {
+      title: "5・5分鐘",
+      transport_duration_minutes: 5,
+      transport_role: "normal_pair",
+    }),
+  ];
+  const mixedPlan = planMixedTimedVisitReorder({
+    items,
+    placement: "after",
+    sourceItemId: "napoli",
+    targetItemId: "hachiman",
+  });
+  expect(mixedPlan.ok).toBe(true);
+
+  const plan = planDestinationPackageReorder({
+    items,
+    orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
+    orderedVisitItemIds: mixedPlan.orderedVisitItemIds,
+    packageSourceItemIds: mixedPlan.packageSourceItemIds,
+    slotItemIds: mixedPlan.slotItemIds,
+    timedAutoContinuation: true,
+  });
+
+  expect(plan.ok).toBe(true);
+  expect(plan.deletedTransportIds).not.toContain("demo-transport-orix-hachiman");
+  expect(plan.preservedTransportIds).toContain("demo-transport-orix-hachiman");
+  const transportItem = plan.items.find((item) => item.id === "demo-transport-orix-hachiman");
+  const fromVisit = plan.items.find((item) => item.id === transportItem.from_item_id);
+  const toVisit = plan.items.find((item) => item.id === transportItem.to_item_id);
+  expect([fromVisit.title, transportItem.title, toVisit.title]).toEqual([
+    "Orix Rent-a-car大津駅南口店",
+    "5・5分鐘",
+    "八幡堀",
+  ]);
+  expect(toVisit.title).not.toBe("Napoli");
 });
 
 test("D before B produces ADBC while untimed visits stay outside the manifest", () => {
@@ -617,4 +750,198 @@ test("024 RPC performs Phase 4.7 fixed-anchor continuation transactionally", () 
   expect(appSource).toContain("orderedTimedItemIds");
   expect(appSource).toContain("orderedVisitItemIds");
   expect(appSource).toContain("reorderArgs.untimed_sort_order_updates");
+});
+
+test("Phase 4.8a dnd-kit local sortable ghost preview stays UI-only", () => {
+  expect(packageSource).toContain("\"@dnd-kit/core\"");
+  expect(packageSource).toContain("\"@dnd-kit/sortable\"");
+  expect(packageSource).toContain("\"@dnd-kit/utilities\"");
+  expect(appSource).toContain("DndContext");
+  expect(appSource).toContain("SortableContext");
+  expect(appSource).toContain("useSortable");
+  expect(appSource).toContain("verticalListSortingStrategy");
+  expect(appSource).toContain("DragOverlay");
+  expect(appSource).toContain("sortableKeyboardCoordinates");
+  expect(appSource).toContain("visitItemIds");
+  expect(appSource).toContain("disabled: { draggable: disabled, droppable: false }");
+  expect(appSource).not.toContain("dragPreviewVisitIds");
+  expect(appSource).not.toContain("setDragPreviewVisitIds");
+  expect(appSource).toContain("await commitVisitDrop(sourceItemId, targetItem, placement)");
+  expect(appSource).toContain("onReorderDestinationPackages(timedReorder)");
+  expect(appSource).toContain("onReorderUntimedVisit(untimedReorder)");
+  expect(stylesSource).toContain(".timeline-drag-overlay-card");
+  expect(stylesSource).toContain(".timeline-sortable-entry.sortable-active-placeholder");
+  expect(stylesSource).toContain(".timeline-sortable-entry");
+  expect(stylesSource).not.toContain(".timeline-drop-spacer");
+  expect(appSource).not.toContain("data-dnd-drop-spacer");
+  expect(appSource).not.toContain("dragPlaceholderHeight");
+  expect(stylesSource).not.toContain(".timeline-item.dnd-placeholder-card");
+  expect(stylesSource).not.toContain(".timeline-item.drag-target::before");
+  expect(fixedAnchorContinuationMigration).not.toContain("DragOverlay");
+});
+
+test("Phase 4.8c foreign drag presence makes only the active formal day read-only", () => {
+  expect(appSource).toContain("const canMutateThisDay = canEdit && !foreignSameDayDragActive");
+  expect(appSource).toContain("正在拖曳，暫時鎖定此日編輯");
+  expect(appSource).toContain("此日行程正在被其他成員調整，請稍後再儲存。");
+  expect(appSource).toContain("if (foreignSameDayDragActive)");
+  expect(appSource).toContain("setTimeError(foreignDragSaveBlockedMessage);");
+  expect(appSource).toContain("disabled={!canMutateThisDay}");
+  expect(appSource).toContain("disabled={!canMutateThisDay || lockedByOther}");
+  expect(appSource).toContain("disabled={!canMutateThisDay || !canRequestAutoContinuation}");
+  expect(appSource).toContain("if (!canMutateThisDay || isOpen || !nextItem");
+  expect(appSource).toContain("if (!canMutateThisDay || isOpen || !previousItem");
+  expect(appSource).toContain("foreignSameDayDragActive={foreignSameDayDragActive}");
+  expect(appSource).toContain("foreignSameDayDragActive={Boolean(foreignDragPresence)}");
+  expect(appSource).not.toContain("foreignSameDayDragActive={true}");
+});
+
+test("Phase 4.8f foreign drag source highlight stays visual-only", () => {
+  expect(appSource).toContain("foreignDragSourceItemId");
+  expect(appSource).toContain("isForeignDragSource");
+  expect(appSource).toContain("timeline-item-remote-drag-source");
+  expect(appSource).toContain("--timeline-remote-drag-color");
+  expect(appSource).toContain("style={isForeignDragSource ? foreignDragStyle : remoteSelectionStyle}");
+  expect(appSource).toContain('className="timeline-remote-insertion-line"');
+  expect(appSource).toContain("!foreignSameDayDragActive &&");
+  expect(stylesSource).toContain(".timeline-item.timeline-item-remote-drag-source");
+  expect(stylesSource).toContain(".timeline-item.focused.timeline-item-remote-drag-source");
+  expect(stylesSource).toContain(".timeline-remote-insertion-line");
+  expect(stylesSource).toContain("opacity: 0.56");
+  expect(stylesSource).toContain("opacity: 0.7");
+  expect(appSource).not.toContain("remoteDragOverlay");
+  expect(appSource).not.toContain("foreignPreviewOrder");
+});
+
+test("Phase 4.8c drag presence recreates closed channels without removing on drag cleanup", () => {
+  expect(appSource).toContain("timelineDragPresenceChannelSummary");
+  expect(appSource).toContain("timelineDragPresenceStatusRef");
+  expect(appSource).toContain("timelineDragPresenceReconnectRef");
+  expect(appSource).toContain("channel status on dragStart");
+  expect(appSource).toContain("removeChannel reason");
+  expect(appSource).toContain("track skipped reason");
+  expect(appSource).toContain("stale-channel-status");
+  expect(appSource).toContain("setTimelineDragPresenceChannelVersion((version) => version + 1)");
+  expect(appSource).toContain("if (channel && channelReady)");
+  expect(appSource).toContain("if (channel && timelineDragPresenceReadyRef.current && currentPayload)");
+  expect(appSource).not.toContain("removeChannel(channel);\n    }\n  }, []);");
+});
+
+test("Phase 4.8c drag presence clears immediately when local drag ends", () => {
+  expect(appSource).toContain("drag clear requested reason");
+  expect(appSource).toContain("broadcast clear sent reason");
+  expect(appSource).toContain("broadcast clear received");
+  expect(appSource).toContain("clear ignored reason");
+  expect(appSource).toContain("clear fallback local cleanup");
+  expect(appSource).toContain("drag end branch name");
+  expect(appSource).toContain('clearVisitDrag("cancel")');
+  expect(appSource).toContain("clearVisitDrag(`drag-end-${branch}`)");
+  expect(appSource).toContain('clearVisitDrag("drag-end-drop")');
+  expect(appSource).toContain("await commitVisitDrop(sourceItemId, targetItem, placement);");
+  expect(appSource).toContain("current.dragId === payload.dragId || current.sessionId === payload.sessionId");
+  expect(appSource).toContain("clearReason: payload.clearReason");
+  expect(appSource).toContain('clearVisitDrag("commit-untimed-plan")');
+  expect(appSource).toContain('branch: "timed-confirmation"');
+  expect(appSource).toContain('branch: "timed-rpc"');
+});
+
+test("Phase 4.8d remote card selection is broadcast-only and does not lock the day", () => {
+  expect(appSource).toContain("timeline-card-selection-update");
+  expect(appSource).toContain("timeline-card-selection-clear");
+  expect(appSource).toContain("const timelineCardSelectionStaleMs = 30000");
+  expect(appSource).toContain("timelineCardSelectionColors");
+  expect(appSource).toContain('blue: "#2f6df6"');
+  expect(appSource).toContain('purple: "#7c4dff"');
+  expect(appSource).toContain('orange: "#e57a1f"');
+  expect(appSource).toContain('pink: "#d94d8c"');
+  expect(appSource).toContain('cyan: "#1598b7"');
+  expect(appSource).toContain('yellow: "#c99a00"');
+  expect(appSource).not.toContain("green:");
+  expect(appSource).toContain("payload.sessionId === sessionId");
+  expect(appSource).toContain("selection broadcast update");
+  expect(appSource).toContain("selection broadcast clear");
+  expect(appSource).toContain("selection received");
+  expect(appSource).toContain("selection ignored reason");
+  expect(appSource).toContain("itemType: payload.itemType");
+  expect(appSource).toContain('const itemType = isTransportationCard(item) ? "transport" : "destination"');
+  expect(appSource).toContain('itemType === "transport" ? transportCardTitle(item)');
+  expect(appSource).toContain('expectedItemType: selectedItemType');
+  expect(appSource).toContain("data-remote-selection-label");
+  expect(appSource).toContain("timeline-item-remote-selected");
+  expect(appSource).toContain('className={`transport-card');
+  expect(appSource).toContain('}${remoteSelection ? " timeline-item-remote-selected" : ""}`');
+  expect(appSource).toContain('if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);');
+  expect(appSource).toContain("!foreignSameDayDragActive &&");
+  expect(appSource).toContain('onClearCardSelection();');
+  expect(appSource).not.toContain("setForeignDragPresence(payload)");
+  expect(appSource).not.toContain("visitItemIds = dayItems.map");
+  expect(stylesSource).toContain(".timeline-item.timeline-item-remote-selected");
+  expect(stylesSource).toContain(".transport-card.timeline-item-remote-selected");
+  expect(stylesSource).toContain(".transport-card.timeline-item-remote-selected::after");
+  expect(stylesSource).toContain("content: attr(data-remote-selection-label)");
+  expect(stylesSource).toContain("pointer-events: none");
+});
+
+test("Phase 4.8e trip-level online member presence stays navigation-only", () => {
+  expect(appSource).toContain("tripPresenceHeartbeatMs = 28000");
+  expect(appSource).toContain("tripPresenceStaleMs = 55000");
+  expect(appSource).toContain("trip-presence:${activeTripId}");
+  expect(appSource).toContain("function tripPresenceDebug");
+  expect(appSource).toContain("[trip-presence]");
+  expect(appSource).toContain("subscribe start");
+  expect(appSource).toContain("subscribed");
+  expect(appSource).toContain("track latest payload");
+  expect(appSource).toContain("track skipped");
+  expect(appSource).toContain("sync state");
+  expect(appSource).toContain("computed online members");
+  expect(appSource).toContain("avatar click navigation");
+  expect(appSource).toContain("computed day tab presence");
+  expect(appSource).toContain("reconnect requested reason");
+  expect(appSource).toContain("recreate channel");
+  expect(appSource).toContain("heartbeat requested reconnect");
+  expect(appSource).toContain("focus/visibility recovery");
+  expect(appSource).toContain("replay track after subscribed");
+  expect(appSource).toContain("tripPresenceRecoverableStatuses");
+  expect(appSource).toContain("tripPresenceChannelVersion");
+  expect(appSource).toContain("selectedItemType");
+  expect(appSource).toContain("selectedItemTitle");
+  expect(appSource).toContain("tripPresencePageToSection");
+  expect(appSource).toContain('overview: "today"');
+  expect(appSource).toContain('packing: "luggage"');
+  expect(appSource).toContain('timeline: "timeline"');
+  expect(appSource).toContain("HeaderMemberPresencePreview");
+  expect(appSource).toContain("remotePresenceByUser");
+  expect(appSource).toContain("timelineDayTabPresenceByDay");
+  expect(appSource).toContain("dayTabPresenceByDay");
+  expect(appSource).toContain("dayBoardPresenceByDay");
+  expect(appSource).toContain("timeline-day-presence-dots");
+  expect(appSource).toContain("timeline-day-presence-dot");
+  expect(appSource).toContain("tripPresenceSelectedItem");
+  expect(appSource).toContain("member.user_id !== currentUserId");
+  expect(appSource).toContain("setActiveSection(section)");
+  expect(appSource).toContain("setActiveDay(Number(presence.dayIndex))");
+  expect(appSource).toContain("channel.track(nextPayload)");
+  expect(appSource).toContain("channel.untrack()");
+  expect(appSource).not.toContain("trip-presence:${activeTripId}:${activeDay}");
+  expect(stylesSource).toContain(".trip-header-member-avatar.remote-online");
+  expect(appSource).toContain("has-remote-presence");
+  expect(stylesSource).toContain(".day-tab.has-remote-presence");
+  expect(stylesSource).toContain(".timeline-day-presence-dot");
+  expect(stylesSource).toContain("--trip-presence-color");
+});
+
+test("Phase 4.8b demo timeline fixtures model formal transportation roles", () => {
+  expect(appSource).toContain("createDemoTransportFixture");
+  expect(appSource).toContain("createDemoTransportFixtures");
+  expect(appSource).toContain("demoSortOrderForNewTimelineItem");
+  expect(appSource).toContain("trip_id: demoActiveTrip.id");
+  expect(appSource).toContain("demo-transport-day3-napoli-kasahara");
+  expect(appSource).toContain("demo-transport-day3-hachiman-tail");
+  expect(appSource).toContain("demo-transport-day2-tail-promoted-yamashina-rest");
+  expect(appSource).toContain("transportRoles.normalPair");
+  expect(appSource).toContain("transportRoles.tailPending");
+  expect(appSource).toContain("transportRoles.tailPromotedPair");
+  expect(appSource).toContain("normalizeTransportRole({ ...item, item_type: \"transport\" })");
+  expect(appSource).toContain("TimelineFlowAttachment");
+  expect(appSource).toContain("<SortableContext items={visitItemIds}");
 });
