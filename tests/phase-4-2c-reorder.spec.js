@@ -795,6 +795,20 @@ test("Phase 4.8c foreign drag presence makes only the active formal day read-onl
   expect(appSource).not.toContain("foreignSameDayDragActive={true}");
 });
 
+test("Phase 4.8c drag presence recreates closed channels without removing on drag cleanup", () => {
+  expect(appSource).toContain("timelineDragPresenceChannelSummary");
+  expect(appSource).toContain("timelineDragPresenceStatusRef");
+  expect(appSource).toContain("timelineDragPresenceReconnectRef");
+  expect(appSource).toContain("channel status on dragStart");
+  expect(appSource).toContain("removeChannel reason");
+  expect(appSource).toContain("track skipped reason");
+  expect(appSource).toContain("stale-channel-status");
+  expect(appSource).toContain("setTimelineDragPresenceChannelVersion((version) => version + 1)");
+  expect(appSource).toContain("if (channel && channelReady)");
+  expect(appSource).toContain("if (channel && timelineDragPresenceReadyRef.current && currentPayload)");
+  expect(appSource).not.toContain("removeChannel(channel);\n    }\n  }, []);");
+});
+
 test("Phase 4.8b demo timeline fixtures model formal transportation roles", () => {
   expect(appSource).toContain("createDemoTransportFixture");
   expect(appSource).toContain("createDemoTransportFixtures");
