@@ -87,6 +87,7 @@ const timelineDragPresenceRefreshMs = 1000;
 const timelineCardSelectionStaleMs = 30000;
 const tripPresenceHeartbeatMs = 28000;
 const tripPresenceStaleMs = 55000;
+const tripPresenceRecoverableStatuses = new Set(["CLOSED", "CHANNEL_ERROR", "TIMED_OUT"]);
 const timelineCardSelectionColors = {
   blue: "#2f6df6",
   purple: "#7c4dff",
@@ -2083,6 +2084,7 @@ export default function App() {
   const tripPresenceReadyRef = useRef(false);
   const tripPresenceStatusRef = useRef("idle");
   const tripPresencePayloadRef = useRef(null);
+  const tripPresenceReconnectRef = useRef(false);
   const timelineDragPresenceChannelRef = useRef(null);
   const timelineDragPresenceReadyRef = useRef(false);
   const timelineDragPresenceStatusRef = useRef("idle");
@@ -2100,6 +2102,7 @@ export default function App() {
     start_date: todayInput(),
     end_date: todayInput(2),
   });
+  const [tripPresenceChannelVersion, setTripPresenceChannelVersion] = useState(0);
   const [timelineDragPresenceChannelVersion, setTimelineDragPresenceChannelVersion] = useState(0);
 
   const activeTrip = useMemo(
@@ -2162,7 +2165,7 @@ export default function App() {
     });
     return byUser;
   }, [activeUserId, remoteTripPresences]);
-  const timelinePresenceDotsByDay = useMemo(() => {
+  const timelineDayTabPresenceByDay = useMemo(() => {
     const byDay = new Map();
     remoteTripPresences.forEach((presence) => {
       if (presence?.pageKey !== "timeline" || presence.userId === activeUserId) return;
@@ -2172,8 +2175,8 @@ export default function App() {
       if (!entries.some((entry) => entry.userId === presence.userId) && entries.length < 3) entries.push(presence);
       byDay.set(dayIndex, entries);
     });
-    tripPresenceDebug("computed day dots", {
-      dots: Object.fromEntries([...byDay.entries()].map(([dayIndex, entries]) => [dayIndex, entries.map(tripPresenceDebugPayload)])),
+    tripPresenceDebug("computed day tab presence", {
+      dayTabPresence: Object.fromEntries([...byDay.entries()].map(([dayIndex, entries]) => [dayIndex, entries.map(tripPresenceDebugPayload)])),
     });
     return byDay;
   }, [activeUserId, remoteTripPresences]);
@@ -2205,22 +2208,48 @@ export default function App() {
     tripPresencePayloadRef.current = tripPresencePayload;
   }, [tripPresencePayload]);
 
+  const requestTripPresenceReconnect = useCallback((reason = "unknown") => {
+    tripPresenceDebug("reconnect requested reason", {
+      alreadyPending: tripPresenceReconnectRef.current,
+      hasChannel: Boolean(tripPresenceChannelRef.current),
+      ready: tripPresenceReadyRef.current,
+      reason,
+      status: tripPresenceStatusRef.current,
+    });
+    if (tripPresenceReconnectRef.current) return;
+    tripPresenceReconnectRef.current = true;
+    setTripPresenceChannelVersion((current) => current + 1);
+  }, []);
+
   const publishTripPresence = useCallback((reason = "update") => {
     const channel = tripPresenceChannelRef.current;
     const payload = tripPresencePayloadRef.current;
+    const status = tripPresenceStatusRef.current;
     if (!channel || !tripPresenceReadyRef.current || !payload?.tripId || !payload?.userId || !payload?.pageKey) {
       tripPresenceDebug("track skipped", {
         reason,
         hasChannel: Boolean(channel),
         ready: tripPresenceReadyRef.current,
-        status: tripPresenceStatusRef.current,
+        status,
         payload: tripPresenceDebugPayload(payload),
       });
+      const shouldReconnect =
+        !channel || tripPresenceRecoverableStatuses.has(status) || (!tripPresenceReadyRef.current && status !== "creating");
+      if (payload?.tripId && payload?.userId && payload?.pageKey && shouldReconnect) {
+        if (reason === "heartbeat") {
+          tripPresenceDebug("heartbeat requested reconnect", {
+            hasChannel: Boolean(channel),
+            ready: tripPresenceReadyRef.current,
+            status,
+          });
+        }
+        requestTripPresenceReconnect(reason);
+      }
       return;
     }
     const nextPayload = { ...payload, updatedAt: new Date().toISOString() };
     tripPresencePayloadRef.current = nextPayload;
-    tripPresenceDebug("track payload", {
+    tripPresenceDebug("track latest payload", {
       payload: tripPresenceDebugPayload(nextPayload),
       reason,
     });
@@ -2244,7 +2273,7 @@ export default function App() {
           payload: tripPresenceDebugPayload(nextPayload),
         });
       });
-  }, []);
+  }, [requestTripPresenceReconnect]);
 
   const days = useMemo(() => tripDays(activeTrip), [activeTrip]);
   const todayDayIndex = useMemo(() => tripTodayIndex(activeTrip), [activeTrip]);
@@ -2741,6 +2770,11 @@ export default function App() {
     tripPresenceChannelRef.current = channel;
     tripPresenceReadyRef.current = false;
     tripPresenceStatusRef.current = "creating";
+    tripPresenceReconnectRef.current = false;
+    tripPresenceDebug("recreate channel", {
+      channelName,
+      version: tripPresenceChannelVersion,
+    });
     tripPresenceDebug("subscribe start", {
       channelName,
       sessionId,
@@ -2797,25 +2831,31 @@ export default function App() {
         tripPresenceDebug("subscribed", { channelName, status });
         if (status === "SUBSCRIBED") {
           tripPresenceReadyRef.current = true;
+          tripPresenceDebug("replay track after subscribed", {
+            payload: tripPresenceDebugPayload(tripPresencePayloadRef.current),
+            status,
+          });
           publishTripPresence("subscribed");
           syncTripPresence();
         }
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        if (tripPresenceRecoverableStatuses.has(status)) {
           tripPresenceReadyRef.current = false;
           if (tripPresenceChannelRef.current === channel) tripPresenceChannelRef.current = null;
+          requestTripPresenceReconnect(status);
         }
       });
 
     return () => {
+      const preserveRemotePresences = tripPresenceReconnectRef.current;
       if (tripPresenceChannelRef.current === channel) tripPresenceChannelRef.current = null;
       tripPresenceReadyRef.current = false;
-      setRemoteTripPresences([]);
+      if (!preserveRemotePresences) setRemoteTripPresences([]);
       Promise.resolve(channel.untrack()).catch((error) => {
         tripPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
       });
       void supabase.removeChannel(channel);
     };
-  }, [activeMembership?.status, activeTripId, activeUserId, publishTripPresence]);
+  }, [activeMembership?.status, activeTripId, activeUserId, publishTripPresence, requestTripPresenceReconnect, tripPresenceChannelVersion]);
 
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") return;
@@ -2844,6 +2884,41 @@ export default function App() {
     }, tripPresenceHeartbeatMs);
     return () => window.clearInterval(intervalId);
   }, [publishTripPresence]);
+
+  useEffect(() => {
+    if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") return undefined;
+    function recoverTripPresence(trigger) {
+      const channel = tripPresenceChannelRef.current;
+      const ready = tripPresenceReadyRef.current;
+      const status = tripPresenceStatusRef.current;
+      const needsReconnect = !channel || !ready || tripPresenceRecoverableStatuses.has(status);
+      tripPresenceDebug("focus/visibility recovery", {
+        hasChannel: Boolean(channel),
+        needsReconnect,
+        ready,
+        status,
+        trigger,
+      });
+      if (needsReconnect) {
+        requestTripPresenceReconnect(trigger);
+      } else {
+        publishTripPresence(trigger);
+      }
+    }
+    const handleFocus = () => recoverTripPresence("focus");
+    const handleOnline = () => recoverTripPresence("online");
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") recoverTripPresence("visible");
+    };
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeMembership?.status, activeTripId, activeUserId, publishTripPresence, requestTripPresenceReconnect]);
 
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
@@ -5265,7 +5340,7 @@ function exportTrip() {
             todayDayIndex={todayDayIndex}
             todayItems={todayItems}
             todoItems={todoItems}
-            timelinePresenceDotsByDay={timelinePresenceDotsByDay}
+            timelineDayTabPresenceByDay={timelineDayTabPresenceByDay}
             onActiveDay={setActiveDay}
             onAddPackItem={addPackItem}
             onApplyAlternative={applyAlternative}
@@ -8740,7 +8815,7 @@ function TripWorkspace(props) {
     todayDayIndex,
     todayItems,
     todoItems,
-    timelinePresenceDotsByDay,
+    timelineDayTabPresenceByDay,
     onActiveDay,
     onAddPackItem,
     onApplyAlternative,
@@ -8849,7 +8924,7 @@ function TripWorkspace(props) {
             days={days}
             layoutMode={isRouteLayoutCollapsed ? "collapsed" : "expanded"}
             onActiveDay={selectTimelineDay}
-            presenceDotsByDay={timelinePresenceDotsByDay}
+            dayTabPresenceByDay={timelineDayTabPresenceByDay}
           />
           <button
             className="ghost-button compact timeline-map-toggle"
@@ -9127,7 +9202,7 @@ function TodayMode({ canEdit, dayIndex, days, items, packItems, trip, onGoBudget
   );
 }
 
-function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay, presenceDotsByDay = new Map() }) {
+function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay, dayTabPresenceByDay = new Map() }) {
   const dragStateRef = useRef({ isDragging: false, startX: 0, scrollLeft: 0, moved: false, lastX: 0, lastTime: 0, velocity: 0 });
   const momentumFrameRef = useRef(null);
   const navRef = useRef(null);
@@ -9275,7 +9350,7 @@ function DayTabs({ activeDay, days, layoutMode = "expanded", onActiveDay, presen
       }}
     >
       {days.map((date, index) => {
-        const presences = presenceDotsByDay.get(index) || [];
+        const presences = dayTabPresenceByDay.get(index) || [];
         const firstPresence = presences[0] || null;
         return (
           <button

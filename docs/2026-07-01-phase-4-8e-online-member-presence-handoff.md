@@ -118,14 +118,19 @@ When `?debugPresence=1` is present, trip-level logs use a dedicated prefix:
 [trip-presence] subscribe skipped
 [trip-presence] subscribe start
 [trip-presence] subscribed
-[trip-presence] track payload
+[trip-presence] track latest payload
 [trip-presence] track skipped
 [trip-presence] track result
 [trip-presence] sync state
 [trip-presence] computed online members
-[trip-presence] computed day dots
+[trip-presence] computed day tab presence
 [trip-presence] avatar click navigation
 [trip-presence] stale filtered
+[trip-presence] reconnect requested reason
+[trip-presence] recreate channel
+[trip-presence] heartbeat requested reconnect
+[trip-presence] focus/visibility recovery
+[trip-presence] replay track after subscribed
 ```
 
 This is intentionally separate from `[drag-presence]` so 4.8c day-scoped drag logs and 4.8e trip-level online logs are not confused.
@@ -167,9 +172,11 @@ Primary implementation:
   - `tripPresencePageToSection`
   - `tripPresenceDebug()`
   - `tripPresencePayload`
+  - `tripPresenceRecoverableStatuses`
+  - `tripPresenceChannelVersion`
   - `remoteTripPresences`
   - `remoteTripPresenceByUser`
-  - `timelinePresenceDotsByDay`
+  - `timelineDayTabPresenceByDay`
   - `publishTripPresence(reason)`
   - trip-level `trip-presence:{activeTripId}` effect
   - `HeaderMemberPresencePreview`
