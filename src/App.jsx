@@ -129,6 +129,11 @@ function timelineDragPresenceDebug(label, details) {
   console.info(`[drag-presence] ${label}`, details);
 }
 
+function tripPresenceDebug(label, details) {
+  if (!timelineDragPresenceDebugEnabled()) return;
+  console.info(`[trip-presence] ${label}`, details);
+}
+
 function timelineDragPresenceDebugPayload(payload) {
   if (!payload) return null;
   return {
@@ -2167,7 +2172,7 @@ export default function App() {
       if (!entries.some((entry) => entry.userId === presence.userId) && entries.length < 3) entries.push(presence);
       byDay.set(dayIndex, entries);
     });
-    timelineDragPresenceDebug("day tab presence dots", {
+    tripPresenceDebug("computed day dots", {
       dots: Object.fromEntries([...byDay.entries()].map(([dayIndex, entries]) => [dayIndex, entries.map(tripPresenceDebugPayload)])),
     });
     return byDay;
@@ -2177,7 +2182,7 @@ export default function App() {
     (presence) => {
       if (!presence || presence.sessionId === timelineDragPresenceSessionIdRef.current || presence.userId === activeUserId) return;
       const section = tripPresencePageToSection[presence.pageKey];
-      timelineDragPresenceDebug("avatar click navigation", { payload: tripPresenceDebugPayload(presence), section });
+      tripPresenceDebug("avatar click navigation", { payload: tripPresenceDebugPayload(presence), section });
       if (!section) return;
       setActiveSection(section);
       if (presence.pageKey === "timeline" && Number.isInteger(Number(presence.dayIndex))) {
@@ -2203,24 +2208,38 @@ export default function App() {
   const publishTripPresence = useCallback((reason = "update") => {
     const channel = tripPresenceChannelRef.current;
     const payload = tripPresencePayloadRef.current;
-    if (!channel || !tripPresenceReadyRef.current || !payload?.tripId || !payload?.userId || !payload?.pageKey) return;
+    if (!channel || !tripPresenceReadyRef.current || !payload?.tripId || !payload?.userId || !payload?.pageKey) {
+      tripPresenceDebug("track skipped", {
+        reason,
+        hasChannel: Boolean(channel),
+        ready: tripPresenceReadyRef.current,
+        status: tripPresenceStatusRef.current,
+        payload: tripPresenceDebugPayload(payload),
+      });
+      return;
+    }
     const nextPayload = { ...payload, updatedAt: new Date().toISOString() };
     tripPresencePayloadRef.current = nextPayload;
-    timelineDragPresenceDebug("trip presence track", {
+    tripPresenceDebug("track payload", {
       payload: tripPresenceDebugPayload(nextPayload),
       reason,
     });
     Promise.resolve(channel.track(nextPayload))
       .then((result) => {
         if (result && result !== "ok") {
-          timelineDragPresenceDebug("trip presence track error", {
+          tripPresenceDebug("track error", {
             payload: tripPresenceDebugPayload(nextPayload),
             result,
+          });
+        } else {
+          tripPresenceDebug("track result", {
+            payload: tripPresenceDebugPayload(nextPayload),
+            result: result || "ok",
           });
         }
       })
       .catch((error) => {
-        timelineDragPresenceDebug("trip presence track error", {
+        tripPresenceDebug("track error", {
           message: error?.message || String(error),
           payload: tripPresenceDebugPayload(nextPayload),
         });
@@ -2703,6 +2722,11 @@ export default function App() {
 
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
+      tripPresenceDebug("subscribe skipped", {
+        activeTripId,
+        activeUserId,
+        membershipStatus: activeMembership?.status || null,
+      });
       setRemoteTripPresences([]);
       tripPresenceChannelRef.current = null;
       tripPresenceReadyRef.current = false;
@@ -2717,6 +2741,11 @@ export default function App() {
     tripPresenceChannelRef.current = channel;
     tripPresenceReadyRef.current = false;
     tripPresenceStatusRef.current = "creating";
+    tripPresenceDebug("subscribe start", {
+      channelName,
+      sessionId,
+      payload: tripPresenceDebugPayload(tripPresencePayloadRef.current),
+    });
 
     const syncTripPresence = () => {
       const now = Date.now();
@@ -2729,7 +2758,7 @@ export default function App() {
           const rawUpdatedAt = payload.updatedAt || "";
           const updatedAt = typeof rawUpdatedAt === "number" ? rawUpdatedAt : Date.parse(rawUpdatedAt);
           if (!Number.isFinite(updatedAt) || now - updatedAt > tripPresenceStaleMs) {
-            timelineDragPresenceDebug("trip presence stale filtered", {
+            tripPresenceDebug("stale filtered", {
               ageMs: Number.isFinite(updatedAt) ? now - updatedAt : null,
               payload: tripPresenceDebugPayload(payload),
             });
@@ -2742,9 +2771,19 @@ export default function App() {
       const nextPresences = [...bySession.values()].sort((left, right) =>
         String(left.userName || left.userId || "").localeCompare(String(right.userName || right.userId || "")),
       );
-      timelineDragPresenceDebug("trip presence sync state", {
+      tripPresenceDebug("sync state", {
         channelName,
+        rawPresenceKeys: Object.keys(state),
         presences: nextPresences.map(tripPresenceDebugPayload),
+      });
+      tripPresenceDebug("computed online members", {
+        count: nextPresences.length,
+        users: nextPresences.map((presence) => ({
+          userId: presence.userId,
+          userName: presence.userName,
+          pageKey: presence.pageKey,
+          dayIndex: presence.dayIndex,
+        })),
       });
       setRemoteTripPresences(nextPresences);
     };
@@ -2755,7 +2794,7 @@ export default function App() {
       .on("presence", { event: "leave" }, syncTripPresence)
       .subscribe((status) => {
         tripPresenceStatusRef.current = status;
-        timelineDragPresenceDebug("trip presence subscribed", { channelName, status });
+        tripPresenceDebug("subscribed", { channelName, status });
         if (status === "SUBSCRIBED") {
           tripPresenceReadyRef.current = true;
           publishTripPresence("subscribed");
@@ -2772,7 +2811,7 @@ export default function App() {
       tripPresenceReadyRef.current = false;
       setRemoteTripPresences([]);
       Promise.resolve(channel.untrack()).catch((error) => {
-        timelineDragPresenceDebug("trip presence track error", { message: error?.message || String(error), phase: "untrack" });
+        tripPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
       });
       void supabase.removeChannel(channel);
     };
@@ -2793,7 +2832,7 @@ export default function App() {
           const updatedAt = typeof rawUpdatedAt === "number" ? rawUpdatedAt : Date.parse(rawUpdatedAt);
           const isFresh = Number.isFinite(updatedAt) && now - updatedAt <= tripPresenceStaleMs;
           if (!isFresh) {
-            timelineDragPresenceDebug("trip presence stale filtered", {
+            tripPresenceDebug("stale filtered", {
               ageMs: Number.isFinite(updatedAt) ? now - updatedAt : null,
               payload: tripPresenceDebugPayload(payload),
             });
