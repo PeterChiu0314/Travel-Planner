@@ -15,6 +15,7 @@
 - `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
 - `docs/2026-07-01-phase-4-9-map-integration-prep.md`
 - `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`
+- `docs/2026-07-01-phase-4-9b-map-focus-surface-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
 
@@ -27,13 +28,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.9a Map Marker Contract - Implemented locally / Pending user review / No Migration
+Timeline Phase 4.9b Map Focus Surface - Implemented locally / Pending user review / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 4.9a establishes the provider-neutral marker data contract for future Google-first map integration. Next recommended step is Phase 4.9b Timeline card focus <-> Map marker/stop focus, still without route calculation, Google SDK, migration, or reorder/presence changes.
+Phase 4.9b makes Timeline card focus and RoutePanel stop/future marker focus explicit through provider-neutral helpers. Next recommended step is Phase 4.9c Google Map Provider Prep, still without route calculation, migration, reorder/presence changes, or bundle-loading the map SDK before the adapter boundary is approved.
 ```
 
 Branch:
@@ -338,6 +339,26 @@ New/updated files:
 - Added handoff `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`.
 - No Google Maps SDK, API key/env var, route calculation, map package, migration, RPC, reorder flow, dnd-kit structure, drag handle, collaborative presence, remote selection, online presence, transport role model, fixed-anchor planner, untimed rebase, or CSS layout change was made.
 
+### Phase 4.9b
+
+- Added provider-neutral focus helpers in `src/lib/timelineMapMarkers.js`.
+- Exported `buildRoutePanelStops(dayItems, options?)`.
+- Exported `getFocusedMapState(dayItems, markers, focusedItemId)`.
+- Exported `getTransportEndpointMarkerIds(dayItems, markers, transportItemOrId)`.
+- Destination focus now maps a Timeline destination card to the matching RoutePanel stop/future marker by marker id.
+- RoutePanel stop click still focuses the matching Timeline destination card through the existing local `focusedItemId` state.
+- Focused transportation cards now identify their `from_item_id` and `to_item_id` RoutePanel endpoint stops when those stops are available.
+- Tail-pending transportation with `to_item_id = null` highlights only the source stop and does not throw.
+- Missing transport endpoints do not throw and do not create placeholder markers.
+- RoutePanel uses the same provider-neutral stop/focus helpers and does not introduce Google-specific naming or SDK objects.
+- Added RoutePanel endpoint highlight classes:
+  - `route-stop-transport-endpoint`
+  - `route-stop-transport-from`
+  - `route-stop-transport-to`
+- The visible RoutePanel structure remains the existing `.route-map` / `.route-stop` placeholder surface.
+- `focusedItemId` remains local UI state only.
+- No database write, reorder RPC, drag preview, remote selection, drag presence, online presence, transport role model, Google Maps SDK, API key/env var, map package, route calculation, migration, or layout redesign was added.
+
 New/updated files:
 
 - `src/lib/timelineMapMarkers.js`
@@ -347,10 +368,12 @@ New/updated files:
 - `package.json`
 - `package-lock.json`
 - `tests/timelineMapMarkers.spec.js`
+- `tests/timelineMapFocus.spec.js`
 - `tests/phase-4-2c-reorder.spec.js`
 - `docs/BUGS.md`
 - `docs/2026-07-01-phase-4-9-map-integration-prep.md`
 - `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`
+- `docs/2026-07-01-phase-4-9b-map-focus-surface-handoff.md`
 - `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
 - `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
 - `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
@@ -554,6 +577,15 @@ git diff --check passed with Windows LF/CRLF notices only
 manual user verification pending
 ```
 
+Phase 4.9b map focus surface checks on 2026-07-01:
+
+```text
+npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js passed 9/9
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+manual user verification pending
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -594,4 +626,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 4.8f is accepted and handed off. Start Phase 4.9 Map integration only when explicitly requested, beginning with a read-only audit and implementation plan. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, remote preview reordering, or additional database changes.
+Phase 4.9b is implemented locally and pending user review. Next recommended step after review is Phase 4.9c Google Map Provider Prep: decide the provider adapter boundary and SDK loading plan before adding any Google Maps SDK, API key/env var, map package, route calculation, migration, or route cache fields. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, remote preview reordering, reorder/RPC changes, or additional database changes.

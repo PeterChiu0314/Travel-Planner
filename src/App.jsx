@@ -64,7 +64,7 @@ import {
   transportRoleForPayload,
   transportRoles,
 } from "./lib/timelineTransportationRoles.js";
-import { buildDayMapMarkers } from "./lib/timelineMapMarkers.js";
+import { buildRoutePanelStops, getFocusedMapState } from "./lib/timelineMapMarkers.js";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import {
   buildTimelineVisitDisplayOrder,
@@ -11947,7 +11947,8 @@ function MultiDayTimelineColumns({
 }
 
 function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
-  const stops = buildDayMapMarkers(sortedVisitItems(dayItems), { requireLocation: true });
+  const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
+  const focusedMapState = getFocusedMapState(dayItems, stops, focusedItemId);
   return (
     <section className="panel route-panel">
       <div className="panel-heading tight">
@@ -11959,17 +11960,27 @@ function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocus
       <div className="route-map">
         {stops.length ? <div className="route-line" /> : null}
         {stops.length ? (
-          stops.map((item, index) => (
-            <button
-              className={`route-stop${focusedItemId === item.itemId ? " focused" : ""}`}
-              key={item.id}
-              type="button"
-              onClick={() => onFocusItem(item.itemId)}
-            >
-              <span className="route-dot">{index + 1}</span>
-              <span className="route-name">{item.locationName}</span>
-            </button>
-          ))
+          stops.map((item, index) => {
+            const isFocusedStop = focusedMapState.focusedMarkerId === item.id;
+            const isTransportFrom = focusedMapState.transportEndpointMarkerIds.fromMarkerId === item.id;
+            const isTransportTo = focusedMapState.transportEndpointMarkerIds.toMarkerId === item.id;
+            const endpointClass = isTransportFrom
+              ? " route-stop-transport-endpoint route-stop-transport-from"
+              : isTransportTo
+                ? " route-stop-transport-endpoint route-stop-transport-to"
+                : "";
+            return (
+              <button
+                className={`route-stop${isFocusedStop ? " focused" : ""}${endpointClass}`}
+                key={item.id}
+                type="button"
+                onClick={() => onFocusItem(item.itemId)}
+              >
+                <span className="route-dot">{index + 1}</span>
+                <span className="route-name">{item.locationName}</span>
+              </button>
+            );
+          })
         ) : (
           <div className="timeline-empty">尚無路線</div>
         )}

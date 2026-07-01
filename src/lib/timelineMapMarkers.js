@@ -69,3 +69,74 @@ export function buildDayMapMarkers(dayItems = [], options = {}) {
     return markers;
   }, []);
 }
+
+export function buildRoutePanelStops(dayItems = [], options = {}) {
+  return buildDayMapMarkers(dayItems, options);
+}
+
+export function getTransportEndpointMarkerIds(dayItems = [], markers = [], transportItemOrId = null) {
+  const safeDayItems = Array.isArray(dayItems) ? dayItems : [];
+  const safeMarkers = Array.isArray(markers) ? markers : [];
+  const transportItem =
+    typeof transportItemOrId === "string"
+      ? safeDayItems.find((item) => nullableText(item?.id) === transportItemOrId)
+      : transportItemOrId;
+
+  if (!transportItem || !isTransportationItem(transportItem)) {
+    return {
+      fromItemId: null,
+      toItemId: null,
+      fromMarkerId: null,
+      toMarkerId: null,
+      markerIds: [],
+    };
+  }
+
+  const markerByItemId = new Map(safeMarkers.map((marker) => [marker.itemId, marker.id]));
+  const fromItemId = nullableText(transportItem.from_item_id);
+  const toItemId = nullableText(transportItem.to_item_id);
+  const fromMarkerId = fromItemId ? markerByItemId.get(fromItemId) || null : null;
+  const toMarkerId = toItemId ? markerByItemId.get(toItemId) || null : null;
+  const markerIds = [fromMarkerId, toMarkerId].filter(Boolean);
+
+  return {
+    fromItemId,
+    toItemId,
+    fromMarkerId,
+    toMarkerId,
+    markerIds,
+  };
+}
+
+export function getFocusedMapState(dayItems = [], markers = [], focusedItemId = null) {
+  const safeDayItems = Array.isArray(dayItems) ? dayItems : [];
+  const safeMarkers = Array.isArray(markers) ? markers : [];
+  const itemId = nullableText(focusedItemId);
+
+  if (!itemId) {
+    return {
+      focusedItemId: null,
+      focusedItemType: null,
+      focusedMarkerId: null,
+      transportEndpointMarkerIds: getTransportEndpointMarkerIds(safeDayItems, safeMarkers, null),
+    };
+  }
+
+  const focusedItem = safeDayItems.find((item) => nullableText(item?.id) === itemId);
+  if (isTransportationItem(focusedItem)) {
+    return {
+      focusedItemId: itemId,
+      focusedItemType: "transport",
+      focusedMarkerId: null,
+      transportEndpointMarkerIds: getTransportEndpointMarkerIds(safeDayItems, safeMarkers, focusedItem),
+    };
+  }
+
+  const focusedMarker = safeMarkers.find((marker) => marker.itemId === itemId) || null;
+  return {
+    focusedItemId: itemId,
+    focusedItemType: focusedMarker ? "destination" : null,
+    focusedMarkerId: focusedMarker?.id || null,
+    transportEndpointMarkerIds: getTransportEndpointMarkerIds(safeDayItems, safeMarkers, null),
+  };
+}
