@@ -11,6 +11,7 @@
 - `docs/2026-06-24-phase-4-5-hotfix-2-handoff.md`
 - `docs/2026-06-24-phase-4-5-hotfix-3-handoff.md`
 - `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
+- `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
 
@@ -23,13 +24,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.8c2 Collaborative Drag Presence Stabilization - Implemented / User Verified / Build Passed / No Migration
+Timeline Phase 4.8e Online Member Presence - Implemented / Build Passed / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 4.8c2 is closed for now. Continue with final documentation/merge prep, or start Phase 4.9 Map integration only if explicitly requested.
+Phase 4.8e is complete enough to hand off. Continue with final documentation/merge prep, optional debug-log cleanup after more manual verification, or start Phase 4.9 Map integration only if explicitly requested.
 ```
 
 Branch:
@@ -255,6 +256,44 @@ New/updated files:
 - Demo remains local/unauthenticated and has no Supabase Presence or Broadcast wiring.
 - No migration, new table, new package, reorder RPC change, Phase 4.7 fixed-anchor logic change, or brokenTransportIds logic change was made.
 
+### Phase 4.8d
+
+- Added collaborative Timeline card selection presence for authenticated Formal users.
+- Selection is broadcast-only and never writes to the database.
+- Destination card selection and transport card selection are supported.
+- Broadcast payload includes `itemType: "destination" | "transport"`.
+- Remote selected cards show a colored border/ring using the existing non-green 4.8d palette.
+- Remote user name labels appear only on hover/focus and are positioned at the lower-right card edge.
+- Local selection keeps the existing local UI and does not add a local border or self label.
+- Same-account different-tab testing still treats the other tab as foreign by comparing `sessionId`, not only `userId`.
+- Selection clears on Timeline blank click, Day switch, Timeline unmount, logout/trip change, and local drag start.
+- Foreign selections stale out after 30 seconds.
+- Multiple remote users selecting the same card collapse to the most recent foreign selection for this first version.
+- Selection does not block editing, deleting, adding, drag, read-only lock, or reorder.
+- Transport cards remain non-draggable and are not added to `SortableContext.items`.
+- Demo remains disconnected from Supabase presence/broadcast.
+- No migration, RPC, reorder flow, DragOverlay/preview sync, or package change was made.
+
+### Phase 4.8e
+
+- Added trip-level online member presence for authenticated Formal users.
+- Channel scope is `trip-presence:{tripId}`.
+- This trip-level channel does not replace the day-scoped `timeline-drag:{tripId}:{dayIndex}` channel.
+- Presence payload tracks `tripId`, `userId`, `userName`, `sessionId`, `colorKey`, `pageKey`, `dayIndex`, selected Timeline item metadata, and `updatedAt`.
+- Presence tracks on subscribe, supported page switch, Timeline Day switch, Timeline card selection, and a 28-second heartbeat.
+- Remote trip presence older than 55 seconds is filtered from UI.
+- Supported page keys include `overview`, `timeline`, `budget`, `accommodation`, `packing`, `settlement`, `settings`, and `todo`.
+- Clicking another online member's avatar navigates to their supported page, and to their Timeline Day when `pageKey = "timeline"`.
+- Own avatar does not jump and keeps the existing local style.
+- Remote online member avatars use a single 2px non-green color border that replaces the default gray border.
+- Day Tabs use a single 2px non-green color border when a remote online member is currently on that Timeline day.
+- The earlier Day Tab small-dot indicator was removed after visual testing.
+- Online presence is navigation-only and does not enable read-only lock, edit lock, drag lock, reorder behavior, or database writes.
+- Trip-level debug logs use `[trip-presence] ...`, separate from `[drag-presence] ...`, and remain gated behind `?debugPresence=1`.
+- `docs/BUGS.md` records `BUG-025` as a Known Issue / Low Priority: occasional foreign drag presence can still clear by stale timeout instead of immediate clear.
+- Demo remains local/unauthenticated and has no trip-level presence wiring.
+- No migration, RPC, reorder flow, DragOverlay/preview sync, schema change, database write, or package change was made.
+
 New/updated files:
 
 - `src/App.jsx`
@@ -263,6 +302,8 @@ New/updated files:
 - `package.json`
 - `package-lock.json`
 - `tests/phase-4-2c-reorder.spec.js`
+- `docs/BUGS.md`
+- `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
 - `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
 - `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
@@ -434,9 +475,21 @@ git diff --check passed with Windows LF/CRLF notice only after 4.8c2 channel lif
 Manual user verification passed for Phase 4.8c Presence + Broadcast repeated drag regression after CLOSED channel recovery.
 ```
 
+Phase 4.8d / 4.8e collaborative selection and online presence checks on 2026-07-01:
+
+```text
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8d" passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8e" passed
+npx.cmd playwright test tests/phase-4-5-untimed-ordering.spec.js passed for targeted untimed ordering regression coverage
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8d|untimed|mixed" passed where applicable
+npm.cmd run build passed
+git diff --check passed with Windows LF/CRLF notices only
+Manual user testing drove visual tuning for remote card selection labels, card selection border thickness, transport card selection support, online avatar border simplification, and Day Tab border display.
+```
+
 ## Protected Scope Preserved
 
-Phase 4.7 did not redesign or extend:
+Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -449,6 +502,8 @@ Phase 4.7 did not redesign or extend:
 - Google Map API or route calculation
 - cross-day scheduling
 - Demo isolation
+- schema/RPC/migration behavior
+- remote DragOverlay, ghost cards, preview order sync, scroll sync, or cursor sync
 
 ## Residual Risks
 
@@ -464,7 +519,11 @@ Phase 4.7 did not redesign or extend:
 - Phase 4.8c2 Realtime Broadcast delivery is best effort; the 12-second stale timeout is the fallback if a clear/update event is missed.
 - Phase 4.8c2 channel recreation handles observed `CLOSED` channel state, but future Realtime lifecycle changes should retest repeated same-trip/same-day drags in two tabs.
 - Phase 4.8c2 debug logs are gated behind `?debugPresence=1`. They are useful during rollout but expose ephemeral drag payload metadata in the browser console when enabled.
+- Phase 4.8d remote selection presence is intentionally visual-only. It can be missed or stale-filtered without affecting authoritative data.
+- Phase 4.8e trip-level online presence is best-effort Realtime UI state. Missing, delayed, or stale-filtered trip presence should not affect data correctness.
+- `BUG-025` remains Known Issue / Low Priority: foreign drag presence can occasionally clear by 12-second stale timeout instead of immediate clear, despite onDragEnd immediate clear mitigation.
+- Phase 4.8e Day Tab presence border shows a compact first-version representation using the first remote presence color for that day.
 
 ## Next Step
 
-Phase 4.8c2 is closed for now. Proceed with final merge/PR cleanup, optional debug-log cleanup, or Phase 4.9 Map integration only if explicitly requested. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, or additional database changes.
+Phase 4.8e is complete enough to hand off. Proceed with final merge/PR cleanup, optional debug-log cleanup after more manual verification, or Phase 4.9 Map integration only if explicitly requested. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, or additional database changes.
