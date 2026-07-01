@@ -13,6 +13,8 @@
 - `docs/2026-07-01-phase-4-8c2-collaborative-drag-presence-handoff.md`
 - `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
 - `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
+- `docs/2026-07-01-phase-4-9-map-integration-prep.md`
+- `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
 
@@ -25,19 +27,19 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.8f Remote Drag Visual Polish - User Verified / Pushed / No Migration
+Timeline Phase 4.9a Map Marker Contract - Implemented locally / Pending user review / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 4.8f is accepted. Continue to Phase 4.9 Map integration only when explicitly started. Begin Phase 4.9 with a read-only audit and implementation plan before changing map-related behavior.
+Phase 4.9a establishes the provider-neutral marker data contract for future Google-first map integration. Next recommended step is Phase 4.9b Timeline card focus <-> Map marker/stop focus, still without route calculation, Google SDK, migration, or reorder/presence changes.
 ```
 
 Branch:
 
 ```text
-codex/timeline-phase-4-8
+codex/timeline-phase-4-9
 ```
 
 ## Completed Scope
@@ -311,15 +313,44 @@ New/updated files:
 - No migration, RPC, reorder flow, Demo presence, Map integration, or data-flow change was made.
 - User verified Phase 4.8f as OK after the final visual tuning.
 
+### Phase 4.9
+
+- Completed Map Integration Prep as a read-only audit and implementation plan.
+- Added `docs/2026-07-01-phase-4-9-map-integration-prep.md`.
+- Current route/map surface is still `RoutePanel` + `.route-map`, not a real Google Map.
+- Formal and Demo share the relevant Timeline render path through `ItineraryTimeline`, `RoutePanel`, `DayTabs`, `MultiDayTimelineColumns`, and Timeline workspace CSS.
+- Existing schema already has `location_name`, `address`, `map_url`, `latitude`, and `longitude` on destination-bearing records, but Demo data mostly has null coordinates and there is no stable `place_id` / route polyline / route distance cache.
+- Phase 4.9 should stay Google-first at the product level while keeping Timeline and RoutePanel provider-neutral.
+
+### Phase 4.9a
+
+- Added a pure provider-neutral map marker helper at `src/lib/timelineMapMarkers.js`.
+- Exported `buildDayMapMarkers(dayItems, options?)`.
+- The helper converts active-day Timeline destination/visit items into marker records without mutating input.
+- Transportation cards are excluded from markers.
+- Marker order follows the input/visual order passed into the helper; the helper does not sort or rebase items.
+- Latitude/longitude strings are safely parsed into numbers when possible.
+- Missing or invalid coordinates become `null` and do not throw.
+- `hasCoordinates` is true only when both coordinates are finite numbers.
+- `provider` and `providerPlaceId` are neutral reserved fields for future Google-first / provider-switchable adapters.
+- `RoutePanel` now uses `buildDayMapMarkers(sortedVisitItems(dayItems), { requireLocation: true })` internally while preserving the existing route-stop UI and focus behavior.
+- Added source-level Playwright coverage in `tests/timelineMapMarkers.spec.js`.
+- Added handoff `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`.
+- No Google Maps SDK, API key/env var, route calculation, map package, migration, RPC, reorder flow, dnd-kit structure, drag handle, collaborative presence, remote selection, online presence, transport role model, fixed-anchor planner, untimed rebase, or CSS layout change was made.
+
 New/updated files:
 
+- `src/lib/timelineMapMarkers.js`
 - `src/App.jsx`
 - `src/styles.css`
 - `src/lib/timelineUntimedOrdering.js`
 - `package.json`
 - `package-lock.json`
+- `tests/timelineMapMarkers.spec.js`
 - `tests/phase-4-2c-reorder.spec.js`
 - `docs/BUGS.md`
+- `docs/2026-07-01-phase-4-9-map-integration-prep.md`
+- `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`
 - `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
 - `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
 - `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
@@ -512,6 +543,15 @@ npm.cmd run build passed
 git diff --check passed with Windows LF/CRLF notices only
 npx.cmd playwright test tests/phase-4-2c-reorder.spec.js --grep "Phase 4.8f|Phase 4.8c" passed 4/4
 Manual user verification passed for remote drag source card opacity/border, no soft shadow, and insertion line spacing.
+```
+
+Phase 4.9a map marker contract checks on 2026-07-01:
+
+```text
+npx.cmd playwright test tests/timelineMapMarkers.spec.js passed 5/5
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+manual user verification pending
 ```
 
 ## Protected Scope Preserved

@@ -64,6 +64,7 @@ import {
   transportRoleForPayload,
   transportRoles,
 } from "./lib/timelineTransportationRoles.js";
+import { buildDayMapMarkers } from "./lib/timelineMapMarkers.js";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import {
   buildTimelineVisitDisplayOrder,
@@ -11946,7 +11947,7 @@ function MultiDayTimelineColumns({
 }
 
 function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
-  const stops = sortedVisitItems(dayItems).filter((item) => item.location_name || item.location);
+  const stops = buildDayMapMarkers(sortedVisitItems(dayItems), { requireLocation: true });
   return (
     <section className="panel route-panel">
       <div className="panel-heading tight">
@@ -11960,13 +11961,13 @@ function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocus
         {stops.length ? (
           stops.map((item, index) => (
             <button
-              className={`route-stop${focusedItemId === item.id ? " focused" : ""}`}
+              className={`route-stop${focusedItemId === item.itemId ? " focused" : ""}`}
               key={item.id}
               type="button"
-              onClick={() => onFocusItem(item.id)}
+              onClick={() => onFocusItem(item.itemId)}
             >
               <span className="route-dot">{index + 1}</span>
-              <span className="route-name">{item.location_name || item.location}</span>
+              <span className="route-name">{item.locationName}</span>
             </button>
           ))
         ) : (
