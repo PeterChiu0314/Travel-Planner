@@ -809,6 +809,23 @@ test("Phase 4.8c drag presence recreates closed channels without removing on dra
   expect(appSource).not.toContain("removeChannel(channel);\n    }\n  }, []);");
 });
 
+test("Phase 4.8c drag presence clears immediately when local drag ends", () => {
+  expect(appSource).toContain("drag clear requested reason");
+  expect(appSource).toContain("broadcast clear sent reason");
+  expect(appSource).toContain("broadcast clear received");
+  expect(appSource).toContain("clear ignored reason");
+  expect(appSource).toContain("clear fallback local cleanup");
+  expect(appSource).toContain("drag end branch name");
+  expect(appSource).toContain('clearVisitDrag("cancel")');
+  expect(appSource).toContain("clearVisitDrag(`drag-end-${branch}`)");
+  expect(appSource).toContain('clearVisitDrag("drag-end-drop");\n    await commitVisitDrop(sourceItemId, targetItem, placement);');
+  expect(appSource).toContain("current.dragId === payload.dragId || current.sessionId === payload.sessionId");
+  expect(appSource).toContain("clearReason: payload.clearReason");
+  expect(appSource).toContain('clearVisitDrag("commit-untimed-plan")');
+  expect(appSource).toContain('branch: "timed-confirmation"');
+  expect(appSource).toContain('branch: "timed-rpc"');
+});
+
 test("Phase 4.8d remote card selection is broadcast-only and does not lock the day", () => {
   expect(appSource).toContain("timeline-card-selection-update");
   expect(appSource).toContain("timeline-card-selection-clear");

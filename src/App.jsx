@@ -119,6 +119,7 @@ function timelineDragPresenceDebugPayload(payload) {
     startedAt: payload.startedAt,
     lastSeenAt: payload.lastSeenAt,
     sentAt: payload.sentAt,
+    clearReason: payload.clearReason,
     overItemId: payload.overItemId,
     placement: payload.placement,
   };
@@ -2756,14 +2757,44 @@ export default function App() {
       })
       .on("broadcast", { event: "timeline-drag-clear" }, (message) => {
         const payload = message?.payload || null;
-        timelineDragPresenceDebug("broadcast received", {
+        timelineDragPresenceDebug("broadcast clear received", {
           channelName,
           event: "timeline-drag-clear",
           payload: timelineDragPresenceDebugPayload(payload),
         });
-        if (!payload || payload.sessionId === sessionId) return;
-        if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return;
-        setForeignDragPresence((current) => (!current || current.dragId === payload.dragId ? null : current));
+        if (!payload) {
+          timelineDragPresenceDebug("clear ignored reason", { channelName, reason: "empty-payload" });
+          return;
+        }
+        if (payload.sessionId === sessionId) {
+          timelineDragPresenceDebug("clear ignored reason", {
+            channelName,
+            payload: timelineDragPresenceDebugPayload(payload),
+            reason: "self",
+          });
+          return;
+        }
+        if (payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) {
+          timelineDragPresenceDebug("clear ignored reason", {
+            channelName,
+            expectedDayIndex: activeDay,
+            expectedTripId: activeTripId,
+            payload: timelineDragPresenceDebugPayload(payload),
+            reason: "scope-mismatch",
+          });
+          return;
+        }
+        setForeignDragPresence((current) => {
+          if (!current) return null;
+          if (current.dragId === payload.dragId || current.sessionId === payload.sessionId) return null;
+          timelineDragPresenceDebug("clear ignored reason", {
+            channelName,
+            current: timelineDragPresenceDebugPayload(current),
+            payload: timelineDragPresenceDebugPayload(payload),
+            reason: "drag-mismatch",
+          });
+          return current;
+        });
       })
       .on("broadcast", { event: "timeline-card-selection-update" }, (message) => {
         const payload = message?.payload || null;
@@ -2914,22 +2945,32 @@ export default function App() {
     return () => window.clearInterval(intervalId);
   }, [foreignCardSelection]);
 
-  const clearDragPresence = useCallback(() => {
+  const clearDragPresence = useCallback((reason = "manual") => {
     const currentPayload = localDragPresenceRef.current;
     const channel = timelineDragPresenceChannelRef.current;
     const channelStatus = timelineDragPresenceStatusRef.current;
     const channelReady = timelineDragPresenceReadyRef.current;
+    timelineDragPresenceDebug("drag clear requested reason", {
+      payload: timelineDragPresenceDebugPayload(currentPayload),
+      reason,
+      summary: timelineDragPresenceChannelSummary(channel, channelReady, channelStatus),
+    });
     if (channel && timelineDragPresenceReadyRef.current && currentPayload) {
+      timelineDragPresenceDebug("broadcast clear sent reason", {
+        payload: timelineDragPresenceDebugPayload(currentPayload),
+        reason,
+      });
       broadcastTimelineDragPresence(
         channel,
         "timeline-drag-clear",
-        { ...timelineDragPresenceBasePayload(currentPayload), sentAt: new Date().toISOString() },
+        { ...timelineDragPresenceBasePayload(currentPayload), clearReason: reason, sentAt: new Date().toISOString() },
         "broadcast clear",
       );
     } else if (currentPayload) {
-      timelineDragPresenceDebug("track skipped reason", {
+      timelineDragPresenceDebug("clear fallback local cleanup", {
         phase: "clear",
         reason: !channel ? "missing-channel" : !channelReady ? "channel-not-ready" : "no-payload",
+        requestedReason: reason,
         summary: timelineDragPresenceChannelSummary(channel, channelReady, channelStatus),
       });
     }
@@ -4395,7 +4436,7 @@ export default function App() {
       return { ok: false, errorMessage };
     }
 
-    const shouldApplyUntimedBeforeRpc = !timedAutoContinuation;
+    const shouldApplyUntimedBeforeRpc = !timedAutoContinuation || !hasTimedReorder;
     const untimedUpdateResult = shouldApplyUntimedBeforeRpc
       ? await applyItineraryTimeContinuation(untimedSortOrderUpdates)
       : { ok: true, applied: [] };
@@ -9116,13 +9157,13 @@ function ItineraryTimeline({
   );
 
   useEffect(() => {
-    clearVisitDrag();
+    clearVisitDrag("scope-change");
   }, [activeDay, activeTrip?.id]);
 
   useEffect(() => {
     if (!draggedVisitId) return undefined;
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") clearVisitDrag();
+      if (event.key === "Escape") clearVisitDrag("escape");
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -9250,7 +9291,8 @@ function ItineraryTimeline({
   }
 
   function handleSortableDragCancel() {
-    clearVisitDrag();
+    timelineDragPresenceDebug("drag end branch name", { branch: "cancel" });
+    clearVisitDrag("cancel");
   }
 
   async function handleSortableDragEnd(event) {
@@ -9259,9 +9301,13 @@ function ItineraryTimeline({
     const targetItem = dayItems.find((item) => item.id === targetItemId);
     const placement = sortableDropIntent(sourceItemId, targetItemId);
     if (!sourceItemId || !targetItem || !placement || sourceItemId === targetItemId) {
-      clearVisitDrag();
+      const branch = sourceItemId && sourceItemId === targetItemId ? "noop" : "invalid";
+      timelineDragPresenceDebug("drag end branch name", { branch, sourceItemId, targetItemId });
+      clearVisitDrag(`drag-end-${branch}`);
       return;
     }
+    timelineDragPresenceDebug("drag end branch name", { branch: "drop", placement, sourceItemId, targetItemId });
+    clearVisitDrag("drag-end-drop");
     await commitVisitDrop(sourceItemId, targetItem, placement);
   }
 
@@ -9301,22 +9347,23 @@ function ItineraryTimeline({
     setDragTarget({ disabled: false, itemId: item.id, placement });
   }
 
-  function clearVisitDrag() {
+  function clearVisitDrag(reason = "manual") {
     setDraggedVisitId(null);
     setDragOverlaySize(null);
     setDragTarget(null);
     lastDndOverIdRef.current = null;
-    if (typeof onClearDragPresence === "function") onClearDragPresence();
+    if (typeof onClearDragPresence === "function") onClearDragPresence(reason);
   }
 
   async function commitVisitDrop(sourceItemId, targetItem, placement) {
     if (!sourceItemId || sourceItemId === targetItem.id) {
-      clearVisitDrag();
+      clearVisitDrag("commit-noop");
       return;
     }
     const sourceItem = dayItems.find((item) => item.id === sourceItemId);
     if (!sourceItem || !canTargetDraggedVisit(targetItem, sourceItem.id)) {
-      clearVisitDrag();
+      timelineDragPresenceDebug("drag end branch name", { branch: "invalid-target", sourceItemId, targetItemId: targetItem.id });
+      clearVisitDrag("commit-invalid-target");
       return;
     }
     if (isUntimedVisit(sourceItem)) {
@@ -9326,12 +9373,16 @@ function ItineraryTimeline({
         sourceItemId: sourceItem.id,
         targetItemId: targetItem.id,
       });
-      clearVisitDrag();
+      clearVisitDrag("commit-untimed-plan");
       if (!plan.ok) {
+        timelineDragPresenceDebug("drag end branch name", { branch: "untimed-blocked", errorCode: plan.errorCode });
         setUntimedDropNotice(untimedOrderingErrorMessage(plan.errorCode));
         return;
       }
-      if (plan.noOp) return;
+      if (plan.noOp) {
+        timelineDragPresenceDebug("drag end branch name", { branch: "untimed-noop" });
+        return;
+      }
       if (typeof onReorderUntimedVisit !== "function") {
         setUntimedDropNotice("未設定時間行程移動失敗，請稍後再試。");
         return;
@@ -9349,9 +9400,11 @@ function ItineraryTimeline({
         updatedAt: sourceItem.updated_at,
       };
       if (transportBaselines.length) {
+        timelineDragPresenceDebug("drag end branch name", { branch: "untimed-confirmation", transportCount: transportBaselines.length });
         setReorderPreview(untimedReorder);
         return;
       }
+      timelineDragPresenceDebug("drag end branch name", { branch: "untimed-rpc" });
       setIsReorderingUntimed(true);
       const result = await onReorderUntimedVisit(untimedReorder);
       if (!result?.ok) setUntimedDropNotice(result?.errorMessage || "未設定時間行程移動失敗，請稍後再試。");
@@ -9360,7 +9413,8 @@ function ItineraryTimeline({
       return;
     }
     if (!sourceItem || !canDragReorderVisit(sourceItem) || typeof onReorderDestinationPackages !== "function") {
-      clearVisitDrag();
+      timelineDragPresenceDebug("drag end branch name", { branch: "timed-blocked" });
+      clearVisitDrag("commit-timed-blocked");
       return;
     }
     const mixedPlan = planMixedTimedVisitReorder({
@@ -9371,7 +9425,8 @@ function ItineraryTimeline({
     });
     if (!mixedPlan.ok) {
       setFixedNotice(destinationReorderErrorMessage({ message: mixedPlan.errorCode }));
-      clearVisitDrag();
+      timelineDragPresenceDebug("drag end branch name", { branch: "timed-mixed-blocked", errorCode: mixedPlan.errorCode });
+      clearVisitDrag("commit-timed-mixed-blocked");
       return;
     }
     const { brokenTransportIds = [], packageSourceItemIds, slotItemIds, untimedSortOrderUpdates } = mixedPlan;
@@ -9385,7 +9440,8 @@ function ItineraryTimeline({
     });
     if (!previewPlan.ok) {
       setFixedNotice(destinationReorderErrorMessage({ message: previewPlan.errorCode }));
-      clearVisitDrag();
+      timelineDragPresenceDebug("drag end branch name", { branch: "timed-preview-blocked", errorCode: previewPlan.errorCode });
+      clearVisitDrag("commit-timed-preview-blocked");
       return;
     }
     const finalUntimedSortOrderUpdates = previewPlan.convertedSlotIds?.length
@@ -9410,11 +9466,16 @@ function ItineraryTimeline({
       transportBaselines: explicitTransportBaselines,
       untimedSortOrderUpdates: finalUntimedSortOrderUpdates,
     };
-    clearVisitDrag();
     if (previewPlan.deletedTransportIds.length || explicitTransportBaselines.length) {
+      timelineDragPresenceDebug("drag end branch name", {
+        branch: "timed-confirmation",
+        deletedTransportCount: previewPlan.deletedTransportIds.length,
+        transportCount: explicitTransportBaselines.length,
+      });
       setReorderPreview(timedReorder);
       return;
     }
+    timelineDragPresenceDebug("drag end branch name", { branch: "timed-rpc" });
     setIsReorderingDestination(true);
     const result = await onReorderDestinationPackages(timedReorder);
     if (!result?.ok) setFixedNotice(result?.errorMessage || destinationReorderErrorMessage(result?.error));
