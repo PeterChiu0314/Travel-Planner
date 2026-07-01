@@ -784,7 +784,8 @@ test("Phase 4.8c foreign drag presence makes only the active formal day read-onl
   expect(appSource).toContain("const canMutateThisDay = canEdit && !foreignSameDayDragActive");
   expect(appSource).toContain("正在拖曳，暫時鎖定此日編輯");
   expect(appSource).toContain("此日行程正在被其他成員調整，請稍後再儲存。");
-  expect(appSource).toContain("if (foreignSameDayDragActive) {\n      setTimeError(foreignDragSaveBlockedMessage);");
+  expect(appSource).toContain("if (foreignSameDayDragActive)");
+  expect(appSource).toContain("setTimeError(foreignDragSaveBlockedMessage);");
   expect(appSource).toContain("disabled={!canMutateThisDay}");
   expect(appSource).toContain("disabled={!canMutateThisDay || lockedByOther}");
   expect(appSource).toContain("disabled={!canMutateThisDay || !canRequestAutoContinuation}");
@@ -793,6 +794,23 @@ test("Phase 4.8c foreign drag presence makes only the active formal day read-onl
   expect(appSource).toContain("foreignSameDayDragActive={foreignSameDayDragActive}");
   expect(appSource).toContain("foreignSameDayDragActive={Boolean(foreignDragPresence)}");
   expect(appSource).not.toContain("foreignSameDayDragActive={true}");
+});
+
+test("Phase 4.8f foreign drag source highlight stays visual-only", () => {
+  expect(appSource).toContain("foreignDragSourceItemId");
+  expect(appSource).toContain("isForeignDragSource");
+  expect(appSource).toContain("timeline-item-remote-drag-source");
+  expect(appSource).toContain("--timeline-remote-drag-color");
+  expect(appSource).toContain("style={isForeignDragSource ? foreignDragStyle : remoteSelectionStyle}");
+  expect(appSource).toContain('className="timeline-remote-insertion-line"');
+  expect(appSource).toContain("!foreignSameDayDragActive &&");
+  expect(stylesSource).toContain(".timeline-item.timeline-item-remote-drag-source");
+  expect(stylesSource).toContain(".timeline-item.focused.timeline-item-remote-drag-source");
+  expect(stylesSource).toContain(".timeline-remote-insertion-line");
+  expect(stylesSource).toContain("opacity: 0.56");
+  expect(stylesSource).toContain("opacity: 0.7");
+  expect(appSource).not.toContain("remoteDragOverlay");
+  expect(appSource).not.toContain("foreignPreviewOrder");
 });
 
 test("Phase 4.8c drag presence recreates closed channels without removing on drag cleanup", () => {
@@ -818,7 +836,8 @@ test("Phase 4.8c drag presence clears immediately when local drag ends", () => {
   expect(appSource).toContain("drag end branch name");
   expect(appSource).toContain('clearVisitDrag("cancel")');
   expect(appSource).toContain("clearVisitDrag(`drag-end-${branch}`)");
-  expect(appSource).toContain('clearVisitDrag("drag-end-drop");\n    await commitVisitDrop(sourceItemId, targetItem, placement);');
+  expect(appSource).toContain('clearVisitDrag("drag-end-drop")');
+  expect(appSource).toContain("await commitVisitDrop(sourceItemId, targetItem, placement);");
   expect(appSource).toContain("current.dragId === payload.dragId || current.sessionId === payload.sessionId");
   expect(appSource).toContain("clearReason: payload.clearReason");
   expect(appSource).toContain('clearVisitDrag("commit-untimed-plan")');

@@ -9563,6 +9563,20 @@ function ItineraryTimeline({
   const foreignDragUserName = foreignDragPresence?.userName || (foreignDragMember ? memberName(foreignDragMember) : "其他成員");
   const foreignDragOverItemId = foreignSameDayDragActive ? foreignDragPresence?.overItemId : null;
   const foreignDragPlacement = foreignSameDayDragActive ? foreignDragPresence?.placement : null;
+  const foreignDragSourceItemId = foreignSameDayDragActive ? foreignDragPresence?.itemId : null;
+  const foreignDragColor = foreignSameDayDragActive
+    ? timelineCardSelectionColor(
+        timelineCardSelectionColorKey(
+          foreignDragPresence?.sessionId || foreignDragPresence?.userId || foreignDragPresence?.dragId,
+        ),
+      )
+    : "";
+  const foreignDragStyle = foreignDragColor
+    ? {
+        "--timeline-remote-drag-color": foreignDragColor,
+        "--timeline-remote-drag-color-soft": `${foreignDragColor}22`,
+      }
+    : undefined;
   const visibleForeignCardSelection =
     !foreignSameDayDragActive &&
     foreignCardSelection &&
@@ -11527,6 +11541,7 @@ function ItineraryTimeline({
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
             const isDragEnabled = canDragVisit(item);
             const isDisabledDragTarget = dragTarget?.itemId === item.id && dragTarget.disabled;
+            const isForeignDragSource = foreignDragSourceItemId === item.id;
             const remoteSelection = visibleForeignCardSelection?.itemId === item.id ? visibleForeignCardSelection : null;
             const remoteSelectionColor = remoteSelection ? timelineCardSelectionColor(remoteSelection.colorKey) : "";
             const remoteSelectionStyle = remoteSelection
@@ -11543,7 +11558,7 @@ function ItineraryTimeline({
             <Fragment key={item.id}>
             <SortableTimelineEntry disabled={!isDragEnabled} hasFlowAttachments={hasAttachedTransportFlow} id={item.id}>
             {foreignDragOverItemId === item.id && foreignDragPlacement === "before" ? (
-              <div className="timeline-remote-insertion-line" aria-hidden="true" />
+              <div className="timeline-remote-insertion-line" aria-hidden="true" style={foreignDragStyle} />
             ) : null}
             {isEditingVisitHere ? (
               renderVisitEditorForm()
@@ -11553,11 +11568,13 @@ function ItineraryTimeline({
                 isItemFixed ? " fixed" : ""
               }${isDragEnabled ? " drag-enabled" : ""}${draggedVisitId === item.id ? " dragging" : ""}${
                 isDisabledDragTarget ? " drag-target-disabled" : ""
-              }${remoteSelection ? " timeline-item-remote-selected" : ""}`}
+              }${remoteSelection ? " timeline-item-remote-selected" : ""}${
+                isForeignDragSource ? " timeline-item-remote-drag-source" : ""
+              }`}
               data-dnd-overlay-source={draggedVisitId === item.id ? "true" : undefined}
               data-remote-selection-label={remoteSelection?.userName || undefined}
               data-timing={isTimedVisit(item) ? "timed" : "untimed"}
-              style={remoteSelectionStyle}
+              style={isForeignDragSource ? foreignDragStyle : remoteSelectionStyle}
               title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
               onClick={() => {
                 setExpandedId(expandedId === item.id ? null : item.id);
@@ -11738,7 +11755,7 @@ function ItineraryTimeline({
               </TimelineFlowAttachment>
             ) : null}
             {foreignDragOverItemId === item.id && foreignDragPlacement === "after" ? (
-              <div className="timeline-remote-insertion-line" aria-hidden="true" />
+              <div className="timeline-remote-insertion-line" aria-hidden="true" style={foreignDragStyle} />
             ) : null}
             </SortableTimelineEntry>
             {isAddingTransportHere ? renderTransportEditorForm() : null}

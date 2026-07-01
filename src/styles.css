@@ -2908,10 +2908,12 @@ textarea {
 }
 
 .timeline-remote-insertion-line {
-  height: 2px;
-  margin: 4px 10px;
+  height: 3px;
+  margin: 10px 12px;
   border-radius: 999px;
-  background: rgba(47, 143, 114, 0.34);
+  background: var(--timeline-remote-drag-color, #2f8f72);
+  box-shadow: 0 0 0 2px var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14));
+  opacity: 0.7;
 }
 
 .timeline-item.drag-target-disabled {
@@ -3210,6 +3212,14 @@ textarea {
 .timeline-item.focused {
   border-color: var(--mint);
   box-shadow: inset 4px 0 0 var(--mint), var(--shadow);
+}
+
+.timeline-item.timeline-item-remote-drag-source,
+.timeline-item.focused.timeline-item-remote-drag-source {
+  border: 2px solid var(--timeline-remote-drag-color, #2f8f72);
+  background: linear-gradient(0deg, var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), transparent), #fff;
+  box-shadow: 0 0 0 2px var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), var(--shadow);
+  opacity: 0.56;
 }
 
 .time-block {
