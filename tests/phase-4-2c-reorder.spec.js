@@ -780,6 +780,21 @@ test("Phase 4.8a dnd-kit local sortable ghost preview stays UI-only", () => {
   expect(fixedAnchorContinuationMigration).not.toContain("DragOverlay");
 });
 
+test("Phase 4.8c foreign drag presence makes only the active formal day read-only", () => {
+  expect(appSource).toContain("const canMutateThisDay = canEdit && !foreignSameDayDragActive");
+  expect(appSource).toContain("正在拖曳，暫時鎖定此日編輯");
+  expect(appSource).toContain("此日行程正在被其他成員調整，請稍後再儲存。");
+  expect(appSource).toContain("if (foreignSameDayDragActive) {\n      setTimeError(foreignDragSaveBlockedMessage);");
+  expect(appSource).toContain("disabled={!canMutateThisDay}");
+  expect(appSource).toContain("disabled={!canMutateThisDay || lockedByOther}");
+  expect(appSource).toContain("disabled={!canMutateThisDay || !canRequestAutoContinuation}");
+  expect(appSource).toContain("if (!canMutateThisDay || isOpen || !nextItem");
+  expect(appSource).toContain("if (!canMutateThisDay || isOpen || !previousItem");
+  expect(appSource).toContain("foreignSameDayDragActive={foreignSameDayDragActive}");
+  expect(appSource).toContain("foreignSameDayDragActive={Boolean(foreignDragPresence)}");
+  expect(appSource).not.toContain("foreignSameDayDragActive={true}");
+});
+
 test("Phase 4.8b demo timeline fixtures model formal transportation roles", () => {
   expect(appSource).toContain("createDemoTransportFixture");
   expect(appSource).toContain("createDemoTransportFixtures");

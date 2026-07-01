@@ -8736,6 +8736,11 @@ function ItineraryTimeline({
   const foreignDragUserName = foreignDragPresence?.userName || (foreignDragMember ? memberName(foreignDragMember) : "其他成員");
   const foreignDragOverItemId = foreignSameDayDragActive ? foreignDragPresence?.overItemId : null;
   const foreignDragPlacement = foreignSameDayDragActive ? foreignDragPresence?.placement : null;
+  const canMutateThisDay = canEdit && !foreignSameDayDragActive;
+  const foreignDragReadOnlyMessage = foreignSameDayDragActive
+    ? `${foreignDragUserName} 正在拖曳，暫時鎖定此日編輯。`
+    : "";
+  const foreignDragSaveBlockedMessage = "此日行程正在被其他成員調整，請稍後再儲存。";
   const activeEditorGuardId = `timeline:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
@@ -8793,8 +8798,7 @@ function ItineraryTimeline({
 
   function canDragReorderVisit(item) {
     return (
-      canEdit &&
-      !foreignSameDayDragActive &&
+      canMutateThisDay &&
       !hasBlockingTimelineEditor &&
       !isReorderingDestination &&
       isTimedVisit(item) &&
@@ -8805,8 +8809,7 @@ function ItineraryTimeline({
 
   function canDragUntimedVisit(item) {
     return (
-      canEdit &&
-      !foreignSameDayDragActive &&
+      canMutateThisDay &&
       !hasBlockingTimelineEditor &&
       !isReorderingDestination &&
       !isReorderingUntimed &&
@@ -9083,6 +9086,10 @@ function ItineraryTimeline({
 
   async function confirmMoveReorder() {
     if (!reorderPreview) return;
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragSaveBlockedMessage);
+      return;
+    }
     if (reorderPreview.kind === "untimed") {
       if (typeof onReorderUntimedVisit !== "function") return;
       setIsReorderingUntimed(true);
@@ -9154,6 +9161,10 @@ function ItineraryTimeline({
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
   async function openNewItem() {
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
@@ -9184,6 +9195,10 @@ function ItineraryTimeline({
   }
 
   async function openNewTransport(previousItem, nextItem) {
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
@@ -9226,6 +9241,10 @@ function ItineraryTimeline({
   }
 
   async function openEditItem(item) {
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
@@ -9315,6 +9334,10 @@ function ItineraryTimeline({
   async function saveCurrentEditor(formData = new FormData(), options = {}) {
     const itemType = String(formData.get("item_type") ?? form.item_type ?? "visit");
     const editingItem = editingId ? dayItems.find((item) => item.id === editingId) : null;
+    if (foreignSameDayDragActive) {
+      setTimeError(foreignDragSaveBlockedMessage);
+      return false;
+    }
     if (isEffectiveFixedVisit(editingItem)) {
       setTimeError("此行程已固定，請先解鎖後再修改。");
       return false;
@@ -9498,6 +9521,10 @@ function ItineraryTimeline({
 
   async function confirmBrokenTransportationPairDeletion() {
     if (!transportPairConflict?.transportItem || isResolvingTransportPairConflict) return;
+    if (foreignSameDayDragActive) {
+      setTimeError(foreignDragSaveBlockedMessage);
+      return;
+    }
     setIsResolvingTransportPairConflict(true);
     await saveCurrentEditor(new FormData(), {
       requestAutoContinuation: Boolean(transportPairConflict.continuationRequested),
@@ -9514,6 +9541,10 @@ function ItineraryTimeline({
 
   async function saveWithAutoContinuation() {
     if (!autoContinuationPrompt?.plan?.canAutoContinue || isSavingAutoContinuation) return;
+    if (foreignSameDayDragActive) {
+      setTimeError(foreignDragSaveBlockedMessage);
+      return;
+    }
     setIsSavingAutoContinuation(true);
     await saveCurrentEditor(new FormData(), {
       skipAutoContinuation: true,
@@ -9524,6 +9555,10 @@ function ItineraryTimeline({
   }
 
   async function requestAutoContinuation(event) {
+    if (foreignSameDayDragActive) {
+      setTimeError(foreignDragSaveBlockedMessage);
+      return;
+    }
     await saveCurrentEditor(new FormData(event.currentTarget.form), { requestAutoContinuation: true });
   }
 
@@ -9640,6 +9675,13 @@ function ItineraryTimeline({
   }
 
   async function flipAlternativeFace(item, alternative) {
+    if (foreignSameDayDragActive) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [item.id]: foreignDragSaveBlockedMessage,
+      }));
+      return;
+    }
     if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
@@ -9666,6 +9708,13 @@ function ItineraryTimeline({
   }
 
   async function saveAlternativeForm(item, alternative) {
+    if (foreignSameDayDragActive) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [item.id]: foreignDragSaveBlockedMessage,
+      }));
+      return;
+    }
     if (isEffectiveFixedVisit(item)) {
       setAlternativeErrorByItem((current) => ({
         ...current,
@@ -9710,6 +9759,13 @@ function ItineraryTimeline({
 
   async function deleteAlternative(itemId, alternativeId) {
     const parentItem = dayItems.find((item) => item.id === itemId);
+    if (foreignSameDayDragActive) {
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [itemId]: foreignDragSaveBlockedMessage,
+      }));
+      return;
+    }
     if (isEffectiveFixedVisit(parentItem)) {
       setAlternativeErrorByItem((current) => ({
         ...current,
@@ -9743,6 +9799,10 @@ function ItineraryTimeline({
   }
 
   function requestDeleteItem(item) {
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     if (isEffectiveFixedVisit(item)) {
       setFixedNotice("此行程已固定，請先解鎖後再修改。");
       return;
@@ -9752,6 +9812,10 @@ function ItineraryTimeline({
 
   async function toggleItemFixed(item) {
     if (!item || isTransportationCard(item) || typeof onToggleItemFixed !== "function") return;
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragReadOnlyMessage);
+      return;
+    }
     if (!isTimedVisit(item)) {
       setFixedNotice("未設定完整時間的行程不能固定。");
       return;
@@ -9772,6 +9836,11 @@ function ItineraryTimeline({
 
   async function confirmDeleteTarget() {
     if (!deleteTarget) return;
+    if (foreignSameDayDragActive) {
+      setFixedNotice(foreignDragSaveBlockedMessage);
+      setDeleteTarget(null);
+      return;
+    }
     const target = deleteTarget;
     setDeleteTarget(null);
     await onDeleteItem(target.id);
@@ -9793,13 +9862,18 @@ function ItineraryTimeline({
         <input name="to_snapshot_end_time" type="hidden" value={form.to_snapshot_end_time || ""} />
         <input name="to_snapshot_destination" type="hidden" value={form.to_snapshot_destination || ""} />
         {conflict ? <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} /> : null}
+        {foreignSameDayDragActive ? (
+          <div className="notice inline-error" role="alert">
+            <span>{foreignDragSaveBlockedMessage}</span>
+          </div>
+        ) : null}
         <div className="transport-editor-heading">
           <span className="transport-icon" aria-hidden="true">
             {transportCategoryMeta(category).icon}
           </span>
           <strong>{transportCardTitle(form) || "新增交通資訊"}</strong>
           <div className="transport-editor-actions">
-            <button className="primary-button compact" type="submit">
+            <button className="primary-button compact" disabled={!canMutateThisDay} type="submit">
               ✓ 保存
             </button>
             <button className="mini-button" type="button" onClick={() => closeEditor()}>
@@ -9955,7 +10029,7 @@ function ItineraryTimeline({
               {isGeneralWarning ? (
                 <button
                   className="mini-button"
-                  disabled={!canEdit || lockedByOther}
+                  disabled={!canMutateThisDay || lockedByOther}
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -9967,7 +10041,7 @@ function ItineraryTimeline({
               ) : null}
               <button
                 className="mini-button"
-                disabled={!canEdit || lockedByOther}
+                disabled={!canMutateThisDay || lockedByOther}
                 type="button"
                 title="編輯"
                 onClick={(event) => {
@@ -9979,7 +10053,7 @@ function ItineraryTimeline({
               </button>
               <button
                 className="mini-button"
-                disabled={!canEdit}
+                disabled={!canMutateThisDay}
                 type="button"
                 title="刪除"
                 onClick={(event) => {
@@ -9997,7 +10071,7 @@ function ItineraryTimeline({
   }
 
   function renderTransportInsert(previousItem, nextItem) {
-    if (!canEdit || isOpen || !nextItem || isTransportationCard(previousItem) || isTransportationCard(nextItem)) return null;
+    if (!canMutateThisDay || isOpen || !nextItem || isTransportationCard(previousItem) || isTransportationCard(nextItem)) return null;
     if (adjacentTransportByPair[transportPairKey(previousItem.id, nextItem.id)]) return null;
     return (
       <button
@@ -10015,7 +10089,7 @@ function ItineraryTimeline({
   }
 
   function renderTailTransportInsert(previousItem) {
-    if (!canEdit || isOpen || !previousItem || isTransportationCard(previousItem)) return null;
+    if (!canMutateThisDay || isOpen || !previousItem || isTransportationCard(previousItem)) return null;
     if (tailTransportByFrom[previousItem.id]) return null;
     return (
       <button
@@ -10043,6 +10117,11 @@ function ItineraryTimeline({
         {timeError ? (
           <div className="notice inline-error" role="alert">
             <span>{timeError}</span>
+          </div>
+        ) : null}
+        {foreignSameDayDragActive ? (
+          <div className="notice inline-error" role="alert">
+            <span>{foreignDragSaveBlockedMessage}</span>
           </div>
         ) : null}
         <div className="field-group form-grid wide single destination-field">
@@ -10171,7 +10250,7 @@ function ItineraryTimeline({
           {editingId && !isTransportEditor ? (
             <button
               className="ghost-button compact"
-              disabled={!canRequestAutoContinuation}
+              disabled={!canMutateThisDay || !canRequestAutoContinuation}
               title={crossesFixedVisitForContinuation ? "跨越固定行程時無法接續。" : undefined}
               type="button"
               onClick={requestAutoContinuation}
@@ -10179,7 +10258,7 @@ function ItineraryTimeline({
               接續
             </button>
           ) : null}
-          <button className="primary-button compact" type="submit">
+          <button className="primary-button compact" disabled={!canMutateThisDay} type="submit">
             儲存
           </button>
         </div>
@@ -10244,7 +10323,7 @@ function ItineraryTimeline({
           <button className="ghost-button compact" type="button" onClick={() => cancelAlternativeFace(item.id, Boolean(alternative))}>
             取消
           </button>
-          <button className="primary-button compact" disabled={!canEdit || !formValue.location_name.trim()} type="submit">
+          <button className="primary-button compact" disabled={!canMutateThisDay || !formValue.location_name.trim()} type="submit">
             儲存備案
           </button>
         </div>
@@ -10257,7 +10336,7 @@ function ItineraryTimeline({
     const alternativeFlipButton = !isEffectiveFixedVisit(item) ? (
       <button
         className="alternative-flip-button"
-        disabled={!canEdit}
+        disabled={!canMutateThisDay}
         type="button"
         title={alternative ? "Toggle primary / alternative" : "Create alternative"}
         aria-label={alternative ? "切換原行程與備案" : "建立備案"}
@@ -10290,7 +10369,7 @@ function ItineraryTimeline({
               {alternative && !isEffectiveFixedVisit(item) ? (
                 <button
                   className="mini-button"
-                  disabled={!canEdit}
+                  disabled={!canMutateThisDay}
                   aria-label="刪除備案"
                   title="刪除備案"
                   type="button"
@@ -10329,7 +10408,7 @@ function ItineraryTimeline({
             <button className="ghost-button" type="button" onClick={() => setDeleteTarget(null)}>
               取消
             </button>
-            <button className="primary-button compact" type="button" onClick={confirmDeleteTarget}>
+            <button className="primary-button compact" disabled={!canMutateThisDay} type="button" onClick={confirmDeleteTarget}>
               確認刪除
             </button>
           </div>
@@ -10366,7 +10445,7 @@ function ItineraryTimeline({
             </button>
             <button
               className="primary-button compact"
-              disabled={isSavingAutoContinuation || !autoContinuationPrompt.plan.canAutoContinue}
+              disabled={!canMutateThisDay || isSavingAutoContinuation || !autoContinuationPrompt.plan.canAutoContinue}
               type="button"
               onClick={saveWithAutoContinuation}
             >
@@ -10403,7 +10482,7 @@ function ItineraryTimeline({
             </button>
             <button
               className="primary-button compact"
-              disabled={isResolvingTransportPairConflict}
+              disabled={!canMutateThisDay || isResolvingTransportPairConflict}
               type="button"
               onClick={confirmBrokenTransportationPairDeletion}
             >
@@ -10429,7 +10508,7 @@ function ItineraryTimeline({
             </button>
             <button
               className="primary-button compact"
-              disabled={isReorderingDestination || isReorderingUntimed}
+              disabled={!canMutateThisDay || isReorderingDestination || isReorderingUntimed}
               type="button"
               onClick={confirmMoveReorder}
             >
@@ -10447,7 +10526,7 @@ function ItineraryTimeline({
         </div>
         <button
           className="icon-button timeline-add-button"
-          disabled={!canEdit}
+          disabled={!canMutateThisDay}
           type="button"
           title="新增行程"
           aria-label="新增行程"
@@ -10475,7 +10554,7 @@ function ItineraryTimeline({
 
       {foreignSameDayDragActive ? (
         <p className="timeline-remote-drag-hint" role="status">
-          {foreignDragUserName} 正在拖曳
+          {foreignDragReadOnlyMessage}
         </p>
       ) : null}
 
@@ -10643,7 +10722,7 @@ function ItineraryTimeline({
                 {isTimedVisit(item) && (!isAlternativeFace || isItemFixed) ? (
                   <button
                     className="mini-button lock-button"
-                    disabled={!canEdit || (!isItemFixed && (lockedByOther || Boolean(item.locked_by)))}
+                    disabled={!canMutateThisDay || (!isItemFixed && (lockedByOther || Boolean(item.locked_by)))}
                     type="button"
                     title={isItemFixed ? "解鎖" : "鎖定"}
                     onClick={(event) => {
@@ -10657,7 +10736,7 @@ function ItineraryTimeline({
                 {!isAlternativeFace && !isItemFixed ? (
                   <button
                     className="mini-button"
-                    disabled={!canEdit || lockedByOther}
+                    disabled={!canMutateThisDay || lockedByOther}
                     type="button"
                     title="編輯"
                     onClick={(event) => {
@@ -10671,7 +10750,7 @@ function ItineraryTimeline({
                 {isAlternativeFace && alternative && !isAlternativeFormFace && !isItemFixed ? (
                   <button
                     className="mini-button"
-                    disabled={!canEdit || lockedByOther}
+                    disabled={!canMutateThisDay || lockedByOther}
                     type="button"
                     title="Edit alternative"
                     onClick={(event) => {
@@ -10687,7 +10766,7 @@ function ItineraryTimeline({
                 {!isItemFixed ? (
                   <button
                     className="mini-button"
-                    disabled={!canEdit}
+                    disabled={!canMutateThisDay}
                     type="button"
                     title="刪除"
                     onClick={(event) => {
