@@ -16,8 +16,9 @@
 - `docs/2026-07-01-phase-4-9-map-integration-prep.md`
 - `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`
 - `docs/2026-07-01-phase-4-9b-map-focus-surface-handoff.md`
+- `docs/2026-07-01-phase-4-9c-google-map-provider-prep-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
-- `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md` (latest working draft)
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md` (latest working draft)
 
 Archive rule:
 
@@ -28,13 +29,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.9b Map Focus Surface - Implemented locally / Pending user review / No Migration
+Timeline Phase 4.9c Google Map Provider Prep - Implemented locally / Pending user review / No Migration / No Push
 ```
 
 Next phase:
 
 ```text
-Phase 4.9b makes Timeline card focus and RoutePanel stop/future marker focus explicit through provider-neutral helpers. Next recommended step is Phase 4.9c Google Map Provider Prep, still without route calculation, migration, reorder/presence changes, or bundle-loading the map SDK before the adapter boundary is approved.
+Phase 4.9c prepares the Google Map provider boundary while keeping the runtime on the existing static RoutePanel surface. Next decision is either Goal 4.9d Google Map MVP, with explicit SDK/API/env approval, or Phase 4.9 closeout / commit / push. Do not add route calculation, migration, reorder/presence changes, map packages, API keys, or initial-bundle SDK loading without approval.
 ```
 
 Branch:
@@ -359,9 +360,29 @@ New/updated files:
 - `focusedItemId` remains local UI state only.
 - No database write, reorder RPC, drag preview, remote selection, drag presence, online presence, transport role model, Google Maps SDK, API key/env var, map package, route calculation, migration, or layout redesign was added.
 
+### Phase 4.9c
+
+- Added a provider-neutral `MapPanel` seam at `src/components/map/MapPanel.jsx`.
+- Added `StaticMapProvider` as the default runtime provider for the existing `.route-map` / `.route-stop` placeholder surface.
+- Added `GoogleMapProvider.lazy.jsx` as a lazy provider placeholder that currently falls back to the static provider and does not load any SDK.
+- Added `loadGoogleMapProviderModule()` as the future dynamic import seam.
+- Added pure provider config helper `src/lib/mapProviderConfig.js`.
+- Added pure provider adapter input helper `src/lib/mapProviderAdapter.js`.
+- `RoutePanel` now routes markers, focused map state, and `onFocusItem` through `MapPanel` while preserving the current visible route/map surface and focus behavior.
+- The default map provider remains `static`.
+- Google provider config is prepared as lazy-only and disabled for real SDK loading until a future approved phase.
+- Added source-level Playwright coverage in `tests/mapProviderPrep.spec.js`.
+- Added handoff `docs/2026-07-01-phase-4-9c-google-map-provider-prep-handoff.md`.
+- No Google Maps SDK, API key/env var, map package, Leaflet/MapLibre/MapTiler/Stadia package, migration, Supabase schema change, RPC change, reorder flow, dnd-kit structure, drag handle, collaborative presence, remote selection, online presence, transport role model, fixed-anchor planner, untimed rebase, route calculation, route cache, or layout redesign was added.
+
 New/updated files:
 
 - `src/lib/timelineMapMarkers.js`
+- `src/lib/mapProviderAdapter.js`
+- `src/lib/mapProviderConfig.js`
+- `src/components/map/MapPanel.jsx`
+- `src/components/map/providers/StaticMapProvider.jsx`
+- `src/components/map/providers/GoogleMapProvider.lazy.jsx`
 - `src/App.jsx`
 - `src/styles.css`
 - `src/lib/timelineUntimedOrdering.js`
@@ -369,11 +390,13 @@ New/updated files:
 - `package-lock.json`
 - `tests/timelineMapMarkers.spec.js`
 - `tests/timelineMapFocus.spec.js`
+- `tests/mapProviderPrep.spec.js`
 - `tests/phase-4-2c-reorder.spec.js`
 - `docs/BUGS.md`
 - `docs/2026-07-01-phase-4-9-map-integration-prep.md`
 - `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`
 - `docs/2026-07-01-phase-4-9b-map-focus-surface-handoff.md`
+- `docs/2026-07-01-phase-4-9c-google-map-provider-prep-handoff.md`
 - `docs/2026-07-01-phase-4-8e-online-member-presence-handoff.md`
 - `docs/2026-07-01-phase-4-8f-remote-drag-visual-handoff.md`
 - `docs/2026-06-30-phase-4-8b-demo-parity-handoff.md`
@@ -381,6 +404,7 @@ New/updated files:
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v12.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md`
+- `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md`
 
 ## Production Migration State
 
@@ -586,6 +610,17 @@ git diff --check passed with Windows LF/CRLF notices only
 manual user verification pending
 ```
 
+Phase 4.9c Google Map Provider Prep checks on 2026-07-01:
+
+```text
+npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 12/12
+npm.cmd run build passed with existing Vite large-chunk warning
+build output: JS 763.37 KB raw / 211.04 KB gzip, CSS 72.51 KB raw / 13.13 KB gzip
+git diff --check passed with Windows LF/CRLF notice only
+rg source scan for google.maps / VITE_GOOGLE_MAPS_API_KEY / map packages in src and package.json returned no matches
+manual user verification pending
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -626,4 +661,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 4.9b is implemented locally and pending user review. Next recommended step after review is Phase 4.9c Google Map Provider Prep: decide the provider adapter boundary and SDK loading plan before adding any Google Maps SDK, API key/env var, map package, route calculation, migration, or route cache fields. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, remote preview reordering, reorder/RPC changes, or additional database changes.
+Phase 4.9c is implemented locally and pending user review. Next recommended decision is either Goal 4.9d Google Map MVP, with explicit SDK/API/env/billing approval, or Phase 4.9 closeout / commit / push. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, remote preview reordering, reorder/RPC changes, route calculation, route cache, map packages, API keys, SDK loading, or additional database changes.
