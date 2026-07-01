@@ -143,6 +143,7 @@ function timelineCardSelectionDebugPayload(payload) {
     tripId: payload.tripId,
     dayIndex: payload.dayIndex,
     itemId: payload.itemId,
+    itemType: payload.itemType,
     itemTitle: payload.itemTitle,
     userId: payload.userId,
     userName: payload.userName,
@@ -2663,10 +2664,20 @@ export default function App() {
         return false;
       }
       const selectedItem = itemsRef.current.find((item) => item.id === payload.itemId);
-      if (!selectedItem || isTransportationCard(selectedItem)) {
+      if (!selectedItem) {
         timelineDragPresenceDebug("selection ignored reason", {
           channelName,
           reason: "missing-item",
+          payload: timelineCardSelectionDebugPayload(payload),
+        });
+        return false;
+      }
+      const selectedItemType = isTransportationCard(selectedItem) ? "transport" : "destination";
+      if (payload.itemType !== selectedItemType) {
+        timelineDragPresenceDebug("selection ignored reason", {
+          channelName,
+          expectedItemType: selectedItemType,
+          reason: "item-type-mismatch",
           payload: timelineCardSelectionDebugPayload(payload),
         });
         return false;
@@ -2955,17 +2966,19 @@ export default function App() {
   const publishCardSelection = useCallback(
     (item) => {
       if (!activeTripId || !activeUserId || activeMembership?.status !== "approved" || activeSection !== "timeline") return;
-      if (!item || isTransportationCard(item)) return;
+      if (!item) return;
       const channel = timelineDragPresenceChannelRef.current;
       const channelReady = timelineDragPresenceReadyRef.current;
       const now = new Date().toISOString();
       const sessionId = timelineDragPresenceSessionIdRef.current;
       const colorKey = timelineCardSelectionColorKey(sessionId || activeUserId);
+      const itemType = isTransportationCard(item) ? "transport" : "destination";
       const nextPayload = {
         tripId: activeTripId,
         dayIndex: activeDay,
         itemId: item.id,
-        itemTitle: item.location_name || item.location || item.title || "",
+        itemType,
+        itemTitle: itemType === "transport" ? transportCardTitle(item) : item.location_name || item.location || item.title || "",
         userId: activeUserId,
         userName: timelineDragPresenceUserName,
         sessionId,
@@ -10291,14 +10304,25 @@ function ItineraryTimeline({
     const budgets = budgetsByItem[item.id] || [];
     const category = item.transport_category || defaultTransportCategory;
     const note = item.transport_note || item.transportation_note || item.description || item.note;
+    const remoteSelection = visibleForeignCardSelection?.itemId === item.id ? visibleForeignCardSelection : null;
+    const remoteSelectionColor = remoteSelection ? timelineCardSelectionColor(remoteSelection.colorKey) : "";
+    const remoteSelectionStyle = remoteSelection
+      ? {
+          "--timeline-remote-selection-color": remoteSelectionColor,
+          "--timeline-remote-selection-color-soft": `${remoteSelectionColor}18`,
+        }
+      : undefined;
     return (
       <article
         className={`transport-card${focusedItemId === item.id ? " focused" : ""}${expanded ? " expanded" : ""}${
           hasWarning ? ` warning ${warningClass}-warning` : ""
-        }`}
+        }${remoteSelection ? " timeline-item-remote-selected" : ""}`}
+        data-remote-selection-label={remoteSelection?.userName || undefined}
+        style={remoteSelectionStyle}
         onClick={() => {
           setExpandedId(expanded ? null : item.id);
           onFocusItem(item.id);
+          if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);
         }}
       >
         <span className="transport-card-icon" aria-hidden="true">
