@@ -8097,7 +8097,7 @@ function DemoApp({ initialSection }) {
               ) : null}
               {isRouteLayoutCollapsed ? null : (
                 <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
-                  <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" onFocusItem={setFocusedItemId} />
+                  <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" mode="demo" onFocusItem={setFocusedItemId} />
                 </aside>
               )}
             </div>
@@ -9112,7 +9112,7 @@ function TripWorkspace(props) {
             ) : null}
             {isRouteLayoutCollapsed ? null : (
               <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
-                <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} onFocusItem={setFocusedItemId} />
+                <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} mode="formal" onFocusItem={setFocusedItemId} />
               </aside>
             )}
       </div>
@@ -11947,7 +11947,7 @@ function MultiDayTimelineColumns({
   );
 }
 
-function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
+function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", mode = "formal", onFocusItem }) {
   const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
   const focusedMapState = getFocusedMapState(dayItems, stops, focusedItemId);
   return (
@@ -11958,7 +11958,7 @@ function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocus
           <h3>路線</h3>
         </div>
       </div>
-      <MapPanel markers={stops} focusedMapState={focusedMapState} onFocusItem={onFocusItem} />
+      <MapPanel markers={stops} focusedMapState={focusedMapState} mode={mode} onFocusItem={onFocusItem} />
     </section>
   );
 }

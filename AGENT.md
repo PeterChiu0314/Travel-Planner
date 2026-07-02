@@ -79,6 +79,8 @@ Important correction for future agents:
 - Do not assume this is Next.js. It is currently a Vite SPA.
 - Do not add TypeScript, Tailwind, Next.js App Router, or a component framework unless explicitly requested and migration scope is approved.
 - Environment variables are Vite-style: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+- Google Maps local demo configuration is also Vite-style and belongs only in untracked local env files such as `.env.local`: `VITE_MAP_PROVIDER` and `VITE_GOOGLE_MAPS_API_KEY`.
+- Never commit, print, log, or paste Google Maps API keys. Demo mode must remain static-only; Formal Google Maps work is gated by `MapPanel` / `GoogleMapProvider.lazy` and local or deployment env vars.
 - Never put a Supabase service role key in frontend code.
 - Windows / PowerShell encoding, `npm.cmd`, and Vite dev server startup notes are documented in `docs/DEV_SETUP_WINDOWS.md`.
 

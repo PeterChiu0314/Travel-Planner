@@ -17,6 +17,11 @@
 - `docs/2026-07-01-phase-4-9a-map-marker-contract-handoff.md`
 - `docs/2026-07-01-phase-4-9b-map-focus-surface-handoff.md`
 - `docs/2026-07-01-phase-4-9c-google-map-provider-prep-handoff.md`
+- `docs/2026-07-02-phase-5-0-map-mvp-readiness-audit-handoff.md`
+- `docs/2026-07-02-phase-5-1a-static-demo-map-safety-handoff.md`
+- `docs/2026-07-02-phase-5-1b-formal-google-map-loader-handoff.md`
+- `docs/2026-07-02-phase-5-1c-formal-google-map-markers-handoff.md`
+- `docs/todo/phase-5-map-route-workspace-integration-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md` (latest working draft)
 
@@ -29,19 +34,19 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 4.9c Google Map Provider Prep - Implemented locally / Pending user review / No Migration / No Push
+Timeline Phase 5.1c Formal Google Map Markers Only - Implemented locally / No API key / No Route APIs / No Migration / No Commit / No Push
 ```
 
 Next phase:
 
 ```text
-Phase 4.9c prepares the Google Map provider boundary while keeping the runtime on the existing static RoutePanel surface. Next decision is either Goal 4.9d Google Map MVP, with explicit SDK/API/env approval, or Phase 4.9 closeout / commit / push. Do not add route calculation, migration, reorder/presence changes, map packages, API keys, or initial-bundle SDK loading without approval.
+Phase 5.1c is implemented locally and needs manual Formal QA with an uncommitted local API key before acceptance. Keep Demo permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not add Places, Geocoding, Directions, Routes, route cache, migration, transportation repair, reorder changes, drag/presence changes, or API keys in repo without a separate approved goal.
 ```
 
 Branch:
 
 ```text
-codex/timeline-phase-4-9
+codex/timeline-phase-5
 ```
 
 ## Completed Scope
@@ -406,6 +411,68 @@ New/updated files:
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v13.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md`
 
+### Phase 5.0
+
+- Completed Map MVP readiness audit for the Phase 4.9a through 4.9c marker/focus/provider seam.
+- Confirmed `MapPanel`, `StaticMapProvider`, `GoogleMapProvider.lazy`, `mapProviderConfig`, `mapProviderAdapter`, and `timelineMapMarkers` are ready for a narrow Phase 5.1 Google Map markers-only MVP.
+- Confirmed the runtime still uses the static `.route-map` / `.route-stop` fallback and does not load Google Maps SDK.
+- Confirmed source/package scan has no `google.maps`, `VITE_GOOGLE_MAPS_API_KEY`, Google Maps SDK script, Leaflet, MapLibre, MapTiler, Stadia Maps, Directions, Routes, Places, or Geocoding runtime coupling.
+- Identified the main readiness gap as data completeness: `src/demo-kyoto-trip.json` has 31 destination-like items and 0 usable latitude/longitude pairs, so visible Demo Google markers need mock coordinates before Phase 5.1 visual QA.
+- Confirmed Formal fallback should treat latitude/longitude as optional: missing, null, empty, or invalid coordinates must not throw and must fall back to static/list behavior.
+- Confirmed Phase 5.1 needs outside-repo Google Cloud setup before real-map enablement: Maps JavaScript API, API key, HTTP referrer restrictions, local/Vercel env vars, billing, quota, and budget alerts.
+- Documented Phase 5.1 boundary as Google Maps JavaScript API lazy load plus stored-coordinate destination markers only.
+- Explicitly kept Places, Geocoding, Directions, Routes, route polyline, route cache, migration, marker drag, transportation repair, Timeline reorder changes, dnd-kit changes, drag presence, remote selection, online presence, and Budget integration out of Phase 5.1.
+- Added handoff `docs/2026-07-02-phase-5-0-map-mvp-readiness-audit-handoff.md`.
+- No source behavior, SDK, package, env file, migration, commit, or push was added.
+
+### Phase 5.1a
+
+- Added an explicit Demo/Formal map mode boundary for the Timeline route surface.
+- Demo Timeline now passes `mode="demo"` into `RoutePanel`; Formal passes `mode="formal"`.
+- `MapPanel` forwards mode into `getMapProviderConfig()`.
+- `getMapProviderConfig({ mode: "demo" })` now always returns static provider config, even if a future caller requests Google provider and real-map loading.
+- `StaticMapProvider` now displays coordinate-bearing static markers on the existing grid surface.
+- Missing-coordinate destinations remain in the fallback route-stop/list surface and do not throw.
+- Static markers call `onFocusItem(marker.itemId)` and reuse the existing focus / transportation endpoint class model.
+- Added 16 numeric mock coordinate pairs to `src/demo-kyoto-trip.json`, covering Day 0 through Day 2:
+  - Day 0: 3 coordinate-bearing destination-like items.
+  - Day 1: 7 coordinate-bearing destination-like items.
+  - Day 2: 6 coordinate-bearing destination-like items.
+- Added source-level tests for Demo provider safety and Demo coordinate-bearing markers.
+- Added handoff `docs/2026-07-02-phase-5-1a-static-demo-map-safety-handoff.md`.
+- No Google Maps SDK, API key/env file, map package, Places, Geocoding, Directions, Routes, route calculation, route cache, migration, Supabase schema/RPC/RLS change, Timeline reorder change, dnd-kit change, drag/presence change, remote selection change, online presence change, transport role change, or Budget integration was added.
+
+### Phase 5.1b
+
+- Installed the approved package `@googlemaps/js-api-loader`.
+- Added `src/lib/googleMapsLoader.js` with `loadGoogleMapsApi({ apiKey })`.
+- Loader helper creates the `Loader` instance inside the function, fails safely without an API key, imports only the Maps library, and does not read `window.google.maps` or inject scripts at module top level.
+- Added Formal provider selection using `VITE_MAP_PROVIDER` and `VITE_GOOGLE_MAPS_API_KEY`.
+- `MapPanel` now lazy imports `GoogleMapProvider.lazy` only when Formal config allows real Google loading.
+- Demo mode remains hard-locked to `StaticMapProvider` even if a future caller requests Google provider and real-map loading.
+- `GoogleMapProvider.lazy.jsx` now runs a loader smoke path, shows a `Google Map ready` placeholder after loader success, and falls back to `StaticMapProvider` while loading or after loader failure.
+- Added `.env.local` to `.gitignore`.
+- Added source-level tests for Formal Google provider gating, Demo static safety, missing-key loader failure, and approved package boundaries.
+- Added handoff `docs/2026-07-02-phase-5-1b-formal-google-map-loader-handoff.md`.
+- No API key/env file, real Google map instantiation, marker rendering, marker interaction, Places, Geocoding, Directions, Routes, route calculation, route cache, migration, Supabase schema/RPC/RLS change, Timeline reorder change, dnd-kit change, drag/presence change, remote selection change, online presence change, transport role change, or Budget integration was added.
+
+### Phase 5.1c
+
+- Implemented Formal Google Map markers-only rendering inside `GoogleMapProvider.lazy.jsx`.
+- Google map instantiation now happens only after lazy provider import and loader success.
+- Google provider renders only provider-neutral destination markers with `hasCoordinates === true`.
+- Missing-coordinate destinations do not create Google markers and do not throw.
+- Transportation cards do not create Google markers because the marker helper excludes them.
+- Marker click calls `onFocusItem(marker.itemId)` and only updates local Timeline focus state.
+- Timeline destination focus pans the Google map to the matching marker and raises marker `zIndex`.
+- Active-day marker changes clean up old Google markers and render the current marker set.
+- Single-marker days center on that marker; multi-marker days fit bounds.
+- Missing key, loader failure, render failure, loading state, and no coordinate-bearing markers all fall back to `StaticMapProvider`.
+- Demo remains hard-locked to `StaticMapProvider` and does not enter the Google provider path.
+- Added source-level tests for markers-only Google provider boundaries.
+- Added handoff `docs/2026-07-02-phase-5-1c-formal-google-map-markers-handoff.md`.
+- No API key/env file, Places, Geocoding, Directions, Routes, route calculation, route polyline, route cache, marker clustering, marker drag, AdvancedMarkerElement, migration, Supabase schema/RPC/RLS change, Timeline reorder change, dnd-kit change, drag/presence change, remote selection change, online presence change, transport role change, or Budget integration was added.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -621,6 +688,50 @@ rg source scan for google.maps / VITE_GOOGLE_MAPS_API_KEY / map packages in src 
 manual user verification pending
 ```
 
+Phase 5.0 Map MVP Readiness Audit checks on 2026-07-02:
+
+```text
+rg "google\.maps|VITE_GOOGLE_MAPS_API_KEY|maps.googleapis|Directions|Routes|Places|Geocoding|leaflet|maplibre|maptiler|stadiamaps" src package.json package-lock.json returned no matches
+additional package scan for @googlemaps / @react-google-maps / leaflet / maplibre / mapbox / maptiler / stadiamaps returned no matches
+Demo coordinate audit: 41 itinerary items, 31 destination-like items, 0 usable latitude/longitude pairs
+docs-only audit; targeted Playwright and build were not rerun
+git diff --check passed with Windows LF/CRLF notice only
+```
+
+Phase 5.1a Static Demo Map Safety checks on 2026-07-02:
+
+```text
+npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 15/15
+npm.cmd run build passed with existing Vite large-chunk warning
+build output: JS 764.78 KB raw / 211.56 KB gzip, CSS 73.49 KB raw / 13.31 KB gzip
+git diff --check passed with Windows LF/CRLF notices only
+rg "google\.maps|VITE_GOOGLE_MAPS_API_KEY|maps.googleapis|Directions|Routes|Places|Geocoding|leaflet|maplibre|maptiler|stadiamaps" src package.json package-lock.json returned no matches
+Demo coordinate audit after update: 31 destination-like items, 16 usable latitude/longitude pairs, Day 0 = 3, Day 1 = 7, Day 2 = 6
+manual browser verification pending
+```
+
+Phase 5.1b Formal Google Map Loader Integration checks on 2026-07-02:
+
+```text
+npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 17/17
+npm.cmd run build passed with existing Vite large-chunk warning
+build output: GoogleMapProvider.lazy chunk 1.11 KB raw / 0.66 KB gzip, main JS 766.55 KB raw / 212.39 KB gzip, CSS 73.72 KB raw / 13.35 KB gzip
+git diff --check passed with Windows LF/CRLF notices only
+rg "google\.maps|maps.googleapis|Directions|Routes|Places|Geocoding|leaflet|maplibre|maptiler|stadiamaps" src package.json package-lock.json returned no src matches; package-lock has expected transitive @types/google.maps from @googlemaps/js-api-loader
+manual browser verification pending
+```
+
+Phase 5.1c Formal Google Map Markers Only checks on 2026-07-02:
+
+```text
+npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 18/18
+npm.cmd run build passed with existing Vite large-chunk warning
+build output: GoogleMapProvider.lazy chunk 2.89 KB raw / 1.46 KB gzip, main JS 766.55 KB raw / 212.39 KB gzip, CSS 73.57 KB raw / 13.34 KB gzip
+git diff --check passed with Windows LF/CRLF notices only
+rg "Directions|Routes|Places|Geocoding|leaflet|maplibre|maptiler|stadiamaps|@react-google-maps" src package.json package-lock.json returned no matches
+manual Formal browser verification with a real local API key pending
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -661,4 +772,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 4.9c is implemented locally and pending user review. Next recommended decision is either Goal 4.9d Google Map MVP, with explicit SDK/API/env/billing approval, or Phase 4.9 closeout / commit / push. Do not infer transportation repair, deeper collaborative editing, multi-user merge, Demo presence, remote cursor/scroll sync, remote ghost cards, remote preview reordering, reorder/RPC changes, route calculation, route cache, map packages, API keys, SDK loading, or additional database changes.
+Phase 5.1c is implemented locally and pending manual Formal browser verification with an uncommitted local Google Maps API key. Demo should remain permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, or additional database changes.
