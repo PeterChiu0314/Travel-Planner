@@ -52,7 +52,7 @@ import {
   planDestinationPackageReorder,
 } from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
-import { countMissingMapPoints, normalizeMapPointFields } from "./lib/mapPoint.js";
+import { countMissingMapPoints, normalizeMapPointFields, validateDestinationMapUrl } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import { planTimelineAutoContinuation } from "./lib/timelineAutoContinuation.js";
 import { findBrokenTransportationPair } from "./lib/timelineTransportationConflicts.js";
@@ -9578,6 +9578,7 @@ function ItineraryTimeline({
   const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
   const [timeError, setTimeError] = useState("");
+  const [mapUrlError, setMapUrlError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
   const [alternativeFormsByItem, setAlternativeFormsByItem] = useState({});
@@ -10038,6 +10039,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setMapUrlError("");
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -10069,6 +10071,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingItem?.updated_at || null);
     setConflict(false);
     setTimeError("");
+    setMapUrlError("");
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
@@ -10103,6 +10106,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setMapUrlError("");
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -10148,6 +10152,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setMapUrlError("");
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -10224,6 +10229,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
     setConflict(false);
     setTimeError("");
+    setMapUrlError("");
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(item.id);
@@ -10242,6 +10248,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setMapUrlError("");
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -10304,6 +10311,16 @@ function ItineraryTimeline({
       submittedForm.address = "";
       submittedForm.transportation_note = "";
       submittedForm.cost = "0";
+    }
+    if (submittedForm.item_type !== "transport") {
+      const mapUrlValidation = validateDestinationMapUrl(submittedForm.map_url);
+      if (!mapUrlValidation.ok) {
+        setTimeError("");
+        setMapUrlError(mapUrlValidation.errorMessage);
+        setForm(submittedForm);
+        return false;
+      }
+      setMapUrlError("");
     }
     const currentPairSnapshot =
       submittedForm.item_type === "transport"
@@ -10429,6 +10446,7 @@ function ItineraryTimeline({
     setBaseUpdatedAt(null);
     setConflict(false);
     setTimeError("");
+    setMapUrlError("");
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -11198,13 +11216,23 @@ function ItineraryTimeline({
         </label>
         <div className="field-group form-grid wide single">
           <label>
-            Map URL
+            <span className="field-label-row">
+              <span>Map URL</span>
+              {mapUrlError ? (
+                <span className="field-inline-error" role="alert">
+                  {mapUrlError}
+                </span>
+              ) : null}
+            </span>
             <input
               autoComplete="off"
               name="map_url"
               placeholder="https://maps.google.com/..."
               value={form.map_url}
-              onChange={(event) => setForm({ ...form, map_url: event.target.value })}
+              onChange={(event) => {
+                setMapUrlError("");
+                setForm({ ...form, map_url: event.target.value });
+              }}
             />
           </label>
         </div>

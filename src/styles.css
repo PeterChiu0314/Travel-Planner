@@ -2086,6 +2086,22 @@ label {
   font-weight: 700;
 }
 
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.field-inline-error {
+  color: #9d3325;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: right;
+}
+
 input,
 select,
 textarea {

@@ -100,4 +100,18 @@ export function normalizeMapPointFields(payload) {
   return point || { latitude: null, longitude: null };
 }
 
+export function validateDestinationMapUrl(mapUrl) {
+  const text = typeof mapUrl === "string" ? mapUrl.trim() : mapUrl;
+  if (!text) {
+    return { ok: false, errorMessage: "請貼上有效 Map URL", point: null };
+  }
+
+  const point = parseMapUrlToPoint(text);
+  if (!point) {
+    return { ok: false, errorMessage: "無法取得有效點位", point: null };
+  }
+
+  return { ok: true, errorMessage: "", point };
+}
+
 export { finiteNumber, isValidLatitude, isValidLongitude };

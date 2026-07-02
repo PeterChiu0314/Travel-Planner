@@ -5,6 +5,7 @@ import {
   hasValidMapPoint,
   normalizeMapPointFields,
   parseMapUrlToPoint,
+  validateDestinationMapUrl,
 } from "../src/lib/mapPoint.js";
 
 test("Phase 5.2 parseMapUrlToPoint reads @lat,lng Google Maps URLs", () => {
@@ -52,6 +53,29 @@ test("Phase 5.2 parseMapUrlToPoint fails quietly for invalid or empty values", (
   expect(parseMapUrlToPoint("")).toBeNull();
   expect(parseMapUrlToPoint("https://maps.app.goo.gl/example")).toBeNull();
   expect(parseMapUrlToPoint("https://maps.google.com/?q=91,135")).toBeNull();
+});
+
+test("Phase 5.2b validates required destination Map URLs before save", () => {
+  expect(validateDestinationMapUrl("")).toEqual({
+    ok: false,
+    errorMessage: "請貼上有效 Map URL",
+    point: null,
+  });
+  expect(validateDestinationMapUrl("https://maps.google.com/not-a-point")).toEqual({
+    ok: false,
+    errorMessage: "無法取得有效點位",
+    point: null,
+  });
+  expect(validateDestinationMapUrl("https://maps.app.goo.gl/example")).toEqual({
+    ok: false,
+    errorMessage: "無法取得有效點位",
+    point: null,
+  });
+  expect(validateDestinationMapUrl("https://maps.google.com/?q=35.0116,135.7681")).toEqual({
+    ok: true,
+    errorMessage: "",
+    point: { latitude: 35.0116, longitude: 135.7681 },
+  });
 });
 
 test("Phase 5.2 validates stored map point bounds and normalizes payload coordinates", () => {

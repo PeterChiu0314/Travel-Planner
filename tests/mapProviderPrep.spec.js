@@ -369,6 +369,25 @@ test("Phase 5.2 map URL parsing is wired into hidden coordinate persistence only
   expect(appSource).not.toContain('name="longitude"');
 });
 
+test("Phase 5.2b destination editor blocks invalid Map URLs with label-level feedback", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const mapPointSource = readRepoFile("src/lib/mapPoint.js");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(appSource).toContain("validateDestinationMapUrl(submittedForm.map_url)");
+  expect(appSource).toContain('const [mapUrlError, setMapUrlError] = useState("")');
+  expect(appSource).toContain("setMapUrlError(mapUrlValidation.errorMessage)");
+  expect(appSource).toContain("setForm(submittedForm)");
+  expect(appSource).toContain("return false");
+  expect(appSource).toContain("field-label-row");
+  expect(appSource).toContain("field-inline-error");
+  expect(mapPointSource).toContain("請貼上有效 Map URL");
+  expect(mapPointSource).toContain("無法取得有效點位");
+  expect(stylesSource).toContain(".field-label-row");
+  expect(stylesSource).toContain("justify-content: space-between");
+  expect(stylesSource).toContain(".field-inline-error");
+});
+
 test("Phase 5.2 focused marker can scroll the active Timeline card without drag rewrites", () => {
   const appSource = readRepoFile("src/App.jsx");
 
