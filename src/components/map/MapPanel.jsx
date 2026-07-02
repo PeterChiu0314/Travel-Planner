@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import StaticMapProvider from "./providers/StaticMapProvider.jsx";
 import { buildMapProviderAdapterInput } from "../../lib/mapProviderAdapter.js";
 import { DEFAULT_MAP_PROVIDER_ID, getMapProviderConfig } from "../../lib/mapProviderConfig.js";
+import {
+  buildMapProviderDiagnostics,
+  shouldLogMapProviderDiagnostics,
+} from "../../lib/mapProviderDiagnostics.js";
 
 export function loadGoogleMapProviderModule() {
   return import("./providers/GoogleMapProvider.lazy.jsx");
@@ -26,29 +30,54 @@ export default function MapPanel({
   });
   const adapterInput = buildMapProviderAdapterInput({ markers, focusedMapState, onFocusItem });
   const [GoogleProvider, setGoogleProvider] = useState(null);
+  const [googleProviderLoadFailed, setGoogleProviderLoadFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     if (!providerConfig.canLoadRealMap || providerConfig.providerId !== "google") {
       setGoogleProvider(null);
+      setGoogleProviderLoadFailed(false);
       return () => {
         cancelled = true;
       };
     }
 
+    setGoogleProviderLoadFailed(false);
     loadGoogleMapProviderModule()
       .then((module) => {
         if (!cancelled) setGoogleProvider(() => module.default);
       })
       .catch(() => {
-        if (!cancelled) setGoogleProvider(null);
+        if (!cancelled) {
+          setGoogleProvider(null);
+          setGoogleProviderLoadFailed(true);
+        }
       });
 
     return () => {
       cancelled = true;
     };
   }, [providerConfig.canLoadRealMap, providerConfig.providerId]);
+
+  useEffect(() => {
+    const search = typeof window === "undefined" ? "" : window.location.search;
+    if (!shouldLogMapProviderDiagnostics(search)) return;
+
+    console.info(
+      "[MapPanel] provider diagnostics",
+      buildMapProviderDiagnostics(providerConfig, { loaderFailed: googleProviderLoadFailed }),
+    );
+  }, [
+    googleProviderLoadFailed,
+    providerConfig.apiKeyAvailable,
+    providerConfig.canLoadRealMap,
+    providerConfig.fallbackProviderId,
+    providerConfig.fallbackReason,
+    providerConfig.mode,
+    providerConfig.providerId,
+    providerConfig.requestedProviderId,
+  ]);
 
   const providerProps = {
     markers: adapterInput.markers,

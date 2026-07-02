@@ -4,6 +4,10 @@ import path from "node:path";
 import { loadGoogleMapsApi } from "../src/lib/googleMapsLoader.js";
 import { buildMapProviderAdapterInput } from "../src/lib/mapProviderAdapter.js";
 import { getMapProviderConfig, MAP_PROVIDER_IDS } from "../src/lib/mapProviderConfig.js";
+import {
+  buildMapProviderDiagnostics,
+  shouldLogMapProviderDiagnostics,
+} from "../src/lib/mapProviderDiagnostics.js";
 
 const repoRoot = process.cwd();
 
@@ -121,6 +125,58 @@ test("Phase 5.1d normalizes provider and mode env-style values", () => {
     requestedProviderId: MAP_PROVIDER_IDS.GOOGLE,
     canLoadRealMap: false,
     fallbackReason: "demo-static",
+  });
+});
+
+test("Phase 5.1d logs gated map provider diagnostics without exposing API keys", () => {
+  expect(shouldLogMapProviderDiagnostics("?debugMap=1")).toBe(true);
+  expect(shouldLogMapProviderDiagnostics("?debugMap=0")).toBe(false);
+  expect(shouldLogMapProviderDiagnostics("?other=1")).toBe(false);
+
+  const providerConfig = getMapProviderConfig({
+    mode: "formal",
+    providerId: " GOOGLE ",
+    enableRealMap: true,
+    apiKey: "secret-test-key",
+  });
+  const diagnostics = buildMapProviderDiagnostics(providerConfig);
+
+  expect(diagnostics).toEqual({
+    mode: "formal",
+    requestedProvider: MAP_PROVIDER_IDS.GOOGLE,
+    resolvedProvider: MAP_PROVIDER_IDS.GOOGLE,
+    hasGoogleMapsKey: true,
+    shouldUseGoogleProvider: true,
+    fallbackReason: null,
+  });
+  expect(JSON.stringify(diagnostics)).not.toContain("secret-test-key");
+
+  expect(buildMapProviderDiagnostics(providerConfig, { loaderFailed: true })).toMatchObject({
+    resolvedProvider: MAP_PROVIDER_IDS.STATIC,
+    shouldUseGoogleProvider: false,
+    fallbackReason: "loader-failure",
+  });
+});
+
+test("Phase 5.1d Formal Google provider path does not depend on route markers", () => {
+  const providerConfig = getMapProviderConfig({
+    mode: "formal",
+    providerId: MAP_PROVIDER_IDS.GOOGLE,
+    enableRealMap: true,
+    apiKey: "fake-test-key",
+  });
+  const adapterInput = buildMapProviderAdapterInput({ markers: [] });
+
+  expect(adapterInput.markers).toEqual([]);
+  expect(providerConfig).toMatchObject({
+    mode: "formal",
+    providerId: MAP_PROVIDER_IDS.GOOGLE,
+    canLoadRealMap: true,
+    fallbackReason: null,
+  });
+  expect(buildMapProviderDiagnostics(providerConfig)).toMatchObject({
+    resolvedProvider: MAP_PROVIDER_IDS.GOOGLE,
+    shouldUseGoogleProvider: true,
   });
 });
 
