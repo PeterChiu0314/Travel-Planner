@@ -8097,7 +8097,14 @@ function DemoApp({ initialSection }) {
               ) : null}
               {isRouteLayoutCollapsed ? null : (
                 <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
-                  <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} headingEyebrow="路線" mode="demo" onFocusItem={setFocusedItemId} />
+                  <RoutePanel
+                    dayItems={dayItems}
+                    focusedItemId={focusedItemId}
+                    headingEyebrow="路線"
+                    mode="demo"
+                    viewportKey={`demo-day:${activeDay}`}
+                    onFocusItem={setFocusedItemId}
+                  />
                 </aside>
               )}
             </div>
@@ -9112,7 +9119,13 @@ function TripWorkspace(props) {
             ) : null}
             {isRouteLayoutCollapsed ? null : (
               <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
-                <RoutePanel dayItems={dayItems} focusedItemId={focusedItemId} mode="formal" onFocusItem={setFocusedItemId} />
+                <RoutePanel
+                  dayItems={dayItems}
+                  focusedItemId={focusedItemId}
+                  mode="formal"
+                  viewportKey={`formal-day:${activeDay}`}
+                  onFocusItem={setFocusedItemId}
+                />
               </aside>
             )}
       </div>
@@ -11947,7 +11960,14 @@ function MultiDayTimelineColumns({
   );
 }
 
-function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", mode = "formal", onFocusItem }) {
+function RoutePanel({
+  dayItems,
+  focusedItemId,
+  headingEyebrow = "Route",
+  mode = "formal",
+  viewportKey,
+  onFocusItem,
+}) {
   const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
   const focusedMapState = getFocusedMapState(dayItems, stops, focusedItemId);
   return (
@@ -11958,7 +11978,13 @@ function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", mode = 
           <h3>路線</h3>
         </div>
       </div>
-      <MapPanel markers={stops} focusedMapState={focusedMapState} mode={mode} onFocusItem={onFocusItem} />
+      <MapPanel
+        markers={stops}
+        focusedMapState={focusedMapState}
+        mode={mode}
+        viewportKey={viewportKey}
+        onFocusItem={onFocusItem}
+      />
     </section>
   );
 }

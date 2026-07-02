@@ -18,6 +18,7 @@ export default function MapPanel({
   providerId,
   enableRealMap = true,
   mode = "formal",
+  viewportKey = "default",
   className = "route-map",
 }) {
   const envProviderId = import.meta.env?.VITE_MAP_PROVIDER || DEFAULT_MAP_PROVIDER_ID;
@@ -90,6 +91,7 @@ export default function MapPanel({
     onFocusItem: adapterInput.onMarkerFocus,
     className,
     providerConfig,
+    viewportKey,
   };
 
   if (GoogleProvider) {

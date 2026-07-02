@@ -341,6 +341,23 @@ test("Phase 5.1e Google map layout fills the route map surface", () => {
   expect(stylesSource).toContain("min-height: 220px");
 });
 
+test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+
+  expect(appSource).toContain("viewportKey={`formal-day:${activeDay}`}");
+  expect(mapPanelSource).toContain('viewportKey = "default"');
+  expect(mapPanelSource).toContain("viewportKey,");
+  expect(googleProviderSource).toContain("userChangedViewportRef");
+  expect(googleProviderSource).toContain("autoViewportSignatureRef");
+  expect(googleProviderSource).toContain("map.addListener(\"dragstart\"");
+  expect(googleProviderSource).toContain("map.addListener(\"zoom_changed\"");
+  expect(googleProviderSource).toContain("if (!userChangedViewportRef.current)");
+  expect(googleProviderSource).toContain("runProgrammaticViewportUpdate");
+  expect(googleProviderSource).toContain("autoViewportSignatureRef.current !== viewportSignature");
+});
+
 test("Phase 5.1a wires Demo RoutePanel through explicit demo mode", () => {
   const appSource = readRepoFile("src/App.jsx");
 

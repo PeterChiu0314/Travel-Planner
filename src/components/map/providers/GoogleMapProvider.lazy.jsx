@@ -23,12 +23,24 @@ export function getGoogleMapProviderStatus() {
 }
 
 export default function GoogleMapProvider(props) {
-  const { className = "route-map", focusedMapState = {}, markers = [], onFocusItem, providerConfig = {} } = props;
+  const {
+    className = "route-map",
+    focusedMapState = {},
+    markers = [],
+    onFocusItem,
+    providerConfig = {},
+    viewportKey = "default",
+  } = props;
   const coordinateMarkers = useMemo(() => markers.filter((marker) => marker.hasCoordinates), [markers]);
   const mapElementRef = useRef(null);
   const mapRef = useRef(null);
   const mapsLibraryRef = useRef(null);
   const markerInstancesRef = useRef(new Map());
+  const viewportListenersRef = useRef([]);
+  const viewportSuppressionTimerRef = useRef(null);
+  const suppressViewportChangeRef = useRef(false);
+  const userChangedViewportRef = useRef(false);
+  const autoViewportSignatureRef = useRef(null);
   const [status, setStatus] = useState("idle");
   const [containerReady, setContainerReady] = useState(false);
   const [loadAttempted, setLoadAttempted] = useState(false);
@@ -37,12 +49,41 @@ export default function GoogleMapProvider(props) {
   const [renderFailed, setRenderFailed] = useState(false);
   const [fallbackReason, setFallbackReason] = useState(null);
   const markersKey = coordinateKey(coordinateMarkers);
+  const viewportSignature = `${viewportKey}:${markersKey}`;
   const apiKey = typeof providerConfig.apiKey === "string" ? providerConfig.apiKey.trim() : "";
 
   const handleMapElementRef = useCallback((element) => {
     mapElementRef.current = element;
     setContainerReady(Boolean(element));
   }, []);
+
+  function markUserViewportChange() {
+    if (!suppressViewportChangeRef.current) {
+      userChangedViewportRef.current = true;
+    }
+  }
+
+  function runProgrammaticViewportUpdate(update) {
+    if (viewportSuppressionTimerRef.current) {
+      window.clearTimeout(viewportSuppressionTimerRef.current);
+    }
+    suppressViewportChangeRef.current = true;
+    update();
+    viewportSuppressionTimerRef.current = window.setTimeout(() => {
+      suppressViewportChangeRef.current = false;
+      viewportSuppressionTimerRef.current = null;
+    }, 300);
+  }
+
+  function attachViewportListeners(map) {
+    if (!map?.addListener || viewportListenersRef.current.length) return;
+    viewportListenersRef.current = [
+      map.addListener("dragstart", markUserViewportChange),
+      map.addListener("zoom_changed", markUserViewportChange),
+      map.addListener("heading_changed", markUserViewportChange),
+      map.addListener("tilt_changed", markUserViewportChange),
+    ];
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -106,15 +147,25 @@ export default function GoogleMapProvider(props) {
           streetViewControl: false,
           zoom: coordinateMarkers.length > 1 ? DEFAULT_ZOOM : 14,
         });
+        attachViewportListeners(mapRef.current);
         setMapCreated(true);
+      }
+
+      if (autoViewportSignatureRef.current !== viewportSignature) {
+        userChangedViewportRef.current = false;
+        autoViewportSignatureRef.current = viewportSignature;
       }
 
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
 
       if (!coordinateMarkers.length) {
-        mapRef.current.setCenter(DEFAULT_CENTER);
-        mapRef.current.setZoom(DEFAULT_ZOOM);
+        if (!userChangedViewportRef.current) {
+          runProgrammaticViewportUpdate(() => {
+            mapRef.current.setCenter(DEFAULT_CENTER);
+            mapRef.current.setZoom(DEFAULT_ZOOM);
+          });
+        }
         setRenderFailed(false);
         setFallbackReason(null);
         return () => {
@@ -140,10 +191,18 @@ export default function GoogleMapProvider(props) {
       });
 
       if (coordinateMarkers.length === 1) {
-        mapRef.current.setCenter(initialCenter);
-        mapRef.current.setZoom(14);
+        if (!userChangedViewportRef.current) {
+          runProgrammaticViewportUpdate(() => {
+            mapRef.current.setCenter(initialCenter);
+            mapRef.current.setZoom(14);
+          });
+        }
       } else {
-        mapRef.current.fitBounds(bounds);
+        if (!userChangedViewportRef.current) {
+          runProgrammaticViewportUpdate(() => {
+            mapRef.current.fitBounds(bounds);
+          });
+        }
       }
 
       setRenderFailed(false);
@@ -157,7 +216,7 @@ export default function GoogleMapProvider(props) {
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
     };
-  }, [coordinateMarkers, focusedMapState.focusedMarkerId, markersKey, onFocusItem, status]);
+  }, [focusedMapState.focusedMarkerId, markersKey, onFocusItem, status, viewportSignature]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
@@ -171,9 +230,19 @@ export default function GoogleMapProvider(props) {
       : null;
 
     if (focusedMarker?.getPosition) {
-      mapRef.current.panTo(focusedMarker.getPosition());
+      runProgrammaticViewportUpdate(() => {
+        mapRef.current.panTo(focusedMarker.getPosition());
+      });
     }
   }, [focusedMapState.focusedMarkerId, status]);
+
+  useEffect(() => () => {
+    if (viewportSuppressionTimerRef.current) {
+      window.clearTimeout(viewportSuppressionTimerRef.current);
+    }
+    viewportListenersRef.current.forEach((listener) => listener.remove?.());
+    viewportListenersRef.current = [];
+  }, []);
 
   useEffect(() => {
     const search = typeof window === "undefined" ? "" : window.location.search;

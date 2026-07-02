@@ -763,11 +763,12 @@ manual Formal browser verification with a real local or Vercel API key pending
 Phase 5.1e Google Map Layout Fill Fix checks on 2026-07-02:
 
 ```text
-npx.cmd playwright test tests/mapProviderPrep.spec.js passed 17/17
+npx.cmd playwright test tests/mapProviderPrep.spec.js passed 18/18
 npm.cmd run build passed with existing Vite large-chunk warning
-build output: GoogleMapProvider.lazy chunk 6.25 KB raw / 2.85 KB gzip, main JS 767.50 KB raw / 212.67 KB gzip, CSS 74.07 KB raw / 13.44 KB gzip
+build output: GoogleMapProvider.lazy chunk 7.04 KB raw / 3.11 KB gzip, main JS 767.62 KB raw / 212.72 KB gzip, CSS 74.25 KB raw / 13.47 KB gzip
 git diff --check passed with Windows LF/CRLF notices only
-manual Formal Preview verification pending for map fill height, empty hint overlay, coordinate-marker day fill, Demo static layout, debugMap diagnostics, and maps.googleapis network request
+manual Formal Preview verification passed for map fill height
+manual Formal Preview verification pending for empty hint overlay, coordinate-marker day fill, user pan/zoom viewport preservation, day-tab auto-position reset, Demo static layout, debugMap diagnostics, and maps.googleapis network request
 ```
 
 ## Protected Scope Preserved
@@ -810,4 +811,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.1e is implemented and pending manual Formal Preview verification that the Google map fills the right-side RoutePanel map area for empty/no-coordinate days and coordinate-marker days. Demo should remain permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, or additional database changes.
+Phase 5.1e is implemented. Manual Formal Preview verification passed for RoutePanel map fill height; remaining manual checks are empty hint overlay, coordinate-marker day fill, user pan/zoom viewport preservation, day-tab auto-position reset, Demo static layout, debugMap diagnostics, and maps.googleapis network request. Demo should remain permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, or additional database changes.
