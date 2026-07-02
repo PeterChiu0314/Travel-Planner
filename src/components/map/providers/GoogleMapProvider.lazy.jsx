@@ -3,6 +3,7 @@ import { loadGoogleMapsApi } from "../../../lib/googleMapsLoader.js";
 import StaticMapProvider from "./StaticMapProvider.jsx";
 
 const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
+const DEFAULT_ZOOM = 11;
 
 function coordinateKey(markers) {
   return markers
@@ -50,7 +51,7 @@ export default function GoogleMapProvider(props) {
   }, [providerConfig.apiKey]);
 
   useEffect(() => {
-    if (status !== "ready" || !coordinateMarkers.length || !mapElementRef.current) return undefined;
+    if (status !== "ready" || !mapElementRef.current) return undefined;
 
     try {
       const mapsNamespace = window.google?.maps;
@@ -58,7 +59,7 @@ export default function GoogleMapProvider(props) {
       const MarkerConstructor = mapsNamespace?.Marker;
       const BoundsConstructor = mapsLibraryRef.current?.LatLngBounds || mapsNamespace?.LatLngBounds;
 
-      if (!MapConstructor || !MarkerConstructor || !BoundsConstructor) {
+      if (!MapConstructor || !MarkerConstructor || (coordinateMarkers.length > 1 && !BoundsConstructor)) {
         throw new Error("Google Maps constructors unavailable");
       }
 
@@ -74,12 +75,22 @@ export default function GoogleMapProvider(props) {
           fullscreenControl: false,
           mapTypeControl: false,
           streetViewControl: false,
-          zoom: coordinateMarkers.length > 1 ? 11 : 14,
+          zoom: coordinateMarkers.length > 1 ? DEFAULT_ZOOM : 14,
         });
       }
 
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
+
+      if (!coordinateMarkers.length) {
+        mapRef.current.setCenter(DEFAULT_CENTER);
+        mapRef.current.setZoom(DEFAULT_ZOOM);
+        setRenderFailed(false);
+        return () => {
+          markerInstancesRef.current.forEach((marker) => marker.setMap(null));
+          markerInstancesRef.current = new Map();
+        };
+      }
 
       const bounds = new BoundsConstructor();
       coordinateMarkers.forEach((marker, index) => {
@@ -131,7 +142,7 @@ export default function GoogleMapProvider(props) {
     }
   }, [focusedMapState.focusedMarkerId, status]);
 
-  if (status === "failed" || renderFailed || !coordinateMarkers.length) {
+  if (status === "failed" || renderFailed) {
     return <StaticMapProvider {...props} />;
   }
 
@@ -142,6 +153,9 @@ export default function GoogleMapProvider(props) {
   return (
     <div className={`${className} google-map-surface`} aria-label="Google map destination markers">
       <div className="google-map-canvas" ref={mapElementRef} />
+      {!coordinateMarkers.length ? (
+        <div className="google-map-empty-hint">This day has no coordinate markers yet</div>
+      ) : null}
     </div>
   );
 }

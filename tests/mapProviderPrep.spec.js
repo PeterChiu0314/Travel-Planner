@@ -156,6 +156,16 @@ test("Phase 5.1c Google provider stays markers-only and provider-neutral", () =>
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
 });
 
+test("Phase 5.1d Google provider keeps base map for empty or no-coordinate days", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+
+  expect(googleProviderSource).toContain("DEFAULT_ZOOM");
+  expect(googleProviderSource).toContain("This day has no coordinate markers yet");
+  expect(googleProviderSource).toContain("!coordinateMarkers.length");
+  expect(googleProviderSource).toContain("mapRef.current.setCenter(DEFAULT_CENTER)");
+  expect(googleProviderSource).not.toContain("renderFailed || !coordinateMarkers.length");
+});
+
 test("Phase 5.1a wires Demo RoutePanel through explicit demo mode", () => {
   const appSource = readRepoFile("src/App.jsx");
 

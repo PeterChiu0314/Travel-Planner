@@ -21,6 +21,7 @@
 - `docs/2026-07-02-phase-5-1a-static-demo-map-safety-handoff.md`
 - `docs/2026-07-02-phase-5-1b-formal-google-map-loader-handoff.md`
 - `docs/2026-07-02-phase-5-1c-formal-google-map-markers-handoff.md`
+- `docs/2026-07-02-phase-5-1d-google-map-empty-state-fix-handoff.md`
 - `docs/todo/phase-5-map-route-workspace-integration-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md` (latest working draft)
@@ -34,13 +35,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.1c Formal Google Map Markers Only - Implemented locally / No API key / No Route APIs / No Migration / No Commit / No Push
+Timeline Phase 5.1d Formal Google Map Empty State Fix - Implemented locally / No API key / No Route APIs / No Migration / No Commit / No Push
 ```
 
 Next phase:
 
 ```text
-Phase 5.1c is implemented locally and needs manual Formal QA with an uncommitted local API key before acceptance. Keep Demo permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not add Places, Geocoding, Directions, Routes, route cache, migration, transportation repair, reorder changes, drag/presence changes, or API keys in repo without a separate approved goal.
+Phase 5.1d fixes Formal Google provider empty/no-coordinate days so loader success shows a Google base map instead of static fallback. Manual Formal QA with a real local or Vercel API key is still pending. Keep Demo permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not add Places, Geocoding, Directions, Routes, route cache, migration, transportation repair, reorder changes, drag/presence changes, or API keys in repo without a separate approved goal.
 ```
 
 Branch:
@@ -473,6 +474,20 @@ New/updated files:
 - Added handoff `docs/2026-07-02-phase-5-1c-formal-google-map-markers-handoff.md`.
 - No API key/env file, Places, Geocoding, Directions, Routes, route calculation, route polyline, route cache, marker clustering, marker drag, AdvancedMarkerElement, migration, Supabase schema/RPC/RLS change, Timeline reorder change, dnd-kit change, drag/presence change, remote selection change, online presence change, transport role change, or Budget integration was added.
 
+### Phase 5.1d
+
+- Fixed Formal Google provider empty/no-coordinate active day behavior.
+- Google provider no longer falls back to `StaticMapProvider` just because the active day has no coordinate-bearing markers.
+- After loader success, empty days and no-coordinate days now instantiate the Google base map.
+- Empty/no-coordinate days center on Kyoto using `lat: 35.0116`, `lng: 135.7681`, `zoom: 11`.
+- Empty/no-coordinate days show a small Google-map overlay hint: `This day has no coordinate markers yet`.
+- Coordinate-bearing destination marker behavior from Phase 5.1c is preserved.
+- Missing key, loader failure, lazy import failure, and fatal render failure still fall back to `StaticMapProvider`.
+- Demo remains hard-locked to `StaticMapProvider` and does not enter the Google provider path.
+- Added source-level test coverage for the empty/no-coordinate Google base map behavior.
+- Added handoff `docs/2026-07-02-phase-5-1d-google-map-empty-state-fix-handoff.md`.
+- No API key/env file, package, Places, Geocoding, Directions, Routes, route calculation, route polyline, route cache, marker clustering, marker drag, AdvancedMarkerElement, migration, Supabase schema/RPC/RLS change, Timeline reorder change, dnd-kit change, drag/presence change, remote selection change, online presence change, transport role change, or Budget integration was added.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -732,6 +747,17 @@ rg "Directions|Routes|Places|Geocoding|leaflet|maplibre|maptiler|stadiamaps|@rea
 manual Formal browser verification with a real local API key pending
 ```
 
+Phase 5.1d Formal Google Map Empty State Fix checks on 2026-07-02:
+
+```text
+npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 19/19
+npm.cmd run build passed with existing Vite large-chunk warning
+build output: GoogleMapProvider.lazy chunk 3.13 KB raw / 1.53 KB gzip, main JS 766.48 KB raw / 212.36 KB gzip, CSS 73.88 KB raw / 13.39 KB gzip
+git diff --check passed with Windows LF/CRLF notices only
+rg "Directions|Routes|Places|Geocoding|leaflet|maplibre|maptiler|stadiamaps|@react-google-maps" src package.json package-lock.json returned no matches
+manual Formal browser verification with a real local or Vercel API key pending
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -772,4 +798,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.1c is implemented locally and pending manual Formal browser verification with an uncommitted local Google Maps API key. Demo should remain permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, or additional database changes.
+Phase 5.1d is implemented locally and pending manual Formal browser verification with a real local or Vercel Google Maps API key. Demo should remain permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, or additional database changes.
