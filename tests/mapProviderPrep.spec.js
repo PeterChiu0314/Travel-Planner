@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { loadGoogleMapsApi } from "../src/lib/googleMapsLoader.js";
+import { getGoogleMapsLoaderErrorMetadata, loadGoogleMapsApi } from "../src/lib/googleMapsLoader.js";
 import { buildMapProviderAdapterInput } from "../src/lib/mapProviderAdapter.js";
 import { getMapProviderConfig, MAP_PROVIDER_IDS } from "../src/lib/mapProviderConfig.js";
 import {
@@ -182,6 +182,43 @@ test("Phase 5.1d Formal Google provider path does not depend on route markers", 
 
 test("Phase 5.1b Google Maps loader fails safely without an API key", async () => {
   await expect(loadGoogleMapsApi()).rejects.toThrow("Missing Google Maps API key");
+});
+
+test("Phase 5.1d Google Maps loader uses basic Maps library and safe diagnostics", () => {
+  const loaderSource = readRepoFile("src/lib/googleMapsLoader.js");
+  const secretKey = "secret-test-key";
+  const metadata = getGoogleMapsLoaderErrorMetadata({
+    name: "TypeError",
+    message: `Failed to fetch https://maps.googleapis.com/maps/api/js?key=${secretKey}&v=weekly`,
+    code: "ERR_TEST",
+    stack: `TypeError: Failed to fetch https://maps.googleapis.com/maps/api/js?key=${secretKey}&v=weekly\n    at sw.js:42`,
+  });
+
+  expect(loaderSource).toContain("setOptions");
+  expect(loaderSource).toContain('importLibrary("maps")');
+  expect(loaderSource).not.toContain("new Loader");
+  expect(loaderSource).not.toContain('importLibrary("places")');
+  expect(loaderSource).not.toContain('importLibrary("routes")');
+  expect(loaderSource).not.toContain('importLibrary("geocoding")');
+  expect(loaderSource).toContain("[GoogleMapsLoader] diagnostics");
+  expect(loaderSource).toContain("shouldLogMapProviderDiagnostics(search)");
+  expect(metadata).toMatchObject({
+    name: "TypeError",
+    code: "ERR_TEST",
+  });
+  expect(JSON.stringify(metadata)).not.toContain(secretKey);
+  expect(metadata.message).toContain("key=[redacted]");
+  expect(metadata.stackFirstLine).toContain("key=[redacted]");
+});
+
+test("Phase 5.1d service worker leaves Google Maps external loading network-only", () => {
+  const serviceWorkerSource = readRepoFile("public/sw.js");
+
+  expect(serviceWorkerSource).toContain('"maps.googleapis.com"');
+  expect(serviceWorkerSource).toContain('"maps.gstatic.com"');
+  expect(serviceWorkerSource).toContain("if (isGoogleMapsRequest(url)) return");
+  expect(serviceWorkerSource).toContain("if (url.origin !== self.location.origin) return");
+  expect(serviceWorkerSource).toContain("caches.match(request)");
 });
 
 test("Phase 4.9c adapter passes provider-neutral marker and focus input", () => {

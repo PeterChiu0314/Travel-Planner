@@ -1,5 +1,13 @@
 const shellCache = "travel-planner-shell-v1";
 const shellAssets = ["/", "/index.html"];
+const googleMapsHosts = new Set([
+  "maps.googleapis.com",
+  "maps.gstatic.com",
+]);
+
+function isGoogleMapsRequest(url) {
+  return googleMapsHosts.has(url.hostname);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -20,6 +28,10 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
+  const url = new URL(request.url);
+  if (isGoogleMapsRequest(url)) return;
+  if (url.origin !== self.location.origin) return;
+
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -32,9 +44,6 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     caches.match(request).then((cached) => {
