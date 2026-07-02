@@ -3575,6 +3575,7 @@ textarea {
   position: relative;
   display: grid;
   min-height: 220px;
+  overflow: hidden;
   padding: 0;
   isolation: isolate;
 }
@@ -3585,6 +3586,12 @@ textarea {
   width: 100%;
   height: 100%;
   min-height: 100%;
+}
+
+.google-map-canvas > div,
+.google-map-canvas .gm-style {
+  width: 100%;
+  height: 100%;
 }
 
 .google-map-empty-hint {
@@ -4726,9 +4733,13 @@ textarea {
     padding: 76px 24px 24px;
   }
 
-  .timeline-workbench .google-map-surface {
-    height: 100%;
+  .timeline-workbench .side-panels > .route-panel > .google-map-surface {
+    position: absolute;
+    inset: 0;
+    height: auto;
     min-height: 0;
+    width: 100%;
+    padding: 0;
   }
 
   .timeline-workbench.route-collapsed .timeline-day-column,

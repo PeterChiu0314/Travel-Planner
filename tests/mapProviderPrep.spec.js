@@ -332,7 +332,9 @@ test("Phase 5.1e Google map layout fills the route map surface", () => {
   expect(stylesSource).toContain("inset: 0");
   expect(stylesSource).toContain("width: 100%");
   expect(stylesSource).toContain("height: 100%");
-  expect(stylesSource).toContain(".timeline-workbench .google-map-surface");
+  expect(stylesSource).toContain(".google-map-canvas .gm-style");
+  expect(stylesSource).toContain(".timeline-workbench .side-panels > .route-panel > .google-map-surface");
+  expect(stylesSource).toContain("inset: 0");
   expect(stylesSource).toContain(".google-map-empty-hint");
   expect(stylesSource).toContain("pointer-events: none");
   expect(stylesSource).toContain(".route-map");
