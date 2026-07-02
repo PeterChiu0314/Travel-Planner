@@ -22,6 +22,8 @@
 - `docs/2026-07-02-phase-5-1b-formal-google-map-loader-handoff.md`
 - `docs/2026-07-02-phase-5-1c-formal-google-map-markers-handoff.md`
 - `docs/2026-07-02-phase-5-1d-google-map-empty-state-fix-handoff.md`
+- `docs/2026-07-02-phase-5-1e-google-map-layout-fill-fix-handoff.md`
+- `docs/2026-07-02-phase-5-2-map-url-point-handoff.md`
 - `docs/todo/phase-5-map-route-workspace-integration-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md` (latest working draft)
@@ -35,19 +37,19 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.1d Formal Google Map Empty State Fix - Implemented locally / No API key / No Route APIs / No Migration / No Commit / No Push
+Timeline Phase 5.2c Google Maps Short Link Resolver - Implemented locally / Edge Function added / No Route APIs / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.1d fixes Formal Google provider empty/no-coordinate days so loader success shows a Google base map instead of static fallback. Manual Formal QA with a real local or Vercel API key is still pending. Keep Demo permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not add Places, Geocoding, Directions, Routes, route cache, migration, transportation repair, reorder changes, drag/presence changes, or API keys in repo without a separate approved goal.
+Phase 5.2c adds a server-side Google Maps short-link resolver for `maps.app.goo.gl` on top of the completed Phase 5.2 map point flow. Destination Map URL save still requires a valid point, full Google Maps URLs still parse directly, and short URLs are expanded by the Edge Function before parsing. Successful short-link saves store the expanded Google Maps URL so later reloads do not need another resolver call. Demo remains static-only. Do not add Places, Geocoding, Directions, Routes, route cache, search, custom point picker, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
 ```
 
 Branch:
 
 ```text
-codex/timeline-phase-5
+codex/timeline-phase-5-2
 ```
 
 ## Completed Scope
@@ -490,6 +492,68 @@ New/updated files:
 - Added handoff `docs/2026-07-02-phase-5-1d-google-map-empty-state-fix-handoff.md`.
 - No API key/env file, package, Places, Geocoding, Directions, Routes, route calculation, route polyline, route cache, marker clustering, marker drag, AdvancedMarkerElement, migration, Supabase schema/RPC/RLS change, Timeline reorder change, dnd-kit change, drag/presence change, remote selection change, online presence change, transport role change, or Budget integration was added.
 
+### Phase 5.1e
+
+- Fixed Formal Google map layout so `GoogleMapProvider` fills the right-side RoutePanel map surface.
+- Prevented the old static grid surface from leaking below the Google map.
+- Kept the empty/no-coordinate hint as an overlay instead of layout content.
+- Passed `viewportKey` through `RoutePanel` and `MapPanel` to `GoogleMapProvider`.
+- Preserved user-adjusted Google map viewport during same-day rerenders after pan/zoom.
+- Allowed day tab or marker-set changes to re-enable automatic map positioning.
+- Demo remains hard-locked to `StaticMapProvider`.
+- Added handoff `docs/2026-07-02-phase-5-1e-google-map-layout-fill-fix-handoff.md`.
+- No loader behavior, provider selection, API key/env file, Places, Geocoding, Directions, Routes, route calculation, route cache, migration, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transport role, or Budget integration was changed.
+
+### Phase 5.2
+
+- Added Phase 5.2 map point sync for destination Map URL input.
+- Destination Map URL parsing is wired into hidden coordinate persistence through `normalizeMapPointFields(payload)`; the UI still does not expose manual latitude/longitude fields.
+- `parseMapUrlToPoint()` supports full Google Maps coordinate formats and now prioritizes place coordinates before viewport center coordinates:
+  - `!3dlat!4dlng`
+  - `q=lat,lng`
+  - `ll=lat,lng`
+  - `@lat,lng`
+- Original 5.2 behavior treated `maps.app.goo.gl` short URLs as safe failures without throwing or network expansion; Phase 5.2c supersedes this with a host-limited Edge Function resolver.
+- Clearing a destination Map URL now clears `latitude` and `longitude`.
+- After Map URL and coordinates are cleared, `buildDayMapMarkers()` no longer emits a marker for that destination.
+- Missing coordinate count increases correctly after a destination point is cleared.
+- Destination add/edit save now requires a valid parsable Map URL before persistence.
+- Blank Map URL blocks save and shows label-level feedback: `請貼上有效 Map URL`.
+- Invalid or short Map URL blocks save and shows label-level feedback: `無法取得有效點位`.
+- Map URL errors render to the right of the `Map URL` label via `.field-label-row` / `.field-inline-error`; no toast, success state, card badge, or large red frame was added.
+- A parsable full Google Maps URL saves successfully and persists parsed `latitude` / `longitude`.
+- Existing marker-to-card focus/scroll guard remains in place: focused marker can scroll the active Timeline card, while drag/edit/foreign-drag prompt states are protected.
+- Demo remains hard-locked to `StaticMapProvider`.
+- Added handoff `docs/2026-07-02-phase-5-2-map-url-point-handoff.md`.
+- Commits pushed on `codex/timeline-phase-5-2`:
+  - `377c24a Implement Timeline Phase 5.2 map point sync`
+  - `8d974a6 Fix map URL clearing and coordinate parsing`
+  - `f3d1de9 Require valid destination map URLs`
+- No Places, Geocoding, Directions, Routes, route polyline, route cache, search UI, custom point picker, package, migration, Supabase schema/RPC/RLS change, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation flow, or Budget integration was added.
+
+### Phase 5.2c
+
+- Added a Supabase Edge Function resolver for Google Maps short links.
+- Edge Function name: `resolve-google-maps-url`.
+- Frontend detects Google Maps short URLs before save and invokes the resolver only for allowed short hosts.
+- Allowed short input host:
+  - `maps.app.goo.gl`
+- `goo.gl/maps` is recognized by the frontend helper as a Google Maps short URL shape, but the first Edge Function allowlist is intentionally stricter and only accepts `maps.app.goo.gl`.
+- The Edge Function performs server-side manual redirect following and validates each redirect target against a Google Maps host allowlist before fetching the next URL.
+- Allowed fetch/redirect hosts:
+  - `maps.app.goo.gl`
+  - `www.google.com`
+  - `google.com`
+  - `maps.google.com`
+- Redirects to non-HTTPS, localhost, private IPs, arbitrary domains, or unsupported hosts are rejected by exact host allowlist checks.
+- The frontend parses the returned `expandedUrl` with the existing `parseMapUrlToPoint()` flow.
+- Successful short-link saves store `expandedUrl` as `map_url`, not the original short URL, so refresh/day switch can rebuild coordinates without another resolver call.
+- Failed resolver calls, expanded URLs without coordinates, and unsupported URLs keep the editor open and show the existing Map URL label-level error.
+- Submit is disabled while a short URL is resolving to avoid duplicate saves.
+- Added `src/lib/googleMapsShortLinkResolver.js`.
+- Added `supabase/functions/resolve-google-maps-url/index.ts`.
+- No package, migration, Google API key, Places, Geocoding, Directions, Routes, route polyline, route cache, search UI, custom point picker, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation flow, or Budget integration was added.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -771,6 +835,27 @@ manual Formal Preview verification passed for map fill height
 manual Formal Preview verification pending for empty hint overlay, coordinate-marker day fill, user pan/zoom viewport preservation, day-tab auto-position reset, Demo static layout, debugMap diagnostics, and maps.googleapis network request
 ```
 
+Phase 5.2 Map URL Point Flow checks on 2026-07-02:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 44/44
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+manual user verification passed for Map URL clearing, marker disappearance, invalid URL feedback, valid URL save, and Demo static preservation
+latest pushed commit: f3d1de9 Require valid destination map URLs
+```
+
+Phase 5.2c Google Maps Short Link Resolver checks on 2026-07-02:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 49/49
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+Edge Function added locally at supabase/functions/resolve-google-maps-url/index.ts
+production deployment not run in this session; deploy with Supabase CLI or Dashboard before testing short links on hosted Preview/Production
+supabase --version was not available in PATH, so local Edge Function serve was not run
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -811,4 +896,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.1e is implemented. Manual Formal Preview verification passed for RoutePanel map fill height; remaining manual checks are empty hint overlay, coordinate-marker day fill, user pan/zoom viewport preservation, day-tab auto-position reset, Demo static layout, debugMap diagnostics, and maps.googleapis network request. Demo should remain permanently static unless explicitly redesigned. Next product decision can be marker polish, marker-to-card scroll sync, missing-coordinate UX, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, or additional database changes.
+Phase 5.2c is implemented locally and ready for Edge Function deployment/testing. Deploy `resolve-google-maps-url` before expecting hosted short-link resolution to work. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, search UI, custom point picker, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.

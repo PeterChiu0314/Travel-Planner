@@ -52,7 +52,8 @@ import {
   planDestinationPackageReorder,
 } from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
-import { countMissingMapPoints, normalizeMapPointFields, validateDestinationMapUrl } from "./lib/mapPoint.js";
+import { resolveGoogleMapsShortUrl } from "./lib/googleMapsShortLinkResolver.js";
+import { countMissingMapPoints, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import { planTimelineAutoContinuation } from "./lib/timelineAutoContinuation.js";
 import { findBrokenTransportationPair } from "./lib/timelineTransportationConflicts.js";
@@ -9579,6 +9580,7 @@ function ItineraryTimeline({
   const [conflict, setConflict] = useState(false);
   const [timeError, setTimeError] = useState("");
   const [mapUrlError, setMapUrlError] = useState("");
+  const [isResolvingMapUrl, setIsResolvingMapUrl] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
   const [alternativeFormsByItem, setAlternativeFormsByItem] = useState({});
@@ -10313,12 +10315,24 @@ function ItineraryTimeline({
       submittedForm.cost = "0";
     }
     if (submittedForm.item_type !== "transport") {
-      const mapUrlValidation = validateDestinationMapUrl(submittedForm.map_url);
+      if (isResolvingMapUrl) return false;
+      setIsResolvingMapUrl(true);
+      let mapUrlValidation;
+      try {
+        mapUrlValidation = await resolveDestinationMapUrlPoint(submittedForm.map_url, {
+          resolveShortUrl: resolveGoogleMapsShortUrl,
+        });
+      } finally {
+        setIsResolvingMapUrl(false);
+      }
       if (!mapUrlValidation.ok) {
         setTimeError("");
         setMapUrlError(mapUrlValidation.errorMessage);
         setForm(submittedForm);
         return false;
+      }
+      if (mapUrlValidation.resolvedByShortLink && mapUrlValidation.expandedUrl) {
+        submittedForm.map_url = mapUrlValidation.expandedUrl;
       }
       setMapUrlError("");
     }
@@ -11251,7 +11265,7 @@ function ItineraryTimeline({
               接續
             </button>
           ) : null}
-          <button className="primary-button compact" disabled={!canMutateThisDay} type="submit">
+          <button className="primary-button compact" disabled={!canMutateThisDay || isResolvingMapUrl} type="submit">
             儲存
           </button>
         </div>

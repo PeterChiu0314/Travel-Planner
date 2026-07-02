@@ -374,7 +374,7 @@ test("Phase 5.2b destination editor blocks invalid Map URLs with label-level fee
   const mapPointSource = readRepoFile("src/lib/mapPoint.js");
   const stylesSource = readRepoFile("src/styles.css");
 
-  expect(appSource).toContain("validateDestinationMapUrl(submittedForm.map_url)");
+  expect(appSource).toContain("resolveDestinationMapUrlPoint(submittedForm.map_url");
   expect(appSource).toContain('const [mapUrlError, setMapUrlError] = useState("")');
   expect(appSource).toContain("setMapUrlError(mapUrlValidation.errorMessage)");
   expect(appSource).toContain("setForm(submittedForm)");
@@ -386,6 +386,32 @@ test("Phase 5.2b destination editor blocks invalid Map URLs with label-level fee
   expect(stylesSource).toContain(".field-label-row");
   expect(stylesSource).toContain("justify-content: space-between");
   expect(stylesSource).toContain(".field-inline-error");
+});
+
+test("Phase 5.2c Google Maps short-link resolver is edge-only and host-limited", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const mapPointSource = readRepoFile("src/lib/mapPoint.js");
+  const resolverSource = readRepoFile("src/lib/googleMapsShortLinkResolver.js");
+  const edgeFunctionSource = readRepoFile("supabase/functions/resolve-google-maps-url/index.ts");
+  const packageJson = readRepoFile("package.json");
+
+  expect(mapPointSource).toContain("isGoogleMapsShortUrl");
+  expect(mapPointSource).toContain('hostname === "maps.app.goo.gl"');
+  expect(mapPointSource).toContain('hostname === "goo.gl"');
+  expect(mapPointSource).toContain('startsWith("/maps")');
+  expect(appSource).toContain("resolveGoogleMapsShortUrl");
+  expect(appSource).toContain("setIsResolvingMapUrl(true)");
+  expect(appSource).toContain("mapUrlValidation.resolvedByShortLink");
+  expect(appSource).toContain("submittedForm.map_url = mapUrlValidation.expandedUrl");
+  expect(resolverSource).toContain('GOOGLE_MAPS_SHORT_LINK_FUNCTION = "resolve-google-maps-url"');
+  expect(resolverSource).toContain("supabase.functions.invoke");
+  expect(edgeFunctionSource).toContain('allowedShortHosts = new Set(["maps.app.goo.gl"])');
+  expect(edgeFunctionSource).toContain('"maps.google.com"');
+  expect(edgeFunctionSource).toContain('redirect: "manual"');
+  expect(edgeFunctionSource).toContain("isAllowedFetchUrl(currentUrl)");
+  expect(edgeFunctionSource).not.toContain("service_role");
+  expect(edgeFunctionSource).not.toContain("Deno.env");
+  expect(packageJson).not.toContain("node-fetch");
 });
 
 test("Phase 5.2 focused marker can scroll the active Timeline card without drag rewrites", () => {

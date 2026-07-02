@@ -3,8 +3,10 @@ import {
   countMissingMapPoints,
   getMapPointStatus,
   hasValidMapPoint,
+  isGoogleMapsShortUrl,
   normalizeMapPointFields,
   parseMapUrlToPoint,
+  resolveDestinationMapUrlPoint,
   validateDestinationMapUrl,
 } from "../src/lib/mapPoint.js";
 
@@ -76,6 +78,56 @@ test("Phase 5.2b validates required destination Map URLs before save", () => {
     errorMessage: "",
     point: { latitude: 35.0116, longitude: 135.7681 },
   });
+});
+
+test("Phase 5.2c detects Google Maps short URLs without accepting arbitrary URLs", () => {
+  expect(isGoogleMapsShortUrl("https://maps.app.goo.gl/example")).toBe(true);
+  expect(isGoogleMapsShortUrl("https://goo.gl/maps/example")).toBe(true);
+  expect(isGoogleMapsShortUrl("https://example.com/maps.app.goo.gl/example")).toBe(false);
+  expect(isGoogleMapsShortUrl("http://maps.app.goo.gl/example")).toBe(false);
+});
+
+test("Phase 5.2c resolves Google Maps short URLs before coordinate parsing", async () => {
+  const result = await resolveDestinationMapUrlPoint("https://maps.app.goo.gl/example", {
+    resolveShortUrl: async () => "https://www.google.com/maps/place/Kyoto/data=!3d35.0116!4d135.7681",
+  });
+
+  expect(result).toEqual({
+    ok: true,
+    errorMessage: "",
+    point: { latitude: 35.0116, longitude: 135.7681 },
+    expandedUrl: "https://www.google.com/maps/place/Kyoto/data=!3d35.0116!4d135.7681",
+    resolvedByShortLink: true,
+  });
+});
+
+test("Phase 5.2c does not send non-Google URLs through the short-link resolver", async () => {
+  let resolverCalled = false;
+  const result = await resolveDestinationMapUrlPoint("https://example.com/not-a-map", {
+    resolveShortUrl: async () => {
+      resolverCalled = true;
+      return "https://www.google.com/maps/?q=35,135";
+    },
+  });
+
+  expect(resolverCalled).toBe(false);
+  expect(result).toMatchObject({ ok: false, point: null, expandedUrl: "", resolvedByShortLink: false });
+});
+
+test("Phase 5.2c blocks save when short-link resolve fails or has no coordinates", async () => {
+  await expect(
+    resolveDestinationMapUrlPoint("https://maps.app.goo.gl/fails", {
+      resolveShortUrl: async () => {
+        throw new Error("resolve failed");
+      },
+    }),
+  ).resolves.toMatchObject({ ok: false, point: null, expandedUrl: "", resolvedByShortLink: false });
+
+  await expect(
+    resolveDestinationMapUrlPoint("https://maps.app.goo.gl/no-point", {
+      resolveShortUrl: async () => "https://www.google.com/maps/place/Kyoto",
+    }),
+  ).resolves.toMatchObject({ ok: false, point: null, expandedUrl: "https://www.google.com/maps/place/Kyoto", resolvedByShortLink: true });
 });
 
 test("Phase 5.2 validates stored map point bounds and normalizes payload coordinates", () => {

@@ -34,6 +34,23 @@ function decodedText(value) {
   }
 }
 
+function parsedUrl(value) {
+  try {
+    return new URL(String(value));
+  } catch {
+    return null;
+  }
+}
+
+export function isGoogleMapsShortUrl(mapUrl) {
+  const url = parsedUrl(mapUrl);
+  if (!url || url.protocol !== "https:") return false;
+
+  const hostname = url.hostname.toLowerCase();
+  if (hostname === "maps.app.goo.gl") return true;
+  return hostname === "goo.gl" && url.pathname.toLowerCase().startsWith("/maps");
+}
+
 function parseUrlSearchPoint(text) {
   let url;
   try {
@@ -112,6 +129,51 @@ export function validateDestinationMapUrl(mapUrl) {
   }
 
   return { ok: true, errorMessage: "", point };
+}
+
+export async function resolveDestinationMapUrlPoint(mapUrl, options = {}) {
+  const text = typeof mapUrl === "string" ? mapUrl.trim() : mapUrl;
+  const directValidation = validateDestinationMapUrl(text);
+  if (directValidation.ok) {
+    return { ...directValidation, expandedUrl: "", resolvedByShortLink: false };
+  }
+
+  if (!text || !isGoogleMapsShortUrl(text)) {
+    return { ...directValidation, expandedUrl: "", resolvedByShortLink: false };
+  }
+
+  if (typeof options.resolveShortUrl !== "function") {
+    return {
+      ok: false,
+      errorMessage: directValidation.errorMessage,
+      point: null,
+      expandedUrl: "",
+      resolvedByShortLink: false,
+    };
+  }
+
+  try {
+    const expandedUrl = await options.resolveShortUrl(text);
+    const point = parseMapUrlToPoint(expandedUrl);
+    if (!point) {
+      return {
+        ok: false,
+        errorMessage: directValidation.errorMessage,
+        point: null,
+        expandedUrl: expandedUrl || "",
+        resolvedByShortLink: true,
+      };
+    }
+    return { ok: true, errorMessage: "", point, expandedUrl, resolvedByShortLink: true };
+  } catch {
+    return {
+      ok: false,
+      errorMessage: directValidation.errorMessage,
+      point: null,
+      expandedUrl: "",
+      resolvedByShortLink: false,
+    };
+  }
 }
 
 export { finiteNumber, isValidLatitude, isValidLongitude };
