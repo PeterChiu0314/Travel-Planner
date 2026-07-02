@@ -322,6 +322,23 @@ test("Phase 5.1d Google provider diagnostics are gated and key-safe", () => {
   expect(googleProviderSource).not.toContain("apiKey:");
 });
 
+test("Phase 5.1e Google map layout fills the route map surface", () => {
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(stylesSource).toContain(".google-map-surface");
+  expect(stylesSource).toContain("display: grid");
+  expect(stylesSource).toContain(".google-map-canvas");
+  expect(stylesSource).toContain("position: absolute");
+  expect(stylesSource).toContain("inset: 0");
+  expect(stylesSource).toContain("width: 100%");
+  expect(stylesSource).toContain("height: 100%");
+  expect(stylesSource).toContain(".timeline-workbench .google-map-surface");
+  expect(stylesSource).toContain(".google-map-empty-hint");
+  expect(stylesSource).toContain("pointer-events: none");
+  expect(stylesSource).toContain(".route-map");
+  expect(stylesSource).toContain("min-height: 220px");
+});
+
 test("Phase 5.1a wires Demo RoutePanel through explicit demo mode", () => {
   const appSource = readRepoFile("src/App.jsx");
 

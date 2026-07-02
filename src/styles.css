@@ -3573,19 +3573,25 @@ textarea {
 
 .google-map-surface {
   position: relative;
+  display: grid;
+  min-height: 220px;
   padding: 0;
+  isolation: isolate;
 }
 
 .google-map-canvas {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  min-height: 220px;
   height: 100%;
+  min-height: 100%;
 }
 
 .google-map-empty-hint {
   position: absolute;
   left: 50%;
   top: 18px;
+  z-index: 2;
   max-width: min(320px, calc(100% - 32px));
   padding: 7px 10px;
   border: 1px solid rgba(95, 143, 184, 0.28);
@@ -3596,6 +3602,7 @@ textarea {
   font-weight: 800;
   text-align: center;
   transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .route-line {
@@ -4717,6 +4724,11 @@ textarea {
     border-left: 1px solid rgba(95, 143, 184, 0.18);
     border-radius: 0;
     padding: 76px 24px 24px;
+  }
+
+  .timeline-workbench .google-map-surface {
+    height: 100%;
+    min-height: 0;
   }
 
   .timeline-workbench.route-collapsed .timeline-day-column,
