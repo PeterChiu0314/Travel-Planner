@@ -37,13 +37,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.2c Google Maps Short Link Resolver - Implemented locally / Edge Function added / No Route APIs / No Migration
+Timeline Phase 5.2c Google Maps Short Link Resolver - Deployed / Short links manually verified OK / No Route APIs / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.2c adds a server-side Google Maps short-link resolver for `maps.app.goo.gl` on top of the completed Phase 5.2 map point flow. Destination Map URL save still requires a valid point, full Google Maps URLs still parse directly, and short URLs are expanded by the Edge Function before parsing. Successful short-link saves store the expanded Google Maps URL so later reloads do not need another resolver call. Demo remains static-only. Do not add Places, Geocoding, Directions, Routes, route cache, search, custom point picker, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
+Phase 5.2c adds a deployed server-side Google Maps short-link resolver for `maps.app.goo.gl` on top of the completed Phase 5.2 map point flow. Destination Map URL save still requires a valid point, full Google Maps URLs still parse directly, and short URLs are expanded by the Edge Function before parsing. Successful short-link saves store the expanded Google Maps URL so later reloads do not need another resolver call. User manually verified short-link behavior after Edge Function deployment. Demo remains static-only. Do not add Places, Geocoding, Directions, Routes, route cache, search, custom point picker, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
 ```
 
 Branch:
@@ -852,8 +852,8 @@ npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js 
 npm.cmd run build passed with existing Vite large-chunk warning
 git diff --check passed with Windows LF/CRLF notices only
 Edge Function added locally at supabase/functions/resolve-google-maps-url/index.ts
-production deployment not run in this session; deploy with Supabase CLI or Dashboard before testing short links on hosted Preview/Production
-supabase --version was not available in PATH, so local Edge Function serve was not run
+Edge Function deployed after commit 0262a7d
+manual user verification passed for maps.app.goo.gl short-link resolution after deployment
 ```
 
 ## Protected Scope Preserved
@@ -896,4 +896,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.2c is implemented locally and ready for Edge Function deployment/testing. Deploy `resolve-google-maps-url` before expecting hosted short-link resolution to work. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, search UI, custom point picker, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.
+Phase 5.2c is deployed and manually verified OK for Google Maps short links. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, search UI, custom point picker, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.

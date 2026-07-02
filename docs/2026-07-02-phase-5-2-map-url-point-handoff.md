@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Branch: `codex/timeline-phase-5-2`
-Status: Phase 5.2 completed and verified / Phase 5.2c short-link resolver implemented locally / no route APIs / no migration
+Status: Phase 5.2 completed and verified / Phase 5.2c short-link resolver deployed and manually verified OK / no route APIs / no migration
 
 ---
 
@@ -20,7 +20,7 @@ and the system can parse valid latitude / longitude from map_url
 
 Destination add/edit now requires a parsable full Google Maps URL. When valid, the app stores the parsed `latitude` and `longitude` as hidden persisted fields. When invalid, save is blocked and the editor remains open.
 
-Phase 5.2c adds server-side short-link expansion for `https://maps.app.goo.gl/...` through a Supabase Edge Function. Full Google Maps URLs still parse directly on the client.
+Phase 5.2c adds server-side short-link expansion for `https://maps.app.goo.gl/...` through a deployed Supabase Edge Function. Full Google Maps URLs still parse directly on the client.
 
 ---
 
@@ -190,7 +190,13 @@ Phase 5.2 docs closeout files:
 f3d1de9 Require valid destination map URLs
 ```
 
-Phase 5.2c is implemented locally after `f3d1de9`; commit/push is handled from this branch after this handoff update.
+Phase 5.2c implementation commit:
+
+```text
+0262a7d Add Google Maps short link resolver
+```
+
+The Edge Function was deployed after this commit, and the user manually verified short-link behavior OK.
 
 ---
 
@@ -238,6 +244,12 @@ passed with existing Vite large-chunk warning
 
 git diff --check
 passed with Windows LF/CRLF notices only
+
+Edge Function deployment
+completed after commit 0262a7d
+
+Manual maps.app.goo.gl short-link verification
+passed
 ```
 
 Latest Phase 5.2c checks:
@@ -273,10 +285,9 @@ Manually verified behavior included:
 ## Residual Notes
 
 - Existing database rows may still contain old coordinate values if the user never explicitly edits/saves the Map URL. Phase 5.2 only handles explicit user saves; it does not run a data cleanup migration.
-- Hosted short-link resolution requires deploying the Edge Function before Preview/Production testing.
 - Local function testing can use Supabase CLI after configuring the project: `supabase functions serve resolve-google-maps-url`.
-- In this Codex session, `supabase --version` was not available in PATH, so the Edge Function was not served locally.
 - Deployment can use Supabase CLI or Dashboard; no production migration is involved.
+- The deployed Edge Function has been manually verified with `maps.app.goo.gl` short links.
 - Missing-coordinate UX beyond the Map URL save requirement remains a future product decision.
 - The existing Vite large-chunk warning remains informational and is not a Phase 5.2 regression.
 
@@ -284,7 +295,7 @@ Manually verified behavior included:
 
 ## Next Step
 
-Phase 5.2c is implemented locally. Before starting the next map phase, deploy and verify `resolve-google-maps-url` if hosted short-link support is needed.
+Phase 5.2c is deployed and manually verified OK. Before starting the next map phase, reread this handoff plus `CURRENT_TASK.md`.
 
 Reasonable next product choices:
 
