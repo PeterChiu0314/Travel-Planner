@@ -257,6 +257,34 @@ test("Phase 5.1d Google provider keeps base map for empty or no-coordinate days"
   expect(googleProviderSource).not.toContain("renderFailed || !coordinateMarkers.length");
 });
 
+test("Phase 5.1d Google provider attempts loader from its own ready container", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+
+  expect(googleProviderSource).toContain('const [status, setStatus] = useState("idle")');
+  expect(googleProviderSource).toContain("const [containerReady, setContainerReady] = useState(false)");
+  expect(googleProviderSource).toContain("if (!containerReady) return undefined");
+  expect(googleProviderSource).toContain("loadGoogleMapsApi({ apiKey })");
+  expect(googleProviderSource).toContain("setLoadAttempted(true)");
+  expect(googleProviderSource).toContain("setLoadSucceeded(true)");
+  expect(googleProviderSource).toContain("setMapCreated(true)");
+  expect(googleProviderSource).not.toContain('if (status !== "ready")');
+});
+
+test("Phase 5.1d Google provider diagnostics are gated and key-safe", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+
+  expect(googleProviderSource).toContain('console.info("[GoogleMapProvider] diagnostics"');
+  expect(googleProviderSource).toContain("hasApiKey: Boolean(apiKey)");
+  expect(googleProviderSource).toContain("totalMarkers: markers.length");
+  expect(googleProviderSource).toContain("coordinateMarkers: coordinateMarkers.length");
+  expect(googleProviderSource).toContain("containerReady");
+  expect(googleProviderSource).toContain("loadAttempted");
+  expect(googleProviderSource).toContain("loadSucceeded");
+  expect(googleProviderSource).toContain("mapCreated");
+  expect(googleProviderSource).toContain("fallbackReason");
+  expect(googleProviderSource).not.toContain("apiKey:");
+});
+
 test("Phase 5.1a wires Demo RoutePanel through explicit demo mode", () => {
   const appSource = readRepoFile("src/App.jsx");
 

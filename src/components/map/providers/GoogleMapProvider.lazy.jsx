@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadGoogleMapsApi } from "../../../lib/googleMapsLoader.js";
+import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
 import StaticMapProvider from "./StaticMapProvider.jsx";
 
 const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
@@ -28,27 +29,55 @@ export default function GoogleMapProvider(props) {
   const mapRef = useRef(null);
   const mapsLibraryRef = useRef(null);
   const markerInstancesRef = useRef(new Map());
-  const [status, setStatus] = useState("loading");
+  const [status, setStatus] = useState("idle");
+  const [containerReady, setContainerReady] = useState(false);
+  const [loadAttempted, setLoadAttempted] = useState(false);
+  const [loadSucceeded, setLoadSucceeded] = useState(false);
+  const [mapCreated, setMapCreated] = useState(false);
   const [renderFailed, setRenderFailed] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState(null);
   const markersKey = coordinateKey(coordinateMarkers);
+  const apiKey = typeof providerConfig.apiKey === "string" ? providerConfig.apiKey.trim() : "";
+
+  const handleMapElementRef = useCallback((element) => {
+    mapElementRef.current = element;
+    setContainerReady(Boolean(element));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    loadGoogleMapsApi({ apiKey: providerConfig.apiKey })
+    if (!containerReady) return undefined;
+
+    if (!apiKey) {
+      setFallbackReason("missing-api-key");
+      setStatus("failed");
+      return undefined;
+    }
+
+    setStatus("loading");
+    setLoadAttempted(true);
+    setFallbackReason(null);
+
+    loadGoogleMapsApi({ apiKey })
       .then((mapsLibrary) => {
         if (cancelled) return;
         mapsLibraryRef.current = mapsLibrary;
+        setLoadSucceeded(true);
         setStatus("ready");
       })
       .catch(() => {
-        if (!cancelled) setStatus("failed");
+        if (!cancelled) {
+          setLoadSucceeded(false);
+          setFallbackReason("loader-failure");
+          setStatus("failed");
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [providerConfig.apiKey]);
+  }, [apiKey, containerReady]);
 
   useEffect(() => {
     if (status !== "ready" || !mapElementRef.current) return undefined;
@@ -77,6 +106,7 @@ export default function GoogleMapProvider(props) {
           streetViewControl: false,
           zoom: coordinateMarkers.length > 1 ? DEFAULT_ZOOM : 14,
         });
+        setMapCreated(true);
       }
 
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
@@ -86,6 +116,7 @@ export default function GoogleMapProvider(props) {
         mapRef.current.setCenter(DEFAULT_CENTER);
         mapRef.current.setZoom(DEFAULT_ZOOM);
         setRenderFailed(false);
+        setFallbackReason(null);
         return () => {
           markerInstancesRef.current.forEach((marker) => marker.setMap(null));
           markerInstancesRef.current = new Map();
@@ -116,7 +147,9 @@ export default function GoogleMapProvider(props) {
       }
 
       setRenderFailed(false);
+      setFallbackReason(null);
     } catch {
+      setFallbackReason("render-failure");
       setRenderFailed(true);
     }
 
@@ -142,17 +175,38 @@ export default function GoogleMapProvider(props) {
     }
   }, [focusedMapState.focusedMarkerId, status]);
 
-  if (status === "failed" || renderFailed) {
-    return <StaticMapProvider {...props} />;
-  }
+  useEffect(() => {
+    const search = typeof window === "undefined" ? "" : window.location.search;
+    if (!shouldLogMapProviderDiagnostics(search)) return;
 
-  if (status !== "ready") {
+    console.info("[GoogleMapProvider] diagnostics", {
+      hasApiKey: Boolean(apiKey),
+      totalMarkers: markers.length,
+      coordinateMarkers: coordinateMarkers.length,
+      containerReady,
+      loadAttempted,
+      loadSucceeded,
+      mapCreated,
+      fallbackReason,
+    });
+  }, [
+    apiKey,
+    containerReady,
+    coordinateMarkers.length,
+    fallbackReason,
+    loadAttempted,
+    loadSucceeded,
+    mapCreated,
+    markers.length,
+  ]);
+
+  if (status === "failed" || renderFailed) {
     return <StaticMapProvider {...props} />;
   }
 
   return (
     <div className={`${className} google-map-surface`} aria-label="Google map destination markers">
-      <div className="google-map-canvas" ref={mapElementRef} />
+      <div className="google-map-canvas" ref={handleMapElementRef} />
       {!coordinateMarkers.length ? (
         <div className="google-map-empty-hint">This day has no coordinate markers yet</div>
       ) : null}
