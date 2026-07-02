@@ -1,8 +1,4 @@
-function finiteNumber(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const parsed = typeof value === "number" ? value : Number(String(value).trim());
-  return Number.isFinite(parsed) ? parsed : null;
-}
+import { finiteNumber, hasValidMapPoint } from "./mapPoint.js";
 
 function nullableText(value) {
   if (value === null || value === undefined) return null;
@@ -45,9 +41,9 @@ export function buildDayMapMarkers(dayItems = [], options = {}) {
     if (requireLocation && !locationName) return markers;
 
     const title = nullableText(item.title) || locationName || "Untitled destination";
-    const latitude = finiteNumber(item.latitude);
-    const longitude = finiteNumber(item.longitude);
-    const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+    const hasCoordinates = hasValidMapPoint(item);
+    const latitude = hasCoordinates ? finiteNumber(item.latitude) : null;
+    const longitude = hasCoordinates ? finiteNumber(item.longitude) : null;
 
     markers.push({
       id: `map-marker:${itemId}`,

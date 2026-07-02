@@ -52,6 +52,7 @@ import {
   planDestinationPackageReorder,
 } from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
+import { countMissingMapPoints, normalizeMapPointFields } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import { planTimelineAutoContinuation } from "./lib/timelineAutoContinuation.js";
 import { findBrokenTransportationPair } from "./lib/timelineTransportationConflicts.js";
@@ -366,6 +367,8 @@ const emptyItemForm = {
   location_name: "",
   address: "",
   map_url: "",
+  latitude: null,
+  longitude: null,
   note: "",
   description: "",
   transportation_note: "",
@@ -5477,11 +5480,14 @@ function normalizeItemPayload(payload) {
       fixed_by: null,
       address: null,
       map_url: null,
+      latitude: null,
+      longitude: null,
     };
   }
   const locationName = payload.location_name || payload.location;
   const description = payload.description || payload.note;
   const hasCompleteTime = Boolean(payload.start_time) && Boolean(payload.end_time);
+  const mapPointFields = normalizeMapPointFields(payload);
   return {
     ...payload,
     item_type: payload.item_type || "visit",
@@ -5497,6 +5503,8 @@ function normalizeItemPayload(payload) {
     fixed_by: hasCompleteTime && payload.is_fixed ? payload.fixed_by || null : null,
     address: payload.address || null,
     map_url: payload.map_url || null,
+    latitude: mapPointFields.latitude,
+    longitude: mapPointFields.longitude,
     transportation_note: payload.transportation_note || null,
     transport_category: null,
     transport_name: null,
@@ -10162,6 +10170,8 @@ function ItineraryTimeline({
       location_name: item.location_name || item.location || "",
       address: item.address || "",
       map_url: item.map_url || "",
+      latitude: item.latitude ?? null,
+      longitude: item.longitude ?? null,
       note: item.description || item.note || "",
       description: item.description || item.note || "",
       transportation_note: item.transportation_note || "",
@@ -10454,6 +10464,40 @@ function ItineraryTimeline({
   const isTransportEditor = form.item_type === "transport";
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
   const visitItemIds = useMemo(() => visitItems.map((item) => item.id), [visitItems]);
+  useEffect(() => {
+    if (!focusedItemId || !activeTimelineListRef.current) return;
+    if (!visitItemIds.includes(focusedItemId)) return;
+    if (
+      isOpen ||
+      draggedVisitId ||
+      foreignSameDayDragActive ||
+      reorderPreview ||
+      transportPairConflict ||
+      autoContinuationPrompt ||
+      isResolvingTransportPairConflict ||
+      isSavingAutoContinuation ||
+      isReorderingDestination ||
+      isReorderingUntimed
+    ) {
+      return;
+    }
+
+    const focusedCard = activeTimelineListRef.current.querySelector(`[data-timeline-item-id="${focusedItemId}"]`);
+    focusedCard?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [
+    autoContinuationPrompt,
+    draggedVisitId,
+    focusedItemId,
+    foreignSameDayDragActive,
+    isOpen,
+    isReorderingDestination,
+    isReorderingUntimed,
+    isResolvingTransportPairConflict,
+    isSavingAutoContinuation,
+    reorderPreview,
+    transportPairConflict,
+    visitItemIds,
+  ]);
   const activeDragItem = draggedVisitId ? visitItems.find((item) => item.id === draggedVisitId) || null : null;
   const timedVisitItems = useMemo(() => visitItems.filter(isTimedVisit), [visitItems]);
   const editedTimedVisitIndex = timedVisitItems.findIndex((item) => item.id === editingId);
@@ -11588,6 +11632,7 @@ function ItineraryTimeline({
               }`}
               data-dnd-overlay-source={draggedVisitId === item.id ? "true" : undefined}
               data-remote-selection-label={remoteSelection?.userName || undefined}
+              data-timeline-item-id={item.id}
               data-timing={isTimedVisit(item) ? "timed" : "untimed"}
               style={isForeignDragSource ? foreignDragStyle : remoteSelectionStyle}
               title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
@@ -11970,6 +12015,7 @@ function RoutePanel({
 }) {
   const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
   const focusedMapState = getFocusedMapState(dayItems, stops, focusedItemId);
+  const missingMapPointCount = countMissingMapPoints(dayItems);
   return (
     <section className="panel route-panel">
       <div className="panel-heading tight">
@@ -11983,6 +12029,7 @@ function RoutePanel({
         focusedMapState={focusedMapState}
         mode={mode}
         viewportKey={viewportKey}
+        missingMapPointCount={missingMapPointCount}
         onFocusItem={onFocusItem}
       />
     </section>

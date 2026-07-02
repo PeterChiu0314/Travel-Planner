@@ -341,6 +341,45 @@ test("Phase 5.1e Google map layout fills the route map surface", () => {
   expect(stylesSource).toContain("min-height: 220px");
 });
 
+test("Phase 5.2 map point warning overlays without resizing the map canvas", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(appSource).toContain("countMissingMapPoints(dayItems)");
+  expect(mapPanelSource).toContain("missingMapPointCount = 0");
+  expect(googleProviderSource).toContain("missingMapPointCount > 0");
+  expect(staticProviderSource).toContain("missingMapPointCount > 0");
+  expect(stylesSource).toContain(".map-point-warning");
+  expect(stylesSource).toContain("position: absolute");
+  expect(stylesSource).toContain("pointer-events: none");
+  expect(stylesSource).toContain(".google-map-canvas");
+  expect(stylesSource).toContain("height: 100%");
+});
+
+test("Phase 5.2 map URL parsing is wired into hidden coordinate persistence only", () => {
+  const appSource = readRepoFile("src/App.jsx");
+
+  expect(appSource).toContain("normalizeMapPointFields(payload)");
+  expect(appSource).toContain("latitude: mapPointFields.latitude");
+  expect(appSource).toContain("longitude: mapPointFields.longitude");
+  expect(appSource).not.toContain('name="latitude"');
+  expect(appSource).not.toContain('name="longitude"');
+});
+
+test("Phase 5.2 focused marker can scroll the active Timeline card without drag rewrites", () => {
+  const appSource = readRepoFile("src/App.jsx");
+
+  expect(appSource).toContain("data-timeline-item-id={item.id}");
+  expect(appSource).toContain("scrollIntoView({ block: \"nearest\", behavior: \"smooth\" })");
+  expect(appSource).toContain("foreignSameDayDragActive");
+  expect(appSource).toContain("transportPairConflict");
+  expect(appSource).toContain("autoContinuationPrompt");
+  expect(appSource).not.toContain("onDragStart={(event) => onFocusItem");
+});
+
 test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {
   const appSource = readRepoFile("src/App.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");

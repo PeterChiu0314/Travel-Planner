@@ -73,7 +73,19 @@ test("Phase 4.9a handles missing and invalid coordinates without throwing", () =
 
   expect(markers).toMatchObject([
     { itemId: "visit-a", latitude: null, longitude: null, hasCoordinates: false, coordinateSource: "missing" },
-    { itemId: "visit-b", latitude: null, longitude: 135.7, hasCoordinates: false, coordinateSource: "missing" },
+    { itemId: "visit-b", latitude: null, longitude: null, hasCoordinates: false, coordinateSource: "missing" },
+  ]);
+});
+
+test("Phase 5.2 rejects out-of-range coordinates for marker input", () => {
+  const markers = buildDayMapMarkers([
+    { id: "visit-a", item_type: "visit", location_name: "A", latitude: "91", longitude: "135.7" },
+    { id: "visit-b", item_type: "visit", location_name: "B", latitude: "35", longitude: "181" },
+  ]);
+
+  expect(markers).toMatchObject([
+    { itemId: "visit-a", latitude: null, longitude: null, hasCoordinates: false, coordinateSource: "missing" },
+    { itemId: "visit-b", latitude: null, longitude: null, hasCoordinates: false, coordinateSource: "missing" },
   ]);
 });
 

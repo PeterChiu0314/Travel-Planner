@@ -27,6 +27,7 @@ export default function GoogleMapProvider(props) {
     className = "route-map",
     focusedMapState = {},
     markers = [],
+    missingMapPointCount = 0,
     onFocusItem,
     providerConfig = {},
     viewportKey = "default",
@@ -278,6 +279,9 @@ export default function GoogleMapProvider(props) {
       <div className="google-map-canvas" ref={handleMapElementRef} />
       {!coordinateMarkers.length ? (
         <div className="google-map-empty-hint">This day has no coordinate markers yet</div>
+      ) : null}
+      {missingMapPointCount > 0 ? (
+        <div className="map-point-warning">尚有 {missingMapPointCount} 個目的地缺少可用座標</div>
       ) : null}
     </div>
   );

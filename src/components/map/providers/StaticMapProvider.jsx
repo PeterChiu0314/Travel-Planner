@@ -22,6 +22,7 @@ function markerPosition(marker, bounds) {
 export default function StaticMapProvider({
   markers = [],
   focusedMapState = {},
+  missingMapPointCount = 0,
   onFocusItem,
   className = "route-map",
 }) {
@@ -84,6 +85,9 @@ export default function StaticMapProvider({
       ) : coordinateMarkers.length ? null : (
         <div className="timeline-empty">No route stops to display</div>
       )}
+      {missingMapPointCount > 0 ? (
+        <div className="map-point-warning">尚有 {missingMapPointCount} 個目的地缺少可用座標</div>
+      ) : null}
     </div>
   );
 }

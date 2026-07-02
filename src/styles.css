@@ -3612,6 +3612,24 @@ textarea {
   pointer-events: none;
 }
 
+.map-point-warning {
+  position: absolute;
+  left: 50%;
+  top: 58px;
+  z-index: 3;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 7px 10px;
+  border: 1px solid rgba(216, 95, 73, 0.28);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #9f3f30;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .route-line {
   position: absolute;
   left: 34px;
