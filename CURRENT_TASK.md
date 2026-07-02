@@ -481,6 +481,8 @@ New/updated files:
 - After loader success, empty days and no-coordinate days now instantiate the Google base map.
 - Empty/no-coordinate days center on Kyoto using `lat: 35.0116`, `lng: 135.7681`, `zoom: 11`.
 - Empty/no-coordinate days show a small Google-map overlay hint: `This day has no coordinate markers yet`.
+- Provider and mode env-style values are normalized with trim/lowercase, so `VITE_MAP_PROVIDER=google`, `VITE_MAP_PROVIDER=google `, and `VITE_MAP_PROVIDER=GOOGLE` all resolve to the Formal Google provider when an API key exists.
+- Demo mode normalization still forces `StaticMapProvider` even if env-style values request Google.
 - Coordinate-bearing destination marker behavior from Phase 5.1c is preserved.
 - Missing key, loader failure, lazy import failure, and fatal render failure still fall back to `StaticMapProvider`.
 - Demo remains hard-locked to `StaticMapProvider` and does not enter the Google provider path.
@@ -750,9 +752,9 @@ manual Formal browser verification with a real local API key pending
 Phase 5.1d Formal Google Map Empty State Fix checks on 2026-07-02:
 
 ```text
-npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 19/19
+npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 20/20
 npm.cmd run build passed with existing Vite large-chunk warning
-build output: GoogleMapProvider.lazy chunk 3.13 KB raw / 1.53 KB gzip, main JS 766.48 KB raw / 212.36 KB gzip, CSS 73.88 KB raw / 13.39 KB gzip
+build output: GoogleMapProvider.lazy chunk 3.13 KB raw / 1.52 KB gzip, main JS 766.56 KB raw / 212.37 KB gzip, CSS 73.88 KB raw / 13.39 KB gzip
 git diff --check passed with Windows LF/CRLF notices only
 rg "Directions|Routes|Places|Geocoding|leaflet|maplibre|maptiler|stadiamaps|@react-google-maps" src package.json package-lock.json returned no matches
 manual Formal browser verification with a real local or Vercel API key pending

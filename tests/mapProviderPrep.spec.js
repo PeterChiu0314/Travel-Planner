@@ -89,6 +89,41 @@ test("Phase 5.1b keeps Formal Google provider behind API key availability", () =
   });
 });
 
+test("Phase 5.1d normalizes provider and mode env-style values", () => {
+  ["google", "google ", " GOOGLE "].forEach((providerId) => {
+    expect(
+      getMapProviderConfig({
+        mode: " FORMAL ",
+        providerId,
+        enableRealMap: true,
+        apiKey: " fake-test-key ",
+      }),
+    ).toMatchObject({
+      mode: "formal",
+      providerId: MAP_PROVIDER_IDS.GOOGLE,
+      requestedProviderId: MAP_PROVIDER_IDS.GOOGLE,
+      canLoadRealMap: true,
+      apiKeyAvailable: true,
+      fallbackReason: null,
+    });
+  });
+
+  expect(
+    getMapProviderConfig({
+      mode: " DEMO ",
+      providerId: " GOOGLE ",
+      enableRealMap: true,
+      apiKey: "fake-test-key",
+    }),
+  ).toMatchObject({
+    mode: "demo",
+    providerId: MAP_PROVIDER_IDS.STATIC,
+    requestedProviderId: MAP_PROVIDER_IDS.GOOGLE,
+    canLoadRealMap: false,
+    fallbackReason: "demo-static",
+  });
+});
+
 test("Phase 5.1b Google Maps loader fails safely without an API key", async () => {
   await expect(loadGoogleMapsApi()).rejects.toThrow("Missing Google Maps API key");
 });

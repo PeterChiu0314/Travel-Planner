@@ -5,14 +5,18 @@ export const MAP_PROVIDER_IDS = Object.freeze({
 
 export const DEFAULT_MAP_PROVIDER_ID = MAP_PROVIDER_IDS.STATIC;
 
+function normalizeText(value) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
 export function getMapProviderConfig(options = {}) {
-  const mode = options.mode === "demo" ? "demo" : "formal";
+  const mode = normalizeText(options.mode) === "demo" ? "demo" : "formal";
   const apiKey = typeof options.apiKey === "string" ? options.apiKey.trim() : "";
   if (mode === "demo") {
     return {
       mode,
       providerId: MAP_PROVIDER_IDS.STATIC,
-      requestedProviderId: options.providerId || DEFAULT_MAP_PROVIDER_ID,
+      requestedProviderId: normalizeText(options.providerId) || DEFAULT_MAP_PROVIDER_ID,
       loadMode: "eager",
       canLoadRealMap: false,
       apiKeyAvailable: false,
@@ -21,7 +25,7 @@ export function getMapProviderConfig(options = {}) {
     };
   }
 
-  const requestedProviderId = options.providerId || DEFAULT_MAP_PROVIDER_ID;
+  const requestedProviderId = normalizeText(options.providerId) || DEFAULT_MAP_PROVIDER_ID;
   const providerId = Object.values(MAP_PROVIDER_IDS).includes(requestedProviderId)
     ? requestedProviderId
     : DEFAULT_MAP_PROVIDER_ID;

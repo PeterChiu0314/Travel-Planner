@@ -27,6 +27,7 @@ Demo route -> always StaticMapProvider
 Updated:
 
 - `src/components/map/providers/GoogleMapProvider.lazy.jsx`
+- `src/lib/mapProviderConfig.js`
 - `src/styles.css`
 - `tests/mapProviderPrep.spec.js`
 
@@ -50,6 +51,9 @@ This day has no coordinate markers yet
 
 - Existing marker behavior is preserved for coordinate-bearing destinations.
 - Fatal render errors still fall back to `StaticMapProvider`.
+- Follow-up fix: provider and mode env-style values are now normalized with trim/lowercase.
+- `VITE_MAP_PROVIDER=google`, `VITE_MAP_PROVIDER=google `, and `VITE_MAP_PROVIDER=GOOGLE` all resolve to the Formal Google provider when an API key is present.
+- Demo mode normalization still forces `StaticMapProvider` even if env-style values request Google.
 
 ---
 
@@ -74,7 +78,7 @@ Commands run:
 
 ```text
 npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js
-passed 19/19
+passed 20/20
 
 npm.cmd run build
 passed with existing Vite large-chunk warning
@@ -86,8 +90,8 @@ passed with Windows LF/CRLF notices only
 Build output:
 
 ```text
-GoogleMapProvider.lazy chunk: 3.13 KB raw / 1.53 KB gzip
-main JS: 766.48 KB raw / 212.36 KB gzip
+GoogleMapProvider.lazy chunk: 3.13 KB raw / 1.52 KB gzip
+main JS: 766.56 KB raw / 212.37 KB gzip
 CSS: 73.88 KB raw / 13.39 KB gzip
 ```
 
