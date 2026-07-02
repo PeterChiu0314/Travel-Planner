@@ -902,7 +902,12 @@ test("Phase 4.8e trip-level online member presence stays navigation-only", () =>
   expect(appSource).toContain("focus/visibility recovery");
   expect(appSource).toContain("replay track after subscribed");
   expect(appSource).toContain("tripPresenceRecoverableStatuses");
+  expect(appSource).toContain("tripPresenceChannelKeyRef");
+  expect(appSource).toContain("channelMatchesPayload");
+  expect(appSource).toContain("stale channel status ignored");
   expect(appSource).toContain("tripPresenceChannelVersion");
+  expect(appSource).toContain("cleanup start");
+  expect(appSource).toContain("removeChannel reason");
   expect(appSource).toContain("selectedItemType");
   expect(appSource).toContain("selectedItemTitle");
   expect(appSource).toContain("tripPresencePageToSection");

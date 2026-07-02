@@ -2086,6 +2086,7 @@ export default function App() {
   const [tripPresenceSelectedItem, setTripPresenceSelectedItem] = useState(null);
   const restoredDayRef = useRef(null);
   const tripPresenceChannelRef = useRef(null);
+  const tripPresenceChannelKeyRef = useRef("");
   const tripPresenceReadyRef = useRef(false);
   const tripPresenceStatusRef = useRef("idle");
   const tripPresencePayloadRef = useRef(null);
@@ -2228,21 +2229,28 @@ export default function App() {
 
   const publishTripPresence = useCallback((reason = "update") => {
     const channel = tripPresenceChannelRef.current;
+    const channelName = tripPresenceChannelKeyRef.current;
     const payload = tripPresencePayloadRef.current;
     const status = tripPresenceStatusRef.current;
-    if (!channel || !tripPresenceReadyRef.current || !payload?.tripId || !payload?.userId || !payload?.pageKey) {
+    const expectedChannelName = payload?.tripId ? `trip-presence:${payload.tripId}` : "";
+    const channelMatchesPayload = Boolean(channelName && expectedChannelName && channelName === expectedChannelName);
+    if (!channel || !tripPresenceReadyRef.current || !payload?.tripId || !payload?.userId || !payload?.pageKey || !channelMatchesPayload) {
       tripPresenceDebug("track skipped", {
         reason,
+        channelName,
+        expectedChannelName,
         hasChannel: Boolean(channel),
         ready: tripPresenceReadyRef.current,
         status,
         payload: tripPresenceDebugPayload(payload),
       });
       const shouldReconnect =
-        !channel || tripPresenceRecoverableStatuses.has(status) || (!tripPresenceReadyRef.current && status !== "creating");
+        !channel || !channelMatchesPayload || tripPresenceRecoverableStatuses.has(status) || (!tripPresenceReadyRef.current && status !== "creating");
       if (payload?.tripId && payload?.userId && payload?.pageKey && shouldReconnect) {
         if (reason === "heartbeat") {
           tripPresenceDebug("heartbeat requested reconnect", {
+            channelName,
+            expectedChannelName,
             hasChannel: Boolean(channel),
             ready: tripPresenceReadyRef.current,
             status,
@@ -2763,6 +2771,7 @@ export default function App() {
       });
       setRemoteTripPresences([]);
       tripPresenceChannelRef.current = null;
+      tripPresenceChannelKeyRef.current = "";
       tripPresenceReadyRef.current = false;
       tripPresenceStatusRef.current = "idle";
       return undefined;
@@ -2773,6 +2782,7 @@ export default function App() {
       config: { presence: { key: sessionId } },
     });
     tripPresenceChannelRef.current = channel;
+    tripPresenceChannelKeyRef.current = channelName;
     tripPresenceReadyRef.current = false;
     tripPresenceStatusRef.current = "creating";
     tripPresenceReconnectRef.current = false;
@@ -2832,8 +2842,15 @@ export default function App() {
       .on("presence", { event: "join" }, syncTripPresence)
       .on("presence", { event: "leave" }, syncTripPresence)
       .subscribe((status) => {
-        tripPresenceStatusRef.current = status;
-        tripPresenceDebug("subscribed", { channelName, status });
+        const isCurrentChannel = tripPresenceChannelRef.current === channel && tripPresenceChannelKeyRef.current === channelName;
+        if (isCurrentChannel) tripPresenceStatusRef.current = status;
+        tripPresenceDebug("subscribed", { channelName, currentChannel: isCurrentChannel, status });
+        if (!isCurrentChannel) {
+          if (tripPresenceRecoverableStatuses.has(status)) {
+            tripPresenceDebug("stale channel status ignored", { channelName, status });
+          }
+          return;
+        }
         if (status === "SUBSCRIBED") {
           tripPresenceReadyRef.current = true;
           tripPresenceDebug("replay track after subscribed", {
@@ -2852,12 +2869,21 @@ export default function App() {
 
     return () => {
       const preserveRemotePresences = tripPresenceReconnectRef.current;
-      if (tripPresenceChannelRef.current === channel) tripPresenceChannelRef.current = null;
-      tripPresenceReadyRef.current = false;
+      tripPresenceDebug("cleanup start", {
+        channelName,
+        preserveRemotePresences,
+        currentChannel: tripPresenceChannelRef.current === channel,
+      });
+      if (tripPresenceChannelRef.current === channel) {
+        tripPresenceChannelRef.current = null;
+        tripPresenceChannelKeyRef.current = "";
+        tripPresenceReadyRef.current = false;
+      }
       if (!preserveRemotePresences) setRemoteTripPresences([]);
       Promise.resolve(channel.untrack()).catch((error) => {
         tripPresenceDebug("track error", { message: error?.message || String(error), phase: "untrack" });
       });
+      tripPresenceDebug("removeChannel reason", { channelName, reason: "effect-cleanup" });
       void supabase.removeChannel(channel);
     };
   }, [activeMembership?.status, activeTripId, activeUserId, publishTripPresence, requestTripPresenceReconnect, tripPresenceChannelVersion]);
