@@ -64,6 +64,8 @@ import {
   transportRoleForPayload,
   transportRoles,
 } from "./lib/timelineTransportationRoles.js";
+import { buildRoutePanelStops, getFocusedMapState } from "./lib/timelineMapMarkers.js";
+import MapPanel from "./components/map/MapPanel.jsx";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import {
   buildTimelineVisitDisplayOrder,
@@ -11946,7 +11948,8 @@ function MultiDayTimelineColumns({
 }
 
 function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocusItem }) {
-  const stops = sortedVisitItems(dayItems).filter((item) => item.location_name || item.location);
+  const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
+  const focusedMapState = getFocusedMapState(dayItems, stops, focusedItemId);
   return (
     <section className="panel route-panel">
       <div className="panel-heading tight">
@@ -11955,24 +11958,7 @@ function RoutePanel({ dayItems, focusedItemId, headingEyebrow = "Route", onFocus
           <h3>路線</h3>
         </div>
       </div>
-      <div className="route-map">
-        {stops.length ? <div className="route-line" /> : null}
-        {stops.length ? (
-          stops.map((item, index) => (
-            <button
-              className={`route-stop${focusedItemId === item.id ? " focused" : ""}`}
-              key={item.id}
-              type="button"
-              onClick={() => onFocusItem(item.id)}
-            >
-              <span className="route-dot">{index + 1}</span>
-              <span className="route-name">{item.location_name || item.location}</span>
-            </button>
-          ))
-        ) : (
-          <div className="timeline-empty">尚無路線</div>
-        )}
-      </div>
+      <MapPanel markers={stops} focusedMapState={focusedMapState} onFocusItem={onFocusItem} />
     </section>
   );
 }
