@@ -3516,6 +3516,71 @@ textarea {
   padding: 18px;
 }
 
+.static-map-marker-layer {
+  position: relative;
+  min-height: 184px;
+}
+
+.static-map-marker {
+  position: absolute;
+  display: grid;
+  grid-template-columns: 34px minmax(72px, max-content);
+  gap: 8px;
+  align-items: center;
+  max-width: min(210px, 52%);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  transform: translate(-17px, -17px);
+}
+
+.static-map-marker .route-dot {
+  box-shadow: 0 2px 8px rgba(29, 45, 57, 0.16);
+}
+
+.static-map-marker.focused .route-dot {
+  background: var(--coral);
+}
+
+.static-map-marker-label {
+  overflow: hidden;
+  max-width: 160px;
+  padding: 4px 7px;
+  border: 1px solid rgba(95, 143, 184, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.static-map-marker.focused .static-map-marker-label,
+.static-map-marker.route-stop-transport-endpoint .static-map-marker-label {
+  border-color: rgba(245, 158, 92, 0.48);
+  color: var(--mint-dark);
+}
+
+.static-map-fallback-stops {
+  position: relative;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(95, 143, 184, 0.18);
+}
+
+.google-map-surface {
+  padding: 0;
+}
+
+.google-map-canvas {
+  width: 100%;
+  min-height: 220px;
+  height: 100%;
+}
+
 .route-line {
   position: absolute;
   left: 34px;

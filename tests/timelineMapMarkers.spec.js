@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
 import { buildDayMapMarkers } from "../src/lib/timelineMapMarkers.js";
+
+const repoRoot = process.cwd();
+
+function readDemoTrip() {
+  return JSON.parse(fs.readFileSync(path.join(repoRoot, "src/demo-kyoto-trip.json"), "utf8"));
+}
 
 test("Phase 4.9a builds provider-neutral markers for destination items", () => {
   const markers = buildDayMapMarkers([
@@ -103,4 +111,16 @@ test("Phase 4.9a does not mutate input items", () => {
   buildDayMapMarkers(items);
 
   expect(items).toEqual(snapshot);
+});
+
+test("Phase 5.1a Demo fixture includes mock coordinates for static map markers", () => {
+  const demoTrip = readDemoTrip();
+  const dayOneMarkers = buildDayMapMarkers(
+    demoTrip.itinerary_items.filter((item) => item.day_index === 1),
+    { requireLocation: true },
+  );
+
+  expect(dayOneMarkers.length).toBeGreaterThan(0);
+  expect(dayOneMarkers.some((marker) => marker.hasCoordinates)).toBe(true);
+  expect(dayOneMarkers.filter((marker) => marker.hasCoordinates).length).toBeGreaterThanOrEqual(4);
 });

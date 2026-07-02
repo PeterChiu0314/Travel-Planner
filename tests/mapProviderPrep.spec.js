@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import { loadGoogleMapsApi } from "../src/lib/googleMapsLoader.js";
 import { buildMapProviderAdapterInput } from "../src/lib/mapProviderAdapter.js";
 import { getMapProviderConfig, MAP_PROVIDER_IDS } from "../src/lib/mapProviderConfig.js";
 
@@ -12,18 +13,84 @@ function readRepoFile(filePath) {
 
 test("Phase 4.9c keeps the default map provider static and Google lazy-only", () => {
   expect(getMapProviderConfig()).toEqual({
+    mode: "formal",
     providerId: MAP_PROVIDER_IDS.STATIC,
+    requestedProviderId: MAP_PROVIDER_IDS.STATIC,
     loadMode: "eager",
     canLoadRealMap: false,
+    apiKeyAvailable: false,
+    apiKey: "",
+    fallbackReason: null,
     fallbackProviderId: MAP_PROVIDER_IDS.STATIC,
   });
 
   expect(getMapProviderConfig({ providerId: MAP_PROVIDER_IDS.GOOGLE })).toMatchObject({
+    mode: "formal",
     providerId: MAP_PROVIDER_IDS.GOOGLE,
     loadMode: "lazy",
     canLoadRealMap: false,
     fallbackProviderId: MAP_PROVIDER_IDS.STATIC,
   });
+});
+
+test("Phase 5.1a forces Demo map provider config to static", () => {
+  expect(
+    getMapProviderConfig({
+      mode: "demo",
+      providerId: MAP_PROVIDER_IDS.GOOGLE,
+      enableRealMap: true,
+    }),
+  ).toEqual({
+    mode: "demo",
+    providerId: MAP_PROVIDER_IDS.STATIC,
+    requestedProviderId: MAP_PROVIDER_IDS.GOOGLE,
+    loadMode: "eager",
+    canLoadRealMap: false,
+    apiKeyAvailable: false,
+    fallbackReason: "demo-static",
+    fallbackProviderId: MAP_PROVIDER_IDS.STATIC,
+  });
+});
+
+test("Phase 5.1b keeps Formal Google provider behind API key availability", () => {
+  expect(
+    getMapProviderConfig({
+      mode: "formal",
+      providerId: MAP_PROVIDER_IDS.GOOGLE,
+      enableRealMap: true,
+    }),
+  ).toMatchObject({
+    mode: "formal",
+    providerId: MAP_PROVIDER_IDS.GOOGLE,
+    canLoadRealMap: false,
+    apiKeyAvailable: false,
+    fallbackReason: "missing-api-key",
+  });
+
+  expect(
+    getMapProviderConfig({
+      mode: "formal",
+      providerId: MAP_PROVIDER_IDS.GOOGLE,
+      enableRealMap: true,
+      apiKey: "fake-test-key",
+    }),
+  ).toMatchObject({
+    mode: "formal",
+    providerId: MAP_PROVIDER_IDS.GOOGLE,
+    loadMode: "lazy",
+    canLoadRealMap: true,
+    apiKeyAvailable: true,
+    fallbackReason: null,
+  });
+
+  expect(getMapProviderConfig({ mode: "formal", providerId: "unknown" })).toMatchObject({
+    providerId: MAP_PROVIDER_IDS.STATIC,
+    canLoadRealMap: false,
+  });
+});
+
+test("Phase 5.1b Google Maps loader fails safely without an API key", async () => {
+  await expect(loadGoogleMapsApi()).rejects.toThrow("Missing Google Maps API key");
 });
 
 test("Phase 4.9c adapter passes provider-neutral marker and focus input", () => {
@@ -51,10 +118,11 @@ test("Phase 4.9c adapter passes provider-neutral marker and focus input", () => 
   expect(JSON.stringify(adapterInput).toLowerCase()).not.toContain("google");
 });
 
-test("Phase 4.9c does not load Google SDK, env keys, or map packages in the main app path", () => {
+test("Phase 5.1c keeps Google code isolated to the lazy provider and rejects unapproved map packages", () => {
   const appSource = readRepoFile("src/App.jsx");
   const packageJson = readRepoFile("package.json");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
 
   expect(mapPanelSource).toContain('import("./providers/GoogleMapProvider.lazy.jsx")');
   expect(appSource).not.toContain("VITE_GOOGLE_MAPS_API_KEY");
@@ -62,8 +130,36 @@ test("Phase 4.9c does not load Google SDK, env keys, or map packages in the main
   expect(appSource).not.toContain("google.maps");
   expect(mapPanelSource).not.toContain("@googlemaps");
   expect(mapPanelSource).not.toContain("google.maps");
-  expect(packageJson).not.toContain("@googlemaps");
+  expect(googleProviderSource).toContain("loadGoogleMapsApi");
+  expect(googleProviderSource).toContain("window.google?.maps");
+  expect(packageJson).toContain("@googlemaps/js-api-loader");
   expect(packageJson).not.toContain("@react-google-maps");
   expect(packageJson).not.toContain("leaflet");
   expect(packageJson).not.toContain("maplibre");
+});
+
+test("Phase 5.1c Google provider stays markers-only and provider-neutral", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+
+  expect(googleProviderSource).toContain("marker.hasCoordinates");
+  expect(googleProviderSource).toContain("new MapConstructor");
+  expect(googleProviderSource).toContain("new MarkerConstructor");
+  expect(googleProviderSource).toContain("onFocusItem?.(marker.itemId)");
+  expect(googleProviderSource).toContain("marker.setMap(null)");
+  expect(googleProviderSource).toContain("fitBounds");
+  expect(googleProviderSource).toContain("panTo");
+  expect(googleProviderSource).not.toContain("Directions");
+  expect(googleProviderSource).not.toContain("Routes");
+  expect(googleProviderSource).not.toContain("Places");
+  expect(googleProviderSource).not.toContain("Geocoding");
+  expect(googleProviderSource).not.toContain("Polyline");
+  expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
+});
+
+test("Phase 5.1a wires Demo RoutePanel through explicit demo mode", () => {
+  const appSource = readRepoFile("src/App.jsx");
+
+  expect(appSource).toContain('mode="demo"');
+  expect(appSource).toContain('mode="formal"');
+  expect(appSource).toContain("mode={mode}");
 });
