@@ -35,6 +35,15 @@ test("Phase 5.2 parseMapUrlToPoint reads !3dlat!4dlng Google Maps URLs", () => {
   });
 });
 
+test("Phase 5.2 parseMapUrlToPoint prefers place coordinates before viewport center", () => {
+  expect(
+    parseMapUrlToPoint("https://www.google.com/maps/place/Kiyomizu-dera/@35.0001,135.0001,17z/data=!3d34.9949!4d135.785"),
+  ).toEqual({
+    latitude: 34.9949,
+    longitude: 135.785,
+  });
+});
+
 test("Phase 5.2 parseMapUrlToPoint fails quietly for invalid or empty values", () => {
   expect(() => parseMapUrlToPoint(null)).not.toThrow();
   expect(() => parseMapUrlToPoint("")).not.toThrow();
@@ -54,8 +63,12 @@ test("Phase 5.2 validates stored map point bounds and normalizes payload coordin
     longitude: 135,
   });
   expect(normalizeMapPointFields({ map_url: "", latitude: "34.9895", longitude: "135.8175" })).toEqual({
-    latitude: 34.9895,
-    longitude: 135.8175,
+    latitude: null,
+    longitude: null,
+  });
+  expect(normalizeMapPointFields({ map_url: null, latitude: "34.9895", longitude: "135.8175" })).toEqual({
+    latitude: null,
+    longitude: null,
   });
   expect(normalizeMapPointFields({ map_url: "https://maps.app.goo.gl/example", latitude: 34.9895, longitude: 135.8175 })).toEqual({
     latitude: null,
@@ -74,6 +87,16 @@ test("Phase 5.2 missing map point count ignores transportation cards", () => {
       { id: "visit-b", item_type: "visit", map_url: "https://maps.google.com/?q=35,135" },
       { id: "visit-c", item_type: "visit", latitude: null, longitude: null },
       { id: "transport-a-b", item_type: "transport", latitude: null, longitude: null },
+    ]),
+  ).toBe(2);
+});
+
+test("Phase 5.2 missing map point count increases after Map URL and coordinates are cleared", () => {
+  expect(
+    countMissingMapPoints([
+      { id: "visit-a", item_type: "visit", map_url: null, latitude: null, longitude: null },
+      { id: "visit-b", item_type: "visit", map_url: "", latitude: null, longitude: null },
+      { id: "transport-a-b", item_type: "transport", map_url: null, latitude: null, longitude: null },
     ]),
   ).toBe(2);
 });

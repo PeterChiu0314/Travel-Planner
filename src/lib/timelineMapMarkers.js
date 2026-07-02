@@ -42,6 +42,9 @@ export function buildDayMapMarkers(dayItems = [], options = {}) {
 
     const title = nullableText(item.title) || locationName || "Untitled destination";
     const hasCoordinates = hasValidMapPoint(item);
+    const mapUrl = nullableText(item.map_url) || "";
+    if (!mapUrl && !hasCoordinates) return markers;
+
     const latitude = hasCoordinates ? finiteNumber(item.latitude) : null;
     const longitude = hasCoordinates ? finiteNumber(item.longitude) : null;
 
@@ -52,7 +55,7 @@ export function buildDayMapMarkers(dayItems = [], options = {}) {
       title,
       locationName,
       address: nullableText(item.address) || "",
-      mapUrl: nullableText(item.map_url) || "",
+      mapUrl,
       latitude,
       longitude,
       hasCoordinates,

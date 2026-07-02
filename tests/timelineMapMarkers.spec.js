@@ -48,11 +48,11 @@ test("Phase 4.9a builds provider-neutral markers for destination items", () => {
 
 test("Phase 4.9a excludes transportation cards and keeps marker order", () => {
   const markers = buildDayMapMarkers([
-    { id: "visit-a", item_type: "visit", location_name: "A" },
+    { id: "visit-a", item_type: "visit", location_name: "A", map_url: "https://maps.example/a" },
     { id: "transport-a-b", item_type: "transport", title: "Train", from_item_id: "visit-a", to_item_id: "visit-b" },
-    { id: "visit-b", item_type: "visit", location_name: "B" },
+    { id: "visit-b", item_type: "visit", location_name: "B", map_url: "https://maps.example/b" },
     { id: "legacy-transport", type: "transport", title: "Bus" },
-    { id: "visit-c", type: "hotel", title: "Hotel C", location: "C" },
+    { id: "visit-c", type: "hotel", title: "Hotel C", location: "C", map_url: "https://maps.example/c" },
   ]);
 
   expect(markers.map((marker) => marker.itemId)).toEqual(["visit-a", "visit-b", "visit-c"]);
@@ -61,14 +61,14 @@ test("Phase 4.9a excludes transportation cards and keeps marker order", () => {
 test("Phase 4.9a handles missing and invalid coordinates without throwing", () => {
   expect(() =>
     buildDayMapMarkers([
-      { id: "visit-a", item_type: "visit", location_name: "A", latitude: "", longitude: null },
-      { id: "visit-b", item_type: "visit", location_name: "B", latitude: "north", longitude: "135.7" },
+      { id: "visit-a", item_type: "visit", location_name: "A", map_url: "https://maps.example/a", latitude: "", longitude: null },
+      { id: "visit-b", item_type: "visit", location_name: "B", map_url: "https://maps.example/b", latitude: "north", longitude: "135.7" },
     ]),
   ).not.toThrow();
 
   const markers = buildDayMapMarkers([
-    { id: "visit-a", item_type: "visit", location_name: "A", latitude: "", longitude: null },
-    { id: "visit-b", item_type: "visit", location_name: "B", latitude: "north", longitude: "135.7" },
+    { id: "visit-a", item_type: "visit", location_name: "A", map_url: "https://maps.example/a", latitude: "", longitude: null },
+    { id: "visit-b", item_type: "visit", location_name: "B", map_url: "https://maps.example/b", latitude: "north", longitude: "135.7" },
   ]);
 
   expect(markers).toMatchObject([
@@ -79,14 +79,25 @@ test("Phase 4.9a handles missing and invalid coordinates without throwing", () =
 
 test("Phase 5.2 rejects out-of-range coordinates for marker input", () => {
   const markers = buildDayMapMarkers([
-    { id: "visit-a", item_type: "visit", location_name: "A", latitude: "91", longitude: "135.7" },
-    { id: "visit-b", item_type: "visit", location_name: "B", latitude: "35", longitude: "181" },
+    { id: "visit-a", item_type: "visit", location_name: "A", map_url: "https://maps.example/a", latitude: "91", longitude: "135.7" },
+    { id: "visit-b", item_type: "visit", location_name: "B", map_url: "https://maps.example/b", latitude: "35", longitude: "181" },
   ]);
 
   expect(markers).toMatchObject([
     { itemId: "visit-a", latitude: null, longitude: null, hasCoordinates: false, coordinateSource: "missing" },
     { itemId: "visit-b", latitude: null, longitude: null, hasCoordinates: false, coordinateSource: "missing" },
   ]);
+});
+
+test("Phase 5.2 skips marker output after Map URL and coordinates are cleared", () => {
+  const markers = buildDayMapMarkers([
+    { id: "visit-a", item_type: "visit", location_name: "A", map_url: "", latitude: null, longitude: null },
+    { id: "visit-b", item_type: "visit", location_name: "B", map_url: null, latitude: null, longitude: null },
+    { id: "visit-c", item_type: "visit", location_name: "C", map_url: "https://maps.example/c", latitude: null, longitude: null },
+  ]);
+
+  expect(markers.map((marker) => marker.itemId)).toEqual(["visit-c"]);
+  expect(markers[0]).toMatchObject({ itemId: "visit-c", hasCoordinates: false, coordinateSource: "missing" });
 });
 
 test("Phase 4.9a preserves neutral provider fields without binding to Google", () => {
@@ -96,6 +107,7 @@ test("Phase 4.9a preserves neutral provider fields without binding to Google", (
       item_type: "visit",
       title: "Provider-backed place",
       location_name: "Provider Place",
+      map_url: "https://maps.example/provider-place",
       map_provider: "maptiler",
       provider_place_id: "provider-place-1",
     },

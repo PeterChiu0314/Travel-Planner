@@ -61,9 +61,9 @@ export function parseMapUrlToPoint(mapUrl) {
 
   const decoded = decodedText(text);
   return (
-    coordinateFromMatch(decoded.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)(?:[,/?]|$)/)) ||
-    parseUrlSearchPoint(decoded) ||
     coordinateFromMatch(decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/)) ||
+    parseUrlSearchPoint(decoded) ||
+    coordinateFromMatch(decoded.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)(?:[,/?]|$)/)) ||
     null
   );
 }
@@ -94,7 +94,7 @@ export function normalizeMapPointFields(payload) {
   }
   const mapUrl = typeof payload?.map_url === "string" ? payload.map_url.trim() : payload?.map_url;
   if (!mapUrl) {
-    return validPoint(payload?.latitude, payload?.longitude) || { latitude: null, longitude: null };
+    return { latitude: null, longitude: null };
   }
   const point = parseMapUrlToPoint(mapUrl);
   return point || { latitude: null, longitude: null };

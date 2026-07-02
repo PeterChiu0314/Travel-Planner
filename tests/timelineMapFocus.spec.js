@@ -6,7 +6,7 @@ import {
 } from "../src/lib/timelineMapMarkers.js";
 
 const dayItems = [
-  { id: "visit-a", item_type: "visit", title: "A", location_name: "Kyoto Station" },
+  { id: "visit-a", item_type: "visit", title: "A", location_name: "Kyoto Station", map_url: "https://maps.example/a" },
   {
     id: "transport-a-b",
     item_type: "transport",
@@ -15,7 +15,7 @@ const dayItems = [
     to_item_id: "visit-b",
     transport_role: "normal_pair",
   },
-  { id: "visit-b", item_type: "visit", title: "B", location_name: "Fushimi Inari" },
+  { id: "visit-b", item_type: "visit", title: "B", location_name: "Fushimi Inari", map_url: "https://maps.example/b" },
   {
     id: "tail-transport",
     item_type: "transport",
