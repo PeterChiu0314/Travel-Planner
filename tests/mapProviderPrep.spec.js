@@ -280,7 +280,6 @@ test("Phase 5.1c Google provider stays markers-only and provider-neutral", () =>
   expect(googleProviderSource).not.toContain("Routes");
   expect(googleProviderSource).not.toContain("Places");
   expect(googleProviderSource).not.toContain("Geocoding");
-  expect(googleProviderSource).not.toContain("Polyline");
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
 });
 
@@ -509,7 +508,8 @@ test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker sty
     googleProviderSource.indexOf("mapRef.current.panTo(focusedMarker.getPosition())"),
   );
   expect(googleProviderSource).toContain("focusedMarkerIcon");
-  expect(googleProviderSource).toContain("markerLabel(index");
+  expect(googleProviderSource).toContain("markerSequenceNumber");
+  expect(googleProviderSource).toContain("markerLabel(marker, index");
   expect(googleProviderSource).toContain("marker.setIcon(isFocusedMarker ? focusIcon : null)");
   expect(googleProviderSource).toContain("marker.setZIndex(isFocusedMarker ? 1000");
   expect(googleProviderSource).toContain("marker.setLabel(markerLabel");
@@ -518,6 +518,29 @@ test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker sty
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
   expect(googleProviderSource).not.toContain("markerCluster");
   expect(staticProviderSource).not.toContain("FOCUSED_MARKER_ZOOM");
+});
+
+test("Phase 5.4 renders simple Google route lines and Timeline sequence badges", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const markerSource = readRepoFile("src/lib/timelineMapMarkers.js");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(markerSource).toContain("destinationSequence += 1");
+  expect(markerSource).toContain("sequenceNumber: destinationSequence");
+  expect(appSource).toContain("timeline-destination-sequence");
+  expect(appSource).toContain("destination-sequence-badge");
+  expect(appSource).toContain("{index + 1}");
+  expect(stylesSource).toContain(".destination-sequence-badge");
+  expect(googleProviderSource).toContain("routeLineRef");
+  expect(googleProviderSource).toContain("new mapsNamespace.Polyline");
+  expect(googleProviderSource).toContain("path: coordinateMarkers.map");
+  expect(googleProviderSource).toContain("clickable: false");
+  expect(googleProviderSource).toContain("markerSequenceNumber(marker");
+  expect(staticProviderSource).not.toContain("Polyline");
+  expect(googleProviderSource).not.toContain("Directions");
+  expect(googleProviderSource).not.toContain("Routes");
 });
 
 test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {

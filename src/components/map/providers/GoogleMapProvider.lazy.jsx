@@ -23,13 +23,14 @@ function focusedMarkerIcon(mapsNamespace) {
   };
 }
 
-function markerLabelText(index) {
-  return String(index + 1);
+function markerSequenceNumber(marker, fallbackIndex) {
+  const sequenceNumber = Number(marker?.sequenceNumber);
+  return Number.isFinite(sequenceNumber) && sequenceNumber > 0 ? sequenceNumber : fallbackIndex + 1;
 }
 
-function markerLabel(index, isFocusedMarker = false) {
+function markerLabel(marker, fallbackIndex, isFocusedMarker = false) {
   return {
-    text: markerLabelText(index),
+    text: String(markerSequenceNumber(marker, fallbackIndex)),
     color: isFocusedMarker ? FOCUSED_MARKER_LABEL_COLOR : DEFAULT_MARKER_LABEL_COLOR,
     fontWeight: "800",
   };
@@ -69,6 +70,7 @@ export default function GoogleMapProvider(props) {
   const mapRef = useRef(null);
   const mapsLibraryRef = useRef(null);
   const markerInstancesRef = useRef(new Map());
+  const routeLineRef = useRef(null);
   const viewportListenersRef = useRef([]);
   const mapPointClickListenerRef = useRef(null);
   const viewportSuppressionTimerRef = useRef(null);
@@ -190,6 +192,8 @@ export default function GoogleMapProvider(props) {
         autoViewportSignatureRef.current = viewportSignature;
       }
 
+      routeLineRef.current?.setMap(null);
+      routeLineRef.current = null;
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
 
@@ -203,6 +207,8 @@ export default function GoogleMapProvider(props) {
         setRenderFailed(false);
         setFallbackReason(null);
         return () => {
+          routeLineRef.current?.setMap(null);
+          routeLineRef.current = null;
           markerInstancesRef.current.forEach((marker) => marker.setMap(null));
           markerInstancesRef.current = new Map();
         };
@@ -215,7 +221,7 @@ export default function GoogleMapProvider(props) {
           map: mapRef.current,
           position,
           title: marker.title || marker.locationName || "",
-          label: markerLabel(index),
+          label: markerLabel(marker, index),
           zIndex: index + 1,
         });
 
@@ -225,6 +231,19 @@ export default function GoogleMapProvider(props) {
         markerInstancesRef.current.set(marker.id, googleMarker);
         bounds.extend(position);
       });
+
+      if (coordinateMarkers.length > 1 && mapsNamespace?.Polyline) {
+        routeLineRef.current = new mapsNamespace.Polyline({
+          clickable: false,
+          geodesic: false,
+          map: mapRef.current,
+          path: coordinateMarkers.map((marker) => ({ lat: marker.latitude, lng: marker.longitude })),
+          strokeColor: "#2f8f72",
+          strokeOpacity: 0.7,
+          strokeWeight: 3,
+          zIndex: 10,
+        });
+      }
 
       if (coordinateMarkers.length === 1) {
         if (!userChangedViewportRef.current) {
@@ -249,6 +268,8 @@ export default function GoogleMapProvider(props) {
     }
 
     return () => {
+      routeLineRef.current?.setMap(null);
+      routeLineRef.current = null;
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
     };
@@ -263,10 +284,11 @@ export default function GoogleMapProvider(props) {
 
     markerInstancesRef.current.forEach((marker, markerId) => {
       const markerIndex = coordinateMarkers.findIndex((candidate) => candidate.id === markerId);
+      const markerRecord = markerIndex >= 0 ? coordinateMarkers[markerIndex] : null;
       const isFocusedMarker = focusedMapState.focusedMarkerId === markerId;
       marker.setZIndex(isFocusedMarker ? 1000 : Math.max(markerIndex + 1, 1));
       marker.setIcon(isFocusedMarker ? focusIcon : null);
-      marker.setLabel(markerLabel(markerIndex >= 0 ? markerIndex : 0, isFocusedMarker));
+      marker.setLabel(markerLabel(markerRecord, markerIndex >= 0 ? markerIndex : 0, isFocusedMarker));
     });
 
     const focusedMarker = focusedMapState.focusedMarkerId
@@ -309,6 +331,8 @@ export default function GoogleMapProvider(props) {
     }
     viewportListenersRef.current.forEach((listener) => listener.remove?.());
     viewportListenersRef.current = [];
+    routeLineRef.current?.setMap(null);
+    routeLineRef.current = null;
     mapPointClickListenerRef.current?.remove?.();
     mapPointClickListenerRef.current = null;
   }, []);

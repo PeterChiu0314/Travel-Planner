@@ -24,6 +24,7 @@
 - `docs/2026-07-02-phase-5-1d-google-map-empty-state-fix-handoff.md`
 - `docs/2026-07-02-phase-5-1e-google-map-layout-fill-fix-handoff.md`
 - `docs/2026-07-02-phase-5-2-map-url-point-handoff.md`
+- `docs/2026-07-03-phase-5-3b-marker-focus-closeout-handoff.md`
 - `docs/todo/phase-5-map-route-workspace-integration-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md` (latest working draft)
@@ -37,13 +38,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.3 Editor Map Point Picker + Hotfix - Completed / User tested OK / No Route APIs / No Migration
+Timeline Phase 5.3b Marker Focus + Fixed Zoom Polish - Completed / User tested OK / No Route APIs / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.3 completed editor-side map point picking and the follow-up UX hotfix. Destination add editor now appears at the bottom of the active day flow after any tail transportation, scrolls/focuses into view when opened, and keeps a small gap above it. Destination editor Map URL has one icon button that enters/cancels Formal Google map point picking; clicking the map fills hidden latitude/longitude and `https://www.google.com/maps?q={lat},{lng}` without writing DB until Save. Picking mode keeps the existing bottom overlay text and uses a crosshair cursor over the Google map. Demo remains static-only with picker disabled. User manually verified the hotfix OK. Do not add marker focus/zoom polish, Places, Geocoding, Directions, Routes, route cache, search, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
+Phase 5.3b completed marker focus and fixed zoom polish plus its smooth-pan/active-style hotfix. Timeline destination card clicks focus the matching Formal Google marker, set zoom to 15, and pan smoothly via Google Maps `panTo`; Google marker clicks still scroll/focus the Timeline card and now also update the focused marker style. Focused Google markers use a larger standard Marker circle icon, higher zIndex, and focused label styling, while old markers restore when focus changes or the day marker set changes. Map point picking mode still suppresses marker focus. Demo remains static-only. User manually verified the 5.3b hotfix OK. Do not add Places, Geocoding, Directions, Routes, route cache, search, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
 ```
 
 Branch:
@@ -573,6 +574,25 @@ New/updated files:
 - User manually verified Phase 5.3 hotfix OK.
 - No marker focus/zoom polish, Map-area add-point button, Places, Geocoding, Directions, Routes, route polyline, route cache, search UI, package, migration, Supabase schema/RPC/RLS change, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation flow, or Budget integration was added.
 
+### Phase 5.3b
+
+- Added Formal Google marker focus / fixed zoom polish.
+- Clicking a Timeline destination card focuses the matching map marker and sets Formal Google map zoom to `15`.
+- Clicking a Google marker continues to focus/scroll the corresponding Timeline card and now also updates that Google marker's active/focused style.
+- Focused Google markers use the standard Google `Marker` API only: higher `zIndex`, a larger circle symbol icon, white label text, and stronger stroke.
+- Non-focused markers restore to default label/icon state when focus changes.
+- Marker creation no longer depends on `focusedMarkerId`, preventing focus changes from rebuilding markers or re-running bounds fitting.
+- Phase 5.3b hotfix keeps movement on Google Maps `panTo` instead of custom animation, with zoom fixed at `15`.
+- Marker focus remains suppressed during map point picking mode.
+- Destinations without valid coordinates do not create Google markers and do not change map zoom.
+- Demo remains hard-locked to `StaticMapProvider`; no Google SDK path was introduced for Demo.
+- Added closeout `docs/2026-07-03-phase-5-3b-marker-focus-closeout-handoff.md`.
+- Commits pushed on `codex/timeline-phase-5-2`:
+  - `b05f72c Polish timeline phase 5.3b marker focus`
+  - `498f0ef Fix timeline phase 5.3b marker focus polish`
+- User manually verified Phase 5.3b hotfix OK.
+- No AdvancedMarkerElement, marker clustering, marker drag, animation, Places, Geocoding, Directions, Routes, route polyline, route cache, search UI, package, migration, Supabase schema/RPC/RLS change, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation flow, or Budget integration was added.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -897,6 +917,28 @@ manual user verification passed for bottom add editor scroll/focus, editor gap, 
 latest pushed commit: 86cd7d2 Polish timeline phase 5.3 editor picker UX
 ```
 
+Phase 5.3b Marker Focus / Fixed Zoom Polish checks on 2026-07-03:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 54/54
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+manual QA found direct-jump / marker active style issues after initial 5.3b commit
+latest pushed commit before hotfix: b05f72c Polish timeline phase 5.3b marker focus
+```
+
+Phase 5.3b Hotfix Smooth Map Pan + Focused Marker Active Style Fix checks on 2026-07-03:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 54/54
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+manual user verification passed for smooth pan, fixed zoom 15, focused marker active style, marker click focus, day switch behavior, and picking-mode preservation
+latest pushed commit: 498f0ef Fix timeline phase 5.3b marker focus polish
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -937,4 +979,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.3 and its scroll/gap/cursor hotfix are implemented, pushed, and manually verified OK. Demo should remain permanently static unless explicitly redesigned. Next product decision can be 5.3b marker focus/zoom polish, location-data UX polish, missing-coordinate repair flow, map marker polish, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, search UI, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.
+Phase 5.3b and its smooth-pan / focused-marker active-style hotfix are implemented, pushed, and manually verified OK. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, Map-area add-point flow, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, search UI, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.

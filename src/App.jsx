@@ -11868,7 +11868,10 @@ function ItineraryTimeline({
                 <span>{isTimedVisit(item) ? formatTimeDisplay(item.end_time) : ""}</span>
               </TimelineDragHandle>
               <div className="item-main">
-                <h4>{destination}</h4>
+                <div className="timeline-destination-sequence">
+                  <span className="destination-sequence-badge">{index + 1}</span>
+                  <h4>{destination}</h4>
+                </div>
                 {isAlternativeFormFace ? (
                   <>
                     {secondaryText ? <p className="item-summary">{secondaryText}</p> : null}

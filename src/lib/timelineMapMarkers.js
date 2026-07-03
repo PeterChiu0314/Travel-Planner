@@ -31,12 +31,14 @@ export function buildDayMapMarkers(dayItems = [], options = {}) {
   const { requireLocation = false } = options;
   if (!Array.isArray(dayItems)) return [];
 
+  let destinationSequence = 0;
   return dayItems.reduce((markers, item) => {
     if (!item || isTransportationItem(item)) return markers;
 
     const itemId = nullableText(item.id);
     if (!itemId) return markers;
 
+    destinationSequence += 1;
     const locationName = nullableText(item.location_name) || nullableText(item.location) || "";
     if (requireLocation && !locationName) return markers;
 
@@ -62,6 +64,7 @@ export function buildDayMapMarkers(dayItems = [], options = {}) {
       coordinateSource: hasCoordinates ? "stored" : "missing",
       provider: providerFromItem(item),
       providerPlaceId: providerPlaceIdFromItem(item),
+      sequenceNumber: destinationSequence,
       dayIndex: finiteNumber(item.day_index),
       sortOrder: finiteNumber(item.sort_order),
     });

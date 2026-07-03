@@ -40,6 +40,7 @@ test("Phase 4.9a builds provider-neutral markers for destination items", () => {
       coordinateSource: "stored",
       provider: null,
       providerPlaceId: null,
+      sequenceNumber: 1,
       dayIndex: 1,
       sortOrder: 20,
     },
@@ -56,6 +57,33 @@ test("Phase 4.9a excludes transportation cards and keeps marker order", () => {
   ]);
 
   expect(markers.map((marker) => marker.itemId)).toEqual(["visit-a", "visit-b", "visit-c"]);
+  expect(markers.map((marker) => marker.sequenceNumber)).toEqual([1, 2, 3]);
+});
+
+test("Phase 5.4 keeps marker labels aligned to Timeline destination sequence", () => {
+  const markers = buildDayMapMarkers([
+    {
+      id: "visit-a",
+      item_type: "visit",
+      location_name: "A",
+      map_url: "https://maps.example/a",
+      latitude: "35",
+      longitude: "135",
+    },
+    { id: "visit-b", item_type: "visit", location_name: "B", map_url: "", latitude: null, longitude: null },
+    { id: "transport-b-c", item_type: "transport", from_item_id: "visit-b", to_item_id: "visit-c" },
+    {
+      id: "visit-c",
+      item_type: "visit",
+      location_name: "C",
+      map_url: "https://maps.example/c",
+      latitude: "36",
+      longitude: "136",
+    },
+  ]);
+
+  expect(markers.map((marker) => marker.itemId)).toEqual(["visit-a", "visit-c"]);
+  expect(markers.map((marker) => marker.sequenceNumber)).toEqual([1, 3]);
 });
 
 test("Phase 4.9a handles missing and invalid coordinates without throwing", () => {
