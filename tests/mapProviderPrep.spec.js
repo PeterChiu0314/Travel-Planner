@@ -504,13 +504,17 @@ test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker sty
 
   expect(appSource).toContain("if (isPickingMapPoint) return;");
   expect(googleProviderSource).toContain("FOCUSED_MARKER_ZOOM = 15");
-  expect(googleProviderSource).toContain("mapRef.current.panTo(focusedMarker.getPosition())");
   expect(googleProviderSource).toContain("mapRef.current.setZoom(FOCUSED_MARKER_ZOOM)");
+  expect(googleProviderSource.indexOf("mapRef.current.setZoom(FOCUSED_MARKER_ZOOM)")).toBeLessThan(
+    googleProviderSource.indexOf("mapRef.current.panTo(focusedMarker.getPosition())"),
+  );
   expect(googleProviderSource).toContain("focusedMarkerIcon");
+  expect(googleProviderSource).toContain("markerLabel(index");
   expect(googleProviderSource).toContain("marker.setIcon(isFocusedMarker ? focusIcon : null)");
   expect(googleProviderSource).toContain("marker.setZIndex(isFocusedMarker ? 1000");
-  expect(googleProviderSource).toContain("marker.setLabel({");
+  expect(googleProviderSource).toContain("marker.setLabel(markerLabel");
   expect(googleProviderSource).toContain("if (!isPickingMapPoint) onFocusItem?.(marker.itemId)");
+  expect(googleProviderSource).toContain("}, [isPickingMapPoint, markersKey, onFocusItem, status, viewportSignature])");
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
   expect(googleProviderSource).not.toContain("markerCluster");
   expect(staticProviderSource).not.toContain("FOCUSED_MARKER_ZOOM");

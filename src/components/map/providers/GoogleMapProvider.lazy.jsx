@@ -6,6 +6,8 @@ import StaticMapProvider from "./StaticMapProvider.jsx";
 const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
 const DEFAULT_ZOOM = 11;
 const FOCUSED_MARKER_ZOOM = 15;
+const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
+const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
 
 function focusedMarkerIcon(mapsNamespace) {
   const symbolPath = mapsNamespace?.SymbolPath?.CIRCLE;
@@ -14,15 +16,23 @@ function focusedMarkerIcon(mapsNamespace) {
     path: symbolPath,
     fillColor: "#2f8f72",
     fillOpacity: 1,
-    scale: 10,
+    scale: 12,
     strokeColor: "#ffffff",
     strokeOpacity: 1,
-    strokeWeight: 3,
+    strokeWeight: 4,
   };
 }
 
 function markerLabelText(index) {
   return String(index + 1);
+}
+
+function markerLabel(index, isFocusedMarker = false) {
+  return {
+    text: markerLabelText(index),
+    color: isFocusedMarker ? FOCUSED_MARKER_LABEL_COLOR : DEFAULT_MARKER_LABEL_COLOR,
+    fontWeight: "800",
+  };
 }
 
 function coordinateKey(markers) {
@@ -199,21 +209,14 @@ export default function GoogleMapProvider(props) {
       }
 
       const bounds = new BoundsConstructor();
-      const focusIcon = focusedMarkerIcon(mapsNamespace);
       coordinateMarkers.forEach((marker, index) => {
         const position = { lat: marker.latitude, lng: marker.longitude };
-        const isFocusedMarker = focusedMapState.focusedMarkerId === marker.id;
         const googleMarker = new MarkerConstructor({
           map: mapRef.current,
           position,
           title: marker.title || marker.locationName || "",
-          label: {
-            text: markerLabelText(index),
-            color: isFocusedMarker && focusIcon ? "#ffffff" : "#1f2937",
-            fontWeight: "800",
-          },
-          icon: isFocusedMarker ? focusIcon : undefined,
-          zIndex: isFocusedMarker ? 1000 : index + 1,
+          label: markerLabel(index),
+          zIndex: index + 1,
         });
 
         googleMarker.addListener("click", () => {
@@ -249,7 +252,7 @@ export default function GoogleMapProvider(props) {
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
     };
-  }, [focusedMapState.focusedMarkerId, isPickingMapPoint, markersKey, onFocusItem, status, viewportSignature]);
+  }, [isPickingMapPoint, markersKey, onFocusItem, status, viewportSignature]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
@@ -263,11 +266,7 @@ export default function GoogleMapProvider(props) {
       const isFocusedMarker = focusedMapState.focusedMarkerId === markerId;
       marker.setZIndex(isFocusedMarker ? 1000 : Math.max(markerIndex + 1, 1));
       marker.setIcon(isFocusedMarker ? focusIcon : null);
-      marker.setLabel({
-        text: markerLabelText(markerIndex >= 0 ? markerIndex : 0),
-        color: isFocusedMarker && focusIcon ? "#ffffff" : "#1f2937",
-        fontWeight: "800",
-      });
+      marker.setLabel(markerLabel(markerIndex >= 0 ? markerIndex : 0, isFocusedMarker));
     });
 
     const focusedMarker = focusedMapState.focusedMarkerId
@@ -276,8 +275,8 @@ export default function GoogleMapProvider(props) {
 
     if (focusedMarker?.getPosition) {
       runProgrammaticViewportUpdate(() => {
-        mapRef.current.panTo(focusedMarker.getPosition());
         mapRef.current.setZoom(FOCUSED_MARKER_ZOOM);
+        mapRef.current.panTo(focusedMarker.getPosition());
       });
     }
   }, [focusedMapState.focusedMarkerId, isPickingMapPoint, markersKey, status]);
