@@ -28,7 +28,10 @@ export default function GoogleMapProvider(props) {
     focusedMapState = {},
     markers = [],
     missingMapPointCount = 0,
+    isPickingMapPoint = false,
+    mapPointPickFeedback = "",
     onFocusItem,
+    onPickMapPoint,
     providerConfig = {},
     viewportKey = "default",
   } = props;
@@ -38,6 +41,7 @@ export default function GoogleMapProvider(props) {
   const mapsLibraryRef = useRef(null);
   const markerInstancesRef = useRef(new Map());
   const viewportListenersRef = useRef([]);
+  const mapPointClickListenerRef = useRef(null);
   const viewportSuppressionTimerRef = useRef(null);
   const suppressViewportChangeRef = useRef(false);
   const userChangedViewportRef = useRef(false);
@@ -237,12 +241,36 @@ export default function GoogleMapProvider(props) {
     }
   }, [focusedMapState.focusedMarkerId, status]);
 
+  useEffect(() => {
+    if (mapPointClickListenerRef.current) {
+      mapPointClickListenerRef.current.remove?.();
+      mapPointClickListenerRef.current = null;
+    }
+    if (status !== "ready" || !mapRef.current || !isPickingMapPoint) return undefined;
+
+    mapPointClickListenerRef.current = mapRef.current.addListener("click", (event) => {
+      const latLng = event?.latLng;
+      const latitude = typeof latLng?.lat === "function" ? latLng.lat() : null;
+      const longitude = typeof latLng?.lng === "function" ? latLng.lng() : null;
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        onPickMapPoint?.({ latitude, longitude });
+      }
+    });
+
+    return () => {
+      mapPointClickListenerRef.current?.remove?.();
+      mapPointClickListenerRef.current = null;
+    };
+  }, [isPickingMapPoint, onPickMapPoint, status]);
+
   useEffect(() => () => {
     if (viewportSuppressionTimerRef.current) {
       window.clearTimeout(viewportSuppressionTimerRef.current);
     }
     viewportListenersRef.current.forEach((listener) => listener.remove?.());
     viewportListenersRef.current = [];
+    mapPointClickListenerRef.current?.remove?.();
+    mapPointClickListenerRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -282,6 +310,13 @@ export default function GoogleMapProvider(props) {
       ) : null}
       {missingMapPointCount > 0 ? (
         <div className="map-point-warning">尚有 {missingMapPointCount} 個目的地缺少可用座標</div>
+      ) : null}
+      {mapPointPickFeedback ? (
+        <div className="map-point-picker-hint">
+          {mapPointPickFeedback === "picked"
+            ? "\u5df2\u8a2d\u5b9a\u5730\u5716\u4f4d\u7f6e"
+            : "\u9ede\u64ca\u5730\u5716\u8a2d\u5b9a\u4f4d\u7f6e"}
+        </div>
       ) : null}
     </div>
   );

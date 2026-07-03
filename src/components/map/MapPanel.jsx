@@ -20,6 +20,9 @@ export default function MapPanel({
   mode = "formal",
   viewportKey = "default",
   missingMapPointCount = 0,
+  isPickingMapPoint = false,
+  mapPointPickFeedback = "",
+  onPickMapPoint,
   className = "route-map",
 }) {
   const envProviderId = import.meta.env?.VITE_MAP_PROVIDER || DEFAULT_MAP_PROVIDER_ID;
@@ -94,6 +97,9 @@ export default function MapPanel({
     providerConfig,
     viewportKey,
     missingMapPointCount,
+    isPickingMapPoint,
+    mapPointPickFeedback,
+    onPickMapPoint,
   };
 
   if (GoogleProvider) {

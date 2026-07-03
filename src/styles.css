@@ -732,6 +732,23 @@ code {
   transform: translateY(-1px);
 }
 
+.map-point-picker-button {
+  width: 30px;
+  min-width: 30px;
+}
+
+.map-point-picker-button.active {
+  border-color: rgba(47, 143, 114, 0.4);
+  background: rgba(47, 143, 114, 0.1);
+  color: var(--mint-dark);
+}
+
+.map-point-picker-button svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+}
+
 .trip-list {
   display: grid;
   align-content: start;
@@ -2100,6 +2117,14 @@ label {
   font-weight: 700;
   line-height: 1.25;
   text-align: right;
+}
+
+.field-label-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
 }
 
 input,
@@ -3639,6 +3664,24 @@ textarea {
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.92);
   color: #9f3f30;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.map-point-picker-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  z-index: 4;
+  max-width: min(320px, calc(100% - 32px));
+  padding: 8px 12px;
+  border: 1px solid rgba(47, 143, 114, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--mint-dark);
   font-size: 13px;
   font-weight: 800;
   text-align: center;

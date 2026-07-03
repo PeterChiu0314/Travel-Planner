@@ -44,6 +44,7 @@ import {
   Settings,
   Trash2,
   Wallet,
+  X,
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import {
@@ -722,6 +723,10 @@ function getDurationMinutes(startTime, endTime) {
   const end = timeToMinutes(endTime);
   if (start === null || end === null || end <= start) return "";
   return String(end - start);
+}
+
+function googleMapsPointUrl(latitude, longitude) {
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }
 
 function transportCategoryMeta(category) {
@@ -7285,6 +7290,15 @@ function DemoApp({ initialSection }) {
   const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
   const [focusedItemId, setFocusedItemId] = useState(null);
   const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
+  const demoMapPointPicker = {
+    canPickMapPoint: false,
+    isPickingMapPoint: false,
+    mapPointPickFeedback: "",
+    pickedMapPoint: null,
+    onCancelMapPointPick: null,
+    onPickMapPoint: null,
+    onStartMapPointPick: null,
+  };
   const days = useMemo(() => tripDays(demoActiveTrip), [demoActiveTrip]);
   useEffect(() => {
     setIsDemoSidebarTripMenuOpen(false);
@@ -8092,6 +8106,7 @@ function DemoApp({ initialSection }) {
                   dayTitle={`DAY ${activeDay + 1}`}
                   disableDraftAutosave
                   focusedItemId={focusedItemId}
+                  {...demoMapPointPicker}
                   headingEyebrow="行程"
                   members={demoMembers}
                   onApplyAlternative={applyTimelineAlternative}
@@ -8135,6 +8150,7 @@ function DemoApp({ initialSection }) {
                   <RoutePanel
                     dayItems={dayItems}
                     focusedItemId={focusedItemId}
+                    {...demoMapPointPicker}
                     headingEyebrow="路線"
                     mode="demo"
                     viewportKey={`demo-day:${activeDay}`}
@@ -8910,6 +8926,9 @@ function TripWorkspace(props) {
   const isLuggageMode = activeSection === "luggage";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
+  const [isPickingMapPoint, setIsPickingMapPoint] = useState(false);
+  const [mapPointPickFeedback, setMapPointPickFeedback] = useState("");
+  const [pickedMapPoint, setPickedMapPoint] = useState(null);
   const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const alternativesByItem = useMemo(() => {
     const next = {};
@@ -8933,6 +8952,55 @@ function TripWorkspace(props) {
     [days, items],
   );
   const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteLayoutCollapsed);
+
+  function startMapPointPick() {
+    setMapPointPickFeedback("picking");
+    setIsPickingMapPoint(true);
+  }
+
+  function cancelMapPointPick() {
+    setIsPickingMapPoint(false);
+    setMapPointPickFeedback("");
+  }
+
+  function pickMapPoint(point) {
+    if (!point) return;
+    setPickedMapPoint({ ...point, pickedAt: Date.now() });
+    setIsPickingMapPoint(false);
+    setMapPointPickFeedback("picked");
+    window.setTimeout(() => {
+      setMapPointPickFeedback((current) => (current === "picked" ? "" : current));
+    }, 1500);
+  }
+
+  useEffect(() => {
+    if (!isPickingMapPoint) return undefined;
+
+    function handleDocumentPointerDown(event) {
+      const target = event.target;
+      if (target?.closest?.(".google-map-surface") || target?.closest?.(".map-point-picker-button")) return;
+      cancelMapPointPick();
+    }
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+    };
+  }, [isPickingMapPoint]);
+
+  useEffect(() => {
+    if (isRouteLayoutCollapsed && isPickingMapPoint) cancelMapPointPick();
+  }, [isPickingMapPoint, isRouteLayoutCollapsed]);
+
+  const mapPointPicker = {
+    canPickMapPoint: !isRouteLayoutCollapsed,
+    isPickingMapPoint,
+    mapPointPickFeedback,
+    pickedMapPoint,
+    onCancelMapPointPick: cancelMapPointPick,
+    onPickMapPoint: pickMapPoint,
+    onStartMapPointPick: startMapPointPick,
+  };
 
   function selectTimelineDay(dayIndex) {
     onActiveDay(dayIndex);
@@ -9111,6 +9179,7 @@ function TripWorkspace(props) {
                 dayLabel={days[activeDay] ? `Day ${activeDay + 1} · ${formatDate(days[activeDay])}` : ""}
                 dayTitle={`DAY ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
+                {...mapPointPicker}
                 onApplyAlternative={onApplyAlternative}
                 onClearDragPresence={onClearDragPresence}
                 onConfirmTransportWarning={onConfirmTransportWarning}
@@ -9157,6 +9226,7 @@ function TripWorkspace(props) {
                 <RoutePanel
                   dayItems={dayItems}
                   focusedItemId={focusedItemId}
+                  {...mapPointPicker}
                   mode="formal"
                   viewportKey={`formal-day:${activeDay}`}
                   onFocusItem={setFocusedItemId}
@@ -9548,6 +9618,9 @@ function ItineraryTimeline({
   dayTitle,
   disableDraftAutosave = false,
   focusedItemId,
+  canPickMapPoint = false,
+  isPickingMapPoint = false,
+  pickedMapPoint = null,
   foreignCardSelection = null,
   foreignDragPresence = null,
   foreignSameDayDragActive = false,
@@ -9560,6 +9633,8 @@ function ItineraryTimeline({
   onDeleteItem,
   onClearCardSelection,
   onFocusItem,
+  onCancelMapPointPick,
+  onStartMapPointPick,
   onPublishCardSelection,
   onPublishDragPresence,
   onReorderDestinationPackages,
@@ -9662,6 +9737,7 @@ function ItineraryTimeline({
   const lastDndOverIdRef = useRef(null);
   const activeDayColumnRef = useRef(null);
   const activeTimelineListRef = useRef(null);
+  const lastAppliedMapPointPickRef = useRef(null);
   const restrictTimelineDragToDayColumn = useCallback(
     ({ activeNodeRect, overlayNodeRect, transform }) => {
       const columnRect = activeDayColumnRef.current?.getBoundingClientRect();
@@ -10257,6 +10333,7 @@ function ItineraryTimeline({
     setEditorTripId(null);
     setInsertionPair(null);
     setRestoredDraftKey(null);
+    onCancelMapPointPick?.();
     setIsOpen(false);
   }
 
@@ -10467,6 +10544,7 @@ function ItineraryTimeline({
     setEditorTripId(null);
     setInsertionPair(null);
     setRestoredDraftKey(null);
+    onCancelMapPointPick?.();
     setIsOpen(false);
     return true;
   }
@@ -10520,6 +10598,21 @@ function ItineraryTimeline({
   }
 
   const isTransportEditor = form.item_type === "transport";
+  useEffect(() => {
+    if (!pickedMapPoint?.pickedAt || lastAppliedMapPointPickRef.current === pickedMapPoint.pickedAt) return;
+    if (!isOpen || isTransportEditor) return;
+    lastAppliedMapPointPickRef.current = pickedMapPoint.pickedAt;
+    const latitude = Number(pickedMapPoint.latitude);
+    const longitude = Number(pickedMapPoint.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    setMapUrlError("");
+    setForm({
+      ...form,
+      latitude,
+      longitude,
+      map_url: googleMapsPointUrl(latitude, longitude),
+    });
+  }, [form, isOpen, isTransportEditor, pickedMapPoint, setForm]);
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
   const visitItemIds = useMemo(() => visitItems.map((item) => item.id), [visitItems]);
   useEffect(() => {
@@ -11103,6 +11196,14 @@ function ItineraryTimeline({
     );
   }
 
+  function toggleMapPointPick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!canPickMapPoint) return;
+    if (isPickingMapPoint) onCancelMapPointPick?.();
+    else onStartMapPointPick?.();
+  }
+
   function renderVisitEditorForm() {
     return (
       <form autoComplete="off" className="item-form" onSubmit={submit}>
@@ -11232,11 +11333,23 @@ function ItineraryTimeline({
           <label>
             <span className="field-label-row">
               <span>Map URL</span>
-              {mapUrlError ? (
-                <span className="field-inline-error" role="alert">
-                  {mapUrlError}
-                </span>
-              ) : null}
+              <span className="field-label-actions">
+                {mapUrlError ? (
+                  <span className="field-inline-error" role="alert">
+                    {mapUrlError}
+                  </span>
+                ) : null}
+                <button
+                  className={`mini-button map-point-picker-button${isPickingMapPoint ? " active" : ""}`}
+                  disabled={!canPickMapPoint}
+                  type="button"
+                  title={isPickingMapPoint ? "\u53d6\u6d88\u5730\u5716\u9078\u9ede" : "\u5f9e\u5730\u5716\u9078\u9ede"}
+                  aria-label={isPickingMapPoint ? "\u53d6\u6d88\u5730\u5716\u9078\u9ede" : "\u5f9e\u5730\u5716\u9078\u9ede"}
+                  onClick={toggleMapPointPick}
+                >
+                  {isPickingMapPoint ? <X aria-hidden="true" /> : <MapPin aria-hidden="true" />}
+                </button>
+              </span>
             </span>
             <input
               autoComplete="off"
@@ -11579,8 +11692,6 @@ function ItineraryTimeline({
       ) : null}
 
       {isOpen && isTransportEditor && !editingId && !insertionPair ? renderTransportEditorForm() : null}
-
-      {isOpen && !isTransportEditor && !editingId ? renderVisitEditorForm() : null}
 
       <DndContext
         collisionDetection={closestCenter}
@@ -11940,6 +12051,7 @@ function ItineraryTimeline({
         ) : null}
       </DragOverlay>
       </DndContext>
+      {isOpen && !isTransportEditor && !editingId ? renderVisitEditorForm() : null}
     </div>
     </>
   );
@@ -12077,9 +12189,12 @@ function RoutePanel({
   dayItems,
   focusedItemId,
   headingEyebrow = "Route",
+  isPickingMapPoint = false,
+  mapPointPickFeedback = "",
   mode = "formal",
   viewportKey,
   onFocusItem,
+  onPickMapPoint,
 }) {
   const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
   const focusedMapState = getFocusedMapState(dayItems, stops, focusedItemId);
@@ -12098,7 +12213,10 @@ function RoutePanel({
         mode={mode}
         viewportKey={viewportKey}
         missingMapPointCount={missingMapPointCount}
+        isPickingMapPoint={isPickingMapPoint}
+        mapPointPickFeedback={mapPointPickFeedback}
         onFocusItem={onFocusItem}
+        onPickMapPoint={onPickMapPoint}
       />
     </section>
   );
