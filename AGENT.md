@@ -282,6 +282,11 @@ Share flow:
 - Editor can open the share dialog and copy an existing active share link.
 - Viewer cannot open the share dialog.
 
+Timeline map point rule:
+
+- A destination / visit item can have `type`, category, or tag values that mean transportation, such as airport, station, parking, rental car, or port. It is still a destination for map markers, route-line visuals, sequence badges, coordinate parsing, and missing-coordinate counts.
+- Only `item_type === "transport"` means a true transportation card. Do not use `type === "transport"` to clear coordinates, skip missing-coordinate counts, suppress destination markers, suppress route-line participation, or remove destination sequence numbering.
+
 Trip date data flow:
 
 - The current Timeline model is still mixed: Day identity is derived from `day_index`, while `itinerary_items.date` is stored for compatibility and export/share consistency.

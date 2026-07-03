@@ -93,6 +93,7 @@ Do:
 - Let details expand from the card.
 - Keep map links easy to open.
 - Keep route/map context available on desktop.
+- Treat transportation-category places such as airports, stations, parking lots, rental-car points, and ports as destinations when they are visit cards: they should keep markers, route-line participation, and destination sequence numbers when they have valid coordinates.
 - For Timeline drag reorder, keep drag activation on an intentional handle such as the time block instead of the whole card, so normal card click/edit interactions stay predictable.
 - Keep local drag previews constrained to the active Day Board flow. The floating overlay should move vertically within the list/card area and should not cover the date header or neighboring day boards.
 - Keep transportation cards visually attached to their semantic visit pair during drag preview, but do not make transportation cards themselves draggable.
@@ -149,6 +150,7 @@ Do:
 
 - Keep transportation cards visually smaller and quieter than visit cards.
 - Render valid transportation cards only between their adjacent `from_item_id` / `to_item_id` visit pair.
+- Treat only true transportation cards as transportation cards. A visit/destination whose category or type is transportation is still a destination, not the small connector card between visits.
 - Keep invalid transportation cards visible in the Day warning area below the date header and above the first normal visit card.
 - Use one shared lightweight warning pattern for transportation warnings.
 - In collapsed state, keep warnings compact: small `⚠` icon or short warning text only.

@@ -25,6 +25,7 @@
 - `docs/2026-07-02-phase-5-1e-google-map-layout-fill-fix-handoff.md`
 - `docs/2026-07-02-phase-5-2-map-url-point-handoff.md`
 - `docs/2026-07-03-phase-5-3b-marker-focus-closeout-handoff.md`
+- `docs/2026-07-03-phase-5-4-route-lines-closeout-handoff.md`
 - `docs/todo/phase-5-map-route-workspace-integration-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md` (latest working draft)
@@ -38,13 +39,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.3b Marker Focus + Fixed Zoom Polish - Completed / User tested OK / No Route APIs / No Migration
+Timeline Phase 5.4 Simple Route Lines + Timeline Destination Sequence - Completed / Manual QA ALL PASS / No Route APIs / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.3b completed marker focus and fixed zoom polish plus its smooth-pan/active-style hotfix. Timeline destination card clicks focus the matching Formal Google marker, set zoom to 15, and pan smoothly via Google Maps `panTo`; Google marker clicks still scroll/focus the Timeline card and now also update the focused marker style. Focused Google markers use a larger standard Marker circle icon, higher zIndex, and focused label styling, while old markers restore when focus changes or the day marker set changes. Map point picking mode still suppresses marker focus. Demo remains static-only. User manually verified the 5.3b hotfix OK. Do not add Places, Geocoding, Directions, Routes, route cache, search, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
+Phase 5.4 completed simple Formal Google route lines between valid same-day destination coordinates and aligned Timeline destination sequence numbers with Google marker labels. Route lines are provider-local Google `Polyline` visuals only; no Directions API, Routes API, route calculation, route cache, or travel-duration logic was added. Follow-up hotfixes finalized the low-key top-left sequence badge UI and fixed transportation-category destinations: `item_type="visit"` with `type="transport"` is still a destination, preserves parsed `latitude` / `longitude`, produces markers, participates in route lines, and keeps destination sequence numbering. Only true transportation cards (`item_type === "transport"`) are excluded from markers, route lines, missing-coordinate counts, and destination sequence badges. Latest fix commit: `684b162`. Manual QA: ALL PASS. Demo remains static-only. Do not add Places, Geocoding, Directions, Routes, route cache, search, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
 ```
 
 Branch:
@@ -593,6 +594,25 @@ New/updated files:
 - User manually verified Phase 5.3b hotfix OK.
 - No AdvancedMarkerElement, marker clustering, marker drag, animation, Places, Geocoding, Directions, Routes, route polyline, route cache, search UI, package, migration, Supabase schema/RPC/RLS change, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation flow, or Budget integration was added.
 
+### Phase 5.4
+
+- Added Formal Google simple route lines between valid same-day destination coordinates.
+- Route lines are provider-local Google `Polyline` visuals only; they do not use Directions API, Routes API, route calculation, route cache, or duration/transport logic.
+- Google marker labels now use the same destination sequence number as the Timeline.
+- Timeline destination cards show a low-key top-left sequence number as plain 12px text with no border/background.
+- Transportation cards remain unnumbered and do not produce markers or route-line points.
+- Destination sequence, marker output, route-line participation, and missing-coordinate counts now share the same transportation-card definition: only `item_type === "transport"` is a transportation card.
+- Destination / visit cards with category/type `transport`, such as airports, stations, parking lots, rental-car points, and ports, remain destinations. If they have valid coordinates, they keep destination sequence numbers, save `latitude` / `longitude`, produce markers, and participate in route lines.
+- Old-card Map URL save polish keeps validated hidden `latitude` / `longitude` in the destination editor update payload.
+- Commits pushed on `codex/timeline-phase-5-2`:
+  - `723308d Implement timeline phase 5.4 route lines`
+  - `80bc987 Polish timeline destination sequence badge`
+  - `350a713 Preserve validated timeline map coordinates on save`
+  - `b1feb1c Fix transport-category destination map markers`
+  - `684b162 Fix map point handling for transport-category destinations`
+- User manually verified Phase 5.4 and hotfixes. Manual QA: ALL PASS.
+- No Places, Geocoding, Directions, Routes API, route calculation, route cache, search UI, package, migration, Supabase schema/RPC/RLS change, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation repair flow, or Budget integration was added.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -942,7 +962,7 @@ latest pushed commit: 498f0ef Fix timeline phase 5.3b marker focus polish
 Phase 5.4 Simple Route Lines + Destination Sequence Badge checks on 2026-07-03:
 
 ```text
-npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 57/57
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 58/58 after final transport-category hotfix
 npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
 npm.cmd run build passed with existing Vite large-chunk warning
 git diff --check passed with Windows LF/CRLF notices only
@@ -950,8 +970,9 @@ Formal Google route lines implemented with a simple provider-local Polyline betw
 destination sequence badge implemented for Timeline destination cards and Google marker labels; transportation cards remain unnumbered
 manual user feedback moved Timeline destination sequence badge to the card top-left as plain 12px text without border/background
 old-card Map URL save polish added so validated map_url coordinates are explicitly preserved in the destination editor update payload
-related pushed commits before closeout: 723308d Implement timeline phase 5.4 route lines, 80bc987 Polish timeline destination sequence badge
-latest local code-fix commit before closeout docs: 350a713 Preserve validated timeline map coordinates on save
+transport-category destination hotfix keeps item_type="visit" / type="transport" as a destination for marker, route line, sequence badge, missing-coordinate count, and coordinate save behavior
+related pushed commits: 723308d Implement timeline phase 5.4 route lines, 80bc987 Polish timeline destination sequence badge, 350a713 Preserve validated timeline map coordinates on save, b1feb1c Fix transport-category destination map markers, 684b162 Fix map point handling for transport-category destinations
+manual QA: ALL PASS
 ```
 
 ## Protected Scope Preserved
@@ -994,4 +1015,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.4 is implemented and closeout docs are being pushed. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, Map-area add-point flow, or route summary work. Do not infer Places, Geocoding, Directions, Routes API, route calculation, route cache, search UI, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.
+Phase 5.4 is complete, pushed, and manually verified ALL PASS through commit `684b162`. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, Map-area add-point flow, or route summary work. Do not infer Places, Geocoding, Directions, Routes API, route calculation, route cache, search UI, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.

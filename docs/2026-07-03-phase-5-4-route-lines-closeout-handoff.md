@@ -5,14 +5,16 @@ Branch: `codex/timeline-phase-5-2`
 
 ## Status
 
-Phase 5.4 is complete, with one small follow-up polish for old destination card Map URL saves.
+Phase 5.4 is complete. Manual QA is ALL PASS after route lines, Timeline sequence badge polish, and the transport-category destination marker / coordinate-save hotfixes.
 
-Related commits before this closeout:
+Related commits:
 
 ```text
 723308d Implement timeline phase 5.4 route lines
 80bc987 Polish timeline destination sequence badge
 350a713 Preserve validated timeline map coordinates on save
+b1feb1c Fix transport-category destination map markers
+684b162 Fix map point handling for transport-category destinations
 ```
 
 ## What Changed
@@ -31,16 +33,25 @@ Related commits before this closeout:
   - no extra shape
   - 12px low-key text
 - Old-card Map URL save polish now keeps validated hidden `latitude` / `longitude` in the destination editor update payload, so saving a valid Map URL does not leave `map_url` written without coordinates.
+- Transport-category destinations are no longer misclassified as transportation cards. A destination / visit with `item_type="visit"` and `type="transport"` remains a destination.
+- Airports, stations, parking lots, rental-car points, ports, and other transportation-category destinations can save coordinates, show markers, participate in the simple route line, and keep destination sequence numbering.
+- Only true transportation cards (`item_type === "transport"`) are excluded from marker output, route-line points, destination sequence badges, and missing-coordinate counts.
+- `countMissingMapPoints()` now counts missing coordinates for transport-category destinations and still ignores true transportation cards.
 
 ## Files Changed
 
 ```text
 src/App.jsx
 src/components/map/providers/GoogleMapProvider.lazy.jsx
+src/lib/mapPoint.js
 src/lib/timelineMapMarkers.js
 src/styles.css
+tests/mapPoint.spec.js
 tests/mapProviderPrep.spec.js
+tests/timelineMapMarkers.spec.js
 CURRENT_TASK.md
+AGENT.md
+docs/UX_RULES.md
 docs/2026-07-03-phase-5-4-route-lines-closeout-handoff.md
 ```
 
@@ -50,7 +61,7 @@ Automated checks run during Phase 5.4:
 
 ```text
 npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js
-passed 57/57
+passed 58/58 after final transport-category hotfix
 
 npx.cmd playwright test tests/phase-4-2c-reorder.spec.js
 passed 33/33
@@ -86,6 +97,10 @@ Plain-number sequence badge style adjusted to requested CSS
 Old test data diagnosis found rows with map_url but null latitude/longitude
 Map picker itself was not identified as broken
 Destination editor save path now explicitly preserves validated coordinates for old cards
+Transport-category destination marker regression reproduced and fixed
+Transport-category destination coordinate-save regression reproduced and fixed
+Manual QA: ALL PASS
+Latest fix commit: 684b162
 ```
 
 ## Protected Scope
@@ -119,6 +134,8 @@ Budget flow
 
 - A marker still requires valid persisted `latitude` and `longitude`; `map_url` alone is not enough.
 - If old test data has `map_url` but null coordinates, repair can be done narrowly per trip/day or by re-saving the card after this polish is deployed.
+- Do not treat destination category/type `transport` as a transportation card. The durable transportation-card discriminator is `item_type === "transport"`.
+- Destination / visit items with `type="transport"` should continue through normal map point parsing, coordinate persistence, marker output, route-line participation, and destination sequence numbering.
 - Route lines are intentionally simple visual connectors only. They are not travel routes, transit paths, duration estimates, or cached directions.
 - Keep Demo static unless explicitly redesigned.
 - Treat Map-area add-point controls, search, Places, Geocoding, Directions, and route summaries as later-phase decisions.
