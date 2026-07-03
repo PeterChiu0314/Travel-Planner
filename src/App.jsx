@@ -11862,16 +11862,14 @@ function ItineraryTimeline({
                 if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);
               }}
             >
+              <span className="destination-sequence-badge">{index + 1}</span>
               <TimelineDragHandle className="time-block">
                 <span>{isTimedVisit(item) ? formatTimeDisplay(item.start_time) : "--:--"}</span>
                 <span className="time-connector" aria-hidden="true" />
                 <span>{isTimedVisit(item) ? formatTimeDisplay(item.end_time) : ""}</span>
               </TimelineDragHandle>
               <div className="item-main">
-                <div className="timeline-destination-sequence">
-                  <span className="destination-sequence-badge">{index + 1}</span>
-                  <h4>{destination}</h4>
-                </div>
+                <h4>{destination}</h4>
                 {isAlternativeFormFace ? (
                   <>
                     {secondaryText ? <p className="item-summary">{secondaryText}</p> : null}

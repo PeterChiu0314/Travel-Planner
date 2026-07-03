@@ -529,10 +529,17 @@ test("Phase 5.4 renders simple Google route lines and Timeline sequence badges",
 
   expect(markerSource).toContain("destinationSequence += 1");
   expect(markerSource).toContain("sequenceNumber: destinationSequence");
-  expect(appSource).toContain("timeline-destination-sequence");
   expect(appSource).toContain("destination-sequence-badge");
   expect(appSource).toContain("{index + 1}");
   expect(stylesSource).toContain(".destination-sequence-badge");
+  expect(stylesSource).toContain("position: absolute");
+  expect(stylesSource).toContain("top: 5px");
+  expect(stylesSource).toContain("left: 7px");
+  expect(stylesSource).toContain("color: rgb(83 83 83 / 55%)");
+  expect(stylesSource).toContain("font-size: 12px");
+  expect(stylesSource).toContain("font-weight: 500");
+  expect(stylesSource).toContain("pointer-events: none");
+  expect(appSource).not.toContain("timeline-destination-sequence");
   expect(googleProviderSource).toContain("routeLineRef");
   expect(googleProviderSource).toContain("new mapsNamespace.Polyline");
   expect(googleProviderSource).toContain("path: coordinateMarkers.map");
