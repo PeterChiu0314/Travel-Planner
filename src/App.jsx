@@ -10412,6 +10412,10 @@ function ItineraryTimeline({
       if (mapUrlValidation.resolvedByShortLink && mapUrlValidation.expandedUrl) {
         submittedForm.map_url = mapUrlValidation.expandedUrl;
       }
+      if (mapUrlValidation.point) {
+        submittedForm.latitude = mapUrlValidation.point.latitude;
+        submittedForm.longitude = mapUrlValidation.point.longitude;
+      }
       setMapUrlError("");
     }
     const currentPairSnapshot =
@@ -10493,6 +10497,8 @@ function ItineraryTimeline({
         location_name: (submittedForm.location_name || submittedForm.location).trim(),
         address: submittedForm.address.trim(),
         map_url: submittedForm.map_url.trim(),
+        latitude: submittedForm.latitude ?? null,
+        longitude: submittedForm.longitude ?? null,
         note: (submittedForm.description || submittedForm.note).trim(),
         description: (submittedForm.description || submittedForm.note).trim(),
         transportation_note: submittedForm.transportation_note.trim(),

@@ -496,6 +496,15 @@ test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () =
   expect(stylesSource).toContain("pointer-events: none");
 });
 
+test("Phase 5.3 destination editor save keeps validated hidden map coordinates in payload", () => {
+  const appSource = readRepoFile("src/App.jsx");
+
+  expect(appSource).toContain("submittedForm.latitude = mapUrlValidation.point.latitude");
+  expect(appSource).toContain("submittedForm.longitude = mapUrlValidation.point.longitude");
+  expect(appSource).toContain("latitude: submittedForm.latitude ?? null");
+  expect(appSource).toContain("longitude: submittedForm.longitude ?? null");
+});
+
 test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker styling", () => {
   const appSource = readRepoFile("src/App.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
