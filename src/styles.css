@@ -749,6 +749,10 @@ code {
   stroke-width: 2;
 }
 
+.timeline-add-editor-anchor {
+  margin-top: 12px;
+}
+
 .trip-list {
   display: grid;
   align-content: start;
@@ -3633,6 +3637,14 @@ textarea {
 .google-map-canvas .gm-style {
   width: 100%;
   height: 100%;
+}
+
+.google-map-surface.is-picking-map-point,
+.google-map-surface.is-picking-map-point .google-map-canvas,
+.google-map-surface.is-picking-map-point .google-map-canvas *,
+.google-map-surface.is-picking-map-point .gm-style,
+.google-map-surface.is-picking-map-point .gm-style * {
+  cursor: crosshair !important;
 }
 
 .google-map-empty-hint {

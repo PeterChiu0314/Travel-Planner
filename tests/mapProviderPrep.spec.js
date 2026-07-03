@@ -427,11 +427,29 @@ test("Phase 5.2 focused marker can scroll the active Timeline card without drag 
 
 test("Phase 5.3 destination add editor renders after the timeline flow", () => {
   const appSource = readRepoFile("src/App.jsx");
-  const addEditorRender = "isOpen && !isTransportEditor && !editingId ? renderVisitEditorForm() : null";
+  const addEditorRender = 'data-timeline-add-editor="true"';
 
   expect(appSource.indexOf(addEditorRender)).toBeGreaterThan(appSource.indexOf("</DndContext>"));
   expect(appSource.indexOf(addEditorRender)).toBeGreaterThan(appSource.indexOf("tailTransportItem ? ("));
   expect(appSource.indexOf(addEditorRender)).toBeGreaterThan(appSource.indexOf("renderTailTransportInsert(item)"));
+  expect(appSource.indexOf("renderVisitEditorForm()", appSource.indexOf(addEditorRender))).toBeGreaterThan(
+    appSource.indexOf(addEditorRender),
+  );
+});
+
+test("Phase 5.3 hotfix scrolls and spaces the bottom add editor", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(appSource).toContain("newVisitEditorRef");
+  expect(appSource).toContain('data-timeline-add-editor="true"');
+  expect(appSource).toContain("newVisitEditorRef.current?.scrollIntoView({ block: \"nearest\", behavior: \"smooth\" })");
+  expect(appSource).toContain('querySelector(\'input[name="location_name"]\')');
+  expect(appSource).toContain("primaryInput?.focus?.({ preventScroll: true })");
+  expect(appSource).toContain("transportPairConflict");
+  expect(appSource).toContain("autoContinuationPrompt");
+  expect(stylesSource).toContain(".timeline-add-editor-anchor");
+  expect(stylesSource).toContain("margin-top: 12px");
 });
 
 test("Phase 5.3 destination editor exposes one map point picker icon button", () => {
@@ -469,12 +487,16 @@ test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () =
   expect(googleProviderSource).toContain("onPickMapPoint?.({ latitude, longitude })");
   expect(googleProviderSource).toContain("map-point-picker-hint");
   expect(googleProviderSource).toContain('mapPointPickFeedback === "picked"');
+  expect(googleProviderSource).toContain('isPickingMapPoint ? " is-picking-map-point" : ""');
   expect(staticProviderSource).not.toContain("onPickMapPoint");
   expect(staticProviderSource).not.toContain("google.maps");
   expect(stylesSource).toContain(".map-point-picker-hint");
+  expect(stylesSource).toContain(".google-map-surface.is-picking-map-point .gm-style *");
+  expect(stylesSource).toContain("cursor: crosshair !important");
   expect(stylesSource).toContain("bottom: 24px");
   expect(stylesSource).toContain("pointer-events: none");
 });
+
 test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {
   const appSource = readRepoFile("src/App.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");

@@ -9737,6 +9737,7 @@ function ItineraryTimeline({
   const lastDndOverIdRef = useRef(null);
   const activeDayColumnRef = useRef(null);
   const activeTimelineListRef = useRef(null);
+  const newVisitEditorRef = useRef(null);
   const lastAppliedMapPointPickRef = useRef(null);
   const restrictTimelineDragToDayColumn = useCallback(
     ({ activeNodeRect, overlayNodeRect, transform }) => {
@@ -10615,6 +10616,45 @@ function ItineraryTimeline({
   }, [form, isOpen, isTransportEditor, pickedMapPoint, setForm]);
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
   const visitItemIds = useMemo(() => visitItems.map((item) => item.id), [visitItems]);
+  useEffect(() => {
+    if (!isOpen || isTransportEditor || editingId || !newVisitEditorRef.current) return undefined;
+    if (
+      draggedVisitId ||
+      foreignSameDayDragActive ||
+      reorderPreview ||
+      transportPairConflict ||
+      autoContinuationPrompt ||
+      isResolvingTransportPairConflict ||
+      isSavingAutoContinuation ||
+      isReorderingDestination ||
+      isReorderingUntimed
+    ) {
+      return undefined;
+    }
+
+    const animationFrameId = window.requestAnimationFrame(() => {
+      newVisitEditorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const primaryInput = newVisitEditorRef.current?.querySelector('input[name="location_name"]');
+      primaryInput?.focus?.({ preventScroll: true });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, [
+    autoContinuationPrompt,
+    draggedVisitId,
+    editingId,
+    foreignSameDayDragActive,
+    isOpen,
+    isReorderingDestination,
+    isReorderingUntimed,
+    isResolvingTransportPairConflict,
+    isSavingAutoContinuation,
+    isTransportEditor,
+    reorderPreview,
+    transportPairConflict,
+  ]);
   useEffect(() => {
     if (!focusedItemId || !activeTimelineListRef.current) return;
     if (!visitItemIds.includes(focusedItemId)) return;
@@ -12051,7 +12091,11 @@ function ItineraryTimeline({
         ) : null}
       </DragOverlay>
       </DndContext>
-      {isOpen && !isTransportEditor && !editingId ? renderVisitEditorForm() : null}
+      {isOpen && !isTransportEditor && !editingId ? (
+        <div className="timeline-add-editor-anchor" data-timeline-add-editor="true" ref={newVisitEditorRef}>
+          {renderVisitEditorForm()}
+        </div>
+      ) : null}
     </div>
     </>
   );

@@ -303,7 +303,10 @@ export default function GoogleMapProvider(props) {
   }
 
   return (
-    <div className={`${className} google-map-surface`} aria-label="Google map destination markers">
+    <div
+      className={`${className} google-map-surface${isPickingMapPoint ? " is-picking-map-point" : ""}`}
+      aria-label="Google map destination markers"
+    >
       <div className="google-map-canvas" ref={handleMapElementRef} />
       {!coordinateMarkers.length ? (
         <div className="google-map-empty-hint">This day has no coordinate markers yet</div>
