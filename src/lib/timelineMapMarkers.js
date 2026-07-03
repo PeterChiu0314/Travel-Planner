@@ -1,4 +1,5 @@
 import { finiteNumber, hasValidMapPoint } from "./mapPoint.js";
+import { isTransportationCard } from "./timelineTransportationRoles.js";
 
 function nullableText(value) {
   if (value === null || value === undefined) return null;
@@ -7,11 +8,7 @@ function nullableText(value) {
 }
 
 function isTransportationItem(item) {
-  if (!item) return false;
-  const itemType = nullableText(item.item_type)?.toLowerCase();
-  const type = nullableText(item.type)?.toLowerCase();
-  if (itemType === "transport" || type === "transport") return true;
-  return Boolean(item.transport_role || item.transport_name || item.transport_duration_minutes);
+  return isTransportationCard(item);
 }
 
 function providerFromItem(item) {

@@ -538,6 +538,8 @@ test("Phase 5.4 renders simple Google route lines and Timeline sequence badges",
 
   expect(markerSource).toContain("destinationSequence += 1");
   expect(markerSource).toContain("sequenceNumber: destinationSequence");
+  expect(markerSource).toContain("isTransportationCard(item)");
+  expect(markerSource).not.toContain('type === "transport"');
   expect(appSource).toContain("destination-sequence-badge");
   expect(appSource).toContain("{index + 1}");
   expect(stylesSource).toContain(".destination-sequence-badge");

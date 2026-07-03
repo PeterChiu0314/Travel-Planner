@@ -52,12 +52,57 @@ test("Phase 4.9a excludes transportation cards and keeps marker order", () => {
     { id: "visit-a", item_type: "visit", location_name: "A", map_url: "https://maps.example/a" },
     { id: "transport-a-b", item_type: "transport", title: "Train", from_item_id: "visit-a", to_item_id: "visit-b" },
     { id: "visit-b", item_type: "visit", location_name: "B", map_url: "https://maps.example/b" },
-    { id: "legacy-transport", type: "transport", title: "Bus" },
+    { id: "transport-b-c", item_type: "transport", type: "transport", title: "Bus" },
     { id: "visit-c", type: "hotel", title: "Hotel C", location: "C", map_url: "https://maps.example/c" },
   ]);
 
   expect(markers.map((marker) => marker.itemId)).toEqual(["visit-a", "visit-b", "visit-c"]);
   expect(markers.map((marker) => marker.sequenceNumber)).toEqual([1, 2, 3]);
+});
+
+test("Phase 5.4 hotfix keeps transport-category destinations as markers", () => {
+  const markers = buildDayMapMarkers([
+    {
+      id: "visit-airport",
+      item_type: "visit",
+      type: "transport",
+      title: "Kansai Airport",
+      location_name: "Kansai International Airport",
+      map_url: "https://maps.example/airport",
+      latitude: "34.4347",
+      longitude: "135.244",
+    },
+    {
+      id: "transport-airport-hotel",
+      item_type: "transport",
+      type: "transport",
+      title: "Train",
+      from_item_id: "visit-airport",
+      to_item_id: "visit-hotel",
+      map_url: "https://maps.example/train",
+      latitude: "34.5",
+      longitude: "135.3",
+    },
+    {
+      id: "visit-hotel",
+      item_type: "visit",
+      type: "hotel",
+      title: "Hotel",
+      location_name: "Hotel",
+      map_url: "https://maps.example/hotel",
+      latitude: "34.7",
+      longitude: "135.5",
+    },
+  ]);
+
+  expect(markers.map((marker) => marker.itemId)).toEqual(["visit-airport", "visit-hotel"]);
+  expect(markers.map((marker) => marker.sequenceNumber)).toEqual([1, 2]);
+  expect(markers[0]).toMatchObject({
+    itemId: "visit-airport",
+    latitude: 34.4347,
+    longitude: 135.244,
+    hasCoordinates: true,
+  });
 });
 
 test("Phase 5.4 keeps marker labels aligned to Timeline destination sequence", () => {
