@@ -939,6 +939,21 @@ manual user verification passed for smooth pan, fixed zoom 15, focused marker ac
 latest pushed commit: 498f0ef Fix timeline phase 5.3b marker focus polish
 ```
 
+Phase 5.4 Simple Route Lines + Destination Sequence Badge checks on 2026-07-03:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 57/57
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+Formal Google route lines implemented with a simple provider-local Polyline between valid same-day destination coordinates
+destination sequence badge implemented for Timeline destination cards and Google marker labels; transportation cards remain unnumbered
+manual user feedback moved Timeline destination sequence badge to the card top-left as plain 12px text without border/background
+old-card Map URL save polish added so validated map_url coordinates are explicitly preserved in the destination editor update payload
+related pushed commits before closeout: 723308d Implement timeline phase 5.4 route lines, 80bc987 Polish timeline destination sequence badge
+latest local code-fix commit before closeout docs: 350a713 Preserve validated timeline map coordinates on save
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -979,4 +994,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.3b and its smooth-pan / focused-marker active-style hotfix are implemented, pushed, and manually verified OK. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, Map-area add-point flow, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, search UI, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.
+Phase 5.4 is implemented and closeout docs are being pushed. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, Map-area add-point flow, or route summary work. Do not infer Places, Geocoding, Directions, Routes API, route calculation, route cache, search UI, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.
