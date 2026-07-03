@@ -1,3 +1,5 @@
+import { isTransportationCard } from "./timelineTransportationRoles.js";
+
 function finiteNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(String(value).trim());
@@ -100,13 +102,13 @@ export function getMapPointStatus(item) {
 export function countMissingMapPoints(dayItems = []) {
   if (!Array.isArray(dayItems)) return 0;
   return dayItems.reduce((count, item) => {
-    if (!item || item.item_type === "transport" || item.type === "transport") return count;
+    if (!item || isTransportationCard(item)) return count;
     return hasValidMapPoint(item) ? count : count + 1;
   }, 0);
 }
 
 export function normalizeMapPointFields(payload) {
-  if (payload?.item_type === "transport" || payload?.type === "transport") {
+  if (isTransportationCard(payload)) {
     return { latitude: null, longitude: null };
   }
   const mapUrl = typeof payload?.map_url === "string" ? payload.map_url.trim() : payload?.map_url;

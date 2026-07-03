@@ -138,6 +138,10 @@ test("Phase 5.2 validates stored map point bounds and normalizes payload coordin
     latitude: 35,
     longitude: 135,
   });
+  expect(normalizeMapPointFields({ item_type: "visit", type: "transport", map_url: "https://maps.google.com/?q=35,135" })).toEqual({
+    latitude: 35,
+    longitude: 135,
+  });
   expect(normalizeMapPointFields({ map_url: "", latitude: "34.9895", longitude: "135.8175" })).toEqual({
     latitude: null,
     longitude: null,
@@ -162,9 +166,10 @@ test("Phase 5.2 missing map point count ignores transportation cards", () => {
       { id: "visit-a", item_type: "visit", latitude: 35, longitude: 135 },
       { id: "visit-b", item_type: "visit", map_url: "https://maps.google.com/?q=35,135" },
       { id: "visit-c", item_type: "visit", latitude: null, longitude: null },
+      { id: "visit-d", item_type: "visit", type: "transport", latitude: null, longitude: null },
       { id: "transport-a-b", item_type: "transport", latitude: null, longitude: null },
     ]),
-  ).toBe(2);
+  ).toBe(3);
 });
 
 test("Phase 5.2 missing map point count increases after Map URL and coordinates are cleared", () => {
