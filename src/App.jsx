@@ -11856,6 +11856,7 @@ function ItineraryTimeline({
               style={isForeignDragSource ? foreignDragStyle : remoteSelectionStyle}
               title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
               onClick={() => {
+                if (isPickingMapPoint) return;
                 setExpandedId(expandedId === item.id ? null : item.id);
                 onFocusItem(item.id);
                 if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);

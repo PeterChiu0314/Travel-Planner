@@ -497,6 +497,25 @@ test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () =
   expect(stylesSource).toContain("pointer-events: none");
 });
 
+test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker styling", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+
+  expect(appSource).toContain("if (isPickingMapPoint) return;");
+  expect(googleProviderSource).toContain("FOCUSED_MARKER_ZOOM = 15");
+  expect(googleProviderSource).toContain("mapRef.current.panTo(focusedMarker.getPosition())");
+  expect(googleProviderSource).toContain("mapRef.current.setZoom(FOCUSED_MARKER_ZOOM)");
+  expect(googleProviderSource).toContain("focusedMarkerIcon");
+  expect(googleProviderSource).toContain("marker.setIcon(isFocusedMarker ? focusIcon : null)");
+  expect(googleProviderSource).toContain("marker.setZIndex(isFocusedMarker ? 1000");
+  expect(googleProviderSource).toContain("marker.setLabel({");
+  expect(googleProviderSource).toContain("if (!isPickingMapPoint) onFocusItem?.(marker.itemId)");
+  expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
+  expect(googleProviderSource).not.toContain("markerCluster");
+  expect(staticProviderSource).not.toContain("FOCUSED_MARKER_ZOOM");
+});
+
 test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {
   const appSource = readRepoFile("src/App.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");

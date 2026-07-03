@@ -37,13 +37,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.2c Google Maps Short Link Resolver - Deployed / Short links manually verified OK / No Route APIs / No Migration
+Timeline Phase 5.3 Editor Map Point Picker + Hotfix - Completed / User tested OK / No Route APIs / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.2c adds a deployed server-side Google Maps short-link resolver for `maps.app.goo.gl` on top of the completed Phase 5.2 map point flow. Destination Map URL save still requires a valid point, full Google Maps URLs still parse directly, and short URLs are expanded by the Edge Function before parsing. Successful short-link saves store the expanded Google Maps URL so later reloads do not need another resolver call. User manually verified short-link behavior after Edge Function deployment. Demo remains static-only. Do not add Places, Geocoding, Directions, Routes, route cache, search, custom point picker, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
+Phase 5.3 completed editor-side map point picking and the follow-up UX hotfix. Destination add editor now appears at the bottom of the active day flow after any tail transportation, scrolls/focuses into view when opened, and keeps a small gap above it. Destination editor Map URL has one icon button that enters/cancels Formal Google map point picking; clicking the map fills hidden latitude/longitude and `https://www.google.com/maps?q={lat},{lng}` without writing DB until Save. Picking mode keeps the existing bottom overlay text and uses a crosshair cursor over the Google map. Demo remains static-only with picker disabled. User manually verified the hotfix OK. Do not add marker focus/zoom polish, Places, Geocoding, Directions, Routes, route cache, search, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
 ```
 
 Branch:
@@ -554,6 +554,25 @@ New/updated files:
 - Added `supabase/functions/resolve-google-maps-url/index.ts`.
 - No package, migration, Google API key, Places, Geocoding, Directions, Routes, route polyline, route cache, search UI, custom point picker, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation flow, or Budget integration was added.
 
+### Phase 5.3
+
+- Fixed the destination add editor position so a new destination editor renders at the bottom of the active day's timeline flow instead of above existing items.
+- If the active day has a tail transportation card, the new destination editor appears after that tail transportation card.
+- Added a single icon button beside the destination editor `Map URL` label for editor-side map point picking.
+- Formal Google map picking mode shows the existing bottom overlay text `點擊地圖設定位置`, listens for Google map clicks only inside `GoogleMapProvider.lazy.jsx`, and remains provider-neutral above the lazy provider.
+- Clicking the Formal Google map during picking fills the active destination editor hidden `latitude` / `longitude` values and sets `map_url` to `https://www.google.com/maps?q={lat},{lng}`.
+- Picked coordinates are only form state until the user presses Save; the existing Phase 5.2 validation/save flow still controls DB writes.
+- Completing a pick briefly shows `已設定地圖位置` and exits picking mode.
+- Pressing the same icon again, clicking outside the map, closing the editor, saving, or collapsing the route map cancels picking without clearing existing Map URL or coordinates.
+- Demo remains hard-locked to `StaticMapProvider`; the picker path is disabled and does not load the Google Maps SDK.
+- Phase 5.3 hotfix scrolls/focuses the bottom add editor into view after pressing Add Destination and adds a small gap above it.
+- Phase 5.3 hotfix changes the Formal Google map cursor to `crosshair` only while map point picking is active.
+- Commits pushed on `codex/timeline-phase-5-2`:
+  - `0865ac5 Implement timeline phase 5.3 map point picker`
+  - `86cd7d2 Polish timeline phase 5.3 editor picker UX`
+- User manually verified Phase 5.3 hotfix OK.
+- No marker focus/zoom polish, Map-area add-point button, Places, Geocoding, Directions, Routes, route polyline, route cache, search UI, package, migration, Supabase schema/RPC/RLS change, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation flow, or Budget integration was added.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -856,6 +875,28 @@ Edge Function deployed after commit 0262a7d
 manual user verification passed for maps.app.goo.gl short-link resolution after deployment
 ```
 
+Phase 5.3 Editor Map Point Picker checks on 2026-07-03:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 52/52
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+manual QA passed for add editor bottom placement, editor Map URL picker, coordinate/map_url fill, picker overlay, cancellation, and Demo static preservation
+latest pushed commit: 0865ac5 Implement timeline phase 5.3 map point picker
+```
+
+Phase 5.3 Hotfix Add Editor Scroll / Gap + Picker Cursor checks on 2026-07-03:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed 53/53
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+manual user verification passed for bottom add editor scroll/focus, editor gap, picker cursor, and previously completed map point picking behavior
+latest pushed commit: 86cd7d2 Polish timeline phase 5.3 editor picker UX
+```
+
 ## Protected Scope Preserved
 
 Latest Phase 4.8 collaborative presence work did not redesign or extend:
@@ -896,4 +937,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.2c is deployed and manually verified OK for Google Maps short links. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, search UI, custom point picker, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.
+Phase 5.3 and its scroll/gap/cursor hotfix are implemented, pushed, and manually verified OK. Demo should remain permanently static unless explicitly redesigned. Next product decision can be 5.3b marker focus/zoom polish, location-data UX polish, missing-coordinate repair flow, map marker polish, or route summary work. Do not infer Places, Geocoding, Directions, Routes, route calculation, route cache, search UI, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.
