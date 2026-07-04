@@ -4938,6 +4938,10 @@ textarea {
     padding: 0;
   }
 
+  .timeline-workbench .side-panels > .route-panel:has(.places-search-overlay) > .panel-heading {
+    display: none;
+  }
+
   .timeline-workbench.route-collapsed .timeline-day-column,
   .timeline-workbench.route-collapsed .timeline-day-preview {
     flex: 0 0 320px;

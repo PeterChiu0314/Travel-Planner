@@ -88,4 +88,5 @@ test("Phase 5.6b autocomplete source is gated, debounced, and selection-only", (
   expect(adapterSource).toContain("getPlacePredictions");
   expect(stylesSource).toContain(".places-search-overlay");
   expect(stylesSource).toContain(".places-prediction-list");
+  expect(stylesSource).toContain(".route-panel:has(.places-search-overlay) > .panel-heading");
 });
