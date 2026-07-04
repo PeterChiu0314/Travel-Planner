@@ -4,7 +4,7 @@ export const PLACE_DETAILS_FIELD_MASK_MINIMAL = Object.freeze([
   "id",
   "displayName",
   "location",
-  "googleMapsUri",
+  "googleMapsURI",
 ]);
 
 export const PLACE_DETAILS_HIGH_COST_FIELDS = Object.freeze([

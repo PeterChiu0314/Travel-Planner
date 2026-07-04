@@ -12,6 +12,11 @@ function readLatLng(location) {
     : null;
 }
 
+function googleMapsPointUrl(point) {
+  if (!point) return "";
+  return `https://www.google.com/maps?q=${point.latitude},${point.longitude}`;
+}
+
 export function createPlacesAutocompleteSessionManager(placesLibraryProvider = () => window.google?.maps?.places) {
   let sessionToken = null;
 
@@ -143,12 +148,13 @@ export function normalizePlaceDetailsResult(place, fields = PLACE_DETAILS_FIELD_
 
   const displayName = typeof place.displayName === "string" ? place.displayName : place.displayName?.text || "";
   const point = readLatLng(place.location);
+  const googleMapsUri = place.googleMapsURI || place.googleMapsUri || googleMapsPointUrl(point);
 
   return {
     id: place.id || place.place_id || "",
     displayName,
     latitude: point?.latitude ?? null,
     longitude: point?.longitude ?? null,
-    googleMapsUri: place.googleMapsUri || "",
+    googleMapsUri,
   };
 }

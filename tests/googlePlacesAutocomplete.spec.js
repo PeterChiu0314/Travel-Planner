@@ -76,7 +76,7 @@ test("Phase 5.6c details adapter uses minimal fields and the autocomplete sessio
           id: "place-1",
           displayName: { text: "Kyoto Station" },
           location: { lat: () => 35.0116, lng: () => 135.7681 },
-          googleMapsUri: "https://www.google.com/maps/place/?q=place_id:place-1",
+          googleMapsURI: "https://www.google.com/maps/place/?q=place_id:place-1",
           async fetchFields(request) {
             fetchCalls.push(request);
           },
@@ -120,6 +120,9 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(googleProviderSource).toContain("fetchPlaceAutocompletePredictions");
   expect(googleProviderSource).toContain("fetchPlaceDetailsForPrediction");
   expect(googleProviderSource).toContain("PLACE_DETAILS_FIELD_MASK_MINIMAL");
+  expect(adapterSource).toContain("googleMapsURI");
+  expect(adapterSource).toContain("googleMapsUri");
+  expect(adapterSource).toContain("https://www.google.com/maps?q=");
   expect(googleProviderSource).toContain("onSelectPlaceDetails?.({");
   expect(googleProviderSource).toContain('placesDetailsStatus === "missing-location"');
   expect(googleProviderSource).toContain("selectedPlacePrediction");
