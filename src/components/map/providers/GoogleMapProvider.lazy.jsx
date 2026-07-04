@@ -12,9 +12,14 @@ import StaticMapProvider from "./StaticMapProvider.jsx";
 const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
 const DEFAULT_ZOOM = 11;
 const FOCUSED_MARKER_ZOOM = 15;
+const PLACES_PREVIEW_ZOOM = 15;
 const PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 350;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
 const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
+
+function googleMapsPointUrl(latitude, longitude) {
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+}
 
 function focusedMarkerIcon(mapsNamespace) {
   const symbolPath = mapsNamespace?.SymbolPath?.CIRCLE;
@@ -40,6 +45,20 @@ function markerLabel(marker, fallbackIndex, isFocusedMarker = false) {
     text: String(markerSequenceNumber(marker, fallbackIndex)),
     color: isFocusedMarker ? FOCUSED_MARKER_LABEL_COLOR : DEFAULT_MARKER_LABEL_COLOR,
     fontWeight: "800",
+  };
+}
+
+function placesPreviewMarkerIcon(mapsNamespace) {
+  const symbolPath = mapsNamespace?.SymbolPath?.CIRCLE;
+  if (!symbolPath) return null;
+  return {
+    path: symbolPath,
+    fillColor: "#d97706",
+    fillOpacity: 1,
+    scale: 11,
+    strokeColor: "#ffffff",
+    strokeOpacity: 1,
+    strokeWeight: 3,
   };
 }
 
@@ -85,6 +104,7 @@ export default function GoogleMapProvider(props) {
   const placesLibraryRef = useRef(null);
   const placesSessionManagerRef = useRef(createPlacesAutocompleteSessionManager(() => placesLibraryRef.current));
   const markerInstancesRef = useRef(new Map());
+  const placesPreviewMarkerRef = useRef(null);
   const routeLineRef = useRef(null);
   const viewportListenersRef = useRef([]);
   const mapPointClickListenerRef = useRef(null);
@@ -101,6 +121,7 @@ export default function GoogleMapProvider(props) {
   const [placesSearchInput, setPlacesSearchInput] = useState("");
   const [placesPredictions, setPlacesPredictions] = useState([]);
   const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
+  const [placesPreview, setPlacesPreview] = useState(null);
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
   const [placesDetailsStatus, setPlacesDetailsStatus] = useState("idle");
   const [renderFailed, setRenderFailed] = useState(false);
@@ -153,6 +174,12 @@ export default function GoogleMapProvider(props) {
     placesSessionManagerRef.current.resetSessionToken();
   }
 
+  function clearPlacesPreview() {
+    placesPreviewMarkerRef.current?.setMap?.(null);
+    placesPreviewMarkerRef.current = null;
+    setPlacesPreview(null);
+  }
+
   async function selectPlacePrediction(prediction) {
     if (!prediction?.id) return;
     setSelectedPlacePrediction(prediction);
@@ -173,29 +200,50 @@ export default function GoogleMapProvider(props) {
       const latitude = Number(details?.latitude);
       const longitude = Number(details?.longitude);
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        clearPlacesPreview();
         setPlacesDetailsStatus("missing-location");
         return;
       }
-      onSelectPlaceDetails?.({
+      const nextPreview = {
         displayName: details.displayName || prediction.mainText || prediction.description || "",
         googleMapsUri: details.googleMapsUri || "",
         id: details.id || prediction.id,
         latitude,
         longitude,
+        mapUrl: googleMapsPointUrl(latitude, longitude),
+      };
+      setPlacesPreview(nextPreview);
+      runProgrammaticViewportUpdate(() => {
+        mapRef.current?.setZoom?.(PLACES_PREVIEW_ZOOM);
+        mapRef.current?.panTo?.({ lat: latitude, lng: longitude });
       });
       setPlacesDetailsStatus("idle");
-      resetPlacesSearch();
     } catch {
+      clearPlacesPreview();
       setPlacesDetailsStatus("error");
     } finally {
       placesSessionManagerRef.current.resetSessionToken();
     }
   }
 
+  function confirmPlacesPreviewAdd() {
+    if (!placesPreview) return;
+    onSelectPlaceDetails?.(placesPreview);
+    clearPlacesPreview();
+    resetPlacesSearch();
+  }
+
+  function openPlacesPreviewInGoogleMap() {
+    if (!placesPreview) return;
+    const url = placesPreview.googleMapsUri || placesPreview.mapUrl;
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   function toggleMapAreaPointPick(event) {
     event.preventDefault();
     event.stopPropagation();
     if (!canPickMapPoint) return;
+    clearPlacesPreview();
     resetPlacesSearch();
     if (isPickingMapPoint) {
       onCancelMapPointPick?.();
@@ -414,6 +462,34 @@ export default function GoogleMapProvider(props) {
   }, [isPickingMapPoint, markersKey, onFocusItem, status, viewportSignature]);
 
   useEffect(() => {
+    if (status !== "ready" || !mapRef.current || !placesPreview) {
+      placesPreviewMarkerRef.current?.setMap?.(null);
+      placesPreviewMarkerRef.current = null;
+      return undefined;
+    }
+
+    const mapsNamespace = window.google?.maps;
+    const MarkerConstructor = mapsNamespace?.Marker;
+    if (typeof MarkerConstructor !== "function") return undefined;
+
+    const position = { lat: placesPreview.latitude, lng: placesPreview.longitude };
+    placesPreviewMarkerRef.current?.setMap?.(null);
+    placesPreviewMarkerRef.current = new MarkerConstructor({
+      map: mapRef.current,
+      position,
+      title: placesPreview.displayName || "",
+      label: { text: "+", color: "#ffffff", fontWeight: "900" },
+      icon: placesPreviewMarkerIcon(mapsNamespace),
+      zIndex: 3000,
+    });
+
+    return () => {
+      placesPreviewMarkerRef.current?.setMap?.(null);
+      placesPreviewMarkerRef.current = null;
+    };
+  }, [placesPreview, status]);
+
+  useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
     if (isPickingMapPoint) return;
 
@@ -446,9 +522,14 @@ export default function GoogleMapProvider(props) {
       mapPointClickListenerRef.current.remove?.();
       mapPointClickListenerRef.current = null;
     }
-    if (status !== "ready" || !mapRef.current || !isPickingMapPoint) return undefined;
+    if (status !== "ready" || !mapRef.current) return undefined;
 
     mapPointClickListenerRef.current = mapRef.current.addListener("click", (event) => {
+      if (placesPreview) {
+        clearPlacesPreview();
+        return;
+      }
+      if (!isPickingMapPoint) return;
       const latLng = event?.latLng;
       const latitude = typeof latLng?.lat === "function" ? latLng.lat() : null;
       const longitude = typeof latLng?.lng === "function" ? latLng.lng() : null;
@@ -461,7 +542,13 @@ export default function GoogleMapProvider(props) {
       mapPointClickListenerRef.current?.remove?.();
       mapPointClickListenerRef.current = null;
     };
-  }, [isPickingMapPoint, onPickMapPoint, status]);
+  }, [isPickingMapPoint, onPickMapPoint, placesPreview, status]);
+
+  useEffect(() => {
+    clearPlacesPreview();
+    setPlacesPredictions([]);
+    setPlacesSearchStatus("idle");
+  }, [isPickingMapPoint, viewportKey]);
 
   useEffect(() => () => {
     if (viewportSuppressionTimerRef.current) {
@@ -471,6 +558,8 @@ export default function GoogleMapProvider(props) {
     viewportListenersRef.current = [];
     routeLineRef.current?.setMap(null);
     routeLineRef.current = null;
+    placesPreviewMarkerRef.current?.setMap?.(null);
+    placesPreviewMarkerRef.current = null;
     mapPointClickListenerRef.current?.remove?.();
     mapPointClickListenerRef.current = null;
   }, []);
@@ -572,6 +661,32 @@ export default function GoogleMapProvider(props) {
               ))}
             </div>
           ) : null}
+        </div>
+      ) : null}
+      {placesPreview ? (
+        <div
+          className="places-preview-dialog"
+          role="dialog"
+          aria-label="\u78ba\u8a8d\u5730\u9ede"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            className="places-preview-close"
+            type="button"
+            aria-label="\u95dc\u9589\u5730\u9ede\u9810\u89bd"
+            onClick={clearPlacesPreview}
+          >
+            x
+          </button>
+          <strong>{placesPreview.displayName || "\u9078\u53d6\u7684\u5730\u9ede"}</strong>
+          <button className="places-preview-map-link" type="button" onClick={openPlacesPreviewInGoogleMap}>
+            {"\u5728 Google Map \u958b\u555f"}
+          </button>
+          <p>{"\u78ba\u8a8d\u5f8c\u6703\u958b\u555f\u884c\u7a0b\u7de8\u8f2f\u5668"}</p>
+          <button className="primary-button places-preview-add-button" type="button" onClick={confirmPlacesPreviewAdd}>
+            {"\u52a0\u5165\u884c\u7a0b"}
+          </button>
         </div>
       ) : null}
       {canPickMapPoint ? (

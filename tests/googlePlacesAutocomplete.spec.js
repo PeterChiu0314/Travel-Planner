@@ -134,7 +134,8 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(adapterSource).toContain("googleMapsURI");
   expect(adapterSource).toContain("googleMapsUri");
   expect(adapterSource).toContain("https://www.google.com/maps?q=");
-  expect(googleProviderSource).toContain("onSelectPlaceDetails?.({");
+  expect(googleProviderSource).toContain("setPlacesPreview(nextPreview)");
+  expect(googleProviderSource).toContain("onSelectPlaceDetails?.(placesPreview)");
   expect(googleProviderSource).toContain('placesDetailsStatus === "missing-location"');
   expect(googleProviderSource).toContain("selectedPlacePrediction");
   expect(googleProviderSource).toContain("placesSessionManagerRef.current.resetSessionToken()");
@@ -162,4 +163,35 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(stylesSource).toContain(".places-search-overlay");
   expect(stylesSource).toContain(".places-prediction-list");
   expect(stylesSource).toContain(".route-panel:has(.places-search-overlay) > .panel-heading");
+});
+
+test("Phase 5.6d places details show a map preview before opening the add editor", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const appSource = readRepoFile("src/App.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(googleProviderSource).toContain("const [placesPreview, setPlacesPreview] = useState(null)");
+  expect(googleProviderSource).toContain("placesPreviewMarkerRef");
+  expect(googleProviderSource).toContain("PLACES_PREVIEW_ZOOM = 15");
+  expect(googleProviderSource).toContain("setPlacesPreview(nextPreview)");
+  expect(googleProviderSource).toContain("mapRef.current?.panTo?.({ lat: latitude, lng: longitude })");
+  expect(googleProviderSource).toContain("new MarkerConstructor({");
+  expect(googleProviderSource).toContain("zIndex: 3000");
+  expect(googleProviderSource).toContain("className=\"places-preview-dialog\"");
+  expect(googleProviderSource).toContain("className=\"primary-button places-preview-add-button\"");
+  expect(googleProviderSource).toContain("function confirmPlacesPreviewAdd()");
+  expect(googleProviderSource).toContain("onSelectPlaceDetails?.(placesPreview)");
+  expect(googleProviderSource).toContain("function openPlacesPreviewInGoogleMap()");
+  expect(googleProviderSource).toContain("placesPreview.googleMapsUri || placesPreview.mapUrl");
+  expect(googleProviderSource).toContain("window.open(url, \"_blank\", \"noopener,noreferrer\")");
+  expect(googleProviderSource).toContain("clearPlacesPreview();");
+  expect(googleProviderSource).toContain("toggleMapAreaPointPick");
+  expect(googleProviderSource).toContain("setPlacesPreview(null)");
+  expect(googleProviderSource).not.toContain("setPickedMapPoint(nextPreview)");
+  expect(appSource).toContain("void openNewItem(pickedMapPoint)");
+  expect(appSource).toContain("map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : \"\"");
+  expect(staticProviderSource).not.toContain("places-preview-dialog");
+  expect(stylesSource).toContain(".places-preview-dialog");
+  expect(stylesSource).toContain(".places-preview-add-button");
 });
