@@ -18,8 +18,6 @@ const PLACES_PREVIEW_DIALOG_WIDTH = 300;
 const PLACES_PREVIEW_DIALOG_HEIGHT = 178;
 const PLACES_PREVIEW_DIALOG_GAP = 18;
 const PLACES_PREVIEW_DIALOG_EDGE_GAP = 12;
-const POI_MINI_DIALOG_WIDTH = 240;
-const POI_MINI_DIALOG_HEIGHT = 118;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
 const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
 
@@ -142,7 +140,6 @@ export default function GoogleMapProvider(props) {
   const placesPreviewMarkerRef = useRef(null);
   const placesPreviewOverlayRef = useRef(null);
   const pendingPoiMarkerRef = useRef(null);
-  const pendingPoiOverlayRef = useRef(null);
   const routeLineRef = useRef(null);
   const viewportListenersRef = useRef([]);
   const mapPointClickListenerRef = useRef(null);
@@ -160,8 +157,6 @@ export default function GoogleMapProvider(props) {
   const [placesPredictions, setPlacesPredictions] = useState([]);
   const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
   const [pendingPoi, setPendingPoi] = useState(null);
-  const [pendingPoiDialogPosition, setPendingPoiDialogPosition] = useState(null);
-  const [pendingPoiStatus, setPendingPoiStatus] = useState("idle");
   const [placesPreview, setPlacesPreview] = useState(null);
   const [placesPreviewDialogPosition, setPlacesPreviewDialogPosition] = useState(null);
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
@@ -228,11 +223,7 @@ export default function GoogleMapProvider(props) {
   function clearPendingPoi() {
     pendingPoiMarkerRef.current?.setMap?.(null);
     pendingPoiMarkerRef.current = null;
-    pendingPoiOverlayRef.current?.setMap?.(null);
-    pendingPoiOverlayRef.current = null;
     setPendingPoi(null);
-    setPendingPoiDialogPosition(null);
-    setPendingPoiStatus("idle");
   }
 
   function showPlacesPreview(details, fallbackName = "") {
@@ -294,18 +285,15 @@ export default function GoogleMapProvider(props) {
   }
 
   async function confirmPendingPoi() {
-    if (!pendingPoi?.placeId || pendingPoiStatus === "loading") return;
+    if (!pendingPoi?.placeId) return;
     const cachedDetails = placeDetailsCacheRef.current.get(pendingPoi.placeId);
     if (cachedDetails) {
       if (showPlacesPreview(cachedDetails, pendingPoi.displayName)) {
         clearPendingPoi();
-      } else {
-        setPendingPoiStatus("missing-location");
       }
       return;
     }
 
-    setPendingPoiStatus("loading");
     try {
       const details = await fetchPlaceDetailsForPrediction({
         fields: PLACE_DETAILS_FIELD_MASK_MINIMAL,
@@ -315,11 +303,9 @@ export default function GoogleMapProvider(props) {
       placeDetailsCacheRef.current.set(pendingPoi.placeId, details);
       if (showPlacesPreview(details, pendingPoi.displayName)) {
         clearPendingPoi();
-      } else {
-        setPendingPoiStatus("missing-location");
       }
     } catch {
-      setPendingPoiStatus("error");
+      clearPendingPoi();
     } finally {
       placesSessionManagerRef.current.resetSessionToken();
     }
@@ -606,60 +592,36 @@ export default function GoogleMapProvider(props) {
     if (status !== "ready" || !mapRef.current || !pendingPoi) {
       pendingPoiMarkerRef.current?.setMap?.(null);
       pendingPoiMarkerRef.current = null;
-      pendingPoiOverlayRef.current?.setMap?.(null);
-      pendingPoiOverlayRef.current = null;
-      setPendingPoiDialogPosition(null);
       return undefined;
     }
 
     const mapsNamespace = window.google?.maps;
     const MarkerConstructor = mapsNamespace?.Marker;
-    const OverlayViewConstructor = mapsNamespace?.OverlayView;
-    const LatLngConstructor = mapsNamespace?.LatLng;
-    if (typeof OverlayViewConstructor !== "function") return undefined;
+    if (typeof MarkerConstructor !== "function") return undefined;
 
     const position = Number.isFinite(pendingPoi.latitude) && Number.isFinite(pendingPoi.longitude)
       ? { lat: pendingPoi.latitude, lng: pendingPoi.longitude }
       : null;
 
     pendingPoiMarkerRef.current?.setMap?.(null);
-    if (position && typeof MarkerConstructor === "function") {
+    if (position) {
       pendingPoiMarkerRef.current = new MarkerConstructor({
         map: mapRef.current,
         position,
         title: pendingPoi.displayName || "",
-        label: { text: "?", color: "#ffffff", fontSize: "14px", fontWeight: "900" },
+        label: { text: "i", color: "#ffffff", fontSize: "16px", fontWeight: "900" },
         icon: placesPreviewMarkerIcon(mapsNamespace),
         zIndex: 2500,
       });
+      pendingPoiMarkerRef.current.addListener?.("click", (markerEvent) => {
+        markerEvent?.stop?.();
+        void confirmPendingPoi();
+      });
     }
-
-    pendingPoiOverlayRef.current?.setMap?.(null);
-    const overlay = new OverlayViewConstructor();
-    overlay.onAdd = function onAdd() {};
-    overlay.draw = function draw() {
-      const projection = overlay.getProjection?.();
-      const anchor = position && typeof LatLngConstructor === "function"
-        ? new LatLngConstructor(pendingPoi.latitude, pendingPoi.longitude)
-        : position;
-      const pixel = pendingPoi.pixelAnchor || (
-        anchor
-          ? projection?.fromLatLngToContainerPixel?.(anchor) || projection?.fromLatLngToDivPixel?.(anchor)
-          : null
-      );
-      setPendingPoiDialogPosition(anchoredDialogPosition(pixel, mapElementRef.current, POI_MINI_DIALOG_WIDTH, POI_MINI_DIALOG_HEIGHT));
-    };
-    overlay.onRemove = function onRemove() {
-      setPendingPoiDialogPosition(null);
-    };
-    overlay.setMap(mapRef.current);
-    pendingPoiOverlayRef.current = overlay;
 
     return () => {
       pendingPoiMarkerRef.current?.setMap?.(null);
       pendingPoiMarkerRef.current = null;
-      pendingPoiOverlayRef.current?.setMap?.(null);
-      pendingPoiOverlayRef.current = null;
     };
   }, [pendingPoi, status]);
 
@@ -712,8 +674,6 @@ export default function GoogleMapProvider(props) {
           }
           return;
         }
-        const bounds = mapElementRef.current?.getBoundingClientRect?.();
-        const domEvent = event.domEvent;
         clearPlacesPreview();
         setPlacesPredictions([]);
         setPlacesSearchStatus("idle");
@@ -722,12 +682,8 @@ export default function GoogleMapProvider(props) {
           latitude: Number.isFinite(latitude) ? latitude : null,
           longitude: Number.isFinite(longitude) ? longitude : null,
           pickedAt: Date.now(),
-          pixelAnchor: bounds && Number.isFinite(domEvent?.clientX) && Number.isFinite(domEvent?.clientY)
-            ? { x: domEvent.clientX - bounds.left, y: domEvent.clientY - bounds.top }
-            : null,
           placeId,
         });
-        setPendingPoiStatus("idle");
         return;
       }
 
@@ -784,8 +740,6 @@ export default function GoogleMapProvider(props) {
     routeLineRef.current = null;
     pendingPoiMarkerRef.current?.setMap?.(null);
     pendingPoiMarkerRef.current = null;
-    pendingPoiOverlayRef.current?.setMap?.(null);
-    pendingPoiOverlayRef.current = null;
     placesPreviewMarkerRef.current?.setMap?.(null);
     placesPreviewMarkerRef.current = null;
     placesPreviewOverlayRef.current?.setMap?.(null);
@@ -891,46 +845,6 @@ export default function GoogleMapProvider(props) {
               ))}
             </div>
           ) : null}
-        </div>
-      ) : null}
-      {pendingPoi ? (
-        <div
-          className={`places-poi-mini-dialog anchored-${pendingPoiDialogPosition?.placement || "pending"}`}
-          role="dialog"
-          aria-label="\u78ba\u8a8d\u5730\u5716\u5730\u9ede"
-          style={pendingPoiDialogPosition ? {
-            left: `${pendingPoiDialogPosition.left}px`,
-            top: `${pendingPoiDialogPosition.top}px`,
-          } : undefined}
-          onClick={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <button
-            className="places-preview-close"
-            type="button"
-            aria-label="\u95dc\u9589\u5730\u9ede\u78ba\u8a8d"
-            onClick={clearPendingPoi}
-          >
-            x
-          </button>
-          <strong>{pendingPoi.displayName || "\u9078\u53d6\u7684\u5730\u9ede"}</strong>
-          <p>
-            {pendingPoiStatus === "loading"
-              ? "\u8f09\u5165\u5730\u9ede\u8cc7\u6599\u4e2d..."
-              : pendingPoiStatus === "missing-location"
-                ? "\u9019\u500b\u5730\u9ede\u6c92\u6709\u53ef\u7528\u7684\u5ea7\u6a19"
-                : pendingPoiStatus === "error"
-                  ? "\u5730\u9ede\u8cc7\u6599\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"
-                  : "\u8981\u52a0\u5165\u9019\u500b\u5730\u9ede\u55ce\uff1f"}
-          </p>
-          <button
-            className="primary-button places-poi-confirm-button"
-            type="button"
-            disabled={pendingPoiStatus === "loading"}
-            onClick={() => void confirmPendingPoi()}
-          >
-            {"\u4f7f\u7528\u6b64\u5730\u9ede"}
-          </button>
         </div>
       ) : null}
       {placesPreview ? (

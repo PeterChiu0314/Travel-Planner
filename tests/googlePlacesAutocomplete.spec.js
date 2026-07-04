@@ -245,7 +245,7 @@ test("Phase 5.6d places details show a map preview before opening the add editor
   expect(previewDialogCss).not.toContain("bottom:");
 });
 
-test("Phase 5.6e POI clicks show a mini confirm before Place Details", () => {
+test("Phase 5.6e POI clicks show a pending marker before Place Details", () => {
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const adapterSource = readRepoFile("src/lib/googlePlacesAdapter.js");
@@ -258,19 +258,26 @@ test("Phase 5.6e POI clicks show a mini confirm before Place Details", () => {
   expect(googleProviderSource).toContain("event.stop?.()");
   expect(googleProviderSource).toContain("if (isPickingMapPoint)");
   expect(googleProviderSource).toContain("setPendingPoi({");
-  expect(googleProviderSource).toContain("className={`places-poi-mini-dialog anchored-${pendingPoiDialogPosition?.placement || \"pending\"}`}");
+  expect(googleProviderSource).toContain("pendingPoiMarkerRef.current = new MarkerConstructor({");
+  expect(googleProviderSource).toContain("label: { text: \"i\", color: \"#ffffff\", fontSize: \"16px\", fontWeight: \"900\" }");
+  expect(googleProviderSource).toContain("pendingPoiMarkerRef.current.addListener?.(\"click\"");
   expect(googleProviderSource).toContain("function confirmPendingPoi()");
-  expect(googleProviderSource).toContain("pendingPoiStatus === \"loading\"");
   expect(googleProviderSource).toContain("placeDetailsCacheRef.current.get(pendingPoi.placeId)");
   expect(googleProviderSource).toContain("placeDetailsCacheRef.current.set(pendingPoi.placeId, details)");
   expect(googleProviderSource).toContain("prediction: { id: pendingPoi.placeId }");
   expect(googleProviderSource).toContain("fields: PLACE_DETAILS_FIELD_MASK_MINIMAL");
   expect(googleProviderSource).toContain("clearPendingPoi();");
   expect(googleProviderSource).toContain("showPlacesPreview(details, pendingPoi.displayName)");
+  expect(googleProviderSource).not.toContain("pendingPoiStatus");
+  expect(googleProviderSource).not.toContain("pendingPoiDialogPosition");
+  expect(googleProviderSource).not.toContain("places-poi-mini-dialog");
+  expect(googleProviderSource).not.toContain("places-poi-confirm-button");
+  expect(googleProviderSource).not.toContain("\\u8981\\u52a0\\u5165\\u9019\\u500b\\u5730\\u9ede");
+  expect(googleProviderSource).not.toContain("\\u4f7f\\u7528\\u6b64\\u5730\\u9ede");
   expect(googleProviderSource).not.toContain("TextSearch");
   expect(googleProviderSource).not.toContain("NearbySearch");
   expect(googleProviderSource).not.toContain("Geocoder");
   expect(staticProviderSource).not.toContain("places-poi-mini-dialog");
-  expect(stylesSource).toContain(".places-poi-mini-dialog");
-  expect(stylesSource).toContain(".places-poi-confirm-button");
+  expect(stylesSource).not.toContain(".places-poi-mini-dialog");
+  expect(stylesSource).not.toContain(".places-poi-confirm-button");
 });

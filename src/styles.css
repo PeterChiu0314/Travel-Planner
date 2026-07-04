@@ -3828,46 +3828,6 @@ textarea {
   pointer-events: none;
 }
 
-.places-poi-mini-dialog {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 7;
-  display: grid;
-  width: min(240px, calc(100% - 24px));
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid rgba(95, 143, 184, 0.24);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 34px rgba(31, 41, 55, 0.16);
-}
-
-.places-poi-mini-dialog.anchored-pending {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.places-poi-mini-dialog strong {
-  padding-right: 28px;
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1.3;
-}
-
-.places-poi-mini-dialog p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-.places-poi-confirm-button {
-  width: 100%;
-  justify-content: center;
-}
-
 .places-preview-dialog strong {
   padding-right: 28px;
   color: var(--ink);
