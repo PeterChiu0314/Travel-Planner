@@ -18,6 +18,8 @@ const PLACES_PREVIEW_DIALOG_WIDTH = 300;
 const PLACES_PREVIEW_DIALOG_HEIGHT = 178;
 const PLACES_PREVIEW_DIALOG_GAP = 18;
 const PLACES_PREVIEW_DIALOG_EDGE_GAP = 12;
+const POI_MINI_DIALOG_WIDTH = 240;
+const POI_MINI_DIALOG_HEIGHT = 118;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
 const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
 
@@ -70,22 +72,22 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function anchoredDialogPosition(pixel, container) {
+function anchoredDialogPosition(pixel, container, dialogWidth = PLACES_PREVIEW_DIALOG_WIDTH, dialogHeight = PLACES_PREVIEW_DIALOG_HEIGHT) {
   const width = container?.clientWidth || 0;
   const height = container?.clientHeight || 0;
   if (!pixel || !width || !height) return null;
 
-  const maxLeft = Math.max(PLACES_PREVIEW_DIALOG_EDGE_GAP, width - PLACES_PREVIEW_DIALOG_WIDTH - PLACES_PREVIEW_DIALOG_EDGE_GAP);
-  const maxTop = Math.max(PLACES_PREVIEW_DIALOG_EDGE_GAP, height - PLACES_PREVIEW_DIALOG_HEIGHT - PLACES_PREVIEW_DIALOG_EDGE_GAP);
-  const topCandidate = pixel.y - PLACES_PREVIEW_DIALOG_HEIGHT - PLACES_PREVIEW_DIALOG_GAP;
+  const maxLeft = Math.max(PLACES_PREVIEW_DIALOG_EDGE_GAP, width - dialogWidth - PLACES_PREVIEW_DIALOG_EDGE_GAP);
+  const maxTop = Math.max(PLACES_PREVIEW_DIALOG_EDGE_GAP, height - dialogHeight - PLACES_PREVIEW_DIALOG_EDGE_GAP);
+  const topCandidate = pixel.y - dialogHeight - PLACES_PREVIEW_DIALOG_GAP;
   const sideCandidate = pixel.x + PLACES_PREVIEW_DIALOG_GAP;
   const placement = topCandidate >= PLACES_PREVIEW_DIALOG_EDGE_GAP ? "above" : "side";
   const left = placement === "above"
-    ? pixel.x - PLACES_PREVIEW_DIALOG_WIDTH / 2
+    ? pixel.x - dialogWidth / 2
     : sideCandidate;
   const top = placement === "above"
     ? topCandidate
-    : pixel.y - PLACES_PREVIEW_DIALOG_HEIGHT / 2;
+    : pixel.y - dialogHeight / 2;
 
   return {
     left: clamp(left, PLACES_PREVIEW_DIALOG_EDGE_GAP, maxLeft),
@@ -135,9 +137,12 @@ export default function GoogleMapProvider(props) {
   const mapsLibraryRef = useRef(null);
   const placesLibraryRef = useRef(null);
   const placesSessionManagerRef = useRef(createPlacesAutocompleteSessionManager(() => placesLibraryRef.current));
+  const placeDetailsCacheRef = useRef(new Map());
   const markerInstancesRef = useRef(new Map());
   const placesPreviewMarkerRef = useRef(null);
   const placesPreviewOverlayRef = useRef(null);
+  const pendingPoiMarkerRef = useRef(null);
+  const pendingPoiOverlayRef = useRef(null);
   const routeLineRef = useRef(null);
   const viewportListenersRef = useRef([]);
   const mapPointClickListenerRef = useRef(null);
@@ -154,6 +159,9 @@ export default function GoogleMapProvider(props) {
   const [placesSearchInput, setPlacesSearchInput] = useState("");
   const [placesPredictions, setPlacesPredictions] = useState([]);
   const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
+  const [pendingPoi, setPendingPoi] = useState(null);
+  const [pendingPoiDialogPosition, setPendingPoiDialogPosition] = useState(null);
+  const [pendingPoiStatus, setPendingPoiStatus] = useState("idle");
   const [placesPreview, setPlacesPreview] = useState(null);
   const [placesPreviewDialogPosition, setPlacesPreviewDialogPosition] = useState(null);
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
@@ -217,6 +225,36 @@ export default function GoogleMapProvider(props) {
     setPlacesPreviewDialogPosition(null);
   }
 
+  function clearPendingPoi() {
+    pendingPoiMarkerRef.current?.setMap?.(null);
+    pendingPoiMarkerRef.current = null;
+    pendingPoiOverlayRef.current?.setMap?.(null);
+    pendingPoiOverlayRef.current = null;
+    setPendingPoi(null);
+    setPendingPoiDialogPosition(null);
+    setPendingPoiStatus("idle");
+  }
+
+  function showPlacesPreview(details, fallbackName = "") {
+    const latitude = Number(details?.latitude);
+    const longitude = Number(details?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+    const nextPreview = {
+      displayName: details.displayName || fallbackName || "",
+      googleMapsUri: details.googleMapsUri || "",
+      id: details.id || "",
+      latitude,
+      longitude,
+      mapUrl: googleMapsPointUrl(latitude, longitude),
+    };
+    setPlacesPreview(nextPreview);
+    runProgrammaticViewportUpdate(() => {
+      mapRef.current?.setZoom?.(PLACES_PREVIEW_ZOOM);
+      mapRef.current?.panTo?.({ lat: latitude, lng: longitude });
+    });
+    return true;
+  }
+
   async function selectPlacePrediction(prediction) {
     if (!prediction?.id) return;
     setSelectedPlacePrediction(prediction);
@@ -234,26 +272,11 @@ export default function GoogleMapProvider(props) {
         prediction,
         sessionToken,
       });
-      const latitude = Number(details?.latitude);
-      const longitude = Number(details?.longitude);
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      if (!showPlacesPreview(details, prediction.mainText || prediction.description || "")) {
         clearPlacesPreview();
         setPlacesDetailsStatus("missing-location");
         return;
       }
-      const nextPreview = {
-        displayName: details.displayName || prediction.mainText || prediction.description || "",
-        googleMapsUri: details.googleMapsUri || "",
-        id: details.id || prediction.id,
-        latitude,
-        longitude,
-        mapUrl: googleMapsPointUrl(latitude, longitude),
-      };
-      setPlacesPreview(nextPreview);
-      runProgrammaticViewportUpdate(() => {
-        mapRef.current?.setZoom?.(PLACES_PREVIEW_ZOOM);
-        mapRef.current?.panTo?.({ lat: latitude, lng: longitude });
-      });
       setPlacesDetailsStatus("idle");
     } catch {
       clearPlacesPreview();
@@ -270,10 +293,43 @@ export default function GoogleMapProvider(props) {
     resetPlacesSearch();
   }
 
+  async function confirmPendingPoi() {
+    if (!pendingPoi?.placeId || pendingPoiStatus === "loading") return;
+    const cachedDetails = placeDetailsCacheRef.current.get(pendingPoi.placeId);
+    if (cachedDetails) {
+      if (showPlacesPreview(cachedDetails, pendingPoi.displayName)) {
+        clearPendingPoi();
+      } else {
+        setPendingPoiStatus("missing-location");
+      }
+      return;
+    }
+
+    setPendingPoiStatus("loading");
+    try {
+      const details = await fetchPlaceDetailsForPrediction({
+        fields: PLACE_DETAILS_FIELD_MASK_MINIMAL,
+        placesApi: placesLibraryRef.current,
+        prediction: { id: pendingPoi.placeId },
+      });
+      placeDetailsCacheRef.current.set(pendingPoi.placeId, details);
+      if (showPlacesPreview(details, pendingPoi.displayName)) {
+        clearPendingPoi();
+      } else {
+        setPendingPoiStatus("missing-location");
+      }
+    } catch {
+      setPendingPoiStatus("error");
+    } finally {
+      placesSessionManagerRef.current.resetSessionToken();
+    }
+  }
+
   function toggleMapAreaPointPick(event) {
     event.preventDefault();
     event.stopPropagation();
     if (!canPickMapPoint) return;
+    clearPendingPoi();
     clearPlacesPreview();
     resetPlacesSearch();
     if (isPickingMapPoint) {
@@ -394,7 +450,7 @@ export default function GoogleMapProvider(props) {
       if (!mapRef.current) {
         mapRef.current = new MapConstructor(mapElementRef.current, {
           center: initialCenter,
-          clickableIcons: false,
+          clickableIcons: true,
           fullscreenControl: false,
           mapTypeControl: false,
           streetViewControl: false,
@@ -547,6 +603,67 @@ export default function GoogleMapProvider(props) {
   }, [placesPreview, status]);
 
   useEffect(() => {
+    if (status !== "ready" || !mapRef.current || !pendingPoi) {
+      pendingPoiMarkerRef.current?.setMap?.(null);
+      pendingPoiMarkerRef.current = null;
+      pendingPoiOverlayRef.current?.setMap?.(null);
+      pendingPoiOverlayRef.current = null;
+      setPendingPoiDialogPosition(null);
+      return undefined;
+    }
+
+    const mapsNamespace = window.google?.maps;
+    const MarkerConstructor = mapsNamespace?.Marker;
+    const OverlayViewConstructor = mapsNamespace?.OverlayView;
+    const LatLngConstructor = mapsNamespace?.LatLng;
+    if (typeof OverlayViewConstructor !== "function") return undefined;
+
+    const position = Number.isFinite(pendingPoi.latitude) && Number.isFinite(pendingPoi.longitude)
+      ? { lat: pendingPoi.latitude, lng: pendingPoi.longitude }
+      : null;
+
+    pendingPoiMarkerRef.current?.setMap?.(null);
+    if (position && typeof MarkerConstructor === "function") {
+      pendingPoiMarkerRef.current = new MarkerConstructor({
+        map: mapRef.current,
+        position,
+        title: pendingPoi.displayName || "",
+        label: { text: "?", color: "#ffffff", fontSize: "14px", fontWeight: "900" },
+        icon: placesPreviewMarkerIcon(mapsNamespace),
+        zIndex: 2500,
+      });
+    }
+
+    pendingPoiOverlayRef.current?.setMap?.(null);
+    const overlay = new OverlayViewConstructor();
+    overlay.onAdd = function onAdd() {};
+    overlay.draw = function draw() {
+      const projection = overlay.getProjection?.();
+      const anchor = position && typeof LatLngConstructor === "function"
+        ? new LatLngConstructor(pendingPoi.latitude, pendingPoi.longitude)
+        : position;
+      const pixel = pendingPoi.pixelAnchor || (
+        anchor
+          ? projection?.fromLatLngToContainerPixel?.(anchor) || projection?.fromLatLngToDivPixel?.(anchor)
+          : null
+      );
+      setPendingPoiDialogPosition(anchoredDialogPosition(pixel, mapElementRef.current, POI_MINI_DIALOG_WIDTH, POI_MINI_DIALOG_HEIGHT));
+    };
+    overlay.onRemove = function onRemove() {
+      setPendingPoiDialogPosition(null);
+    };
+    overlay.setMap(mapRef.current);
+    pendingPoiOverlayRef.current = overlay;
+
+    return () => {
+      pendingPoiMarkerRef.current?.setMap?.(null);
+      pendingPoiMarkerRef.current = null;
+      pendingPoiOverlayRef.current?.setMap?.(null);
+      pendingPoiOverlayRef.current = null;
+    };
+  }, [pendingPoi, status]);
+
+  useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
     if (isPickingMapPoint) return;
 
@@ -582,14 +699,47 @@ export default function GoogleMapProvider(props) {
     if (status !== "ready" || !mapRef.current) return undefined;
 
     mapPointClickListenerRef.current = mapRef.current.addListener("click", (event) => {
+      const latLng = event?.latLng;
+      const latitude = typeof latLng?.lat === "function" ? latLng.lat() : null;
+      const longitude = typeof latLng?.lng === "function" ? latLng.lng() : null;
+      const placeId = typeof event?.placeId === "string" ? event.placeId : "";
+
+      if (placeId) {
+        event.stop?.();
+        if (isPickingMapPoint) {
+          if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+            onPickMapPoint?.({ latitude, longitude });
+          }
+          return;
+        }
+        const bounds = mapElementRef.current?.getBoundingClientRect?.();
+        const domEvent = event.domEvent;
+        clearPlacesPreview();
+        setPlacesPredictions([]);
+        setPlacesSearchStatus("idle");
+        setPendingPoi({
+          displayName: event.name || event.feature?.displayName || "",
+          latitude: Number.isFinite(latitude) ? latitude : null,
+          longitude: Number.isFinite(longitude) ? longitude : null,
+          pickedAt: Date.now(),
+          pixelAnchor: bounds && Number.isFinite(domEvent?.clientX) && Number.isFinite(domEvent?.clientY)
+            ? { x: domEvent.clientX - bounds.left, y: domEvent.clientY - bounds.top }
+            : null,
+          placeId,
+        });
+        setPendingPoiStatus("idle");
+        return;
+      }
+
       if (placesPreview) {
         clearPlacesPreview();
         return;
       }
+      if (pendingPoi) {
+        clearPendingPoi();
+        return;
+      }
       if (!isPickingMapPoint) return;
-      const latLng = event?.latLng;
-      const latitude = typeof latLng?.lat === "function" ? latLng.lat() : null;
-      const longitude = typeof latLng?.lng === "function" ? latLng.lng() : null;
       if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
         onPickMapPoint?.({ latitude, longitude });
       }
@@ -599,20 +749,22 @@ export default function GoogleMapProvider(props) {
       mapPointClickListenerRef.current?.remove?.();
       mapPointClickListenerRef.current = null;
     };
-  }, [isPickingMapPoint, onPickMapPoint, placesPreview, status]);
+  }, [isPickingMapPoint, onPickMapPoint, pendingPoi, placesPreview, status]);
 
   useEffect(() => {
+    clearPendingPoi();
     clearPlacesPreview();
     setPlacesPredictions([]);
     setPlacesSearchStatus("idle");
   }, [isPickingMapPoint, viewportKey]);
 
   useEffect(() => {
-    if (!placesPreview) return undefined;
+    if (!placesPreview && !pendingPoi) return undefined;
 
     function handleDocumentPointerDown(event) {
       const target = event.target;
       if (target?.closest?.(".google-map-surface")) return;
+      clearPendingPoi();
       clearPlacesPreview();
     }
 
@@ -620,7 +772,7 @@ export default function GoogleMapProvider(props) {
     return () => {
       document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
     };
-  }, [placesPreview]);
+  }, [pendingPoi, placesPreview]);
 
   useEffect(() => () => {
     if (viewportSuppressionTimerRef.current) {
@@ -630,6 +782,10 @@ export default function GoogleMapProvider(props) {
     viewportListenersRef.current = [];
     routeLineRef.current?.setMap(null);
     routeLineRef.current = null;
+    pendingPoiMarkerRef.current?.setMap?.(null);
+    pendingPoiMarkerRef.current = null;
+    pendingPoiOverlayRef.current?.setMap?.(null);
+    pendingPoiOverlayRef.current = null;
     placesPreviewMarkerRef.current?.setMap?.(null);
     placesPreviewMarkerRef.current = null;
     placesPreviewOverlayRef.current?.setMap?.(null);
@@ -735,6 +891,46 @@ export default function GoogleMapProvider(props) {
               ))}
             </div>
           ) : null}
+        </div>
+      ) : null}
+      {pendingPoi ? (
+        <div
+          className={`places-poi-mini-dialog anchored-${pendingPoiDialogPosition?.placement || "pending"}`}
+          role="dialog"
+          aria-label="\u78ba\u8a8d\u5730\u5716\u5730\u9ede"
+          style={pendingPoiDialogPosition ? {
+            left: `${pendingPoiDialogPosition.left}px`,
+            top: `${pendingPoiDialogPosition.top}px`,
+          } : undefined}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            className="places-preview-close"
+            type="button"
+            aria-label="\u95dc\u9589\u5730\u9ede\u78ba\u8a8d"
+            onClick={clearPendingPoi}
+          >
+            x
+          </button>
+          <strong>{pendingPoi.displayName || "\u9078\u53d6\u7684\u5730\u9ede"}</strong>
+          <p>
+            {pendingPoiStatus === "loading"
+              ? "\u8f09\u5165\u5730\u9ede\u8cc7\u6599\u4e2d..."
+              : pendingPoiStatus === "missing-location"
+                ? "\u9019\u500b\u5730\u9ede\u6c92\u6709\u53ef\u7528\u7684\u5ea7\u6a19"
+                : pendingPoiStatus === "error"
+                  ? "\u5730\u9ede\u8cc7\u6599\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"
+                  : "\u8981\u52a0\u5165\u9019\u500b\u5730\u9ede\u55ce\uff1f"}
+          </p>
+          <button
+            className="primary-button places-poi-confirm-button"
+            type="button"
+            disabled={pendingPoiStatus === "loading"}
+            onClick={() => void confirmPendingPoi()}
+          >
+            {"\u4f7f\u7528\u6b64\u5730\u9ede"}
+          </button>
         </div>
       ) : null}
       {placesPreview ? (

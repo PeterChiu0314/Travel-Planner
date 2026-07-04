@@ -116,6 +116,12 @@ export async function fetchPlaceDetailsForPrediction({
     return normalizePlaceDetailsResult(place, fields);
   }
 
+  if (typeof placesApi.Place === "function") {
+    const place = new placesApi.Place({ id: prediction.id });
+    await place.fetchFields({ fields, sessionToken });
+    return normalizePlaceDetailsResult(place, fields);
+  }
+
   if (typeof placesApi.fetchPlaceDetails === "function") {
     const place = await placesApi.fetchPlaceDetails({
       fields,

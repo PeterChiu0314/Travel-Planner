@@ -103,6 +103,37 @@ test("Phase 5.6c details adapter uses minimal fields and the autocomplete sessio
   });
 });
 
+test("Phase 5.6e details adapter can fetch minimal fields from a place id", async () => {
+  const fetchCalls = [];
+  class FakePlace {
+    constructor(options) {
+      this.id = options.id;
+      this.displayName = { text: "Kyoto University" };
+      this.location = { lat: () => 35.0262, lng: () => 135.7809 };
+      this.googleMapsURI = "https://maps.google.com/?cid=123";
+    }
+
+    async fetchFields(request) {
+      fetchCalls.push(request);
+    }
+  }
+
+  const details = await fetchPlaceDetailsForPrediction({
+    fields: PLACE_DETAILS_FIELD_MASK_MINIMAL,
+    placesApi: { Place: FakePlace },
+    prediction: { id: "poi-place-1" },
+  });
+
+  expect(fetchCalls).toEqual([{ fields: PLACE_DETAILS_FIELD_MASK_MINIMAL, sessionToken: undefined }]);
+  expect(details).toMatchObject({
+    id: "poi-place-1",
+    displayName: "Kyoto University",
+    latitude: 35.0262,
+    longitude: 135.7809,
+    googleMapsUri: "https://maps.google.com/?cid=123",
+  });
+});
+
 test("Phase 5.6c hotfix uses coordinate map URLs for editor validation", () => {
   const latitude = 35.0262;
   const longitude = 135.7809;
@@ -212,4 +243,34 @@ test("Phase 5.6d places details show a map preview before opening the add editor
   expect(previewDialogCss).toContain("top: 0;");
   expect(previewDialogCss).not.toContain("right:");
   expect(previewDialogCss).not.toContain("bottom:");
+});
+
+test("Phase 5.6e POI clicks show a mini confirm before Place Details", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+  const adapterSource = readRepoFile("src/lib/googlePlacesAdapter.js");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(adapterSource).toContain("new placesApi.Place({ id: prediction.id })");
+  expect(adapterSource).toContain("await place.fetchFields({ fields, sessionToken })");
+  expect(googleProviderSource).toContain("clickableIcons: true");
+  expect(googleProviderSource).toContain("const placeId = typeof event?.placeId === \"string\" ? event.placeId : \"\"");
+  expect(googleProviderSource).toContain("event.stop?.()");
+  expect(googleProviderSource).toContain("if (isPickingMapPoint)");
+  expect(googleProviderSource).toContain("setPendingPoi({");
+  expect(googleProviderSource).toContain("className={`places-poi-mini-dialog anchored-${pendingPoiDialogPosition?.placement || \"pending\"}`}");
+  expect(googleProviderSource).toContain("function confirmPendingPoi()");
+  expect(googleProviderSource).toContain("pendingPoiStatus === \"loading\"");
+  expect(googleProviderSource).toContain("placeDetailsCacheRef.current.get(pendingPoi.placeId)");
+  expect(googleProviderSource).toContain("placeDetailsCacheRef.current.set(pendingPoi.placeId, details)");
+  expect(googleProviderSource).toContain("prediction: { id: pendingPoi.placeId }");
+  expect(googleProviderSource).toContain("fields: PLACE_DETAILS_FIELD_MASK_MINIMAL");
+  expect(googleProviderSource).toContain("clearPendingPoi();");
+  expect(googleProviderSource).toContain("showPlacesPreview(details, pendingPoi.displayName)");
+  expect(googleProviderSource).not.toContain("TextSearch");
+  expect(googleProviderSource).not.toContain("NearbySearch");
+  expect(googleProviderSource).not.toContain("Geocoder");
+  expect(staticProviderSource).not.toContain("places-poi-mini-dialog");
+  expect(stylesSource).toContain(".places-poi-mini-dialog");
+  expect(stylesSource).toContain(".places-poi-confirm-button");
 });
