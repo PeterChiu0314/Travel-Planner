@@ -3808,6 +3808,31 @@ textarea {
   white-space: nowrap;
 }
 
+.places-pending-hint {
+  position: absolute;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 108px;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 18px rgba(31, 41, 55, 0.14);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.places-pending-hint:hover {
+  background: rgba(255, 255, 255, 0.96);
+}
+
 .places-preview-dialog {
   position: absolute;
   left: 0;

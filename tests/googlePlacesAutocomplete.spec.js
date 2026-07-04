@@ -261,6 +261,10 @@ test("Phase 5.6e POI clicks show a pending marker before Place Details", () => {
   expect(googleProviderSource).toContain("pendingPoiMarkerRef.current = new MarkerConstructor({");
   expect(googleProviderSource).toContain("label: { text: \"i\", color: \"#ffffff\", fontSize: \"16px\", fontWeight: \"900\" }");
   expect(googleProviderSource).toContain("pendingPoiMarkerRef.current.addListener?.(\"click\"");
+  expect(googleProviderSource).toContain("pendingPoiHintOverlayRef");
+  expect(googleProviderSource).toContain("setPendingPoiHintPosition(anchoredHintPosition(pixel, mapElementRef.current))");
+  expect(googleProviderSource).toContain("className=\"places-pending-hint\"");
+  expect(googleProviderSource).toContain("\"\\u9ede\\u64ca\\u52a0\\u5165\\u5730\\u9ede\"");
   expect(googleProviderSource).toContain("function confirmPendingPoi()");
   expect(googleProviderSource).toContain("placeDetailsCacheRef.current.get(pendingPoi.placeId)");
   expect(googleProviderSource).toContain("placeDetailsCacheRef.current.set(pendingPoi.placeId, details)");
@@ -278,6 +282,8 @@ test("Phase 5.6e POI clicks show a pending marker before Place Details", () => {
   expect(googleProviderSource).not.toContain("NearbySearch");
   expect(googleProviderSource).not.toContain("Geocoder");
   expect(staticProviderSource).not.toContain("places-poi-mini-dialog");
+  expect(staticProviderSource).not.toContain("places-pending-hint");
+  expect(stylesSource).toContain(".places-pending-hint");
   expect(stylesSource).not.toContain(".places-poi-mini-dialog");
   expect(stylesSource).not.toContain(".places-poi-confirm-button");
 });

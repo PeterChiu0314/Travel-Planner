@@ -18,6 +18,9 @@ const PLACES_PREVIEW_DIALOG_WIDTH = 300;
 const PLACES_PREVIEW_DIALOG_HEIGHT = 178;
 const PLACES_PREVIEW_DIALOG_GAP = 18;
 const PLACES_PREVIEW_DIALOG_EDGE_GAP = 12;
+const PENDING_POI_HINT_WIDTH = 108;
+const PENDING_POI_HINT_HEIGHT = 26;
+const PENDING_POI_HINT_GAP = 18;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
 const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
 
@@ -94,6 +97,26 @@ function anchoredDialogPosition(pixel, container, dialogWidth = PLACES_PREVIEW_D
   };
 }
 
+function anchoredHintPosition(pixel, container, hintWidth = PENDING_POI_HINT_WIDTH, hintHeight = PENDING_POI_HINT_HEIGHT) {
+  const width = container?.clientWidth || 0;
+  const height = container?.clientHeight || 0;
+  if (!pixel || !width || !height) return null;
+
+  const halfWidth = hintWidth / 2;
+  const left = clamp(
+    pixel.x,
+    PLACES_PREVIEW_DIALOG_EDGE_GAP + halfWidth,
+    Math.max(PLACES_PREVIEW_DIALOG_EDGE_GAP + halfWidth, width - PLACES_PREVIEW_DIALOG_EDGE_GAP - halfWidth),
+  );
+  const top = clamp(
+    pixel.y - PENDING_POI_HINT_GAP - hintHeight,
+    PLACES_PREVIEW_DIALOG_EDGE_GAP,
+    Math.max(PLACES_PREVIEW_DIALOG_EDGE_GAP, height - hintHeight - PLACES_PREVIEW_DIALOG_EDGE_GAP),
+  );
+
+  return { left, top };
+}
+
 function coordinateKey(markers) {
   return markers
     .map((marker) => `${marker.id}:${marker.latitude}:${marker.longitude}:${marker.title || marker.locationName || ""}`)
@@ -140,6 +163,7 @@ export default function GoogleMapProvider(props) {
   const placesPreviewMarkerRef = useRef(null);
   const placesPreviewOverlayRef = useRef(null);
   const pendingPoiMarkerRef = useRef(null);
+  const pendingPoiHintOverlayRef = useRef(null);
   const routeLineRef = useRef(null);
   const viewportListenersRef = useRef([]);
   const mapPointClickListenerRef = useRef(null);
@@ -157,6 +181,7 @@ export default function GoogleMapProvider(props) {
   const [placesPredictions, setPlacesPredictions] = useState([]);
   const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
   const [pendingPoi, setPendingPoi] = useState(null);
+  const [pendingPoiHintPosition, setPendingPoiHintPosition] = useState(null);
   const [placesPreview, setPlacesPreview] = useState(null);
   const [placesPreviewDialogPosition, setPlacesPreviewDialogPosition] = useState(null);
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
@@ -223,6 +248,9 @@ export default function GoogleMapProvider(props) {
   function clearPendingPoi() {
     pendingPoiMarkerRef.current?.setMap?.(null);
     pendingPoiMarkerRef.current = null;
+    pendingPoiHintOverlayRef.current?.setMap?.(null);
+    pendingPoiHintOverlayRef.current = null;
+    setPendingPoiHintPosition(null);
     setPendingPoi(null);
   }
 
@@ -592,11 +620,16 @@ export default function GoogleMapProvider(props) {
     if (status !== "ready" || !mapRef.current || !pendingPoi) {
       pendingPoiMarkerRef.current?.setMap?.(null);
       pendingPoiMarkerRef.current = null;
+      pendingPoiHintOverlayRef.current?.setMap?.(null);
+      pendingPoiHintOverlayRef.current = null;
+      setPendingPoiHintPosition(null);
       return undefined;
     }
 
     const mapsNamespace = window.google?.maps;
     const MarkerConstructor = mapsNamespace?.Marker;
+    const OverlayViewConstructor = mapsNamespace?.OverlayView;
+    const LatLngConstructor = mapsNamespace?.LatLng;
     if (typeof MarkerConstructor !== "function") return undefined;
 
     const position = Number.isFinite(pendingPoi.latitude) && Number.isFinite(pendingPoi.longitude)
@@ -617,11 +650,34 @@ export default function GoogleMapProvider(props) {
         markerEvent?.stop?.();
         void confirmPendingPoi();
       });
+
+      pendingPoiHintOverlayRef.current?.setMap?.(null);
+      if (typeof OverlayViewConstructor === "function") {
+        const overlay = new OverlayViewConstructor();
+        overlay.onAdd = function onAdd() {};
+        overlay.draw = function draw() {
+          const projection = overlay.getProjection?.();
+          const anchor = typeof LatLngConstructor === "function"
+            ? new LatLngConstructor(position.lat, position.lng)
+            : position;
+          const pixel =
+            projection?.fromLatLngToContainerPixel?.(anchor) ||
+            projection?.fromLatLngToDivPixel?.(anchor);
+          setPendingPoiHintPosition(anchoredHintPosition(pixel, mapElementRef.current));
+        };
+        overlay.onRemove = function onRemove() {
+          setPendingPoiHintPosition(null);
+        };
+        overlay.setMap(mapRef.current);
+        pendingPoiHintOverlayRef.current = overlay;
+      }
     }
 
     return () => {
       pendingPoiMarkerRef.current?.setMap?.(null);
       pendingPoiMarkerRef.current = null;
+      pendingPoiHintOverlayRef.current?.setMap?.(null);
+      pendingPoiHintOverlayRef.current = null;
     };
   }, [pendingPoi, status]);
 
@@ -740,6 +796,8 @@ export default function GoogleMapProvider(props) {
     routeLineRef.current = null;
     pendingPoiMarkerRef.current?.setMap?.(null);
     pendingPoiMarkerRef.current = null;
+    pendingPoiHintOverlayRef.current?.setMap?.(null);
+    pendingPoiHintOverlayRef.current = null;
     placesPreviewMarkerRef.current?.setMap?.(null);
     placesPreviewMarkerRef.current = null;
     placesPreviewOverlayRef.current?.setMap?.(null);
@@ -846,6 +904,23 @@ export default function GoogleMapProvider(props) {
             </div>
           ) : null}
         </div>
+      ) : null}
+      {pendingPoi && pendingPoiHintPosition && !placesPreview && !isPickingMapPoint ? (
+        <button
+          className="places-pending-hint"
+          type="button"
+          style={{
+            left: `${pendingPoiHintPosition.left}px`,
+            top: `${pendingPoiHintPosition.top}px`,
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+            void confirmPendingPoi();
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {"\u9ede\u64ca\u52a0\u5165\u5730\u9ede"}
+        </button>
       ) : null}
       {placesPreview ? (
         <div
