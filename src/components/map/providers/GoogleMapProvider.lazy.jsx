@@ -14,6 +14,10 @@ const DEFAULT_ZOOM = 11;
 const FOCUSED_MARKER_ZOOM = 15;
 const PLACES_PREVIEW_ZOOM = 15;
 const PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 350;
+const PLACES_PREVIEW_DIALOG_WIDTH = 300;
+const PLACES_PREVIEW_DIALOG_HEIGHT = 178;
+const PLACES_PREVIEW_DIALOG_GAP = 18;
+const PLACES_PREVIEW_DIALOG_EDGE_GAP = 12;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
 const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
 
@@ -62,6 +66,34 @@ function placesPreviewMarkerIcon(mapsNamespace) {
   };
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function anchoredDialogPosition(pixel, container) {
+  const width = container?.clientWidth || 0;
+  const height = container?.clientHeight || 0;
+  if (!pixel || !width || !height) return null;
+
+  const maxLeft = Math.max(PLACES_PREVIEW_DIALOG_EDGE_GAP, width - PLACES_PREVIEW_DIALOG_WIDTH - PLACES_PREVIEW_DIALOG_EDGE_GAP);
+  const maxTop = Math.max(PLACES_PREVIEW_DIALOG_EDGE_GAP, height - PLACES_PREVIEW_DIALOG_HEIGHT - PLACES_PREVIEW_DIALOG_EDGE_GAP);
+  const topCandidate = pixel.y - PLACES_PREVIEW_DIALOG_HEIGHT - PLACES_PREVIEW_DIALOG_GAP;
+  const sideCandidate = pixel.x + PLACES_PREVIEW_DIALOG_GAP;
+  const placement = topCandidate >= PLACES_PREVIEW_DIALOG_EDGE_GAP ? "above" : "side";
+  const left = placement === "above"
+    ? pixel.x - PLACES_PREVIEW_DIALOG_WIDTH / 2
+    : sideCandidate;
+  const top = placement === "above"
+    ? topCandidate
+    : pixel.y - PLACES_PREVIEW_DIALOG_HEIGHT / 2;
+
+  return {
+    left: clamp(left, PLACES_PREVIEW_DIALOG_EDGE_GAP, maxLeft),
+    top: clamp(top, PLACES_PREVIEW_DIALOG_EDGE_GAP, maxTop),
+    placement,
+  };
+}
+
 function coordinateKey(markers) {
   return markers
     .map((marker) => `${marker.id}:${marker.latitude}:${marker.longitude}:${marker.title || marker.locationName || ""}`)
@@ -105,6 +137,7 @@ export default function GoogleMapProvider(props) {
   const placesSessionManagerRef = useRef(createPlacesAutocompleteSessionManager(() => placesLibraryRef.current));
   const markerInstancesRef = useRef(new Map());
   const placesPreviewMarkerRef = useRef(null);
+  const placesPreviewOverlayRef = useRef(null);
   const routeLineRef = useRef(null);
   const viewportListenersRef = useRef([]);
   const mapPointClickListenerRef = useRef(null);
@@ -122,6 +155,7 @@ export default function GoogleMapProvider(props) {
   const [placesPredictions, setPlacesPredictions] = useState([]);
   const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
   const [placesPreview, setPlacesPreview] = useState(null);
+  const [placesPreviewDialogPosition, setPlacesPreviewDialogPosition] = useState(null);
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
   const [placesDetailsStatus, setPlacesDetailsStatus] = useState("idle");
   const [renderFailed, setRenderFailed] = useState(false);
@@ -177,7 +211,10 @@ export default function GoogleMapProvider(props) {
   function clearPlacesPreview() {
     placesPreviewMarkerRef.current?.setMap?.(null);
     placesPreviewMarkerRef.current = null;
+    placesPreviewOverlayRef.current?.setMap?.(null);
+    placesPreviewOverlayRef.current = null;
     setPlacesPreview(null);
+    setPlacesPreviewDialogPosition(null);
   }
 
   async function selectPlacePrediction(prediction) {
@@ -231,12 +268,6 @@ export default function GoogleMapProvider(props) {
     onSelectPlaceDetails?.(placesPreview);
     clearPlacesPreview();
     resetPlacesSearch();
-  }
-
-  function openPlacesPreviewInGoogleMap() {
-    if (!placesPreview) return;
-    const url = placesPreview.googleMapsUri || placesPreview.mapUrl;
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function toggleMapAreaPointPick(event) {
@@ -465,12 +496,17 @@ export default function GoogleMapProvider(props) {
     if (status !== "ready" || !mapRef.current || !placesPreview) {
       placesPreviewMarkerRef.current?.setMap?.(null);
       placesPreviewMarkerRef.current = null;
+      placesPreviewOverlayRef.current?.setMap?.(null);
+      placesPreviewOverlayRef.current = null;
+      setPlacesPreviewDialogPosition(null);
       return undefined;
     }
 
     const mapsNamespace = window.google?.maps;
     const MarkerConstructor = mapsNamespace?.Marker;
-    if (typeof MarkerConstructor !== "function") return undefined;
+    const OverlayViewConstructor = mapsNamespace?.OverlayView;
+    const LatLngConstructor = mapsNamespace?.LatLng;
+    if (typeof MarkerConstructor !== "function" || typeof OverlayViewConstructor !== "function") return undefined;
 
     const position = { lat: placesPreview.latitude, lng: placesPreview.longitude };
     placesPreviewMarkerRef.current?.setMap?.(null);
@@ -483,9 +519,30 @@ export default function GoogleMapProvider(props) {
       zIndex: 3000,
     });
 
+    placesPreviewOverlayRef.current?.setMap?.(null);
+    const overlay = new OverlayViewConstructor();
+    overlay.onAdd = function onAdd() {};
+    overlay.draw = function draw() {
+      const projection = overlay.getProjection?.();
+      const anchor = typeof LatLngConstructor === "function"
+        ? new LatLngConstructor(placesPreview.latitude, placesPreview.longitude)
+        : position;
+      const pixel =
+        projection?.fromLatLngToContainerPixel?.(anchor) ||
+        projection?.fromLatLngToDivPixel?.(anchor);
+      setPlacesPreviewDialogPosition(anchoredDialogPosition(pixel, mapElementRef.current));
+    };
+    overlay.onRemove = function onRemove() {
+      setPlacesPreviewDialogPosition(null);
+    };
+    overlay.setMap(mapRef.current);
+    placesPreviewOverlayRef.current = overlay;
+
     return () => {
       placesPreviewMarkerRef.current?.setMap?.(null);
       placesPreviewMarkerRef.current = null;
+      placesPreviewOverlayRef.current?.setMap?.(null);
+      placesPreviewOverlayRef.current = null;
     };
   }, [placesPreview, status]);
 
@@ -550,6 +607,21 @@ export default function GoogleMapProvider(props) {
     setPlacesSearchStatus("idle");
   }, [isPickingMapPoint, viewportKey]);
 
+  useEffect(() => {
+    if (!placesPreview) return undefined;
+
+    function handleDocumentPointerDown(event) {
+      const target = event.target;
+      if (target?.closest?.(".google-map-surface")) return;
+      clearPlacesPreview();
+    }
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+    };
+  }, [placesPreview]);
+
   useEffect(() => () => {
     if (viewportSuppressionTimerRef.current) {
       window.clearTimeout(viewportSuppressionTimerRef.current);
@@ -560,6 +632,8 @@ export default function GoogleMapProvider(props) {
     routeLineRef.current = null;
     placesPreviewMarkerRef.current?.setMap?.(null);
     placesPreviewMarkerRef.current = null;
+    placesPreviewOverlayRef.current?.setMap?.(null);
+    placesPreviewOverlayRef.current = null;
     mapPointClickListenerRef.current?.remove?.();
     mapPointClickListenerRef.current = null;
   }, []);
@@ -665,9 +739,13 @@ export default function GoogleMapProvider(props) {
       ) : null}
       {placesPreview ? (
         <div
-          className="places-preview-dialog"
+          className={`places-preview-dialog anchored-${placesPreviewDialogPosition?.placement || "pending"}`}
           role="dialog"
           aria-label="\u78ba\u8a8d\u5730\u9ede"
+          style={placesPreviewDialogPosition ? {
+            left: `${placesPreviewDialogPosition.left}px`,
+            top: `${placesPreviewDialogPosition.top}px`,
+          } : undefined}
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
@@ -680,10 +758,18 @@ export default function GoogleMapProvider(props) {
             x
           </button>
           <strong>{placesPreview.displayName || "\u9078\u53d6\u7684\u5730\u9ede"}</strong>
-          <button className="places-preview-map-link" type="button" onClick={openPlacesPreviewInGoogleMap}>
-            {"\u5728 Google Map \u958b\u555f"}
-          </button>
-          <p>{"\u78ba\u8a8d\u5f8c\u6703\u958b\u555f\u884c\u7a0b\u7de8\u8f2f\u5668"}</p>
+          <a
+            className="places-preview-map-link"
+            href={placesPreview.googleMapsUri || placesPreview.mapUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            {"\u5728 Google Map \u4e2d\u6aa2\u8996"}
+          </a>
+          <p>{"\u5df2\u53d6\u5f97\u5730\u9ede\u5ea7\u6a19"}</p>
           <button className="primary-button places-preview-add-button" type="button" onClick={confirmPlacesPreviewAdd}>
             {"\u52a0\u5165\u884c\u7a0b"}
           </button>

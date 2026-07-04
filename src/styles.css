@@ -3810,17 +3810,22 @@ textarea {
 
 .places-preview-dialog {
   position: absolute;
-  right: 14px;
-  bottom: 68px;
+  left: 0;
+  top: 0;
   z-index: 6;
   display: grid;
-  width: min(300px, calc(100% - 28px));
+  width: min(300px, calc(100% - 24px));
   gap: 8px;
   padding: 12px;
   border: 1px solid rgba(95, 143, 184, 0.24);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 16px 34px rgba(31, 41, 55, 0.16);
+}
+
+.places-preview-dialog.anchored-pending {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .places-preview-dialog strong {
@@ -3861,8 +3866,6 @@ textarea {
 .places-preview-map-link {
   justify-self: start;
   padding: 0;
-  border: 0;
-  background: transparent;
   color: var(--mint-dark);
   font: inherit;
   font-size: 12px;
