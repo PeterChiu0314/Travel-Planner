@@ -128,7 +128,6 @@ test("Phase 5.6a source keeps Places prep UI-free and request-free", () => {
   expect(googleProviderSource).toContain("loadGoogleMapsApi({ apiKey, libraries: placesLibraries })");
   expect(loaderSource).toContain("requestedLibraries");
   expect(loaderSource).toContain("extraLibraries[library] = await importLibrary(library)");
-  expect(googleProviderSource).not.toContain("Autocomplete");
   expect(googleProviderSource).not.toContain("Place Details");
   expect(googleProviderSource).not.toContain("fetchFields");
   expect(staticProviderSource).not.toContain("places");

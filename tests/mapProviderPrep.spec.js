@@ -284,7 +284,8 @@ test("Phase 5.1c Google provider stays markers-only and provider-neutral", () =>
   expect(googleProviderSource).toContain("panTo");
   expect(googleProviderSource).not.toContain("Directions");
   expect(googleProviderSource).not.toContain("Routes");
-  expect(googleProviderSource).not.toContain("Places");
+  expect(googleProviderSource).not.toContain("fetchFields");
+  expect(googleProviderSource).not.toContain("normalizePlaceDetailsResult");
   expect(googleProviderSource).not.toContain("Geocoding");
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
 });

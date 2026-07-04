@@ -3734,6 +3734,80 @@ textarea {
   pointer-events: none;
 }
 
+.places-search-overlay {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 5;
+  display: grid;
+  width: min(320px, calc(100% - 28px));
+  gap: 6px;
+}
+
+.places-search-input {
+  width: 100%;
+  border: 1px solid rgba(95, 143, 184, 0.28);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.12);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.places-prediction-list,
+.places-search-message {
+  overflow: hidden;
+  border: 1px solid rgba(95, 143, 184, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 14px 30px rgba(31, 41, 55, 0.14);
+}
+
+.places-search-message {
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.places-prediction-option {
+  display: grid;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(95, 143, 184, 0.12);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+.places-prediction-option:last-child {
+  border-bottom: 0;
+}
+
+.places-prediction-option:hover,
+.places-prediction-option.selected {
+  background: rgba(47, 143, 114, 0.08);
+}
+
+.places-prediction-option span {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.places-prediction-option em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .route-line {
   position: absolute;
   left: 34px;

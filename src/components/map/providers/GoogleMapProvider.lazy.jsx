@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createPlacesAutocompleteSessionManager,
+  fetchPlaceAutocompletePredictions,
+} from "../../../lib/googlePlacesAdapter.js";
 import { loadGoogleMapsApi } from "../../../lib/googleMapsLoader.js";
 import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
 import StaticMapProvider from "./StaticMapProvider.jsx";
@@ -6,6 +10,7 @@ import StaticMapProvider from "./StaticMapProvider.jsx";
 const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
 const DEFAULT_ZOOM = 11;
 const FOCUSED_MARKER_ZOOM = 15;
+const PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 350;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
 const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
 
@@ -74,6 +79,8 @@ export default function GoogleMapProvider(props) {
   const mapElementRef = useRef(null);
   const mapRef = useRef(null);
   const mapsLibraryRef = useRef(null);
+  const placesLibraryRef = useRef(null);
+  const placesSessionManagerRef = useRef(createPlacesAutocompleteSessionManager(() => placesLibraryRef.current));
   const markerInstancesRef = useRef(new Map());
   const routeLineRef = useRef(null);
   const viewportListenersRef = useRef([]);
@@ -87,12 +94,18 @@ export default function GoogleMapProvider(props) {
   const [loadAttempted, setLoadAttempted] = useState(false);
   const [loadSucceeded, setLoadSucceeded] = useState(false);
   const [mapCreated, setMapCreated] = useState(false);
+  const [placesReady, setPlacesReady] = useState(false);
+  const [placesSearchInput, setPlacesSearchInput] = useState("");
+  const [placesPredictions, setPlacesPredictions] = useState([]);
+  const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
+  const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
   const [renderFailed, setRenderFailed] = useState(false);
   const [fallbackReason, setFallbackReason] = useState(null);
   const markersKey = coordinateKey(coordinateMarkers);
   const viewportSignature = `${viewportKey}:${markersKey}`;
   const apiKey = typeof providerConfig.apiKey === "string" ? providerConfig.apiKey.trim() : "";
   const placesLibraries = Array.isArray(providerConfig.placesLibraries) ? providerConfig.placesLibraries : [];
+  const canSearchPlaces = status === "ready" && providerConfig.placesEnabled === true && placesReady && !isPickingMapPoint;
 
   const handleMapElementRef = useCallback((element) => {
     mapElementRef.current = element;
@@ -127,10 +140,19 @@ export default function GoogleMapProvider(props) {
     ];
   }
 
+  function resetPlacesSearch() {
+    setPlacesSearchInput("");
+    setPlacesPredictions([]);
+    setSelectedPlacePrediction(null);
+    setPlacesSearchStatus("idle");
+    placesSessionManagerRef.current.resetSessionToken();
+  }
+
   function toggleMapAreaPointPick(event) {
     event.preventDefault();
     event.stopPropagation();
     if (!canPickMapPoint) return;
+    resetPlacesSearch();
     if (isPickingMapPoint) {
       onCancelMapPointPick?.();
       return;
@@ -157,11 +179,15 @@ export default function GoogleMapProvider(props) {
       .then((mapsLibrary) => {
         if (cancelled) return;
         mapsLibraryRef.current = mapsLibrary;
+        placesLibraryRef.current = mapsLibrary?.libraries?.places || null;
+        setPlacesReady(Boolean(mapsLibrary?.libraries?.places));
         setLoadSucceeded(true);
         setStatus("ready");
       })
       .catch(() => {
         if (!cancelled) {
+          placesLibraryRef.current = null;
+          setPlacesReady(false);
           setLoadSucceeded(false);
           setFallbackReason("loader-failure");
           setStatus("failed");
@@ -172,6 +198,57 @@ export default function GoogleMapProvider(props) {
       cancelled = true;
     };
   }, [apiKey, containerReady, placesLibraries.join("|")]);
+
+  useEffect(() => {
+    if (!canSearchPlaces) {
+      setPlacesPredictions([]);
+      setPlacesSearchStatus("idle");
+      return undefined;
+    }
+
+    const input = placesSearchInput.trim();
+    if (input.length < 2) {
+      setPlacesPredictions([]);
+      setPlacesSearchStatus("idle");
+      return undefined;
+    }
+
+    let cancelled = false;
+    setPlacesSearchStatus("loading");
+    const timerId = window.setTimeout(() => {
+      let sessionToken;
+      try {
+        sessionToken = placesSessionManagerRef.current.getOrCreateSessionToken();
+      } catch {
+        if (!cancelled) {
+          setPlacesPredictions([]);
+          setPlacesSearchStatus("error");
+        }
+        return;
+      }
+
+      fetchPlaceAutocompletePredictions({
+        input,
+        placesApi: placesLibraryRef.current,
+        sessionToken,
+      })
+        .then((predictions) => {
+          if (cancelled) return;
+          setPlacesPredictions(predictions);
+          setPlacesSearchStatus(predictions.length ? "ready" : "empty");
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setPlacesPredictions([]);
+          setPlacesSearchStatus("error");
+        });
+    }, PLACES_AUTOCOMPLETE_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timerId);
+    };
+  }, [canSearchPlaces, placesSearchInput]);
 
   useEffect(() => {
     if (status !== "ready" || !mapElementRef.current) return undefined;
@@ -368,6 +445,7 @@ export default function GoogleMapProvider(props) {
       mapCreated,
       fallbackReason,
       placesEnabled: providerConfig.placesEnabled === true,
+      placesReady,
     });
   }, [
     apiKey,
@@ -379,6 +457,7 @@ export default function GoogleMapProvider(props) {
     mapCreated,
     markers.length,
     providerConfig.placesEnabled,
+    placesReady,
   ]);
 
   if (status === "failed" || renderFailed) {
@@ -396,6 +475,54 @@ export default function GoogleMapProvider(props) {
       ) : null}
       {missingMapPointCount > 0 ? (
         <div className="map-point-warning">尚有 {missingMapPointCount} 個目的地缺少可用座標</div>
+      ) : null}
+      {canSearchPlaces ? (
+        <div
+          className="places-search-overlay"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <input
+            autoComplete="off"
+            className="places-search-input"
+            placeholder="\u641c\u5c0b\u5730\u9ede..."
+            value={placesSearchInput}
+            onChange={(event) => {
+              setSelectedPlacePrediction(null);
+              setPlacesSearchInput(event.target.value);
+            }}
+          />
+          {["loading", "empty", "error"].includes(placesSearchStatus) ? (
+            <div className="places-search-message" role="status">
+              {placesSearchStatus === "loading"
+                ? "\u641c\u5c0b\u4e2d..."
+                : placesSearchStatus === "empty"
+                  ? "\u627e\u4e0d\u5230\u7b26\u5408\u7684\u5730\u9ede"
+                  : "\u641c\u5c0b\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"}
+            </div>
+          ) : null}
+          {placesPredictions.length ? (
+            <div className="places-prediction-list" role="listbox">
+              {placesPredictions.map((prediction) => (
+                <button
+                  className={`places-prediction-option${selectedPlacePrediction?.id === prediction.id ? " selected" : ""}`}
+                  key={prediction.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedPlacePrediction(prediction);
+                    setPlacesSearchInput(prediction.description || prediction.mainText);
+                    setPlacesPredictions([]);
+                    setPlacesSearchStatus("idle");
+                    placesSessionManagerRef.current.resetSessionToken();
+                  }}
+                >
+                  <span>{prediction.mainText}</span>
+                  {prediction.secondaryText ? <em>{prediction.secondaryText}</em> : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {canPickMapPoint ? (
         <button
