@@ -549,7 +549,7 @@ test("Phase 5.5 Google map area custom point add flow stays provider scoped", ()
   expect(appSource).toContain("pickedMapPoint.source === \"map-add\" && !isOpen");
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
   expect(appSource).toContain("buildNewVisitForm(initialPoint = null)");
-  expect(appSource).toContain("map_url: hasPoint ? mapUrl || googleMapsPointUrl(latitude, longitude) : \"\"");
+  expect(appSource).toContain("map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : \"\"");
   expect(appSource).toContain("onMapPointEditorActiveChange?.({ canPick: Boolean(isOpen && !isTransportEditor), isOpen })");
   expect(appSource).toContain("!mapPointEditorState.isOpen || mapPointEditorState.canPick");
   expect(mapPanelSource).toContain("hasActiveMapPointEditor = false");

@@ -10190,7 +10190,6 @@ function ItineraryTimeline({
     const longitude = Number(initialPoint?.longitude);
     const hasPoint = Number.isFinite(latitude) && Number.isFinite(longitude);
     const placeName = String(initialPoint?.displayName || initialPoint?.title || initialPoint?.location_name || "").trim();
-    const mapUrl = String(initialPoint?.googleMapsUri || initialPoint?.map_url || "").trim();
     return {
       ...emptyItemForm,
       start_time: defaultStartTime,
@@ -10199,7 +10198,7 @@ function ItineraryTimeline({
       location_name: placeName,
       latitude: hasPoint ? latitude : null,
       longitude: hasPoint ? longitude : null,
-      map_url: hasPoint ? mapUrl || googleMapsPointUrl(latitude, longitude) : "",
+      map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : "",
     };
   }
 

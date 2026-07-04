@@ -7,6 +7,7 @@ import {
   normalizeAutocompletePrediction,
 } from "../src/lib/googlePlacesAdapter.js";
 import { PLACE_DETAILS_FIELD_MASK_MINIMAL } from "../src/lib/googlePlacesConfig.js";
+import { parseMapUrlToPoint } from "../src/lib/mapPoint.js";
 
 const repoRoot = process.cwd();
 
@@ -102,6 +103,16 @@ test("Phase 5.6c details adapter uses minimal fields and the autocomplete sessio
   });
 });
 
+test("Phase 5.6c hotfix uses coordinate map URLs for editor validation", () => {
+  const latitude = 35.0262;
+  const longitude = 135.7809;
+  const coordinateMapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+  const cidGoogleMapsUri = "https://maps.google.com/?cid=123456789&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNl&hl=zh-TW&source=apiv3";
+
+  expect(parseMapUrlToPoint(cidGoogleMapsUri)).toBeNull();
+  expect(parseMapUrlToPoint(coordinateMapUrl)).toEqual({ latitude, longitude });
+});
+
 test("Phase 5.6c autocomplete source fetches details before opening the add editor", () => {
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
@@ -140,7 +151,8 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(appSource).toContain("googleMapsUri: details.googleMapsUri || \"\"");
   expect(appSource).toContain("title: placeName");
   expect(appSource).toContain("location_name: placeName");
-  expect(appSource).toContain("map_url: hasPoint ? mapUrl || googleMapsPointUrl(latitude, longitude) : \"\"");
+  expect(appSource).toContain("map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : \"\"");
+  expect(appSource).not.toContain("const mapUrl = String(initialPoint?.googleMapsUri");
   expect(appSource).not.toContain("provider_place_id");
   expect(staticProviderSource).not.toContain("places-search-overlay");
   expect(adapterSource).toContain("AutocompleteSuggestion");
