@@ -39,19 +39,19 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.4 Simple Route Lines + Timeline Destination Sequence - Completed / Manual QA ALL PASS / No Route APIs / No Migration
+Timeline Phase 5.6b Places Autocomplete Search Box - Completed / Hotfix Pushed / No Place Details / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.4 completed simple Formal Google route lines between valid same-day destination coordinates and aligned Timeline destination sequence numbers with Google marker labels. Route lines are provider-local Google `Polyline` visuals only; no Directions API, Routes API, route calculation, route cache, or travel-duration logic was added. Follow-up hotfixes finalized the low-key top-left sequence badge UI and fixed transportation-category destinations: `item_type="visit"` with `type="transport"` is still a destination, preserves parsed `latitude` / `longitude`, produces markers, participates in route lines, and keeps destination sequence numbering. Only true transportation cards (`item_type === "transport"`) are excluded from markers, route lines, missing-coordinate counts, and destination sequence badges. Latest fix commit: `684b162`. Manual QA: ALL PASS. Demo remains static-only. Do not add Places, Geocoding, Directions, Routes, route cache, search, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, Budget integration, packages, or API keys in repo without a separate approved goal.
+Phase 5.5 added a Formal Google map-area custom point add flow. Phase 5.6a prepared Places Library gating/cost guards behind Formal Google provider + API key + `VITE_GOOGLE_MAPS_PLACES_ENABLED=true`. Phase 5.6b added a Formal Google Places Autocomplete search box using debounced autocomplete requests, session token reuse, and selection-only candidate clicks. The 5.6b hotfix hides the old `ROUTE / 路線` heading only when the Formal Google provider displays the Places search overlay, preventing overlap while leaving Demo / StaticMapProvider fallback unchanged. Latest pushed commit: `7818914`. No Place Details, Geocoding, Directions, Routes, route calculation, route cache, editor open, Supabase write, API, migration, package, or committed API key was added.
 ```
 
 Branch:
 
 ```text
-codex/timeline-phase-5-2
+codex/timeline-phase-5-5
 ```
 
 ## Completed Scope
@@ -613,6 +613,37 @@ New/updated files:
 - User manually verified Phase 5.4 and hotfixes. Manual QA: ALL PASS.
 - No Places, Geocoding, Directions, Routes API, route calculation, route cache, search UI, package, migration, Supabase schema/RPC/RLS change, Timeline reorder, dnd-kit, drag/presence, remote selection, online presence, transportation repair flow, or Budget integration was added.
 
+### Phase 5.5
+
+- Added Formal Google map-area custom point add flow.
+- The Map-area add button lives in the Google map overlay bottom-left as a temporary placement.
+- Clicking the Map-area add button enters provider-local map point picking mode; clicking the Google map fills a pending custom point coordinate and opens the existing destination add editor path.
+- The flow preserves provider-neutral map point contracts and does not change Timeline drag/reorder, transport logic, Budget, Supabase schema/RPC/RLS, or migration behavior.
+- Demo / StaticMapProvider fallback remains static and does not receive the Formal Google map-area add flow.
+- Commit pushed on `codex/timeline-phase-5-5`: `7ccb445 Implement timeline phase 5.5 map add flow`.
+
+### Phase 5.6a
+
+- Prepared Places Library gating and cost guards without adding visible Places UI.
+- Places is available only for Formal Google provider when an API key exists and `VITE_GOOGLE_MAPS_PLACES_ENABLED=true`.
+- Added provider-safe Places config and adapter seams while keeping Demo static-only.
+- Added autocomplete session-token management and minimal Place Details normalization/cost guard utilities for later phases, but did not call Place Details from the UI.
+- No editor behavior, Supabase write, API, migration, route service, geocoding flow, package, or committed API key was added.
+- Commit pushed on `codex/timeline-phase-5-5`: `42ad978 Prepare timeline phase 5.6a places gating`.
+
+### Phase 5.6b
+
+- Added a Formal Google Places Autocomplete search box inside the Google map overlay.
+- Autocomplete is gated by Formal Google provider readiness, Places library readiness, API key availability, and `VITE_GOOGLE_MAPS_PLACES_ENABLED=true`.
+- Requests are debounced at 350ms, skip short inputs under 2 characters, and reuse a Places autocomplete session token until reset.
+- Candidate clicks are selection-only: they set selected prediction/input UI state and reset the session token, but do not fetch Place Details, create items, open editors, save coordinates, or write Supabase.
+- Phase 5.6b hotfix hides the old route panel `ROUTE / 路線` heading only when `.places-search-overlay` exists in the Formal Google route panel, avoiding overlap with the search input.
+- Demo / StaticMapProvider fallback keeps the original route overlay/heading behavior and remains unaffected.
+- Commits pushed on `codex/timeline-phase-5-5`:
+  - `c288687 Add timeline phase 5.6b places autocomplete`
+  - `7818914 Hide route heading behind places search`
+- No Place Details call, Geocoding, Directions, Routes API, route calculation, route cache, editor open, Supabase write, API, migration, package, or committed API key was added.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -975,9 +1006,44 @@ related pushed commits: 723308d Implement timeline phase 5.4 route lines, 80bc98
 manual QA: ALL PASS
 ```
 
+Phase 5.5 Map-area Custom Point Add Flow checks on 2026-07-04:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+manual user verification passed; Map-area button currently sits in Google map overlay bottom-left
+latest pushed commit: 7ccb445 Implement timeline phase 5.5 map add flow
+```
+
+Phase 5.6a Places Library Gating / Cost Guard Prep checks on 2026-07-04:
+
+```text
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js tests/googlePlacesConfig.spec.js passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+Places remains gated behind Formal Google provider + API key + VITE_GOOGLE_MAPS_PLACES_ENABLED=true
+latest pushed commit: 42ad978 Prepare timeline phase 5.6a places gating
+```
+
+Phase 5.6b Places Autocomplete Search Box + Hotfix checks on 2026-07-04:
+
+```text
+npx.cmd playwright test tests/googlePlacesAutocomplete.spec.js tests/mapProviderPrep.spec.js passed 34/34
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js tests/googlePlacesConfig.spec.js tests/googlePlacesAutocomplete.spec.js passed 67/67
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+git diff --cached --check passed
+hotfix hides the old ROUTE / route panel heading only when the Formal Google Places search overlay is present
+related pushed commits: c288687 Add timeline phase 5.6b places autocomplete, 7818914 Hide route heading behind places search
+```
+
 ## Protected Scope Preserved
 
-Latest Phase 4.8 collaborative presence work did not redesign or extend:
+Latest Phase 5.6b Places Autocomplete work did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -988,6 +1054,7 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 - generic `sort_order` architecture
 - transportation pair splitting or creation
 - Google Map API or route calculation
+- Place Details, Geocoding, Directions, Routes API, route cache, or travel-duration logic
 - cross-day scheduling
 - Demo isolation
 - schema/RPC/migration behavior
@@ -1015,4 +1082,4 @@ Latest Phase 4.8 collaborative presence work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.4 is complete, pushed, and manually verified ALL PASS through commit `684b162`. Demo should remain permanently static unless explicitly redesigned. Next product decision can be location-data UX polish, missing-coordinate repair flow, map marker polish, Map-area add-point flow, or route summary work. Do not infer Places, Geocoding, Directions, Routes API, route calculation, route cache, search UI, Map-area add-point buttons, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes.
+Phase 5.6b is complete and pushed through hotfix commit `7818914`. Demo should remain permanently static unless explicitly redesigned. The current Formal Google search box is autocomplete-only and selection-only; it does not resolve Place Details, create timeline items, open the editor, save coordinates, or write Supabase. Next product decision can be Place Details activation, selected-candidate-to-editor flow, missing-coordinate repair, map marker polish, route summary work, or additional map overlay layout tuning. Do not infer Place Details, Geocoding, Directions, Routes API, route calculation, route cache, Supabase writes, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes without a separate approved goal.
