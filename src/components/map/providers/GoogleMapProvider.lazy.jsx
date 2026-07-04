@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createPlacesAutocompleteSessionManager,
+  fetchPlaceDetailsForPrediction,
   fetchPlaceAutocompletePredictions,
 } from "../../../lib/googlePlacesAdapter.js";
+import { PLACE_DETAILS_FIELD_MASK_MINIMAL } from "../../../lib/googlePlacesConfig.js";
 import { loadGoogleMapsApi } from "../../../lib/googleMapsLoader.js";
 import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
 import StaticMapProvider from "./StaticMapProvider.jsx";
@@ -71,6 +73,7 @@ export default function GoogleMapProvider(props) {
     onCancelMapPointPick,
     onFocusItem,
     onPickMapPoint,
+    onSelectPlaceDetails,
     onStartMapPointPick,
     providerConfig = {},
     viewportKey = "default",
@@ -99,6 +102,7 @@ export default function GoogleMapProvider(props) {
   const [placesPredictions, setPlacesPredictions] = useState([]);
   const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
+  const [placesDetailsStatus, setPlacesDetailsStatus] = useState("idle");
   const [renderFailed, setRenderFailed] = useState(false);
   const [fallbackReason, setFallbackReason] = useState(null);
   const markersKey = coordinateKey(coordinateMarkers);
@@ -145,7 +149,47 @@ export default function GoogleMapProvider(props) {
     setPlacesPredictions([]);
     setSelectedPlacePrediction(null);
     setPlacesSearchStatus("idle");
+    setPlacesDetailsStatus("idle");
     placesSessionManagerRef.current.resetSessionToken();
+  }
+
+  async function selectPlacePrediction(prediction) {
+    if (!prediction?.id) return;
+    setSelectedPlacePrediction(prediction);
+    setPlacesSearchInput(prediction.description || prediction.mainText);
+    setPlacesPredictions([]);
+    setPlacesSearchStatus("idle");
+    setPlacesDetailsStatus("loading");
+
+    let sessionToken;
+    try {
+      sessionToken = placesSessionManagerRef.current.getOrCreateSessionToken();
+      const details = await fetchPlaceDetailsForPrediction({
+        fields: PLACE_DETAILS_FIELD_MASK_MINIMAL,
+        placesApi: placesLibraryRef.current,
+        prediction,
+        sessionToken,
+      });
+      const latitude = Number(details?.latitude);
+      const longitude = Number(details?.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        setPlacesDetailsStatus("missing-location");
+        return;
+      }
+      onSelectPlaceDetails?.({
+        displayName: details.displayName || prediction.mainText || prediction.description || "",
+        googleMapsUri: details.googleMapsUri || "",
+        id: details.id || prediction.id,
+        latitude,
+        longitude,
+      });
+      setPlacesDetailsStatus("idle");
+      resetPlacesSearch();
+    } catch {
+      setPlacesDetailsStatus("error");
+    } finally {
+      placesSessionManagerRef.current.resetSessionToken();
+    }
   }
 
   function toggleMapAreaPointPick(event) {
@@ -460,6 +504,21 @@ export default function GoogleMapProvider(props) {
     placesReady,
   ]);
 
+  const placesStatusMessage =
+    placesDetailsStatus === "loading"
+      ? "\u8f09\u5165\u5730\u9ede\u8cc7\u6599\u4e2d..."
+      : placesDetailsStatus === "missing-location"
+        ? "\u9019\u500b\u5730\u9ede\u6c92\u6709\u53ef\u7528\u7684\u5ea7\u6a19"
+        : placesDetailsStatus === "error"
+          ? "\u5730\u9ede\u8cc7\u6599\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"
+          : placesSearchStatus === "loading"
+            ? "\u641c\u5c0b\u4e2d..."
+            : placesSearchStatus === "empty"
+              ? "\u627e\u4e0d\u5230\u7b26\u5408\u7684\u5730\u9ede"
+              : placesSearchStatus === "error"
+                ? "\u641c\u5c0b\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"
+                : "";
+
   if (status === "failed" || renderFailed) {
     return <StaticMapProvider {...props} />;
   }
@@ -492,13 +551,9 @@ export default function GoogleMapProvider(props) {
               setPlacesSearchInput(event.target.value);
             }}
           />
-          {["loading", "empty", "error"].includes(placesSearchStatus) ? (
+          {placesStatusMessage ? (
             <div className="places-search-message" role="status">
-              {placesSearchStatus === "loading"
-                ? "\u641c\u5c0b\u4e2d..."
-                : placesSearchStatus === "empty"
-                  ? "\u627e\u4e0d\u5230\u7b26\u5408\u7684\u5730\u9ede"
-                  : "\u641c\u5c0b\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"}
+              {placesStatusMessage}
             </div>
           ) : null}
           {placesPredictions.length ? (
@@ -506,15 +561,10 @@ export default function GoogleMapProvider(props) {
               {placesPredictions.map((prediction) => (
                 <button
                   className={`places-prediction-option${selectedPlacePrediction?.id === prediction.id ? " selected" : ""}`}
+                  disabled={placesDetailsStatus === "loading"}
                   key={prediction.id}
                   type="button"
-                  onClick={() => {
-                    setSelectedPlacePrediction(prediction);
-                    setPlacesSearchInput(prediction.description || prediction.mainText);
-                    setPlacesPredictions([]);
-                    setPlacesSearchStatus("idle");
-                    placesSessionManagerRef.current.resetSessionToken();
-                  }}
+                  onClick={() => void selectPlacePrediction(prediction)}
                 >
                   <span>{prediction.mainText}</span>
                   {prediction.secondaryText ? <em>{prediction.secondaryText}</em> : null}

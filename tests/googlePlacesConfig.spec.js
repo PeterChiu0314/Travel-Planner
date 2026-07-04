@@ -58,6 +58,7 @@ test("Phase 5.6a keeps Place Details field mask minimal and blocks high-cost fie
   expect(PLACE_DETAILS_HIGH_COST_FIELDS).toEqual(
     expect.arrayContaining([
       "rating",
+      "formattedAddress",
       "reviews",
       "photos",
       "regularOpeningHours",

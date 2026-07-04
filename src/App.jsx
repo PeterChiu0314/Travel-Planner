@@ -8974,6 +8974,21 @@ function TripWorkspace(props) {
     }, 1500);
   }
 
+  function selectPlaceDetails(details) {
+    const latitude = Number(details?.latitude);
+    const longitude = Number(details?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    setPickedMapPoint({
+      displayName: details.displayName || "",
+      googleMapsUri: details.googleMapsUri || "",
+      latitude,
+      longitude,
+      pickedAt: Date.now(),
+      placeId: details.id || "",
+      source: "places-details",
+    });
+  }
+
   useEffect(() => {
     if (!mapPickingMode) return undefined;
 
@@ -9004,6 +9019,7 @@ function TripWorkspace(props) {
     onCancelMapPointPick: cancelMapPointPick,
     onMapPointEditorActiveChange: setMapPointEditorState,
     onPickMapPoint: pickMapPoint,
+    onSelectPlaceDetails: selectPlaceDetails,
     onStartMapPointPick: startMapPointPick,
   };
 
@@ -10173,12 +10189,17 @@ function ItineraryTimeline({
     const latitude = Number(initialPoint?.latitude);
     const longitude = Number(initialPoint?.longitude);
     const hasPoint = Number.isFinite(latitude) && Number.isFinite(longitude);
+    const placeName = String(initialPoint?.displayName || initialPoint?.title || initialPoint?.location_name || "").trim();
+    const mapUrl = String(initialPoint?.googleMapsUri || initialPoint?.map_url || "").trim();
     return {
       ...emptyItemForm,
       start_time: defaultStartTime,
+      title: placeName,
+      location: placeName,
+      location_name: placeName,
       latitude: hasPoint ? latitude : null,
       longitude: hasPoint ? longitude : null,
-      map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : "",
+      map_url: hasPoint ? mapUrl || googleMapsPointUrl(latitude, longitude) : "",
     };
   }
 
@@ -10632,6 +10653,11 @@ function ItineraryTimeline({
 
   useEffect(() => {
     if (!pickedMapPoint?.pickedAt || lastAppliedMapPointPickRef.current === pickedMapPoint.pickedAt) return;
+    if (pickedMapPoint.source === "places-details") {
+      lastAppliedMapPointPickRef.current = pickedMapPoint.pickedAt;
+      void openNewItem(pickedMapPoint);
+      return;
+    }
     if (pickedMapPoint.source === "map-add" && !isOpen) {
       lastAppliedMapPointPickRef.current = pickedMapPoint.pickedAt;
       void openNewItem(pickedMapPoint);
@@ -12281,6 +12307,7 @@ function RoutePanel({
   onFocusItem,
   onCancelMapPointPick,
   onPickMapPoint,
+  onSelectPlaceDetails,
   onStartMapPointPick,
 }) {
   const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
@@ -12308,6 +12335,7 @@ function RoutePanel({
         onFocusItem={onFocusItem}
         onCancelMapPointPick={onCancelMapPointPick}
         onPickMapPoint={onPickMapPoint}
+        onSelectPlaceDetails={onSelectPlaceDetails}
         onStartMapPointPick={onStartMapPointPick}
       />
     </section>

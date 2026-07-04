@@ -39,13 +39,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.6b Places Autocomplete Search Box - Completed / Hotfix Pushed / No Place Details / No Migration
+Timeline Phase 5.6c Selected Place to Place Details to Add Editor - Completed / Minimal Field Mask / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.5 added a Formal Google map-area custom point add flow. Phase 5.6a prepared Places Library gating/cost guards behind Formal Google provider + API key + `VITE_GOOGLE_MAPS_PLACES_ENABLED=true`. Phase 5.6b added a Formal Google Places Autocomplete search box using debounced autocomplete requests, session token reuse, and selection-only candidate clicks. The 5.6b hotfix hides the old `ROUTE / 路線` heading only when the Formal Google provider displays the Places search overlay, preventing overlap while leaving Demo / StaticMapProvider fallback unchanged. Latest pushed commit: `7818914`. No Place Details, Geocoding, Directions, Routes, route calculation, route cache, editor open, Supabase write, API, migration, package, or committed API key was added.
+Phase 5.6c upgrades Formal Google Places Autocomplete candidate click into a details-to-add-editor flow. Candidate click reuses the active autocomplete session token, fetches Place Details with the approved minimal field mask only (`id`, `displayName`, `location`, `googleMapsUri`), validates usable coordinates, then opens the active day destination add editor with `title` / `location_name`, `map_url`, `latitude`, and `longitude` prefilled. Save remains the only Supabase write. Details failure or missing location shows an inline search overlay error and does not open the editor. Demo / StaticMapProvider fallback remains unchanged. No Geocoding, Directions, Routes, route calculation, route cache, Text Search, Nearby Search, address auto-fill, API, migration, package, or committed API key was added.
 ```
 
 Branch:
@@ -644,6 +644,19 @@ New/updated files:
   - `7818914 Hide route heading behind places search`
 - No Place Details call, Geocoding, Directions, Routes API, route calculation, route cache, editor open, Supabase write, API, migration, package, or committed API key was added.
 
+### Phase 5.6c
+
+- Upgraded Formal Google Places Autocomplete prediction click from selection-only to details-to-add-editor flow.
+- Prediction click reuses the current autocomplete session token for Place Details and resets the token only after the details flow succeeds, fails, or returns no usable location.
+- Place Details uses only the approved minimal field mask: `id`, `displayName`, `location`, and `googleMapsUri`.
+- `formattedAddress`, ratings, reviews, photos, opening hours, phone numbers, website, price level, business status, editorial summaries, and generative summaries remain blocked by the high-cost field guard.
+- Successful details results open the existing active day destination add editor with `title` / `location_name`, `map_url`, `latitude`, and `longitude` prefilled.
+- If `googleMapsUri` is missing, the editor map URL falls back to `https://www.google.com/maps?q={lat},{lng}`.
+- Failed details requests or details results without usable coordinates show an inline Places search overlay error and do not open the editor or write Supabase.
+- Save remains the only path that persists the new destination.
+- Demo / StaticMapProvider fallback remains static-only and does not render the Places search box or call Places.
+- No POI click add, Text Search, Nearby Search, Geocoding, Reverse Geocoding, Directions API, Routes API, route calculation, route cache, address auto-fill, marker drag, marker clustering, AdvancedMarkerElement migration, package, API key/env commit, Supabase migration, schema/RPC change, Timeline reorder change, drag/presence change, Budget integration, transportation repair flow, or automatic transportation card creation was added.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -1041,9 +1054,20 @@ hotfix hides the old ROUTE / route panel heading only when the Formal Google Pla
 related pushed commits: c288687 Add timeline phase 5.6b places autocomplete, 7818914 Hide route heading behind places search
 ```
 
+Phase 5.6c Selected Place to Place Details to Add Editor checks on 2026-07-04:
+
+```text
+npx.cmd playwright test tests/googlePlacesAutocomplete.spec.js tests/googlePlacesConfig.spec.js tests/mapProviderPrep.spec.js passed 40/40
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js tests/googlePlacesConfig.spec.js tests/googlePlacesAutocomplete.spec.js passed 68/68
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+Place Details field mask remains minimal: id, displayName, location, googleMapsUri
+prediction click opens the existing add editor only after details returns usable coordinates; failed or locationless details does not open the editor
+```
+
 ## Protected Scope Preserved
 
-Latest Phase 5.6b Places Autocomplete work did not redesign or extend:
+Latest Phase 5.6c Places Details to Add Editor work did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -1054,7 +1078,8 @@ Latest Phase 5.6b Places Autocomplete work did not redesign or extend:
 - generic `sort_order` architecture
 - transportation pair splitting or creation
 - Google Map API or route calculation
-- Place Details, Geocoding, Directions, Routes API, route cache, or travel-duration logic
+- Geocoding, Directions, Routes API, route cache, or travel-duration logic
+- Place Details fields outside `id`, `displayName`, `location`, and `googleMapsUri`
 - cross-day scheduling
 - Demo isolation
 - schema/RPC/migration behavior
@@ -1082,4 +1107,4 @@ Latest Phase 5.6b Places Autocomplete work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.6b is complete and pushed through hotfix commit `7818914`. Demo should remain permanently static unless explicitly redesigned. The current Formal Google search box is autocomplete-only and selection-only; it does not resolve Place Details, create timeline items, open the editor, save coordinates, or write Supabase. Next product decision can be Place Details activation, selected-candidate-to-editor flow, missing-coordinate repair, map marker polish, route summary work, or additional map overlay layout tuning. Do not infer Place Details, Geocoding, Directions, Routes API, route calculation, route cache, Supabase writes, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes without a separate approved goal.
+Phase 5.6c is complete and validated. Demo should remain permanently static unless explicitly redesigned. Formal Google search now resolves selected autocomplete predictions through minimal Place Details and opens the existing active day add editor with map fields prefilled; Save remains the only Supabase write. Next product decision can be save-flow polish after details selection, missing-coordinate repair, map marker polish, route summary work, or additional map overlay layout tuning. Do not infer Geocoding, Directions, Routes API, route calculation, route cache, address auto-fill, Supabase writes before Save, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes without a separate approved goal.

@@ -93,6 +93,50 @@ export async function fetchPlaceAutocompletePredictions({ input, sessionToken, p
   throw new Error("Google Places autocomplete unavailable");
 }
 
+export async function fetchPlaceDetailsForPrediction({
+  fields = PLACE_DETAILS_FIELD_MASK_MINIMAL,
+  placesApi,
+  prediction,
+  sessionToken,
+} = {}) {
+  assertAllowedPlaceDetailsFields(fields);
+  if (!placesApi) throw new Error("Google Places API unavailable");
+  if (!prediction?.id) throw new Error("Google Places prediction unavailable");
+
+  const rawPrediction = prediction.raw?.placePrediction || prediction.raw || prediction;
+
+  if (typeof rawPrediction.toPlace === "function") {
+    const place = rawPrediction.toPlace();
+    await place.fetchFields({ fields, sessionToken });
+    return normalizePlaceDetailsResult(place, fields);
+  }
+
+  if (typeof placesApi.fetchPlaceDetails === "function") {
+    const place = await placesApi.fetchPlaceDetails({
+      fields,
+      placeId: prediction.id,
+      sessionToken,
+    });
+    return normalizePlaceDetailsResult(place, fields);
+  }
+
+  if (typeof placesApi.PlacesService === "function") {
+    const service = new placesApi.PlacesService(document.createElement("div"));
+    const place = await new Promise((resolve, reject) => {
+      service.getDetails({ fields, placeId: prediction.id, sessionToken }, (result, status) => {
+        if (status && status !== "OK" && status !== placesApi.PlacesServiceStatus?.OK) {
+          reject(new Error(`Google Place Details failed: ${status}`));
+          return;
+        }
+        resolve(result || null);
+      });
+    });
+    return normalizePlaceDetailsResult(place, fields);
+  }
+
+  throw new Error("Google Place Details unavailable");
+}
+
 export function normalizePlaceDetailsResult(place, fields = PLACE_DETAILS_FIELD_MASK_MINIMAL) {
   assertAllowedPlaceDetailsFields(fields);
   if (!place) return null;

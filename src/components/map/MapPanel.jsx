@@ -27,6 +27,7 @@ export default function MapPanel({
   mapPointPickFeedback = "",
   onCancelMapPointPick,
   onPickMapPoint,
+  onSelectPlaceDetails,
   onStartMapPointPick,
   className = "route-map",
 }) {
@@ -113,6 +114,7 @@ export default function MapPanel({
     mapPointPickFeedback,
     onCancelMapPointPick,
     onPickMapPoint,
+    onSelectPlaceDetails,
     onStartMapPointPick,
   };
 

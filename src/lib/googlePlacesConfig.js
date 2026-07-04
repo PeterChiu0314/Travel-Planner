@@ -8,6 +8,7 @@ export const PLACE_DETAILS_FIELD_MASK_MINIMAL = Object.freeze([
 ]);
 
 export const PLACE_DETAILS_HIGH_COST_FIELDS = Object.freeze([
+  "formattedAddress",
   "rating",
   "reviews",
   "photos",
