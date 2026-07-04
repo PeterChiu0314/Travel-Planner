@@ -8926,9 +8926,10 @@ function TripWorkspace(props) {
   const isLuggageMode = activeSection === "luggage";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
-  const [isPickingMapPoint, setIsPickingMapPoint] = useState(false);
+  const [mapPickingMode, setMapPickingMode] = useState(null);
   const [mapPointPickFeedback, setMapPointPickFeedback] = useState("");
   const [pickedMapPoint, setPickedMapPoint] = useState(null);
+  const [mapPointEditorState, setMapPointEditorState] = useState({ canPick: false, isOpen: false });
   const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const alternativesByItem = useMemo(() => {
     const next = {};
@@ -8953,20 +8954,20 @@ function TripWorkspace(props) {
   );
   const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteLayoutCollapsed);
 
-  function startMapPointPick() {
+  function startMapPointPick(mode = "editor") {
     setMapPointPickFeedback("picking");
-    setIsPickingMapPoint(true);
+    setMapPickingMode(mode === "map-add" ? "map-add" : "editor");
   }
 
   function cancelMapPointPick() {
-    setIsPickingMapPoint(false);
+    setMapPickingMode(null);
     setMapPointPickFeedback("");
   }
 
   function pickMapPoint(point) {
     if (!point) return;
-    setPickedMapPoint({ ...point, pickedAt: Date.now() });
-    setIsPickingMapPoint(false);
+    setPickedMapPoint({ ...point, pickedAt: Date.now(), source: mapPickingMode || "editor" });
+    setMapPickingMode(null);
     setMapPointPickFeedback("picked");
     window.setTimeout(() => {
       setMapPointPickFeedback((current) => (current === "picked" ? "" : current));
@@ -8974,11 +8975,12 @@ function TripWorkspace(props) {
   }
 
   useEffect(() => {
-    if (!isPickingMapPoint) return undefined;
+    if (!mapPickingMode) return undefined;
 
     function handleDocumentPointerDown(event) {
       const target = event.target;
       if (target?.closest?.(".google-map-surface") || target?.closest?.(".map-point-picker-button")) return;
+      if (target?.closest?.(".map-area-point-button")) return;
       cancelMapPointPick();
     }
 
@@ -8986,18 +8988,21 @@ function TripWorkspace(props) {
     return () => {
       document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
     };
-  }, [isPickingMapPoint]);
+  }, [mapPickingMode]);
 
   useEffect(() => {
-    if (isRouteLayoutCollapsed && isPickingMapPoint) cancelMapPointPick();
-  }, [isPickingMapPoint, isRouteLayoutCollapsed]);
+    if (isRouteLayoutCollapsed && mapPickingMode) cancelMapPointPick();
+  }, [isRouteLayoutCollapsed, mapPickingMode]);
 
   const mapPointPicker = {
-    canPickMapPoint: !isRouteLayoutCollapsed,
-    isPickingMapPoint,
+    canPickMapPoint: !isRouteLayoutCollapsed && canEdit && (!mapPointEditorState.isOpen || mapPointEditorState.canPick),
+    hasActiveMapPointEditor: mapPointEditorState.canPick,
+    isPickingMapPoint: Boolean(mapPickingMode),
+    mapPickingMode,
     mapPointPickFeedback,
     pickedMapPoint,
     onCancelMapPointPick: cancelMapPointPick,
+    onMapPointEditorActiveChange: setMapPointEditorState,
     onPickMapPoint: pickMapPoint,
     onStartMapPointPick: startMapPointPick,
   };
@@ -9634,6 +9639,7 @@ function ItineraryTimeline({
   onClearCardSelection,
   onFocusItem,
   onCancelMapPointPick,
+  onMapPointEditorActiveChange,
   onStartMapPointPick,
   onPublishCardSelection,
   onPublishDragPresence,
@@ -10160,11 +10166,28 @@ function ItineraryTimeline({
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
-  async function openNewItem() {
+  function buildNewVisitForm(initialPoint = null) {
+    const lastItem = sortedVisitItems(dayItems).at(-1);
+    const tailSuggestedStartTime = suggestedStartTimeFromTailTransport(dayItems);
+    const defaultStartTime = tailSuggestedStartTime || (lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "");
+    const latitude = Number(initialPoint?.latitude);
+    const longitude = Number(initialPoint?.longitude);
+    const hasPoint = Number.isFinite(latitude) && Number.isFinite(longitude);
+    return {
+      ...emptyItemForm,
+      start_time: defaultStartTime,
+      latitude: hasPoint ? latitude : null,
+      longitude: hasPoint ? longitude : null,
+      map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : "",
+    };
+  }
+
+  async function openNewItem(initialPoint = null) {
     if (foreignSameDayDragActive) {
       setFixedNotice(foreignDragReadOnlyMessage);
       return;
     }
+    if (!initialPoint) onCancelMapPointPick?.();
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
@@ -10175,10 +10198,7 @@ function ItineraryTimeline({
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeEditor(true);
     }
-    const lastItem = sortedVisitItems(dayItems).at(-1);
-    const tailSuggestedStartTime = suggestedStartTimeFromTailTransport(dayItems);
-    const defaultStartTime = tailSuggestedStartTime || (lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "");
-    const nextForm = { ...emptyItemForm, start_time: defaultStartTime };
+    const nextForm = buildNewVisitForm(initialPoint);
     flushDraft();
     replaceForm(nextForm);
     setFormSeed(nextForm);
@@ -10606,7 +10626,17 @@ function ItineraryTimeline({
 
   const isTransportEditor = form.item_type === "transport";
   useEffect(() => {
+    onMapPointEditorActiveChange?.({ canPick: Boolean(isOpen && !isTransportEditor), isOpen });
+    return () => onMapPointEditorActiveChange?.({ canPick: false, isOpen: false });
+  }, [isOpen, isTransportEditor, onMapPointEditorActiveChange]);
+
+  useEffect(() => {
     if (!pickedMapPoint?.pickedAt || lastAppliedMapPointPickRef.current === pickedMapPoint.pickedAt) return;
+    if (pickedMapPoint.source === "map-add" && !isOpen) {
+      lastAppliedMapPointPickRef.current = pickedMapPoint.pickedAt;
+      void openNewItem(pickedMapPoint);
+      return;
+    }
     if (!isOpen || isTransportEditor) return;
     lastAppliedMapPointPickRef.current = pickedMapPoint.pickedAt;
     const latitude = Number(pickedMapPoint.latitude);
@@ -12240,13 +12270,18 @@ function MultiDayTimelineColumns({
 function RoutePanel({
   dayItems,
   focusedItemId,
+  canPickMapPoint = false,
+  hasActiveMapPointEditor = false,
   headingEyebrow = "Route",
   isPickingMapPoint = false,
+  mapPickingMode = null,
   mapPointPickFeedback = "",
   mode = "formal",
   viewportKey,
   onFocusItem,
+  onCancelMapPointPick,
   onPickMapPoint,
+  onStartMapPointPick,
 }) {
   const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
   const focusedMapState = getFocusedMapState(dayItems, stops, focusedItemId);
@@ -12265,10 +12300,15 @@ function RoutePanel({
         mode={mode}
         viewportKey={viewportKey}
         missingMapPointCount={missingMapPointCount}
+        canPickMapPoint={canPickMapPoint}
+        hasActiveMapPointEditor={hasActiveMapPointEditor}
         isPickingMapPoint={isPickingMapPoint}
+        mapPickingMode={mapPickingMode}
         mapPointPickFeedback={mapPointPickFeedback}
         onFocusItem={onFocusItem}
+        onCancelMapPointPick={onCancelMapPointPick}
         onPickMapPoint={onPickMapPoint}
+        onStartMapPointPick={onStartMapPointPick}
       />
     </section>
   );

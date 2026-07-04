@@ -460,7 +460,7 @@ test("Phase 5.3 destination editor exposes one map point picker icon button", ()
   expect(appSource).toContain("onCancelMapPointPick?.()");
   expect(appSource).toContain("<MapPin aria-hidden=\"true\" />");
   expect(appSource).toContain("<X aria-hidden=\"true\" />");
-  expect(appSource).toContain("canPickMapPoint: !isRouteLayoutCollapsed");
+  expect(appSource).toContain("canPickMapPoint: !isRouteLayoutCollapsed && canEdit");
   expect(appSource).toContain("canPickMapPoint: false");
   expect(stylesSource).toContain(".map-point-picker-button");
   expect(stylesSource).toContain(".field-label-actions");
@@ -527,6 +527,35 @@ test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker sty
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
   expect(googleProviderSource).not.toContain("markerCluster");
   expect(staticProviderSource).not.toContain("FOCUSED_MARKER_ZOOM");
+});
+
+test("Phase 5.5 Google map area custom point add flow stays provider scoped", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(appSource).toContain("const [mapPickingMode, setMapPickingMode] = useState(null)");
+  expect(appSource).toContain('setMapPickingMode(mode === "map-add" ? "map-add" : "editor")');
+  expect(appSource).toContain("source: mapPickingMode || \"editor\"");
+  expect(appSource).toContain("pickedMapPoint.source === \"map-add\" && !isOpen");
+  expect(appSource).toContain("void openNewItem(pickedMapPoint)");
+  expect(appSource).toContain("buildNewVisitForm(initialPoint = null)");
+  expect(appSource).toContain("map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : \"\"");
+  expect(appSource).toContain("onMapPointEditorActiveChange?.({ canPick: Boolean(isOpen && !isTransportEditor), isOpen })");
+  expect(appSource).toContain("!mapPointEditorState.isOpen || mapPointEditorState.canPick");
+  expect(mapPanelSource).toContain("hasActiveMapPointEditor = false");
+  expect(mapPanelSource).toContain("mapPickingMode = null");
+  expect(mapPanelSource).toContain("onStartMapPointPick");
+  expect(googleProviderSource).toContain("map-area-point-button");
+  expect(googleProviderSource).toContain('onStartMapPointPick?.(hasActiveMapPointEditor ? "editor" : "map-add")');
+  expect(googleProviderSource).toContain('mapPickingMode === "map-add"');
+  expect(staticProviderSource).not.toContain("map-area-point-button");
+  expect(staticProviderSource).not.toContain("onStartMapPointPick");
+  expect(stylesSource).toContain(".map-area-point-button");
+  expect(stylesSource).toContain("left: 14px");
+  expect(stylesSource).toContain("bottom: 14px");
 });
 
 test("Phase 5.4 renders simple Google route lines and Timeline sequence badges", () => {

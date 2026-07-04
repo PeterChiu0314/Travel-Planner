@@ -749,6 +749,27 @@ code {
   stroke-width: 2;
 }
 
+.map-area-point-button {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-color: rgba(47, 143, 114, 0.34);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--mint-dark);
+}
+
+.map-area-point-button.active {
+  border-color: rgba(216, 95, 73, 0.32);
+  background: rgba(255, 255, 255, 0.96);
+  color: #9f3f30;
+}
+
 .timeline-add-editor-anchor {
   margin-top: 12px;
 }

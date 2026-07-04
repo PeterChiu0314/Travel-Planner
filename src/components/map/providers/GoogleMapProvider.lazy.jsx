@@ -58,10 +58,15 @@ export default function GoogleMapProvider(props) {
     focusedMapState = {},
     markers = [],
     missingMapPointCount = 0,
+    canPickMapPoint = false,
+    hasActiveMapPointEditor = false,
     isPickingMapPoint = false,
+    mapPickingMode = null,
     mapPointPickFeedback = "",
+    onCancelMapPointPick,
     onFocusItem,
     onPickMapPoint,
+    onStartMapPointPick,
     providerConfig = {},
     viewportKey = "default",
   } = props;
@@ -119,6 +124,17 @@ export default function GoogleMapProvider(props) {
       map.addListener("heading_changed", markUserViewportChange),
       map.addListener("tilt_changed", markUserViewportChange),
     ];
+  }
+
+  function toggleMapAreaPointPick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!canPickMapPoint) return;
+    if (isPickingMapPoint) {
+      onCancelMapPointPick?.();
+      return;
+    }
+    onStartMapPointPick?.(hasActiveMapPointEditor ? "editor" : "map-add");
   }
 
   useEffect(() => {
@@ -378,11 +394,28 @@ export default function GoogleMapProvider(props) {
       {missingMapPointCount > 0 ? (
         <div className="map-point-warning">尚有 {missingMapPointCount} 個目的地缺少可用座標</div>
       ) : null}
+      {canPickMapPoint ? (
+        <button
+          className={`mini-button map-area-point-button${isPickingMapPoint ? " active" : ""}`}
+          type="button"
+          title={isPickingMapPoint ? "\u53d6\u6d88\u9078\u9ede" : hasActiveMapPointEditor ? "\u8a2d\u5b9a\u4f4d\u7f6e" : "\u65b0\u589e\u5730\u9ede"}
+          aria-label={isPickingMapPoint ? "\u53d6\u6d88\u9078\u9ede" : hasActiveMapPointEditor ? "\u8a2d\u5b9a\u4f4d\u7f6e" : "\u65b0\u589e\u5730\u9ede"}
+          onClick={toggleMapAreaPointPick}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {isPickingMapPoint ? <span aria-hidden="true">x</span> : <span aria-hidden="true">+</span>}
+          <span>
+            {isPickingMapPoint ? "\u53d6\u6d88" : hasActiveMapPointEditor ? "\u8a2d\u5b9a\u4f4d\u7f6e" : "\u65b0\u589e\u5730\u9ede"}
+          </span>
+        </button>
+      ) : null}
       {mapPointPickFeedback ? (
         <div className="map-point-picker-hint">
           {mapPointPickFeedback === "picked"
             ? "\u5df2\u8a2d\u5b9a\u5730\u5716\u4f4d\u7f6e"
-            : "\u9ede\u64ca\u5730\u5716\u8a2d\u5b9a\u4f4d\u7f6e"}
+            : mapPickingMode === "map-add"
+              ? "\u9ede\u64ca\u5730\u5716\u65b0\u589e\u5730\u9ede"
+              : "\u9ede\u64ca\u5730\u5716\u8a2d\u5b9a\u4f4d\u7f6e"}
         </div>
       ) : null}
     </div>
