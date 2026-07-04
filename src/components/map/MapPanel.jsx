@@ -32,11 +32,13 @@ export default function MapPanel({
 }) {
   const envProviderId = import.meta.env?.VITE_MAP_PROVIDER || DEFAULT_MAP_PROVIDER_ID;
   const apiKey = import.meta.env?.VITE_GOOGLE_MAPS_API_KEY || "";
+  const placesEnabled = import.meta.env?.VITE_GOOGLE_MAPS_PLACES_ENABLED || "";
   const providerConfig = getMapProviderConfig({
     providerId: providerId || envProviderId,
     enableRealMap,
     mode,
     apiKey,
+    placesEnabled,
   });
   const adapterInput = buildMapProviderAdapterInput({ markers, focusedMapState, onFocusItem });
   const [GoogleProvider, setGoogleProvider] = useState(null);
@@ -85,6 +87,8 @@ export default function MapPanel({
     providerConfig.fallbackProviderId,
     providerConfig.fallbackReason,
     providerConfig.mode,
+    providerConfig.placesEnabled,
+    providerConfig.placesLibraries,
     providerConfig.providerId,
     providerConfig.requestedProviderId,
   ]);

@@ -24,6 +24,8 @@ test("Phase 4.9c keeps the default map provider static and Google lazy-only", ()
     canLoadRealMap: false,
     apiKeyAvailable: false,
     apiKey: "",
+    placesEnabled: false,
+    placesLibraries: [],
     fallbackReason: null,
     fallbackProviderId: MAP_PROVIDER_IDS.STATIC,
   });
@@ -51,6 +53,8 @@ test("Phase 5.1a forces Demo map provider config to static", () => {
     loadMode: "eager",
     canLoadRealMap: false,
     apiKeyAvailable: false,
+    placesEnabled: false,
+    placesLibraries: [],
     fallbackReason: "demo-static",
     fallbackProviderId: MAP_PROVIDER_IDS.STATIC,
   });
@@ -196,6 +200,8 @@ test("Phase 5.1d Google Maps loader uses basic Maps library and safe diagnostics
 
   expect(loaderSource).toContain("setOptions");
   expect(loaderSource).toContain('importLibrary("maps")');
+  expect(loaderSource).toContain("libraries = []");
+  expect(loaderSource).toContain("normalizeLibraries");
   expect(loaderSource).not.toContain("new Loader");
   expect(loaderSource).not.toContain('importLibrary("places")');
   expect(loaderSource).not.toContain('importLibrary("routes")');
@@ -299,7 +305,7 @@ test("Phase 5.1d Google provider attempts loader from its own ready container", 
   expect(googleProviderSource).toContain('const [status, setStatus] = useState("idle")');
   expect(googleProviderSource).toContain("const [containerReady, setContainerReady] = useState(false)");
   expect(googleProviderSource).toContain("if (!containerReady) return undefined");
-  expect(googleProviderSource).toContain("loadGoogleMapsApi({ apiKey })");
+  expect(googleProviderSource).toContain("loadGoogleMapsApi({ apiKey, libraries: placesLibraries })");
   expect(googleProviderSource).toContain("setLoadAttempted(true)");
   expect(googleProviderSource).toContain("setLoadSucceeded(true)");
   expect(googleProviderSource).toContain("setMapCreated(true)");

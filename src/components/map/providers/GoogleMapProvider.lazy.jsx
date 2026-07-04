@@ -92,6 +92,7 @@ export default function GoogleMapProvider(props) {
   const markersKey = coordinateKey(coordinateMarkers);
   const viewportSignature = `${viewportKey}:${markersKey}`;
   const apiKey = typeof providerConfig.apiKey === "string" ? providerConfig.apiKey.trim() : "";
+  const placesLibraries = Array.isArray(providerConfig.placesLibraries) ? providerConfig.placesLibraries : [];
 
   const handleMapElementRef = useCallback((element) => {
     mapElementRef.current = element;
@@ -152,7 +153,7 @@ export default function GoogleMapProvider(props) {
     setLoadAttempted(true);
     setFallbackReason(null);
 
-    loadGoogleMapsApi({ apiKey })
+    loadGoogleMapsApi({ apiKey, libraries: placesLibraries })
       .then((mapsLibrary) => {
         if (cancelled) return;
         mapsLibraryRef.current = mapsLibrary;
@@ -170,7 +171,7 @@ export default function GoogleMapProvider(props) {
     return () => {
       cancelled = true;
     };
-  }, [apiKey, containerReady]);
+  }, [apiKey, containerReady, placesLibraries.join("|")]);
 
   useEffect(() => {
     if (status !== "ready" || !mapElementRef.current) return undefined;
@@ -366,6 +367,7 @@ export default function GoogleMapProvider(props) {
       loadSucceeded,
       mapCreated,
       fallbackReason,
+      placesEnabled: providerConfig.placesEnabled === true,
     });
   }, [
     apiKey,
@@ -376,6 +378,7 @@ export default function GoogleMapProvider(props) {
     loadSucceeded,
     mapCreated,
     markers.length,
+    providerConfig.placesEnabled,
   ]);
 
   if (status === "failed" || renderFailed) {
