@@ -57,9 +57,9 @@ function placesPreviewMarkerIcon(mapsNamespace) {
   if (!symbolPath) return null;
   return {
     path: symbolPath,
-    fillColor: "#d97706",
+    fillColor: "#2f8f72",
     fillOpacity: 1,
-    scale: 11,
+    scale: 12,
     strokeColor: "#ffffff",
     strokeOpacity: 1,
     strokeWeight: 3,
@@ -514,7 +514,7 @@ export default function GoogleMapProvider(props) {
       map: mapRef.current,
       position,
       title: placesPreview.displayName || "",
-      label: { text: "+", color: "#ffffff", fontWeight: "900" },
+      label: { text: "+", color: "#ffffff", fontSize: "18px", fontWeight: "900" },
       icon: placesPreviewMarkerIcon(mapsNamespace),
       zIndex: 3000,
     });
