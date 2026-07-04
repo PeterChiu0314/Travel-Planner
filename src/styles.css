@@ -3819,18 +3819,18 @@ textarea {
   padding: 4px 10px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
+  background: #ffffffb8;
   box-shadow: 0 8px 18px rgba(31, 41, 55, 0.14);
-  color: var(--ink);
+  color: var(--mint-dark);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1;
   transform: translateX(-50%);
   white-space: nowrap;
 }
 
 .places-pending-hint:hover {
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffffe8;
 }
 
 .places-preview-dialog {
