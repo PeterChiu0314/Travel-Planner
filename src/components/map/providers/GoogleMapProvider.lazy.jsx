@@ -118,6 +118,17 @@ function anchoredHintPosition(pixel, container, hintWidth = PENDING_POI_HINT_WID
   return { left, top };
 }
 
+function readBoundsLocationBias(bounds) {
+  const northEast = bounds?.getNorthEast?.();
+  const southWest = bounds?.getSouthWest?.();
+  const north = typeof northEast?.lat === "function" ? northEast.lat() : northEast?.lat;
+  const east = typeof northEast?.lng === "function" ? northEast.lng() : northEast?.lng;
+  const south = typeof southWest?.lat === "function" ? southWest.lat() : southWest?.lat;
+  const west = typeof southWest?.lng === "function" ? southWest.lng() : southWest?.lng;
+  const nextBias = { north: Number(north), east: Number(east), south: Number(south), west: Number(west) };
+  return Object.values(nextBias).every(Number.isFinite) ? nextBias : null;
+}
+
 function coordinateKey(markers) {
   return markers
     .map((marker) => `${marker.id}:${marker.latitude}:${marker.longitude}:${marker.title || marker.locationName || ""}`)
@@ -175,6 +186,7 @@ export default function GoogleMapProvider(props) {
   const placesSearchComposingRef = useRef(false);
   const placesAutocompleteRequestSeqRef = useRef(0);
   const lastRequestedPlacesQueryRef = useRef("");
+  const latestPlacesLocationBiasRef = useRef(null);
   const [status, setStatus] = useState("idle");
   const [containerReady, setContainerReady] = useState(false);
   const [loadAttempted, setLoadAttempted] = useState(false);
@@ -210,6 +222,10 @@ export default function GoogleMapProvider(props) {
     }
   }
 
+  function updatePlacesLocationBias(map = mapRef.current) {
+    latestPlacesLocationBiasRef.current = readBoundsLocationBias(map?.getBounds?.());
+  }
+
   function runProgrammaticViewportUpdate(update) {
     if (viewportSuppressionTimerRef.current) {
       window.clearTimeout(viewportSuppressionTimerRef.current);
@@ -229,7 +245,10 @@ export default function GoogleMapProvider(props) {
       map.addListener("zoom_changed", markUserViewportChange),
       map.addListener("heading_changed", markUserViewportChange),
       map.addListener("tilt_changed", markUserViewportChange),
+      map.addListener("bounds_changed", () => updatePlacesLocationBias(map)),
+      map.addListener("idle", () => updatePlacesLocationBias(map)),
     ];
+    updatePlacesLocationBias(map);
   }
 
   function resetPlacesSearch() {
@@ -312,6 +331,7 @@ export default function GoogleMapProvider(props) {
     try {
       const predictions = await fetchPlaceAutocompletePredictions({
         input,
+        locationBias: latestPlacesLocationBiasRef.current,
         placesApi: placesLibraryRef.current,
         sessionToken,
       });

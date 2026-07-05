@@ -26,6 +26,7 @@
 - `docs/2026-07-02-phase-5-2-map-url-point-handoff.md`
 - `docs/2026-07-03-phase-5-3b-marker-focus-closeout-handoff.md`
 - `docs/2026-07-03-phase-5-4-route-lines-closeout-handoff.md`
+- `docs/2026-07-05-phase-5-6-places-closeout-handoff.md`
 - `docs/todo/phase-5-map-route-workspace-integration-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md` (latest working draft)
@@ -39,13 +40,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.6c Selected Place to Place Details to Add Editor - Completed / Minimal Field Mask / No Migration
+Timeline Phase 5.6g Places Autocomplete Viewport Location Bias - Completed / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.6c upgrades Formal Google Places Autocomplete candidate click into a details-to-add-editor flow. Candidate click reuses the active autocomplete session token, fetches Place Details with the approved minimal field mask only (`id`, `displayName`, `location`, `googleMapsUri`), validates usable coordinates, then opens the active day destination add editor with `title` / `location_name`, `map_url`, `latitude`, and `longitude` prefilled. Save remains the only Supabase write. Details failure or missing location shows an inline search overlay error and does not open the editor. Demo / StaticMapProvider fallback remains unchanged. No Geocoding, Directions, Routes, route calculation, route cache, Text Search, Nearby Search, address auto-fill, API, migration, package, or committed API key was added.
+Phase 5.6g is complete. Formal Google Places Autocomplete now passes the current Google map viewport as optional `locationBias` when bounds are available. The provider updates a local latest-bounds ref from map `bounds_changed` / `idle` events, but map pan/zoom alone does not trigger Autocomplete; debounce, IME guard, Enter/search icon, same-query guard, and session token behavior remain unchanged. This is bias only, not `locationRestriction` or strict bounds. Selected autocomplete suggestions still fetch minimal Place Details only (`id`, `displayName`, `location`, `googleMapsUri`), show a marker-anchored full preview dialog, and open the existing active day add editor only after the user clicks Add to itinerary. Google map POI clicks still use a pending marker/hint and do not fetch details until the pending marker/hint is clicked. Editor map_url stays `https://www.google.com/maps?q={lat},{lng}`. Save remains the only Supabase write. Demo / StaticMapProvider fallback remains unchanged. No Geocoding, Directions, Routes, route calculation, route cache, Text Search, Nearby Search, address auto-fill, API, migration, package, or committed API key was added.
 ```
 
 Branch:
@@ -657,6 +658,72 @@ New/updated files:
 - Demo / StaticMapProvider fallback remains static-only and does not render the Places search box or call Places.
 - No POI click add, Text Search, Nearby Search, Geocoding, Reverse Geocoding, Directions API, Routes API, route calculation, route cache, address auto-fill, marker drag, marker clustering, AdvancedMarkerElement migration, package, API key/env commit, Supabase migration, schema/RPC change, Timeline reorder change, drag/presence change, Budget integration, transportation repair flow, or automatic transportation card creation was added.
 
+### Phase 5.6d
+
+- Added a full preview dialog between successful Places details and opening the add editor.
+- Autocomplete suggestion click now fetches minimal Place Details, pans/zooms the Google map to the result, shows a preview marker, and displays a marker-anchored preview dialog.
+- The preview dialog shows the place name, a Google Maps link, coordinate availability text, an Add to itinerary button, and a close button.
+- The preview dialog is anchored to the selected place location using provider-local Google map projection behavior, not fixed to the map corner.
+- Clicking Add to itinerary opens the existing active day destination add editor with `title` / `location_name`, coordinate `map_url`, `latitude`, and `longitude` prefilled.
+- Closing the preview does not open an editor and does not write Supabase.
+- Preview marker / dialog do not become itinerary markers, route-line points, sequence numbers, focused items, Timeline scroll targets, or missing-coordinate count inputs.
+- Demo / StaticMapProvider remains unaffected.
+- Related pushed commits:
+  - `e0c99a7 Add places search result map preview`
+  - `f49122f Anchor places preview dialog to map marker`
+  - `ce0a172 Polish places preview dialog styling`
+
+### Phase 5.6e
+
+- Added Formal Google map POI click support through a cost-guarded pending marker flow.
+- Clicking a Google map built-in POI does not call Place Details.
+- POI click creates a provider-local pending marker and a small marker-anchored hint label.
+- Clicking the pending marker or hint calls minimal Place Details.
+- If the same `placeId` is already in the provider-local details cache, clicking the pending marker/hint uses cached details instead of refetching.
+- Successful details clears the pending marker/hint and shows the existing full preview dialog.
+- The old mini POI confirm dialog was removed.
+- Map blank click, map outside click, day switch, map picking activation, provider reset, and unmount clear pending marker/hint state.
+- Map-area custom point picking remains higher priority; when picking is active, POI click does not create a pending marker or call Details.
+- Pending marker / hint are provider-local only and do not affect itinerary markers, route lines, sequence numbers, focused item state, Timeline scrolling, missing-coordinate counts, or Supabase writes.
+- Related pushed commits:
+  - `a40b029 Add places POI click preview confirm`
+  - `ccb454d Replace POI mini confirm with pending marker`
+  - `c4c5926 Add pending POI marker hint`
+  - `2de7dbf Polish pending POI hint placement`
+
+### Phase 5.6f
+
+- Polished Places search input UX and cost guards.
+- Autocomplete debounce is now 700ms.
+- IME composition is guarded so composition input does not trigger Autocomplete prematurely.
+- Enter and search icon trigger immediate search only when not composing.
+- Same-query guard prevents duplicate Autocomplete requests caused by rerender, focus, Enter/icon after debounce, or setting selected text.
+- Search box placeholder and aria label now display the literal primary label instead of escaped unicode text.
+- Search box and suggestion list styling was tuned for the Formal Google map overlay.
+- Successful suggestion details preview keeps the input populated with a primary place name instead of the full suggestion/address string.
+- Selected input text priority is `details.displayName`, then `prediction.mainText`, then the original input query.
+- Suggestion list closes after successful details preview.
+- Add to itinerary clears the input and suggestion list, clears preview, and opens the existing add editor.
+- Preview cancel clears the input and suggestion list, clears preview, and does not open an editor.
+- Details failure or missing usable coordinates preserves the user's original input and does not open preview/editor.
+- Manual QA passed after the final Phase 5.6f hotfix.
+- Related pushed commits:
+  - `96c69ed Improve places search input UX guards`
+  - `24f019d Polish places search box styling`
+  - `c373108 Tune places search debounce and radius`
+  - `23ff2dc Adjust places preview search clearing`
+  - `5a7016a Use primary text for selected place input`
+
+### Phase 5.6g
+
+- Added optional viewport `locationBias` to Formal Google Places Autocomplete requests.
+- `GoogleMapProvider.lazy.jsx` keeps the Google-specific `map.getBounds()` conversion provider-local and stores only a plain `{ north, east, south, west }` bounds literal in a ref.
+- Map `bounds_changed` / `idle` updates refresh the latest bounds ref without triggering Autocomplete by themselves.
+- Debounced search, Enter, and search icon requests use the latest available bounds at request time.
+- If map bounds are unavailable, Autocomplete still runs without `locationBias` and does not throw.
+- No `locationRestriction`, strict bounds, Text Search, Nearby Search, Geocoding, Directions, Routes, Place Details field mask change, migration, package, API key/env commit, or Demo flow change was added.
+- Existing suggestion success, full preview, POI pending marker, q=lat,lng editor map_url, and Save-only DB write behavior is preserved.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -1065,9 +1132,59 @@ Place Details field mask remains minimal: id, displayName, location, googleMapsU
 prediction click opens the existing add editor only after details returns usable coordinates; failed or locationless details does not open the editor
 ```
 
+Phase 5.6d Places Search Result Map Preview Dialog + Add Button checks on 2026-07-04:
+
+```text
+npx.cmd playwright test tests/googlePlacesAutocomplete.spec.js tests/googlePlacesConfig.spec.js tests/mapProviderPrep.spec.js passed
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js tests/googlePlacesConfig.spec.js tests/googlePlacesAutocomplete.spec.js passed
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+preview dialog is marker-anchored instead of fixed bottom-right after hotfix
+related pushed commits: e0c99a7 Add places search result map preview, f49122f Anchor places preview dialog to map marker, ce0a172 Polish places preview dialog styling
+```
+
+Phase 5.6e Google Map POI Click to Pending Marker to Preview checks on 2026-07-04:
+
+```text
+npx.cmd playwright test tests/googlePlacesAutocomplete.spec.js passed 8/8
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js tests/googlePlacesConfig.spec.js tests/googlePlacesAutocomplete.spec.js passed 73/73
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+POI click itself does not call Place Details; clicking pending marker/hint triggers Details or uses provider-local cache
+related pushed commits: a40b029 Add places POI click preview confirm, ccb454d Replace POI mini confirm with pending marker, c4c5926 Add pending POI marker hint, 2de7dbf Polish pending POI hint placement
+```
+
+Phase 5.6f Places Search Input UX + IME / Debounce Cost Guard checks on 2026-07-05:
+
+```text
+npx.cmd playwright test tests/googlePlacesAutocomplete.spec.js passed 8/8 after final hotfix
+npx.cmd playwright test tests/googlePlacesAutocomplete.spec.js tests/googlePlacesConfig.spec.js tests/mapProviderPrep.spec.js passed 45/45 after final hotfix
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js tests/googlePlacesConfig.spec.js tests/googlePlacesAutocomplete.spec.js passed 73/73 during regression checks
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33 during regression checks
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+git diff --cached --check passed before pushed commits
+manual QA passed for Phase 5.6f hotfix
+latest pushed commit: 5a7016a Use primary text for selected place input
+```
+
+Phase 5.6g Places Autocomplete Viewport Location Bias checks on 2026-07-05:
+
+```text
+npx.cmd playwright test tests/googlePlacesAutocomplete.spec.js passed 9/9
+npx.cmd playwright test tests/googlePlacesAutocomplete.spec.js tests/googlePlacesConfig.spec.js tests/mapProviderPrep.spec.js passed 46/46
+npx.cmd playwright test tests/mapPoint.spec.js tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js tests/mapProviderPrep.spec.js tests/googlePlacesConfig.spec.js tests/googlePlacesAutocomplete.spec.js passed 74/74
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+git diff --cached --check passed before commit
+```
+
 ## Protected Scope Preserved
 
-Latest Phase 5.6c Places Details to Add Editor work did not redesign or extend:
+Latest Phase 5.6 Places Search / Preview / POI flow work did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -1078,12 +1195,17 @@ Latest Phase 5.6c Places Details to Add Editor work did not redesign or extend:
 - generic `sort_order` architecture
 - transportation pair splitting or creation
 - Google Map API or route calculation
-- Geocoding, Directions, Routes API, route cache, or travel-duration logic
+- Text Search, Nearby Search, Geocoding, Reverse Geocoding, Directions API, Routes API, Distance Matrix, route cache, route summary, or travel-duration logic
+- locationRestriction or strict bounds
 - Place Details fields outside `id`, `displayName`, `location`, and `googleMapsUri`
+- address auto-fill, formattedAddress, rating, reviews, photos, opening hours, phone, website, business status, editorial summaries, or generative summaries
 - cross-day scheduling
 - Demo isolation
 - schema/RPC/migration behavior
 - remote DragOverlay, ghost cards, preview order sync, scroll sync, or cursor sync
+- marker drag, marker clustering, or AdvancedMarkerElement migration
+- automatic transportation card creation
+- Supabase writes before explicit Save
 
 ## Residual Risks
 
@@ -1107,4 +1229,4 @@ Latest Phase 5.6c Places Details to Add Editor work did not redesign or extend:
 
 ## Next Step
 
-Phase 5.6c is complete and validated. Demo should remain permanently static unless explicitly redesigned. Formal Google search now resolves selected autocomplete predictions through minimal Place Details and opens the existing active day add editor with map fields prefilled; Save remains the only Supabase write. Next product decision can be save-flow polish after details selection, missing-coordinate repair, map marker polish, route summary work, or additional map overlay layout tuning. Do not infer Geocoding, Directions, Routes API, route calculation, route cache, address auto-fill, Supabase writes before Save, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes without a separate approved goal.
+Phase 5.6g is complete. Demo should remain permanently static unless explicitly redesigned. Formal Google Places search now supports gated Autocomplete, viewport `locationBias`, minimal Place Details, marker-anchored preview, add-editor handoff, cost-guarded POI pending marker confirmation, IME-safe search input behavior, and selected-primary-name display. Save remains the only Supabase write. Next product decision can be missing-coordinate repair, further map marker polish, route summary work, additional map overlay layout tuning, or a separate closeout/merge flow. Do not infer locationRestriction, strict bounds, Geocoding, Directions, Routes API, route calculation, route cache, Text Search, Nearby Search, address auto-fill, Supabase writes before Save, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes without a separate approved goal.

@@ -37,12 +37,14 @@ test("Phase 5.6b normalizes Places autocomplete predictions without Place Detail
 
 test("Phase 5.6b autocomplete adapter skips short input and uses session token", async () => {
   const sessionToken = { id: "session-1" };
+  const locationBias = { north: 35.1, east: 135.9, south: 34.9, west: 135.6 };
   let calls = 0;
   const placesApi = {
     AutocompleteSuggestion: {
       async fetchAutocompleteSuggestions(request) {
         calls += 1;
-        expect(request).toMatchObject({ input: "Kyoto", sessionToken });
+        expect(request).toMatchObject({ input: "Kyoto", locationBias, sessionToken });
+        expect(request).not.toHaveProperty("locationRestriction");
         return {
           suggestions: [
             {
@@ -58,11 +60,26 @@ test("Phase 5.6b autocomplete adapter skips short input and uses session token",
   };
 
   await expect(fetchPlaceAutocompletePredictions({ input: "K", sessionToken, placesApi })).resolves.toEqual([]);
-  const predictions = await fetchPlaceAutocompletePredictions({ input: "Kyoto", sessionToken, placesApi });
+  const predictions = await fetchPlaceAutocompletePredictions({ input: "Kyoto", locationBias, sessionToken, placesApi });
 
   expect(calls).toBe(1);
   expect(predictions).toHaveLength(1);
   expect(predictions[0]).toMatchObject({ id: "place-1", description: "Kyoto Station" });
+});
+
+test("Phase 5.6g autocomplete adapter omits location bias when bounds are unavailable", async () => {
+  const placesApi = {
+    AutocompleteSuggestion: {
+      async fetchAutocompleteSuggestions(request) {
+        expect(request).toMatchObject({ input: "Kyoto" });
+        expect(request).not.toHaveProperty("locationBias");
+        expect(request).not.toHaveProperty("locationRestriction");
+        return { suggestions: [] };
+      },
+    },
+  };
+
+  await expect(fetchPlaceAutocompletePredictions({ input: "Kyoto", placesApi })).resolves.toEqual([]);
 });
 
 test("Phase 5.6c details adapter uses minimal fields and the autocomplete session token", async () => {
@@ -174,6 +191,12 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(googleProviderSource).toContain("event.nativeEvent?.isComposing");
   expect(googleProviderSource).toContain("void requestPlacesAutocomplete(placesSearchInput)");
   expect(googleProviderSource).toContain("placesSessionManagerRef.current.getOrCreateSessionToken()");
+  expect(googleProviderSource).toContain("latestPlacesLocationBiasRef");
+  expect(googleProviderSource).toContain("readBoundsLocationBias(map?.getBounds?.())");
+  expect(googleProviderSource).toContain("map.addListener(\"bounds_changed\", () => updatePlacesLocationBias(map))");
+  expect(googleProviderSource).toContain("map.addListener(\"idle\", () => updatePlacesLocationBias(map))");
+  expect(googleProviderSource).toContain("locationBias: latestPlacesLocationBiasRef.current");
+  expect(googleProviderSource).not.toContain("locationRestriction");
   expect(googleProviderSource).toContain("fetchPlaceAutocompletePredictions");
   expect(googleProviderSource).toContain("fetchPlaceDetailsForPrediction");
   expect(googleProviderSource).toContain("PLACE_DETAILS_FIELD_MASK_MINIMAL");

@@ -68,23 +68,25 @@ export function normalizeAutocompletePrediction(prediction) {
   };
 }
 
-export async function fetchPlaceAutocompletePredictions({ input, sessionToken, placesApi } = {}) {
+export async function fetchPlaceAutocompletePredictions({ input, locationBias, sessionToken, placesApi } = {}) {
   const normalizedInput = typeof input === "string" ? input.trim() : "";
   if (normalizedInput.length < 2) return [];
   if (!placesApi) throw new Error("Google Places API unavailable");
+  const request = {
+    input: normalizedInput,
+    sessionToken,
+    ...(locationBias ? { locationBias } : {}),
+  };
 
   if (placesApi.AutocompleteSuggestion?.fetchAutocompleteSuggestions) {
-    const response = await placesApi.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-      input: normalizedInput,
-      sessionToken,
-    });
+    const response = await placesApi.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
     return (response?.suggestions || []).map(normalizeAutocompletePrediction).filter((prediction) => prediction.id);
   }
 
   if (typeof placesApi.AutocompleteService === "function") {
     const service = new placesApi.AutocompleteService();
     const predictions = await new Promise((resolve, reject) => {
-      service.getPlacePredictions({ input: normalizedInput, sessionToken }, (items, status) => {
+      service.getPlacePredictions(request, (items, status) => {
         if (status && status !== "OK" && status !== placesApi.PlacesServiceStatus?.OK) {
           reject(new Error(`Google Places autocomplete failed: ${status}`));
           return;
