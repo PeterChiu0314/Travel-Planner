@@ -3785,8 +3785,8 @@ textarea {
 .places-search-message {
   overflow: hidden;
   border: 1px solid rgba(95, 143, 184, 0.22);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.97);
+  border-radius: 20px;
+  background: #ffffffe8;
   box-shadow: 0 14px 30px rgba(31, 41, 55, 0.14);
 }
 
@@ -3800,7 +3800,7 @@ textarea {
 .places-prediction-option {
   display: grid;
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 24px;
   border: 0;
   border-bottom: 1px solid rgba(95, 143, 184, 0.12);
   background: transparent;
@@ -3820,8 +3820,8 @@ textarea {
 
 .places-prediction-option span {
   overflow: hidden;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

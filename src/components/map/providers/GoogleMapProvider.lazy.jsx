@@ -330,6 +330,7 @@ export default function GoogleMapProvider(props) {
 
   async function selectPlacePrediction(prediction) {
     if (!prediction?.id) return;
+    const selectedPlaceText = prediction.description || prediction.mainText || "";
     setSelectedPlacePrediction(prediction);
     setPlacesDetailsStatus("loading");
 
@@ -347,11 +348,11 @@ export default function GoogleMapProvider(props) {
         setPlacesDetailsStatus("missing-location");
         return;
       }
-      setPlacesSearchInput("");
+      lastRequestedPlacesQueryRef.current = selectedPlaceText.trim();
+      setPlacesSearchInput(selectedPlaceText);
       setPlacesPredictions([]);
       setSelectedPlacePrediction(null);
       setPlacesSearchStatus("idle");
-      lastRequestedPlacesQueryRef.current = "";
       setPlacesDetailsStatus("idle");
     } catch {
       clearPlacesPreview();
@@ -364,6 +365,11 @@ export default function GoogleMapProvider(props) {
   function confirmPlacesPreviewAdd() {
     if (!placesPreview) return;
     onSelectPlaceDetails?.(placesPreview);
+    clearPlacesPreview();
+    resetPlacesSearch();
+  }
+
+  function cancelPlacesPreview() {
     clearPlacesPreview();
     resetPlacesSearch();
   }
@@ -774,7 +780,7 @@ export default function GoogleMapProvider(props) {
       }
 
       if (placesPreview) {
-        clearPlacesPreview();
+        cancelPlacesPreview();
         return;
       }
       if (pendingPoi) {
@@ -807,7 +813,11 @@ export default function GoogleMapProvider(props) {
       const target = event.target;
       if (target?.closest?.(".google-map-surface")) return;
       clearPendingPoi();
-      clearPlacesPreview();
+      if (placesPreview) {
+        cancelPlacesPreview();
+      } else {
+        clearPlacesPreview();
+      }
     }
 
     document.addEventListener("pointerdown", handleDocumentPointerDown, true);
@@ -997,7 +1007,7 @@ export default function GoogleMapProvider(props) {
             className="places-preview-close"
             type="button"
             aria-label="\u95dc\u9589\u5730\u9ede\u9810\u89bd"
-            onClick={clearPlacesPreview}
+            onClick={cancelPlacesPreview}
           >
             x
           </button>

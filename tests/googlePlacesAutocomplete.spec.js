@@ -151,6 +151,12 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const adapterSource = readRepoFile("src/lib/googlePlacesAdapter.js");
   const stylesSource = readRepoFile("src/styles.css");
+  const selectPredictionSource =
+    googleProviderSource.match(/async function selectPlacePrediction\(prediction\) \{[\s\S]*?\n  \}/)?.[0] || "";
+  const confirmPreviewAddSource =
+    googleProviderSource.match(/function confirmPlacesPreviewAdd\(\) \{[\s\S]*?\n  \}/)?.[0] || "";
+  const cancelPreviewSource =
+    googleProviderSource.match(/function cancelPlacesPreview\(\) \{[\s\S]*?\n  \}/)?.[0] || "";
 
   expect(googleProviderSource).toContain("PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 700");
   expect(googleProviderSource).toContain("canSearchPlaces = status === \"ready\"");
@@ -178,6 +184,16 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(googleProviderSource).toContain("onSelectPlaceDetails?.(placesPreview)");
   expect(googleProviderSource).toContain('placesDetailsStatus === "missing-location"');
   expect(googleProviderSource).toContain("selectedPlacePrediction");
+  expect(selectPredictionSource).toContain("const selectedPlaceText = prediction.description || prediction.mainText || \"\"");
+  expect(selectPredictionSource).toContain("lastRequestedPlacesQueryRef.current = selectedPlaceText.trim()");
+  expect(selectPredictionSource).toContain("setPlacesSearchInput(selectedPlaceText)");
+  expect(selectPredictionSource).toContain("setPlacesPredictions([])");
+  expect(selectPredictionSource).not.toContain("setPlacesSearchInput(\"\")");
+  expect(selectPredictionSource).not.toContain("resetPlacesSearch()");
+  expect(confirmPreviewAddSource).toContain("onSelectPlaceDetails?.(placesPreview)");
+  expect(confirmPreviewAddSource).toContain("resetPlacesSearch()");
+  expect(cancelPreviewSource).toContain("clearPlacesPreview()");
+  expect(cancelPreviewSource).toContain("resetPlacesSearch()");
   expect(googleProviderSource).toContain("placesSessionManagerRef.current.resetSessionToken()");
   expect(googleProviderSource).toContain("places-search-overlay");
   expect(googleProviderSource).toContain("places-search-control");
@@ -218,6 +234,8 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(stylesSource).toContain("right: 10px;");
   expect(stylesSource).toContain(".places-search-button");
   expect(stylesSource).toContain(".places-prediction-list");
+  expect(stylesSource).toContain("border-radius: 20px;");
+  expect(stylesSource).toContain("padding: 10px 24px;");
   expect(stylesSource).toContain(".route-panel:has(.places-search-overlay) > .panel-heading");
 });
 
@@ -250,6 +268,8 @@ test("Phase 5.6d places details show a map preview before opening the add editor
   expect(googleProviderSource).toContain("if (target?.closest?.(\".google-map-surface\")) return");
   expect(googleProviderSource).toContain("className=\"primary-button places-preview-add-button\"");
   expect(googleProviderSource).toContain("function confirmPlacesPreviewAdd()");
+  expect(googleProviderSource).toContain("function cancelPlacesPreview()");
+  expect(googleProviderSource).toContain("onClick={cancelPlacesPreview}");
   expect(googleProviderSource).toContain("onSelectPlaceDetails?.(placesPreview)");
   expect(googleProviderSource).toContain("placesPreview.googleMapsUri || placesPreview.mapUrl");
   expect(googleProviderSource).toContain("target=\"_blank\"");
