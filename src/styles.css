@@ -3736,11 +3736,11 @@ textarea {
 
 .places-search-overlay {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 18px;
+  left: 20px;
   z-index: 5;
   display: grid;
-  width: min(320px, calc(100% - 16px));
+  width: min(370px, calc(100% - 40px));
   gap: 6px;
 }
 
@@ -3751,20 +3751,21 @@ textarea {
 
 .places-search-input {
   width: 100%;
-  min-height: 38px;
+  min-height: 42px;
+  padding-left: 24px;
   padding-right: 38px;
   border: 1px solid rgba(95, 143, 184, 0.28);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffffe8;
   box-shadow: 0 10px 28px rgba(31, 41, 55, 0.12);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .places-search-button {
   position: absolute;
   top: 50%;
-  right: 5px;
+  right: 10px;
   display: grid;
   width: 28px;
   height: 28px;

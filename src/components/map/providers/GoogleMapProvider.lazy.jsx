@@ -906,7 +906,7 @@ export default function GoogleMapProvider(props) {
             <input
               autoComplete="off"
               className="places-search-input"
-              placeholder="\u641c\u5c0b\u5730\u9ede"
+              placeholder="搜尋地點"
               value={placesSearchInput}
               onChange={(event) => {
                 setSelectedPlacePrediction(null);
@@ -930,7 +930,7 @@ export default function GoogleMapProvider(props) {
               }}
             />
             <button
-              aria-label="\u641c\u5c0b\u5730\u9ede"
+              aria-label="搜尋地點"
               className="places-search-button"
               type="button"
               onClick={() => {
