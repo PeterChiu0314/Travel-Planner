@@ -142,6 +142,28 @@ Do not:
 - Create Demo-only workspace wrappers or grid rules that hide Formal layout regressions.
 - Introduce Google Map, route calculation, new sorting semantics, or transportation insertion behavior as part of layout-only polish.
 
+## Timeline Map / Places UX Rules
+
+Formal Google map search should help users add real places without making the map feel like an accidental write surface.
+
+Do:
+
+- Keep Places search as a Formal Google map feature; Demo should stay static unless explicitly redesigned.
+- Keep Autocomplete suggestions biased toward the current map viewport when available, but treat this as a soft ranking hint.
+- Let users pan/zoom the map without triggering search requests by itself.
+- Use marker-anchored overlays for selected Places preview and pending POI confirmation so dialogs feel connected to the map location.
+- Require an explicit Add to itinerary action before opening the Timeline add editor.
+- Keep the editor prefill parseable by the existing map URL validation, using `https://www.google.com/maps?q={lat},{lng}` for Places-derived coordinates.
+- Preserve user input on failed Place Details fetches so the user can adjust the search.
+
+Do not:
+
+- Turn viewport bias into strict bounds or `locationRestriction` without an explicit product decision.
+- Treat a POI click as consent to fetch details or open an editor; use a lightweight pending marker/hint confirmation first.
+- Let Places preview markers, pending markers, or search overlays participate in itinerary markers, route lines, sequence numbering, Timeline focus/scroll, missing-coordinate counts, or database writes.
+- Add rich Place Details fields, address autofill, Text Search, Nearby Search, Geocoding, Directions, Routes, Distance Matrix, route summaries, or automatic transportation creation as part of search UX polish.
+- Write Supabase data before the user saves the existing Timeline editor.
+
 ## Transportation Card UX Rules
 
 Transportation cards complete the travel flow between visit cards.

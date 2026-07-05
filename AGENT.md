@@ -287,6 +287,18 @@ Timeline map point rule:
 - A destination / visit item can have `type`, category, or tag values that mean transportation, such as airport, station, parking, rental car, or port. It is still a destination for map markers, route-line visuals, sequence badges, coordinate parsing, and missing-coordinate counts.
 - Only `item_type === "transport"` means a true transportation card. Do not use `type === "transport"` to clear coordinates, skip missing-coordinate counts, suppress destination markers, suppress route-line participation, or remove destination sequence numbering.
 
+Formal Google Maps / Places rules:
+
+- Demo / StaticMapProvider must remain static-only unless explicitly redesigned. Do not add Places requests, Google SDK behavior, Supabase writes, or provider-local Google objects to Demo.
+- Formal Google Places search is gated by provider readiness, API key availability, Places library readiness, and the explicit Places env flag.
+- Keep Places Autocomplete cost-guarded: short-input skip, debounce, IME guard, same-query guard, and session token reuse/reset all matter.
+- Place Details must stay minimal unless a later cost review approves more fields. Current approved fields are `id`, `displayName`, `location`, and `googleMapsUri`.
+- Autocomplete may use viewport `locationBias` from the current Google map bounds. Do not silently upgrade this to `locationRestriction` or strict bounds.
+- Google-specific map objects should stay inside `GoogleMapProvider.lazy.jsx`; shared helpers should receive plain data such as `{ north, east, south, west }`.
+- Places preview, pending POI marker/hint, and search overlays are provider-local UI only. They must not become itinerary markers, route-line points, sequence numbers, focus/scroll triggers, missing-coordinate inputs, or database writes.
+- Editor `map_url` from Places details should remain the coordinate URL form `https://www.google.com/maps?q={lat},{lng}` so existing map URL validation can parse it.
+- Save remains the only Supabase write for Places-to-itinerary flows. Do not add Geocoding, Reverse Geocoding, Text Search, Nearby Search, Directions, Routes, Distance Matrix, route cache, route summary, automatic transportation creation, packages, migrations, or API key/env commits without explicit approval.
+
 Trip date data flow:
 
 - The current Timeline model is still mixed: Day identity is derived from `day_index`, while `itinerary_items.date` is stored for compatibility and export/share consistency.

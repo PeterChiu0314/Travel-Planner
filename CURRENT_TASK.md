@@ -40,13 +40,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.6g Places Autocomplete Viewport Location Bias - Completed / No Migration
+Timeline Phase 5.6g Places Autocomplete Viewport Location Bias - Completed / Manual QA Passed / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.6g is complete. Formal Google Places Autocomplete now passes the current Google map viewport as optional `locationBias` when bounds are available. The provider updates a local latest-bounds ref from map `bounds_changed` / `idle` events, but map pan/zoom alone does not trigger Autocomplete; debounce, IME guard, Enter/search icon, same-query guard, and session token behavior remain unchanged. This is bias only, not `locationRestriction` or strict bounds. Selected autocomplete suggestions still fetch minimal Place Details only (`id`, `displayName`, `location`, `googleMapsUri`), show a marker-anchored full preview dialog, and open the existing active day add editor only after the user clicks Add to itinerary. Google map POI clicks still use a pending marker/hint and do not fetch details until the pending marker/hint is clicked. Editor map_url stays `https://www.google.com/maps?q={lat},{lng}`. Save remains the only Supabase write. Demo / StaticMapProvider fallback remains unchanged. No Geocoding, Directions, Routes, route calculation, route cache, Text Search, Nearby Search, address auto-fill, API, migration, package, or committed API key was added.
+Phase 5.6g is complete and manually verified OK. Formal Google Places Autocomplete now passes the current Google map viewport as optional `locationBias` when bounds are available. The provider updates a local latest-bounds ref from map `bounds_changed` / `idle` events, but map pan/zoom alone does not trigger Autocomplete; debounce, IME guard, Enter/search icon, same-query guard, and session token behavior remain unchanged. This is bias only, not `locationRestriction` or strict bounds. Selected autocomplete suggestions still fetch minimal Place Details only (`id`, `displayName`, `location`, `googleMapsUri`), show a marker-anchored full preview dialog, and open the existing active day add editor only after the user clicks Add to itinerary. Google map POI clicks still use a pending marker/hint and do not fetch details until the pending marker/hint is clicked. Editor map_url stays `https://www.google.com/maps?q={lat},{lng}`. Save remains the only Supabase write. Demo / StaticMapProvider fallback remains unchanged. No Geocoding, Directions, Routes, route calculation, route cache, Text Search, Nearby Search, address auto-fill, API, migration, package, or committed API key was added.
 ```
 
 Branch:
@@ -723,6 +723,8 @@ New/updated files:
 - If map bounds are unavailable, Autocomplete still runs without `locationBias` and does not throw.
 - No `locationRestriction`, strict bounds, Text Search, Nearby Search, Geocoding, Directions, Routes, Place Details field mask change, migration, package, API key/env commit, or Demo flow change was added.
 - Existing suggestion success, full preview, POI pending marker, q=lat,lng editor map_url, and Save-only DB write behavior is preserved.
+- Manual QA passed after Phase 5.6g implementation.
+- Latest pushed commit: `0b7fe16 Add places autocomplete viewport bias`.
 
 ## Production Migration State
 
@@ -1180,6 +1182,8 @@ npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33
 npm.cmd run build passed with existing Vite large-chunk warning
 git diff --check passed with Windows LF/CRLF notices only
 git diff --cached --check passed before commit
+manual QA passed for Phase 5.6g viewport location bias
+latest pushed commit: 0b7fe16 Add places autocomplete viewport bias
 ```
 
 ## Protected Scope Preserved
@@ -1229,4 +1233,4 @@ Latest Phase 5.6 Places Search / Preview / POI flow work did not redesign or ext
 
 ## Next Step
 
-Phase 5.6g is complete. Demo should remain permanently static unless explicitly redesigned. Formal Google Places search now supports gated Autocomplete, viewport `locationBias`, minimal Place Details, marker-anchored preview, add-editor handoff, cost-guarded POI pending marker confirmation, IME-safe search input behavior, and selected-primary-name display. Save remains the only Supabase write. Next product decision can be missing-coordinate repair, further map marker polish, route summary work, additional map overlay layout tuning, or a separate closeout/merge flow. Do not infer locationRestriction, strict bounds, Geocoding, Directions, Routes API, route calculation, route cache, Text Search, Nearby Search, address auto-fill, Supabase writes before Save, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes without a separate approved goal.
+Phase 5.6g is complete and manually verified OK. Demo should remain permanently static unless explicitly redesigned. Formal Google Places search now supports gated Autocomplete, viewport `locationBias`, minimal Place Details, marker-anchored preview, add-editor handoff, cost-guarded POI pending marker confirmation, IME-safe search input behavior, and selected-primary-name display. Save remains the only Supabase write. Latest pushed commit is `0b7fe16 Add places autocomplete viewport bias`. Next product decision can be missing-coordinate repair, further map marker polish, route summary work, additional map overlay layout tuning, or a separate closeout/merge flow. Do not infer locationRestriction, strict bounds, Geocoding, Directions, Routes API, route calculation, route cache, Text Search, Nearby Search, address auto-fill, Supabase writes before Save, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes without a separate approved goal.

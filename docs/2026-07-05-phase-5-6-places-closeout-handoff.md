@@ -5,15 +5,13 @@ Branch: `codex/timeline-phase-5-5`
 
 ## Status
 
-Phase 5.6 is complete and manually verified OK through the final Phase 5.6f hotfix. Phase 5.6g then added Formal Google Places Autocomplete viewport `locationBias` without adding strict bounds, new APIs, migrations, packages, or Place Details fields.
+Phase 5.6 is complete and manually verified OK through Phase 5.6g. Phase 5.6g added Formal Google Places Autocomplete viewport `locationBias` without adding strict bounds, new APIs, migrations, packages, or Place Details fields.
 
 Latest pushed commit:
 
 ```text
-5a7016a Use primary text for selected place input
+0b7fe16 Add places autocomplete viewport bias
 ```
-
-Phase 5.6g implementation is the next commit after this closeout baseline.
 
 Related commits:
 
@@ -36,6 +34,7 @@ c4c5926 Add pending POI marker hint
 c373108 Tune places search debounce and radius
 23ff2dc Adjust places preview search clearing
 5a7016a Use primary text for selected place input
+0b7fe16 Add places autocomplete viewport bias
 ```
 
 ## What Changed
@@ -154,6 +153,7 @@ Manual QA:
 
 ```text
 Phase 5.6f hotfix manual test passed.
+Phase 5.6g viewport location bias manual test passed.
 Search input clear timing passed.
 Selected suggestion input display uses primary place name after successful details preview.
 Suggestion list closes after successful details preview.
@@ -161,6 +161,7 @@ Add to itinerary clears search input and opens the existing add editor.
 Preview cancel clears search input without opening an editor.
 Details failure keeps the user's original input.
 POI pending marker flow remained OK.
+Autocomplete suggestions now follow the current Google map viewport bias without strict bounds.
 ```
 
 Phase 5.6g focused check before full regression:
