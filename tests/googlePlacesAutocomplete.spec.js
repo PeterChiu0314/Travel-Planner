@@ -184,9 +184,11 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(googleProviderSource).toContain("onSelectPlaceDetails?.(placesPreview)");
   expect(googleProviderSource).toContain('placesDetailsStatus === "missing-location"');
   expect(googleProviderSource).toContain("selectedPlacePrediction");
-  expect(selectPredictionSource).toContain("const selectedPlaceText = prediction.description || prediction.mainText || \"\"");
-  expect(selectPredictionSource).toContain("lastRequestedPlacesQueryRef.current = selectedPlaceText.trim()");
-  expect(selectPredictionSource).toContain("setPlacesSearchInput(selectedPlaceText)");
+  expect(selectPredictionSource).toContain("const originalSearchText = placesSearchInput");
+  expect(selectPredictionSource).toContain("const selectedDisplayText = details.displayName || prediction.mainText || originalSearchText");
+  expect(selectPredictionSource).toContain("lastRequestedPlacesQueryRef.current = selectedDisplayText.trim()");
+  expect(selectPredictionSource).toContain("setPlacesSearchInput(selectedDisplayText)");
+  expect(selectPredictionSource).not.toContain("prediction.description || prediction.mainText");
   expect(selectPredictionSource).toContain("setPlacesPredictions([])");
   expect(selectPredictionSource).not.toContain("setPlacesSearchInput(\"\")");
   expect(selectPredictionSource).not.toContain("resetPlacesSearch()");

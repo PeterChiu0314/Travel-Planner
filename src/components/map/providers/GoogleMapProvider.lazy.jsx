@@ -330,7 +330,7 @@ export default function GoogleMapProvider(props) {
 
   async function selectPlacePrediction(prediction) {
     if (!prediction?.id) return;
-    const selectedPlaceText = prediction.description || prediction.mainText || "";
+    const originalSearchText = placesSearchInput;
     setSelectedPlacePrediction(prediction);
     setPlacesDetailsStatus("loading");
 
@@ -348,8 +348,9 @@ export default function GoogleMapProvider(props) {
         setPlacesDetailsStatus("missing-location");
         return;
       }
-      lastRequestedPlacesQueryRef.current = selectedPlaceText.trim();
-      setPlacesSearchInput(selectedPlaceText);
+      const selectedDisplayText = details.displayName || prediction.mainText || originalSearchText;
+      lastRequestedPlacesQueryRef.current = selectedDisplayText.trim();
+      setPlacesSearchInput(selectedDisplayText);
       setPlacesPredictions([]);
       setSelectedPlacePrediction(null);
       setPlacesSearchStatus("idle");
