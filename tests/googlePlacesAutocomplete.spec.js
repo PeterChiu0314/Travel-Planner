@@ -152,7 +152,7 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   const adapterSource = readRepoFile("src/lib/googlePlacesAdapter.js");
   const stylesSource = readRepoFile("src/styles.css");
 
-  expect(googleProviderSource).toContain("PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 900");
+  expect(googleProviderSource).toContain("PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 700");
   expect(googleProviderSource).toContain("canSearchPlaces = status === \"ready\"");
   expect(googleProviderSource).toContain("providerConfig.placesEnabled === true");
   expect(googleProviderSource).toContain("placesReady && !isPickingMapPoint");
@@ -212,6 +212,7 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(stylesSource).toContain("min-height: 42px;");
   expect(stylesSource).toContain("padding-left: 24px;");
   expect(stylesSource).toContain("background: #ffffffe8;");
+  expect(stylesSource).toContain("border-radius: 999px;");
   expect(stylesSource).toContain("font-size: 14px;");
   expect(stylesSource).toContain("font-weight: 500;");
   expect(stylesSource).toContain("right: 10px;");
