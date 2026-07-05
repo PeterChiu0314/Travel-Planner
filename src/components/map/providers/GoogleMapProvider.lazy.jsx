@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import {
   createPlacesAutocompleteSessionManager,
   fetchPlaceDetailsForPrediction,
@@ -13,7 +14,7 @@ const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
 const DEFAULT_ZOOM = 11;
 const FOCUSED_MARKER_ZOOM = 15;
 const PLACES_PREVIEW_ZOOM = 15;
-const PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 350;
+const PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 900;
 const PLACES_PREVIEW_DIALOG_WIDTH = 300;
 const PLACES_PREVIEW_DIALOG_HEIGHT = 178;
 const PLACES_PREVIEW_DIALOG_GAP = 18;
@@ -171,6 +172,9 @@ export default function GoogleMapProvider(props) {
   const suppressViewportChangeRef = useRef(false);
   const userChangedViewportRef = useRef(false);
   const autoViewportSignatureRef = useRef(null);
+  const placesSearchComposingRef = useRef(false);
+  const placesAutocompleteRequestSeqRef = useRef(0);
+  const lastRequestedPlacesQueryRef = useRef("");
   const [status, setStatus] = useState("idle");
   const [containerReady, setContainerReady] = useState(false);
   const [loadAttempted, setLoadAttempted] = useState(false);
@@ -178,6 +182,7 @@ export default function GoogleMapProvider(props) {
   const [mapCreated, setMapCreated] = useState(false);
   const [placesReady, setPlacesReady] = useState(false);
   const [placesSearchInput, setPlacesSearchInput] = useState("");
+  const [placesSearchIsComposing, setPlacesSearchIsComposing] = useState(false);
   const [placesPredictions, setPlacesPredictions] = useState([]);
   const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
   const [pendingPoi, setPendingPoi] = useState(null);
@@ -229,10 +234,13 @@ export default function GoogleMapProvider(props) {
 
   function resetPlacesSearch() {
     setPlacesSearchInput("");
+    setPlacesSearchIsComposing(false);
     setPlacesPredictions([]);
     setSelectedPlacePrediction(null);
     setPlacesSearchStatus("idle");
     setPlacesDetailsStatus("idle");
+    placesSearchComposingRef.current = false;
+    lastRequestedPlacesQueryRef.current = "";
     placesSessionManagerRef.current.resetSessionToken();
   }
 
@@ -274,12 +282,55 @@ export default function GoogleMapProvider(props) {
     return true;
   }
 
+  async function requestPlacesAutocomplete(rawInput) {
+    const input = rawInput.trim();
+    if (!canSearchPlaces) return false;
+    if (input.length < 2) {
+      lastRequestedPlacesQueryRef.current = "";
+      setPlacesPredictions([]);
+      setPlacesSearchStatus("idle");
+      return false;
+    }
+    if (input === lastRequestedPlacesQueryRef.current) return false;
+
+    lastRequestedPlacesQueryRef.current = input;
+    const requestId = placesAutocompleteRequestSeqRef.current + 1;
+    placesAutocompleteRequestSeqRef.current = requestId;
+    setPlacesSearchStatus("loading");
+
+    let sessionToken;
+    try {
+      sessionToken = placesSessionManagerRef.current.getOrCreateSessionToken();
+    } catch {
+      if (placesAutocompleteRequestSeqRef.current === requestId) {
+        setPlacesPredictions([]);
+        setPlacesSearchStatus("error");
+      }
+      return false;
+    }
+
+    try {
+      const predictions = await fetchPlaceAutocompletePredictions({
+        input,
+        placesApi: placesLibraryRef.current,
+        sessionToken,
+      });
+      if (placesAutocompleteRequestSeqRef.current !== requestId) return false;
+      setPlacesPredictions(predictions);
+      setPlacesSearchStatus(predictions.length ? "ready" : "empty");
+      return true;
+    } catch {
+      if (placesAutocompleteRequestSeqRef.current === requestId) {
+        setPlacesPredictions([]);
+        setPlacesSearchStatus("error");
+      }
+      return false;
+    }
+  }
+
   async function selectPlacePrediction(prediction) {
     if (!prediction?.id) return;
     setSelectedPlacePrediction(prediction);
-    setPlacesSearchInput(prediction.description || prediction.mainText);
-    setPlacesPredictions([]);
-    setPlacesSearchStatus("idle");
     setPlacesDetailsStatus("loading");
 
     let sessionToken;
@@ -296,6 +347,11 @@ export default function GoogleMapProvider(props) {
         setPlacesDetailsStatus("missing-location");
         return;
       }
+      setPlacesSearchInput("");
+      setPlacesPredictions([]);
+      setSelectedPlacePrediction(null);
+      setPlacesSearchStatus("idle");
+      lastRequestedPlacesQueryRef.current = "";
       setPlacesDetailsStatus("idle");
     } catch {
       clearPlacesPreview();
@@ -398,50 +454,24 @@ export default function GoogleMapProvider(props) {
       setPlacesSearchStatus("idle");
       return undefined;
     }
+    if (placesSearchIsComposing) return undefined;
 
     const input = placesSearchInput.trim();
     if (input.length < 2) {
+      lastRequestedPlacesQueryRef.current = "";
       setPlacesPredictions([]);
       setPlacesSearchStatus("idle");
       return undefined;
     }
 
-    let cancelled = false;
-    setPlacesSearchStatus("loading");
     const timerId = window.setTimeout(() => {
-      let sessionToken;
-      try {
-        sessionToken = placesSessionManagerRef.current.getOrCreateSessionToken();
-      } catch {
-        if (!cancelled) {
-          setPlacesPredictions([]);
-          setPlacesSearchStatus("error");
-        }
-        return;
-      }
-
-      fetchPlaceAutocompletePredictions({
-        input,
-        placesApi: placesLibraryRef.current,
-        sessionToken,
-      })
-        .then((predictions) => {
-          if (cancelled) return;
-          setPlacesPredictions(predictions);
-          setPlacesSearchStatus(predictions.length ? "ready" : "empty");
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setPlacesPredictions([]);
-          setPlacesSearchStatus("error");
-        });
+      void requestPlacesAutocomplete(input);
     }, PLACES_AUTOCOMPLETE_DEBOUNCE_MS);
 
     return () => {
-      cancelled = true;
       window.clearTimeout(timerId);
     };
-  }, [canSearchPlaces, placesSearchInput]);
+  }, [canSearchPlaces, placesSearchInput, placesSearchIsComposing]);
 
   useEffect(() => {
     if (status !== "ready" || !mapElementRef.current) return undefined;
@@ -872,16 +902,45 @@ export default function GoogleMapProvider(props) {
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <input
-            autoComplete="off"
-            className="places-search-input"
-            placeholder="\u641c\u5c0b\u5730\u9ede..."
-            value={placesSearchInput}
-            onChange={(event) => {
-              setSelectedPlacePrediction(null);
-              setPlacesSearchInput(event.target.value);
-            }}
-          />
+          <div className="places-search-control">
+            <input
+              autoComplete="off"
+              className="places-search-input"
+              placeholder="\u641c\u5c0b\u5730\u9ede"
+              value={placesSearchInput}
+              onChange={(event) => {
+                setSelectedPlacePrediction(null);
+                setPlacesDetailsStatus("idle");
+                setPlacesSearchInput(event.target.value);
+              }}
+              onCompositionStart={() => {
+                placesSearchComposingRef.current = true;
+                setPlacesSearchIsComposing(true);
+              }}
+              onCompositionEnd={(event) => {
+                placesSearchComposingRef.current = false;
+                setPlacesSearchIsComposing(false);
+                setPlacesSearchInput(event.currentTarget.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                if (placesSearchComposingRef.current || event.nativeEvent?.isComposing) return;
+                event.preventDefault();
+                void requestPlacesAutocomplete(placesSearchInput);
+              }}
+            />
+            <button
+              aria-label="\u641c\u5c0b\u5730\u9ede"
+              className="places-search-button"
+              type="button"
+              onClick={() => {
+                if (placesSearchComposingRef.current) return;
+                void requestPlacesAutocomplete(placesSearchInput);
+              }}
+            >
+              <Search aria-hidden="true" size={16} strokeWidth={2.2} />
+            </button>
+          </div>
           {placesStatusMessage ? (
             <div className="places-search-message" role="status">
               {placesStatusMessage}

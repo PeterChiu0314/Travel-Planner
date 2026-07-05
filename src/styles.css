@@ -3736,22 +3736,48 @@ textarea {
 
 .places-search-overlay {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 8px;
+  left: 8px;
   z-index: 5;
   display: grid;
-  width: min(320px, calc(100% - 28px));
+  width: min(320px, calc(100% - 16px));
   gap: 6px;
+}
+
+.places-search-control {
+  position: relative;
+  display: grid;
 }
 
 .places-search-input {
   width: 100%;
+  min-height: 38px;
+  padding-right: 38px;
   border: 1px solid rgba(95, 143, 184, 0.28);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 10px 28px rgba(31, 41, 55, 0.12);
   font-size: 13px;
   font-weight: 700;
+}
+
+.places-search-button {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mint-dark);
+  transform: translateY(-50%);
+}
+
+.places-search-button:hover {
+  background: rgba(47, 143, 114, 0.08);
 }
 
 .places-prediction-list,

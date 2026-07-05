@@ -152,12 +152,21 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   const adapterSource = readRepoFile("src/lib/googlePlacesAdapter.js");
   const stylesSource = readRepoFile("src/styles.css");
 
-  expect(googleProviderSource).toContain("PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 350");
+  expect(googleProviderSource).toContain("PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 900");
   expect(googleProviderSource).toContain("canSearchPlaces = status === \"ready\"");
   expect(googleProviderSource).toContain("providerConfig.placesEnabled === true");
   expect(googleProviderSource).toContain("placesReady && !isPickingMapPoint");
   expect(googleProviderSource).toContain("input.length < 2");
   expect(googleProviderSource).toContain("window.setTimeout");
+  expect(googleProviderSource).toContain("lastRequestedPlacesQueryRef");
+  expect(googleProviderSource).toContain("if (input === lastRequestedPlacesQueryRef.current) return false");
+  expect(googleProviderSource).toContain("placesSearchComposingRef");
+  expect(googleProviderSource).toContain("placesSearchIsComposing");
+  expect(googleProviderSource).toContain("onCompositionStart");
+  expect(googleProviderSource).toContain("onCompositionEnd");
+  expect(googleProviderSource).toContain("onKeyDown");
+  expect(googleProviderSource).toContain("event.nativeEvent?.isComposing");
+  expect(googleProviderSource).toContain("void requestPlacesAutocomplete(placesSearchInput)");
   expect(googleProviderSource).toContain("placesSessionManagerRef.current.getOrCreateSessionToken()");
   expect(googleProviderSource).toContain("fetchPlaceAutocompletePredictions");
   expect(googleProviderSource).toContain("fetchPlaceDetailsForPrediction");
@@ -171,8 +180,12 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(googleProviderSource).toContain("selectedPlacePrediction");
   expect(googleProviderSource).toContain("placesSessionManagerRef.current.resetSessionToken()");
   expect(googleProviderSource).toContain("places-search-overlay");
+  expect(googleProviderSource).toContain("places-search-control");
+  expect(googleProviderSource).toContain("places-search-button");
+  expect(googleProviderSource).toContain("aria-label=\"\\u641c\\u5c0b\\u5730\\u9ede\"");
   expect(googleProviderSource).toContain("const placesStatusMessage");
-  expect(googleProviderSource).toContain("placeholder=\"\\u641c\\u5c0b\\u5730\\u9ede...\"");
+  expect(googleProviderSource).toContain("placeholder=\"\\u641c\\u5c0b\\u5730\\u9ede\"");
+  expect(googleProviderSource).not.toContain("placeholder=\"\\u641c\\u5c0b\\u5730\\u9ede...\"");
   expect(googleProviderSource).not.toContain("onSaveItem");
   expect(googleProviderSource).not.toContain("supabase");
   expect(mapPanelSource).toContain("onSelectPlaceDetails");
@@ -192,6 +205,9 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(adapterSource).toContain("fetchFields({ fields, sessionToken })");
   expect(adapterSource).not.toContain("formattedAddress");
   expect(stylesSource).toContain(".places-search-overlay");
+  expect(stylesSource).toContain("top: 8px;");
+  expect(stylesSource).toContain("left: 8px;");
+  expect(stylesSource).toContain(".places-search-button");
   expect(stylesSource).toContain(".places-prediction-list");
   expect(stylesSource).toContain(".route-panel:has(.places-search-overlay) > .panel-heading");
 });
