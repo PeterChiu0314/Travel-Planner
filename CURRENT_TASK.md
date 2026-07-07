@@ -46,7 +46,7 @@ Timeline Phase 5.7a Transportation Navigation + Travel Time Query - Completed / 
 Next phase:
 
 ```text
-Phase 5.7a is complete after multiple UI/payload hotfixes. Transportation cards now provide icon-only Google Maps navigation and a gated Routes duration query flow inside the existing transportation editor. The query mode is an in-card two-stage UI, not a mini panel or popover. Transit query UI now exposes only preferred transit vehicle types: bus, subway, train, and light rail. Routes API payloads are duration-only, do not request polylines, and keep TRANSIT free of driving route modifiers and routing preferences. Transit `allowedTravelModes` is omitted when all or none are selected, and sent only for partial selections. `?debugRoutes=1` enables sanitized request/response summary logs without API keys. Save remains the only Supabase write. No Google Map loading, Places/POI, route lines, map picker, reorder, migration, package, env, or committed API key change was added.
+Phase 5.7a is complete after multiple UI/payload/fallback hotfixes. Transportation cards now provide icon-only Google Maps navigation and a gated Routes duration query flow inside the existing transportation editor. The query mode is an in-card two-stage UI, not a mini panel or popover. Transit query UI now exposes only preferred transit vehicle types: bus, subway, train, and light rail. Routes API payloads are duration-only, do not request polylines, and keep TRANSIT free of driving route modifiers and routing preferences. Transit `allowedTravelModes` is omitted when all or none are selected, and sent only for partial selections. Transit no-duration responses can fall back through the Supabase Edge Function `google-directions-transit-duration`, which calls Google Directions API server-side and returns only `ok`, `durationMinutes`, and `source` or a sanitized failure. The current experiment sends `place_id:<id>` through the existing fallback `originLabel` / `destinationLabel` fields when itinerary items already have provider place IDs. POI/search selection currently obtains a place ID transiently but does not persist it into saved itinerary items, so normal newly saved POI/search points do not yet feed the place-id fallback. `?debugRoutes=1` enables sanitized request/response summary logs without API keys. Save remains the only itinerary write. No Google Map loading, route lines, map picker, reorder, migration, package, env, committed API key, or place-id persistence change was added.
 ```
 
 Branch:
@@ -1220,7 +1220,16 @@ Transit query UI now shows only preferred vehicle options: 公車, 地鐵, 火�
 Transit Routes payload omits allowedTravelModes when all or none are selected, sends allowedTravelModes only for partial selections, and omits routingPreference / routeModifiers
 Driving route options may send avoidHighways / avoidTolls / avoidFerries
 debugRoutes logging is gated behind ?debugRoutes=1 and does not log API keys
-latest pushed commit: 1bdbcea Fix transit route query payload
+Transit fallback follow-ups added duration normalization, debug field-mask broadening for transit debug, removal of normal transit departureTime, Supabase Edge Function Directions fallback, ZERO_RESULTS retry, and a place_id experiment
+Directions fallback now calls Supabase Edge Function google-directions-transit-duration instead of direct frontend maps.googleapis.com fetch
+Edge Function calls Google Directions API server-side and returns only duration-only success or sanitized failure payloads
+ZERO_RESULTS retry first used labels, then latest experiment changed fallback originLabel/destinationLabel values to place_id:<id> when provider place IDs already exist on itinerary items
+Current known limitation: Places search / POI click obtains placeId transiently for preview/add editor flow, but saved itinerary item payload currently persists only name, map_url, latitude, and longitude, not provider_place_id / place_id
+npx.cmd playwright test tests/googleDirectionsAdapter.spec.js tests/googleRoutesAdapter.spec.js passed 22/22 after place_id experiment
+npm.cmd run build passed with existing Vite large-chunk warning after place_id experiment
+git diff --check passed with Windows LF/CRLF notices only after place_id experiment
+npx.cmd playwright test tests/mapProviderPrep.spec.js passed 31/31 after place_id experiment
+latest pushed commit: 6bdc665 Use place IDs for transit fallback retry
 ```
 
 ## Protected Scope Preserved
@@ -1236,7 +1245,8 @@ Latest Phase 5.7a transportation navigation / travel-time query work did not red
 - generic `sort_order` architecture
 - transportation pair splitting or creation
 - Google Map loading behavior outside the existing provider gates
-- Text Search, Nearby Search, Geocoding, Reverse Geocoding, Directions API, Distance Matrix, route cache, route summary beyond duration-only query, or Google route polylines
+- Text Search, Nearby Search, Geocoding, Reverse Geocoding, Distance Matrix, route cache, route summary beyond duration-only query, or Google route polylines
+- Directions API beyond the scoped server-side transit duration fallback Edge Function
 - locationRestriction or strict bounds
 - Place Details fields outside `id`, `displayName`, `location`, and `googleMapsUri`
 - address auto-fill, formattedAddress, rating, reviews, photos, opening hours, phone, website, business status, editorial summaries, or generative summaries
@@ -1270,4 +1280,4 @@ Latest Phase 5.7a transportation navigation / travel-time query work did not red
 
 ## Next Step
 
-Phase 5.7a is complete and pushed on `codex/timeline-phase-5-7`. Transportation cards now support icon-only navigation and an in-card travel-time Query Mode. Transit Routes duration query was hotfixed so TRANSIT payloads use only optional `transitPreferences.allowedTravelModes` for partial vehicle selections and do not send routingPreference or driving routeModifiers. `?debugRoutes=1` can be used for sanitized Routes request/response summaries. Latest pushed commit is `1bdbcea Fix transit route query payload`. Next product decision can be Formal QA on real trips, route-summary polish, missing-coordinate repair, additional transportation UI polish, or a separate closeout/merge flow. Do not infer Google Map loading changes, Routes API env/key changes, route polylines, route override, route cache, Places / POI changes, map picker changes, Timeline reorder changes, Supabase writes before Save, migration, committed API keys, packages, or additional database changes without a separate approved goal.
+Phase 5.7a is complete and pushed on `codex/timeline-phase-5-7`. Transportation cards now support icon-only navigation and an in-card travel-time Query Mode. Transit Routes duration query was hotfixed so TRANSIT payloads use only optional `transitPreferences.allowedTravelModes` for partial vehicle selections and do not send routingPreference or driving routeModifiers. Transit no-duration responses can use a Supabase Edge Function Directions fallback, and the latest experiment sends `place_id:<id>` through the fallback label fields only when saved itinerary items already contain provider place IDs. Current POI/search add flows do not persist place IDs into itinerary items yet. `?debugRoutes=1` can be used for sanitized Routes request/response summaries. Latest pushed commit is `6bdc665 Use place IDs for transit fallback retry`. Next product decision can be Formal QA on real trips, place_id persistence for saved POI/search points, route-summary polish, missing-coordinate repair, additional transportation UI polish, or a separate closeout/merge flow. Do not infer Google Map loading changes, Routes API env/key changes, route polylines, route override, route cache, broader Places / POI persistence changes, map picker changes, Timeline reorder changes, Supabase writes before Save, migration, committed API keys, packages, or additional database changes without a separate approved goal.
