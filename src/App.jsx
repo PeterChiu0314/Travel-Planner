@@ -11055,6 +11055,21 @@ function ItineraryTimeline({
     const { fromItem, toItem } = transportEndpointItems(editorRouteItem);
     const editorRoutePanel = routeQueryPanelState(editorRouteItem);
     const editorRouteMode = editorRoutePanel.mode || travelModeForTransportCategory(category);
+    const editorRouteOptionsByMode = {
+      transit: ["最佳路線", "少轉乘", "少步行"],
+      driving: ["最佳路線", "避開高速", "避開收費"],
+      walking: ["最佳路線"],
+    };
+    const editorRouteOptions = editorRouteOptionsByMode[editorRouteMode] || editorRouteOptionsByMode.transit;
+    const selectedEditorRouteOptions = Array.isArray(editorRoutePanel.selectedOptions)
+      ? editorRoutePanel.selectedOptions
+      : [editorRoutePanel.selectedOptions || "最佳路線"];
+    const isEditorRouteQueryBusy = editorRoutePanel.status === "querying";
+    const editorRouteStatusText = isEditorRouteQueryBusy
+      ? "查詢中…"
+      : editorRoutePanel.durationMinutes
+        ? `約 ${formatDurationMinutes(editorRoutePanel.durationMinutes)}`
+        : editorRoutePanel.error || "尚未查詢";
     const editorNavigationUrl = buildGoogleMapsDirectionsUrl({
       fromItem,
       toItem,
@@ -11063,12 +11078,41 @@ function ItineraryTimeline({
     });
     const canUseEditorTransportEndpoints = Boolean(editorNavigationUrl);
     const canQueryEditorTransportRoute = canUseEditorTransportEndpoints && transportRoutesConfig.canQueryRoutes;
-    const isEditorRouteQueryBusy = editorRoutePanel.status === "querying";
+    function openEditorRoutePanel() {
+      patchRouteQueryPanel(editorRouteItem.id, {
+        isOpen: true,
+        mode: editorRouteMode,
+        selectedOptions: selectedEditorRouteOptions,
+        status: editorRoutePanel.status || "idle",
+      });
+    }
+    function closeEditorRoutePanel() {
+      patchRouteQueryPanel(editorRouteItem.id, { isOpen: false });
+    }
+    function setEditorRouteMode(mode) {
+      patchRouteQueryPanel(editorRouteItem.id, {
+        error: "",
+        isOpen: true,
+        mode,
+        selectedOptions: ["最佳路線"],
+      });
+    }
+    function toggleEditorRouteOption(option) {
+      const nextOptions = selectedEditorRouteOptions.includes(option)
+        ? selectedEditorRouteOptions.filter((item) => item !== option)
+        : [...selectedEditorRouteOptions, option];
+      patchRouteQueryPanel(editorRouteItem.id, {
+        isOpen: true,
+        selectedOptions: nextOptions.length ? nextOptions : ["最佳路線"],
+      });
+    }
     async function queryEditorTransportRouteDuration() {
-      const result = await queryTransportRouteDuration(editorRouteItem);
-      if (result?.ok) {
-        setForm({ ...form, transport_duration_minutes: String(result.durationMinutes) });
-      }
+      await queryTransportRouteDuration(editorRouteItem);
+    }
+    function applyEditorRouteDuration() {
+      if (!editorRoutePanel.durationMinutes) return;
+      setForm({ ...form, transport_duration_minutes: String(editorRoutePanel.durationMinutes) });
+      closeEditorRoutePanel();
     }
     return (
       <form autoComplete="off" className="item-form transport-editor-form" onSubmit={submit}>
@@ -11126,11 +11170,9 @@ function ItineraryTimeline({
           </label>
           {renderTransportNavigationControl(editorNavigationUrl, "mini-button transport-navigation-button transport-editor-navigation-button")}
         </div>
-        {(editorRoutePanel.durationMinutes || editorRoutePanel.error) ? (
+        {(editorRoutePanel.durationMinutes || editorRoutePanel.error) && !editorRoutePanel.isOpen ? (
           <div className="transport-editor-route-status">
-            {editorRoutePanel.durationMinutes ? (
-              <span>查詢結果：{formatDurationMinutes(editorRoutePanel.durationMinutes)}</span>
-            ) : null}
+            {editorRoutePanel.durationMinutes ? <span>約 {formatDurationMinutes(editorRoutePanel.durationMinutes)}</span> : null}
             {editorRoutePanel.error ? <span className="field-inline-error">{editorRoutePanel.error}</span> : null}
           </div>
         ) : null}
@@ -11164,21 +11206,80 @@ function ItineraryTimeline({
             }
           />
         </label>
-        <div className="transport-editor-bottom-actions">
-          <button className="mini-button" type="button" onClick={() => closeEditor()}>
-            取消
+        {editorRoutePanel.isOpen ? (
+          <div className="transport-route-query-panel transport-editor-route-query-panel">
+            <div className="transport-route-query-heading">
+              <strong>查詢交通</strong>
+              <span className={editorRoutePanel.error ? "field-inline-error" : ""}>{editorRouteStatusText}</span>
+            </div>
+            <div className="transport-route-mode-row" role="group" aria-label="交通方式">
+              {[
+                ["transit", "🚇", "大眾運輸"],
+                ["driving", "🚗", "自駕"],
+                ["walking", "🚶", "步行"],
+              ].map(([mode, icon, label]) => (
+                <button
+                  aria-label={label}
+                  className={`mini-button transport-route-mode-button${editorRouteMode === mode ? " active" : ""}`}
+                  key={mode}
+                  title={label}
+                  type="button"
+                  onClick={() => setEditorRouteMode(mode)}
+                >
+                  <span aria-hidden="true">{icon}</span>
+                </button>
+              ))}
+            </div>
+            <div className="transport-route-options-row">
+              <span>選項：</span>
+              <div className="transport-route-options">
+                {editorRouteOptions.map((option) => (
+                  <label key={option}>
+                    <input
+                      checked={selectedEditorRouteOptions.includes(option)}
+                      type="checkbox"
+                      onChange={() => toggleEditorRouteOption(option)}
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="transport-route-query-actions">
+              <button className="ghost-button compact transport-editor-action-button" type="button" onClick={closeEditorRoutePanel}>
+                取消
+              </button>
+              <button
+                className="ghost-button compact transport-editor-action-button"
+                disabled={!canQueryEditorTransportRoute || isEditorRouteQueryBusy}
+                type="button"
+                onClick={queryEditorTransportRouteDuration}
+              >
+                {isEditorRouteQueryBusy ? "查詢中…" : "查詢"}
+              </button>
+              <button
+                className="primary-button compact transport-editor-action-button"
+                disabled={!editorRoutePanel.durationMinutes}
+                type="button"
+                onClick={applyEditorRouteDuration}
+              >
+                套用
+              </button>
+            </div>
+          </div>
+        ) : null}
+        <div className="transport-editor-footer-actions">
+          <button className="ghost-button compact transport-editor-action-button" type="button" onClick={openEditorRoutePanel}>
+            查詢交通
           </button>
-          <button
-            className="mini-button"
-            disabled={!canQueryEditorTransportRoute || isEditorRouteQueryBusy}
-            type="button"
-            onClick={queryEditorTransportRouteDuration}
-          >
-            {editorRoutePanel.status === "querying" ? "查詢中…" : "查詢"}
-          </button>
-          <button className="primary-button compact" disabled={!canMutateThisDay} type="submit">
-            套用
-          </button>
+          <div className="transport-editor-save-actions">
+            <button className="primary-button compact transport-editor-action-button" disabled={!canMutateThisDay} type="submit">
+              保存
+            </button>
+            <button className="ghost-button compact transport-editor-action-button" type="button" onClick={() => closeEditor()}>
+              取消
+            </button>
+          </div>
         </div>
       </form>
     );
@@ -11208,7 +11309,7 @@ function ItineraryTimeline({
         error: "",
         isOpen: false,
         mode: travelModeForTransportCategory(item.transport_category),
-        selectedOptions: "best",
+        selectedOptions: ["最佳路線"],
         status: "idle",
       }
     );
@@ -11231,7 +11332,7 @@ function ItineraryTimeline({
       error: current.error || "",
       isOpen: !current.isOpen,
       mode: current.mode || travelModeForTransportCategory(item.transport_category),
-      selectedOptions: current.selectedOptions || "best",
+      selectedOptions: current.selectedOptions || ["最佳路線"],
       status: current.status || "idle",
     });
   }

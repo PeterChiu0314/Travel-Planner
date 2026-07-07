@@ -3139,9 +3139,10 @@ textarea {
 }
 
 .transport-navigation-button {
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -3149,8 +3150,8 @@ textarea {
 }
 
 .transport-navigation-button svg {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
   stroke-width: 2;
 }
 
@@ -3315,14 +3316,15 @@ textarea {
 }
 
 .transport-editor-route-row {
-  grid-template-columns: minmax(0, 1fr) minmax(72px, 0.85fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(84px, 0.86fr) 28px;
   align-items: end;
+  margin-top: 8px;
 }
 
 .transport-editor-navigation-button {
   align-self: end;
   justify-self: end;
-  margin-bottom: 1px;
+  margin-bottom: 7px;
 }
 
 .transport-editor-route-status {
@@ -3334,11 +3336,12 @@ textarea {
   font-size: 0.82rem;
 }
 
-.transport-editor-bottom-actions {
+.transport-editor-footer-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
 .transport-editor-form {
@@ -3347,8 +3350,83 @@ textarea {
 }
 
 .transport-editor-heading {
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  justify-content: stretch;
   margin-bottom: 12px;
+}
+
+.transport-editor-heading .transport-icon {
+  justify-self: center;
+}
+
+.transport-editor-save-actions,
+.transport-route-mode-row,
+.transport-route-options,
+.transport-route-options-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transport-editor-action-button {
+  min-width: 64px;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.transport-editor-route-query-panel {
+  margin: 12px 0 0;
+}
+
+.transport-route-query-heading span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.transport-route-mode-row {
+  justify-content: flex-start;
+}
+
+.transport-route-mode-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  font-size: 16px;
+}
+
+.transport-route-mode-button.active {
+  border-color: rgba(31, 122, 91, 0.45);
+  background: #e8f3ef;
+  color: var(--mint-dark);
+}
+
+.transport-route-options-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.transport-route-options {
+  flex-wrap: wrap;
+}
+
+.transport-route-options label {
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+}
+
+.transport-route-query-actions {
+  justify-content: flex-end;
 }
 
 .transport-preview-card {

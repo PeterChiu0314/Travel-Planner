@@ -13,6 +13,7 @@ test("Phase 5.7a builds Google Maps navigation URL from endpoint coordinates", (
   expect(travelModeForTransportCategory("jr")).toBe("transit");
   expect(travelModeForTransportCategory("taxi")).toBe("driving");
   expect(travelModeForTransportCategory("walk")).toBe("walking");
+  expect(travelModeForTransportCategory("flight")).toBe("");
   expect(travelModeForTransportCategory("unknown")).toBe("transit");
 
   const url = buildGoogleMapsDirectionsUrl({ fromItem, toItem, transportCategory: "taxi" });
@@ -21,6 +22,10 @@ test("Phase 5.7a builds Google Maps navigation URL from endpoint coordinates", (
   expect(url).toContain("origin=35.0116%2C135.7681");
   expect(url).toContain("destination=35.0037%2C135.7786");
   expect(url).toContain("travelmode=driving");
+
+  const flightUrl = buildGoogleMapsDirectionsUrl({ fromItem, toItem, transportCategory: "flight" });
+  expect(flightUrl).toContain("travelmode=");
+  expect(flightUrl).not.toContain("travelmode=transit");
 });
 
 test("Phase 5.7a disables navigation and Routes requests without endpoint coordinates", () => {

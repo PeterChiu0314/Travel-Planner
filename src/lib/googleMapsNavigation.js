@@ -5,7 +5,7 @@ const travelModeByTransportCategory = Object.freeze({
   driving: "driving",
   drive: "driving",
   ferry: "transit",
-  flight: "transit",
+  flight: "",
   jr: "transit",
   taxi: "driving",
   train: "transit",
@@ -20,7 +20,11 @@ function readFiniteNumber(value) {
 }
 
 export function travelModeForTransportCategory(category) {
-  return travelModeByTransportCategory[String(category || "").trim().toLowerCase()] || "transit";
+  const normalized = String(category || "").trim().toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(travelModeByTransportCategory, normalized)) {
+    return travelModeByTransportCategory[normalized];
+  }
+  return "transit";
 }
 
 export function transportEndpointsHaveCoordinates({ fromItem, toItem } = {}) {
@@ -35,11 +39,13 @@ export function transportEndpointsHaveCoordinates({ fromItem, toItem } = {}) {
 export function buildGoogleMapsDirectionsUrl({ fromItem, mode, toItem, transportCategory } = {}) {
   if (!transportEndpointsHaveCoordinates({ fromItem, toItem })) return "";
 
-  const travelMode = mode || travelModeForTransportCategory(transportCategory);
+  const transportMode = travelModeForTransportCategory(transportCategory);
+  const travelMode = mode === undefined || mode === null ? transportMode : mode;
+  const normalizedTravelMode = travelMode === "" ? "" : travelModeForTransportCategory(travelMode);
   const url = new URL(GOOGLE_MAPS_DIRECTIONS_BASE_URL);
   url.searchParams.set("api", "1");
   url.searchParams.set("origin", `${readFiniteNumber(fromItem.latitude)},${readFiniteNumber(fromItem.longitude)}`);
   url.searchParams.set("destination", `${readFiniteNumber(toItem.latitude)},${readFiniteNumber(toItem.longitude)}`);
-  url.searchParams.set("travelmode", travelModeForTransportCategory(travelMode));
+  url.searchParams.set("travelmode", normalizedTravelMode);
   return url.toString();
 }
