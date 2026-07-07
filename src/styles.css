@@ -3128,6 +3128,32 @@ textarea {
   justify-self: start;
 }
 
+.transport-card-nav {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.transport-card.expanded > .transport-card-nav {
+  display: none;
+}
+
+.transport-navigation-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transport-navigation-button svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2;
+}
+
 .transport-card-main,
 .transport-editor-heading {
   display: flex;
@@ -3288,13 +3314,40 @@ textarea {
   justify-self: end;
 }
 
+.transport-editor-route-row {
+  grid-template-columns: minmax(0, 1fr) minmax(72px, 0.85fr) auto;
+  align-items: end;
+}
+
+.transport-editor-navigation-button {
+  align-self: end;
+  justify-self: end;
+  margin-bottom: 1px;
+}
+
+.transport-editor-route-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.transport-editor-bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .transport-editor-form {
   border-color: var(--mint);
   box-shadow: inset 4px 0 0 var(--mint);
 }
 
 .transport-editor-heading {
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-bottom: 12px;
 }
 
