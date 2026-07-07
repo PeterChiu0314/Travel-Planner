@@ -4,7 +4,8 @@ export const GOOGLE_ROUTES_TRAVEL_MODES = Object.freeze({
   walking: "WALK",
 });
 
-export const GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY = "routes.duration";
+export const GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY =
+  "routes.duration,routes.staticDuration";
 
 export const GOOGLE_ROUTES_ENDPOINT = "https://routes.googleapis.com/directions/v2:computeRoutes";
 

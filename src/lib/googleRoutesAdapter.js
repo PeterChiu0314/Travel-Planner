@@ -89,7 +89,9 @@ function summarizeRoutesRequest(request) {
 }
 
 function summarizeRoutesResponse(response, data) {
+  const normalized = normalizeGoogleRoutesDuration(data || {});
   return {
+    durationSource: normalized.ok ? normalized.durationSource : "",
     errorMessage: data?.error?.message || "",
     errorStatus: data?.error?.status || "",
     routesLength: Array.isArray(data?.routes) ? data.routes.length : 0,
@@ -153,12 +155,26 @@ function parseGoogleDurationSeconds(value) {
   return Number.isFinite(seconds) ? seconds : null;
 }
 
+function firstRouteDuration(response = {}) {
+  const route = response?.routes?.[0];
+  const candidates = [
+    ["routes.duration", route?.duration],
+    ["routes.staticDuration", route?.staticDuration],
+  ];
+  for (const [source, value] of candidates) {
+    const seconds = parseGoogleDurationSeconds(value);
+    if (seconds !== null) return { seconds, source };
+  }
+  return null;
+}
+
 export function normalizeGoogleRoutesDuration(response = {}) {
-  const durationSeconds = parseGoogleDurationSeconds(response?.routes?.[0]?.duration);
-  if (durationSeconds === null) return { ok: false, errorCode: "missing_duration" };
+  const duration = firstRouteDuration(response);
+  if (!duration) return { ok: false, errorCode: "missing_duration" };
   return {
     ok: true,
-    durationMinutes: Math.max(1, Math.round(durationSeconds / 60)),
+    durationMinutes: Math.max(1, Math.round(duration.seconds / 60)),
+    durationSource: duration.source,
   };
 }
 

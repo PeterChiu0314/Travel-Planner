@@ -35,7 +35,8 @@ test("Phase 5.7a gates Routes query behind formal Google provider and API key", 
 });
 
 test("Phase 5.7a Routes query asks for duration only", () => {
-  expect(GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY).toBe("routes.duration");
+  expect(GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY).toBe("routes.duration,routes.staticDuration");
+  expect(GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY).not.toMatch(/polyline|distanceMeters|legs|steps|transitFare/i);
 });
 
 test("Phase 5.7a normalizes supported route travel modes", () => {

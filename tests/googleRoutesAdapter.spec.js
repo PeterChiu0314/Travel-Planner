@@ -42,7 +42,7 @@ test("Phase 5.7a Routes request is duration-only and does not request polylines"
 
   expect(request).toEqual({
     ok: true,
-    fieldMask: "routes.duration",
+    fieldMask: "routes.duration,routes.staticDuration",
     body: {
       origin: { location: { latLng: { latitude: 35.0116, longitude: 135.7681 } } },
       destination: { location: { latLng: { latitude: 35.0037, longitude: 135.7786 } } },
@@ -136,14 +136,29 @@ test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
     toItem,
   });
 
-  expect(result).toEqual({ ok: true, durationMinutes: 26 });
+  expect(result).toEqual({ ok: true, durationMinutes: 26, durationSource: "routes.duration" });
   expect(calls).toHaveLength(1);
   expect(calls[0].url).toContain("routes.googleapis.com/directions/v2:computeRoutes");
   expect(calls[0].options.method).toBe("POST");
-  expect(calls[0].options.headers["X-Goog-FieldMask"]).toBe("routes.duration");
+  expect(calls[0].options.headers["X-Goog-FieldMask"]).toBe(
+    "routes.duration,routes.staticDuration",
+  );
   expect(calls[0].options.headers["X-Goog-Api-Key"]).toBe("fake-key");
   expect(JSON.parse(calls[0].options.body).departureTime).toBe("2026-07-07T09:30:00.000Z");
   expect(calls[0].options.body).not.toMatch(/polyline|encodedPolyline|computeAlternativeRoutes/i);
+});
+
+test("Phase 5.7a normalizes transit duration fallback fields", () => {
+  expect(normalizeGoogleRoutesDuration({ routes: [{ duration: "1530s" }] })).toEqual({
+    ok: true,
+    durationMinutes: 26,
+    durationSource: "routes.duration",
+  });
+  expect(normalizeGoogleRoutesDuration({ routes: [{ staticDuration: "1440s" }] })).toEqual({
+    ok: true,
+    durationMinutes: 24,
+    durationSource: "routes.staticDuration",
+  });
 });
 
 test("Phase 5.7a handles missing API key and missing duration without throwing", async () => {
