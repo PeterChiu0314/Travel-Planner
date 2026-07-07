@@ -3320,7 +3320,7 @@ textarea {
   min-width: max-content;
 }
 
-.transport-editor-route-row {
+.form-grid.wide.transport-editor-route-row {
   display: grid;
   grid-template-columns: minmax(0, 0.96fr) minmax(0, 0.84fr) 40px;
   align-items: end;
@@ -3441,7 +3441,7 @@ textarea {
 
 .transport-route-mode-status-row {
   justify-content: space-between;
-  margin-left: 82px;
+  margin-left: 0;
   min-width: 0;
 }
 
@@ -3469,7 +3469,7 @@ textarea {
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
-  margin-left: 82px;
+  margin-left: 0;
   gap: 8px;
 }
 
@@ -5656,7 +5656,7 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .transport-editor-route-row {
+  .form-grid.wide.transport-editor-route-row {
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.78fr) 40px;
     column-gap: 8px;
   }
