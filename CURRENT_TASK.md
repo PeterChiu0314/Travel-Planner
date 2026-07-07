@@ -40,19 +40,19 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.6g Places Autocomplete Viewport Location Bias - Completed / Manual QA Passed / No Migration
+Timeline Phase 5.7a Transportation Navigation + Travel Time Query - Completed / Hotfixed / No Migration
 ```
 
 Next phase:
 
 ```text
-Phase 5.6g is complete and manually verified OK. Formal Google Places Autocomplete now passes the current Google map viewport as optional `locationBias` when bounds are available. The provider updates a local latest-bounds ref from map `bounds_changed` / `idle` events, but map pan/zoom alone does not trigger Autocomplete; debounce, IME guard, Enter/search icon, same-query guard, and session token behavior remain unchanged. This is bias only, not `locationRestriction` or strict bounds. Selected autocomplete suggestions still fetch minimal Place Details only (`id`, `displayName`, `location`, `googleMapsUri`), show a marker-anchored full preview dialog, and open the existing active day add editor only after the user clicks Add to itinerary. Google map POI clicks still use a pending marker/hint and do not fetch details until the pending marker/hint is clicked. Editor map_url stays `https://www.google.com/maps?q={lat},{lng}`. Save remains the only Supabase write. Demo / StaticMapProvider fallback remains unchanged. No Geocoding, Directions, Routes, route calculation, route cache, Text Search, Nearby Search, address auto-fill, API, migration, package, or committed API key was added.
+Phase 5.7a is complete after multiple UI/payload hotfixes. Transportation cards now provide icon-only Google Maps navigation and a gated Routes duration query flow inside the existing transportation editor. The query mode is an in-card two-stage UI, not a mini panel or popover. Transit query UI now exposes only preferred transit vehicle types: bus, subway, train, and light rail. Routes API payloads are duration-only, do not request polylines, and keep TRANSIT free of driving route modifiers and routing preferences. Transit `allowedTravelModes` is omitted when all or none are selected, and sent only for partial selections. `?debugRoutes=1` enables sanitized request/response summary logs without API keys. Save remains the only Supabase write. No Google Map loading, Places/POI, route lines, map picker, reorder, migration, package, env, or committed API key change was added.
 ```
 
 Branch:
 
 ```text
-codex/timeline-phase-5-5
+codex/timeline-phase-5-7
 ```
 
 ## Completed Scope
@@ -726,6 +726,29 @@ New/updated files:
 - Manual QA passed after Phase 5.6g implementation.
 - Latest pushed commit: `0b7fe16 Add places autocomplete viewport bias`.
 
+### Phase 5.7a
+
+- Added transportation-card Google Maps navigation URLs from paired endpoint coordinates.
+- Navigation buttons are icon-only with Chinese `title` / `aria-label`, shown on collapsed cards, expanded cards, and transportation editor rows.
+- Flight navigation intentionally leaves `travelmode=` blank so Google Maps can choose the best route.
+- Added gated Google Routes duration query support using `VITE_MAP_PROVIDER=google`, formal mode, an available Google Maps API key, and explicit routes-query enablement.
+- Routes requests are duration-only and use `X-Goog-FieldMask: routes.duration`; no route lines, polylines, cache, override, migration, package, env, or committed API key was added.
+- Transportation editor query UI is now an in-card Query Mode: `[查詢交通]` switches the editor body to query controls, `[取消]` returns without applying, `[查詢]` updates query state only, and `[套用]` fills the form without saving.
+- General editor mode keeps `[查詢交通]` on the left and `[保存] [取消]` on the right; Save remains the only persistence action.
+- Transit query UI only shows preferred vehicle types: `公車`, `地鐵`, `火車`, and `電車及輕軌電車`.
+- Transit payload omits `allowedTravelModes` when all or none are selected, sends it only for partial selections, and never sends `routingPreference` or driving `routeModifiers`.
+- Driving query options may send `avoidHighways`, `avoidTolls`, and `avoidFerries`; these modifiers are not sent for transit.
+- Added gated `?debugRoutes=1` console logging with sanitized travel mode, allowed modes, field mask, routing/modifier flags, routes length, and error status/message. API keys are not logged.
+- Transportation title/action layout was tightened so long titles ellipsize and do not collide with navigation/edit/delete buttons.
+- Related pushed commits:
+  - `e883fdf Add timeline phase 5.7a transport navigation`
+  - `de94045 Polish timeline phase 5.7a transport controls`
+  - `10585bc Polish transport editor query controls`
+  - `02de5b4 Replace transport query panel with editor mode`
+  - `e422325 Tighten transport query mode layout`
+  - `2f610ed Fix transport editor grid alignment`
+  - `1bdbcea Fix transit route query payload`
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -1186,9 +1209,23 @@ manual QA passed for Phase 5.6g viewport location bias
 latest pushed commit: 0b7fe16 Add places autocomplete viewport bias
 ```
 
+Phase 5.7a Transportation Navigation + Travel Time Query checks on 2026-07-07:
+
+```text
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+npx.cmd playwright test googleRoutesConfig googleRoutesAdapter passed 11/11 after Transit payload hotfix
+npx.cmd playwright test mapProviderPrep passed 31/31 after Transit payload hotfix
+Transit query UI now shows only preferred vehicle options: 公車, 地鐵, 火車, 電車及輕軌電車
+Transit Routes payload omits allowedTravelModes when all or none are selected, sends allowedTravelModes only for partial selections, and omits routingPreference / routeModifiers
+Driving route options may send avoidHighways / avoidTolls / avoidFerries
+debugRoutes logging is gated behind ?debugRoutes=1 and does not log API keys
+latest pushed commit: 1bdbcea Fix transit route query payload
+```
+
 ## Protected Scope Preserved
 
-Latest Phase 5.6 Places Search / Preview / POI flow work did not redesign or extend:
+Latest Phase 5.7a transportation navigation / travel-time query work did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -1198,8 +1235,8 @@ Latest Phase 5.6 Places Search / Preview / POI flow work did not redesign or ext
 - Phase 4.2c destination-package reorder RPC behavior
 - generic `sort_order` architecture
 - transportation pair splitting or creation
-- Google Map API or route calculation
-- Text Search, Nearby Search, Geocoding, Reverse Geocoding, Directions API, Routes API, Distance Matrix, route cache, route summary, or travel-duration logic
+- Google Map loading behavior outside the existing provider gates
+- Text Search, Nearby Search, Geocoding, Reverse Geocoding, Directions API, Distance Matrix, route cache, route summary beyond duration-only query, or Google route polylines
 - locationRestriction or strict bounds
 - Place Details fields outside `id`, `displayName`, `location`, and `googleMapsUri`
 - address auto-fill, formattedAddress, rating, reviews, photos, opening hours, phone, website, business status, editorial summaries, or generative summaries
@@ -1233,4 +1270,4 @@ Latest Phase 5.6 Places Search / Preview / POI flow work did not redesign or ext
 
 ## Next Step
 
-Phase 5.6g is complete and manually verified OK. Demo should remain permanently static unless explicitly redesigned. Formal Google Places search now supports gated Autocomplete, viewport `locationBias`, minimal Place Details, marker-anchored preview, add-editor handoff, cost-guarded POI pending marker confirmation, IME-safe search input behavior, and selected-primary-name display. Save remains the only Supabase write. Latest pushed commit is `0b7fe16 Add places autocomplete viewport bias`. Next product decision can be missing-coordinate repair, further map marker polish, route summary work, additional map overlay layout tuning, or a separate closeout/merge flow. Do not infer locationRestriction, strict bounds, Geocoding, Directions, Routes API, route calculation, route cache, Text Search, Nearby Search, address auto-fill, Supabase writes before Save, migration, transportation repair, Timeline reorder changes, dnd-kit changes, drag/presence changes, remote selection changes, online presence changes, Budget integration, committed API keys, packages, or additional database changes without a separate approved goal.
+Phase 5.7a is complete and pushed on `codex/timeline-phase-5-7`. Transportation cards now support icon-only navigation and an in-card travel-time Query Mode. Transit Routes duration query was hotfixed so TRANSIT payloads use only optional `transitPreferences.allowedTravelModes` for partial vehicle selections and do not send routingPreference or driving routeModifiers. `?debugRoutes=1` can be used for sanitized Routes request/response summaries. Latest pushed commit is `1bdbcea Fix transit route query payload`. Next product decision can be Formal QA on real trips, route-summary polish, missing-coordinate repair, additional transportation UI polish, or a separate closeout/merge flow. Do not infer Google Map loading changes, Routes API env/key changes, route polylines, route override, route cache, Places / POI changes, map picker changes, Timeline reorder changes, Supabase writes before Save, migration, committed API keys, packages, or additional database changes without a separate approved goal.
