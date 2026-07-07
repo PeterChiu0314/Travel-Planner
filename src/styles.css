@@ -3228,6 +3228,42 @@ textarea {
   white-space: pre-line;
 }
 
+.transport-route-query-panel {
+  display: grid;
+  gap: 10px;
+  grid-column: 1 / -1;
+  margin: 2px 28px 0;
+  padding: 10px;
+  border: 1px solid rgba(95, 143, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.transport-route-query-heading,
+.transport-route-query-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.transport-route-query-panel label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.transport-route-query-panel select {
+  min-height: 32px;
+  border: 1px solid rgba(91, 109, 130, 0.22);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
 .transport-budget-links {
   display: flex;
   align-items: center;

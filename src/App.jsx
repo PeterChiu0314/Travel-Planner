@@ -54,6 +54,9 @@ import {
 } from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { resolveGoogleMapsShortUrl } from "./lib/googleMapsShortLinkResolver.js";
+import { fetchGoogleRoutesDuration } from "./lib/googleRoutesAdapter.js";
+import { getGoogleRoutesRuntimeConfig } from "./lib/googleRoutesConfig.js";
+import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "./lib/googleMapsNavigation.js";
 import { countMissingMapPoints, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import { planTimelineAutoContinuation } from "./lib/timelineAutoContinuation.js";
@@ -747,6 +750,14 @@ function transportCardTitle(item) {
   const name = item?.transport_name || item?.title || transportCategoryMeta(item?.transport_category).label;
   const duration = formatDurationMinutes(item?.transport_duration_minutes);
   return duration ? `${name}・${duration}` : name;
+}
+
+function routeQueryErrorMessage(errorCode) {
+  if (errorCode === "missing_coordinates") return "Both endpoint cards need map coordinates.";
+  if (errorCode === "missing_api_key") return "Google Maps API key is not available.";
+  if (errorCode === "routes_request_failed") return "Google Routes query failed. Try again later.";
+  if (errorCode === "missing_duration") return "Google did not return a travel time.";
+  return "Travel time query failed. Try again later.";
 }
 
 function dateTimeLocalInput(date = new Date()) {
@@ -9200,6 +9211,7 @@ function TripWorkspace(props) {
                 dayLabel={days[activeDay] ? `Day ${activeDay + 1} · ${formatDate(days[activeDay])}` : ""}
                 dayTitle={`DAY ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
+                enableTransportRouteQuery
                 {...mapPointPicker}
                 onApplyAlternative={onApplyAlternative}
                 onClearDragPresence={onClearDragPresence}
@@ -9638,6 +9650,7 @@ function ItineraryTimeline({
   dayLabel,
   dayTitle,
   disableDraftAutosave = false,
+  enableTransportRouteQuery = false,
   focusedItemId,
   canPickMapPoint = false,
   isPickingMapPoint = false,
@@ -9694,6 +9707,7 @@ function ItineraryTimeline({
   const [untimedDropNotice, setUntimedDropNotice] = useState("");
   const [transportPairConflict, setTransportPairConflict] = useState(null);
   const [isResolvingTransportPairConflict, setIsResolvingTransportPairConflict] = useState(false);
+  const [transportRouteQueryById, setTransportRouteQueryById] = useState({});
   const [autoContinuationPrompt, setAutoContinuationPrompt] = useState(null);
   const [isSavingAutoContinuation, setIsSavingAutoContinuation] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
@@ -9733,6 +9747,14 @@ function ItineraryTimeline({
       ? foreignCardSelection
       : null;
   const canMutateThisDay = canEdit && !foreignSameDayDragActive;
+  const transportRoutesConfig = useMemo(
+    () =>
+      getGoogleRoutesRuntimeConfig({
+        enableRoutesQuery: enableTransportRouteQuery,
+        mode: enableTransportRouteQuery ? "formal" : "demo",
+      }),
+    [enableTransportRouteQuery],
+  );
   const foreignDragReadOnlyMessage = foreignSameDayDragActive
     ? `${foreignDragUserName} 正在拖曳，暫時鎖定此日編輯。`
     : "";
@@ -11135,6 +11157,113 @@ function ItineraryTimeline({
     return `${fromLabel} → ${toLabel}`;
   }
 
+  function transportEndpointItems(item) {
+    return {
+      fromItem: dayItems.find((dayItem) => dayItem.id === item.from_item_id) || null,
+      toItem: dayItems.find((dayItem) => dayItem.id === item.to_item_id) || null,
+    };
+  }
+
+  function routeQueryPanelState(item) {
+    return (
+      transportRouteQueryById[item.id] || {
+        durationMinutes: null,
+        error: "",
+        isOpen: false,
+        mode: travelModeForTransportCategory(item.transport_category),
+        selectedOptions: "best",
+        status: "idle",
+      }
+    );
+  }
+
+  function patchRouteQueryPanel(itemId, patch) {
+    setTransportRouteQueryById((current) => ({
+      ...current,
+      [itemId]: {
+        ...(current[itemId] || {}),
+        ...patch,
+      },
+    }));
+  }
+
+  function toggleRouteQueryPanel(item) {
+    const current = routeQueryPanelState(item);
+    patchRouteQueryPanel(item.id, {
+      durationMinutes: current.durationMinutes,
+      error: current.error || "",
+      isOpen: !current.isOpen,
+      mode: current.mode || travelModeForTransportCategory(item.transport_category),
+      selectedOptions: current.selectedOptions || "best",
+      status: current.status || "idle",
+    });
+  }
+
+  async function queryTransportRouteDuration(item) {
+    const current = routeQueryPanelState(item);
+    const { fromItem, toItem } = transportEndpointItems(item);
+    if (!transportRoutesConfig.canQueryRoutes) {
+      patchRouteQueryPanel(item.id, {
+        error: routeQueryErrorMessage("missing_api_key"),
+        isOpen: true,
+        status: "error",
+      });
+      return;
+    }
+    patchRouteQueryPanel(item.id, { error: "", isOpen: true, status: "querying" });
+    const result = await fetchGoogleRoutesDuration({
+      apiKey: transportRoutesConfig.apiKey,
+      fromItem,
+      mode: current.mode || travelModeForTransportCategory(item.transport_category),
+      toItem,
+    });
+    if (!result.ok) {
+      patchRouteQueryPanel(item.id, {
+        durationMinutes: null,
+        error: routeQueryErrorMessage(result.errorCode),
+        status: "error",
+      });
+      return;
+    }
+    patchRouteQueryPanel(item.id, {
+      durationMinutes: result.durationMinutes,
+      error: "",
+      status: "success",
+    });
+  }
+
+  function routeCategoryForMode(mode, fallbackCategory) {
+    if (mode === "driving") return "drive";
+    if (mode === "walking") return "walk";
+    return fallbackCategory || defaultTransportCategory;
+  }
+
+  async function applyTransportRouteDuration(item) {
+    const current = routeQueryPanelState(item);
+    if (!canMutateThisDay || !current.durationMinutes || typeof onSaveItem !== "function") return;
+    patchRouteQueryPanel(item.id, { error: "", status: "applying" });
+    const nextCategory = routeCategoryForMode(current.mode, item.transport_category);
+    const nextName = item.transport_name || transportCategoryMeta(nextCategory).label;
+    const result = await onSaveItem(
+      {
+        ...item,
+        transport_category: nextCategory,
+        transport_duration_minutes: current.durationMinutes,
+        transport_name: nextName,
+        title: nextName,
+      },
+      item.id,
+      {
+        baseUpdatedAt: item.updated_at,
+        tripId: activeTrip?.id,
+      },
+    );
+    patchRouteQueryPanel(item.id, {
+      error: result?.ok ? "" : result?.errorMessage || "Apply failed. Please try again.",
+      status: result?.ok ? "applied" : "success",
+    });
+  }
+
   function renderTransportCard(item, lockedByOther, options = {}) {
     const { hasTimeShortage = false, isTail = false, warningType = "" } = options;
     const isInvalidWarning = warningType === "invalid";
@@ -11147,6 +11276,13 @@ function ItineraryTimeline({
     const budgets = budgetsByItem[item.id] || [];
     const category = item.transport_category || defaultTransportCategory;
     const note = item.transport_note || item.transportation_note || item.description || item.note;
+    const { fromItem, toItem } = transportEndpointItems(item);
+    const routePanel = routeQueryPanelState(item);
+    const routeMode = routePanel.mode || travelModeForTransportCategory(category);
+    const navigationUrl = buildGoogleMapsDirectionsUrl({ fromItem, toItem, mode: routeMode, transportCategory: category });
+    const canUseTransportEndpoints = Boolean(navigationUrl);
+    const canQueryTransportRoute = canUseTransportEndpoints && transportRoutesConfig.canQueryRoutes;
+    const isRouteQueryBusy = routePanel.status === "querying" || routePanel.status === "applying";
     const remoteSelection = visibleForeignCardSelection?.itemId === item.id ? visibleForeignCardSelection : null;
     const remoteSelectionColor = remoteSelection ? timelineCardSelectionColor(remoteSelection.colorKey) : "";
     const remoteSelectionStyle = remoteSelection
@@ -11216,6 +11352,80 @@ function ItineraryTimeline({
                 )}
               </div>
             </div>
+            {routePanel.isOpen ? (
+              <div className="transport-route-query-panel" onClick={(event) => event.stopPropagation()}>
+                <div className="transport-route-query-heading">
+                  <strong>Travel time</strong>
+                  {routePanel.durationMinutes ? (
+                    <span>{formatDurationMinutes(routePanel.durationMinutes)}</span>
+                  ) : (
+                    <span className="muted-text">No result yet</span>
+                  )}
+                </div>
+                <label>
+                  Mode
+                  <select
+                    value={routeMode}
+                    onChange={(event) =>
+                      patchRouteQueryPanel(item.id, {
+                        durationMinutes: null,
+                        error: "",
+                        mode: event.target.value,
+                        selectedOptions: "best",
+                        status: "idle",
+                      })
+                    }
+                  >
+                    <option value="transit">Transit</option>
+                    <option value="driving">Driving</option>
+                    <option value="walking">Walking</option>
+                  </select>
+                </label>
+                {routeMode === "transit" ? (
+                  <label>
+                    Option
+                    <select
+                      value={routePanel.selectedOptions || "best"}
+                      onChange={(event) =>
+                        patchRouteQueryPanel(item.id, {
+                          error: "",
+                          selectedOptions: event.target.value,
+                        })
+                      }
+                    >
+                      <option value="best">Best route</option>
+                      <option value="fewer_transfers">Fewer transfers</option>
+                      <option value="less_walking">Less walking</option>
+                    </select>
+                  </label>
+                ) : null}
+                {routePanel.error ? <p className="field-inline-error">{routePanel.error}</p> : null}
+                {!canUseTransportEndpoints ? (
+                  <p className="muted-text">Both endpoint cards need saved map coordinates.</p>
+                ) : null}
+                <div className="transport-route-query-actions">
+                  <button className="mini-button" type="button" onClick={() => toggleRouteQueryPanel(item)}>
+                    Close
+                  </button>
+                  <button
+                    className="mini-button"
+                    disabled={!canQueryTransportRoute || isRouteQueryBusy}
+                    type="button"
+                    onClick={() => queryTransportRouteDuration(item)}
+                  >
+                    {routePanel.status === "querying" ? "Querying" : "Query"}
+                  </button>
+                  <button
+                    className="mini-button"
+                    disabled={!canMutateThisDay || !routePanel.durationMinutes || isRouteQueryBusy}
+                    type="button"
+                    onClick={() => applyTransportRouteDuration(item)}
+                  >
+                    {routePanel.status === "applying" ? "Applying" : "Apply"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className="transport-card-actions">
               {isGeneralWarning ? (
                 <button
@@ -11230,6 +11440,46 @@ function ItineraryTimeline({
                   確認
                 </button>
               ) : null}
+              {navigationUrl ? (
+                <a
+                  className="mini-button"
+                  href={navigationUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open Google Maps navigation"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  Navigate
+                </a>
+              ) : (
+                <button
+                  className="mini-button"
+                  disabled
+                  type="button"
+                  title="Both endpoint cards need saved map coordinates."
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  Navigate
+                </button>
+              )}
+              <button
+                className="mini-button"
+                disabled={!canUseTransportEndpoints}
+                type="button"
+                title={
+                  canUseTransportEndpoints
+                    ? transportRoutesConfig.canQueryRoutes
+                      ? "Query Google Routes duration"
+                      : "Google Routes query needs Formal Google map and API key."
+                    : "Both endpoint cards need saved map coordinates."
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleRouteQueryPanel(item);
+                }}
+              >
+                Travel time
+              </button>
               <button
                 className="mini-button"
                 disabled={!canMutateThisDay || lockedByOther}
