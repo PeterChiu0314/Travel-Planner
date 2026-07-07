@@ -7,6 +7,9 @@ export const GOOGLE_ROUTES_TRAVEL_MODES = Object.freeze({
 export const GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY =
   "routes.duration,routes.staticDuration";
 
+export const GOOGLE_ROUTES_TRANSIT_DEBUG_FIELD_MASK =
+  "routes.duration,routes.localizedValues,routes.legs,routes.travelAdvisory";
+
 export const GOOGLE_ROUTES_ENDPOINT = "https://routes.googleapis.com/directions/v2:computeRoutes";
 
 function normalizeText(value) {

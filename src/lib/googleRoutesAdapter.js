@@ -1,6 +1,7 @@
 import {
   GOOGLE_ROUTES_ENDPOINT,
   GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY,
+  GOOGLE_ROUTES_TRANSIT_DEBUG_FIELD_MASK,
   normalizeGoogleRoutesTravelMode,
 } from "./googleRoutesConfig.js";
 
@@ -105,7 +106,7 @@ async function readRoutesJson(response) {
   }
 }
 
-export function buildGoogleRoutesDurationRequest({ fromItem, mode = "transit", routeOptions = [], toItem } = {}) {
+export function buildGoogleRoutesDurationRequest({ debugRoutes = isRoutesDebugEnabled(), fromItem, mode = "transit", routeOptions = [], toItem } = {}) {
   const origin = latLngLiteral(fromItem);
   const destination = latLngLiteral(toItem);
   if (!origin || !destination) {
@@ -132,7 +133,10 @@ export function buildGoogleRoutesDurationRequest({ fromItem, mode = "transit", r
   return {
     ok: true,
     body,
-    fieldMask: GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY,
+    fieldMask:
+      travelMode === "TRANSIT" && debugRoutes
+        ? GOOGLE_ROUTES_TRANSIT_DEBUG_FIELD_MASK
+        : GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY,
   };
 }
 
@@ -149,6 +153,8 @@ function firstRouteDuration(response = {}) {
   const candidates = [
     ["routes.duration", route?.duration],
     ["routes.staticDuration", route?.staticDuration],
+    ["routes.legs.duration", route?.legs?.[0]?.duration],
+    ["routes.legs.staticDuration", route?.legs?.[0]?.staticDuration],
   ];
   for (const [source, value] of candidates) {
     const seconds = parseGoogleDurationSeconds(value);
@@ -169,6 +175,7 @@ export function normalizeGoogleRoutesDuration(response = {}) {
 
 export async function fetchGoogleRoutesDuration({
   apiKey,
+  debugRoutes = isRoutesDebugEnabled(),
   endpoint = GOOGLE_ROUTES_ENDPOINT,
   fetchImpl = globalThis.fetch,
   fromItem,
@@ -180,7 +187,7 @@ export async function fetchGoogleRoutesDuration({
   if (!normalizedKey) return { ok: false, errorCode: "missing_api_key" };
   if (typeof fetchImpl !== "function") return { ok: false, errorCode: "fetch_unavailable" };
 
-  const request = buildGoogleRoutesDurationRequest({ fromItem, mode, routeOptions, toItem });
+  const request = buildGoogleRoutesDurationRequest({ debugRoutes, fromItem, mode, routeOptions, toItem });
   if (!request.ok) return request;
 
   const response = await fetchImpl(endpoint, {

@@ -94,6 +94,19 @@ test("Phase 5.7a transit Routes request sends allowed travel modes only for part
   expect(request.body.routeModifiers).toBeUndefined();
 });
 
+test("Phase 5.7a transit debug Routes request uses expanded field mask", () => {
+  const request = buildGoogleRoutesDurationRequest({
+    debugRoutes: true,
+    fromItem,
+    mode: "transit",
+    toItem,
+  });
+
+  expect(request.body.travelMode).toBe("TRANSIT");
+  expect(request.fieldMask).toBe("routes.duration,routes.localizedValues,routes.legs,routes.travelAdvisory");
+  expect(request.body.departureTime).toBeUndefined();
+});
+
 test("Phase 5.7a drive Routes request may send route modifiers", () => {
   const request = buildGoogleRoutesDurationRequest({
     fromItem,
@@ -110,6 +123,18 @@ test("Phase 5.7a drive Routes request may send route modifiers", () => {
     avoidTolls: true,
   });
   expect(request.body.transitPreferences).toBeUndefined();
+});
+
+test("Phase 5.7a drive debug Routes request keeps duration-only field mask", () => {
+  const request = buildGoogleRoutesDurationRequest({
+    debugRoutes: true,
+    fromItem,
+    mode: "driving",
+    toItem,
+  });
+
+  expect(request.body.travelMode).toBe("DRIVE");
+  expect(request.fieldMask).toBe("routes.duration,routes.staticDuration");
 });
 
 test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
@@ -140,6 +165,30 @@ test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
   expect(calls[0].options.body).not.toMatch(/polyline|encodedPolyline|computeAlternativeRoutes/i);
 });
 
+test("Phase 5.7a fetches transit debug Routes with expanded field mask", async () => {
+  const calls = [];
+  const result = await fetchGoogleRoutesDuration({
+    apiKey: "fake-key",
+    debugRoutes: true,
+    fetchImpl: async (url, options) => {
+      calls.push({ options, url });
+      return {
+        ok: true,
+        json: async () => ({ routes: [{ legs: [{ duration: "1260s" }] }] }),
+      };
+    },
+    fromItem,
+    mode: "transit",
+    toItem,
+  });
+
+  expect(result).toEqual({ ok: true, durationMinutes: 21, durationSource: "routes.legs.duration" });
+  expect(calls[0].options.headers["X-Goog-FieldMask"]).toBe(
+    "routes.duration,routes.localizedValues,routes.legs,routes.travelAdvisory",
+  );
+  expect(JSON.parse(calls[0].options.body).departureTime).toBeUndefined();
+});
+
 test("Phase 5.7a normalizes transit duration fallback fields", () => {
   expect(normalizeGoogleRoutesDuration({ routes: [{ duration: "1530s" }] })).toEqual({
     ok: true,
@@ -150,6 +199,11 @@ test("Phase 5.7a normalizes transit duration fallback fields", () => {
     ok: true,
     durationMinutes: 24,
     durationSource: "routes.staticDuration",
+  });
+  expect(normalizeGoogleRoutesDuration({ routes: [{ legs: [{ duration: "1260s" }] }] })).toEqual({
+    ok: true,
+    durationMinutes: 21,
+    durationSource: "routes.legs.duration",
   });
 });
 

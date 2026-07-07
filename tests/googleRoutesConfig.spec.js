@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   getGoogleRoutesConfig,
   GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY,
+  GOOGLE_ROUTES_TRANSIT_DEBUG_FIELD_MASK,
   isRoutesQueryEnabled,
   normalizeGoogleRoutesTravelMode,
 } from "../src/lib/googleRoutesConfig.js";
@@ -37,6 +38,12 @@ test("Phase 5.7a gates Routes query behind formal Google provider and API key", 
 test("Phase 5.7a Routes query asks for duration only", () => {
   expect(GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY).toBe("routes.duration,routes.staticDuration");
   expect(GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY).not.toMatch(/polyline|distanceMeters|legs|steps|transitFare/i);
+});
+
+test("Phase 5.7a Transit debug Routes query can inspect expanded response fields", () => {
+  expect(GOOGLE_ROUTES_TRANSIT_DEBUG_FIELD_MASK).toBe(
+    "routes.duration,routes.localizedValues,routes.legs,routes.travelAdvisory",
+  );
 });
 
 test("Phase 5.7a normalizes supported route travel modes", () => {
