@@ -196,21 +196,23 @@ test("Phase 5.7a fetches transit debug Routes with expanded field mask", async (
 
 test("Phase 5.7a falls back to Directions only when transit Routes has no duration", async () => {
   const calls = [];
+  const directionCalls = [];
   const result = await fetchGoogleRoutesDuration({
     apiKey: "fake-key",
+    directionsInvokeImpl: async (functionName, options) => {
+      directionCalls.push({ functionName, options });
+      return {
+        data: {
+          ok: true,
+          durationMinutes: 25,
+          source: "directions-transit-fallback",
+        },
+        error: null,
+      };
+    },
     fetchImpl: async (url, options) => {
       calls.push({ options, url });
-      if (url.includes("directions/v2:computeRoutes")) {
-        return { ok: true, status: 200, json: async () => ({}) };
-      }
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          routes: [{ legs: [{ duration: { text: "25 分鐘", value: 1500 }, steps: [{ ignored: true }] }] }],
-          status: "OK",
-        }),
-      };
+      return { ok: true, status: 200, json: async () => ({}) };
     },
     fromItem,
     mode: "transit",
@@ -220,14 +222,20 @@ test("Phase 5.7a falls back to Directions only when transit Routes has no durati
   expect(result).toEqual({
     ok: true,
     durationMinutes: 25,
-    routesLength: 1,
     source: "directions-transit-fallback",
-    status: "OK",
   });
-  expect(calls).toHaveLength(2);
-  expect(calls[1].url).toContain("maps.googleapis.com/maps/api/directions/json");
-  expect(new URL(calls[1].url).searchParams.get("mode")).toBe("transit");
-  expect(new URL(calls[1].url).searchParams.get("departure_time")).toBe("now");
+  expect(calls).toHaveLength(1);
+  expect(directionCalls).toEqual([
+    {
+      functionName: "google-directions-transit-duration",
+      options: {
+        body: {
+          origin: { latitude: 35.0116, longitude: 135.7681 },
+          destination: { latitude: 35.0037, longitude: 135.7786 },
+        },
+      },
+    },
+  ]);
 });
 
 test("Phase 5.7a does not call Directions fallback when transit Routes has duration", async () => {
@@ -295,15 +303,16 @@ test("Phase 5.7a debug summary reports fallback without API key", async () => {
     await fetchGoogleRoutesDuration({
       apiKey: "fake-key",
       debugRoutes: true,
-      fetchImpl: async (url) => {
-        if (url.includes("directions/v2:computeRoutes")) {
-          return { ok: true, status: 200, json: async () => ({}) };
-        }
-        return {
+      directionsInvokeImpl: async () => ({
+        data: {
           ok: true,
-          status: 200,
-          json: async () => ({ routes: [{ legs: [{ duration: { value: 900 } }] }], status: "OK" }),
-        };
+          durationMinutes: 15,
+          source: "directions-transit-fallback",
+        },
+        error: null,
+      }),
+      fetchImpl: async (url) => {
+        return { ok: true, status: 200, json: async () => ({}) };
       },
       fromItem,
       mode: "transit",

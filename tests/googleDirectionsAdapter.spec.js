@@ -1,110 +1,131 @@
 import { expect, test } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
 import {
   buildGoogleDirectionsTransitDurationRequest,
   fetchGoogleDirectionsTransitDuration,
+  GOOGLE_DIRECTIONS_TRANSIT_FUNCTION,
   normalizeGoogleDirectionsTransitDuration,
 } from "../src/lib/googleDirectionsAdapter.js";
 
 const fromItem = { id: "from", latitude: 34.9923359, longitude: 135.8172561 };
 const toItem = { id: "to", latitude: 35.0036625, longitude: 135.7785487 };
+const repoRoot = process.cwd();
 
-test("Phase 5.7a Directions fallback builds transit duration request", () => {
+function readRepoFile(relativePath) {
+  return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
+}
+
+test("Phase 5.7a Directions fallback builds Supabase Edge Function request", () => {
   const request = buildGoogleDirectionsTransitDurationRequest({
-    apiKey: "fake-key",
     fromItem,
     toItem,
   });
 
-  expect(request.ok).toBe(true);
-  const url = new URL(request.url);
-  expect(`${url.origin}${url.pathname}`).toBe("https://maps.googleapis.com/maps/api/directions/json");
-  expect(url.searchParams.get("origin")).toBe("34.9923359,135.8172561");
-  expect(url.searchParams.get("destination")).toBe("35.0036625,135.7785487");
-  expect(url.searchParams.get("mode")).toBe("transit");
-  expect(url.searchParams.get("departure_time")).toBe("now");
-  expect(url.searchParams.get("language")).toBe("zh-TW");
-  expect(url.searchParams.get("region")).toBe("jp");
-  expect(url.searchParams.get("key")).toBe("fake-key");
+  expect(request).toEqual({
+    ok: true,
+    body: {
+      origin: { latitude: 34.9923359, longitude: 135.8172561 },
+      destination: { latitude: 35.0036625, longitude: 135.7785487 },
+    },
+    functionName: "google-directions-transit-duration",
+    source: "directions-transit-fallback",
+  });
 });
 
-test("Phase 5.7a Directions fallback normalizes duration value only", () => {
-  const result = normalizeGoogleDirectionsTransitDuration({
-    routes: [
-      {
-        legs: [
-          {
-            duration: { text: "24 分鐘", value: 1441 },
-            steps: [{ html_instructions: "Do not keep me" }],
-          },
-        ],
-        overview_polyline: { points: "do-not-keep-me" },
-      },
-    ],
-    status: "OK",
-  });
-
-  expect(result).toEqual({
+test("Phase 5.7a Directions fallback normalizes Edge Function duration only", () => {
+  expect(
+    normalizeGoogleDirectionsTransitDuration({
+      ok: true,
+      durationMinutes: 25,
+      source: "directions-transit-fallback",
+      steps: [{ ignored: true }],
+      overview_polyline: { points: "do-not-keep-me" },
+    }),
+  ).toEqual({
     ok: true,
     durationMinutes: 25,
-    routesLength: 1,
     source: "directions-transit-fallback",
-    status: "OK",
   });
-  expect(JSON.stringify(result)).not.toMatch(/polyline|steps|html_instructions|24 分鐘/i);
 });
 
 test("Phase 5.7a Directions fallback returns safe failure without throwing", async () => {
   await expect(
     fetchGoogleDirectionsTransitDuration({
-      apiKey: "fake-key",
-      fetchImpl: async () => {
-        throw new Error("network down");
-      },
       fromItem,
+      invokeImpl: async () => {
+        throw new Error("function down");
+      },
       toItem,
     }),
-  ).resolves.toMatchObject({
+  ).resolves.toEqual({
     ok: false,
-    message: "network down",
-    reason: "directions_request_failed",
+    message: "function down",
+    reason: "directions_function_failed",
     source: "directions-transit-fallback",
   });
 
-  expect(normalizeGoogleDirectionsTransitDuration({ routes: [], status: "ZERO_RESULTS" })).toEqual({
+  expect(normalizeGoogleDirectionsTransitDuration({ ok: false, status: "ZERO_RESULTS", message: "No route" })).toEqual({
     ok: false,
-    reason: "missing_duration",
-    routesLength: 0,
+    message: "No route",
+    reason: "ZERO_RESULTS",
     source: "directions-transit-fallback",
     status: "ZERO_RESULTS",
   });
 });
 
-test("Phase 5.7a Directions fallback fetches duration with sanitized normalized result", async () => {
+test("Phase 5.7a Directions fallback invokes Supabase function without Google API key", async () => {
   const calls = [];
   const result = await fetchGoogleDirectionsTransitDuration({
-    apiKey: "fake-key",
-    fetchImpl: async (url, options) => {
-      calls.push({ options, url });
+    fromItem,
+    invokeImpl: async (functionName, options) => {
+      calls.push({ functionName, options });
       return {
-        ok: true,
-        json: async () => ({
-          routes: [{ legs: [{ duration: { text: "25 分鐘", value: 1500 }, steps: [{ travel_mode: "TRANSIT" }] }] }],
-          status: "OK",
-        }),
+        data: {
+          ok: true,
+          durationMinutes: 25,
+          source: "directions-transit-fallback",
+        },
+        error: null,
       };
     },
-    fromItem,
     toItem,
   });
 
   expect(result).toEqual({
     ok: true,
     durationMinutes: 25,
-    routesLength: 1,
     source: "directions-transit-fallback",
-    status: "OK",
   });
-  expect(calls).toHaveLength(1);
-  expect(calls[0].options.method).toBe("GET");
-  expect(new URL(calls[0].url).searchParams.get("departure_time")).toBe("now");
+  expect(calls).toEqual([
+    {
+      functionName: GOOGLE_DIRECTIONS_TRANSIT_FUNCTION,
+      options: {
+        body: {
+          origin: { latitude: 34.9923359, longitude: 135.8172561 },
+          destination: { latitude: 35.0036625, longitude: 135.7785487 },
+        },
+      },
+    },
+  ]);
+  expect(JSON.stringify(calls)).not.toMatch(/key|maps\.googleapis\.com|directions\/json/i);
+});
+
+test("Phase 5.7a Directions fallback keeps Google request inside Edge Function", () => {
+  const adapterSource = readRepoFile("src/lib/googleDirectionsAdapter.js");
+  const edgeFunctionSource = readRepoFile("supabase/functions/google-directions-transit-duration/index.ts");
+
+  expect(adapterSource).toContain('GOOGLE_DIRECTIONS_TRANSIT_FUNCTION = "google-directions-transit-duration"');
+  expect(adapterSource).toContain("supabase");
+  expect(adapterSource).toContain("invokeImpl");
+  expect(adapterSource).not.toContain("maps.googleapis.com/maps/api/directions/json");
+  expect(adapterSource).not.toContain("departure_time");
+  expect(edgeFunctionSource).toContain("https://maps.googleapis.com/maps/api/directions/json");
+  expect(edgeFunctionSource).toContain('departure_time: "now"');
+  expect(edgeFunctionSource).toContain('mode: "transit"');
+  expect(edgeFunctionSource).toContain('language: "zh-TW"');
+  expect(edgeFunctionSource).toContain('region: "jp"');
+  expect(edgeFunctionSource).toContain('source: "directions-transit-fallback"');
+  expect(edgeFunctionSource).not.toContain("overview_polyline");
+  expect(edgeFunctionSource).not.toContain("steps");
 });

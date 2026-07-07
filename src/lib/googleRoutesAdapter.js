@@ -185,6 +185,7 @@ export function normalizeGoogleRoutesDuration(response = {}) {
 export async function fetchGoogleRoutesDuration({
   apiKey,
   debugRoutes = isRoutesDebugEnabled(),
+  directionsInvokeImpl,
   endpoint = GOOGLE_ROUTES_ENDPOINT,
   fetchImpl = globalThis.fetch,
   fromItem,
@@ -247,8 +248,7 @@ export async function fetchGoogleRoutesDuration({
   }
 
   const directionsResult = await fetchGoogleDirectionsTransitDuration({
-    apiKey: normalizedKey,
-    fetchImpl,
+    invokeImpl: directionsInvokeImpl,
     fromItem,
     toItem,
   });

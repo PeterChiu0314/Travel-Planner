@@ -1,4 +1,6 @@
-const GOOGLE_DIRECTIONS_ENDPOINT = "https://maps.googleapis.com/maps/api/directions/json";
+import { supabase } from "./supabase.js";
+
+export const GOOGLE_DIRECTIONS_TRANSIT_FUNCTION = "google-directions-transit-duration";
 
 function finiteNumber(value) {
   const number = Number(value);
@@ -12,95 +14,65 @@ function latLngLiteral(item) {
   return { latitude, longitude };
 }
 
-async function readDirectionsJson(response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
-
-function directionsRoutesLength(data) {
-  return Array.isArray(data?.routes) ? data.routes.length : 0;
-}
-
-export function buildGoogleDirectionsTransitDurationRequest({
-  apiKey,
-  endpoint = GOOGLE_DIRECTIONS_ENDPOINT,
-  fromItem,
-  toItem,
-} = {}) {
-  const normalizedKey = typeof apiKey === "string" ? apiKey.trim() : "";
-  if (!normalizedKey) return { ok: false, reason: "missing_api_key", source: "directions-transit-fallback" };
-
+export function buildGoogleDirectionsTransitDurationRequest({ fromItem, toItem } = {}) {
   const origin = latLngLiteral(fromItem);
   const destination = latLngLiteral(toItem);
   if (!origin || !destination) {
     return { ok: false, reason: "missing_coordinates", source: "directions-transit-fallback" };
   }
 
-  const params = new URLSearchParams({
-    departure_time: "now",
-    destination: `${destination.latitude},${destination.longitude}`,
-    key: normalizedKey,
-    language: "zh-TW",
-    mode: "transit",
-    origin: `${origin.latitude},${origin.longitude}`,
-    region: "jp",
-  });
-
   return {
     ok: true,
+    body: {
+      destination,
+      origin,
+    },
+    functionName: GOOGLE_DIRECTIONS_TRANSIT_FUNCTION,
     source: "directions-transit-fallback",
-    url: `${endpoint}?${params.toString()}`,
   };
 }
 
 export function normalizeGoogleDirectionsTransitDuration(data = {}) {
-  const seconds = Number(data?.routes?.[0]?.legs?.[0]?.duration?.value);
-  if (!Number.isFinite(seconds) || seconds <= 0) {
+  const durationMinutes = Number(data?.durationMinutes);
+  if (data?.ok === true && Number.isFinite(durationMinutes) && durationMinutes > 0) {
     return {
-      ok: false,
-      reason: "missing_duration",
-      routesLength: directionsRoutesLength(data),
+      ok: true,
+      durationMinutes,
       source: "directions-transit-fallback",
-      status: data?.status || "",
     };
   }
 
   return {
-    ok: true,
-    durationMinutes: Math.ceil(seconds / 60),
-    routesLength: directionsRoutesLength(data),
+    ok: false,
+    message: typeof data?.message === "string" ? data.message : "",
+    reason: typeof data?.status === "string" && data.status ? data.status : "directions_failed",
     source: "directions-transit-fallback",
-    status: data?.status || "",
+    status: typeof data?.status === "string" ? data.status : "",
   };
 }
 
 export async function fetchGoogleDirectionsTransitDuration({
-  apiKey,
-  endpoint = GOOGLE_DIRECTIONS_ENDPOINT,
-  fetchImpl = globalThis.fetch,
   fromItem,
+  invokeImpl = supabase?.functions?.invoke?.bind(supabase.functions),
   toItem,
 } = {}) {
-  if (typeof fetchImpl !== "function") {
-    return { ok: false, reason: "fetch_unavailable", source: "directions-transit-fallback" };
+  if (typeof invokeImpl !== "function") {
+    return { ok: false, reason: "supabase_unavailable", source: "directions-transit-fallback" };
   }
 
-  const request = buildGoogleDirectionsTransitDurationRequest({ apiKey, endpoint, fromItem, toItem });
+  const request = buildGoogleDirectionsTransitDurationRequest({ fromItem, toItem });
   if (!request.ok) return request;
 
   try {
-    const response = await fetchImpl(request.url, { method: "GET" });
-    const data = await readDirectionsJson(response);
-    if (!response?.ok) {
+    const { data, error } = await invokeImpl(request.functionName, {
+      body: request.body,
+    });
+    if (error) {
       return {
         ok: false,
-        reason: "directions_request_failed",
-        routesLength: directionsRoutesLength(data),
+        message: error.message || "",
+        reason: "directions_function_failed",
         source: "directions-transit-fallback",
-        status: data?.status || response?.status || "",
       };
     }
     return normalizeGoogleDirectionsTransitDuration(data || {});
@@ -108,7 +80,7 @@ export async function fetchGoogleDirectionsTransitDuration({
     return {
       ok: false,
       message: error?.message || "",
-      reason: "directions_request_failed",
+      reason: "directions_function_failed",
       source: "directions-transit-fallback",
     };
   }
