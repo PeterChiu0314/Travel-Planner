@@ -153,7 +153,7 @@ test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
     toItem,
   });
 
-  expect(result).toEqual({ ok: true, durationMinutes: 26, durationSource: "routes.duration" });
+  expect(result).toEqual({ ok: true, durationMinutes: 26, durationSource: "routes.duration", source: "routes" });
   expect(calls).toHaveLength(1);
   expect(calls[0].url).toContain("routes.googleapis.com/directions/v2:computeRoutes");
   expect(calls[0].options.method).toBe("POST");
@@ -166,15 +166,50 @@ test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
 });
 
 test("Phase 5.7a fetches transit debug Routes with expanded field mask", async () => {
+  const originalDebug = console.debug;
+  const calls = [];
+  let result;
+  console.debug = () => {};
+  try {
+    result = await fetchGoogleRoutesDuration({
+      apiKey: "fake-key",
+      debugRoutes: true,
+      fetchImpl: async (url, options) => {
+        calls.push({ options, url });
+        return {
+          ok: true,
+          json: async () => ({ routes: [{ legs: [{ duration: "1260s" }] }] }),
+        };
+      },
+      fromItem,
+      mode: "transit",
+      toItem,
+    });
+  } finally {
+    console.debug = originalDebug;
+  }
+
+  expect(result).toEqual({ ok: true, durationMinutes: 21, durationSource: "routes.legs.duration", source: "routes" });
+  expect(calls[0].options.headers["X-Goog-FieldMask"]).toBe("*");
+  expect(JSON.parse(calls[0].options.body).departureTime).toBe("2026-07-10T12:00:00+09:00");
+});
+
+test("Phase 5.7a falls back to Directions only when transit Routes has no duration", async () => {
   const calls = [];
   const result = await fetchGoogleRoutesDuration({
     apiKey: "fake-key",
-    debugRoutes: true,
     fetchImpl: async (url, options) => {
       calls.push({ options, url });
+      if (url.includes("directions/v2:computeRoutes")) {
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
       return {
         ok: true,
-        json: async () => ({ routes: [{ legs: [{ duration: "1260s" }] }] }),
+        status: 200,
+        json: async () => ({
+          routes: [{ legs: [{ duration: { text: "25 分鐘", value: 1500 }, steps: [{ ignored: true }] }] }],
+          status: "OK",
+        }),
       };
     },
     fromItem,
@@ -182,9 +217,112 @@ test("Phase 5.7a fetches transit debug Routes with expanded field mask", async (
     toItem,
   });
 
-  expect(result).toEqual({ ok: true, durationMinutes: 21, durationSource: "routes.legs.duration" });
-  expect(calls[0].options.headers["X-Goog-FieldMask"]).toBe("*");
-  expect(JSON.parse(calls[0].options.body).departureTime).toBe("2026-07-10T12:00:00+09:00");
+  expect(result).toEqual({
+    ok: true,
+    durationMinutes: 25,
+    routesLength: 1,
+    source: "directions-transit-fallback",
+    status: "OK",
+  });
+  expect(calls).toHaveLength(2);
+  expect(calls[1].url).toContain("maps.googleapis.com/maps/api/directions/json");
+  expect(new URL(calls[1].url).searchParams.get("mode")).toBe("transit");
+  expect(new URL(calls[1].url).searchParams.get("departure_time")).toBe("now");
+});
+
+test("Phase 5.7a does not call Directions fallback when transit Routes has duration", async () => {
+  const calls = [];
+  const result = await fetchGoogleRoutesDuration({
+    apiKey: "fake-key",
+    fetchImpl: async (url, options) => {
+      calls.push({ options, url });
+      return { ok: true, status: 200, json: async () => ({ routes: [{ duration: "600s" }] }) };
+    },
+    fromItem,
+    mode: "transit",
+    toItem,
+  });
+
+  expect(result).toMatchObject({ ok: true, durationMinutes: 10, source: "routes" });
+  expect(calls).toHaveLength(1);
+});
+
+test("Phase 5.7a does not call Directions fallback for drive or walk missing duration", async () => {
+  for (const mode of ["driving", "walking"]) {
+    const calls = [];
+    const result = await fetchGoogleRoutesDuration({
+      apiKey: "fake-key",
+      fetchImpl: async (url, options) => {
+        calls.push({ options, url });
+        return { ok: true, status: 200, json: async () => ({}) };
+      },
+      fromItem,
+      mode,
+      toItem,
+    });
+
+    expect(result).toEqual({ ok: false, errorCode: "missing_duration", source: "routes" });
+    expect(calls).toHaveLength(1);
+  }
+});
+
+test("Phase 5.7a does not call Directions fallback when Routes request fails", async () => {
+  const calls = [];
+  const result = await fetchGoogleRoutesDuration({
+    apiKey: "fake-key",
+    fetchImpl: async (url, options) => {
+      calls.push({ options, url });
+      return {
+        ok: false,
+        status: 403,
+        json: async () => ({ error: { message: "denied", status: "PERMISSION_DENIED" } }),
+      };
+    },
+    fromItem,
+    mode: "transit",
+    toItem,
+  });
+
+  expect(result).toMatchObject({ ok: false, errorCode: "routes_request_failed", source: "routes", status: 403 });
+  expect(calls).toHaveLength(1);
+});
+
+test("Phase 5.7a debug summary reports fallback without API key", async () => {
+  const originalDebug = console.debug;
+  const logs = [];
+  console.debug = (...args) => logs.push(args);
+  try {
+    await fetchGoogleRoutesDuration({
+      apiKey: "fake-key",
+      debugRoutes: true,
+      fetchImpl: async (url) => {
+        if (url.includes("directions/v2:computeRoutes")) {
+          return { ok: true, status: 200, json: async () => ({}) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ routes: [{ legs: [{ duration: { value: 900 } }] }], status: "OK" }),
+        };
+      },
+      fromItem,
+      mode: "transit",
+      toItem,
+    });
+  } finally {
+    console.debug = originalDebug;
+  }
+
+  expect(logs).toHaveLength(1);
+  expect(logs[0][0]).toBe("[Routes debug]");
+  expect(logs[0][1]).toMatchObject({
+    fallbackAttempted: true,
+    fallbackSource: "directions",
+    finalDurationMinutes: 15,
+    finalSource: "directions-transit-fallback",
+    travelMode: "TRANSIT",
+  });
+  expect(JSON.stringify(logs)).not.toContain("fake-key");
 });
 
 test("Phase 5.7a normalizes transit duration fallback fields", () => {

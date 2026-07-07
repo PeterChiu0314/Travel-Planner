@@ -5,6 +5,7 @@ import {
   GOOGLE_ROUTES_TRANSIT_DEBUG_FIELD_MASK,
   normalizeGoogleRoutesTravelMode,
 } from "./googleRoutesConfig.js";
+import { fetchGoogleDirectionsTransitDuration } from "./googleDirectionsAdapter.js";
 
 const TRANSIT_ALLOWED_TRAVEL_MODES = Object.freeze({
   bus: "BUS",
@@ -67,35 +68,41 @@ function isRoutesDebugEnabled() {
   return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debugRoutes") === "1";
 }
 
-function summarizeRoutesRequest(request) {
-  const body = request?.body || {};
+function summarizeDirectionsResult(result) {
+  if (!result) return null;
   return {
-    allowedTravelModes: body.transitPreferences?.allowedTravelModes || null,
-    departureTime: body.departureTime || "",
-    fieldMask: request?.fieldMask || "",
-    hasDepartureTime: Boolean(body.departureTime),
-    hasRouteModifiers: Boolean(body.routeModifiers),
-    hasRoutingPreference: Boolean(body.routingPreference || body.transitPreferences?.routingPreference),
-    travelMode: body.travelMode || "",
+    hasDuration: Boolean(result.ok),
+    reason: result.reason || "",
+    routesLength: result.routesLength ?? 0,
+    status: result.status || "",
   };
 }
 
-function summarizeRoutesResponse(response, data) {
-  const normalized = normalizeGoogleRoutesDuration(data || {});
-  return {
-    durationSource: normalized.ok ? normalized.durationSource : "",
-    errorMessage: data?.error?.message || "",
-    errorStatus: data?.error?.status || "",
-    routesLength: Array.isArray(data?.routes) ? data.routes.length : 0,
-    status: response?.status || null,
-  };
-}
-
-function debugRoutesRequestResponse({ data, request, response }) {
-  if (!isRoutesDebugEnabled()) return;
+function debugRoutesRequestResponse({
+  data,
+  debugRoutes,
+  directionsResult = null,
+  fallbackAttempted = false,
+  finalResult = null,
+  request,
+  response,
+}) {
+  if (!debugRoutes) return;
+  const routesResult = normalizeGoogleRoutesDuration(data || {});
   console.debug("[Routes debug]", {
-    request: summarizeRoutesRequest(request),
-    response: summarizeRoutesResponse(response, data),
+    directions: summarizeDirectionsResult(directionsResult),
+    fallbackAttempted,
+    fallbackSource: fallbackAttempted ? "directions" : "",
+    finalDurationMinutes: finalResult?.durationMinutes || null,
+    finalSource: finalResult?.source || "none",
+    routesApi: {
+      errorMessage: data?.error?.message || "",
+      errorStatus: data?.error?.status || "",
+      hasDuration: Boolean(routesResult.ok),
+      routesLength: Array.isArray(data?.routes) ? data.routes.length : 0,
+      status: response?.status || null,
+    },
+    travelMode: request?.body?.travelMode || "",
   });
 }
 
@@ -192,26 +199,75 @@ export async function fetchGoogleRoutesDuration({
   const request = buildGoogleRoutesDurationRequest({ debugRoutes, fromItem, mode, routeOptions, toItem });
   if (!request.ok) return request;
 
-  const response = await fetchImpl(endpoint, {
-    body: JSON.stringify(request.body),
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": normalizedKey,
-      "X-Goog-FieldMask": request.fieldMask,
-    },
-    method: "POST",
-  });
-
-  const data = await readRoutesJson(response);
-  debugRoutesRequestResponse({ data, request, response });
-
-  if (!response?.ok) {
+  let response;
+  try {
+    response = await fetchImpl(endpoint, {
+      body: JSON.stringify(request.body),
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": normalizedKey,
+        "X-Goog-FieldMask": request.fieldMask,
+      },
+      method: "POST",
+    });
+  } catch (error) {
     return {
       ok: false,
       errorCode: "routes_request_failed",
-      message: data?.error?.message || "",
-      status: response?.status || null,
+      message: error?.message || "",
+      source: "routes",
     };
   }
-  return normalizeGoogleRoutesDuration(data);
+
+  const data = await readRoutesJson(response);
+
+  if (!response?.ok) {
+    const result = {
+      ok: false,
+      errorCode: "routes_request_failed",
+      message: data?.error?.message || "",
+      source: "routes",
+      status: response?.status || null,
+    };
+    debugRoutesRequestResponse({ data, debugRoutes, finalResult: result, request, response });
+    return result;
+  }
+  const routesResult = normalizeGoogleRoutesDuration(data);
+  if (routesResult.ok) {
+    const result = { ...routesResult, source: "routes" };
+    debugRoutesRequestResponse({ data, debugRoutes, finalResult: result, request, response });
+    return result;
+  }
+
+  const shouldFallback = request.body.travelMode === "TRANSIT";
+  if (!shouldFallback) {
+    const result = { ...routesResult, source: "routes" };
+    debugRoutesRequestResponse({ data, debugRoutes, finalResult: result, request, response });
+    return result;
+  }
+
+  const directionsResult = await fetchGoogleDirectionsTransitDuration({
+    apiKey: normalizedKey,
+    fetchImpl,
+    fromItem,
+    toItem,
+  });
+  const result = directionsResult.ok
+    ? directionsResult
+    : {
+        ok: false,
+        errorCode: "missing_duration",
+        reason: directionsResult.reason || routesResult.errorCode,
+        source: "directions-transit-fallback",
+      };
+  debugRoutesRequestResponse({
+    data,
+    debugRoutes,
+    directionsResult,
+    fallbackAttempted: true,
+    finalResult: result,
+    request,
+    response,
+  });
+  return result;
 }
