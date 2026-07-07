@@ -8,8 +8,8 @@ import {
   normalizeGoogleDirectionsTransitDuration,
 } from "../src/lib/googleDirectionsAdapter.js";
 
-const fromItem = { id: "from", latitude: 34.9923359, location_name: "山科站", longitude: 135.8172561 };
-const toItem = { id: "to", latitude: 35.0036625, longitude: 135.7785487, title: "八坂神社" };
+const fromItem = { id: "from", latitude: 34.9923359, longitude: 135.8172561, provider_place_id: "yamashina-station-place" };
+const toItem = { id: "to", latitude: 35.0036625, longitude: 135.7785487, placeId: "yasaka-shrine-place" };
 const repoRoot = process.cwd();
 
 function readRepoFile(relativePath) {
@@ -26,9 +26,9 @@ test("Phase 5.7a Directions fallback builds Supabase Edge Function request", () 
     ok: true,
     body: {
       destination: { latitude: 35.0036625, longitude: 135.7785487 },
-      destinationLabel: "八坂神社",
+      destinationLabel: "place_id:yasaka-shrine-place",
       origin: { latitude: 34.9923359, longitude: 135.8172561 },
-      originLabel: "山科站",
+      originLabel: "place_id:yamashina-station-place",
     },
     functionName: "google-directions-transit-duration",
     source: "directions-transit-fallback",
@@ -105,9 +105,9 @@ test("Phase 5.7a Directions fallback invokes Supabase function without Google AP
       options: {
         body: {
           origin: { latitude: 34.9923359, longitude: 135.8172561 },
-          originLabel: "山科站",
+          originLabel: "place_id:yamashina-station-place",
           destination: { latitude: 35.0036625, longitude: 135.7785487 },
-          destinationLabel: "八坂神社",
+          destinationLabel: "place_id:yasaka-shrine-place",
         },
       },
     },

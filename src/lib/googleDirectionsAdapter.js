@@ -14,9 +14,17 @@ function latLngLiteral(item) {
   return { latitude, longitude };
 }
 
-function locationLabel(item) {
-  const value = item?.location_name || item?.location || item?.title || item?.name || "";
-  return typeof value === "string" ? value.trim() : "";
+function directionsPlaceId(item) {
+  const value =
+    item?.provider_place_id ||
+    item?.map_provider_place_id ||
+    item?.providerPlaceId ||
+    item?.placeId ||
+    item?.place_id ||
+    "";
+  const placeId = typeof value === "string" ? value.trim() : "";
+  if (!placeId) return "";
+  return placeId.startsWith("place_id:") ? placeId : `place_id:${placeId}`;
 }
 
 export function buildGoogleDirectionsTransitDurationRequest({ fromItem, toItem } = {}) {
@@ -30,9 +38,9 @@ export function buildGoogleDirectionsTransitDurationRequest({ fromItem, toItem }
     ok: true,
     body: {
       destination,
-      destinationLabel: locationLabel(toItem) || null,
+      destinationLabel: directionsPlaceId(toItem) || null,
       origin,
-      originLabel: locationLabel(fromItem) || null,
+      originLabel: directionsPlaceId(fromItem) || null,
     },
     functionName: GOOGLE_DIRECTIONS_TRANSIT_FUNCTION,
     source: "directions-transit-fallback",

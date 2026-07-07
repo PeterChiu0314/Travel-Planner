@@ -8,8 +8,8 @@ import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "..
 
 const fromItem = { id: "from", latitude: 35.0116, longitude: 135.7681 };
 const toItem = { id: "to", latitude: 35.0037, longitude: 135.7786 };
-const fromStationItem = { id: "from", latitude: 35.0116, location_name: "山科站", longitude: 135.7681 };
-const toShrineItem = { id: "to", latitude: 35.0037, longitude: 135.7786, title: "八坂神社" };
+const fromStationItem = { id: "from", latitude: 35.0116, longitude: 135.7681, provider_place_id: "yamashina-station-place" };
+const toShrineItem = { id: "to", latitude: 35.0037, longitude: 135.7786, placeId: "yasaka-shrine-place" };
 
 test("Phase 5.7a builds Google Maps navigation URL from endpoint coordinates", () => {
   expect(travelModeForTransportCategory("jr")).toBe("transit");
@@ -233,9 +233,9 @@ test("Phase 5.7a falls back to Directions only when transit Routes has no durati
       options: {
         body: {
           origin: { latitude: 35.0116, longitude: 135.7681 },
-          originLabel: "山科站",
+          originLabel: "place_id:yamashina-station-place",
           destination: { latitude: 35.0037, longitude: 135.7786 },
-          destinationLabel: "八坂神社",
+          destinationLabel: "place_id:yasaka-shrine-place",
         },
       },
     },
