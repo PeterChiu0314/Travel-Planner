@@ -11175,26 +11175,28 @@ function ItineraryTimeline({
         </div>
         {isEditorRouteQueryMode ? (
           <div className="transport-editor-query-mode">
-            <p className={editorRoutePanel.error ? "field-inline-error transport-editor-query-status" : "transport-editor-query-status"}>
-              {editorRouteStatusText}
-            </p>
-            <div className="transport-route-mode-row" role="group" aria-label="交通方式">
-              {[
-                ["transit", "🚇", "大眾運輸"],
-                ["driving", "🚗", "自駕"],
-                ["walking", "🚶", "步行"],
-              ].map(([mode, icon, label]) => (
-                <button
-                  aria-label={label}
-                  className={`mini-button transport-route-mode-button${editorRouteMode === mode ? " active" : ""}`}
-                  key={mode}
-                  title={label}
-                  type="button"
-                  onClick={() => setEditorRouteMode(mode)}
-                >
-                  <span aria-hidden="true">{icon}</span>
-                </button>
-              ))}
+            <div className="transport-route-mode-status-row">
+              <div className="transport-route-mode-row" role="group" aria-label="交通方式">
+                {[
+                  ["transit", "🚇", "大眾運輸"],
+                  ["driving", "🚗", "自駕"],
+                  ["walking", "🚶", "步行"],
+                ].map(([mode, icon, label]) => (
+                  <button
+                    aria-label={label}
+                    className={`mini-button transport-route-mode-button${editorRouteMode === mode ? " active" : ""}`}
+                    key={mode}
+                    title={label}
+                    type="button"
+                    onClick={() => setEditorRouteMode(mode)}
+                  >
+                    <span aria-hidden="true">{icon}</span>
+                  </button>
+                ))}
+              </div>
+              <p className={editorRoutePanel.error ? "field-inline-error transport-editor-query-status" : "transport-editor-query-status"}>
+                {editorRouteStatusText}
+              </p>
             </div>
             <div className="transport-route-options-row">
               <span>選項：</span>
