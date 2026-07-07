@@ -61,16 +61,6 @@ function buildDriveRouteModifiers(routeOptions) {
   return Object.keys(modifiers).length ? modifiers : null;
 }
 
-function getIsoDepartureTime(now) {
-  const value = typeof now === "function" ? now() : now;
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === "string") {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
-  }
-  return new Date().toISOString();
-}
-
 function isRoutesDebugEnabled() {
   return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debugRoutes") === "1";
 }
@@ -115,7 +105,7 @@ async function readRoutesJson(response) {
   }
 }
 
-export function buildGoogleRoutesDurationRequest({ fromItem, mode = "transit", now = () => new Date(), routeOptions = [], toItem } = {}) {
+export function buildGoogleRoutesDurationRequest({ fromItem, mode = "transit", routeOptions = [], toItem } = {}) {
   const origin = latLngLiteral(fromItem);
   const destination = latLngLiteral(toItem);
   if (!origin || !destination) {
@@ -130,7 +120,6 @@ export function buildGoogleRoutesDurationRequest({ fromItem, mode = "transit", n
   };
 
   if (travelMode === "TRANSIT") {
-    body.departureTime = getIsoDepartureTime(now);
     const transitPreferences = buildTransitPreferences(routeOptions);
     if (transitPreferences) body.transitPreferences = transitPreferences;
   }
@@ -184,7 +173,6 @@ export async function fetchGoogleRoutesDuration({
   fetchImpl = globalThis.fetch,
   fromItem,
   mode = "transit",
-  now = () => new Date(),
   routeOptions = [],
   toItem,
 } = {}) {
@@ -192,7 +180,7 @@ export async function fetchGoogleRoutesDuration({
   if (!normalizedKey) return { ok: false, errorCode: "missing_api_key" };
   if (typeof fetchImpl !== "function") return { ok: false, errorCode: "fetch_unavailable" };
 
-  const request = buildGoogleRoutesDurationRequest({ fromItem, mode, now, routeOptions, toItem });
+  const request = buildGoogleRoutesDurationRequest({ fromItem, mode, routeOptions, toItem });
   if (!request.ok) return request;
 
   const response = await fetchImpl(endpoint, {
