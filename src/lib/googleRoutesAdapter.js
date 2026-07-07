@@ -61,6 +61,16 @@ function buildDriveRouteModifiers(routeOptions) {
   return Object.keys(modifiers).length ? modifiers : null;
 }
 
+function getIsoDepartureTime(now) {
+  const value = typeof now === "function" ? now() : now;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  return new Date().toISOString();
+}
+
 function isRoutesDebugEnabled() {
   return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debugRoutes") === "1";
 }
@@ -69,7 +79,9 @@ function summarizeRoutesRequest(request) {
   const body = request?.body || {};
   return {
     allowedTravelModes: body.transitPreferences?.allowedTravelModes || null,
+    departureTime: body.departureTime || "",
     fieldMask: request?.fieldMask || "",
+    hasDepartureTime: Boolean(body.departureTime),
     hasRouteModifiers: Boolean(body.routeModifiers),
     hasRoutingPreference: Boolean(body.routingPreference || body.transitPreferences?.routingPreference),
     travelMode: body.travelMode || "",
@@ -79,6 +91,7 @@ function summarizeRoutesRequest(request) {
 function summarizeRoutesResponse(response, data) {
   return {
     errorMessage: data?.error?.message || "",
+    errorStatus: data?.error?.status || "",
     routesLength: Array.isArray(data?.routes) ? data.routes.length : 0,
     status: response?.status || null,
   };
@@ -100,7 +113,7 @@ async function readRoutesJson(response) {
   }
 }
 
-export function buildGoogleRoutesDurationRequest({ fromItem, mode = "transit", routeOptions = [], toItem } = {}) {
+export function buildGoogleRoutesDurationRequest({ fromItem, mode = "transit", now = () => new Date(), routeOptions = [], toItem } = {}) {
   const origin = latLngLiteral(fromItem);
   const destination = latLngLiteral(toItem);
   if (!origin || !destination) {
@@ -115,6 +128,7 @@ export function buildGoogleRoutesDurationRequest({ fromItem, mode = "transit", r
   };
 
   if (travelMode === "TRANSIT") {
+    body.departureTime = getIsoDepartureTime(now);
     const transitPreferences = buildTransitPreferences(routeOptions);
     if (transitPreferences) body.transitPreferences = transitPreferences;
   }
@@ -154,6 +168,7 @@ export async function fetchGoogleRoutesDuration({
   fetchImpl = globalThis.fetch,
   fromItem,
   mode = "transit",
+  now = () => new Date(),
   routeOptions = [],
   toItem,
 } = {}) {
@@ -161,7 +176,7 @@ export async function fetchGoogleRoutesDuration({
   if (!normalizedKey) return { ok: false, errorCode: "missing_api_key" };
   if (typeof fetchImpl !== "function") return { ok: false, errorCode: "fetch_unavailable" };
 
-  const request = buildGoogleRoutesDurationRequest({ fromItem, mode, routeOptions, toItem });
+  const request = buildGoogleRoutesDurationRequest({ fromItem, mode, now, routeOptions, toItem });
   if (!request.ok) return request;
 
   const response = await fetchImpl(endpoint, {

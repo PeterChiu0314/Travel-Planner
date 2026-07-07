@@ -8,6 +8,7 @@ import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "..
 
 const fromItem = { id: "from", latitude: 35.0116, longitude: 135.7681 };
 const toItem = { id: "to", latitude: 35.0037, longitude: 135.7786 };
+const fixedNow = () => new Date("2026-07-07T09:30:00.000Z");
 
 test("Phase 5.7a builds Google Maps navigation URL from endpoint coordinates", () => {
   expect(travelModeForTransportCategory("jr")).toBe("transit");
@@ -55,17 +56,22 @@ test("Phase 5.7a transit Routes request omits allowed travel modes for default s
   const allSelected = buildGoogleRoutesDurationRequest({
     fromItem,
     mode: "transit",
+    now: fixedNow,
     routeOptions: ["公車", "地鐵", "火車", "電車及輕軌電車"],
     toItem,
   });
   const noneSelected = buildGoogleRoutesDurationRequest({
     fromItem,
     mode: "transit",
+    now: fixedNow,
     routeOptions: [],
     toItem,
   });
 
   expect(allSelected.body.travelMode).toBe("TRANSIT");
+  expect(allSelected.body.departureTime).toBe("2026-07-07T09:30:00.000Z");
+  expect(noneSelected.body.departureTime).toBe("2026-07-07T09:30:00.000Z");
+  expect(new Date(allSelected.body.departureTime).toISOString()).toBe(allSelected.body.departureTime);
   expect(allSelected.body.transitPreferences).toBeUndefined();
   expect(noneSelected.body.transitPreferences).toBeUndefined();
   expect(allSelected.body.routingPreference).toBeUndefined();
@@ -76,6 +82,7 @@ test("Phase 5.7a transit Routes request sends allowed travel modes only for part
   const request = buildGoogleRoutesDurationRequest({
     fromItem,
     mode: "transit",
+    now: fixedNow,
     routeOptions: ["公車", "火車"],
     toItem,
   });
@@ -84,6 +91,7 @@ test("Phase 5.7a transit Routes request sends allowed travel modes only for part
     origin: { location: { latLng: { latitude: 35.0116, longitude: 135.7681 } } },
     destination: { location: { latLng: { latitude: 35.0037, longitude: 135.7786 } } },
     travelMode: "TRANSIT",
+    departureTime: "2026-07-07T09:30:00.000Z",
     transitPreferences: {
       allowedTravelModes: ["BUS", "TRAIN"],
     },
@@ -96,11 +104,13 @@ test("Phase 5.7a drive Routes request may send route modifiers", () => {
   const request = buildGoogleRoutesDurationRequest({
     fromItem,
     mode: "driving",
+    now: fixedNow,
     routeOptions: ["避開高速", "避開收費", "避開渡輪"],
     toItem,
   });
 
   expect(request.body.travelMode).toBe("DRIVE");
+  expect(request.body.departureTime).toBeUndefined();
   expect(request.body.routeModifiers).toEqual({
     avoidFerries: true,
     avoidHighways: true,
@@ -122,6 +132,7 @@ test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
     },
     fromItem,
     mode: "transit",
+    now: fixedNow,
     toItem,
   });
 
@@ -131,6 +142,7 @@ test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
   expect(calls[0].options.method).toBe("POST");
   expect(calls[0].options.headers["X-Goog-FieldMask"]).toBe("routes.duration");
   expect(calls[0].options.headers["X-Goog-Api-Key"]).toBe("fake-key");
+  expect(JSON.parse(calls[0].options.body).departureTime).toBe("2026-07-07T09:30:00.000Z");
   expect(calls[0].options.body).not.toMatch(/polyline|encodedPolyline|computeAlternativeRoutes/i);
 });
 
