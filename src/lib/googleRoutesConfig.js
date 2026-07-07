@@ -8,7 +8,10 @@ export const GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY =
   "routes.duration,routes.staticDuration";
 
 export const GOOGLE_ROUTES_TRANSIT_DEBUG_FIELD_MASK =
-  "routes.duration,routes.localizedValues,routes.legs,routes.travelAdvisory";
+  "*";
+
+export const GOOGLE_ROUTES_TRANSIT_DEBUG_DEPARTURE_TIME =
+  "2026-07-10T12:00:00+09:00";
 
 export const GOOGLE_ROUTES_ENDPOINT = "https://routes.googleapis.com/directions/v2:computeRoutes";
 

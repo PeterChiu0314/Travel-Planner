@@ -1,6 +1,7 @@
 import {
   GOOGLE_ROUTES_ENDPOINT,
   GOOGLE_ROUTES_FIELD_MASK_DURATION_ONLY,
+  GOOGLE_ROUTES_TRANSIT_DEBUG_DEPARTURE_TIME,
   GOOGLE_ROUTES_TRANSIT_DEBUG_FIELD_MASK,
   normalizeGoogleRoutesTravelMode,
 } from "./googleRoutesConfig.js";
@@ -121,6 +122,7 @@ export function buildGoogleRoutesDurationRequest({ debugRoutes = isRoutesDebugEn
   };
 
   if (travelMode === "TRANSIT") {
+    if (debugRoutes) body.departureTime = GOOGLE_ROUTES_TRANSIT_DEBUG_DEPARTURE_TIME;
     const transitPreferences = buildTransitPreferences(routeOptions);
     if (transitPreferences) body.transitPreferences = transitPreferences;
   }

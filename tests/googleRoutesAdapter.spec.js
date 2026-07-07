@@ -103,8 +103,8 @@ test("Phase 5.7a transit debug Routes request uses expanded field mask", () => {
   });
 
   expect(request.body.travelMode).toBe("TRANSIT");
-  expect(request.fieldMask).toBe("routes.duration,routes.localizedValues,routes.legs,routes.travelAdvisory");
-  expect(request.body.departureTime).toBeUndefined();
+  expect(request.fieldMask).toBe("*");
+  expect(request.body.departureTime).toBe("2026-07-10T12:00:00+09:00");
 });
 
 test("Phase 5.7a drive Routes request may send route modifiers", () => {
@@ -183,10 +183,8 @@ test("Phase 5.7a fetches transit debug Routes with expanded field mask", async (
   });
 
   expect(result).toEqual({ ok: true, durationMinutes: 21, durationSource: "routes.legs.duration" });
-  expect(calls[0].options.headers["X-Goog-FieldMask"]).toBe(
-    "routes.duration,routes.localizedValues,routes.legs,routes.travelAdvisory",
-  );
-  expect(JSON.parse(calls[0].options.body).departureTime).toBeUndefined();
+  expect(calls[0].options.headers["X-Goog-FieldMask"]).toBe("*");
+  expect(JSON.parse(calls[0].options.body).departureTime).toBe("2026-07-10T12:00:00+09:00");
 });
 
 test("Phase 5.7a normalizes transit duration fallback fields", () => {
