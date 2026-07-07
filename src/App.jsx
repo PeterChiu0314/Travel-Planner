@@ -11054,6 +11054,7 @@ function ItineraryTimeline({
     const editorRouteItem = { ...form, id: editingId || "transport-editor" };
     const { fromItem, toItem } = transportEndpointItems(editorRouteItem);
     const editorRoutePanel = routeQueryPanelState(editorRouteItem);
+    const isEditorRouteQueryMode = editorRoutePanel.isOpen;
     const editorRouteMode = editorRoutePanel.mode || travelModeForTransportCategory(category);
     const editorRouteOptionsByMode = {
       transit: ["最佳路線", "少轉乘", "少步行"],
@@ -11078,12 +11079,31 @@ function ItineraryTimeline({
     });
     const canUseEditorTransportEndpoints = Boolean(editorNavigationUrl);
     const canQueryEditorTransportRoute = canUseEditorTransportEndpoints && transportRoutesConfig.canQueryRoutes;
+    const editorHeadingTitle = isEditorRouteQueryMode ? "查詢交通" : transportCardTitle(form) || "新增交通資訊";
+    const transportCategoryByRouteMode = {
+      driving: "drive",
+      transit: "train",
+      walking: "walk",
+    };
+    const fromRouteLabel = fromItem?.location_name || fromItem?.location || fromItem?.title || "";
+    const toRouteLabel = toItem?.location_name || toItem?.location || toItem?.title || "";
     function openEditorRoutePanel() {
       patchRouteQueryPanel(editorRouteItem.id, {
+        durationMinutes: null,
+        error: "",
         isOpen: true,
-        mode: editorRouteMode,
+        mode: editorRouteMode || "transit",
         selectedOptions: selectedEditorRouteOptions,
-        status: editorRoutePanel.status || "idle",
+        status: "idle",
+      });
+    }
+    function cancelEditorRoutePanel() {
+      patchRouteQueryPanel(editorRouteItem.id, {
+        durationMinutes: null,
+        error: "",
+        isOpen: false,
+        mode: travelModeForTransportCategory(category),
+        status: "idle",
       });
     }
     function closeEditorRoutePanel() {
@@ -11091,10 +11111,12 @@ function ItineraryTimeline({
     }
     function setEditorRouteMode(mode) {
       patchRouteQueryPanel(editorRouteItem.id, {
+        durationMinutes: null,
         error: "",
         isOpen: true,
         mode,
         selectedOptions: ["最佳路線"],
+        status: "idle",
       });
     }
     function toggleEditorRouteOption(option) {
@@ -11102,8 +11124,11 @@ function ItineraryTimeline({
         ? selectedEditorRouteOptions.filter((item) => item !== option)
         : [...selectedEditorRouteOptions, option];
       patchRouteQueryPanel(editorRouteItem.id, {
+        durationMinutes: null,
+        error: "",
         isOpen: true,
         selectedOptions: nextOptions.length ? nextOptions : ["最佳路線"],
+        status: "idle",
       });
     }
     async function queryEditorTransportRouteDuration() {
@@ -11111,7 +11136,16 @@ function ItineraryTimeline({
     }
     function applyEditorRouteDuration() {
       if (!editorRoutePanel.durationMinutes) return;
-      setForm({ ...form, transport_duration_minutes: String(editorRoutePanel.durationMinutes) });
+      const nextCategory = transportCategoryByRouteMode[editorRouteMode] || category;
+      const fallbackName = fromRouteLabel && toRouteLabel ? `${fromRouteLabel} → ${toRouteLabel}` : form.transport_name;
+      const nextName = form.transport_name?.trim() ? form.transport_name : fallbackName;
+      setForm({
+        ...form,
+        transport_category: nextCategory,
+        transport_duration_minutes: String(editorRoutePanel.durationMinutes),
+        transport_name: nextName,
+        title: nextName,
+      });
       closeEditorRoutePanel();
     }
     return (
@@ -11137,81 +11171,13 @@ function ItineraryTimeline({
           <span className="transport-icon" aria-hidden="true">
             {transportCategoryMeta(category).icon}
           </span>
-          <strong>{transportCardTitle(form) || "新增交通資訊"}</strong>
+          <strong>{editorHeadingTitle}</strong>
         </div>
-        <div className="field-group form-grid wide transport-editor-route-row">
-          <label>
-            交通類別
-            <select
-              name="transport_category"
-              value={category}
-              onChange={(event) => setForm({ ...form, transport_category: event.target.value })}
-            >
-              {transportCategories.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            交通時間
-            <input
-              autoComplete="off"
-              min="1"
-              name="transport_duration_minutes"
-              placeholder="25"
-              required
-              step="1"
-              type="number"
-              value={form.transport_duration_minutes}
-              onChange={(event) => setForm({ ...form, transport_duration_minutes: event.target.value })}
-            />
-          </label>
-          {renderTransportNavigationControl(editorNavigationUrl, "mini-button transport-navigation-button transport-editor-navigation-button")}
-        </div>
-        {(editorRoutePanel.durationMinutes || editorRoutePanel.error) && !editorRoutePanel.isOpen ? (
-          <div className="transport-editor-route-status">
-            {editorRoutePanel.durationMinutes ? <span>約 {formatDurationMinutes(editorRoutePanel.durationMinutes)}</span> : null}
-            {editorRoutePanel.error ? <span className="field-inline-error">{editorRoutePanel.error}</span> : null}
-          </div>
-        ) : null}
-        <label className="full-label">
-          交通名稱
-          <input
-            autoComplete="off"
-            maxLength="12"
-            name="transport_name"
-            placeholder="JR奈良線"
-            required
-            value={form.transport_name}
-            onChange={(event) => setForm({ ...form, transport_name: event.target.value, title: event.target.value })}
-          />
-        </label>
-        <label className="full-label">
-          備註
-          <textarea
-            autoComplete="off"
-            name="transport_note"
-            rows="3"
-            value={form.transport_note}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                transport_note: event.target.value,
-                transportation_note: event.target.value,
-                note: event.target.value,
-                description: event.target.value,
-              })
-            }
-          />
-        </label>
-        {editorRoutePanel.isOpen ? (
-          <div className="transport-route-query-panel transport-editor-route-query-panel">
-            <div className="transport-route-query-heading">
-              <strong>查詢交通</strong>
-              <span className={editorRoutePanel.error ? "field-inline-error" : ""}>{editorRouteStatusText}</span>
-            </div>
+        {isEditorRouteQueryMode ? (
+          <div className="transport-editor-query-mode">
+            <p className={editorRoutePanel.error ? "field-inline-error transport-editor-query-status" : "transport-editor-query-status"}>
+              {editorRouteStatusText}
+            </p>
             <div className="transport-route-mode-row" role="group" aria-label="交通方式">
               {[
                 ["transit", "🚇", "大眾運輸"],
@@ -11246,7 +11212,7 @@ function ItineraryTimeline({
               </div>
             </div>
             <div className="transport-route-query-actions">
-              <button className="ghost-button compact transport-editor-action-button" type="button" onClick={closeEditorRoutePanel}>
+              <button className="ghost-button compact transport-editor-action-button" type="button" onClick={cancelEditorRoutePanel}>
                 取消
               </button>
               <button
@@ -11267,20 +11233,92 @@ function ItineraryTimeline({
               </button>
             </div>
           </div>
-        ) : null}
-        <div className="transport-editor-footer-actions">
-          <button className="ghost-button compact transport-editor-action-button" type="button" onClick={openEditorRoutePanel}>
-            查詢交通
-          </button>
-          <div className="transport-editor-save-actions">
-            <button className="primary-button compact transport-editor-action-button" disabled={!canMutateThisDay} type="submit">
-              保存
-            </button>
-            <button className="ghost-button compact transport-editor-action-button" type="button" onClick={() => closeEditor()}>
-              取消
-            </button>
+        ) : (
+          <div className="transport-editor-edit-mode">
+            <div className="field-group form-grid wide transport-editor-route-row">
+              <label>
+                交通類別
+                <select
+                  name="transport_category"
+                  value={category}
+                  onChange={(event) => {
+                    const nextCategory = event.target.value;
+                    setForm({ ...form, transport_category: nextCategory });
+                    patchRouteQueryPanel(editorRouteItem.id, {
+                      durationMinutes: null,
+                      error: "",
+                      mode: travelModeForTransportCategory(nextCategory),
+                      status: "idle",
+                    });
+                  }}
+                >
+                  {transportCategories.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                交通時間
+                <input
+                  autoComplete="off"
+                  min="1"
+                  name="transport_duration_minutes"
+                  placeholder="25"
+                  required
+                  step="1"
+                  type="number"
+                  value={form.transport_duration_minutes}
+                  onChange={(event) => setForm({ ...form, transport_duration_minutes: event.target.value })}
+                />
+              </label>
+              {renderTransportNavigationControl(editorNavigationUrl, "mini-button transport-navigation-button transport-editor-navigation-button")}
+            </div>
+            <label className="full-label">
+              交通名稱
+              <input
+                autoComplete="off"
+                name="transport_name"
+                placeholder="JR奈良線"
+                required
+                value={form.transport_name}
+                onChange={(event) => setForm({ ...form, transport_name: event.target.value, title: event.target.value })}
+              />
+            </label>
+            <label className="full-label">
+              備註
+              <textarea
+                autoComplete="off"
+                name="transport_note"
+                rows="3"
+                value={form.transport_note}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    transport_note: event.target.value,
+                    transportation_note: event.target.value,
+                    note: event.target.value,
+                    description: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <div className="transport-editor-footer-actions">
+              <button className="ghost-button compact transport-editor-action-button" type="button" onClick={openEditorRoutePanel}>
+                查詢交通
+              </button>
+              <div className="transport-editor-save-actions">
+                <button className="primary-button compact transport-editor-action-button" disabled={!canMutateThisDay} type="submit">
+                  保存
+                </button>
+                <button className="ghost-button compact transport-editor-action-button" type="button" onClick={() => closeEditor()}>
+                  取消
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </form>
     );
   }

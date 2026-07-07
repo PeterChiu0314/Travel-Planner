@@ -3126,12 +3126,14 @@ textarea {
 .transport-card > .transport-card-main {
   grid-column: 2;
   justify-self: start;
+  width: 100%;
 }
 
 .transport-card-nav {
   grid-column: 3;
   grid-row: 1;
   justify-self: end;
+  min-width: max-content;
 }
 
 .transport-card.expanded > .transport-card-nav {
@@ -3161,6 +3163,7 @@ textarea {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .transport-card-main strong,
@@ -3310,9 +3313,11 @@ textarea {
 
 .transport-card-actions {
   align-self: start;
+  flex-shrink: 0;
   grid-column: 3;
   grid-row: 1;
   justify-self: end;
+  min-width: max-content;
 }
 
 .transport-editor-route-row {
@@ -3341,11 +3346,14 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: auto;
+  padding-top: 12px;
 }
 
 .transport-editor-form {
   border-color: var(--mint);
+  display: grid;
+  min-height: 424px;
   box-shadow: inset 4px 0 0 var(--mint);
 }
 
@@ -3356,10 +3364,26 @@ textarea {
   align-items: center;
   justify-content: stretch;
   margin-bottom: 12px;
+  min-width: 0;
 }
 
 .transport-editor-heading .transport-icon {
   justify-self: center;
+}
+
+.transport-editor-edit-mode,
+.transport-editor-query-mode {
+  display: grid;
+  min-height: 330px;
+}
+
+.transport-editor-edit-mode {
+  align-content: start;
+}
+
+.transport-editor-query-mode {
+  align-content: start;
+  gap: 18px;
 }
 
 .transport-editor-save-actions,
@@ -3377,6 +3401,13 @@ textarea {
   padding: 0 14px;
 }
 
+.transport-editor-query-status {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+  margin: 6px 0 2px 82px;
+}
+
 .transport-editor-route-query-panel {
   margin: 12px 0 0;
 }
@@ -3388,6 +3419,7 @@ textarea {
 }
 
 .transport-route-mode-row {
+  margin-left: 82px;
   justify-content: flex-start;
 }
 
@@ -3411,10 +3443,13 @@ textarea {
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
+  margin-left: 82px;
 }
 
 .transport-route-options {
+  display: grid;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .transport-route-options label {
@@ -3426,7 +3461,13 @@ textarea {
 }
 
 .transport-route-query-actions {
+  align-self: end;
   justify-content: flex-end;
+  margin-top: auto;
+}
+
+.transport-card-actions .mini-button {
+  flex: 0 0 auto;
 }
 
 .transport-preview-card {
@@ -5576,6 +5617,34 @@ textarea {
   .form-grid,
   .form-grid.wide {
     grid-template-columns: 1fr;
+  }
+
+  .transport-editor-route-row {
+    grid-template-columns: minmax(0, 1fr) minmax(74px, 0.82fr) 28px;
+  }
+
+  .transport-editor-form {
+    min-height: 408px;
+  }
+
+  .transport-editor-edit-mode,
+  .transport-editor-query-mode {
+    min-height: 314px;
+  }
+
+  .transport-editor-query-status,
+  .transport-route-mode-row,
+  .transport-route-options-row {
+    margin-left: 0;
+  }
+
+  .transport-editor-footer-actions {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .transport-editor-save-actions {
+    margin-left: auto;
   }
 
   .timeline-item,
