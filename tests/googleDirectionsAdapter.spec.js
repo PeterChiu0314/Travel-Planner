@@ -8,8 +8,8 @@ import {
   normalizeGoogleDirectionsTransitDuration,
 } from "../src/lib/googleDirectionsAdapter.js";
 
-const fromItem = { id: "from", latitude: 34.9923359, longitude: 135.8172561 };
-const toItem = { id: "to", latitude: 35.0036625, longitude: 135.7785487 };
+const fromItem = { id: "from", latitude: 34.9923359, location_name: "山科站", longitude: 135.8172561 };
+const toItem = { id: "to", latitude: 35.0036625, longitude: 135.7785487, title: "八坂神社" };
 const repoRoot = process.cwd();
 
 function readRepoFile(relativePath) {
@@ -25,8 +25,10 @@ test("Phase 5.7a Directions fallback builds Supabase Edge Function request", () 
   expect(request).toEqual({
     ok: true,
     body: {
-      origin: { latitude: 34.9923359, longitude: 135.8172561 },
       destination: { latitude: 35.0036625, longitude: 135.7785487 },
+      destinationLabel: "八坂神社",
+      origin: { latitude: 34.9923359, longitude: 135.8172561 },
+      originLabel: "山科站",
     },
     functionName: "google-directions-transit-duration",
     source: "directions-transit-fallback",
@@ -103,7 +105,9 @@ test("Phase 5.7a Directions fallback invokes Supabase function without Google AP
       options: {
         body: {
           origin: { latitude: 34.9923359, longitude: 135.8172561 },
+          originLabel: "山科站",
           destination: { latitude: 35.0036625, longitude: 135.7785487 },
+          destinationLabel: "八坂神社",
         },
       },
     },
@@ -126,6 +130,9 @@ test("Phase 5.7a Directions fallback keeps Google request inside Edge Function",
   expect(edgeFunctionSource).toContain('language: "zh-TW"');
   expect(edgeFunctionSource).toContain('region: "jp"');
   expect(edgeFunctionSource).toContain('source: "directions-transit-fallback"');
+  expect(edgeFunctionSource).toContain('data.status === "ZERO_RESULTS"');
+  expect(edgeFunctionSource).toContain("originLabel && destinationLabel");
+  expect(edgeFunctionSource).toContain("fetchDirections(apiKey, originLabel, destinationLabel)");
   expect(edgeFunctionSource).not.toContain("overview_polyline");
   expect(edgeFunctionSource).not.toContain("steps");
 });

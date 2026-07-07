@@ -33,6 +33,10 @@ function parseLatLng(value: unknown): LatLngLiteral | null {
   return { latitude, longitude };
 }
 
+function parseLabel(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function durationFromDirections(data: Record<string, unknown>) {
   const routes = Array.isArray(data.routes) ? data.routes : [];
   const firstRoute = routes[0] as Record<string, unknown> | undefined;
@@ -44,17 +48,48 @@ function durationFromDirections(data: Record<string, unknown>) {
   return Math.ceil(seconds / 60);
 }
 
-function buildDirectionsUrl(apiKey: string, origin: LatLngLiteral, destination: LatLngLiteral) {
+function directionsPointValue(point: LatLngLiteral | string) {
+  return typeof point === "string" ? point : `${point.latitude},${point.longitude}`;
+}
+
+function buildDirectionsUrl(apiKey: string, origin: LatLngLiteral | string, destination: LatLngLiteral | string) {
   const params = new URLSearchParams({
     departure_time: "now",
-    destination: `${destination.latitude},${destination.longitude}`,
+    destination: directionsPointValue(destination),
     key: apiKey,
     language: "zh-TW",
     mode: "transit",
-    origin: `${origin.latitude},${origin.longitude}`,
+    origin: directionsPointValue(origin),
     region: "jp",
   });
   return `${directionsEndpoint}?${params.toString()}`;
+}
+
+async function fetchDirections(apiKey: string, origin: LatLngLiteral | string, destination: LatLngLiteral | string) {
+  const response = await fetch(buildDirectionsUrl(apiKey, origin, destination), {
+    method: "GET",
+  });
+  const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+  return { data, response };
+}
+
+function failurePayload(data: Record<string, unknown> | null, fallbackStatus: string, fallbackMessage: string) {
+  return {
+    ok: false,
+    status: typeof data?.status === "string" ? data.status : fallbackStatus,
+    message: typeof data?.error_message === "string" ? data.error_message : fallbackMessage,
+  };
+}
+
+function successPayload(data: Record<string, unknown> | null) {
+  if (!data) return null;
+  const durationMinutes = durationFromDirections(data);
+  if (durationMinutes === null) return null;
+  return {
+    ok: true,
+    durationMinutes,
+    source: "directions-transit-fallback",
+  };
 }
 
 Deno.serve(async (request) => {
@@ -78,6 +113,8 @@ Deno.serve(async (request) => {
   if (!origin || !destination) {
     return jsonResponse({ ok: false, status: "INVALID_COORDINATES", message: "Missing origin or destination" }, 400);
   }
+  const originLabel = parseLabel(body.originLabel);
+  const destinationLabel = parseLabel(body.destinationLabel);
 
   const apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY") || Deno.env.get("GOOGLE_DIRECTIONS_API_KEY") || "";
   if (!apiKey) {
@@ -85,35 +122,25 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const response = await fetch(buildDirectionsUrl(apiKey, origin, destination), {
-      method: "GET",
-    });
-    const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    const { data, response } = await fetchDirections(apiKey, origin, destination);
     if (!response.ok || !data) {
-      return jsonResponse(
-        {
-          ok: false,
-          status: typeof data?.status === "string" ? data.status : String(response.status),
-          message: typeof data?.error_message === "string" ? data.error_message : "Directions request failed",
-        },
-        200,
-      );
+      return jsonResponse(failurePayload(data, String(response.status), "Directions request failed"), 200);
     }
 
-    const durationMinutes = durationFromDirections(data);
-    if (durationMinutes === null) {
-      return jsonResponse({
-        ok: false,
-        status: typeof data.status === "string" ? data.status : "NO_DURATION",
-        message: typeof data.error_message === "string" ? data.error_message : "No transit duration found",
-      });
+    const firstResult = successPayload(data);
+    if (firstResult) return jsonResponse(firstResult);
+
+    if (data.status === "ZERO_RESULTS" && originLabel && destinationLabel) {
+      const labelResult = await fetchDirections(apiKey, originLabel, destinationLabel);
+      if (!labelResult.response.ok || !labelResult.data) {
+        return jsonResponse(failurePayload(labelResult.data, String(labelResult.response.status), "Directions label retry failed"), 200);
+      }
+      const labelSuccess = successPayload(labelResult.data);
+      if (labelSuccess) return jsonResponse(labelSuccess);
+      return jsonResponse(failurePayload(labelResult.data, "NO_DURATION", "No transit duration found"));
     }
 
-    return jsonResponse({
-      ok: true,
-      durationMinutes,
-      source: "directions-transit-fallback",
-    });
+    return jsonResponse(failurePayload(data, "NO_DURATION", "No transit duration found"));
   } catch (error) {
     return jsonResponse({
       ok: false,

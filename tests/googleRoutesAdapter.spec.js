@@ -8,6 +8,8 @@ import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "..
 
 const fromItem = { id: "from", latitude: 35.0116, longitude: 135.7681 };
 const toItem = { id: "to", latitude: 35.0037, longitude: 135.7786 };
+const fromStationItem = { id: "from", latitude: 35.0116, location_name: "山科站", longitude: 135.7681 };
+const toShrineItem = { id: "to", latitude: 35.0037, longitude: 135.7786, title: "八坂神社" };
 
 test("Phase 5.7a builds Google Maps navigation URL from endpoint coordinates", () => {
   expect(travelModeForTransportCategory("jr")).toBe("transit");
@@ -97,9 +99,9 @@ test("Phase 5.7a transit Routes request sends allowed travel modes only for part
 test("Phase 5.7a transit debug Routes request uses expanded field mask", () => {
   const request = buildGoogleRoutesDurationRequest({
     debugRoutes: true,
-    fromItem,
+    fromItem: fromStationItem,
     mode: "transit",
-    toItem,
+    toItem: toShrineItem,
   });
 
   expect(request.body.travelMode).toBe("TRANSIT");
@@ -148,9 +150,9 @@ test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
         json: async () => ({ routes: [{ duration: "1530s" }] }),
       };
     },
-    fromItem,
+    fromItem: fromStationItem,
     mode: "transit",
-    toItem,
+    toItem: toShrineItem,
   });
 
   expect(result).toEqual({ ok: true, durationMinutes: 26, durationSource: "routes.duration", source: "routes" });
@@ -214,9 +216,9 @@ test("Phase 5.7a falls back to Directions only when transit Routes has no durati
       calls.push({ options, url });
       return { ok: true, status: 200, json: async () => ({}) };
     },
-    fromItem,
+    fromItem: fromStationItem,
     mode: "transit",
-    toItem,
+    toItem: toShrineItem,
   });
 
   expect(result).toEqual({
@@ -231,7 +233,9 @@ test("Phase 5.7a falls back to Directions only when transit Routes has no durati
       options: {
         body: {
           origin: { latitude: 35.0116, longitude: 135.7681 },
+          originLabel: "山科站",
           destination: { latitude: 35.0037, longitude: 135.7786 },
+          destinationLabel: "八坂神社",
         },
       },
     },

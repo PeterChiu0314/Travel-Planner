@@ -14,6 +14,11 @@ function latLngLiteral(item) {
   return { latitude, longitude };
 }
 
+function locationLabel(item) {
+  const value = item?.location_name || item?.location || item?.title || item?.name || "";
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export function buildGoogleDirectionsTransitDurationRequest({ fromItem, toItem } = {}) {
   const origin = latLngLiteral(fromItem);
   const destination = latLngLiteral(toItem);
@@ -25,7 +30,9 @@ export function buildGoogleDirectionsTransitDurationRequest({ fromItem, toItem }
     ok: true,
     body: {
       destination,
+      destinationLabel: locationLabel(toItem) || null,
       origin,
+      originLabel: locationLabel(fromItem) || null,
     },
     functionName: GOOGLE_DIRECTIONS_TRANSIT_FUNCTION,
     source: "directions-transit-fallback",
