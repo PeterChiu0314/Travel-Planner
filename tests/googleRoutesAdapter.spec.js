@@ -51,6 +51,64 @@ test("Phase 5.7a Routes request is duration-only and does not request polylines"
   expect(JSON.stringify(request)).not.toMatch(/polyline|encodedPolyline|routeLabels|legs|distanceMeters/i);
 });
 
+test("Phase 5.7a transit Routes request omits allowed travel modes for default selections", () => {
+  const allSelected = buildGoogleRoutesDurationRequest({
+    fromItem,
+    mode: "transit",
+    routeOptions: ["公車", "地鐵", "火車", "電車及輕軌電車"],
+    toItem,
+  });
+  const noneSelected = buildGoogleRoutesDurationRequest({
+    fromItem,
+    mode: "transit",
+    routeOptions: [],
+    toItem,
+  });
+
+  expect(allSelected.body.travelMode).toBe("TRANSIT");
+  expect(allSelected.body.transitPreferences).toBeUndefined();
+  expect(noneSelected.body.transitPreferences).toBeUndefined();
+  expect(allSelected.body.routingPreference).toBeUndefined();
+  expect(allSelected.body.routeModifiers).toBeUndefined();
+});
+
+test("Phase 5.7a transit Routes request sends allowed travel modes only for partial selections", () => {
+  const request = buildGoogleRoutesDurationRequest({
+    fromItem,
+    mode: "transit",
+    routeOptions: ["公車", "火車"],
+    toItem,
+  });
+
+  expect(request.body).toEqual({
+    origin: { location: { latLng: { latitude: 35.0116, longitude: 135.7681 } } },
+    destination: { location: { latLng: { latitude: 35.0037, longitude: 135.7786 } } },
+    travelMode: "TRANSIT",
+    transitPreferences: {
+      allowedTravelModes: ["BUS", "TRAIN"],
+    },
+  });
+  expect(request.body.routingPreference).toBeUndefined();
+  expect(request.body.routeModifiers).toBeUndefined();
+});
+
+test("Phase 5.7a drive Routes request may send route modifiers", () => {
+  const request = buildGoogleRoutesDurationRequest({
+    fromItem,
+    mode: "driving",
+    routeOptions: ["避開高速", "避開收費", "避開渡輪"],
+    toItem,
+  });
+
+  expect(request.body.travelMode).toBe("DRIVE");
+  expect(request.body.routeModifiers).toEqual({
+    avoidFerries: true,
+    avoidHighways: true,
+    avoidTolls: true,
+  });
+  expect(request.body.transitPreferences).toBeUndefined();
+});
+
 test("Phase 5.7a fetches and normalizes Routes duration only", async () => {
   const calls = [];
   const result = await fetchGoogleRoutesDuration({

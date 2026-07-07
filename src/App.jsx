@@ -11056,15 +11056,20 @@ function ItineraryTimeline({
     const editorRoutePanel = routeQueryPanelState(editorRouteItem);
     const isEditorRouteQueryMode = editorRoutePanel.isOpen;
     const editorRouteMode = editorRoutePanel.mode || travelModeForTransportCategory(category);
+    const defaultTransitRouteOptions = ["公車", "地鐵", "火車", "電車及輕軌電車"];
     const editorRouteOptionsByMode = {
-      transit: ["最佳路線", "少轉乘", "少步行"],
-      driving: ["最佳路線", "避開高速", "避開收費"],
+      transit: defaultTransitRouteOptions,
+      driving: ["避開高速", "避開收費", "避開渡輪"],
       walking: ["最佳路線"],
     };
     const editorRouteOptions = editorRouteOptionsByMode[editorRouteMode] || editorRouteOptionsByMode.transit;
-    const selectedEditorRouteOptions = Array.isArray(editorRoutePanel.selectedOptions)
+    const rawSelectedEditorRouteOptions = Array.isArray(editorRoutePanel.selectedOptions)
       ? editorRoutePanel.selectedOptions
       : [editorRoutePanel.selectedOptions || "最佳路線"];
+    const selectedEditorRouteOptions =
+      editorRouteMode === "transit"
+        ? rawSelectedEditorRouteOptions.filter((option) => defaultTransitRouteOptions.includes(option))
+        : rawSelectedEditorRouteOptions;
     const isEditorRouteQueryBusy = editorRoutePanel.status === "querying";
     const editorRouteStatusText = isEditorRouteQueryBusy
       ? "查詢中…"
@@ -11093,7 +11098,10 @@ function ItineraryTimeline({
         error: "",
         isOpen: true,
         mode: editorRouteMode || "transit",
-        selectedOptions: selectedEditorRouteOptions,
+        selectedOptions:
+          editorRouteMode === "transit" && !selectedEditorRouteOptions.length
+            ? defaultTransitRouteOptions
+            : selectedEditorRouteOptions,
         status: "idle",
       });
     }
@@ -11103,6 +11111,10 @@ function ItineraryTimeline({
         error: "",
         isOpen: false,
         mode: travelModeForTransportCategory(category),
+        selectedOptions:
+          travelModeForTransportCategory(category) === "transit"
+            ? defaultTransitRouteOptions
+            : [],
         status: "idle",
       });
     }
@@ -11115,7 +11127,7 @@ function ItineraryTimeline({
         error: "",
         isOpen: true,
         mode,
-        selectedOptions: ["最佳路線"],
+        selectedOptions: mode === "transit" ? defaultTransitRouteOptions : [],
         status: "idle",
       });
     }
@@ -11199,7 +11211,7 @@ function ItineraryTimeline({
               </p>
             </div>
             <div className="transport-route-options-row">
-              <span>選項：</span>
+              <span>{editorRouteMode === "transit" ? "偏好：" : "選項："}</span>
               <div className="transport-route-options">
                 {editorRouteOptions.map((option) => (
                   <label key={option}>
@@ -11250,6 +11262,10 @@ function ItineraryTimeline({
                       durationMinutes: null,
                       error: "",
                       mode: travelModeForTransportCategory(nextCategory),
+                      selectedOptions:
+                        travelModeForTransportCategory(nextCategory) === "transit"
+                          ? defaultTransitRouteOptions
+                          : [],
                       status: "idle",
                     });
                   }}
@@ -11349,7 +11365,10 @@ function ItineraryTimeline({
         error: "",
         isOpen: false,
         mode: travelModeForTransportCategory(item.transport_category),
-        selectedOptions: ["最佳路線"],
+        selectedOptions:
+          travelModeForTransportCategory(item.transport_category) === "transit"
+            ? ["公車", "地鐵", "火車", "電車及輕軌電車"]
+            : [],
         status: "idle",
       }
     );
@@ -11372,7 +11391,7 @@ function ItineraryTimeline({
       error: current.error || "",
       isOpen: !current.isOpen,
       mode: current.mode || travelModeForTransportCategory(item.transport_category),
-      selectedOptions: current.selectedOptions || ["最佳路線"],
+      selectedOptions: current.selectedOptions || [],
       status: current.status || "idle",
     });
   }
@@ -11423,6 +11442,7 @@ function ItineraryTimeline({
       apiKey: transportRoutesConfig.apiKey,
       fromItem,
       mode: current.mode || travelModeForTransportCategory(item.transport_category),
+      routeOptions: current.selectedOptions || [],
       toItem,
     });
     if (!result.ok) {
