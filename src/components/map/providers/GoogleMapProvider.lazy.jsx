@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { MapPin, Route, Search, X } from "lucide-react";
 import {
   createPlacesAutocompleteSessionManager,
@@ -1002,6 +1003,22 @@ export default function GoogleMapProvider(props) {
         },
       ]
     : [];
+  const routeEditOverlay =
+    isRouteEditMode && routeEditOverlayPanes.length && typeof document !== "undefined"
+      ? createPortal(
+          routeEditOverlayPanes.map((pane) => (
+            <button
+              aria-label="離開路線編輯模式"
+              className={`route-edit-page-overlay-pane ${pane.name}`}
+              key={pane.name}
+              style={pane.style}
+              type="button"
+              onClick={exitRouteEditMode}
+            />
+          )),
+          document.body,
+        )
+      : null;
 
   if (status === "failed" || renderFailed) {
     return <StaticMapProvider {...props} />;
@@ -1012,19 +1029,8 @@ export default function GoogleMapProvider(props) {
       className={`${className} google-map-surface${isPickingMapPoint ? " is-picking-map-point" : ""}${isRouteEditMode ? " is-route-edit-mode" : ""}`}
       aria-label="Google map destination markers"
     >
+      {routeEditOverlay}
       <div className="google-map-canvas" ref={handleMapElementRef} />
-      {isRouteEditMode
-        ? routeEditOverlayPanes.map((pane) => (
-            <button
-              aria-label="離開路線編輯模式"
-              className={`route-edit-page-overlay-pane ${pane.name}`}
-              key={pane.name}
-              style={pane.style}
-              type="button"
-              onClick={exitRouteEditMode}
-            />
-          ))
-        : null}
       {!coordinateMarkers.length ? (
         <div className="google-map-empty-hint">This day has no coordinate markers yet</div>
       ) : null}
