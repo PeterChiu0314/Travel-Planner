@@ -3258,42 +3258,6 @@ textarea {
   white-space: pre-line;
 }
 
-.transport-route-query-panel {
-  display: grid;
-  gap: 10px;
-  grid-column: 1 / -1;
-  margin: 2px 28px 0;
-  padding: 10px;
-  border: 1px solid rgba(95, 143, 184, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
-}
-
-.transport-route-query-heading,
-.transport-route-query-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.transport-route-query-panel label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-.transport-route-query-panel select {
-  min-height: 32px;
-  border: 1px solid rgba(91, 109, 130, 0.22);
-  border-radius: 8px;
-  padding: 6px 8px;
-  background: #fff;
-  color: var(--ink);
-}
-
 .transport-budget-links {
   display: flex;
   align-items: center;
@@ -3368,6 +3332,10 @@ textarea {
   padding-top: 12px;
 }
 
+.transport-editor-footer-actions.navigation-only {
+  justify-content: flex-end;
+}
+
 .transport-editor-form {
   border-color: var(--mint);
   display: grid;
@@ -3389,8 +3357,7 @@ textarea {
   justify-self: center;
 }
 
-.transport-editor-edit-mode,
-.transport-editor-query-mode {
+.transport-editor-edit-mode {
   display: grid;
   min-height: 330px;
 }
@@ -3399,16 +3366,7 @@ textarea {
   align-content: start;
 }
 
-.transport-editor-query-mode {
-  align-content: start;
-  gap: 16px;
-}
-
-.transport-editor-save-actions,
-.transport-route-mode-row,
-.transport-route-options,
-.transport-route-options-row,
-.transport-route-mode-status-row {
+.transport-editor-save-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3418,89 +3376,6 @@ textarea {
   min-width: 64px;
   min-height: 42px;
   padding: 0 14px;
-}
-
-.transport-editor-query-status {
-  color: var(--muted);
-  font-size: 15px;
-  font-weight: 800;
-  margin: 0 0 0 auto;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.transport-editor-route-query-panel {
-  margin: 12px 0 0;
-}
-
-.transport-route-query-heading span {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.transport-route-mode-status-row {
-  justify-content: space-between;
-  margin-left: 0;
-  min-width: 0;
-}
-
-.transport-route-mode-row {
-  justify-content: flex-start;
-}
-
-.transport-route-mode-button {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  font-size: 19px;
-}
-
-.transport-route-mode-button.active {
-  border-color: rgba(31, 122, 91, 0.45);
-  background: #e8f3ef;
-  color: var(--mint-dark);
-}
-
-.transport-route-options-row {
-  align-items: start;
-  display: grid;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-  margin-left: 0;
-  gap: 8px;
-}
-
-.transport-route-options {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-}
-
-.transport-route-options label {
-  display: inline-flex;
-  grid-template-columns: none;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  min-height: 20px;
-  white-space: nowrap;
-}
-
-.transport-route-options input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  min-width: 18px;
-  margin: 0;
-  accent-color: var(--mint-dark);
-}
-
-.transport-route-query-actions {
-  align-self: end;
-  justify-content: flex-end;
-  margin-top: auto;
 }
 
 .transport-card-actions .mini-button {
@@ -5665,30 +5540,8 @@ textarea {
     min-height: 408px;
   }
 
-  .transport-editor-edit-mode,
-  .transport-editor-query-mode {
+  .transport-editor-edit-mode {
     min-height: 314px;
-  }
-
-  .transport-route-mode-status-row,
-  .transport-route-options-row {
-    margin-left: 0;
-  }
-
-  .transport-route-mode-status-row {
-    align-items: center;
-    gap: 10px;
-  }
-
-  .transport-route-mode-button {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
-    min-height: 40px;
-  }
-
-  .transport-editor-query-status {
-    font-size: 14px;
   }
 
   .transport-editor-footer-actions {

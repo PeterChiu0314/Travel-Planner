@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
 import {
   buildGoogleRoutesDurationRequest,
   fetchGoogleRoutesDuration,
@@ -10,6 +11,16 @@ const fromItem = { id: "from", latitude: 35.0116, longitude: 135.7681 };
 const toItem = { id: "to", latitude: 35.0037, longitude: 135.7786 };
 const fromStationItem = { id: "from", latitude: 35.0116, longitude: 135.7681, provider_place_id: "yamashina-station-place" };
 const toShrineItem = { id: "to", latitude: 35.0037, longitude: 135.7786, placeId: "yasaka-shrine-place" };
+
+test("Phase 5.7a keeps transportation cards navigation-only in App UI", () => {
+  const appSource = readFileSync("src/App.jsx", "utf8");
+
+  expect(appSource).not.toContain("查詢交通");
+  expect(appSource).not.toContain("fetchGoogleRoutesDuration");
+  expect(appSource).not.toContain("getGoogleRoutesRuntimeConfig");
+  expect(appSource).not.toContain("google-directions-transit-duration");
+  expect(appSource).toContain("buildGoogleMapsDirectionsUrl");
+});
 
 test("Phase 5.7a builds Google Maps navigation URL from endpoint coordinates", () => {
   expect(travelModeForTransportCategory("jr")).toBe("transit");
