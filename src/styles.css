@@ -3815,22 +3815,19 @@ textarea {
   height: 100%;
 }
 
-.google-map-surface.is-route-edit-mode .google-map-canvas {
-  filter: saturate(0.88) brightness(0.92);
-}
-
-.route-edit-interaction-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  background: rgba(15, 23, 42, 0.08);
-  cursor: crosshair;
+.route-edit-page-overlay-pane {
+  position: fixed;
+  z-index: 80;
+  border: 0;
+  padding: 0;
+  background: rgba(15, 23, 42, 0.42);
+  cursor: default;
 }
 
 .route-edit-mode-banner {
   position: absolute;
   left: 50%;
-  top: 120px;
+  bottom: 76px;
   z-index: 5;
   padding: 8px 12px;
   border: 1px solid rgba(47, 143, 114, 0.28);

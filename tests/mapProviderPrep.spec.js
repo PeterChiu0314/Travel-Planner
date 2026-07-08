@@ -547,7 +547,12 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
   expect(googleProviderSource).toContain('aria-label="編輯地圖路線"');
   expect(googleProviderSource).toContain("map-route-edit-button");
   expect(googleProviderSource).toContain("路線編輯模式");
-  expect(googleProviderSource).toContain("route-edit-interaction-layer");
+  expect(googleProviderSource).toContain("routeEditOverlayRect");
+  expect(googleProviderSource).toContain("route-edit-page-overlay-pane");
+  expect(googleProviderSource).toContain("updateRouteEditOverlayRect");
+  expect(googleProviderSource).toContain('aria-label="離開路線編輯模式"');
+  expect(googleProviderSource).toContain("onClick={exitRouteEditMode}");
+  expect(googleProviderSource).not.toContain("route-edit-interaction-layer");
   expect(googleProviderSource).toContain('event.key === "Escape"');
   expect(googleProviderSource).toContain("disabled={isRouteEditMode}");
   expect(googleProviderSource).toContain('title={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}');
@@ -561,11 +566,13 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
   expect(googleProviderSource).toContain("if (isPickingMapPoint) onCancelMapPointPick?.();");
   expect(staticProviderSource).not.toContain("map-route-edit-button");
   expect(staticProviderSource).not.toContain("路線編輯模式");
-  expect(staticProviderSource).not.toContain("route-edit-interaction-layer");
+  expect(staticProviderSource).not.toContain("route-edit-page-overlay-pane");
   expect(stylesSource).toContain(".map-area-tools");
   expect(stylesSource).toContain(".map-route-edit-button.active");
-  expect(stylesSource).toContain(".google-map-surface.is-route-edit-mode");
-  expect(stylesSource).toContain(".route-edit-interaction-layer");
+  expect(stylesSource).toContain(".route-edit-page-overlay-pane");
+  expect(stylesSource).toContain("position: fixed");
+  expect(stylesSource).not.toContain(".google-map-surface.is-route-edit-mode .google-map-canvas");
+  expect(stylesSource).not.toContain(".route-edit-interaction-layer");
   expect(stylesSource).toContain(".route-edit-mode-banner");
 });
 

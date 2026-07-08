@@ -204,6 +204,7 @@ export default function GoogleMapProvider(props) {
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
   const [placesDetailsStatus, setPlacesDetailsStatus] = useState("idle");
   const [isRouteEditMode, setIsRouteEditMode] = useState(false);
+  const [routeEditOverlayRect, setRouteEditOverlayRect] = useState(null);
   const [renderFailed, setRenderFailed] = useState(false);
   const [fallbackReason, setFallbackReason] = useState(null);
   const markersKey = coordinateKey(coordinateMarkers);
@@ -446,6 +447,26 @@ export default function GoogleMapProvider(props) {
     setIsRouteEditMode((current) => !current);
   }
 
+  function exitRouteEditMode() {
+    setIsRouteEditMode(false);
+  }
+
+  function updateRouteEditOverlayRect() {
+    const rect = mapElementRef.current?.parentElement?.getBoundingClientRect?.();
+    if (!rect) {
+      setRouteEditOverlayRect(null);
+      return;
+    }
+    setRouteEditOverlayRect({
+      bottom: Math.max(0, window.innerHeight - rect.bottom),
+      height: Math.max(0, rect.height),
+      left: Math.max(0, rect.left),
+      right: Math.max(0, window.innerWidth - rect.right),
+      top: Math.max(0, rect.top),
+      width: Math.max(0, rect.width),
+    });
+  }
+
   useEffect(() => {
     let cancelled = false;
 
@@ -517,6 +538,7 @@ export default function GoogleMapProvider(props) {
     clearPlacesPreview();
     resetPlacesSearch();
     if (isPickingMapPoint) onCancelMapPointPick?.();
+    updateRouteEditOverlayRect();
 
     function handleRouteEditKeyDown(event) {
       if (event.key === "Escape") {
@@ -524,9 +546,17 @@ export default function GoogleMapProvider(props) {
       }
     }
 
+    function handleRouteEditViewportChange() {
+      updateRouteEditOverlayRect();
+    }
+
     document.addEventListener("keydown", handleRouteEditKeyDown);
+    window.addEventListener("resize", handleRouteEditViewportChange);
+    window.addEventListener("scroll", handleRouteEditViewportChange, true);
     return () => {
       document.removeEventListener("keydown", handleRouteEditKeyDown);
+      window.removeEventListener("resize", handleRouteEditViewportChange);
+      window.removeEventListener("scroll", handleRouteEditViewportChange, true);
     };
   }, [isPickingMapPoint, isRouteEditMode, onCancelMapPointPick]);
 
@@ -945,6 +975,33 @@ export default function GoogleMapProvider(props) {
               : placesSearchStatus === "error"
                 ? "\u641c\u5c0b\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"
                 : "";
+  const routeEditOverlayPanes = routeEditOverlayRect
+    ? [
+        { name: "top", style: { height: `${routeEditOverlayRect.top}px`, left: 0, right: 0, top: 0 } },
+        {
+          name: "bottom",
+          style: { bottom: 0, height: `${routeEditOverlayRect.bottom}px`, left: 0, right: 0 },
+        },
+        {
+          name: "left",
+          style: {
+            bottom: `${routeEditOverlayRect.bottom}px`,
+            left: 0,
+            top: `${routeEditOverlayRect.top}px`,
+            width: `${routeEditOverlayRect.left}px`,
+          },
+        },
+        {
+          name: "right",
+          style: {
+            bottom: `${routeEditOverlayRect.bottom}px`,
+            right: 0,
+            top: `${routeEditOverlayRect.top}px`,
+            width: `${routeEditOverlayRect.right}px`,
+          },
+        },
+      ]
+    : [];
 
   if (status === "failed" || renderFailed) {
     return <StaticMapProvider {...props} />;
@@ -956,16 +1013,18 @@ export default function GoogleMapProvider(props) {
       aria-label="Google map destination markers"
     >
       <div className="google-map-canvas" ref={handleMapElementRef} />
-      {isRouteEditMode ? (
-        <div
-          className="route-edit-interaction-layer"
-          aria-label="路線編輯互動層"
-          onClick={(event) => event.stopPropagation()}
-          onDoubleClick={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-          onPointerUp={(event) => event.stopPropagation()}
-        />
-      ) : null}
+      {isRouteEditMode
+        ? routeEditOverlayPanes.map((pane) => (
+            <button
+              aria-label="離開路線編輯模式"
+              className={`route-edit-page-overlay-pane ${pane.name}`}
+              key={pane.name}
+              style={pane.style}
+              type="button"
+              onClick={exitRouteEditMode}
+            />
+          ))
+        : null}
       {!coordinateMarkers.length ? (
         <div className="google-map-empty-hint">This day has no coordinate markers yet</div>
       ) : null}
