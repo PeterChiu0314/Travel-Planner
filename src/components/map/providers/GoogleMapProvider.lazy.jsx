@@ -26,6 +26,7 @@ const PENDING_POI_HINT_GAP = 43;
 const ROUTE_EDIT_ACTIVE_TOP_INSET_PX = 6;
 const ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT = 5;
 const ROUTE_EDIT_HIT_STROKE_WEIGHT = 22;
+const ROUTE_EDIT_SUPPRESS_LINE_CLICK_MS = 250;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
 const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
 
@@ -166,6 +167,14 @@ function routeSegmentPath(segment, customRoutePointsBySegment) {
   ];
 }
 
+function routeSubSegments(segment, customPoints = []) {
+  const path = [segment.from, ...customPoints, segment.to];
+  return path.slice(0, -1).map((point, index) => ({
+    insertIndex: index,
+    path: [point, path[index + 1]],
+  }));
+}
+
 function fullRoutePath(routeSegments, customRoutePointsBySegment) {
   return routeSegments.reduce((path, segment, index) => {
     const segmentPath = routeSegmentPath(segment, customRoutePointsBySegment);
@@ -178,12 +187,12 @@ function routeEditHandleIcon(mapsNamespace) {
   if (!symbolPath) return null;
   return {
     path: symbolPath,
-    fillColor: "#ffffff",
+    fillColor: "#2f8f72",
     fillOpacity: 1,
-    scale: 6,
-    strokeColor: "#d85f49",
+    scale: 5,
+    strokeColor: "#ffffff",
     strokeOpacity: 1,
-    strokeWeight: 3,
+    strokeWeight: 2,
   };
 }
 
@@ -232,6 +241,7 @@ export default function GoogleMapProvider(props) {
   const routeSegmentHitLineRefsRef = useRef([]);
   const routeEditHandleRefsRef = useRef([]);
   const routeEditDragRef = useRef({ isDragging: false, lastDragEndedAt: 0 });
+  const routeEditSuppressLineClickUntilRef = useRef(0);
   const customRoutePointsRef = useRef({});
   const viewportListenersRef = useRef([]);
   const mapPointClickListenerRef = useRef(null);
@@ -531,13 +541,22 @@ export default function GoogleMapProvider(props) {
     routeLineRef.current?.setPath?.(nextPath);
   }
 
-  function addRouteCustomPoint(segmentKey, point) {
+  function suppressRouteLineClick() {
+    routeEditSuppressLineClickUntilRef.current = Date.now() + ROUTE_EDIT_SUPPRESS_LINE_CLICK_MS;
+  }
+
+  function insertRouteCustomPoint(segmentKey, insertIndex, point) {
     setCustomRoutePointsBySegment((current) => {
       const currentPoints = current[segmentKey] || [];
       if (currentPoints.length >= ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT) return current;
+      const safeInsertIndex = clamp(Math.floor(insertIndex), 0, currentPoints.length);
       return {
         ...current,
-        [segmentKey]: [...currentPoints, point],
+        [segmentKey]: [
+          ...currentPoints.slice(0, safeInsertIndex),
+          point,
+          ...currentPoints.slice(safeInsertIndex),
+        ],
       };
     });
   }
@@ -808,27 +827,31 @@ export default function GoogleMapProvider(props) {
     const MarkerConstructor = mapsNamespace?.Marker;
     if (typeof PolylineConstructor !== "function" || typeof MarkerConstructor !== "function") return undefined;
 
-    routeSegmentHitLineRefsRef.current = routeSegments.map((segment) => {
-      const line = new PolylineConstructor({
-        clickable: true,
-        geodesic: false,
-        map: mapRef.current,
-        path: routeSegmentPath(segment, customRoutePointsBySegment),
-        strokeColor: "#ffffff",
-        strokeOpacity: 0.01,
-        strokeWeight: ROUTE_EDIT_HIT_STROKE_WEIGHT,
-        zIndex: 20,
-      });
+    routeSegmentHitLineRefsRef.current = routeSegments.flatMap((segment) => {
+      const customPoints = customRoutePointsBySegment[segment.key] || [];
+      return routeSubSegments(segment, customPoints).map((subSegment) => {
+        const line = new PolylineConstructor({
+          clickable: true,
+          geodesic: false,
+          map: mapRef.current,
+          path: subSegment.path,
+          strokeColor: "#ffffff",
+          strokeOpacity: 0.01,
+          strokeWeight: ROUTE_EDIT_HIT_STROKE_WEIGHT,
+          zIndex: 20,
+        });
 
-      line.addListener?.("click", (event) => {
-        event?.stop?.();
-        const lat = typeof event?.latLng?.lat === "function" ? event.latLng.lat() : null;
-        const lng = typeof event?.latLng?.lng === "function" ? event.latLng.lng() : null;
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-        addRouteCustomPoint(segment.key, { lat, lng });
-      });
+        line.addListener?.("click", (event) => {
+          event?.stop?.();
+          if (Date.now() < routeEditSuppressLineClickUntilRef.current) return;
+          const lat = typeof event?.latLng?.lat === "function" ? event.latLng.lat() : null;
+          const lng = typeof event?.latLng?.lng === "function" ? event.latLng.lng() : null;
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          insertRouteCustomPoint(segment.key, subSegment.insertIndex, { lat, lng });
+        });
 
-      return { line, segmentKey: segment.key };
+        return { line, segmentKey: segment.key, insertIndex: subSegment.insertIndex };
+      });
     });
 
     routeEditHandleRefsRef.current = routeSegments.flatMap((segment) => {
@@ -845,6 +868,7 @@ export default function GoogleMapProvider(props) {
         });
 
         marker.addListener?.("dragstart", () => {
+          suppressRouteLineClick();
           routeEditDragRef.current = { isDragging: false, lastDragEndedAt: routeEditDragRef.current.lastDragEndedAt || 0 };
         });
 
@@ -864,6 +888,7 @@ export default function GoogleMapProvider(props) {
         });
 
         marker.addListener?.("dragend", (event) => {
+          suppressRouteLineClick();
           const lat = typeof event?.latLng?.lat === "function" ? event.latLng.lat() : null;
           const lng = typeof event?.latLng?.lng === "function" ? event.latLng.lng() : null;
           routeEditDragRef.current.lastDragEndedAt = Date.now();
@@ -874,12 +899,18 @@ export default function GoogleMapProvider(props) {
 
         marker.addListener?.("click", (event) => {
           event?.stop?.();
+          suppressRouteLineClick();
           const recentlyDragged = Date.now() - (routeEditDragRef.current.lastDragEndedAt || 0) < 250;
           if (routeEditDragRef.current.isDragging || recentlyDragged) {
             routeEditDragRef.current.isDragging = false;
             return;
           }
           removeRouteCustomPoint(segment.key, pointIndex);
+        });
+
+        marker.addListener?.("mousedown", (event) => {
+          event?.stop?.();
+          suppressRouteLineClick();
         });
 
         return { marker, segmentKey: segment.key, pointIndex };
