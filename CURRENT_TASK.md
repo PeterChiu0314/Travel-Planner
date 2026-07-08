@@ -40,13 +40,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.7a Transportation Navigation + Travel Time Query - Completed / Hotfixed / No Migration
+Timeline Phase 5.7b-3 Route Override Persistence - Completed / Migration Applied
 ```
 
 Next phase:
 
 ```text
-Phase 5.7a is complete after multiple UI/payload/fallback hotfixes. Transportation cards now provide icon-only Google Maps navigation and a gated Routes duration query flow inside the existing transportation editor. The query mode is an in-card two-stage UI, not a mini panel or popover. Transit query UI now exposes only preferred transit vehicle types: bus, subway, train, and light rail. Routes API payloads are duration-only, do not request polylines, and keep TRANSIT free of driving route modifiers and routing preferences. Transit `allowedTravelModes` is omitted when all or none are selected, and sent only for partial selections. Transit no-duration responses can fall back through the Supabase Edge Function `google-directions-transit-duration`, which calls Google Directions API server-side and returns only `ok`, `durationMinutes`, and `source` or a sanitized failure. The current experiment sends `place_id:<id>` through the existing fallback `originLabel` / `destinationLabel` fields when itinerary items already have provider place IDs. POI/search selection currently obtains a place ID transiently but does not persist it into saved itinerary items, so normal newly saved POI/search points do not yet feed the place-id fallback. `?debugRoutes=1` enables sanitized request/response summary logs without API keys. Save remains the only itinerary write. No Google Map loading, route lines, map picker, reorder, migration, package, env, committed API key, or place-id persistence change was added.
+Phase 5.7a was changed to navigation-only: the in-app Routes / Directions travel-time query UI and flow were removed, while transportation cards keep icon-only Google Maps navigation and manual editing for type, duration, name, and notes. Phase 5.7b-1 added Google-provider-only route edit mode with Map as the active area and Map-outside overlay/exit behavior. Phase 5.7b-2 added local same-day adjacent destination segment editing with small round custom-point handles, insert-by-subsegment behavior, drag update, click delete, and a five-point frontend limit. Phase 5.7b-3 added single-user route override persistence in `itinerary_route_overrides`, auto-save/upsert/delete with rollback to server baseline, invalidation cleanup for reorder/delete/insert/coordinate changes, and display of saved A -> custom points -> B polylines. Supabase migration history was repaired to align the remote project with GitHub's local `001` to `024` migration series, then `20260708063744_add_itinerary_route_overrides.sql` was successfully pushed to the remote database. Static/Demo providers still do not show route edit mode or route override persistence. No Routes API / Directions API query flow, Google route polyline persistence, package, env, 5.7c, or 5.7d work is active.
 ```
 
 Branch:
@@ -1232,9 +1232,28 @@ npx.cmd playwright test tests/mapProviderPrep.spec.js passed 31/31 after place_i
 latest pushed commit: 6bdc665 Use place IDs for transit fallback retry
 ```
 
+Phase 5.7a Navigation-only + Phase 5.7b-1/5.7b-2/5.7b-3 Route Edit checks on 2026-07-08:
+
+```text
+Phase 5.7a query mode was removed after product decision to cancel in-app automatic transportation time lookup
+Transportation cards remain navigation-only, keep manual type/time/name/notes editing, and airplane navigation leaves travelmode empty
+Phase 5.7b-1 added Google-provider-only route edit mode, search/add-point disabling, Map-outside overlay, Map-active boundary, Esc/outside/icon exit, and Static/Demo no-route-edit behavior
+Phase 5.7b-2 added local adjacent destination segment editing with segment key fromItemId:toItemId, A -> custom points -> B rendering, subsegment insert, draggable small round handles, click-delete, drag/click conflict guard, and MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT = 5
+Phase 5.7b-3 added route override persistence in public.itinerary_route_overrides with points_json storing only intermediate custom points, auto upsert/delete, optimistic local display, rollback to serverRoutePointsBySegment on save failure, and a low-key route-save-failed rollback hint
+Route override invalidation cleanup deletes invalid overrides after reorder, destination delete, inserted destination adjacency break, and from/to coordinate changes; stale DB overrides are filtered at read/display time
+Supabase migration history was repaired on 2026-07-08: old remote timestamp versions were marked reverted, local GitHub migrations 001-024 were marked applied, then 20260708063744_add_itinerary_route_overrides.sql was pushed successfully
+Final Supabase migration list confirmed local=remote for 001-024 and 20260708063744
+npm.cmd run build passed with existing Vite large-chunk warning
+git diff --check passed with Windows LF/CRLF notices only
+npx.cmd playwright test tests/mapProviderPrep.spec.js passed 34/34 during 5.7b-3 verification
+npx.cmd playwright test tests/timelineMapMarkers.spec.js tests/timelineMapFocus.spec.js passed 14/14 during 5.7b-3 verification
+npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33 during 5.7b-3 verification
+latest pushed commit before CURRENT_TASK update: af8c81f Persist route edit overrides
+```
+
 ## Protected Scope Preserved
 
-Latest Phase 5.7a transportation navigation / travel-time query work did not redesign or extend:
+Latest Phase 5.7b route edit / route override work did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -1245,18 +1264,18 @@ Latest Phase 5.7a transportation navigation / travel-time query work did not red
 - generic `sort_order` architecture
 - transportation pair splitting or creation
 - Google Map loading behavior outside the existing provider gates
-- Text Search, Nearby Search, Geocoding, Reverse Geocoding, Distance Matrix, route cache, route summary beyond duration-only query, or Google route polylines
-- Directions API beyond the scoped server-side transit duration fallback Edge Function
+- Text Search, Nearby Search, Geocoding, Reverse Geocoding, Distance Matrix, route cache, route summary, or Google route polylines
+- Routes API / Directions API transportation query flow
 - locationRestriction or strict bounds
 - Place Details fields outside `id`, `displayName`, `location`, and `googleMapsUri`
 - address auto-fill, formattedAddress, rating, reviews, photos, opening hours, phone, website, business status, editorial summaries, or generative summaries
 - cross-day scheduling
 - Demo isolation
-- schema/RPC/migration behavior
+- existing RPC behavior or existing migration files
 - remote DragOverlay, ghost cards, preview order sync, scroll sync, or cursor sync
 - marker drag, marker clustering, or AdvancedMarkerElement migration
 - automatic transportation card creation
-- Supabase writes before explicit Save
+- itinerary item writes before explicit Save; route override points are the only new auto-save path
 
 ## Residual Risks
 
@@ -1280,4 +1299,4 @@ Latest Phase 5.7a transportation navigation / travel-time query work did not red
 
 ## Next Step
 
-Phase 5.7a is complete and pushed on `codex/timeline-phase-5-7`. Transportation cards now support icon-only navigation and an in-card travel-time Query Mode. Transit Routes duration query was hotfixed so TRANSIT payloads use only optional `transitPreferences.allowedTravelModes` for partial vehicle selections and do not send routingPreference or driving routeModifiers. Transit no-duration responses can use a Supabase Edge Function Directions fallback, and the latest experiment sends `place_id:<id>` through the fallback label fields only when saved itinerary items already contain provider place IDs. Current POI/search add flows do not persist place IDs into itinerary items yet. `?debugRoutes=1` can be used for sanitized Routes request/response summaries. Latest pushed commit is `6bdc665 Use place IDs for transit fallback retry`. Next product decision can be Formal QA on real trips, place_id persistence for saved POI/search points, route-summary polish, missing-coordinate repair, additional transportation UI polish, or a separate closeout/merge flow. Do not infer Google Map loading changes, Routes API env/key changes, route polylines, route override, route cache, broader Places / POI persistence changes, map picker changes, Timeline reorder changes, Supabase writes before Save, migration, committed API keys, packages, or additional database changes without a separate approved goal.
+Phase 5.7b-3 is complete and pushed on `codex/timeline-phase-5-7`. Remote Supabase migration history has been repaired to match GitHub's `001` to `024` migration series, and `20260708063744_add_itinerary_route_overrides.sql` has been applied to the linked remote database. Transportation cards are navigation-only; the in-app Routes / Directions travel-time query mode is removed. Route edit mode now supports persisted single-user route overrides for same-day adjacent destination segments, with auto-save, rollback on save failure, invalidation cleanup, and Static/Demo exclusion. Latest pushed code commit before this CURRENT_TASK update is `af8c81f Persist route edit overrides`. Next product decision can be Phase 5.7b closeout QA, 5.7c/5.7d planning, route edit UX polish, or merge/release flow. Do not infer Google Map loading changes, Routes API / Directions API query restoration, Google route polyline persistence, route override collaboration, node stable IDs, broader Places / POI persistence changes, map picker changes, Timeline reorder RPC changes, committed API keys, packages, or unrelated database changes without a separate approved goal.
