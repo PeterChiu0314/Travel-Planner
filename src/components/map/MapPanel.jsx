@@ -27,8 +27,11 @@ export default function MapPanel({
   mapPointPickFeedback = "",
   onCancelMapPointPick,
   onPickMapPoint,
+  onRouteOverrideChange,
   onSelectPlaceDetails,
   onStartMapPointPick,
+  routeOverridePointsBySegment = {},
+  routeOverrideSaveError = "",
   className = "route-map",
 }) {
   const envProviderId = import.meta.env?.VITE_MAP_PROVIDER || DEFAULT_MAP_PROVIDER_ID;
@@ -114,8 +117,11 @@ export default function MapPanel({
     mapPointPickFeedback,
     onCancelMapPointPick,
     onPickMapPoint,
+    onRouteOverrideChange,
     onSelectPlaceDetails,
     onStartMapPointPick,
+    routeOverridePointsBySegment,
+    routeOverrideSaveError,
   };
 
   if (GoogleProvider) {

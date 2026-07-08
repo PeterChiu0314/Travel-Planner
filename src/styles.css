@@ -3840,6 +3840,23 @@ textarea {
   pointer-events: none;
 }
 
+.route-edit-save-error {
+  position: absolute;
+  left: 50%;
+  bottom: 122px;
+  z-index: 5;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 7px 10px;
+  border: 1px solid rgba(216, 95, 73, 0.28);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #9f3f30;
+  font-size: 12px;
+  font-weight: 700;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .google-map-surface.is-picking-map-point,
 .google-map-surface.is-picking-map-point .google-map-canvas,
 .google-map-surface.is-picking-map-point .google-map-canvas *,

@@ -70,6 +70,13 @@ import {
   transportRoles,
 } from "./lib/timelineTransportationRoles.js";
 import { buildRoutePanelStops, getFocusedMapState } from "./lib/timelineMapMarkers.js";
+import {
+  normalizeRouteOverridePoints,
+  routeOverridePointsEqual,
+  routeOverrideSegmentKey,
+  routeOverridesToSegmentMap,
+  validRouteSegmentKeysFromStops,
+} from "./lib/routeOverrides.js";
 import MapPanel from "./components/map/MapPanel.jsx";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import {
@@ -2071,6 +2078,8 @@ export default function App() {
   const [sharedLuggageItems, setSharedLuggageItems] = useState([]);
   const [attachments, setAttachments] = useState([]);
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
+  const [routeOverrides, setRouteOverrides] = useState([]);
+  const [routeOverrideSaveError, setRouteOverrideSaveError] = useState("");
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -2084,6 +2093,7 @@ export default function App() {
   const [shareError, setShareError] = useState("");
   const [activeSection, setActiveSection] = useState("today");
   const [luggageTab, setLuggageTab] = useState("personal");
+  const routeOverrideCoordinateSnapshotRef = useRef(new Map());
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
@@ -2303,6 +2313,18 @@ export default function App() {
     () => sortScheduleItems(items.filter((item) => item.day_index === activeDay)),
     [activeDay, items],
   );
+  const activeDayRouteStops = useMemo(
+    () => buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true }),
+    [dayItems],
+  );
+  const activeDayRouteSegmentKeys = useMemo(
+    () => validRouteSegmentKeysFromStops(activeDayRouteStops),
+    [activeDayRouteStops],
+  );
+  const activeRouteOverridePointsBySegment = useMemo(
+    () => routeOverridesToSegmentMap(routeOverrides, activeDayRouteSegmentKeys),
+    [activeDayRouteSegmentKeys, routeOverrides],
+  );
 
   const todayItems = useMemo(
     () => sortScheduleItems(items.filter((item) => item.day_index === todayDayIndex)),
@@ -2420,6 +2442,7 @@ export default function App() {
       setSharedLuggageItems([]);
       setAttachments([]);
       setItineraryBudgetLinks([]);
+      setRouteOverrides([]);
       setPackItems([]);
       setMembers([]);
       return;
@@ -2555,6 +2578,25 @@ export default function App() {
     });
   }, []);
 
+  const loadRouteOverrides = useCallback(async (tripId, dayIndex) => {
+    if (!tripId || !Number.isInteger(Number(dayIndex))) {
+      setRouteOverrides([]);
+      return [];
+    }
+    const { data, error } = await supabase
+      .from("itinerary_route_overrides")
+      .select("id,trip_id,day_index,from_item_id,to_item_id,points_json,updated_at")
+      .eq("trip_id", tripId)
+      .eq("day_index", dayIndex);
+    if (error) {
+      setRouteOverrides([]);
+      return [];
+    }
+    const rows = data || [];
+    setRouteOverrides(rows);
+    return rows;
+  }, []);
+
   const loadShareLinks = useCallback(async (tripId) => {
     if (!tripId) {
       setShareLinks([]);
@@ -2659,6 +2701,73 @@ export default function App() {
     }
     loadTripData(activeTripId);
   }, [activeTripId, loadTripData, todayDayIndex]);
+
+  useEffect(() => {
+    if (!activeTripId || isDemoMode) {
+      setRouteOverrides([]);
+      return;
+    }
+    void loadRouteOverrides(activeTripId, activeDay);
+  }, [activeDay, activeTripId, isDemoMode, loadRouteOverrides]);
+
+  useEffect(() => {
+    if (!activeTrip?.id || !canEditActiveTripContent || !routeOverrides.length) return;
+    const invalidOverrides = routeOverrides.filter((override) => (
+      !activeDayRouteSegmentKeys.has(routeOverrideSegmentKey(override.from_item_id, override.to_item_id))
+    ));
+    if (!invalidOverrides.length) return;
+    const invalidIds = invalidOverrides.map((override) => override.id).filter(Boolean);
+    if (!invalidIds.length) return;
+    setRouteOverrides((current) => current.filter((override) => !invalidIds.includes(override.id)));
+    void supabase
+      .from("itinerary_route_overrides")
+      .delete()
+      .eq("trip_id", activeTrip.id)
+      .eq("day_index", activeDay)
+      .in("id", invalidIds);
+  }, [activeDay, activeDayRouteSegmentKeys, activeTrip?.id, canEditActiveTripContent, routeOverrides]);
+
+  useEffect(() => {
+    if (!activeTrip?.id || isDemoMode) {
+      routeOverrideCoordinateSnapshotRef.current = new Map();
+      return;
+    }
+
+    const nextSnapshot = new Map(
+      items
+        .filter((item) => item.trip_id === activeTrip.id && !isTransportationCard(item))
+        .map((item) => [item.id, `${item.latitude ?? ""}:${item.longitude ?? ""}`]),
+    );
+    const previousSnapshot = routeOverrideCoordinateSnapshotRef.current;
+    const changedItemIds = [];
+    nextSnapshot.forEach((signature, itemId) => {
+      if (previousSnapshot.has(itemId) && previousSnapshot.get(itemId) !== signature) {
+        changedItemIds.push(itemId);
+      }
+    });
+    routeOverrideCoordinateSnapshotRef.current = nextSnapshot;
+
+    if (!canEditActiveTripContent || !changedItemIds.length) return;
+    setRouteOverrides((current) =>
+      current.filter(
+        (override) =>
+          !changedItemIds.includes(override.from_item_id) &&
+          !changedItemIds.includes(override.to_item_id),
+      ),
+    );
+    void Promise.all([
+      supabase
+        .from("itinerary_route_overrides")
+        .delete()
+        .eq("trip_id", activeTrip.id)
+        .in("from_item_id", changedItemIds),
+      supabase
+        .from("itinerary_route_overrides")
+        .delete()
+        .eq("trip_id", activeTrip.id)
+        .in("to_item_id", changedItemIds),
+    ]);
+  }, [activeTrip?.id, canEditActiveTripContent, isDemoMode, items]);
 
   useEffect(() => {
     if (isDemoMode || !session?.user || !activeTripId) return;
@@ -4779,6 +4888,79 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
+  function showRouteOverrideSaveError() {
+    setRouteOverrideSaveError("路線保存失敗，已還原。");
+    window.setTimeout(() => setRouteOverrideSaveError(""), 3600);
+  }
+
+  async function saveRouteOverrideChange({ fromItemId, points = [], segmentKey, toItemId }) {
+    const baselinePoints = activeRouteOverridePointsBySegment[segmentKey] || [];
+    if (!activeTrip || !canEditActiveTripContent || !fromItemId || !toItemId) {
+      return { ok: false, points: baselinePoints };
+    }
+
+    const nextPoints = normalizeRouteOverridePoints(points);
+    if (routeOverridePointsEqual(nextPoints, baselinePoints)) {
+      return { ok: true, points: baselinePoints };
+    }
+    try {
+      if (!nextPoints.length) {
+        const deleteResult = await supabase
+          .from("itinerary_route_overrides")
+          .delete()
+          .eq("trip_id", activeTrip.id)
+          .eq("day_index", activeDay)
+          .eq("from_item_id", fromItemId)
+          .eq("to_item_id", toItemId);
+        if (deleteResult.error) throw deleteResult.error;
+        setRouteOverrides((current) =>
+          current.filter(
+            (override) =>
+              !(
+                override.from_item_id === fromItemId &&
+                override.to_item_id === toItemId &&
+                Number(override.day_index) === Number(activeDay)
+              ),
+          ),
+        );
+        return { ok: true, points: [] };
+      }
+
+      const { data, error } = await supabase
+        .from("itinerary_route_overrides")
+        .upsert(
+          {
+            trip_id: activeTrip.id,
+            day_index: activeDay,
+            from_item_id: fromItemId,
+            to_item_id: toItemId,
+            points_json: nextPoints,
+            created_by: session?.user?.id || null,
+            updated_by: session?.user?.id || null,
+          },
+          { onConflict: "trip_id,day_index,from_item_id,to_item_id" },
+        )
+        .select("id,trip_id,day_index,from_item_id,to_item_id,points_json,updated_at")
+        .single();
+      if (error) throw error;
+      setRouteOverrides((current) => [
+        ...current.filter(
+          (override) =>
+            !(
+              override.from_item_id === fromItemId &&
+              override.to_item_id === toItemId &&
+              Number(override.day_index) === Number(activeDay)
+            ),
+        ),
+        data,
+      ]);
+      return { ok: true, points: nextPoints };
+    } catch {
+      showRouteOverrideSaveError();
+      return { ok: false, points: baselinePoints };
+    }
+  }
+
   async function reorderDestinationPackages({
     dayIndex,
     orderedTimedItemIds = null,
@@ -5375,6 +5557,8 @@ function exportTrip() {
             luggageTab={luggageTab}
             members={members}
             packItems={packItems}
+            routeOverridePointsBySegment={activeRouteOverridePointsBySegment}
+            routeOverrideSaveError={routeOverrideSaveError}
             sharedLuggageItems={sharedLuggageItems}
             todayDayIndex={todayDayIndex}
             todayItems={todayItems}
@@ -5410,6 +5594,7 @@ function exportTrip() {
             onSaveBudget={saveBudget}
             onSaveGuide={saveGuide}
             onSaveItem={saveItem}
+            onSaveRouteOverride={saveRouteOverrideChange}
             onSaveLuggageItem={saveLuggageItem}
             onSaveSharedLuggageItem={saveSharedLuggageItem}
             onSaveTodo={saveTodo}
@@ -8873,6 +9058,8 @@ function TripWorkspace(props) {
     luggageTab,
     members,
     packItems,
+    routeOverridePointsBySegment = {},
+    routeOverrideSaveError = "",
     sharedLuggageItems,
     todayDayIndex,
     todayItems,
@@ -8908,6 +9095,7 @@ function TripWorkspace(props) {
     onSaveBudget,
     onSaveGuide,
     onSaveItem,
+    onSaveRouteOverride,
     onSaveLuggageItem,
     onSaveSharedLuggageItem,
     onSaveTodo,
@@ -9251,8 +9439,11 @@ function TripWorkspace(props) {
                   focusedItemId={focusedItemId}
                   {...mapPointPicker}
                   mode="formal"
+                  routeOverridePointsBySegment={routeOverridePointsBySegment}
+                  routeOverrideSaveError={routeOverrideSaveError}
                   viewportKey={`formal-day:${activeDay}`}
                   onFocusItem={setFocusedItemId}
+                  onRouteOverrideChange={onSaveRouteOverride}
                 />
               </aside>
             )}
@@ -12359,10 +12550,13 @@ function RoutePanel({
   mapPickingMode = null,
   mapPointPickFeedback = "",
   mode = "formal",
+  routeOverridePointsBySegment = {},
+  routeOverrideSaveError = "",
   viewportKey,
   onFocusItem,
   onCancelMapPointPick,
   onPickMapPoint,
+  onRouteOverrideChange,
   onSelectPlaceDetails,
   onStartMapPointPick,
 }) {
@@ -12391,8 +12585,11 @@ function RoutePanel({
         onFocusItem={onFocusItem}
         onCancelMapPointPick={onCancelMapPointPick}
         onPickMapPoint={onPickMapPoint}
+        onRouteOverrideChange={onRouteOverrideChange}
         onSelectPlaceDetails={onSelectPlaceDetails}
         onStartMapPointPick={onStartMapPointPick}
+        routeOverridePointsBySegment={routeOverridePointsBySegment}
+        routeOverrideSaveError={routeOverrideSaveError}
       />
     </section>
   );

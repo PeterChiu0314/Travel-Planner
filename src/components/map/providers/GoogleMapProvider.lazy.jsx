@@ -9,6 +9,7 @@ import {
 import { PLACE_DETAILS_FIELD_MASK_MINIMAL } from "../../../lib/googlePlacesConfig.js";
 import { loadGoogleMapsApi } from "../../../lib/googleMapsLoader.js";
 import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
+import { MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT } from "../../../lib/routeOverrides.js";
 import StaticMapProvider from "./StaticMapProvider.jsx";
 
 const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
@@ -24,7 +25,6 @@ const PENDING_POI_HINT_WIDTH = 108;
 const PENDING_POI_HINT_HEIGHT = 26;
 const PENDING_POI_HINT_GAP = 43;
 const ROUTE_EDIT_ACTIVE_TOP_INSET_PX = 6;
-const ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT = 5;
 const ROUTE_EDIT_HIT_STROKE_WEIGHT = 22;
 const ROUTE_EDIT_SUPPRESS_LINE_CLICK_MS = 250;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
@@ -153,7 +153,9 @@ function buildRouteSegments(markers) {
     segments.push({
       key: routeSegmentKey(fromMarker, toMarker),
       from: { lat: fromMarker.latitude, lng: fromMarker.longitude },
+      fromItemId: fromMarker.itemId,
       to: { lat: toMarker.latitude, lng: toMarker.longitude },
+      toItemId: toMarker.itemId,
     });
   }
   return segments;
@@ -221,9 +223,12 @@ export default function GoogleMapProvider(props) {
     onCancelMapPointPick,
     onFocusItem,
     onPickMapPoint,
+    onRouteOverrideChange,
     onSelectPlaceDetails,
     onStartMapPointPick,
     providerConfig = {},
+    routeOverridePointsBySegment = {},
+    routeOverrideSaveError = "",
     viewportKey = "default",
   } = props;
   const coordinateMarkers = useMemo(() => markers.filter((marker) => marker.hasCoordinates), [markers]);
@@ -277,6 +282,10 @@ export default function GoogleMapProvider(props) {
   const [fallbackReason, setFallbackReason] = useState(null);
   const markersKey = coordinateKey(coordinateMarkers);
   const routeSegments = useMemo(() => buildRouteSegments(coordinateMarkers), [markersKey]);
+  const routeSegmentByKey = useMemo(
+    () => new Map(routeSegments.map((segment) => [segment.key, segment])),
+    [routeSegments],
+  );
   const viewportSignature = `${viewportKey}:${markersKey}`;
   const apiKey = typeof providerConfig.apiKey === "string" ? providerConfig.apiKey.trim() : "";
   const placesLibraries = Array.isArray(providerConfig.placesLibraries) ? providerConfig.placesLibraries : [];
@@ -542,6 +551,34 @@ export default function GoogleMapProvider(props) {
     routeLineRef.current?.setPath?.(nextPath);
   }
 
+  async function persistRouteCustomPoints(segmentKey, points) {
+    if (typeof onRouteOverrideChange !== "function") return { ok: true, points };
+    const segment = routeSegmentByKey.get(segmentKey);
+    if (!segment) return { ok: false, points: [] };
+    const result = await onRouteOverrideChange({
+      fromItemId: segment.fromItemId,
+      points,
+      segmentKey,
+      toItemId: segment.toItemId,
+    });
+    return result || { ok: true, points };
+  }
+
+  function setRouteSegmentPoints(segmentKey, points) {
+    const nextPoints = Array.isArray(points) ? points : [];
+    setCustomRoutePointsBySegment((current) => {
+      if (!nextPoints.length) {
+        const next = { ...current };
+        delete next[segmentKey];
+        return next;
+      }
+      return {
+        ...current,
+        [segmentKey]: nextPoints,
+      };
+    });
+  }
+
   function suppressRouteLineClick() {
     routeEditSuppressLineClickUntilRef.current = Date.now() + ROUTE_EDIT_SUPPRESS_LINE_CLICK_MS;
   }
@@ -549,16 +586,17 @@ export default function GoogleMapProvider(props) {
   function insertRouteCustomPoint(segmentKey, insertIndex, point) {
     setCustomRoutePointsBySegment((current) => {
       const currentPoints = current[segmentKey] || [];
-      if (currentPoints.length >= ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT) return current;
+      if (currentPoints.length >= MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT) return current;
       const safeInsertIndex = clamp(Math.floor(insertIndex), 0, currentPoints.length);
-      return {
-        ...current,
-        [segmentKey]: [
-          ...currentPoints.slice(0, safeInsertIndex),
-          point,
-          ...currentPoints.slice(safeInsertIndex),
-        ],
-      };
+      const nextPoints = [
+        ...currentPoints.slice(0, safeInsertIndex),
+        point,
+        ...currentPoints.slice(safeInsertIndex),
+      ];
+      void persistRouteCustomPoints(segmentKey, nextPoints).then((result) => {
+        if (result?.ok === false) setRouteSegmentPoints(segmentKey, result.points || []);
+      });
+      return { ...current, [segmentKey]: nextPoints };
     });
   }
 
@@ -567,6 +605,9 @@ export default function GoogleMapProvider(props) {
       const currentPoints = current[segmentKey] || [];
       if (!currentPoints[pointIndex]) return current;
       const nextPoints = currentPoints.map((currentPoint, index) => (index === pointIndex ? point : currentPoint));
+      void persistRouteCustomPoints(segmentKey, nextPoints).then((result) => {
+        if (result?.ok === false) setRouteSegmentPoints(segmentKey, result.points || []);
+      });
       return {
         ...current,
         [segmentKey]: nextPoints,
@@ -579,6 +620,9 @@ export default function GoogleMapProvider(props) {
       const currentPoints = current[segmentKey] || [];
       if (!currentPoints[pointIndex]) return current;
       const nextPoints = currentPoints.filter((_, index) => index !== pointIndex);
+      void persistRouteCustomPoints(segmentKey, nextPoints).then((result) => {
+        if (result?.ok === false) setRouteSegmentPoints(segmentKey, result.points || []);
+      });
       if (!nextPoints.length) {
         const next = { ...current };
         delete next[segmentKey];
@@ -788,6 +832,13 @@ export default function GoogleMapProvider(props) {
     customRoutePointsRef.current = customRoutePointsBySegment;
     applyRouteLinePath(customRoutePointsBySegment);
   }, [customRoutePointsBySegment, markersKey]);
+
+  useEffect(() => {
+    const nextPoints = routeOverridePointsBySegment || {};
+    customRoutePointsRef.current = nextPoints;
+    setCustomRoutePointsBySegment(nextPoints);
+    applyRouteLinePath(nextPoints);
+  }, [markersKey, routeOverridePointsBySegment]);
 
   useEffect(() => {
     routeLineRef.current?.setMap(null);
@@ -1290,6 +1341,11 @@ export default function GoogleMapProvider(props) {
       {isRouteEditMode ? (
         <div className="route-edit-mode-banner" role="status">
           路線編輯模式
+        </div>
+      ) : null}
+      {routeOverrideSaveError ? (
+        <div className="route-edit-save-error" role="status">
+          {routeOverrideSaveError}
         </div>
       ) : null}
       {showPlacesSearchOverlay ? (

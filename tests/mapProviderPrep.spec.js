@@ -8,6 +8,12 @@ import {
   buildMapProviderDiagnostics,
   shouldLogMapProviderDiagnostics,
 } from "../src/lib/mapProviderDiagnostics.js";
+import {
+  MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT,
+  routeOverrideSegmentKey,
+  routeOverridesToSegmentMap,
+  validRouteSegmentKeysFromStops,
+} from "../src/lib/routeOverrides.js";
 
 const repoRoot = process.cwd();
 
@@ -648,7 +654,8 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const packageJson = readRepoFile("package.json");
 
-  expect(googleProviderSource).toContain("ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT = 5");
+  expect(MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT).toBe(5);
+  expect(googleProviderSource).toContain("MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT");
   expect(googleProviderSource).toContain("ROUTE_EDIT_HIT_STROKE_WEIGHT = 22");
   expect(googleProviderSource).toContain("ROUTE_EDIT_SUPPRESS_LINE_CLICK_MS = 250");
   expect(googleProviderSource).toContain("function routeSegmentKey(fromMarker, toMarker)");
@@ -664,7 +671,7 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   expect(googleProviderSource).toContain("new PointConstructor(7, 7)");
   expect(googleProviderSource).toContain("new SizeConstructor(14, 14)");
   expect(googleProviderSource).toContain('const [customRoutePointsBySegment, setCustomRoutePointsBySegment] = useState({})');
-  expect(googleProviderSource).toContain("if (currentPoints.length >= ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT) return current");
+  expect(googleProviderSource).toContain("if (currentPoints.length >= MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT) return current");
   expect(googleProviderSource).toContain("function insertRouteCustomPoint(segmentKey, insertIndex, point)");
   expect(googleProviderSource).toContain("...currentPoints.slice(0, safeInsertIndex)");
   expect(googleProviderSource).toContain("...currentPoints.slice(safeInsertIndex)");
@@ -687,6 +694,65 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   expect(staticProviderSource).not.toContain("map-route-edit-button");
   expect(staticProviderSource).not.toContain("customRoutePointsBySegment");
   expect(packageJson).not.toContain("@react-google-maps");
+});
+
+test("Phase 5.7b-3 persists route overrides with guarded cleanup and Google-only editing", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+  const migrationSource = readRepoFile("supabase/migrations/20260708063744_add_itinerary_route_overrides.sql");
+
+  expect(migrationSource).toContain("create table if not exists public.itinerary_route_overrides");
+  expect(migrationSource).toContain("points_json jsonb not null default '[]'::jsonb");
+  expect(migrationSource).toContain("unique (trip_id, day_index, from_item_id, to_item_id)");
+  expect(migrationSource).toContain("alter table public.itinerary_route_overrides enable row level security");
+  expect(migrationSource).toContain("app_private.can_read_trip(trip_id, auth.uid())");
+  expect(migrationSource).toContain("app_private.can_edit_trip(trip_id, auth.uid())");
+  expect(migrationSource).toContain("touch_itinerary_route_overrides_updated_at");
+
+  const stops = [
+    { itemId: "visit-a" },
+    { itemId: "visit-b" },
+    { itemId: "visit-c" },
+  ];
+  const validKeys = validRouteSegmentKeysFromStops(stops);
+  expect(validKeys.has(routeOverrideSegmentKey("visit-a", "visit-b"))).toBe(true);
+  expect(validKeys.has(routeOverrideSegmentKey("visit-b", "visit-c"))).toBe(true);
+  expect(routeOverridesToSegmentMap([
+    { from_item_id: "visit-a", to_item_id: "visit-b", points_json: [{ lat: 1, lng: 2 }] },
+    { from_item_id: "visit-a", to_item_id: "visit-c", points_json: [{ lat: 3, lng: 4 }] },
+    { from_item_id: "visit-b", to_item_id: "visit-c", points_json: [] },
+  ], validKeys)).toEqual({
+    "visit-a:visit-b": [{ lat: 1, lng: 2 }],
+  });
+
+  expect(appSource).toContain('const [routeOverrides, setRouteOverrides] = useState([])');
+  expect(appSource).toContain("loadRouteOverrides(activeTripId, activeDay)");
+  expect(appSource).toContain('from("itinerary_route_overrides")');
+  expect(appSource).toContain(".upsert(");
+  expect(appSource).toContain('points_json: nextPoints');
+  expect(appSource).not.toContain("points_json: [segment.from");
+  expect(appSource).toContain("routeOverridePointsEqual(nextPoints, baselinePoints)");
+  expect(appSource).toContain("return { ok: false, points: baselinePoints }");
+  expect(appSource).toContain("路線保存失敗，已還原。");
+  expect(appSource).toContain("!activeDayRouteSegmentKeys.has(routeOverrideSegmentKey");
+  expect(appSource).toContain('in("from_item_id", changedItemIds)');
+  expect(appSource).toContain('in("to_item_id", changedItemIds)');
+  expect(appSource).toContain("routeOverrideCoordinateSnapshotRef");
+  expect(appSource).toContain("routeOverridePointsBySegment={activeRouteOverridePointsBySegment}");
+  expect(appSource).toContain("onSaveRouteOverride={saveRouteOverrideChange}");
+
+  expect(mapPanelSource).toContain("routeOverridePointsBySegment = {}");
+  expect(mapPanelSource).toContain("onRouteOverrideChange");
+  expect(googleProviderSource).toContain("routeOverridePointsBySegment = {}");
+  expect(googleProviderSource).toContain("persistRouteCustomPoints");
+  expect(googleProviderSource).toContain("setRouteSegmentPoints(segmentKey, result.points || [])");
+  expect(googleProviderSource).toContain("routeOverrideSaveError");
+  expect(stylesSource).toContain(".route-edit-save-error");
+  expect(staticProviderSource).not.toContain("routeOverridePointsBySegment");
+  expect(staticProviderSource).not.toContain("itinerary_route_overrides");
 });
 
 test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {
