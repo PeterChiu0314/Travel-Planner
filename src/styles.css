@@ -749,22 +749,45 @@ code {
   stroke-width: 2;
 }
 
-.map-area-point-button {
+.map-area-tools {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
-  z-index: 5;
-  display: inline-flex;
+  top: 68px;
+  left: 20px;
+  z-index: 6;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 7px 10px;
+  gap: 8px;
+}
+
+.map-area-tools.without-search {
+  top: 18px;
+}
+
+.map-area-tools .mini-button {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
   border-color: rgba(47, 143, 114, 0.34);
   background: rgba(255, 255, 255, 0.94);
   color: var(--mint-dark);
 }
 
-.map-area-point-button.active {
+.map-area-tools .mini-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.map-area-tools .mini-button:disabled,
+.places-search-input:disabled,
+.places-search-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.map-area-point-button.active,
+.map-route-edit-button.active {
   border-color: rgba(216, 95, 73, 0.32);
   background: rgba(255, 255, 255, 0.96);
   color: #9f3f30;
@@ -3790,6 +3813,34 @@ textarea {
 .google-map-canvas .gm-style {
   width: 100%;
   height: 100%;
+}
+
+.google-map-surface.is-route-edit-mode .google-map-canvas {
+  filter: saturate(0.88) brightness(0.92);
+}
+
+.route-edit-interaction-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: rgba(15, 23, 42, 0.08);
+  cursor: crosshair;
+}
+
+.route-edit-mode-banner {
+  position: absolute;
+  left: 50%;
+  top: 120px;
+  z-index: 5;
+  padding: 8px 12px;
+  border: 1px solid rgba(47, 143, 114, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--mint-dark);
+  font-size: 13px;
+  font-weight: 900;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .google-map-surface.is-picking-map-point,

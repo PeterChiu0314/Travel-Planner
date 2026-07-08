@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+import { MapPin, Route, Search, X } from "lucide-react";
 import {
   createPlacesAutocompleteSessionManager,
   fetchPlaceDetailsForPrediction,
@@ -203,13 +203,17 @@ export default function GoogleMapProvider(props) {
   const [placesPreviewDialogPosition, setPlacesPreviewDialogPosition] = useState(null);
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
   const [placesDetailsStatus, setPlacesDetailsStatus] = useState("idle");
+  const [isRouteEditMode, setIsRouteEditMode] = useState(false);
   const [renderFailed, setRenderFailed] = useState(false);
   const [fallbackReason, setFallbackReason] = useState(null);
   const markersKey = coordinateKey(coordinateMarkers);
   const viewportSignature = `${viewportKey}:${markersKey}`;
   const apiKey = typeof providerConfig.apiKey === "string" ? providerConfig.apiKey.trim() : "";
   const placesLibraries = Array.isArray(providerConfig.placesLibraries) ? providerConfig.placesLibraries : [];
-  const canSearchPlaces = status === "ready" && providerConfig.placesEnabled === true && placesReady && !isPickingMapPoint;
+  const placesSearchAvailable = status === "ready" && providerConfig.placesEnabled === true && placesReady;
+  const canSearchPlaces = placesSearchAvailable && !isPickingMapPoint && !isRouteEditMode;
+  const showPlacesSearchOverlay = canSearchPlaces || (isRouteEditMode && placesSearchAvailable);
+  const disableMapAreaPointPick = isRouteEditMode || !canPickMapPoint;
 
   const handleMapElementRef = useCallback((element) => {
     mapElementRef.current = element;
@@ -425,7 +429,7 @@ export default function GoogleMapProvider(props) {
   function toggleMapAreaPointPick(event) {
     event.preventDefault();
     event.stopPropagation();
-    if (!canPickMapPoint) return;
+    if (disableMapAreaPointPick) return;
     clearPendingPoi();
     clearPlacesPreview();
     resetPlacesSearch();
@@ -434,6 +438,12 @@ export default function GoogleMapProvider(props) {
       return;
     }
     onStartMapPointPick?.(hasActiveMapPointEditor ? "editor" : "map-add");
+  }
+
+  function toggleRouteEditMode(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsRouteEditMode((current) => !current);
   }
 
   useEffect(() => {
@@ -499,6 +509,26 @@ export default function GoogleMapProvider(props) {
       window.clearTimeout(timerId);
     };
   }, [canSearchPlaces, placesSearchInput, placesSearchIsComposing]);
+
+  useEffect(() => {
+    if (!isRouteEditMode) return undefined;
+
+    clearPendingPoi();
+    clearPlacesPreview();
+    resetPlacesSearch();
+    if (isPickingMapPoint) onCancelMapPointPick?.();
+
+    function handleRouteEditKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsRouteEditMode(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleRouteEditKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleRouteEditKeyDown);
+    };
+  }, [isPickingMapPoint, isRouteEditMode, onCancelMapPointPick]);
 
   useEffect(() => {
     if (status !== "ready" || !mapElementRef.current) return undefined;
@@ -570,7 +600,7 @@ export default function GoogleMapProvider(props) {
         });
 
         googleMarker.addListener("click", () => {
-          if (!isPickingMapPoint) onFocusItem?.(marker.itemId);
+          if (!isPickingMapPoint && !isRouteEditMode) onFocusItem?.(marker.itemId);
         });
         markerInstancesRef.current.set(marker.id, googleMarker);
         bounds.extend(position);
@@ -617,7 +647,7 @@ export default function GoogleMapProvider(props) {
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
     };
-  }, [isPickingMapPoint, markersKey, onFocusItem, status, viewportSignature]);
+  }, [isPickingMapPoint, isRouteEditMode, markersKey, onFocusItem, status, viewportSignature]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current || !placesPreview) {
@@ -741,6 +771,7 @@ export default function GoogleMapProvider(props) {
   useEffect(() => {
     if (status !== "ready" || !mapRef.current) return;
     if (isPickingMapPoint) return;
+    if (isRouteEditMode) return;
 
     const mapsNamespace = window.google?.maps;
     const focusIcon = focusedMarkerIcon(mapsNamespace);
@@ -764,7 +795,7 @@ export default function GoogleMapProvider(props) {
         mapRef.current.panTo(focusedMarker.getPosition());
       });
     }
-  }, [focusedMapState.focusedMarkerId, isPickingMapPoint, markersKey, status]);
+  }, [focusedMapState.focusedMarkerId, isPickingMapPoint, isRouteEditMode, markersKey, status]);
 
   useEffect(() => {
     if (mapPointClickListenerRef.current) {
@@ -774,6 +805,10 @@ export default function GoogleMapProvider(props) {
     if (status !== "ready" || !mapRef.current) return undefined;
 
     mapPointClickListenerRef.current = mapRef.current.addListener("click", (event) => {
+      if (isRouteEditMode) {
+        event?.stop?.();
+        return;
+      }
       const latLng = event?.latLng;
       const latitude = typeof latLng?.lat === "function" ? latLng.lat() : null;
       const longitude = typeof latLng?.lng === "function" ? latLng.lng() : null;
@@ -818,14 +853,14 @@ export default function GoogleMapProvider(props) {
       mapPointClickListenerRef.current?.remove?.();
       mapPointClickListenerRef.current = null;
     };
-  }, [isPickingMapPoint, onPickMapPoint, pendingPoi, placesPreview, status]);
+  }, [isPickingMapPoint, isRouteEditMode, onPickMapPoint, pendingPoi, placesPreview, status]);
 
   useEffect(() => {
     clearPendingPoi();
     clearPlacesPreview();
     setPlacesPredictions([]);
     setPlacesSearchStatus("idle");
-  }, [isPickingMapPoint, viewportKey]);
+  }, [isPickingMapPoint, isRouteEditMode, viewportKey]);
 
   useEffect(() => {
     if (!placesPreview && !pendingPoi) return undefined;
@@ -917,17 +952,32 @@ export default function GoogleMapProvider(props) {
 
   return (
     <div
-      className={`${className} google-map-surface${isPickingMapPoint ? " is-picking-map-point" : ""}`}
+      className={`${className} google-map-surface${isPickingMapPoint ? " is-picking-map-point" : ""}${isRouteEditMode ? " is-route-edit-mode" : ""}`}
       aria-label="Google map destination markers"
     >
       <div className="google-map-canvas" ref={handleMapElementRef} />
+      {isRouteEditMode ? (
+        <div
+          className="route-edit-interaction-layer"
+          aria-label="路線編輯互動層"
+          onClick={(event) => event.stopPropagation()}
+          onDoubleClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          onPointerUp={(event) => event.stopPropagation()}
+        />
+      ) : null}
       {!coordinateMarkers.length ? (
         <div className="google-map-empty-hint">This day has no coordinate markers yet</div>
       ) : null}
       {missingMapPointCount > 0 ? (
         <div className="map-point-warning">尚有 {missingMapPointCount} 個目的地缺少可用座標</div>
       ) : null}
-      {canSearchPlaces ? (
+      {isRouteEditMode ? (
+        <div className="route-edit-mode-banner" role="status">
+          路線編輯模式
+        </div>
+      ) : null}
+      {showPlacesSearchOverlay ? (
         <div
           className="places-search-overlay"
           onClick={(event) => event.stopPropagation()}
@@ -937,6 +987,7 @@ export default function GoogleMapProvider(props) {
             <input
               autoComplete="off"
               className="places-search-input"
+              disabled={isRouteEditMode}
               placeholder="搜尋地點"
               value={placesSearchInput}
               onChange={(event) => {
@@ -963,6 +1014,7 @@ export default function GoogleMapProvider(props) {
             <button
               aria-label="搜尋地點"
               className="places-search-button"
+              disabled={isRouteEditMode}
               type="button"
               onClick={() => {
                 if (placesSearchComposingRef.current) return;
@@ -1050,22 +1102,31 @@ export default function GoogleMapProvider(props) {
           </button>
         </div>
       ) : null}
-      {canPickMapPoint ? (
+      <div className={`map-area-tools${showPlacesSearchOverlay ? "" : " without-search"}`}>
         <button
-          className={`mini-button map-area-point-button${isPickingMapPoint ? " active" : ""}`}
+          className={`mini-button map-route-edit-button${isRouteEditMode ? " active" : ""}`}
           type="button"
-          title={isPickingMapPoint ? "\u53d6\u6d88\u9078\u9ede" : hasActiveMapPointEditor ? "\u8a2d\u5b9a\u4f4d\u7f6e" : "\u65b0\u589e\u5730\u9ede"}
-          aria-label={isPickingMapPoint ? "\u53d6\u6d88\u9078\u9ede" : hasActiveMapPointEditor ? "\u8a2d\u5b9a\u4f4d\u7f6e" : "\u65b0\u589e\u5730\u9ede"}
-          onClick={toggleMapAreaPointPick}
+          title="編輯地圖路線"
+          aria-label="編輯地圖路線"
+          onClick={toggleRouteEditMode}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          {isPickingMapPoint ? <span aria-hidden="true">x</span> : <span aria-hidden="true">+</span>}
-          <span>
-            {isPickingMapPoint ? "\u53d6\u6d88" : hasActiveMapPointEditor ? "\u8a2d\u5b9a\u4f4d\u7f6e" : "\u65b0\u589e\u5730\u9ede"}
-          </span>
+          <Route aria-hidden="true" />
         </button>
-      ) : null}
-      {mapPointPickFeedback ? (
+        {canPickMapPoint ? (
+          <button
+            className={`mini-button map-area-point-button${isPickingMapPoint ? " active" : ""}`}
+            type="button"
+            title={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}
+            aria-label={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}
+            disabled={isRouteEditMode}
+            onClick={toggleMapAreaPointPick}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            {isPickingMapPoint ? <X aria-hidden="true" /> : <MapPin aria-hidden="true" />}
+          </button>
+        ) : null}
+      </div>      {mapPointPickFeedback ? (
         <div className="map-point-picker-hint">
           {mapPointPickFeedback === "picked"
             ? "\u5df2\u8a2d\u5b9a\u5730\u5716\u4f4d\u7f6e"

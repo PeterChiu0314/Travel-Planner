@@ -529,11 +529,44 @@ test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker sty
   expect(googleProviderSource).toContain("marker.setIcon(isFocusedMarker ? focusIcon : null)");
   expect(googleProviderSource).toContain("marker.setZIndex(isFocusedMarker ? 1000");
   expect(googleProviderSource).toContain("marker.setLabel(markerLabel");
-  expect(googleProviderSource).toContain("if (!isPickingMapPoint) onFocusItem?.(marker.itemId)");
-  expect(googleProviderSource).toContain("}, [isPickingMapPoint, markersKey, onFocusItem, status, viewportSignature])");
+  expect(googleProviderSource).toContain("if (!isPickingMapPoint && !isRouteEditMode) onFocusItem?.(marker.itemId)");
+  expect(googleProviderSource).toContain("}, [isPickingMapPoint, isRouteEditMode, markersKey, onFocusItem, status, viewportSignature])");
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
   expect(googleProviderSource).not.toContain("markerCluster");
   expect(staticProviderSource).not.toContain("FOCUSED_MARKER_ZOOM");
+});
+
+test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Google map", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(googleProviderSource).toContain('const [isRouteEditMode, setIsRouteEditMode] = useState(false)');
+  expect(googleProviderSource).toContain("function toggleRouteEditMode(event)");
+  expect(googleProviderSource).toContain('title="編輯地圖路線"');
+  expect(googleProviderSource).toContain('aria-label="編輯地圖路線"');
+  expect(googleProviderSource).toContain("map-route-edit-button");
+  expect(googleProviderSource).toContain("路線編輯模式");
+  expect(googleProviderSource).toContain("route-edit-interaction-layer");
+  expect(googleProviderSource).toContain('event.key === "Escape"');
+  expect(googleProviderSource).toContain("disabled={isRouteEditMode}");
+  expect(googleProviderSource).toContain('title={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}');
+  expect(googleProviderSource).toContain('aria-label={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}');
+  expect(googleProviderSource).toContain("if (!isPickingMapPoint && !isRouteEditMode) onFocusItem?.(marker.itemId)");
+  expect(googleProviderSource).toContain("if (isRouteEditMode) {");
+  expect(googleProviderSource).toContain("event?.stop?.();");
+  expect(googleProviderSource).toContain("clearPendingPoi();");
+  expect(googleProviderSource).toContain("clearPlacesPreview();");
+  expect(googleProviderSource).toContain("resetPlacesSearch();");
+  expect(googleProviderSource).toContain("if (isPickingMapPoint) onCancelMapPointPick?.();");
+  expect(staticProviderSource).not.toContain("map-route-edit-button");
+  expect(staticProviderSource).not.toContain("路線編輯模式");
+  expect(staticProviderSource).not.toContain("route-edit-interaction-layer");
+  expect(stylesSource).toContain(".map-area-tools");
+  expect(stylesSource).toContain(".map-route-edit-button.active");
+  expect(stylesSource).toContain(".google-map-surface.is-route-edit-mode");
+  expect(stylesSource).toContain(".route-edit-interaction-layer");
+  expect(stylesSource).toContain(".route-edit-mode-banner");
 });
 
 test("Phase 5.5 Google map area custom point add flow stays provider scoped", () => {
@@ -555,14 +588,17 @@ test("Phase 5.5 Google map area custom point add flow stays provider scoped", ()
   expect(mapPanelSource).toContain("hasActiveMapPointEditor = false");
   expect(mapPanelSource).toContain("mapPickingMode = null");
   expect(mapPanelSource).toContain("onStartMapPointPick");
+  expect(googleProviderSource).toContain("map-area-tools");
   expect(googleProviderSource).toContain("map-area-point-button");
   expect(googleProviderSource).toContain('onStartMapPointPick?.(hasActiveMapPointEditor ? "editor" : "map-add")');
   expect(googleProviderSource).toContain('mapPickingMode === "map-add"');
   expect(staticProviderSource).not.toContain("map-area-point-button");
+  expect(staticProviderSource).not.toContain("map-area-tools");
   expect(staticProviderSource).not.toContain("onStartMapPointPick");
   expect(stylesSource).toContain(".map-area-point-button");
-  expect(stylesSource).toContain("left: 14px");
-  expect(stylesSource).toContain("bottom: 14px");
+  expect(stylesSource).toContain(".map-area-tools");
+  expect(stylesSource).toContain("top: 68px");
+  expect(stylesSource).toContain("left: 20px");
 });
 
 test("Phase 5.4 renders simple Google route lines and Timeline sequence badges", () => {

@@ -176,9 +176,11 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
     googleProviderSource.match(/function cancelPlacesPreview\(\) \{[\s\S]*?\n  \}/)?.[0] || "";
 
   expect(googleProviderSource).toContain("PLACES_AUTOCOMPLETE_DEBOUNCE_MS = 700");
-  expect(googleProviderSource).toContain("canSearchPlaces = status === \"ready\"");
+  expect(googleProviderSource).toContain('placesSearchAvailable = status === "ready"');
   expect(googleProviderSource).toContain("providerConfig.placesEnabled === true");
-  expect(googleProviderSource).toContain("placesReady && !isPickingMapPoint");
+  expect(googleProviderSource).toContain("placesSearchAvailable && !isPickingMapPoint && !isRouteEditMode");
+  expect(googleProviderSource).toContain("showPlacesSearchOverlay");
+  expect(googleProviderSource).toContain("disabled={isRouteEditMode}");
   expect(googleProviderSource).toContain("input.length < 2");
   expect(googleProviderSource).toContain("window.setTimeout");
   expect(googleProviderSource).toContain("lastRequestedPlacesQueryRef");
@@ -242,6 +244,7 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(appSource).not.toContain("const mapUrl = String(initialPoint?.googleMapsUri");
   expect(appSource).not.toContain("provider_place_id");
   expect(staticProviderSource).not.toContain("places-search-overlay");
+  expect(staticProviderSource).not.toContain("map-route-edit-button");
   expect(adapterSource).toContain("AutocompleteSuggestion");
   expect(adapterSource).toContain("getPlacePredictions");
   expect(adapterSource).toContain("fetchFields({ fields, sessionToken })");
