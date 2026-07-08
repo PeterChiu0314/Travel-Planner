@@ -183,16 +183,17 @@ function fullRoutePath(routeSegments, customRoutePointsBySegment) {
 }
 
 function routeEditHandleIcon(mapsNamespace) {
-  const symbolPath = mapsNamespace?.SymbolPath?.CIRCLE;
-  if (!symbolPath) return null;
+  const PointConstructor = mapsNamespace?.Point;
+  const SizeConstructor = mapsNamespace?.Size;
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">',
+    '<circle cx="7" cy="7" r="5" fill="#2f8f72" stroke="#ffffff" stroke-width="2"/>',
+    "</svg>",
+  ].join("");
   return {
-    path: symbolPath,
-    fillColor: "#2f8f72",
-    fillOpacity: 1,
-    scale: 5,
-    strokeColor: "#ffffff",
-    strokeOpacity: 1,
-    strokeWeight: 2,
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    anchor: typeof PointConstructor === "function" ? new PointConstructor(7, 7) : undefined,
+    scaledSize: typeof SizeConstructor === "function" ? new SizeConstructor(14, 14) : undefined,
   };
 }
 

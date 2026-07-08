@@ -658,9 +658,11 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   expect(googleProviderSource).toContain("function routeSubSegments(segment, customPoints = [])");
   expect(googleProviderSource).toContain("insertIndex: index");
   expect(googleProviderSource).toContain("function routeEditHandleIcon(mapsNamespace)");
-  expect(googleProviderSource).toContain("path: symbolPath");
-  expect(googleProviderSource).toContain('fillColor: "#2f8f72"');
-  expect(googleProviderSource).toContain("scale: 5");
+  expect(googleProviderSource).toContain('width="14" height="14"');
+  expect(googleProviderSource).toContain('<circle cx="7" cy="7" r="5" fill="#2f8f72"');
+  expect(googleProviderSource).toContain("encodeURIComponent(svg)");
+  expect(googleProviderSource).toContain("new PointConstructor(7, 7)");
+  expect(googleProviderSource).toContain("new SizeConstructor(14, 14)");
   expect(googleProviderSource).toContain('const [customRoutePointsBySegment, setCustomRoutePointsBySegment] = useState({})');
   expect(googleProviderSource).toContain("if (currentPoints.length >= ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT) return current");
   expect(googleProviderSource).toContain("function insertRouteCustomPoint(segmentKey, insertIndex, point)");
