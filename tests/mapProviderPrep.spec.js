@@ -635,12 +635,41 @@ test("Phase 5.4 renders simple Google route lines and Timeline sequence badges",
   expect(appSource).not.toContain("timeline-destination-sequence");
   expect(googleProviderSource).toContain("routeLineRef");
   expect(googleProviderSource).toContain("new mapsNamespace.Polyline");
-  expect(googleProviderSource).toContain("path: coordinateMarkers.map");
+  expect(googleProviderSource).toContain("path: fullRoutePath(routeSegments, customRoutePointsRef.current)");
   expect(googleProviderSource).toContain("clickable: false");
   expect(googleProviderSource).toContain("markerSequenceNumber(marker");
   expect(staticProviderSource).not.toContain("Polyline");
   expect(googleProviderSource).not.toContain("Directions");
   expect(googleProviderSource).not.toContain("Routes");
+});
+
+test("Phase 5.7b-2 Google route edit mode supports local segment custom points only", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
+  const packageJson = readRepoFile("package.json");
+
+  expect(googleProviderSource).toContain("ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT = 5");
+  expect(googleProviderSource).toContain("ROUTE_EDIT_HIT_STROKE_WEIGHT = 22");
+  expect(googleProviderSource).toContain("function routeSegmentKey(fromMarker, toMarker)");
+  expect(googleProviderSource).toContain("return `${fromMarker.itemId}:${toMarker.itemId}`");
+  expect(googleProviderSource).toContain("function buildRouteSegments(markers)");
+  expect(googleProviderSource).toContain("function routeSegmentPath(segment, customRoutePointsBySegment)");
+  expect(googleProviderSource).toContain('const [customRoutePointsBySegment, setCustomRoutePointsBySegment] = useState({})');
+  expect(googleProviderSource).toContain("if (currentPoints.length >= ROUTE_EDIT_MAX_CUSTOM_POINTS_PER_SEGMENT) return current");
+  expect(googleProviderSource).toContain("addRouteCustomPoint(segment.key, { lat, lng })");
+  expect(googleProviderSource).toContain("path: routeSegmentPath(segment, customRoutePointsBySegment)");
+  expect(googleProviderSource).toContain("strokeOpacity: 0.01");
+  expect(googleProviderSource).toContain("draggable: true");
+  expect(googleProviderSource).toContain('marker.addListener?.("drag"');
+  expect(googleProviderSource).toContain("applyRouteLinePath(nextCustomPoints)");
+  expect(googleProviderSource).toContain('marker.addListener?.("dragend"');
+  expect(googleProviderSource).toContain("updateRouteCustomPoint(segment.key, pointIndex, { lat, lng })");
+  expect(googleProviderSource).toContain('marker.addListener?.("click"');
+  expect(googleProviderSource).toContain("removeRouteCustomPoint(segment.key, pointIndex)");
+  expect(googleProviderSource).toContain("if (!isRouteEditMode || status !== \"ready\"");
+  expect(staticProviderSource).not.toContain("map-route-edit-button");
+  expect(staticProviderSource).not.toContain("customRoutePointsBySegment");
+  expect(packageJson).not.toContain("@react-google-maps");
 });
 
 test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {
