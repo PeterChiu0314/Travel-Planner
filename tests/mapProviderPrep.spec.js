@@ -548,6 +548,7 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
   expect(googleProviderSource).toContain("map-route-edit-button");
   expect(googleProviderSource).toContain("路線編輯模式");
   expect(googleProviderSource).toContain("routeEditOverlayRect");
+  expect(googleProviderSource).toContain("ROUTE_EDIT_ACTIVE_TOP_INSET_PX = 6");
   expect(googleProviderSource).toContain("route-edit-page-overlay-pane");
   expect(googleProviderSource).toContain("createPortal(");
   expect(googleProviderSource).toContain("document.body");

@@ -23,6 +23,7 @@ const PLACES_PREVIEW_DIALOG_EDGE_GAP = 12;
 const PENDING_POI_HINT_WIDTH = 108;
 const PENDING_POI_HINT_HEIGHT = 26;
 const PENDING_POI_HINT_GAP = 43;
+const ROUTE_EDIT_ACTIVE_TOP_INSET_PX = 6;
 const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
 const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
 
@@ -458,12 +459,13 @@ export default function GoogleMapProvider(props) {
       setRouteEditOverlayRect(null);
       return;
     }
+    const top = Math.min(rect.bottom, rect.top + ROUTE_EDIT_ACTIVE_TOP_INSET_PX);
     setRouteEditOverlayRect({
       bottom: Math.max(0, window.innerHeight - rect.bottom),
-      height: Math.max(0, rect.height),
+      height: Math.max(0, rect.bottom - top),
       left: Math.max(0, rect.left),
       right: Math.max(0, window.innerWidth - rect.right),
-      top: Math.max(0, rect.top),
+      top: Math.max(0, top),
       width: Math.max(0, rect.width),
     });
   }
