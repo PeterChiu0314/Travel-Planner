@@ -98,7 +98,7 @@ const timelineDragPresenceHeartbeatMs = 3000;
 const timelineDragPresenceStaleMs = 12000;
 const timelineDragPresenceMaxMs = 75000;
 const timelineDragPresenceRefreshMs = 1000;
-const routeEditBroadcastThrottleMs = 80;
+const routeEditBroadcastThrottleMs = 140;
 const timelineCardSelectionStaleMs = 30000;
 const tripPresenceHeartbeatMs = 28000;
 const tripPresenceStaleMs = 55000;
@@ -2881,7 +2881,32 @@ export default function App() {
       setRouteOverrides([]);
       return [];
     }
-    const rows = data || [];
+    const rawRows = data || [];
+    const overrideIds = rawRows.map((row) => row.id).filter(Boolean);
+    let rows = rawRows;
+    if (overrideIds.length) {
+      const { data: nodeRows, error: nodeError } = await supabase
+        .from("itinerary_route_override_nodes")
+        .select("id,route_override_id,node_key,order_key,lat,lng,updated_at")
+        .in("route_override_id", overrideIds)
+        .order("order_key", { ascending: true })
+        .order("node_key", { ascending: true });
+      if (!isCurrentRouteOverrideRequest()) return [];
+      if (!nodeError) {
+        const nodesByOverrideId = (nodeRows || []).reduce((map, node) => {
+          const current = map.get(node.route_override_id) || [];
+          current.push({
+            id: node.node_key,
+            lat: node.lat,
+            lng: node.lng,
+            orderKey: Number(node.order_key),
+          });
+          map.set(node.route_override_id, current);
+          return map;
+        }, new Map());
+        rows = rawRows.map((row) => ({ ...row, points_json: nodesByOverrideId.get(row.id) || [] }));
+      }
+    }
     setRouteOverrides(rows);
     return rows;
   }, []);
@@ -3093,7 +3118,7 @@ export default function App() {
           });
           return;
         }
-        if (Array.isArray(payload.nodes) && payload.segmentKey) {
+        if (payload.segmentKey && payload.nodeId) {
           const moveKey = `${payload.sessionId}:${payload.dragId || "legacy"}:${payload.segmentKey}:${payload.nodeId || "segment"}`;
           const sequence = Number(payload.sequence);
           const updatedAt = Date.parse(payload.updatedAt || "");
@@ -3106,11 +3131,16 @@ export default function App() {
           if (payload.phase === "node-drag-move" && Number.isFinite(incomingVersion)) {
             routeEditRemoteMoveVersionRef.current.set(moveKey, incomingVersion);
           }
-          const nodes = normalizeRouteOverridePoints(payload.nodes);
+          const node = normalizeRouteOverridePoints(payload.node ? [payload.node] : [])[0] || null;
+          if (payload.phase !== "node-delete" && payload.phase !== "node-drag-start" && !node) {
+            routeEditCollaborationDebug("broadcast ignored", { reason: "invalid-node", summary });
+            return;
+          }
           setRemoteRouteEditUpdate({
+            afterNodeId: payload.afterNodeId || null,
             dragId: payload.dragId || null,
+            node,
             nodeId: payload.nodeId || null,
-            nodes,
             phase: payload.phase || "",
             segmentKey: payload.segmentKey,
             sessionId: payload.sessionId,
@@ -5397,81 +5427,132 @@ export default function App() {
       return { ok: false, points: baselinePoints };
     }
 
-    let nextPoints = normalizeRouteOverridePoints(points);
-    if (routeOverridePointsEqual(nextPoints, baselinePoints)) {
+    const requestedPoints = normalizeRouteOverridePoints(points);
+    if (routeOverridePointsEqual(requestedPoints, baselinePoints)) {
       return { ok: true, points: baselinePoints };
     }
-    try {
-      // A route override remains one compact row for now. Re-read the latest
-      // row and apply only the collaborator's node operation so independent
-      // node edits do not overwrite one another.
-      if (operation?.type) {
-        const { data: latestRow, error: latestError } = await supabase
-          .from("itinerary_route_overrides")
-          .select("points_json")
-          .eq("trip_id", activeTrip.id)
-          .eq("day_index", activeDay)
-          .eq("from_item_id", fromItemId)
-          .eq("to_item_id", toItemId)
-          .maybeSingle();
-        if (latestError) throw latestError;
-        const latestPoints = normalizeRouteOverridePoints(latestRow?.points_json || []);
-        if (operation.type === "update" && operation.node?.id) {
-          nextPoints = latestPoints.map((node) => node.id === operation.node.id ? operation.node : node);
-        } else if (operation.type === "add" && operation.node?.id) {
-          if (!latestPoints.some((node) => node.id === operation.node.id) && latestPoints.length < 5) {
-            const afterIndex = latestPoints.findIndex((node) => node.id === operation.afterNodeId);
-            nextPoints = [
-              ...latestPoints.slice(0, afterIndex + 1),
-              operation.node,
-              ...latestPoints.slice(afterIndex + 1),
-            ];
-          } else {
-            nextPoints = latestPoints;
-          }
-        } else if (operation.type === "delete" && operation.nodeId) {
-          nextPoints = latestPoints.filter((node) => node.id !== operation.nodeId);
-        }
-      }
-      if (!nextPoints.length) {
-        const deleteResult = await supabase
-          .from("itinerary_route_overrides")
-          .delete()
-          .eq("trip_id", activeTrip.id)
-          .eq("day_index", activeDay)
-          .eq("from_item_id", fromItemId)
-          .eq("to_item_id", toItemId);
-        if (deleteResult.error) throw deleteResult.error;
-        setRouteOverrides((current) =>
-          current.filter(
-            (override) =>
-              !(
-                override.from_item_id === fromItemId &&
-                override.to_item_id === toItemId &&
-                Number(override.day_index) === Number(activeDay)
-              ),
-          ),
-        );
-        return { ok: true, points: [] };
-      }
+    if (!operation?.type) {
+      showRouteOverrideSaveError();
+      return { ok: false, points: baselinePoints };
+    }
 
+    const nodeRowsToPoints = (rows = []) => normalizeRouteOverridePoints(rows.map((row) => ({
+      id: row.node_key,
+      lat: row.lat,
+      lng: row.lng,
+      orderKey: Number(row.order_key),
+    })));
+    const loadNodeRows = async (routeOverrideId) => {
       const { data, error } = await supabase
+        .from("itinerary_route_override_nodes")
+        .select("id,route_override_id,node_key,order_key,lat,lng,updated_at")
+        .eq("route_override_id", routeOverrideId)
+        .order("order_key", { ascending: true })
+        .order("node_key", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    };
+
+    try {
+      let { data: routeOverride, error: routeOverrideError } = await supabase
         .from("itinerary_route_overrides")
-        .upsert(
-          {
+        .select("id,trip_id,day_index,from_item_id,to_item_id,points_json,updated_at")
+        .eq("trip_id", activeTrip.id)
+        .eq("day_index", activeDay)
+        .eq("from_item_id", fromItemId)
+        .eq("to_item_id", toItemId)
+        .maybeSingle();
+      if (routeOverrideError) throw routeOverrideError;
+
+      if (!routeOverride && operation.type === "add" && operation.node?.id) {
+        const insertResult = await supabase
+          .from("itinerary_route_overrides")
+          .insert({
             trip_id: activeTrip.id,
             day_index: activeDay,
             from_item_id: fromItemId,
             to_item_id: toItemId,
-            points_json: nextPoints,
+            points_json: [],
             created_by: session?.user?.id || null,
             updated_by: session?.user?.id || null,
-          },
-          { onConflict: "trip_id,day_index,from_item_id,to_item_id" },
-        )
-        .select("id,trip_id,day_index,from_item_id,to_item_id,points_json,updated_at")
-        .single();
-      if (error) throw error;
+          })
+          .select("id,trip_id,day_index,from_item_id,to_item_id,points_json,updated_at")
+          .single();
+        if (insertResult.error && insertResult.error.code !== "23505") throw insertResult.error;
+        routeOverride = insertResult.data || null;
+        if (!routeOverride) {
+          const retryResult = await supabase
+            .from("itinerary_route_overrides")
+            .select("id,trip_id,day_index,from_item_id,to_item_id,points_json,updated_at")
+            .eq("trip_id", activeTrip.id)
+            .eq("day_index", activeDay)
+            .eq("from_item_id", fromItemId)
+            .eq("to_item_id", toItemId)
+            .single();
+          if (retryResult.error) throw retryResult.error;
+          routeOverride = retryResult.data;
+        }
+      }
+
+      if (!routeOverride) {
+        return { ok: true, points: [] };
+      }
+
+      const latestNodeRows = await loadNodeRows(routeOverride.id);
+      if (operation.type === "update" && operation.node?.id) {
+        const { error } = await supabase
+          .from("itinerary_route_override_nodes")
+          .update({
+            lat: operation.node.lat,
+            lng: operation.node.lng,
+            updated_by: session?.user?.id || null,
+          })
+          .eq("route_override_id", routeOverride.id)
+          .eq("node_key", operation.node.id);
+        if (error) throw error;
+      } else if (operation.type === "add" && operation.node?.id) {
+        const nodeAlreadyExists = latestNodeRows.some((row) => row.node_key === operation.node.id);
+        if (!nodeAlreadyExists) {
+          const afterIndex = operation.afterNodeId
+            ? latestNodeRows.findIndex((row) => row.node_key === operation.afterNodeId)
+            : -1;
+          const previousOrder = afterIndex >= 0 ? Number(latestNodeRows[afterIndex]?.order_key) : null;
+          const nextOrder = Number(latestNodeRows[afterIndex + 1]?.order_key);
+          const firstOrder = Number(latestNodeRows[0]?.order_key);
+          const orderKey = previousOrder === null
+            ? (Number.isFinite(firstOrder) ? firstOrder - 1000 : 1000)
+            : (Number.isFinite(nextOrder) ? (previousOrder + nextOrder) / 2 : previousOrder + 1000);
+          const { error } = await supabase
+            .from("itinerary_route_override_nodes")
+            .insert({
+              route_override_id: routeOverride.id,
+              node_key: operation.node.id,
+              order_key: orderKey,
+              lat: operation.node.lat,
+              lng: operation.node.lng,
+              created_by: session?.user?.id || null,
+              updated_by: session?.user?.id || null,
+            });
+          if (error) throw error;
+        }
+      } else if (operation.type === "delete" && operation.nodeId) {
+        const { error } = await supabase
+          .from("itinerary_route_override_nodes")
+          .delete()
+          .eq("route_override_id", routeOverride.id)
+          .eq("node_key", operation.nodeId);
+        if (error) throw error;
+      } else {
+        throw new Error("Unsupported route node operation");
+      }
+
+      const nextNodeRows = await loadNodeRows(routeOverride.id);
+      const nextPoints = nodeRowsToPoints(nextNodeRows);
+      const nextRouteOverride = {
+        ...routeOverride,
+        points_json: nextPoints,
+        updated_at: new Date().toISOString(),
+      };
       setRouteOverrides((current) => [
         ...current.filter(
           (override) =>
@@ -5481,7 +5562,7 @@ export default function App() {
               Number(override.day_index) === Number(activeDay)
             ),
         ),
-        data,
+        nextRouteOverride,
       ]);
       return { ok: true, points: nextPoints };
     } catch {

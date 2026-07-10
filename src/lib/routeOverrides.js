@@ -18,7 +18,8 @@ export function normalizeRouteOverridePoints(points = []) {
     const id = typeof point?.id === "string" && point.id.trim()
       ? point.id.trim()
       : `legacy-${normalized.length}-${lat}-${lng}`;
-    normalized.push({ id, lat, lng });
+    const orderKey = finiteNumber(point?.orderKey ?? point?.order_key);
+    normalized.push(orderKey === null ? { id, lat, lng } : { id, lat, lng, orderKey });
     return normalized;
   }, []);
 }

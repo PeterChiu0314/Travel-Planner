@@ -40,13 +40,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.7b-3 Route Override Persistence - Completed / Migration Applied
+Timeline Phase 5.7c-1 Node-level Collaborative Route Editing - In Progress
 ```
 
 Next phase:
 
 ```text
-Phase 5.7a was changed to navigation-only: the in-app Routes / Directions travel-time query UI and flow were removed, while transportation cards keep icon-only Google Maps navigation and manual editing for type, duration, name, and notes. Phase 5.7b-1 added Google-provider-only route edit mode with Map as the active area and Map-outside overlay/exit behavior. Phase 5.7b-2 added local same-day adjacent destination segment editing with small round custom-point handles, insert-by-subsegment behavior, drag update, click delete, and a five-point frontend limit. Phase 5.7b-3 added single-user route override persistence in `itinerary_route_overrides`, auto-save/upsert/delete with rollback to server baseline, invalidation cleanup for reorder/delete/insert/coordinate changes, and display of saved A -> custom points -> B polylines. Supabase migration history was repaired to align the remote project with GitHub's local `001` to `024` migration series, then `20260708063744_add_itinerary_route_overrides.sql` was successfully pushed to the remote database. Static/Demo providers still do not show route edit mode or route override persistence. No Routes API / Directions API query flow, Google route polyline persistence, package, env, 5.7c, or 5.7d work is active.
+Phase 5.7d has been merged into Phase 5.7c. Phase 5.7c keeps the same-day itinerary editable, has no 15-second idle exit, and treats custom route lines as secondary data that must yield to itinerary changes. The earlier segment-snapshot collaboration attempt exposed divergent clients, stale-node overwrite, high Realtime traffic, and drag rollback when two users edited different nodes. The active 5.7c-1 correction makes a single route node the minimum Broadcast and persistence unit: Presence remains responsible for editor/node-lock state, Broadcast sends one node preview at a time, and PostgreSQL stores each node independently. Existing channel recovery, stable node IDs, latest-wins drag preview, and imperative single-marker updates remain useful foundations. The node-level schema and application implementation is now on the active 5.7c branch, but the new migration still needs remote application and the behavior still needs two-user manual QA before this phase can close. The 5.7c planning document is intentionally not being revised during implementation, and the closeout handoff will be written only after Phase 5.7c is complete and verified.
 ```
 
 Branch:

@@ -672,7 +672,7 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   expect(googleProviderSource).toContain("new PointConstructor(7, 7)");
   expect(googleProviderSource).toContain("new SizeConstructor(14, 14)");
   expect(googleProviderSource).toContain('const [customRoutePointsBySegment, setCustomRoutePointsBySegment] = useState({})');
-  expect(googleProviderSource).toContain("if (currentPoints.length >= MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT) return current");
+  expect(googleProviderSource).toContain("if (currentPoints.length >= MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT) return");
   expect(googleProviderSource).toContain("function insertRouteCustomPoint(segmentKey, insertIndex, point)");
   expect(googleProviderSource).toContain("...currentPoints.slice(0, safeInsertIndex)");
   expect(googleProviderSource).toContain("...currentPoints.slice(safeInsertIndex)");
@@ -688,9 +688,9 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   expect(googleProviderSource).toContain("applyRouteLinePath(nextCustomPoints)");
   expect(googleProviderSource).toContain('marker.addListener?.("dragend"');
   expect(googleProviderSource).toContain("routeEditDragRef.current.lastDragEndedAt = Date.now()");
-  expect(googleProviderSource).toContain("updateRouteCustomPoint(segment.key, pointIndex, { lat, lng })");
+  expect(googleProviderSource).toContain("updateRouteCustomPoint(segment.key, point.id, { lat, lng })");
   expect(googleProviderSource).toContain('marker.addListener?.("click"');
-  expect(googleProviderSource).toContain("removeRouteCustomPoint(segment.key, pointIndex)");
+  expect(googleProviderSource).toContain("removeRouteCustomPoint(segment.key, point.id)");
   expect(googleProviderSource).toContain("if (!isRouteEditMode || status !== \"ready\"");
   expect(staticProviderSource).not.toContain("map-route-edit-button");
   expect(staticProviderSource).not.toContain("customRoutePointsBySegment");
@@ -736,10 +736,13 @@ test("Phase 5.7b-3 persists route overrides with guarded cleanup and Google-only
   expect(appSource).toContain("const requestId = ++routeOverrideLoadRequestRef.current");
   expect(appSource).toContain("if (!isCurrentRouteOverrideRequest()) return []");
   expect(appSource).toContain('from("itinerary_route_overrides")');
-  expect(appSource).toContain(".upsert(");
+  expect(appSource).toContain('from("itinerary_route_override_nodes")');
+  expect(appSource).toContain('.eq("node_key", operation.node.id)');
+  expect(appSource).toContain('.eq("node_key", operation.nodeId)');
   expect(appSource).toContain('points_json: nextPoints');
+  expect(appSource).not.toContain('{ onConflict: "trip_id,day_index,from_item_id,to_item_id" }');
   expect(appSource).not.toContain("points_json: [segment.from");
-  expect(appSource).toContain("routeOverridePointsEqual(nextPoints, baselinePoints)");
+  expect(appSource).toContain("routeOverridePointsEqual(requestedPoints, baselinePoints)");
   expect(appSource).toContain("return { ok: false, points: baselinePoints }");
   expect(appSource).toContain("路線保存失敗，已還原。");
   expect(appSource).toContain("!activeDayRouteSegmentKeys.has(routeOverrideSegmentKey");
@@ -785,13 +788,14 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const routeOverridesSource = readRepoFile("src/lib/routeOverrides.js");
+  const nodeMigrationSource = readRepoFile("supabase/migrations/20260710125337_add_itinerary_route_override_nodes.sql");
 
   expect(appSource).toContain("timeline-route-edit:${activeTripId}:${activeDay}");
   expect(appSource).toContain('event: "route-edit-update"');
   expect(appSource).toContain("routeEditMode");
   expect(appSource).toContain("routeEditCollaboration");
   expect(appSource).toContain("remoteRouteEditUpdate");
-  expect(appSource).toContain("routeEditBroadcastThrottleMs = 80");
+  expect(appSource).toContain("routeEditBroadcastThrottleMs = 140");
   expect(appSource).toContain('get("debugRouteCollab") === "1"');
   expect(appSource).toContain("[route-edit-collab]");
   expect(appSource).toContain("routeEditPresenceStatusRef");
@@ -823,14 +827,32 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("const routeEditNodeLocksRef = useRef({})");
   expect(googleProviderSource).toContain("const remoteRoutePreviewBySegmentRef = useRef({})");
   expect(googleProviderSource).toContain("function mergeRemoteRoutePreview(pointsBySegment = {})");
-  expect(googleProviderSource).toContain("changedHandle.marker?.setPosition?.({ lat: changedPoint.lat, lng: changedPoint.lng })");
-  expect(googleProviderSource).toContain("if (update.phase !== \"node-drag-move\" && update.phase !== \"node-drag-end\")");
+  expect(googleProviderSource).toContain("function mergeLocalRouteDragPreview(pointsBySegment = {})");
+  expect(googleProviderSource).toContain("changedHandle.marker?.setPosition?.({ lat: update.node.lat, lng: update.node.lng })");
+  expect(googleProviderSource).toContain('update.phase === "node-add" || update.phase === "node-delete"');
   expect(googleProviderSource).toContain("const customPoints = customRoutePointsRef.current[segment.key] || []");
   expect(googleProviderSource).not.toContain("routeEditCollaboration.nodeLocks, status]);");
+  expect(googleProviderSource).not.toContain("nodes: nextPoints");
+  expect(googleProviderSource).not.toContain("nodes: nextSegmentPoints");
+  expect(googleProviderSource).toContain('{ phase: "node-drag-move", node, nodeId: point.id');
   expect(appSource).toContain("正在編輯地圖路線");
   expect(routeOverridesSource).toContain("legacy-${normalized.length}-${lat}-${lng}");
+  expect(routeOverridesSource).toContain("point?.orderKey ?? point?.order_key");
   expect(appSource).toContain("operation?.type");
-  expect(appSource).toContain("latestPoints.map");
+  expect(appSource).toContain('from("itinerary_route_override_nodes")');
+  expect(appSource).toContain("nodeRowsToPoints");
+  expect(appSource).not.toContain("latestPoints.map");
+  expect(nodeMigrationSource).toContain("create table if not exists public.itinerary_route_override_nodes");
+  expect(nodeMigrationSource).toContain("unique (route_override_id, node_key)");
+  expect(nodeMigrationSource).toContain("enforce_itinerary_route_override_node_limit");
+  expect(nodeMigrationSource).toContain("pg_advisory_xact_lock");
+  expect(nodeMigrationSource).toContain("alter table public.itinerary_route_override_nodes enable row level security");
+  expect(nodeMigrationSource).toContain("app_private.can_read_trip(route_override.trip_id, (select auth.uid()))");
+  expect(nodeMigrationSource).toContain("app_private.can_edit_trip(route_override.trip_id, (select auth.uid()))");
+  expect(nodeMigrationSource).toContain("itinerary_route_override_nodes_created_by_idx");
+  expect(nodeMigrationSource).toContain("itinerary_route_override_nodes_updated_by_idx");
+  expect(nodeMigrationSource).toContain("jsonb_array_elements(route_override.points_json) with ordinality");
+  expect(nodeMigrationSource).toContain("touch_itinerary_route_override_from_node");
 });
 
 test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {
