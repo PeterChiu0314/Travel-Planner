@@ -792,6 +792,13 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("routeEditCollaboration");
   expect(appSource).toContain("remoteRouteEditUpdate");
   expect(appSource).toContain("routeEditBroadcastThrottleMs = 80");
+  expect(appSource).toContain('get("debugRouteCollab") === "1"');
+  expect(appSource).toContain("[route-edit-collab]");
+  expect(appSource).toContain("routeEditPresenceStatusRef");
+  expect(appSource).toContain("routeEditChannelMetadataRef");
+  expect(appSource).toContain('routeEditCollaborationDebug("channel created"');
+  expect(appSource).toContain('routeEditCollaborationDebug("broadcast send"');
+  expect(appSource).toContain('routeEditCollaborationDebug("subscribe status"');
   expect(appSource).toContain("routeEditRemoteMoveVersionRef");
   expect(appSource).toContain("incomingVersion <= previousVersion");
   expect(appSource).toContain("const isDragMove = event.phase === \"node-drag-move\"");

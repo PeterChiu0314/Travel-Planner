@@ -150,6 +150,29 @@ function tripPresenceDebug(label, details) {
   console.info(`[trip-presence] ${label}`, details);
 }
 
+function routeEditCollaborationDebugEnabled() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("debugRouteCollab") === "1";
+}
+
+function routeEditCollaborationDebug(label, details) {
+  if (!routeEditCollaborationDebugEnabled()) return;
+  console.info(`[route-edit-collab] ${label}`, details);
+}
+
+function routeEditCollaborationChannelSummary(channel, ready, status, metadata = null) {
+  return {
+    channelState: channel?.state || channel?._state || "",
+    channelId: metadata?.channelId || null,
+    channelName: metadata?.channelName || channel?.topic || "",
+    isCurrentRef: Boolean(metadata?.isCurrentRef),
+    joinedOnce: Boolean(channel?.joinedOnce),
+    ready: Boolean(ready),
+    status: status || "",
+    topic: channel?.topic || "",
+  };
+}
+
 function timelineDragPresenceDebugPayload(payload) {
   if (!payload) return null;
   return {
@@ -2126,6 +2149,9 @@ export default function App() {
   );
   const routeEditPresenceChannelRef = useRef(null);
   const routeEditPresenceReadyRef = useRef(false);
+  const routeEditPresenceStatusRef = useRef("idle");
+  const routeEditChannelMetadataRef = useRef(new WeakMap());
+  const routeEditChannelSequenceRef = useRef(0);
   const routeEditLocalStateRef = useRef({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
   const routeEditSessionIdRef = useRef(`route-edit-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const routeEditBroadcastRef = useRef({ activeDragId: null, lastSentAt: 0, pendingEvent: null, sequence: 0, timerId: null });
@@ -2358,7 +2384,17 @@ export default function App() {
 
   const publishRouteEditPresence = useCallback((nextState) => {
     const channel = routeEditPresenceChannelRef.current;
-    if (!channel || !routeEditPresenceReadyRef.current || !activeTripId || !activeUserId) return;
+    const metadata = routeEditChannelMetadataRef.current.get(channel) || null;
+    if (!channel || !routeEditPresenceReadyRef.current || !activeTripId || !activeUserId) {
+      routeEditCollaborationDebug("presence skipped", {
+        reason: !channel ? "missing-channel" : !routeEditPresenceReadyRef.current ? "channel-not-ready" : "missing-scope",
+        summary: routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, routeEditPresenceStatusRef.current, {
+          ...metadata,
+          isCurrentRef: routeEditPresenceChannelRef.current === channel,
+        }),
+      });
+      return;
+    }
     const payload = {
       activeNodeId: nextState.activeNodeId || null,
       activeSegmentKey: nextState.activeSegmentKey || null,
@@ -2379,6 +2415,14 @@ export default function App() {
 
   const onRouteEditPresenceChange = useCallback((next = {}) => {
     const state = { activeNodeId: null, activeSegmentKey: null, isEditing: Boolean(next.isEditing) };
+    const channel = routeEditPresenceChannelRef.current;
+    const metadata = routeEditChannelMetadataRef.current.get(channel) || null;
+    routeEditCollaborationDebug(state.isEditing ? "route edit enter" : "route edit exit", {
+      summary: routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, routeEditPresenceStatusRef.current, {
+        ...metadata,
+        isCurrentRef: routeEditPresenceChannelRef.current === channel,
+      }),
+    });
     routeEditLocalStateRef.current = state;
     setRouteEditLocalState(state);
     publishRouteEditPresence(state);
@@ -2386,7 +2430,19 @@ export default function App() {
 
   const sendRouteEditBroadcast = useCallback((event = {}) => {
     const channel = routeEditPresenceChannelRef.current;
-    if (!channel || !routeEditPresenceReadyRef.current || !activeTripId) return;
+    const metadata = routeEditChannelMetadataRef.current.get(channel) || null;
+    const summary = routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, routeEditPresenceStatusRef.current, {
+      ...metadata,
+      isCurrentRef: routeEditPresenceChannelRef.current === channel,
+    });
+    if (!channel || !routeEditPresenceReadyRef.current || !activeTripId) {
+      routeEditCollaborationDebug("broadcast skipped", {
+        event: event.phase || "",
+        reason: !channel ? "missing-channel" : !routeEditPresenceReadyRef.current ? "channel-not-subscribed" : "missing-trip",
+        summary,
+      });
+      return;
+    }
     const payload = {
       ...event,
       dayIndex: activeDay,
@@ -2396,7 +2452,25 @@ export default function App() {
       userId: activeUserId,
       userName: timelineDragPresenceUserName,
     };
-    Promise.resolve(channel.send({ event: "route-edit-update", type: "broadcast", payload })).catch(() => {});
+    routeEditCollaborationDebug("broadcast send", {
+      dragId: payload.dragId || null,
+      event: payload.phase || "",
+      nodeId: payload.nodeId || null,
+      segmentKey: payload.segmentKey || null,
+      sequence: payload.sequence ?? null,
+      summary,
+    });
+    Promise.resolve(channel.send({ event: "route-edit-update", type: "broadcast", payload }))
+      .then((result) => routeEditCollaborationDebug("broadcast result", {
+        event: payload.phase || "",
+        result: result || "ok",
+        summary,
+      }))
+      .catch((error) => routeEditCollaborationDebug("broadcast error", {
+        event: payload.phase || "",
+        message: error?.message || String(error),
+        summary,
+      }));
   }, [activeDay, activeTripId, activeUserId, timelineDragPresenceUserName]);
 
   const onRouteEditCollaborationEvent = useCallback((event = {}) => {
@@ -2404,6 +2478,17 @@ export default function App() {
     const isDragStart = event.phase === "node-drag-start";
     const isDragEnd = event.phase === "node-drag-end";
     const broadcast = routeEditBroadcastRef.current;
+    const channel = routeEditPresenceChannelRef.current;
+    const metadata = routeEditChannelMetadataRef.current.get(channel) || null;
+    routeEditCollaborationDebug("drag event", {
+      event: event.phase || "",
+      nodeId: event.nodeId || null,
+      segmentKey: event.segmentKey || null,
+      summary: routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, routeEditPresenceStatusRef.current, {
+        ...metadata,
+        isCurrentRef: routeEditPresenceChannelRef.current === channel,
+      }),
+    });
     if (isDragStart) {
       broadcast.activeDragId = `route-node-${routeEditSessionIdRef.current}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       broadcast.sequence = 0;
@@ -2865,8 +2950,15 @@ export default function App() {
 
   useEffect(() => {
     if (isDemoMode || !activeTripId || !activeUserId || activeMembership?.status !== "approved") {
+      routeEditCollaborationDebug("channel skipped", {
+        activeTripId: activeTripId || null,
+        dayIndex: activeDay,
+        reason: isDemoMode ? "demo-mode" : "missing-approved-scope",
+        sessionId: routeEditSessionIdRef.current,
+      });
       routeEditPresenceChannelRef.current = null;
       routeEditPresenceReadyRef.current = false;
+      routeEditPresenceStatusRef.current = "idle";
       setRemoteRouteEditPresences([]);
       setRemoteRouteEditUpdate(null);
       routeEditRemoteMoveVersionRef.current.clear();
@@ -2876,8 +2968,25 @@ export default function App() {
     const channelName = `timeline-route-edit:${activeTripId}:${activeDay}`;
     const sessionId = routeEditSessionIdRef.current;
     const channel = supabase.channel(channelName, { config: { presence: { key: sessionId } } });
+    const metadata = {
+      channelId: ++routeEditChannelSequenceRef.current,
+      channelName,
+      dayIndex: activeDay,
+      sessionId,
+      tripId: activeTripId,
+    };
+    routeEditChannelMetadataRef.current.set(channel, metadata);
     routeEditPresenceChannelRef.current = channel;
     routeEditPresenceReadyRef.current = false;
+    routeEditPresenceStatusRef.current = "creating";
+    const matchingChannels = (supabase.getChannels?.() || []).filter((candidate) => candidate?.topic === channel.topic);
+    routeEditCollaborationDebug("channel created", {
+      dayIndex: activeDay,
+      duplicateTopicCount: matchingChannels.length,
+      sessionId,
+      summary: routeEditCollaborationChannelSummary(channel, false, "creating", { ...metadata, isCurrentRef: true }),
+      tripId: activeTripId,
+    });
 
     const syncPresence = () => {
       const staleBefore = Date.now() - 12000;
@@ -2897,7 +3006,25 @@ export default function App() {
       .on("presence", { event: "join" }, syncPresence)
       .on("presence", { event: "leave" }, syncPresence)
       .on("broadcast", { event: "route-edit-update" }, ({ payload }) => {
-        if (!payload || payload.sessionId === sessionId || payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return;
+        const summary = routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, routeEditPresenceStatusRef.current, {
+          ...metadata,
+          isCurrentRef: routeEditPresenceChannelRef.current === channel,
+        });
+        routeEditCollaborationDebug("broadcast received", {
+          dragId: payload?.dragId || null,
+          nodeId: payload?.nodeId || null,
+          phase: payload?.phase || null,
+          segmentKey: payload?.segmentKey || null,
+          sequence: payload?.sequence ?? null,
+          summary,
+        });
+        if (!payload || payload.sessionId === sessionId || payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) {
+          routeEditCollaborationDebug("broadcast ignored", {
+            reason: !payload ? "missing-payload" : payload.sessionId === sessionId ? "self" : payload.tripId !== activeTripId ? "trip-mismatch" : "day-mismatch",
+            summary,
+          });
+          return;
+        }
         if (Array.isArray(payload.nodes) && payload.segmentKey) {
           const moveKey = `${payload.sessionId}:${payload.dragId || "legacy"}:${payload.segmentKey}:${payload.nodeId || "segment"}`;
           const sequence = Number(payload.sequence);
@@ -2905,6 +3032,7 @@ export default function App() {
           const incomingVersion = Number.isFinite(sequence) ? sequence : updatedAt;
           const previousVersion = routeEditRemoteMoveVersionRef.current.get(moveKey);
           if (payload.phase === "node-drag-move" && Number.isFinite(incomingVersion) && Number.isFinite(previousVersion) && incomingVersion <= previousVersion) {
+            routeEditCollaborationDebug("broadcast ignored", { incomingVersion, previousVersion, reason: "stale-sequence", summary });
             return;
           }
           if (payload.phase === "node-drag-move" && Number.isFinite(incomingVersion)) {
@@ -2923,8 +3051,32 @@ export default function App() {
           });
         }
       })
-      .subscribe((status) => {
-        if (status !== "SUBSCRIBED") return;
+      .subscribe((status, error) => {
+        const isCurrentChannel = routeEditPresenceChannelRef.current === channel;
+        if (isCurrentChannel) routeEditPresenceStatusRef.current = status;
+        routeEditCollaborationDebug("subscribe status", {
+          error: error || null,
+          status,
+          summary: routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, status, {
+            ...metadata,
+            isCurrentRef: isCurrentChannel,
+          }),
+        });
+        if (!isCurrentChannel) {
+          routeEditCollaborationDebug("subscribe status ignored", { reason: "stale-channel", status, channelId: metadata.channelId });
+          return;
+        }
+        if (status !== "SUBSCRIBED") {
+          if (["CLOSED", "CHANNEL_ERROR", "TIMED_OUT"].includes(status)) {
+            routeEditPresenceReadyRef.current = false;
+            routeEditCollaborationDebug("channel unusable", {
+              error: error || null,
+              status,
+              summary: routeEditCollaborationChannelSummary(channel, false, status, { ...metadata, isCurrentRef: true }),
+            });
+          }
+          return;
+        }
         routeEditPresenceReadyRef.current = true;
         publishRouteEditPresence(routeEditLocalStateRef.current);
         syncPresence();
@@ -2933,8 +3085,16 @@ export default function App() {
     const refreshId = window.setInterval(syncPresence, 1000);
     return () => {
       window.clearInterval(refreshId);
+      routeEditCollaborationDebug("channel remove", {
+        reason: "scope-or-unmount",
+        summary: routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, routeEditPresenceStatusRef.current, {
+          ...metadata,
+          isCurrentRef: routeEditPresenceChannelRef.current === channel,
+        }),
+      });
       if (routeEditPresenceChannelRef.current === channel) routeEditPresenceChannelRef.current = null;
       routeEditPresenceReadyRef.current = false;
+      routeEditPresenceStatusRef.current = "idle";
       setRemoteRouteEditPresences([]);
       setRemoteRouteEditUpdate(null);
       routeEditRemoteMoveVersionRef.current.clear();
