@@ -573,7 +573,7 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
   expect(googleProviderSource).toContain("clearPendingPoi();");
   expect(googleProviderSource).toContain("clearPlacesPreview();");
   expect(googleProviderSource).toContain("resetPlacesSearch();");
-  expect(googleProviderSource).toContain("if (isPickingMapPoint) onCancelMapPointPick?.();");
+  expect(googleProviderSource).toContain("if (isPickingMapPointRef.current) onCancelMapPointPickRef.current?.();");
   expect(staticProviderSource).not.toContain("map-route-edit-button");
   expect(staticProviderSource).not.toContain("路線編輯模式");
   expect(staticProviderSource).not.toContain("route-edit-page-overlay-pane");
@@ -837,6 +837,10 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("routeEditCollaboration.remoteUpdates || {}");
   expect(googleProviderSource).toContain("routeEditRemoteAppliedReceiptRef");
   expect(googleProviderSource).toContain("activeDrag.isDragging || activeDrag.isCommitPending");
+  expect(googleProviderSource).toContain("const onRouteEditPresenceChangeRef = useRef(onRouteEditPresenceChange)");
+  expect(googleProviderSource).toContain("onRouteEditPresenceChangeRef.current?.({ isEditing: true })");
+  expect(googleProviderSource).toContain("onRouteEditPresenceChangeRef.current?.({ isEditing: false })");
+  expect(googleProviderSource).not.toContain("}, [isPickingMapPoint, isRouteEditMode, onCancelMapPointPick, onRouteEditPresenceChange]);");
   expect(googleProviderSource).toContain("changedHandle.marker?.setPosition?.({ lat: update.node.lat, lng: update.node.lng })");
   expect(googleProviderSource).toContain('update.phase === "node-add" || update.phase === "node-delete"');
   expect(googleProviderSource).toContain("const customPoints = customRoutePointsRef.current[segment.key] || []");

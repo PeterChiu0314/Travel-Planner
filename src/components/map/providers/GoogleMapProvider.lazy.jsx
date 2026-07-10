@@ -253,6 +253,9 @@ export default function GoogleMapProvider(props) {
   const remoteRoutePreviewBySegmentRef = useRef({});
   const routeEditRemoteAppliedReceiptRef = useRef(new Map());
   const routeEditDragRef = useRef({ commitId: null, isCommitPending: false, isDragging: false, lastDragEndedAt: 0, node: null, nodeId: null, segmentKey: null });
+  const isPickingMapPointRef = useRef(isPickingMapPoint);
+  const onCancelMapPointPickRef = useRef(onCancelMapPointPick);
+  const onRouteEditPresenceChangeRef = useRef(onRouteEditPresenceChange);
   const routeEditSuppressLineClickUntilRef = useRef(0);
   const customRoutePointsRef = useRef({});
   const viewportListenersRef = useRef([]);
@@ -273,6 +276,12 @@ export default function GoogleMapProvider(props) {
   const [placesReady, setPlacesReady] = useState(false);
   const [placesSearchInput, setPlacesSearchInput] = useState("");
   const [placesSearchIsComposing, setPlacesSearchIsComposing] = useState(false);
+
+  useEffect(() => {
+    isPickingMapPointRef.current = isPickingMapPoint;
+    onCancelMapPointPickRef.current = onCancelMapPointPick;
+    onRouteEditPresenceChangeRef.current = onRouteEditPresenceChange;
+  }, [isPickingMapPoint, onCancelMapPointPick, onRouteEditPresenceChange]);
   const [placesPredictions, setPlacesPredictions] = useState([]);
   const [selectedPlacePrediction, setSelectedPlacePrediction] = useState(null);
   const [pendingPoi, setPendingPoi] = useState(null);
@@ -787,12 +796,20 @@ export default function GoogleMapProvider(props) {
   useEffect(() => {
     if (!isRouteEditMode) return undefined;
 
-    onRouteEditPresenceChange?.({ isEditing: true });
+    onRouteEditPresenceChangeRef.current?.({ isEditing: true });
+
+    return () => {
+      onRouteEditPresenceChangeRef.current?.({ isEditing: false });
+    };
+  }, [isRouteEditMode]);
+
+  useEffect(() => {
+    if (!isRouteEditMode) return undefined;
 
     clearPendingPoi();
     clearPlacesPreview();
     resetPlacesSearch();
-    if (isPickingMapPoint) onCancelMapPointPick?.();
+    if (isPickingMapPointRef.current) onCancelMapPointPickRef.current?.();
     updateRouteEditOverlayRect();
 
     function handleRouteEditKeyDown(event) {
@@ -809,12 +826,11 @@ export default function GoogleMapProvider(props) {
     window.addEventListener("resize", handleRouteEditViewportChange);
     window.addEventListener("scroll", handleRouteEditViewportChange, true);
     return () => {
-      onRouteEditPresenceChange?.({ isEditing: false });
       document.removeEventListener("keydown", handleRouteEditKeyDown);
       window.removeEventListener("resize", handleRouteEditViewportChange);
       window.removeEventListener("scroll", handleRouteEditViewportChange, true);
     };
-  }, [isPickingMapPoint, isRouteEditMode, onCancelMapPointPick, onRouteEditPresenceChange]);
+  }, [isRouteEditMode]);
 
   useEffect(() => {
     if (status !== "ready" || !mapElementRef.current) return undefined;
