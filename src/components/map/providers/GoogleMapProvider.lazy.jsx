@@ -249,6 +249,7 @@ export default function GoogleMapProvider(props) {
   const routeLineRef = useRef(null);
   const routeSegmentHitLineRefsRef = useRef([]);
   const routeEditHandleRefsRef = useRef([]);
+  const routeEditNodeLocksRef = useRef({});
   const routeEditDragRef = useRef({ isDragging: false, lastDragEndedAt: 0 });
   const routeEditSuppressLineClickUntilRef = useRef(0);
   const customRoutePointsRef = useRef({});
@@ -862,6 +863,51 @@ export default function GoogleMapProvider(props) {
   }, [markersKey, routeOverridePointsBySegment]);
 
   useEffect(() => {
+    const update = routeEditCollaboration.remoteUpdate;
+    if (!update?.segmentKey || !Array.isArray(update.nodes)) return;
+
+    const nextPoints = update.nodes;
+    const nextCustomPoints = {
+      ...customRoutePointsRef.current,
+      [update.segmentKey]: nextPoints,
+    };
+    customRoutePointsRef.current = nextCustomPoints;
+    applyRouteLinePath(nextCustomPoints);
+
+    if (update.phase !== "node-drag-move") {
+      setRouteSegmentPoints(update.segmentKey, nextPoints);
+      return;
+    }
+
+    const pointsById = new Map(nextPoints.map((point) => [point.id, point]));
+    const handles = routeEditHandleRefsRef.current.filter((record) => record.segmentKey === update.segmentKey);
+    const hasMatchingHandles = nextPoints.length === handles.length && handles.every((record) => pointsById.has(record.nodeId));
+
+    if (hasMatchingHandles) {
+      const changedHandle = handles.find((record) => record.nodeId === update.nodeId);
+      const changedPoint = pointsById.get(update.nodeId);
+      if (changedHandle && changedPoint) {
+        changedHandle.marker?.setPosition?.({ lat: changedPoint.lat, lng: changedPoint.lng });
+      }
+      return;
+    }
+
+    setRouteSegmentPoints(update.segmentKey, nextPoints);
+  }, [routeEditCollaboration.remoteUpdate]);
+
+  useEffect(() => {
+    const nodeLocks = routeEditCollaboration.nodeLocks || {};
+    routeEditNodeLocksRef.current = nodeLocks;
+    routeEditHandleRefsRef.current.forEach((record) => {
+      const nodeLock = nodeLocks[`${record.segmentKey}:${record.nodeId}`];
+      const isLockedByRemote = Boolean(nodeLock);
+      record.markerState.isLockedByRemote = isLockedByRemote;
+      record.marker?.setDraggable?.(!isLockedByRemote);
+      record.marker?.setTitle?.(isLockedByRemote ? `${nodeLock.userName} 正在編輯` : "拖曳路線節點，點擊可刪除");
+    });
+  }, [routeEditCollaboration.nodeLocks]);
+
+  useEffect(() => {
     routeLineRef.current?.setMap(null);
     routeLineRef.current = null;
 
@@ -930,8 +976,9 @@ export default function GoogleMapProvider(props) {
     routeEditHandleRefsRef.current = routeSegments.flatMap((segment) => {
       const customPoints = customRoutePointsBySegment[segment.key] || [];
       return customPoints.map((point, pointIndex) => {
-        const nodeLock = routeEditCollaboration.nodeLocks?.[`${segment.key}:${point.id}`];
+        const nodeLock = routeEditNodeLocksRef.current[`${segment.key}:${point.id}`];
         const isLockedByRemote = Boolean(nodeLock);
+        const markerState = { isLockedByRemote };
         const marker = new MarkerConstructor({
           clickable: true,
           draggable: !isLockedByRemote,
@@ -943,7 +990,7 @@ export default function GoogleMapProvider(props) {
         });
 
         marker.addListener?.("dragstart", () => {
-          if (isLockedByRemote) return;
+          if (markerState.isLockedByRemote) return;
           suppressRouteLineClick();
           onRouteEditCollaborationEvent?.({ phase: "node-drag-start", nodeId: point.id, segmentKey: segment.key });
           routeEditDragRef.current = { isDragging: false, lastDragEndedAt: routeEditDragRef.current.lastDragEndedAt || 0 };
@@ -985,7 +1032,7 @@ export default function GoogleMapProvider(props) {
             routeEditDragRef.current.isDragging = false;
             return;
           }
-          if (isLockedByRemote) return;
+          if (markerState.isLockedByRemote) return;
           removeRouteCustomPoint(segment.key, pointIndex);
         });
 
@@ -994,7 +1041,7 @@ export default function GoogleMapProvider(props) {
           suppressRouteLineClick();
         });
 
-        return { marker, segmentKey: segment.key, pointIndex };
+        return { marker, markerState, nodeId: point.id, segmentKey: segment.key, pointIndex };
       });
     });
 
@@ -1004,7 +1051,7 @@ export default function GoogleMapProvider(props) {
       routeEditHandleRefsRef.current.forEach((record) => record.marker?.setMap?.(null));
       routeEditHandleRefsRef.current = [];
     };
-  }, [customRoutePointsBySegment, isRouteEditMode, markersKey, onRouteEditCollaborationEvent, routeEditCollaboration.nodeLocks, status]);
+  }, [customRoutePointsBySegment, isRouteEditMode, markersKey, onRouteEditCollaborationEvent, status]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current || !placesPreview) {

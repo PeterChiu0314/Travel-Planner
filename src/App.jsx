@@ -2082,7 +2082,7 @@ export default function App() {
   const [routeOverrideSaveError, setRouteOverrideSaveError] = useState("");
   const [routeEditLocalState, setRouteEditLocalState] = useState({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
   const [remoteRouteEditPresences, setRemoteRouteEditPresences] = useState([]);
-  const [remoteRouteEditPointsBySegment, setRemoteRouteEditPointsBySegment] = useState({});
+  const [remoteRouteEditUpdate, setRemoteRouteEditUpdate] = useState(null);
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -2347,13 +2347,9 @@ export default function App() {
         ? `${firstEditor?.userName || "成員"} 正在編輯地圖路線`
         : editorCount > 1 ? `${editorCount} 位成員正在編輯地圖路線` : "",
       nodeLocks,
-      remotePointsBySegment: remoteRouteEditPointsBySegment,
+      remoteUpdate: remoteRouteEditUpdate,
     };
-  }, [remoteRouteEditPointsBySegment, remoteRouteEditPresences, routeEditLocalState.isEditing, timelineDragPresenceUserName]);
-  const routeEditPointsBySegment = useMemo(
-    () => ({ ...activeRouteOverridePointsBySegment, ...remoteRouteEditPointsBySegment }),
-    [activeRouteOverridePointsBySegment, remoteRouteEditPointsBySegment],
-  );
+  }, [remoteRouteEditPresences, remoteRouteEditUpdate, routeEditLocalState.isEditing, timelineDragPresenceUserName]);
 
   const publishRouteEditPresence = useCallback((nextState) => {
     const channel = routeEditPresenceChannelRef.current;
@@ -2384,15 +2380,19 @@ export default function App() {
   }, [publishRouteEditPresence]);
 
   const onRouteEditCollaborationEvent = useCallback((event = {}) => {
+    const isDragMove = event.phase === "node-drag-move";
     const nextState = {
-      activeNodeId: event.phase === "node-drag-start" ? event.nodeId :
-        event.phase === "node-drag-move" ? event.nodeId : null,
-      activeSegmentKey: event.phase === "node-drag-start" || event.phase === "node-drag-move" ? event.segmentKey : null,
+      activeNodeId: event.phase === "node-drag-start" ? event.nodeId : null,
+      activeSegmentKey: event.phase === "node-drag-start" ? event.segmentKey : null,
       isEditing: true,
     };
-    routeEditLocalStateRef.current = nextState;
-    setRouteEditLocalState(nextState);
-    publishRouteEditPresence(nextState);
+    if (isDragMove) {
+      publishRouteEditPresence(routeEditLocalStateRef.current);
+    } else {
+      routeEditLocalStateRef.current = nextState;
+      setRouteEditLocalState(nextState);
+      publishRouteEditPresence(nextState);
+    }
     const channel = routeEditPresenceChannelRef.current;
     if (!channel || !routeEditPresenceReadyRef.current || !activeTripId) return;
     const payload = {
@@ -2796,7 +2796,7 @@ export default function App() {
       routeEditPresenceChannelRef.current = null;
       routeEditPresenceReadyRef.current = false;
       setRemoteRouteEditPresences([]);
-      setRemoteRouteEditPointsBySegment({});
+      setRemoteRouteEditUpdate(null);
       return undefined;
     }
 
@@ -2826,7 +2826,14 @@ export default function App() {
       .on("broadcast", { event: "route-edit-update" }, ({ payload }) => {
         if (!payload || payload.sessionId === sessionId || payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return;
         if (Array.isArray(payload.nodes) && payload.segmentKey) {
-          setRemoteRouteEditPointsBySegment((current) => ({ ...current, [payload.segmentKey]: normalizeRouteOverridePoints(payload.nodes) }));
+          const nodes = normalizeRouteOverridePoints(payload.nodes);
+          setRemoteRouteEditUpdate({
+            nodeId: payload.nodeId || null,
+            nodes,
+            phase: payload.phase || "",
+            segmentKey: payload.segmentKey,
+            updatedAt: payload.updatedAt || new Date().toISOString(),
+          });
         }
       })
       .subscribe((status) => {
@@ -2842,7 +2849,7 @@ export default function App() {
       if (routeEditPresenceChannelRef.current === channel) routeEditPresenceChannelRef.current = null;
       routeEditPresenceReadyRef.current = false;
       setRemoteRouteEditPresences([]);
-      setRemoteRouteEditPointsBySegment({});
+      setRemoteRouteEditUpdate(null);
       Promise.resolve(channel.untrack()).catch(() => {});
       void supabase.removeChannel(channel);
     };
@@ -5731,7 +5738,7 @@ function exportTrip() {
             luggageTab={luggageTab}
             members={members}
             packItems={packItems}
-            routeOverridePointsBySegment={routeEditPointsBySegment}
+            routeOverridePointsBySegment={activeRouteOverridePointsBySegment}
             routeOverrideSaveError={routeOverrideSaveError}
             routeEditCollaboration={routeEditCollaboration}
             sharedLuggageItems={sharedLuggageItems}
