@@ -251,7 +251,8 @@ export default function GoogleMapProvider(props) {
   const routeEditHandleRefsRef = useRef([]);
   const routeEditNodeLocksRef = useRef({});
   const remoteRoutePreviewBySegmentRef = useRef({});
-  const routeEditDragRef = useRef({ isDragging: false, lastDragEndedAt: 0, node: null, nodeId: null, segmentKey: null });
+  const routeEditRemoteAppliedReceiptRef = useRef(new Map());
+  const routeEditDragRef = useRef({ commitId: null, isCommitPending: false, isDragging: false, lastDragEndedAt: 0, node: null, nodeId: null, segmentKey: null });
   const routeEditSuppressLineClickUntilRef = useRef(0);
   const customRoutePointsRef = useRef({});
   const viewportListenersRef = useRef([]);
@@ -585,7 +586,7 @@ export default function GoogleMapProvider(props) {
 
   function mergeLocalRouteDragPreview(pointsBySegment = {}) {
     const activeDrag = routeEditDragRef.current;
-    if (!activeDrag.isDragging || !activeDrag.segmentKey || !activeDrag.nodeId || !activeDrag.node) {
+    if ((!activeDrag.isDragging && !activeDrag.isCommitPending) || !activeDrag.segmentKey || !activeDrag.nodeId || !activeDrag.node) {
       return pointsBySegment;
     }
     const segmentPoints = pointsBySegment[activeDrag.segmentKey] || [];
@@ -664,12 +665,12 @@ export default function GoogleMapProvider(props) {
   function updateRouteCustomPoint(segmentKey, nodeId, point) {
     const currentPoints = customRoutePointsRef.current[segmentKey] || [];
     const currentNode = currentPoints.find((candidate) => candidate.id === nodeId);
-    if (!currentNode) return;
+    if (!currentNode) return Promise.resolve({ ok: false, points: currentPoints });
     const node = { ...currentNode, ...point };
     const nextPoints = currentPoints.map((currentPoint) => (currentPoint.id === nodeId ? node : currentPoint));
     customRoutePointsRef.current = { ...customRoutePointsRef.current, [segmentKey]: nextPoints };
     setCustomRoutePointsBySegment((current) => ({ ...current, [segmentKey]: nextPoints }));
-    void persistRouteCustomPoints(segmentKey, nextPoints, { node, type: "update" }).then((result) => {
+    return persistRouteCustomPoints(segmentKey, nextPoints, { node, type: "update" }).then((result) => {
       if (result?.points) setRouteSegmentPoints(segmentKey, result.points);
       if (result?.ok === false) {
         const restoredNode = result.points?.find((candidate) => candidate.id === nodeId) || null;
@@ -684,6 +685,7 @@ export default function GoogleMapProvider(props) {
           onRouteEditCollaborationEvent?.({ phase: "node-delete", segmentKey, nodeId });
         }
       }
+      return result;
     });
   }
 
@@ -922,6 +924,7 @@ export default function GoogleMapProvider(props) {
 
   useEffect(() => {
     remoteRoutePreviewBySegmentRef.current = {};
+    routeEditRemoteAppliedReceiptRef.current.clear();
   }, [viewportKey]);
 
   useEffect(() => {
@@ -939,46 +942,59 @@ export default function GoogleMapProvider(props) {
     });
     const nextPoints = mergeLocalRouteDragPreview(mergeRemoteRoutePreview(authoritativePoints));
     customRoutePointsRef.current = nextPoints;
-    if (!routeEditDragRef.current.isDragging) setCustomRoutePointsBySegment(authoritativePoints);
+    if (!routeEditDragRef.current.isDragging && !routeEditDragRef.current.isCommitPending) {
+      setCustomRoutePointsBySegment(authoritativePoints);
+    }
     applyRouteLinePath(nextPoints);
   }, [markersKey, routeOverridePointsBySegment]);
 
   useEffect(() => {
-    const update = routeEditCollaboration.remoteUpdate;
-    if (!update?.segmentKey || !update.nodeId || update.phase === "node-drag-start") return;
-    const activeDrag = routeEditDragRef.current;
-    if (activeDrag.isDragging && activeDrag.segmentKey === update.segmentKey && activeDrag.nodeId === update.nodeId) return;
+    const updates = Object.values(routeEditCollaboration.remoteUpdates || {});
+    updates.forEach((update) => {
+      if (!update?.segmentKey || !update.nodeId) return;
+      const receiptKey = `${update.sessionId}:${update.segmentKey}:${update.nodeId}`;
+      const previousReceiptId = routeEditRemoteAppliedReceiptRef.current.get(receiptKey) || 0;
+      if (!Number.isFinite(update.receiptId) || update.receiptId <= previousReceiptId) return;
+      routeEditRemoteAppliedReceiptRef.current.set(receiptKey, update.receiptId);
+      if (update.phase === "node-drag-start") return;
 
-    const segmentPreviews = remoteRoutePreviewBySegmentRef.current[update.segmentKey] || {};
-    remoteRoutePreviewBySegmentRef.current = {
-      ...remoteRoutePreviewBySegmentRef.current,
-      [update.segmentKey]: {
-        ...segmentPreviews,
-        [update.nodeId]: {
-          afterNodeId: update.afterNodeId || null,
-          deleted: update.phase === "node-delete",
-          node: update.node || null,
-          nodeId: update.nodeId,
-          phase: update.phase,
+      const activeDrag = routeEditDragRef.current;
+      const ownsNodePosition = (activeDrag.isDragging || activeDrag.isCommitPending) &&
+        activeDrag.segmentKey === update.segmentKey && activeDrag.nodeId === update.nodeId;
+      if (ownsNodePosition) return;
+
+      const segmentPreviews = remoteRoutePreviewBySegmentRef.current[update.segmentKey] || {};
+      remoteRoutePreviewBySegmentRef.current = {
+        ...remoteRoutePreviewBySegmentRef.current,
+        [update.segmentKey]: {
+          ...segmentPreviews,
+          [update.nodeId]: {
+            afterNodeId: update.afterNodeId || null,
+            deleted: update.phase === "node-delete",
+            node: update.node || null,
+            nodeId: update.nodeId,
+            phase: update.phase,
+            updatedAt: update.updatedAt,
+          },
         },
-      },
-    };
-    const nextCustomPoints = mergeLocalRouteDragPreview(mergeRemoteRoutePreview(customRoutePointsRef.current));
-    customRoutePointsRef.current = nextCustomPoints;
-    applyRouteLinePath(nextCustomPoints);
+      };
+      const nextCustomPoints = mergeLocalRouteDragPreview(mergeRemoteRoutePreview(customRoutePointsRef.current));
+      customRoutePointsRef.current = nextCustomPoints;
+      applyRouteLinePath(nextCustomPoints);
 
-    if (update.phase === "node-add" || update.phase === "node-delete") {
-      setRouteSegmentPoints(update.segmentKey, nextCustomPoints[update.segmentKey] || []);
-      return;
-    }
+      if (update.phase === "node-add" || update.phase === "node-delete") {
+        setRouteSegmentPoints(update.segmentKey, nextCustomPoints[update.segmentKey] || []);
+        return;
+      }
 
-    const changedHandle = routeEditHandleRefsRef.current.find(
-      (record) => record.segmentKey === update.segmentKey && record.nodeId === update.nodeId,
-    );
-    if (changedHandle && update.node) {
-      changedHandle.marker?.setPosition?.({ lat: update.node.lat, lng: update.node.lng });
-    }
-  }, [routeEditCollaboration.remoteUpdate]);
+      const changedHandle = routeEditHandleRefsRef.current.find(
+        (record) => record.segmentKey === update.segmentKey && record.nodeId === update.nodeId,
+      );
+      if (changedHandle && update.node) {
+        changedHandle.marker?.setPosition?.({ lat: update.node.lat, lng: update.node.lng });
+      }
+    });
+  }, [routeEditCollaboration.remoteUpdates]);
 
   useEffect(() => {
     const nodeLocks = routeEditCollaboration.nodeLocks || {};
@@ -1080,6 +1096,8 @@ export default function GoogleMapProvider(props) {
           suppressRouteLineClick();
           onRouteEditCollaborationEvent?.({ phase: "node-drag-start", nodeId: point.id, segmentKey: segment.key });
           routeEditDragRef.current = {
+            commitId: null,
+            isCommitPending: false,
             isDragging: true,
             lastDragEndedAt: routeEditDragRef.current.lastDragEndedAt || 0,
             node: point,
@@ -1110,25 +1128,46 @@ export default function GoogleMapProvider(props) {
           suppressRouteLineClick();
           const lat = typeof event?.latLng?.lat === "function" ? event.latLng.lat() : null;
           const lng = typeof event?.latLng?.lng === "function" ? event.latLng.lng() : null;
-          routeEditDragRef.current.lastDragEndedAt = Date.now();
+          const lastDragEndedAt = Date.now();
           let finalNode = routeEditDragRef.current.node || point;
-          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          let savePromise = Promise.resolve({ ok: true, points: customRoutePointsRef.current[segment.key] || [] });
+          const commitId = `route-node-commit-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const hasFinalPosition = Number.isFinite(lat) && Number.isFinite(lng);
+          if (hasFinalPosition) {
             finalNode = { ...finalNode, lat, lng };
-            updateRouteCustomPoint(segment.key, point.id, { lat, lng });
+            savePromise = updateRouteCustomPoint(segment.key, point.id, { lat, lng });
           }
+          routeEditDragRef.current = {
+            commitId,
+            isCommitPending: hasFinalPosition,
+            isDragging: false,
+            lastDragEndedAt,
+            node: finalNode,
+            nodeId: point.id,
+            segmentKey: segment.key,
+          };
           onRouteEditCollaborationEvent?.({
             phase: "node-drag-end",
             node: finalNode,
             nodeId: point.id,
             segmentKey: segment.key,
           });
-          routeEditDragRef.current = {
-            isDragging: false,
-            lastDragEndedAt: routeEditDragRef.current.lastDragEndedAt,
-            node: null,
-            nodeId: null,
-            segmentKey: null,
-          };
+          void Promise.resolve(savePromise).catch(() => ({
+            ok: false,
+            points: customRoutePointsRef.current[segment.key] || [],
+          })).then((result) => {
+            if (routeEditDragRef.current.commitId !== commitId) return;
+            routeEditDragRef.current = {
+              commitId: null,
+              isCommitPending: false,
+              isDragging: false,
+              lastDragEndedAt,
+              node: null,
+              nodeId: null,
+              segmentKey: null,
+            };
+            if (result?.points) setRouteSegmentPoints(segment.key, result.points);
+          });
         });
 
         marker.addListener?.("click", (event) => {

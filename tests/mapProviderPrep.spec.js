@@ -687,7 +687,7 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   expect(googleProviderSource).toContain('marker.addListener?.("drag"');
   expect(googleProviderSource).toContain("applyRouteLinePath(nextCustomPoints)");
   expect(googleProviderSource).toContain('marker.addListener?.("dragend"');
-  expect(googleProviderSource).toContain("routeEditDragRef.current.lastDragEndedAt = Date.now()");
+  expect(googleProviderSource).toContain("const lastDragEndedAt = Date.now()");
   expect(googleProviderSource).toContain("updateRouteCustomPoint(segment.key, point.id, { lat, lng })");
   expect(googleProviderSource).toContain('marker.addListener?.("click"');
   expect(googleProviderSource).toContain("removeRouteCustomPoint(segment.key, point.id)");
@@ -794,8 +794,9 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain('event: "route-edit-update"');
   expect(appSource).toContain("routeEditMode");
   expect(appSource).toContain("routeEditCollaboration");
-  expect(appSource).toContain("remoteRouteEditUpdate");
-  expect(appSource).toContain("routeEditBroadcastThrottleMs = 140");
+  expect(appSource).toContain("remoteRouteEditUpdates");
+  expect(appSource).toContain("routeEditBroadcastThrottleMs = 180");
+  expect(appSource).toContain("routeEditPresenceHeartbeatMs = 8000");
   expect(appSource).toContain('get("debugRouteCollab") === "1"');
   expect(appSource).toContain("[route-edit-collab]");
   expect(appSource).toContain("routeEditPresenceStatusRef");
@@ -812,7 +813,12 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain('routeEditCollaborationDebug("subscribe status"');
   expect(appSource).toContain("routeEditRemoteMoveVersionRef");
   expect(appSource).toContain("incomingVersion <= previousVersion");
+  expect(appSource).toContain("eventVersion: ++broadcast.eventVersion");
+  expect(appSource).toContain("setRemoteRouteEditUpdates((current) => ({");
+  expect(appSource).toContain("[`${payload.segmentKey}:${payload.nodeId}`]: remoteUpdate");
   expect(appSource).toContain("const isDragMove = event.phase === \"node-drag-move\"");
+  expect(appSource).toContain("if (!isDragMove) {");
+  expect(appSource).toContain("if (routeEditLocalStateRef.current.isEditing) {");
   expect(appSource).toContain("publishRouteEditPresence(routeEditLocalStateRef.current)");
   expect(appSource).not.toContain("routeEditSameDayReadonly");
   expect(mapPanelSource).toContain("onRouteEditCollaborationEvent");
@@ -828,6 +834,9 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("const remoteRoutePreviewBySegmentRef = useRef({})");
   expect(googleProviderSource).toContain("function mergeRemoteRoutePreview(pointsBySegment = {})");
   expect(googleProviderSource).toContain("function mergeLocalRouteDragPreview(pointsBySegment = {})");
+  expect(googleProviderSource).toContain("routeEditCollaboration.remoteUpdates || {}");
+  expect(googleProviderSource).toContain("routeEditRemoteAppliedReceiptRef");
+  expect(googleProviderSource).toContain("activeDrag.isDragging || activeDrag.isCommitPending");
   expect(googleProviderSource).toContain("changedHandle.marker?.setPosition?.({ lat: update.node.lat, lng: update.node.lng })");
   expect(googleProviderSource).toContain('update.phase === "node-add" || update.phase === "node-delete"');
   expect(googleProviderSource).toContain("const customPoints = customRoutePointsRef.current[segment.key] || []");

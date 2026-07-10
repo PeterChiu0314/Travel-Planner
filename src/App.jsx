@@ -96,9 +96,10 @@ const appVersion = "0.1.0";
 const TimelineDragHandleContext = createContext(null);
 const timelineDragPresenceHeartbeatMs = 3000;
 const timelineDragPresenceStaleMs = 12000;
+const routeEditPresenceHeartbeatMs = 8000;
 const timelineDragPresenceMaxMs = 75000;
 const timelineDragPresenceRefreshMs = 1000;
-const routeEditBroadcastThrottleMs = 140;
+const routeEditBroadcastThrottleMs = 180;
 const timelineCardSelectionStaleMs = 30000;
 const tripPresenceHeartbeatMs = 28000;
 const tripPresenceStaleMs = 55000;
@@ -2106,7 +2107,7 @@ export default function App() {
   const [routeOverrideSaveError, setRouteOverrideSaveError] = useState("");
   const [routeEditLocalState, setRouteEditLocalState] = useState({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
   const [remoteRouteEditPresences, setRemoteRouteEditPresences] = useState([]);
-  const [remoteRouteEditUpdate, setRemoteRouteEditUpdate] = useState(null);
+  const [remoteRouteEditUpdates, setRemoteRouteEditUpdates] = useState({});
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -2155,8 +2156,9 @@ export default function App() {
   const routeEditChannelSequenceRef = useRef(0);
   const routeEditLocalStateRef = useRef({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
   const routeEditSessionIdRef = useRef(`route-edit-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  const routeEditBroadcastRef = useRef({ activeDragId: null, lastSentAt: 0, pendingEvent: null, pendingReplayEvent: null, sequence: 0, timerId: null });
+  const routeEditBroadcastRef = useRef({ activeDragId: null, eventVersion: 0, lastSentAt: 0, pendingEvent: null, pendingReplayEvent: null, sequence: 0, timerId: null });
   const routeEditRemoteMoveVersionRef = useRef(new Map());
+  const routeEditRemoteUpdateReceiptRef = useRef(0);
   const routeOverrideLoadRequestRef = useRef(0);
   const routeOverrideLoadTargetRef = useRef({ dayIndex: null, isDemoMode: false, tripId: null });
   const [tripForm, setTripForm] = useState({
@@ -2380,9 +2382,9 @@ export default function App() {
         ? `${firstEditor?.userName || "成員"} 正在編輯地圖路線`
         : editorCount > 1 ? `${editorCount} 位成員正在編輯地圖路線` : "",
       nodeLocks,
-      remoteUpdate: remoteRouteEditUpdate,
+      remoteUpdates: remoteRouteEditUpdates,
     };
-  }, [remoteRouteEditPresences, remoteRouteEditUpdate, routeEditLocalState.isEditing, timelineDragPresenceUserName]);
+  }, [remoteRouteEditPresences, remoteRouteEditUpdates, routeEditLocalState.isEditing, timelineDragPresenceUserName]);
 
   const publishRouteEditPresence = useCallback((nextState) => {
     const channel = routeEditPresenceChannelRef.current;
@@ -2554,6 +2556,7 @@ export default function App() {
     const enrichedEvent = {
       ...event,
       dragId,
+      eventVersion: ++broadcast.eventVersion,
       sequence,
     };
     const nextState = {
@@ -2561,9 +2564,7 @@ export default function App() {
       activeSegmentKey: isDragStart ? event.segmentKey : null,
       isEditing: true,
     };
-    if (isDragMove) {
-      publishRouteEditPresence(routeEditLocalStateRef.current);
-    } else {
+    if (!isDragMove) {
       routeEditLocalStateRef.current = nextState;
       setRouteEditLocalState(nextState);
       publishRouteEditPresence(nextState);
@@ -3041,7 +3042,7 @@ export default function App() {
       routeEditPresenceReadyRef.current = false;
       routeEditPresenceStatusRef.current = "idle";
       setRemoteRouteEditPresences([]);
-      setRemoteRouteEditUpdate(null);
+      setRemoteRouteEditUpdates({});
       routeEditRemoteMoveVersionRef.current.clear();
       return undefined;
     }
@@ -3119,16 +3120,17 @@ export default function App() {
           return;
         }
         if (payload.segmentKey && payload.nodeId) {
-          const moveKey = `${payload.sessionId}:${payload.dragId || "legacy"}:${payload.segmentKey}:${payload.nodeId || "segment"}`;
+          const moveKey = `${payload.sessionId}:${payload.segmentKey}:${payload.nodeId}`;
           const sequence = Number(payload.sequence);
+          const eventVersion = Number(payload.eventVersion);
           const updatedAt = Date.parse(payload.updatedAt || "");
-          const incomingVersion = Number.isFinite(sequence) ? sequence : updatedAt;
+          const incomingVersion = Number.isFinite(eventVersion) ? eventVersion : updatedAt;
           const previousVersion = routeEditRemoteMoveVersionRef.current.get(moveKey);
-          if (payload.phase === "node-drag-move" && Number.isFinite(incomingVersion) && Number.isFinite(previousVersion) && incomingVersion <= previousVersion) {
+          if (Number.isFinite(incomingVersion) && Number.isFinite(previousVersion) && incomingVersion <= previousVersion) {
             routeEditCollaborationDebug("broadcast ignored", { incomingVersion, previousVersion, reason: "stale-sequence", summary });
             return;
           }
-          if (payload.phase === "node-drag-move" && Number.isFinite(incomingVersion)) {
+          if (Number.isFinite(incomingVersion)) {
             routeEditRemoteMoveVersionRef.current.set(moveKey, incomingVersion);
           }
           const node = normalizeRouteOverridePoints(payload.node ? [payload.node] : [])[0] || null;
@@ -3136,17 +3138,23 @@ export default function App() {
             routeEditCollaborationDebug("broadcast ignored", { reason: "invalid-node", summary });
             return;
           }
-          setRemoteRouteEditUpdate({
+          const remoteUpdate = {
             afterNodeId: payload.afterNodeId || null,
             dragId: payload.dragId || null,
+            eventVersion: Number.isFinite(eventVersion) ? eventVersion : null,
             node,
             nodeId: payload.nodeId || null,
             phase: payload.phase || "",
+            receiptId: ++routeEditRemoteUpdateReceiptRef.current,
             segmentKey: payload.segmentKey,
             sessionId: payload.sessionId,
             sequence: Number.isFinite(sequence) ? sequence : null,
             updatedAt: payload.updatedAt || new Date().toISOString(),
-          });
+          };
+          setRemoteRouteEditUpdates((current) => ({
+            ...current,
+            [`${payload.segmentKey}:${payload.nodeId}`]: remoteUpdate,
+          }));
         }
       })
       .subscribe((status, error) => {
@@ -3191,9 +3199,15 @@ export default function App() {
       });
 
     const refreshId = window.setInterval(syncPresence, 1000);
+    const heartbeatId = window.setInterval(() => {
+      if (routeEditLocalStateRef.current.isEditing) {
+        publishRouteEditPresence(routeEditLocalStateRef.current);
+      }
+    }, routeEditPresenceHeartbeatMs);
     return () => {
       const isRecoveryCleanup = routeEditChannelRecoveryRef.current;
       window.clearInterval(refreshId);
+      window.clearInterval(heartbeatId);
       routeEditCollaborationDebug("channel remove", {
         reason: isRecoveryCleanup ? "recovery-replacement" : "scope-or-unmount",
         summary: routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, routeEditPresenceStatusRef.current, {
@@ -3217,7 +3231,7 @@ export default function App() {
         broadcast.pendingEvent = null;
         broadcast.pendingReplayEvent = null;
         setRemoteRouteEditPresences([]);
-        setRemoteRouteEditUpdate(null);
+        setRemoteRouteEditUpdates({});
         routeEditRemoteMoveVersionRef.current.clear();
       }
       Promise.resolve(channel.untrack()).catch(() => {});
