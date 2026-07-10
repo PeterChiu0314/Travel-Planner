@@ -2080,6 +2080,9 @@ export default function App() {
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
   const [routeOverrides, setRouteOverrides] = useState([]);
   const [routeOverrideSaveError, setRouteOverrideSaveError] = useState("");
+  const [routeEditLocalState, setRouteEditLocalState] = useState({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
+  const [remoteRouteEditPresences, setRemoteRouteEditPresences] = useState([]);
+  const [remoteRouteEditPointsBySegment, setRemoteRouteEditPointsBySegment] = useState({});
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -2120,6 +2123,10 @@ export default function App() {
   const timelineDragPresenceSessionIdRef = useRef(
     `timeline-drag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   );
+  const routeEditPresenceChannelRef = useRef(null);
+  const routeEditPresenceReadyRef = useRef(false);
+  const routeEditLocalStateRef = useRef({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
+  const routeEditSessionIdRef = useRef(`route-edit-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
     destination: "京都, 日本",
@@ -2325,6 +2332,80 @@ export default function App() {
     () => routeOverridesToSegmentMap(routeOverrides, activeDayRouteSegmentKeys),
     [activeDayRouteSegmentKeys, routeOverrides],
   );
+  const routeEditCollaboration = useMemo(() => {
+    const foreignEditors = remoteRouteEditPresences.filter((presence) => presence?.routeEditMode);
+    const editorCount = foreignEditors.length + (routeEditLocalState.isEditing ? 1 : 0);
+    const nodeLocks = foreignEditors.reduce((locks, presence) => {
+      if (presence.activeSegmentKey && presence.activeNodeId) {
+        locks[`${presence.activeSegmentKey}:${presence.activeNodeId}`] = presence;
+      }
+      return locks;
+    }, {});
+    const firstEditor = foreignEditors[0] || (routeEditLocalState.isEditing ? { userName: timelineDragPresenceUserName } : null);
+    return {
+      editorLabel: editorCount === 1
+        ? `${firstEditor?.userName || "成員"} 正在編輯地圖路線`
+        : editorCount > 1 ? `${editorCount} 位成員正在編輯地圖路線` : "",
+      nodeLocks,
+      remotePointsBySegment: remoteRouteEditPointsBySegment,
+    };
+  }, [remoteRouteEditPointsBySegment, remoteRouteEditPresences, routeEditLocalState.isEditing, timelineDragPresenceUserName]);
+  const routeEditPointsBySegment = useMemo(
+    () => ({ ...activeRouteOverridePointsBySegment, ...remoteRouteEditPointsBySegment }),
+    [activeRouteOverridePointsBySegment, remoteRouteEditPointsBySegment],
+  );
+
+  const publishRouteEditPresence = useCallback((nextState) => {
+    const channel = routeEditPresenceChannelRef.current;
+    if (!channel || !routeEditPresenceReadyRef.current || !activeTripId || !activeUserId) return;
+    const payload = {
+      activeNodeId: nextState.activeNodeId || null,
+      activeSegmentKey: nextState.activeSegmentKey || null,
+      dayIndex: activeDay,
+      routeEditMode: Boolean(nextState.isEditing),
+      sessionId: routeEditSessionIdRef.current,
+      tripId: activeTripId,
+      updatedAt: new Date().toISOString(),
+      userId: activeUserId,
+      userName: timelineDragPresenceUserName,
+    };
+    if (!payload.routeEditMode) {
+      Promise.resolve(channel.untrack()).catch(() => {});
+      return;
+    }
+    Promise.resolve(channel.track(payload)).catch(() => {});
+  }, [activeDay, activeTripId, activeUserId, timelineDragPresenceUserName]);
+
+  const onRouteEditPresenceChange = useCallback((next = {}) => {
+    const state = { activeNodeId: null, activeSegmentKey: null, isEditing: Boolean(next.isEditing) };
+    routeEditLocalStateRef.current = state;
+    setRouteEditLocalState(state);
+    publishRouteEditPresence(state);
+  }, [publishRouteEditPresence]);
+
+  const onRouteEditCollaborationEvent = useCallback((event = {}) => {
+    const nextState = {
+      activeNodeId: event.phase === "node-drag-start" ? event.nodeId :
+        event.phase === "node-drag-move" ? event.nodeId : null,
+      activeSegmentKey: event.phase === "node-drag-start" || event.phase === "node-drag-move" ? event.segmentKey : null,
+      isEditing: true,
+    };
+    routeEditLocalStateRef.current = nextState;
+    setRouteEditLocalState(nextState);
+    publishRouteEditPresence(nextState);
+    const channel = routeEditPresenceChannelRef.current;
+    if (!channel || !routeEditPresenceReadyRef.current || !activeTripId) return;
+    const payload = {
+      ...event,
+      dayIndex: activeDay,
+      sessionId: routeEditSessionIdRef.current,
+      tripId: activeTripId,
+      updatedAt: new Date().toISOString(),
+      userId: activeUserId,
+      userName: timelineDragPresenceUserName,
+    };
+    Promise.resolve(channel.send({ event: "route-edit-update", type: "broadcast", payload })).catch(() => {});
+  }, [activeDay, activeTripId, activeUserId, publishRouteEditPresence, timelineDragPresenceUserName]);
 
   const todayItems = useMemo(
     () => sortScheduleItems(items.filter((item) => item.day_index === todayDayIndex)),
@@ -2711,6 +2792,63 @@ export default function App() {
   }, [activeDay, activeTripId, isDemoMode, loadRouteOverrides]);
 
   useEffect(() => {
+    if (isDemoMode || !activeTripId || !activeUserId || activeMembership?.status !== "approved") {
+      routeEditPresenceChannelRef.current = null;
+      routeEditPresenceReadyRef.current = false;
+      setRemoteRouteEditPresences([]);
+      setRemoteRouteEditPointsBySegment({});
+      return undefined;
+    }
+
+    const channelName = `timeline-route-edit:${activeTripId}:${activeDay}`;
+    const sessionId = routeEditSessionIdRef.current;
+    const channel = supabase.channel(channelName, { config: { presence: { key: sessionId } } });
+    routeEditPresenceChannelRef.current = channel;
+    routeEditPresenceReadyRef.current = false;
+
+    const syncPresence = () => {
+      const staleBefore = Date.now() - 12000;
+      const presences = Object.values(channel.presenceState())
+        .flat()
+        .filter((presence) => {
+          const updatedAt = Date.parse(presence?.updatedAt || "");
+          return presence?.routeEditMode && presence.sessionId !== sessionId &&
+            presence.tripId === activeTripId && Number(presence.dayIndex) === Number(activeDay) &&
+            Number.isFinite(updatedAt) && updatedAt >= staleBefore;
+        });
+      setRemoteRouteEditPresences(presences);
+    };
+
+    channel
+      .on("presence", { event: "sync" }, syncPresence)
+      .on("presence", { event: "join" }, syncPresence)
+      .on("presence", { event: "leave" }, syncPresence)
+      .on("broadcast", { event: "route-edit-update" }, ({ payload }) => {
+        if (!payload || payload.sessionId === sessionId || payload.tripId !== activeTripId || Number(payload.dayIndex) !== Number(activeDay)) return;
+        if (Array.isArray(payload.nodes) && payload.segmentKey) {
+          setRemoteRouteEditPointsBySegment((current) => ({ ...current, [payload.segmentKey]: normalizeRouteOverridePoints(payload.nodes) }));
+        }
+      })
+      .subscribe((status) => {
+        if (status !== "SUBSCRIBED") return;
+        routeEditPresenceReadyRef.current = true;
+        publishRouteEditPresence(routeEditLocalStateRef.current);
+        syncPresence();
+      });
+
+    const refreshId = window.setInterval(syncPresence, 1000);
+    return () => {
+      window.clearInterval(refreshId);
+      if (routeEditPresenceChannelRef.current === channel) routeEditPresenceChannelRef.current = null;
+      routeEditPresenceReadyRef.current = false;
+      setRemoteRouteEditPresences([]);
+      setRemoteRouteEditPointsBySegment({});
+      Promise.resolve(channel.untrack()).catch(() => {});
+      void supabase.removeChannel(channel);
+    };
+  }, [activeDay, activeMembership?.status, activeTripId, activeUserId, isDemoMode, publishRouteEditPresence]);
+
+  useEffect(() => {
     if (!activeTrip?.id || !canEditActiveTripContent || !routeOverrides.length) return;
     const invalidOverrides = routeOverrides.filter((override) => (
       !activeDayRouteSegmentKeys.has(routeOverrideSegmentKey(override.from_item_id, override.to_item_id))
@@ -2803,6 +2941,11 @@ export default function App() {
       )
       .on(
         "postgres_changes",
+        { event: "*", schema: "public", table: "itinerary_route_overrides", filter: `trip_id=eq.${activeTripId}` },
+        () => loadRouteOverrides(activeTripId, activeDay),
+      )
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "itinerary_alternatives" },
         () => loadTripData(activeTripId),
       )
@@ -2877,7 +3020,7 @@ export default function App() {
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [activeTripId, loadTripData, loadTrips, session?.user]);
+  }, [activeDay, activeTripId, loadRouteOverrides, loadTripData, loadTrips, session?.user]);
 
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
@@ -4893,17 +5036,48 @@ export default function App() {
     window.setTimeout(() => setRouteOverrideSaveError(""), 3600);
   }
 
-  async function saveRouteOverrideChange({ fromItemId, points = [], segmentKey, toItemId }) {
+  async function saveRouteOverrideChange({ fromItemId, operation = null, points = [], segmentKey, toItemId }) {
     const baselinePoints = activeRouteOverridePointsBySegment[segmentKey] || [];
     if (!activeTrip || !canEditActiveTripContent || !fromItemId || !toItemId) {
       return { ok: false, points: baselinePoints };
     }
 
-    const nextPoints = normalizeRouteOverridePoints(points);
+    let nextPoints = normalizeRouteOverridePoints(points);
     if (routeOverridePointsEqual(nextPoints, baselinePoints)) {
       return { ok: true, points: baselinePoints };
     }
     try {
+      // A route override remains one compact row for now. Re-read the latest
+      // row and apply only the collaborator's node operation so independent
+      // node edits do not overwrite one another.
+      if (operation?.type) {
+        const { data: latestRow, error: latestError } = await supabase
+          .from("itinerary_route_overrides")
+          .select("points_json")
+          .eq("trip_id", activeTrip.id)
+          .eq("day_index", activeDay)
+          .eq("from_item_id", fromItemId)
+          .eq("to_item_id", toItemId)
+          .maybeSingle();
+        if (latestError) throw latestError;
+        const latestPoints = normalizeRouteOverridePoints(latestRow?.points_json || []);
+        if (operation.type === "update" && operation.node?.id) {
+          nextPoints = latestPoints.map((node) => node.id === operation.node.id ? operation.node : node);
+        } else if (operation.type === "add" && operation.node?.id) {
+          if (!latestPoints.some((node) => node.id === operation.node.id) && latestPoints.length < 5) {
+            const afterIndex = latestPoints.findIndex((node) => node.id === operation.afterNodeId);
+            nextPoints = [
+              ...latestPoints.slice(0, afterIndex + 1),
+              operation.node,
+              ...latestPoints.slice(afterIndex + 1),
+            ];
+          } else {
+            nextPoints = latestPoints;
+          }
+        } else if (operation.type === "delete" && operation.nodeId) {
+          nextPoints = latestPoints.filter((node) => node.id !== operation.nodeId);
+        }
+      }
       if (!nextPoints.length) {
         const deleteResult = await supabase
           .from("itinerary_route_overrides")
@@ -5557,14 +5731,17 @@ function exportTrip() {
             luggageTab={luggageTab}
             members={members}
             packItems={packItems}
-            routeOverridePointsBySegment={activeRouteOverridePointsBySegment}
+            routeOverridePointsBySegment={routeEditPointsBySegment}
             routeOverrideSaveError={routeOverrideSaveError}
+            routeEditCollaboration={routeEditCollaboration}
             sharedLuggageItems={sharedLuggageItems}
             todayDayIndex={todayDayIndex}
             todayItems={todayItems}
             todoItems={todoItems}
             timelineDayTabPresenceByDay={timelineDayTabPresenceByDay}
             onActiveDay={setActiveDay}
+            onRouteEditCollaborationEvent={onRouteEditCollaborationEvent}
+            onRouteEditPresenceChange={onRouteEditPresenceChange}
             onAddPackItem={addPackItem}
             onApplyAlternative={applyAlternative}
             onConvertBudgetToActual={convertBudgetToActual}
@@ -9060,6 +9237,7 @@ function TripWorkspace(props) {
     packItems,
     routeOverridePointsBySegment = {},
     routeOverrideSaveError = "",
+    routeEditCollaboration = {},
     sharedLuggageItems,
     todayDayIndex,
     todayItems,
@@ -9096,6 +9274,8 @@ function TripWorkspace(props) {
     onSaveGuide,
     onSaveItem,
     onSaveRouteOverride,
+    onRouteEditCollaborationEvent,
+    onRouteEditPresenceChange,
     onSaveLuggageItem,
     onSaveSharedLuggageItem,
     onSaveTodo,
@@ -9441,9 +9621,12 @@ function TripWorkspace(props) {
                   mode="formal"
                   routeOverridePointsBySegment={routeOverridePointsBySegment}
                   routeOverrideSaveError={routeOverrideSaveError}
+                  routeEditCollaboration={routeEditCollaboration}
                   viewportKey={`formal-day:${activeDay}`}
                   onFocusItem={setFocusedItemId}
                   onRouteOverrideChange={onSaveRouteOverride}
+                  onRouteEditCollaborationEvent={onRouteEditCollaborationEvent}
+                  onRouteEditPresenceChange={onRouteEditPresenceChange}
                 />
               </aside>
             )}
@@ -12552,11 +12735,14 @@ function RoutePanel({
   mode = "formal",
   routeOverridePointsBySegment = {},
   routeOverrideSaveError = "",
+  routeEditCollaboration = {},
   viewportKey,
   onFocusItem,
   onCancelMapPointPick,
   onPickMapPoint,
   onRouteOverrideChange,
+  onRouteEditCollaborationEvent,
+  onRouteEditPresenceChange,
   onSelectPlaceDetails,
   onStartMapPointPick,
 }) {
@@ -12586,10 +12772,13 @@ function RoutePanel({
         onCancelMapPointPick={onCancelMapPointPick}
         onPickMapPoint={onPickMapPoint}
         onRouteOverrideChange={onRouteOverrideChange}
+        onRouteEditCollaborationEvent={onRouteEditCollaborationEvent}
+        onRouteEditPresenceChange={onRouteEditPresenceChange}
         onSelectPlaceDetails={onSelectPlaceDetails}
         onStartMapPointPick={onStartMapPointPick}
         routeOverridePointsBySegment={routeOverridePointsBySegment}
         routeOverrideSaveError={routeOverrideSaveError}
+        routeEditCollaboration={routeEditCollaboration}
       />
     </section>
   );

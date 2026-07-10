@@ -28,10 +28,13 @@ export default function MapPanel({
   onCancelMapPointPick,
   onPickMapPoint,
   onRouteOverrideChange,
+  onRouteEditCollaborationEvent,
+  onRouteEditPresenceChange,
   onSelectPlaceDetails,
   onStartMapPointPick,
   routeOverridePointsBySegment = {},
   routeOverrideSaveError = "",
+  routeEditCollaboration = {},
   className = "route-map",
 }) {
   const envProviderId = import.meta.env?.VITE_MAP_PROVIDER || DEFAULT_MAP_PROVIDER_ID;
@@ -118,10 +121,13 @@ export default function MapPanel({
     onCancelMapPointPick,
     onPickMapPoint,
     onRouteOverrideChange,
+    onRouteEditCollaborationEvent,
+    onRouteEditPresenceChange,
     onSelectPlaceDetails,
     onStartMapPointPick,
     routeOverridePointsBySegment,
     routeOverrideSaveError,
+    routeEditCollaboration,
   };
 
   if (GoogleProvider) {
