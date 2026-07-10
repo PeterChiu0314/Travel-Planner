@@ -731,6 +731,10 @@ test("Phase 5.7b-3 persists route overrides with guarded cleanup and Google-only
 
   expect(appSource).toContain('const [routeOverrides, setRouteOverrides] = useState([])');
   expect(appSource).toContain("loadRouteOverrides(activeTripId, activeDay)");
+  expect(appSource).toContain("const routeOverrideLoadRequestRef = useRef(0)");
+  expect(appSource).toContain("const routeOverrideLoadTargetRef = useRef({ dayIndex: null, isDemoMode: false, tripId: null })");
+  expect(appSource).toContain("const requestId = ++routeOverrideLoadRequestRef.current");
+  expect(appSource).toContain("if (!isCurrentRouteOverrideRequest()) return []");
   expect(appSource).toContain('from("itinerary_route_overrides")');
   expect(appSource).toContain(".upsert(");
   expect(appSource).toContain('points_json: nextPoints');

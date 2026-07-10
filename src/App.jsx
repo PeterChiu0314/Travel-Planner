@@ -2130,6 +2130,8 @@ export default function App() {
   const routeEditSessionIdRef = useRef(`route-edit-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const routeEditBroadcastRef = useRef({ activeDragId: null, lastSentAt: 0, pendingEvent: null, sequence: 0, timerId: null });
   const routeEditRemoteMoveVersionRef = useRef(new Map());
+  const routeOverrideLoadRequestRef = useRef(0);
+  const routeOverrideLoadTargetRef = useRef({ dayIndex: null, isDemoMode: false, tripId: null });
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
     destination: "京都, 日本",
@@ -2709,15 +2711,31 @@ export default function App() {
   }, []);
 
   const loadRouteOverrides = useCallback(async (tripId, dayIndex) => {
+    const normalizedDayIndex = Number(dayIndex);
     if (!tripId || !Number.isInteger(Number(dayIndex))) {
       setRouteOverrides([]);
       return [];
     }
+
+    const requestedTarget = routeOverrideLoadTargetRef.current;
+    if (requestedTarget.tripId !== tripId || requestedTarget.dayIndex !== normalizedDayIndex || requestedTarget.isDemoMode) {
+      return [];
+    }
+
+    const requestId = ++routeOverrideLoadRequestRef.current;
+
+    const isCurrentRouteOverrideRequest = () => {
+      const target = routeOverrideLoadTargetRef.current;
+      return requestId === routeOverrideLoadRequestRef.current &&
+        target.tripId === tripId && target.dayIndex === normalizedDayIndex && !target.isDemoMode;
+    };
+
     const { data, error } = await supabase
       .from("itinerary_route_overrides")
       .select("id,trip_id,day_index,from_item_id,to_item_id,points_json,updated_at")
       .eq("trip_id", tripId)
       .eq("day_index", dayIndex);
+    if (!isCurrentRouteOverrideRequest()) return [];
     if (error) {
       setRouteOverrides([]);
       return [];
@@ -2833,6 +2851,11 @@ export default function App() {
   }, [activeTripId, loadTripData, todayDayIndex]);
 
   useEffect(() => {
+    routeOverrideLoadTargetRef.current = {
+      dayIndex: Number.isInteger(Number(activeDay)) ? Number(activeDay) : null,
+      isDemoMode,
+      tripId: activeTripId || null,
+    };
     if (!activeTripId || isDemoMode) {
       setRouteOverrides([]);
       return;
