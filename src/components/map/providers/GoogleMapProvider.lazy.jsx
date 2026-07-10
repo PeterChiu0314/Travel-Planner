@@ -224,14 +224,11 @@ export default function GoogleMapProvider(props) {
     onFocusItem,
     onPickMapPoint,
     onRouteOverrideChange,
-    onRouteEditCollaborationEvent,
-    onRouteEditPresenceChange,
     onSelectPlaceDetails,
     onStartMapPointPick,
     providerConfig = {},
     routeOverridePointsBySegment = {},
     routeOverrideSaveError = "",
-    routeEditCollaboration = {},
     viewportKey = "default",
   } = props;
   const coordinateMarkers = useMemo(() => markers.filter((marker) => marker.hasCoordinates), [markers]);
@@ -554,14 +551,13 @@ export default function GoogleMapProvider(props) {
     routeLineRef.current?.setPath?.(nextPath);
   }
 
-  async function persistRouteCustomPoints(segmentKey, points, operation = null) {
+  async function persistRouteCustomPoints(segmentKey, points) {
     if (typeof onRouteOverrideChange !== "function") return { ok: true, points };
     const segment = routeSegmentByKey.get(segmentKey);
     if (!segment) return { ok: false, points: [] };
     const result = await onRouteOverrideChange({
       fromItemId: segment.fromItemId,
       points,
-      operation,
       segmentKey,
       toItemId: segment.toItemId,
     });
@@ -587,29 +583,18 @@ export default function GoogleMapProvider(props) {
     routeEditSuppressLineClickUntilRef.current = Date.now() + ROUTE_EDIT_SUPPRESS_LINE_CLICK_MS;
   }
 
-  function newRouteNodeId() {
-    if (typeof crypto?.randomUUID === "function") return `node-${crypto.randomUUID()}`;
-    return `node-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  }
-
   function insertRouteCustomPoint(segmentKey, insertIndex, point) {
     setCustomRoutePointsBySegment((current) => {
       const currentPoints = current[segmentKey] || [];
       if (currentPoints.length >= MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT) return current;
       const safeInsertIndex = clamp(Math.floor(insertIndex), 0, currentPoints.length);
-      const node = { id: newRouteNodeId(), ...point };
       const nextPoints = [
         ...currentPoints.slice(0, safeInsertIndex),
-        node,
+        point,
         ...currentPoints.slice(safeInsertIndex),
       ];
-      onRouteEditCollaborationEvent?.({ phase: "node-add", segmentKey, node, nodes: nextPoints });
-      void persistRouteCustomPoints(segmentKey, nextPoints, {
-        afterNodeId: currentPoints[safeInsertIndex - 1]?.id || null,
-        node,
-        type: "add",
-      }).then((result) => {
-        if (result?.points) setRouteSegmentPoints(segmentKey, result.points);
+      void persistRouteCustomPoints(segmentKey, nextPoints).then((result) => {
+        if (result?.ok === false) setRouteSegmentPoints(segmentKey, result.points || []);
       });
       return { ...current, [segmentKey]: nextPoints };
     });
@@ -619,10 +604,9 @@ export default function GoogleMapProvider(props) {
     setCustomRoutePointsBySegment((current) => {
       const currentPoints = current[segmentKey] || [];
       if (!currentPoints[pointIndex]) return current;
-      const node = { ...currentPoints[pointIndex], ...point };
-      const nextPoints = currentPoints.map((currentPoint, index) => (index === pointIndex ? node : currentPoint));
-      void persistRouteCustomPoints(segmentKey, nextPoints, { node, type: "update" }).then((result) => {
-        if (result?.points) setRouteSegmentPoints(segmentKey, result.points);
+      const nextPoints = currentPoints.map((currentPoint, index) => (index === pointIndex ? point : currentPoint));
+      void persistRouteCustomPoints(segmentKey, nextPoints).then((result) => {
+        if (result?.ok === false) setRouteSegmentPoints(segmentKey, result.points || []);
       });
       return {
         ...current,
@@ -635,11 +619,9 @@ export default function GoogleMapProvider(props) {
     setCustomRoutePointsBySegment((current) => {
       const currentPoints = current[segmentKey] || [];
       if (!currentPoints[pointIndex]) return current;
-      const node = currentPoints[pointIndex];
       const nextPoints = currentPoints.filter((_, index) => index !== pointIndex);
-      onRouteEditCollaborationEvent?.({ phase: "node-delete", segmentKey, nodeId: node.id, nodes: nextPoints });
-      void persistRouteCustomPoints(segmentKey, nextPoints, { nodeId: node.id, type: "delete" }).then((result) => {
-        if (result?.points) setRouteSegmentPoints(segmentKey, result.points);
+      void persistRouteCustomPoints(segmentKey, nextPoints).then((result) => {
+        if (result?.ok === false) setRouteSegmentPoints(segmentKey, result.points || []);
       });
       if (!nextPoints.length) {
         const next = { ...current };
@@ -720,8 +702,6 @@ export default function GoogleMapProvider(props) {
   useEffect(() => {
     if (!isRouteEditMode) return undefined;
 
-    onRouteEditPresenceChange?.({ isEditing: true });
-
     clearPendingPoi();
     clearPlacesPreview();
     resetPlacesSearch();
@@ -742,12 +722,11 @@ export default function GoogleMapProvider(props) {
     window.addEventListener("resize", handleRouteEditViewportChange);
     window.addEventListener("scroll", handleRouteEditViewportChange, true);
     return () => {
-      onRouteEditPresenceChange?.({ isEditing: false });
       document.removeEventListener("keydown", handleRouteEditKeyDown);
       window.removeEventListener("resize", handleRouteEditViewportChange);
       window.removeEventListener("scroll", handleRouteEditViewportChange, true);
     };
-  }, [isPickingMapPoint, isRouteEditMode, onCancelMapPointPick, onRouteEditPresenceChange]);
+  }, [isPickingMapPoint, isRouteEditMode, onCancelMapPointPick]);
 
   useEffect(() => {
     if (status !== "ready" || !mapElementRef.current) return undefined;
@@ -930,22 +909,18 @@ export default function GoogleMapProvider(props) {
     routeEditHandleRefsRef.current = routeSegments.flatMap((segment) => {
       const customPoints = customRoutePointsBySegment[segment.key] || [];
       return customPoints.map((point, pointIndex) => {
-        const nodeLock = routeEditCollaboration.nodeLocks?.[`${segment.key}:${point.id}`];
-        const isLockedByRemote = Boolean(nodeLock);
         const marker = new MarkerConstructor({
           clickable: true,
-          draggable: !isLockedByRemote,
+          draggable: true,
           icon: routeEditHandleIcon(mapsNamespace),
           map: mapRef.current,
           position: point,
-          title: isLockedByRemote ? `${nodeLock.userName} 正在編輯` : "拖曳路線節點，點擊可刪除",
+          title: "\u62d6\u66f3\u8def\u7dda\u7bc0\u9ede\uff0c\u9ede\u64ca\u53ef\u522a\u9664",
           zIndex: 4000,
         });
 
         marker.addListener?.("dragstart", () => {
-          if (isLockedByRemote) return;
           suppressRouteLineClick();
-          onRouteEditCollaborationEvent?.({ phase: "node-drag-start", nodeId: point.id, segmentKey: segment.key });
           routeEditDragRef.current = { isDragging: false, lastDragEndedAt: routeEditDragRef.current.lastDragEndedAt || 0 };
         });
 
@@ -955,15 +930,13 @@ export default function GoogleMapProvider(props) {
           if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
           routeEditDragRef.current.isDragging = true;
           const nextSegmentPoints = [...(customRoutePointsRef.current[segment.key] || [])];
-          const node = { ...nextSegmentPoints[pointIndex], lat, lng };
-          nextSegmentPoints[pointIndex] = node;
+          nextSegmentPoints[pointIndex] = { lat, lng };
           const nextCustomPoints = {
             ...customRoutePointsRef.current,
             [segment.key]: nextSegmentPoints,
           };
           customRoutePointsRef.current = nextCustomPoints;
           applyRouteLinePath(nextCustomPoints);
-          onRouteEditCollaborationEvent?.({ phase: "node-drag-move", nodeId: point.id, segmentKey: segment.key, nodes: nextSegmentPoints });
         });
 
         marker.addListener?.("dragend", (event) => {
@@ -974,7 +947,6 @@ export default function GoogleMapProvider(props) {
           if (Number.isFinite(lat) && Number.isFinite(lng)) {
             updateRouteCustomPoint(segment.key, pointIndex, { lat, lng });
           }
-          onRouteEditCollaborationEvent?.({ phase: "node-drag-end", nodeId: point.id, segmentKey: segment.key });
         });
 
         marker.addListener?.("click", (event) => {
@@ -985,7 +957,6 @@ export default function GoogleMapProvider(props) {
             routeEditDragRef.current.isDragging = false;
             return;
           }
-          if (isLockedByRemote) return;
           removeRouteCustomPoint(segment.key, pointIndex);
         });
 
@@ -1004,7 +975,7 @@ export default function GoogleMapProvider(props) {
       routeEditHandleRefsRef.current.forEach((record) => record.marker?.setMap?.(null));
       routeEditHandleRefsRef.current = [];
     };
-  }, [customRoutePointsBySegment, isRouteEditMode, markersKey, onRouteEditCollaborationEvent, routeEditCollaboration.nodeLocks, status]);
+  }, [customRoutePointsBySegment, isRouteEditMode, markersKey, status]);
 
   useEffect(() => {
     if (status !== "ready" || !mapRef.current || !placesPreview) {
@@ -1369,7 +1340,7 @@ export default function GoogleMapProvider(props) {
       ) : null}
       {isRouteEditMode ? (
         <div className="route-edit-mode-banner" role="status">
-          {routeEditCollaboration.editorLabel || "路線編輯模式"}
+          路線編輯模式
         </div>
       ) : null}
       {routeOverrideSaveError ? (
