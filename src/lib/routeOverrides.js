@@ -55,3 +55,12 @@ export function validRouteSegmentKeysFromStops(stops = []) {
   }
   return keys;
 }
+
+// Route-override validity belongs to the Timeline's adjacent destination IDs,
+// not to map-marker sequence numbers, labels, or whether a map presentation
+// layer happens to omit a marker.
+export function validRouteSegmentKeysFromItems(items = []) {
+  return validRouteSegmentKeysFromStops(
+    (Array.isArray(items) ? items : []).map((item) => ({ itemId: item?.id })),
+  );
+}

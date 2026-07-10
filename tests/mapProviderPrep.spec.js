@@ -12,6 +12,7 @@ import {
   MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT,
   routeOverrideSegmentKey,
   routeOverridesToSegmentMap,
+  validRouteSegmentKeysFromItems,
   validRouteSegmentKeysFromStops,
 } from "../src/lib/routeOverrides.js";
 
@@ -753,6 +754,26 @@ test("Phase 5.7b-3 persists route overrides with guarded cleanup and Google-only
   expect(stylesSource).toContain(".route-edit-save-error");
   expect(staticProviderSource).not.toContain("routeOverridePointsBySegment");
   expect(staticProviderSource).not.toContain("itinerary_route_overrides");
+});
+
+test("Phase 5.7b-3 keeps an override when a reordered day preserves its adjacent item IDs", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const routeOverridesSource = readRepoFile("src/lib/routeOverrides.js");
+  const reorderedItems = [{ id: "visit-d" }, { id: "visit-a" }, { id: "visit-b" }, { id: "visit-c" }];
+  const validKeys = validRouteSegmentKeysFromItems(reorderedItems);
+  const overrides = [
+    { from_item_id: "visit-b", to_item_id: "visit-c", points_json: [{ id: "node-p1", lat: 35.01, lng: 135.77 }] },
+    { from_item_id: "visit-c", to_item_id: "visit-d", points_json: [{ id: "node-p2", lat: 35.02, lng: 135.78 }] },
+  ];
+
+  expect(validKeys.has(routeOverrideSegmentKey("visit-b", "visit-c"))).toBe(true);
+  expect(validKeys.has(routeOverrideSegmentKey("visit-c", "visit-d"))).toBe(false);
+  expect(routeOverridesToSegmentMap(overrides, validKeys)).toEqual({
+    "visit-b:visit-c": [{ id: "node-p1", lat: 35.01, lng: 135.77 }],
+  });
+  expect(routeOverridesSource).toContain("function validRouteSegmentKeysFromItems(items = [])");
+  expect(appSource).toContain("validRouteSegmentKeysFromItems(sortedVisitItems(dayItems))");
+  expect(appSource).not.toContain("validRouteSegmentKeysFromStops(activeDayRouteStops)");
 });
 
 test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timeline lock", () => {

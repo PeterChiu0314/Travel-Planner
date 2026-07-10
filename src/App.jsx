@@ -75,7 +75,7 @@ import {
   routeOverridePointsEqual,
   routeOverrideSegmentKey,
   routeOverridesToSegmentMap,
-  validRouteSegmentKeysFromStops,
+  validRouteSegmentKeysFromItems,
 } from "./lib/routeOverrides.js";
 import MapPanel from "./components/map/MapPanel.jsx";
 import { roundMinutesUpToStep } from "./lib/timelineTime.js";
@@ -2325,8 +2325,8 @@ export default function App() {
     [dayItems],
   );
   const activeDayRouteSegmentKeys = useMemo(
-    () => validRouteSegmentKeysFromStops(activeDayRouteStops),
-    [activeDayRouteStops],
+    () => validRouteSegmentKeysFromItems(sortedVisitItems(dayItems)),
+    [dayItems],
   );
   const activeRouteOverridePointsBySegment = useMemo(
     () => routeOverridesToSegmentMap(routeOverrides, activeDayRouteSegmentKeys),
