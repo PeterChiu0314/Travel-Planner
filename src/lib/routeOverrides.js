@@ -15,7 +15,10 @@ export function normalizeRouteOverridePoints(points = []) {
     const lat = finiteNumber(point?.lat);
     const lng = finiteNumber(point?.lng);
     if (lat === null || lng === null) return normalized;
-    normalized.push({ lat, lng });
+    const id = typeof point?.id === "string" && point.id.trim()
+      ? point.id.trim()
+      : `legacy-${normalized.length}-${lat}-${lng}`;
+    normalized.push({ id, lat, lng });
     return normalized;
   }, []);
 }
@@ -25,6 +28,7 @@ export function routeOverridePointsEqual(left = [], right = []) {
   const normalizedRight = normalizeRouteOverridePoints(right);
   if (normalizedLeft.length !== normalizedRight.length) return false;
   return normalizedLeft.every((point, index) => (
+    point.id === normalizedRight[index].id &&
     point.lat === normalizedRight[index].lat && point.lng === normalizedRight[index].lng
   ));
 }
