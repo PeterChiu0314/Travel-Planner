@@ -250,6 +250,7 @@ export default function GoogleMapProvider(props) {
   const routeSegmentHitLineRefsRef = useRef([]);
   const routeEditHandleRefsRef = useRef([]);
   const routeEditNodeLocksRef = useRef({});
+  const remoteRoutePreviewBySegmentRef = useRef({});
   const routeEditDragRef = useRef({ isDragging: false, lastDragEndedAt: 0 });
   const routeEditSuppressLineClickUntilRef = useRef(0);
   const customRoutePointsRef = useRef({});
@@ -555,6 +556,13 @@ export default function GoogleMapProvider(props) {
     routeLineRef.current?.setPath?.(nextPath);
   }
 
+  function mergeRemoteRoutePreview(pointsBySegment = {}) {
+    return {
+      ...pointsBySegment,
+      ...remoteRoutePreviewBySegmentRef.current,
+    };
+  }
+
   async function persistRouteCustomPoints(segmentKey, points, operation = null) {
     if (typeof onRouteOverrideChange !== "function") return { ok: true, points };
     const segment = routeSegmentByKey.get(segmentKey);
@@ -851,14 +859,20 @@ export default function GoogleMapProvider(props) {
   }, [isPickingMapPoint, isRouteEditMode, markersKey, onFocusItem, status, viewportSignature]);
 
   useEffect(() => {
-    customRoutePointsRef.current = customRoutePointsBySegment;
-    applyRouteLinePath(customRoutePointsBySegment);
+    const nextPoints = mergeRemoteRoutePreview(customRoutePointsBySegment);
+    customRoutePointsRef.current = nextPoints;
+    applyRouteLinePath(nextPoints);
   }, [customRoutePointsBySegment, markersKey]);
 
   useEffect(() => {
-    const nextPoints = routeOverridePointsBySegment || {};
+    remoteRoutePreviewBySegmentRef.current = {};
+  }, [viewportKey]);
+
+  useEffect(() => {
+    const authoritativePoints = routeOverridePointsBySegment || {};
+    const nextPoints = mergeRemoteRoutePreview(authoritativePoints);
     customRoutePointsRef.current = nextPoints;
-    setCustomRoutePointsBySegment(nextPoints);
+    setCustomRoutePointsBySegment(authoritativePoints);
     applyRouteLinePath(nextPoints);
   }, [markersKey, routeOverridePointsBySegment]);
 
@@ -866,7 +880,17 @@ export default function GoogleMapProvider(props) {
     const update = routeEditCollaboration.remoteUpdate;
     if (!update?.segmentKey || !Array.isArray(update.nodes)) return;
 
-    const nextPoints = update.nodes;
+    const incomingPoints = update.nodes;
+    const incomingNode = incomingPoints.find((point) => point.id === update.nodeId) || null;
+    const isNodePositionUpdate = (update.phase === "node-drag-move" || update.phase === "node-drag-end") && incomingNode;
+    const currentSegmentPoints = customRoutePointsRef.current[update.segmentKey] || incomingPoints;
+    const nextPoints = isNodePositionUpdate
+      ? currentSegmentPoints.map((point) => point.id === incomingNode.id ? incomingNode : point)
+      : incomingPoints;
+    remoteRoutePreviewBySegmentRef.current = {
+      ...remoteRoutePreviewBySegmentRef.current,
+      [update.segmentKey]: nextPoints,
+    };
     const nextCustomPoints = {
       ...customRoutePointsRef.current,
       [update.segmentKey]: nextPoints,
@@ -874,7 +898,7 @@ export default function GoogleMapProvider(props) {
     customRoutePointsRef.current = nextCustomPoints;
     applyRouteLinePath(nextCustomPoints);
 
-    if (update.phase !== "node-drag-move") {
+    if (update.phase !== "node-drag-move" && update.phase !== "node-drag-end") {
       setRouteSegmentPoints(update.segmentKey, nextPoints);
       return;
     }
@@ -892,7 +916,9 @@ export default function GoogleMapProvider(props) {
       return;
     }
 
-    setRouteSegmentPoints(update.segmentKey, nextPoints);
+    if (update.phase === "node-drag-end") {
+      setRouteSegmentPoints(update.segmentKey, nextPoints);
+    }
   }, [routeEditCollaboration.remoteUpdate]);
 
   useEffect(() => {
@@ -926,6 +952,7 @@ export default function GoogleMapProvider(props) {
       strokeWeight: 3,
       zIndex: 10,
     });
+    applyRouteLinePath(customRoutePointsRef.current);
 
     return () => {
       routeLineRef.current?.setMap(null);
@@ -947,7 +974,7 @@ export default function GoogleMapProvider(props) {
     if (typeof PolylineConstructor !== "function" || typeof MarkerConstructor !== "function") return undefined;
 
     routeSegmentHitLineRefsRef.current = routeSegments.flatMap((segment) => {
-      const customPoints = customRoutePointsBySegment[segment.key] || [];
+      const customPoints = customRoutePointsRef.current[segment.key] || [];
       return routeSubSegments(segment, customPoints).map((subSegment) => {
         const line = new PolylineConstructor({
           clickable: true,
@@ -974,7 +1001,7 @@ export default function GoogleMapProvider(props) {
     });
 
     routeEditHandleRefsRef.current = routeSegments.flatMap((segment) => {
-      const customPoints = customRoutePointsBySegment[segment.key] || [];
+      const customPoints = customRoutePointsRef.current[segment.key] || [];
       return customPoints.map((point, pointIndex) => {
         const nodeLock = routeEditNodeLocksRef.current[`${segment.key}:${point.id}`];
         const isLockedByRemote = Boolean(nodeLock);
@@ -1021,7 +1048,12 @@ export default function GoogleMapProvider(props) {
           if (Number.isFinite(lat) && Number.isFinite(lng)) {
             updateRouteCustomPoint(segment.key, pointIndex, { lat, lng });
           }
-          onRouteEditCollaborationEvent?.({ phase: "node-drag-end", nodeId: point.id, segmentKey: segment.key });
+          onRouteEditCollaborationEvent?.({
+            phase: "node-drag-end",
+            nodeId: point.id,
+            nodes: customRoutePointsRef.current[segment.key] || [],
+            segmentKey: segment.key,
+          });
         });
 
         marker.addListener?.("click", (event) => {

@@ -787,6 +787,9 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("routeEditMode");
   expect(appSource).toContain("routeEditCollaboration");
   expect(appSource).toContain("remoteRouteEditUpdate");
+  expect(appSource).toContain("routeEditBroadcastThrottleMs = 80");
+  expect(appSource).toContain("routeEditRemoteMoveVersionRef");
+  expect(appSource).toContain("incomingVersion <= previousVersion");
   expect(appSource).toContain("const isDragMove = event.phase === \"node-drag-move\"");
   expect(appSource).toContain("publishRouteEditPresence(routeEditLocalStateRef.current)");
   expect(appSource).not.toContain("routeEditSameDayReadonly");
@@ -800,8 +803,11 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("node-delete");
   expect(googleProviderSource).toContain("draggable: !isLockedByRemote");
   expect(googleProviderSource).toContain("const routeEditNodeLocksRef = useRef({})");
+  expect(googleProviderSource).toContain("const remoteRoutePreviewBySegmentRef = useRef({})");
+  expect(googleProviderSource).toContain("function mergeRemoteRoutePreview(pointsBySegment = {})");
   expect(googleProviderSource).toContain("changedHandle.marker?.setPosition?.({ lat: changedPoint.lat, lng: changedPoint.lng })");
-  expect(googleProviderSource).toContain("if (update.phase !== \"node-drag-move\")");
+  expect(googleProviderSource).toContain("if (update.phase !== \"node-drag-move\" && update.phase !== \"node-drag-end\")");
+  expect(googleProviderSource).toContain("const customPoints = customRoutePointsRef.current[segment.key] || []");
   expect(googleProviderSource).not.toContain("routeEditCollaboration.nodeLocks, status]);");
   expect(appSource).toContain("正在編輯地圖路線");
   expect(routeOverridesSource).toContain("legacy-${normalized.length}-${lat}-${lng}");
