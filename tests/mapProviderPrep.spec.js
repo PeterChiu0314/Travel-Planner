@@ -796,7 +796,14 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("[route-edit-collab]");
   expect(appSource).toContain("routeEditPresenceStatusRef");
   expect(appSource).toContain("routeEditChannelMetadataRef");
+  expect(appSource).toContain("routeEditChannelRecoveryRef");
+  expect(appSource).toContain("routeEditChannelVersion");
+  expect(appSource).toContain("requestRouteEditChannelRecovery");
+  expect(appSource).toContain("pendingReplayEvent");
   expect(appSource).toContain('routeEditCollaborationDebug("channel created"');
+  expect(appSource).toContain('routeEditCollaborationDebug("recovery requested"');
+  expect(appSource).toContain('routeEditCollaborationDebug("replacement channel created"');
+  expect(appSource).toContain('routeEditCollaborationDebug("pending broadcast replayed"');
   expect(appSource).toContain('routeEditCollaborationDebug("broadcast send"');
   expect(appSource).toContain('routeEditCollaborationDebug("subscribe status"');
   expect(appSource).toContain("routeEditRemoteMoveVersionRef");
