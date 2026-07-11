@@ -945,6 +945,12 @@ export default function GoogleMapProvider(props) {
   }, [viewportKey]);
 
   useEffect(() => {
+    if (!routeEditCollaboration.recoveryGeneration) return;
+    remoteRoutePreviewBySegmentRef.current = {};
+    routeEditRemoteAppliedReceiptRef.current.clear();
+  }, [routeEditCollaboration.recoveryGeneration]);
+
+  useEffect(() => {
     const authoritativePoints = routeOverridePointsBySegment || {};
     const pendingLocalCommit = routeEditDragRef.current;
     const acknowledgedLocalCommit = pendingLocalCommit.isCommitPending &&

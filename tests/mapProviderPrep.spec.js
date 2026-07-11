@@ -801,6 +801,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("[route-edit-collab]");
   expect(appSource).toContain("routeEditPresenceStatusRef");
   expect(appSource).toContain("routeEditChannelReady");
+  expect(appSource).toContain("routeEditRecoveryGeneration");
   expect(appSource).toContain("routeEditChannelMetadataRef");
   expect(appSource).toContain("routeEditChannelRecoveryRef");
   expect(appSource).toContain("routeEditChannelVersion");
@@ -819,6 +820,9 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain('recoverOnForeground("visibility-visible")');
   expect(appSource).toContain('recoverOnForeground("window-focus")');
   expect(appSource).toContain('recoverOnForeground("window-online")');
+  expect(appSource).toContain('routeEditCollaborationDebug("replacement resync started"');
+  expect(appSource).toContain('routeEditCollaborationDebug("replacement resync complete"');
+  expect(appSource).toContain("void loadRouteOverrides(activeTripId, activeDay).finally");
   expect(appSource).toContain("routeEditRemoteMoveVersionRef");
   expect(appSource).toContain("incomingVersion <= previousVersion");
   expect(appSource).toContain("eventVersion: ++broadcast.eventVersion");
@@ -840,6 +844,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("draggable: !isLockedByRemote && routeEditChannelReadyRef.current");
   expect(googleProviderSource).toContain("const routeEditNodeLocksRef = useRef({})");
   expect(googleProviderSource).toContain("const routeEditChannelReadyRef");
+  expect(googleProviderSource).toContain("routeEditCollaboration.recoveryGeneration");
   expect(googleProviderSource).toContain("isChannelReady && !isLockedByRemote");
   expect(googleProviderSource).toContain("const remoteRoutePreviewBySegmentRef = useRef({})");
   expect(googleProviderSource).toContain("function mergeRemoteRoutePreview(pointsBySegment = {})");

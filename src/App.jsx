@@ -2171,6 +2171,7 @@ export default function App() {
   const [timelineDragPresenceChannelVersion, setTimelineDragPresenceChannelVersion] = useState(0);
   const [routeEditChannelVersion, setRouteEditChannelVersion] = useState(0);
   const [routeEditChannelReady, setRouteEditChannelReady] = useState(false);
+  const [routeEditRecoveryGeneration, setRouteEditRecoveryGeneration] = useState(0);
 
   const activeTrip = useMemo(
     () => trips.find((trip) => trip.id === activeTripId) || null,
@@ -2401,8 +2402,9 @@ export default function App() {
       nodeLocks,
       remoteUpdates: remoteRouteEditUpdates,
       isChannelReady: routeEditChannelReady,
+      recoveryGeneration: routeEditRecoveryGeneration,
     };
-  }, [activeUserId, remoteRouteEditPresences, remoteRouteEditUpdates, routeEditChannelReady, routeEditLocalState.isEditing, timelineDragPresenceUserName]);
+  }, [activeUserId, remoteRouteEditPresences, remoteRouteEditUpdates, routeEditChannelReady, routeEditLocalState.isEditing, routeEditRecoveryGeneration, timelineDragPresenceUserName]);
 
   const publishRouteEditPresence = useCallback((nextState) => {
     const channel = routeEditPresenceChannelRef.current;
@@ -2474,6 +2476,8 @@ export default function App() {
     routeEditPresenceReadyRef.current = false;
     routeEditPresenceStatusRef.current = "recovering";
     setRouteEditChannelReady(false);
+    setRemoteRouteEditUpdates({});
+    setRouteEditRecoveryGeneration((generation) => generation + 1);
     if (channel) routeEditPresenceChannelRef.current = null;
     routeEditCollaborationDebug("recovery requested", {
       reason,
@@ -3244,21 +3248,44 @@ export default function App() {
           return;
         }
         routeEditPresenceReadyRef.current = true;
-        setRouteEditChannelReady(true);
         publishRouteEditPresence(routeEditLocalStateRef.current);
-        if (isReplacementChannel) {
-          void loadRouteOverrides(activeTripId, activeDay);
-        }
-        const pendingReplayEvent = routeEditBroadcastRef.current.pendingReplayEvent;
-        if (pendingReplayEvent) {
-          routeEditBroadcastRef.current.pendingReplayEvent = null;
-          routeEditCollaborationDebug("pending broadcast replayed", {
-            event: pendingReplayEvent.phase || "",
-            summary: routeEditCollaborationChannelSummary(channel, true, status, { ...metadata, isCurrentRef: true }),
-          });
-          sendRouteEditBroadcast(pendingReplayEvent);
-        }
         syncPresence();
+        const finishRouteEditChannelSync = () => {
+          if (routeEditPresenceChannelRef.current !== channel || routeEditPresenceStatusRef.current !== "SUBSCRIBED") {
+            routeEditCollaborationDebug("replacement resync ignored", {
+              reason: "stale-channel",
+              summary: routeEditCollaborationChannelSummary(channel, false, status, { ...metadata, isCurrentRef: false }),
+            });
+            return;
+          }
+          setRouteEditChannelReady(true);
+          const pendingReplayEvent = routeEditBroadcastRef.current.pendingReplayEvent;
+          if (pendingReplayEvent) {
+            routeEditBroadcastRef.current.pendingReplayEvent = null;
+            routeEditCollaborationDebug("pending broadcast replayed", {
+              event: pendingReplayEvent.phase || "",
+              summary: routeEditCollaborationChannelSummary(channel, true, status, { ...metadata, isCurrentRef: true }),
+            });
+            sendRouteEditBroadcast(pendingReplayEvent);
+          }
+        };
+        if (!isReplacementChannel) {
+          finishRouteEditChannelSync();
+          return;
+        }
+        setRouteEditChannelReady(false);
+        routeEditCollaborationDebug("replacement resync started", {
+          summary: routeEditCollaborationChannelSummary(channel, false, status, { ...metadata, isCurrentRef: true }),
+        });
+        void loadRouteOverrides(activeTripId, activeDay).finally(() => {
+          routeEditCollaborationDebug("replacement resync complete", {
+            summary: routeEditCollaborationChannelSummary(channel, true, status, {
+              ...metadata,
+              isCurrentRef: routeEditPresenceChannelRef.current === channel,
+            }),
+          });
+          finishRouteEditChannelSync();
+        });
       });
 
     const refreshId = window.setInterval(syncPresence, 1000);
