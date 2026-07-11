@@ -7,6 +7,8 @@ Status: stabilization in progress; multiplayer dragging is substantially more st
 
 Deletion stabilization after `0517a80`: node deletion now supersedes an unacknowledged drag final for the same node. Local delete clears pending-final ownership and stale remote preview state; remote `node-delete` also releases local-final priority; a late response from the older drag save is fenced from restoring the deleted handle. Commit `b4867cd` is deployed. Chrome two-session QA passed immediate remote delete, drag-end followed by remote delete, deletion of the segment's final custom node, and both-client refresh convergence without node restoration. Focused provider tests, production build, and diff validation also pass.
 
+Further Chrome two-session QA passed concurrent adds from three to five nodes, five-node limit enforcement, simultaneous different-node drags, refresh convergence, same-account editor-label deduplication, and the first drag after a simulated background lifecycle recovery. Endpoint-coordinate invalidation then exposed another stale-preview path: the database override was deleted correctly, but a remote editor retained five handles until refresh because old remote node previews were merged over an absent authoritative segment. The current fix tracks authoritative segment keys and clears remote previews plus pending local finals only when a segment transitions from present to absent. Automated provider tests, build, and diff validation pass; deployed endpoint-invalidation verification remains required.
+
 ## 1. New-chat startup
 
 Read these files first:

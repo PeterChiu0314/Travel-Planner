@@ -859,6 +859,10 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("const ownsNodePosition = (activeDrag.isDragging &&");
   expect(googleProviderSource).toContain("const routeEditPendingCommitsRef = useRef(new Map())");
   expect(googleProviderSource).toContain("routeEditPendingCommitsRef.current.forEach((pendingCommit, commitKey)");
+  expect(googleProviderSource).toContain("const routeEditAuthoritativeSegmentKeysRef = useRef(new Set())");
+  expect(googleProviderSource).toContain("const invalidatedSegmentKeys = new Set(");
+  expect(googleProviderSource).toContain("invalidatedSegmentKeys.forEach((segmentKey) => delete nextRemotePreviews[segmentKey])");
+  expect(googleProviderSource).toContain("invalidatedSegmentKeys.has(pendingCommit.segmentKey)");
   expect(googleProviderSource).toContain("point.lat === pendingCommit.node.lat");
   expect(googleProviderSource).toContain("const deferredPreview = remoteRoutePreviewBySegmentRef.current[pendingCommit.segmentKey]?.[pendingCommit.nodeId]");
   expect(googleProviderSource).toContain("const remoteOwnerTookOverPendingNode = routeEditPendingCommitsRef.current.has(commitKey)");

@@ -254,6 +254,7 @@ export default function GoogleMapProvider(props) {
   const remoteRoutePreviewBySegmentRef = useRef({});
   const routeEditRemoteAppliedReceiptRef = useRef(new Map());
   const routeEditPendingCommitsRef = useRef(new Map());
+  const routeEditAuthoritativeSegmentKeysRef = useRef(new Set());
   const routeEditDragRef = useRef({ commitId: null, isCommitPending: false, isDragging: false, lastDragEndedAt: 0, node: null, nodeId: null, segmentKey: null });
   const isPickingMapPointRef = useRef(isPickingMapPoint);
   const onCancelMapPointPickRef = useRef(onCancelMapPointPick);
@@ -987,6 +988,23 @@ export default function GoogleMapProvider(props) {
 
   useEffect(() => {
     const authoritativePoints = routeOverridePointsBySegment || {};
+    const authoritativeSegmentKeys = new Set(Object.keys(authoritativePoints));
+    const invalidatedSegmentKeys = new Set(
+      [...routeEditAuthoritativeSegmentKeysRef.current].filter(
+        (segmentKey) => !authoritativeSegmentKeys.has(segmentKey),
+      ),
+    );
+    routeEditAuthoritativeSegmentKeysRef.current = authoritativeSegmentKeys;
+    if (invalidatedSegmentKeys.size) {
+      const nextRemotePreviews = { ...remoteRoutePreviewBySegmentRef.current };
+      invalidatedSegmentKeys.forEach((segmentKey) => delete nextRemotePreviews[segmentKey]);
+      remoteRoutePreviewBySegmentRef.current = nextRemotePreviews;
+      routeEditPendingCommitsRef.current.forEach((pendingCommit, commitKey) => {
+        if (invalidatedSegmentKeys.has(pendingCommit.segmentKey)) {
+          routeEditPendingCommitsRef.current.delete(commitKey);
+        }
+      });
+    }
     const acknowledgedLocalCommits = [];
     routeEditPendingCommitsRef.current.forEach((pendingCommit, commitKey) => {
       const formalAcknowledged = pendingCommit.segmentKey && pendingCommit.nodeId && pendingCommit.node &&

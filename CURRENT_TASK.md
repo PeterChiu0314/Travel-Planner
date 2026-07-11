@@ -764,6 +764,7 @@ New/updated files:
 - Pending local commits are now stored per `segmentKey + nodeId`; quickly dragging P2 no longer overwrites P1's pending final commit.
 - Node add/delete are optimistic Broadcast operations with node-level DB persistence and inverse-event rollback on failure.
 - Delete stabilization now releases any unacknowledged local drag final for the same node, clears stale remote previews, lets a remote `node-delete` supersede local-final priority, and fences late drag-save responses so they cannot visually restore an already deleted handle.
+- Authoritative segment invalidation now clears every stale remote node preview and pending local final for a segment that transitions from present to absent. This prevents endpoint-coordinate or itinerary invalidation from deleting the DB override while another client visually reconstructs it from old `node-add` / `node-drag-end` previews.
 - User dual-account testing after the stabilization series reports multiplayer dragging is substantially more stable; final closeout QA remains pending.
 - Latest pushed code commit: `b4867cd Stabilize collaborative route node deletion`.
 
@@ -1282,6 +1283,8 @@ earlier stabilization regression runs passed 83 focused Playwright tests
 Chrome dual-tab diagnostics confirmed node-drag-start/move/end delivery over the route-edit WebSocket channel
 user dual-account manual QA reports multiplayer node dragging is substantially more stable
 Chrome deployed two-session QA after b4867cd: remote delete synchronized immediately; drag-end then remote delete converged on both clients; deleting the segment's final custom node converged to zero; both-client refresh preserved identical node counts without restoration
+Chrome sustained two-session QA: concurrent adds from three nodes converged to five on both clients; the five-node limit rejected further adds; simultaneous different-node drags converged to identical positions before and after refresh; same-account editor labels stayed deduplicated; simulated background recovery synchronized the first valid drag
+Chrome reproduced an itinerary-priority bug: endpoint coordinate invalidation deleted the authoritative DB override, but stale remote previews kept five handles visible until refresh. The provider now fences this present-to-absent authoritative segment transition; deployed verification is pending
 latest pushed code commit: b4867cd Stabilize collaborative route node deletion
 ```
 
