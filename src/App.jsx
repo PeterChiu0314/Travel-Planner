@@ -96,7 +96,9 @@ const appVersion = "0.1.0";
 const TimelineDragHandleContext = createContext(null);
 const timelineDragPresenceHeartbeatMs = 3000;
 const timelineDragPresenceStaleMs = 12000;
-const routeEditPresenceHeartbeatMs = 8000;
+const routeEditPresenceHeartbeatMs = 32000;
+const routeEditPresenceStaleMs = 70000;
+const routeEditNodeLockStaleMs = 12000;
 const timelineDragPresenceMaxMs = 75000;
 const timelineDragPresenceRefreshMs = 1000;
 const routeEditBroadcastThrottleMs = 120;
@@ -2108,6 +2110,7 @@ export default function App() {
   const [routeEditLocalState, setRouteEditLocalState] = useState({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
   const [remoteRouteEditPresences, setRemoteRouteEditPresences] = useState([]);
   const [remoteRouteEditUpdates, setRemoteRouteEditUpdates] = useState({});
+  const [remoteRouteEditNodeLocks, setRemoteRouteEditNodeLocks] = useState({});
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -2159,6 +2162,7 @@ export default function App() {
   const routeEditBroadcastRef = useRef({ activeDragId: null, eventVersion: 0, lastSentAt: 0, pendingEvent: null, pendingReplayEvent: null, sequence: 0, timerId: null });
   const routeEditRemoteMoveVersionRef = useRef(new Map());
   const routeEditRemoteUpdateReceiptRef = useRef(0);
+  const routeEditRemoteNodeLockSeenAtRef = useRef(new Map());
   const routeOverrideLoadRequestRef = useRef(0);
   const routeOverrideLoadTargetRef = useRef({ dayIndex: null, isDemoMode: false, tripId: null });
   const [tripForm, setTripForm] = useState({
@@ -2388,23 +2392,17 @@ export default function App() {
       });
     }
     const editorCount = editorUsers.size;
-    const nodeLocks = foreignEditors.reduce((locks, presence) => {
-      if (presence.activeSegmentKey && presence.activeNodeId) {
-        locks[`${presence.activeSegmentKey}:${presence.activeNodeId}`] = presence;
-      }
-      return locks;
-    }, {});
     const firstEditor = editorUsers.values().next().value || null;
     return {
       editorLabel: editorCount === 1
         ? `${firstEditor?.userName || "成員"} 正在編輯地圖路線`
         : editorCount > 1 ? `${editorCount} 位成員正在編輯地圖路線` : "",
-      nodeLocks,
+      nodeLocks: remoteRouteEditNodeLocks,
       remoteUpdates: remoteRouteEditUpdates,
       isChannelReady: routeEditChannelReady,
       recoveryGeneration: routeEditRecoveryGeneration,
     };
-  }, [activeUserId, remoteRouteEditPresences, remoteRouteEditUpdates, routeEditChannelReady, routeEditLocalState.isEditing, routeEditRecoveryGeneration, timelineDragPresenceUserName]);
+  }, [activeUserId, remoteRouteEditNodeLocks, remoteRouteEditPresences, remoteRouteEditUpdates, routeEditChannelReady, routeEditLocalState.isEditing, routeEditRecoveryGeneration, timelineDragPresenceUserName]);
 
   const publishRouteEditPresence = useCallback((nextState) => {
     const channel = routeEditPresenceChannelRef.current;
@@ -2420,8 +2418,8 @@ export default function App() {
       return;
     }
     const payload = {
-      activeNodeId: nextState.activeNodeId || null,
-      activeSegmentKey: nextState.activeSegmentKey || null,
+      activeNodeId: null,
+      activeSegmentKey: null,
       dayIndex: activeDay,
       routeEditMode: Boolean(nextState.isEditing),
       sessionId: routeEditSessionIdRef.current,
@@ -2477,6 +2475,8 @@ export default function App() {
     routeEditPresenceStatusRef.current = "recovering";
     setRouteEditChannelReady(false);
     setRemoteRouteEditUpdates({});
+    setRemoteRouteEditNodeLocks({});
+    routeEditRemoteNodeLockSeenAtRef.current.clear();
     setRouteEditRecoveryGeneration((generation) => generation + 1);
     if (channel) routeEditPresenceChannelRef.current = null;
     routeEditCollaborationDebug("recovery requested", {
@@ -2608,7 +2608,6 @@ export default function App() {
     if (!isDragMove) {
       routeEditLocalStateRef.current = nextState;
       setRouteEditLocalState(nextState);
-      publishRouteEditPresence(nextState);
     }
     if (!isDragMove) {
       if (isDragEnd && broadcast.timerId) {
@@ -2639,7 +2638,7 @@ export default function App() {
     } else if (!broadcast.timerId) {
       broadcast.timerId = window.setTimeout(flushLatestMove, Math.max(0, routeEditBroadcastThrottleMs - elapsed));
     }
-  }, [publishRouteEditPresence, sendRouteEditBroadcast]);
+  }, [sendRouteEditBroadcast]);
 
   const todayItems = useMemo(
     () => sortScheduleItems(items.filter((item) => item.day_index === todayDayIndex)),
@@ -3085,6 +3084,8 @@ export default function App() {
       setRouteEditChannelReady(false);
       setRemoteRouteEditPresences([]);
       setRemoteRouteEditUpdates({});
+      setRemoteRouteEditNodeLocks({});
+      routeEditRemoteNodeLockSeenAtRef.current.clear();
       routeEditRemoteMoveVersionRef.current.clear();
       return undefined;
     }
@@ -3121,7 +3122,7 @@ export default function App() {
     }
 
     const syncPresence = () => {
-      const staleBefore = Date.now() - 12000;
+      const staleBefore = Date.now() - routeEditPresenceStaleMs;
       const rawPresences = Object.values(channel.presenceState())
         .flat()
         .filter((presence) => {
@@ -3154,8 +3155,6 @@ export default function App() {
 
     channel
       .on("presence", { event: "sync" }, syncPresence)
-      .on("presence", { event: "join" }, syncPresence)
-      .on("presence", { event: "leave" }, syncPresence)
       .on("broadcast", { event: "route-edit-update" }, ({ payload }) => {
         const isCurrentChannel = routeEditPresenceChannelRef.current === channel;
         const summary = routeEditCollaborationChannelSummary(channel, routeEditPresenceReadyRef.current, routeEditPresenceStatusRef.current, {
@@ -3212,7 +3211,37 @@ export default function App() {
             sessionId: payload.sessionId,
             sequence: Number.isFinite(sequence) ? sequence : null,
             updatedAt: payload.updatedAt || new Date().toISOString(),
+            userId: payload.userId || null,
+            userName: payload.userName || "",
           };
+          const lockKey = `${payload.segmentKey}:${payload.nodeId}`;
+          const hadSeenLock = routeEditRemoteNodeLockSeenAtRef.current.has(lockKey);
+          if (["node-drag-start", "node-drag-move"].includes(payload.phase)) {
+            routeEditRemoteNodeLockSeenAtRef.current.set(lockKey, Date.now());
+            if (payload.phase === "node-drag-start" || !hadSeenLock) {
+              setRemoteRouteEditNodeLocks((current) => ({
+                ...current,
+                [lockKey]: {
+                  dragId: payload.dragId || null,
+                  nodeId: payload.nodeId,
+                  segmentKey: payload.segmentKey,
+                  sessionId: payload.sessionId,
+                  updatedAt: remoteUpdate.updatedAt,
+                  userId: payload.userId || null,
+                  userName: payload.userName || "",
+                },
+              }));
+            }
+          } else if (["node-drag-end", "node-delete"].includes(payload.phase)) {
+            routeEditRemoteNodeLockSeenAtRef.current.delete(lockKey);
+            setRemoteRouteEditNodeLocks((current) => {
+              const existing = current[lockKey];
+              if (!existing || existing.sessionId !== payload.sessionId) return current;
+              const next = { ...current };
+              delete next[lockKey];
+              return next;
+            });
+          }
           setRemoteRouteEditUpdates((current) => ({
             ...current,
             [`${payload.segmentKey}:${payload.nodeId}`]: remoteUpdate,
@@ -3288,7 +3317,19 @@ export default function App() {
         });
       });
 
-    const refreshId = window.setInterval(syncPresence, 1000);
+    const refreshId = window.setInterval(() => {
+      syncPresence();
+      const staleBefore = Date.now() - routeEditNodeLockStaleMs;
+      setRemoteRouteEditNodeLocks((current) => {
+        const next = Object.fromEntries(Object.entries(current).filter(([lockKey]) => {
+          const seenAt = routeEditRemoteNodeLockSeenAtRef.current.get(lockKey);
+          const isFresh = Number.isFinite(seenAt) && seenAt >= staleBefore;
+          if (!isFresh) routeEditRemoteNodeLockSeenAtRef.current.delete(lockKey);
+          return isFresh;
+        }));
+        return Object.keys(next).length === Object.keys(current).length ? current : next;
+      });
+    }, 5000);
     const heartbeatId = window.setInterval(() => {
       if (routeEditLocalStateRef.current.isEditing) {
         ensureRouteEditChannelHealth("presence-heartbeat");
@@ -3341,6 +3382,8 @@ export default function App() {
         broadcast.pendingReplayEvent = null;
         setRemoteRouteEditPresences([]);
         setRemoteRouteEditUpdates({});
+        setRemoteRouteEditNodeLocks({});
+        routeEditRemoteNodeLockSeenAtRef.current.clear();
         routeEditRemoteMoveVersionRef.current.clear();
       }
       Promise.resolve(channel.untrack()).catch(() => {});

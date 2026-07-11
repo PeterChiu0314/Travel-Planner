@@ -796,7 +796,8 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("routeEditCollaboration");
   expect(appSource).toContain("remoteRouteEditUpdates");
   expect(appSource).toContain("routeEditBroadcastThrottleMs = 120");
-  expect(appSource).toContain("routeEditPresenceHeartbeatMs = 8000");
+  expect(appSource).toContain("routeEditPresenceHeartbeatMs = 32000");
+  expect(appSource).toContain("routeEditNodeLockStaleMs = 12000");
   expect(appSource).toContain('get("debugRouteCollab") === "1"');
   expect(appSource).toContain("[route-edit-collab]");
   expect(appSource).toContain("routeEditPresenceStatusRef");
@@ -827,11 +828,15 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("incomingVersion <= previousVersion");
   expect(appSource).toContain("eventVersion: ++broadcast.eventVersion");
   expect(appSource).toContain("setRemoteRouteEditUpdates((current) => ({");
+  expect(appSource).toContain("setRemoteRouteEditNodeLocks((current) => ({");
+  expect(appSource).toContain('["node-drag-start", "node-drag-move"].includes(payload.phase)');
+  expect(appSource).toContain('["node-drag-end", "node-delete"].includes(payload.phase)');
   expect(appSource).toContain("[`${payload.segmentKey}:${payload.nodeId}`]: remoteUpdate");
   expect(appSource).toContain("const isDragMove = event.phase === \"node-drag-move\"");
   expect(appSource).toContain("if (!isDragMove) {");
   expect(appSource).toContain("if (routeEditLocalStateRef.current.isEditing) {");
   expect(appSource).toContain("publishRouteEditPresence(routeEditLocalStateRef.current)");
+  expect(appSource).not.toContain("publishRouteEditPresence(nextState)");
   expect(appSource).not.toContain("routeEditSameDayReadonly");
   expect(mapPanelSource).toContain("onRouteEditCollaborationEvent");
   expect(mapPanelSource).toContain("onRouteEditPresenceChange");
