@@ -253,6 +253,7 @@ export default function GoogleMapProvider(props) {
   const routeEditChannelReadyRef = useRef(routeEditCollaboration.isChannelReady !== false);
   const remoteRoutePreviewBySegmentRef = useRef({});
   const routeEditRemoteAppliedReceiptRef = useRef(new Map());
+  const routeEditPendingCommitsRef = useRef(new Map());
   const routeEditDragRef = useRef({ commitId: null, isCommitPending: false, isDragging: false, lastDragEndedAt: 0, node: null, nodeId: null, segmentKey: null });
   const isPickingMapPointRef = useRef(isPickingMapPoint);
   const onCancelMapPointPickRef = useRef(onCancelMapPointPick);
@@ -595,14 +596,25 @@ export default function GoogleMapProvider(props) {
   }
 
   function mergeLocalRouteDragPreview(pointsBySegment = {}) {
+    let merged = pointsBySegment;
+    routeEditPendingCommitsRef.current.forEach((pendingCommit) => {
+      if (!pendingCommit.segmentKey || !pendingCommit.nodeId || !pendingCommit.node) return;
+      const segmentPoints = merged[pendingCommit.segmentKey] || [];
+      if (!segmentPoints.some((point) => point.id === pendingCommit.nodeId)) return;
+      merged = {
+        ...merged,
+        [pendingCommit.segmentKey]: segmentPoints.map((point) =>
+          point.id === pendingCommit.nodeId ? pendingCommit.node : point),
+      };
+    });
     const activeDrag = routeEditDragRef.current;
-    if ((!activeDrag.isDragging && !activeDrag.isCommitPending) || !activeDrag.segmentKey || !activeDrag.nodeId || !activeDrag.node) {
-      return pointsBySegment;
+    if (!activeDrag.isDragging || !activeDrag.segmentKey || !activeDrag.nodeId || !activeDrag.node) {
+      return merged;
     }
-    const segmentPoints = pointsBySegment[activeDrag.segmentKey] || [];
-    if (!segmentPoints.some((point) => point.id === activeDrag.nodeId)) return pointsBySegment;
+    const segmentPoints = merged[activeDrag.segmentKey] || [];
+    if (!segmentPoints.some((point) => point.id === activeDrag.nodeId)) return merged;
     return {
-      ...pointsBySegment,
+      ...merged,
       [activeDrag.segmentKey]: segmentPoints.map((point) =>
         point.id === activeDrag.nodeId ? activeDrag.node : point),
     };
@@ -952,28 +964,18 @@ export default function GoogleMapProvider(props) {
 
   useEffect(() => {
     const authoritativePoints = routeOverridePointsBySegment || {};
-    const pendingLocalCommit = routeEditDragRef.current;
-    const acknowledgedLocalCommit = pendingLocalCommit.isCommitPending &&
-      !pendingLocalCommit.isDragging &&
-      pendingLocalCommit.segmentKey &&
-      pendingLocalCommit.nodeId &&
-      pendingLocalCommit.node &&
-      (authoritativePoints[pendingLocalCommit.segmentKey] || []).some(
-        (point) => point.id === pendingLocalCommit.nodeId &&
-          point.lat === pendingLocalCommit.node.lat &&
-          point.lng === pendingLocalCommit.node.lng,
-      );
-    if (acknowledgedLocalCommit) {
-      routeEditDragRef.current = {
-        commitId: null,
-        isCommitPending: false,
-        isDragging: false,
-        lastDragEndedAt: pendingLocalCommit.lastDragEndedAt || 0,
-        node: null,
-        nodeId: null,
-        segmentKey: null,
-      };
-    }
+    const acknowledgedLocalCommits = [];
+    routeEditPendingCommitsRef.current.forEach((pendingCommit, commitKey) => {
+      const formalAcknowledged = pendingCommit.segmentKey && pendingCommit.nodeId && pendingCommit.node &&
+        (authoritativePoints[pendingCommit.segmentKey] || []).some(
+          (point) => point.id === pendingCommit.nodeId &&
+            point.lat === pendingCommit.node.lat &&
+            point.lng === pendingCommit.node.lng,
+        );
+      if (!formalAcknowledged) return;
+      routeEditPendingCommitsRef.current.delete(commitKey);
+      acknowledgedLocalCommits.push(pendingCommit);
+    });
     Object.entries(remoteRoutePreviewBySegmentRef.current).forEach(([segmentKey, nodePreviews]) => {
       const formalPoints = authoritativePoints[segmentKey] || [];
       Object.entries(nodePreviews || {}).forEach(([nodeId, preview]) => {
@@ -987,7 +989,7 @@ export default function GoogleMapProvider(props) {
     });
     const nextPoints = mergeLocalRouteDragPreview(mergeRemoteRoutePreview(authoritativePoints));
     customRoutePointsRef.current = nextPoints;
-    if (!routeEditDragRef.current.isDragging && !routeEditDragRef.current.isCommitPending) {
+    if (!routeEditDragRef.current.isDragging && routeEditPendingCommitsRef.current.size === 0) {
       setCustomRoutePointsBySegment(authoritativePoints);
     }
     applyRouteLinePath(nextPoints);
@@ -998,15 +1000,15 @@ export default function GoogleMapProvider(props) {
     // the acknowledgement releases the local node.  Dropping it here makes
     // same-node handoff appear to stop synchronizing until another event is
     // received.
-    if (acknowledgedLocalCommit) {
-      const deferredPreview = remoteRoutePreviewBySegmentRef.current[pendingLocalCommit.segmentKey]?.[pendingLocalCommit.nodeId];
+    acknowledgedLocalCommits.forEach((pendingCommit) => {
+      const deferredPreview = remoteRoutePreviewBySegmentRef.current[pendingCommit.segmentKey]?.[pendingCommit.nodeId];
       if (deferredPreview?.node && !deferredPreview.deleted) {
         const deferredHandle = routeEditHandleRefsRef.current.find(
-          (record) => record.segmentKey === pendingLocalCommit.segmentKey && record.nodeId === pendingLocalCommit.nodeId,
+          (record) => record.segmentKey === pendingCommit.segmentKey && record.nodeId === pendingCommit.nodeId,
         );
         deferredHandle?.marker?.setPosition?.({ lat: deferredPreview.node.lat, lng: deferredPreview.node.lng });
       }
-    }
+    });
   }, [markersKey, routeOverridePointsBySegment]);
 
   useEffect(() => {
@@ -1019,31 +1021,22 @@ export default function GoogleMapProvider(props) {
       routeEditRemoteAppliedReceiptRef.current.set(receiptKey, update.receiptId);
 
       if (update.phase === "node-drag-start") {
-        const pendingLocalCommit = routeEditDragRef.current;
-        const remoteOwnerTookOverPendingNode = pendingLocalCommit.isCommitPending &&
-          !pendingLocalCommit.isDragging &&
-          pendingLocalCommit.segmentKey === update.segmentKey &&
-          pendingLocalCommit.nodeId === update.nodeId;
+        const commitKey = `${update.segmentKey}:${update.nodeId}`;
+        const remoteOwnerTookOverPendingNode = routeEditPendingCommitsRef.current.has(commitKey);
         if (remoteOwnerTookOverPendingNode) {
           // A new remote drag owns this node now.  The previous local final is
           // still persisted, but it must no longer suppress the new owner's
           // preview while its formal acknowledgement is in flight.
-          routeEditDragRef.current = {
-            commitId: null,
-            isCommitPending: false,
-            isDragging: false,
-            lastDragEndedAt: pendingLocalCommit.lastDragEndedAt || 0,
-            node: null,
-            nodeId: null,
-            segmentKey: null,
-          };
+          routeEditPendingCommitsRef.current.delete(commitKey);
         }
         return;
       }
 
       const activeDrag = routeEditDragRef.current;
-      const ownsNodePosition = (activeDrag.isDragging || activeDrag.isCommitPending) &&
-        activeDrag.segmentKey === update.segmentKey && activeDrag.nodeId === update.nodeId;
+      const commitKey = `${update.segmentKey}:${update.nodeId}`;
+      const ownsNodePosition = (activeDrag.isDragging &&
+        activeDrag.segmentKey === update.segmentKey && activeDrag.nodeId === update.nodeId) ||
+        routeEditPendingCommitsRef.current.has(commitKey);
 
       const segmentPreviews = remoteRoutePreviewBySegmentRef.current[update.segmentKey] || {};
       remoteRoutePreviewBySegmentRef.current = {
@@ -1185,6 +1178,7 @@ export default function GoogleMapProvider(props) {
           if (markerState.isLockedByRemote || !routeEditChannelReadyRef.current) return;
           suppressRouteLineClick();
           onRouteEditCollaborationEvent?.({ phase: "node-drag-start", nodeId: point.id, segmentKey: segment.key });
+          routeEditPendingCommitsRef.current.delete(`${segment.key}:${point.id}`);
           routeEditDragRef.current = {
             commitId: null,
             isCommitPending: false,
@@ -1227,14 +1221,24 @@ export default function GoogleMapProvider(props) {
             finalNode = { ...finalNode, lat, lng };
             savePromise = updateRouteCustomPoint(segment.key, point.id, { lat, lng });
           }
+          const commitKey = `${segment.key}:${point.id}`;
+          if (hasFinalPosition) {
+            routeEditPendingCommitsRef.current.set(commitKey, {
+              commitId,
+              lastDragEndedAt,
+              node: finalNode,
+              nodeId: point.id,
+              segmentKey: segment.key,
+            });
+          }
           routeEditDragRef.current = {
-            commitId,
-            isCommitPending: hasFinalPosition,
+            commitId: null,
+            isCommitPending: false,
             isDragging: false,
             lastDragEndedAt,
-            node: finalNode,
-            nodeId: point.id,
-            segmentKey: segment.key,
+            node: null,
+            nodeId: null,
+            segmentKey: null,
           };
           onRouteEditCollaborationEvent?.({
             phase: "node-drag-end",
@@ -1246,17 +1250,10 @@ export default function GoogleMapProvider(props) {
             ok: false,
             points: customRoutePointsRef.current[segment.key] || [],
           })).then((result) => {
-            if (routeEditDragRef.current.commitId !== commitId) return;
+            const pendingCommit = routeEditPendingCommitsRef.current.get(commitKey);
+            if (pendingCommit?.commitId !== commitId) return;
             if (result?.ok === false || !hasFinalPosition) {
-              routeEditDragRef.current = {
-                commitId: null,
-                isCommitPending: false,
-                isDragging: false,
-                lastDragEndedAt,
-                node: null,
-                nodeId: null,
-                segmentKey: null,
-              };
+              routeEditPendingCommitsRef.current.delete(commitKey);
             }
             if (result?.points) setRouteSegmentPoints(segment.key, result.points);
           });
