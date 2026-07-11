@@ -854,6 +854,8 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("activeDrag.isDragging || activeDrag.isCommitPending");
   expect(googleProviderSource).toContain("const acknowledgedLocalCommit = pendingLocalCommit.isCommitPending");
   expect(googleProviderSource).toContain("point.lat === pendingLocalCommit.node.lat");
+  expect(googleProviderSource).toContain("const deferredPreview = remoteRoutePreviewBySegmentRef.current[pendingLocalCommit.segmentKey]?.[pendingLocalCommit.nodeId]");
+  expect(googleProviderSource).toContain("if (ownsNodePosition) return;");
   expect(googleProviderSource).toContain("if (result?.ok === false || !hasFinalPosition)");
   expect(googleProviderSource).toContain("const onRouteEditPresenceChangeRef = useRef(onRouteEditPresenceChange)");
   expect(googleProviderSource).toContain("onRouteEditPresenceChangeRef.current?.({ isEditing: true })");

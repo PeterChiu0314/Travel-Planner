@@ -991,6 +991,22 @@ export default function GoogleMapProvider(props) {
       setCustomRoutePointsBySegment(authoritativePoints);
     }
     applyRouteLinePath(nextPoints);
+
+    // A remote user can begin the next drag before this client has received
+    // the formal acknowledgement for its own previous drag.  Keep that newer
+    // preview while local-final priority is active, then apply it as soon as
+    // the acknowledgement releases the local node.  Dropping it here makes
+    // same-node handoff appear to stop synchronizing until another event is
+    // received.
+    if (acknowledgedLocalCommit) {
+      const deferredPreview = remoteRoutePreviewBySegmentRef.current[pendingLocalCommit.segmentKey]?.[pendingLocalCommit.nodeId];
+      if (deferredPreview?.node && !deferredPreview.deleted) {
+        const deferredHandle = routeEditHandleRefsRef.current.find(
+          (record) => record.segmentKey === pendingLocalCommit.segmentKey && record.nodeId === pendingLocalCommit.nodeId,
+        );
+        deferredHandle?.marker?.setPosition?.({ lat: deferredPreview.node.lat, lng: deferredPreview.node.lng });
+      }
+    }
   }, [markersKey, routeOverridePointsBySegment]);
 
   useEffect(() => {
@@ -1006,7 +1022,6 @@ export default function GoogleMapProvider(props) {
       const activeDrag = routeEditDragRef.current;
       const ownsNodePosition = (activeDrag.isDragging || activeDrag.isCommitPending) &&
         activeDrag.segmentKey === update.segmentKey && activeDrag.nodeId === update.nodeId;
-      if (ownsNodePosition) return;
 
       const segmentPreviews = remoteRoutePreviewBySegmentRef.current[update.segmentKey] || {};
       remoteRoutePreviewBySegmentRef.current = {
@@ -1023,6 +1038,12 @@ export default function GoogleMapProvider(props) {
           },
         },
       };
+
+      // Do not let an older local drag visually overwrite itself.  The remote
+      // preview is still retained above so it can be applied immediately once
+      // the local final commit is acknowledged.
+      if (ownsNodePosition) return;
+
       const nextCustomPoints = mergeLocalRouteDragPreview(mergeRemoteRoutePreview(customRoutePointsRef.current));
       customRoutePointsRef.current = nextCustomPoints;
       applyRouteLinePath(nextCustomPoints);
