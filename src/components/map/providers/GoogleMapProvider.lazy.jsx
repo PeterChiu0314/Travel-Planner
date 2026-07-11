@@ -1017,7 +1017,29 @@ export default function GoogleMapProvider(props) {
       const previousReceiptId = routeEditRemoteAppliedReceiptRef.current.get(receiptKey) || 0;
       if (!Number.isFinite(update.receiptId) || update.receiptId <= previousReceiptId) return;
       routeEditRemoteAppliedReceiptRef.current.set(receiptKey, update.receiptId);
-      if (update.phase === "node-drag-start") return;
+
+      if (update.phase === "node-drag-start") {
+        const pendingLocalCommit = routeEditDragRef.current;
+        const remoteOwnerTookOverPendingNode = pendingLocalCommit.isCommitPending &&
+          !pendingLocalCommit.isDragging &&
+          pendingLocalCommit.segmentKey === update.segmentKey &&
+          pendingLocalCommit.nodeId === update.nodeId;
+        if (remoteOwnerTookOverPendingNode) {
+          // A new remote drag owns this node now.  The previous local final is
+          // still persisted, but it must no longer suppress the new owner's
+          // preview while its formal acknowledgement is in flight.
+          routeEditDragRef.current = {
+            commitId: null,
+            isCommitPending: false,
+            isDragging: false,
+            lastDragEndedAt: pendingLocalCommit.lastDragEndedAt || 0,
+            node: null,
+            nodeId: null,
+            segmentKey: null,
+          };
+        }
+        return;
+      }
 
       const activeDrag = routeEditDragRef.current;
       const ownsNodePosition = (activeDrag.isDragging || activeDrag.isCommitPending) &&
