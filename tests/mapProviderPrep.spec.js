@@ -865,6 +865,9 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("if (remoteOwnerTookOverPendingNode)");
   expect(googleProviderSource).toContain("routeEditPendingCommitsRef.current.set(commitKey");
   expect(googleProviderSource).toContain("const pendingCommit = routeEditPendingCommitsRef.current.get(commitKey)");
+  expect(googleProviderSource).toContain("routeEditPendingCommitsRef.current.delete(commitKey)");
+  expect(googleProviderSource).toContain('if (update.phase === "node-delete")');
+  expect(googleProviderSource).toContain("if (!nodeStillExists) return result");
   expect(googleProviderSource).toContain("if (ownsNodePosition) return;");
   expect(googleProviderSource).toContain("if (result?.ok === false || !hasFinalPosition)");
   expect(googleProviderSource).toContain("const onRouteEditPresenceChangeRef = useRef(onRouteEditPresenceChange)");

@@ -693,6 +693,13 @@ export default function GoogleMapProvider(props) {
     customRoutePointsRef.current = { ...customRoutePointsRef.current, [segmentKey]: nextPoints };
     setCustomRoutePointsBySegment((current) => ({ ...current, [segmentKey]: nextPoints }));
     return persistRouteCustomPoints(segmentKey, nextPoints, { node, type: "update" }).then((result) => {
+      // A delete can follow a drag-end before this save response returns.  In
+      // that case the delete owns the node now; an older update response must
+      // not restore the removed handle or emit an inverse collaboration event.
+      const nodeStillExists = (customRoutePointsRef.current[segmentKey] || []).some(
+        (candidate) => candidate.id === nodeId,
+      );
+      if (!nodeStillExists) return result;
       if (result?.points) setRouteSegmentPoints(segmentKey, result.points);
       if (result?.ok === false) {
         const restoredNode = result.points?.find((candidate) => candidate.id === nodeId) || null;
@@ -718,6 +725,22 @@ export default function GoogleMapProvider(props) {
     const node = currentPoints[nodeIndex];
     const afterNodeId = currentPoints[nodeIndex - 1]?.id || null;
     const nextPoints = currentPoints.filter((point) => point.id !== nodeId);
+    const commitKey = `${segmentKey}:${nodeId}`;
+    // Deletion supersedes any unacknowledged drag final for this node.  Keeping
+    // the pending commit would let mergeLocalRouteDragPreview reapply the old
+    // position and make the deleted handle jump back into view.
+    routeEditPendingCommitsRef.current.delete(commitKey);
+    const remoteSegmentPreviews = remoteRoutePreviewBySegmentRef.current[segmentKey];
+    if (remoteSegmentPreviews?.[nodeId]) {
+      const nextRemoteSegmentPreviews = { ...remoteSegmentPreviews };
+      delete nextRemoteSegmentPreviews[nodeId];
+      remoteRoutePreviewBySegmentRef.current = { ...remoteRoutePreviewBySegmentRef.current };
+      if (Object.keys(nextRemoteSegmentPreviews).length) {
+        remoteRoutePreviewBySegmentRef.current[segmentKey] = nextRemoteSegmentPreviews;
+      } else {
+        delete remoteRoutePreviewBySegmentRef.current[segmentKey];
+      }
+    }
     const nextPointsBySegment = { ...customRoutePointsRef.current };
     if (nextPoints.length) nextPointsBySegment[segmentKey] = nextPoints;
     else delete nextPointsBySegment[segmentKey];
@@ -1034,6 +1057,13 @@ export default function GoogleMapProvider(props) {
 
       const activeDrag = routeEditDragRef.current;
       const commitKey = `${update.segmentKey}:${update.nodeId}`;
+      // A remote delete is a newer ownership decision than this client's
+      // unacknowledged drag final.  Release that final immediately so the
+      // delete preview and the following authoritative reload can remove the
+      // handle instead of being hidden behind local-final priority.
+      if (update.phase === "node-delete") {
+        routeEditPendingCommitsRef.current.delete(commitKey);
+      }
       const ownsNodePosition = (activeDrag.isDragging &&
         activeDrag.segmentKey === update.segmentKey && activeDrag.nodeId === update.nodeId) ||
         routeEditPendingCommitsRef.current.has(commitKey);

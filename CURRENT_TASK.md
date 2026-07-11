@@ -27,6 +27,7 @@
 - `docs/2026-07-03-phase-5-3b-marker-focus-closeout-handoff.md`
 - `docs/2026-07-03-phase-5-4-route-lines-closeout-handoff.md`
 - `docs/2026-07-05-phase-5-6-places-closeout-handoff.md`
+- `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`
 - `docs/todo/phase-5-map-route-workspace-integration-handoff.md`
 - `docs/2026-06-30-phase-4-8c-closeout-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md` (latest working draft)
@@ -40,13 +41,13 @@ Archive rule:
 ## Current Phase
 
 ```text
-Timeline Phase 5.7c-1 Node-level Collaborative Route Editing - In Progress
+Timeline Phase 5.7c-1 Node-level Collaborative Route Editing - Stabilization / Handoff
 ```
 
 Next phase:
 
 ```text
-Phase 5.7d has been merged into Phase 5.7c. Phase 5.7c keeps the same-day itinerary editable, has no 15-second idle exit, and treats custom route lines as secondary data that must yield to itinerary changes. The earlier segment-snapshot collaboration attempt exposed divergent clients, stale-node overwrite, high Realtime traffic, and drag rollback when two users edited different nodes. The active 5.7c-1 correction makes a single route node the minimum Broadcast and persistence unit: Presence remains responsible for editor/node-lock state, Broadcast sends one node preview at a time, and PostgreSQL stores each node independently. The current stabilization pass removes per-mouse-move Presence writes, uses an 8-second low-frequency Presence heartbeat, preserves the latest remote update for every node instead of one global event, and fences delayed moves across drag sessions. A local final node remains authoritative after mouseup until the independently persisted node is observed back through the authoritative route-override state, preventing an older refresh from taking control during the commit gap. Drag preview is latest-wins at 120 ms. Route-edit Presence lifecycle is isolated behind stable refs and changes only when route edit mode actually enters or exits. Remote Presence metas are deduplicated by session for node locks and by user for the editor label, so a drag heartbeat or recovery replacement cannot inflate the displayed member count. Route channel readiness disables a local node drag silently while unavailable, and a route editor silently checks/replaces an unusable channel on the low-frequency heartbeat, browser focus, online, or returning to a visible tab. A replacement now clears stale remote previews, re-tracks Presence, reloads authoritative route nodes, and only then re-enables node dragging or replays the retained final event; this closes the stale-state window exposed by alternating dual-user testing. Existing stable node IDs, final-commit acknowledgement, channel recovery, and imperative single-marker updates remain useful foundations. Automated build, 83 focused Playwright checks, and diff validation pass are required; migration `20260710125337_add_itinerary_route_override_nodes` is confirmed on the remote project. Dual-user QA must still verify that the displayed editor count stays fixed during sustained dragging and that a previously idle/backgrounded editor has a usable channel before its next drag. The 5.7c planning document is intentionally not being revised during implementation, and the closeout handoff will be written only after Phase 5.7c is complete and verified.
+Phase 5.7d has been merged into Phase 5.7c. Phase 5.7c keeps the same-day itinerary editable, has no 15-second idle exit, and treats custom route lines as secondary data that yields to itinerary changes. Collaborative route editing now uses a single route node as the minimum synchronization and persistence unit. Presence only represents low-frequency route-editor state, uses a 32-second heartbeat, and deduplicates the editor label by user. Node locks and node add/move/delete previews use Broadcast; drag moves are latest-wins at 120 ms. PostgreSQL persists every custom node independently in `itinerary_route_override_nodes`, while `itinerary_route_overrides` remains the segment container. Channel health is checked silently on heartbeat, focus, online, and visibility recovery; replacement channels reload authoritative nodes before editing resumes. The final stabilization fixes keep remote previews across same-node handoff, release stale local ownership when a new remote owner starts, and store pending final commits per `segmentKey + nodeId` so dragging P2 cannot discard P1's unacknowledged final position. User dual-account testing reports multiplayer dragging is now substantially more stable. Phase 5.7c is not yet closed: multiplayer add/delete, same-node handoff, rapid P1-to-P2 dragging, idle/background recovery, editor-count stability, itinerary invalidation, and refresh convergence still need final manual QA. The damaged historical plan in `docs/todo/2026-07-09-phase-5-7c-collaborative-route-edit-plan.md` is not authoritative; use the new 2026-07-11 handoff.
 ```
 
 Branch:
@@ -749,6 +750,23 @@ New/updated files:
   - `2f610ed Fix transport editor grid alignment`
   - `1bdbcea Fix transit route query payload`
 
+### Phase 5.7c-1
+
+- Phase 5.7d multiplayer node collaboration was merged into Phase 5.7c.
+- Multiple users can enter route edit mode without locking same-day itinerary editing.
+- Custom route nodes have stable IDs and are persisted independently in `itinerary_route_override_nodes`.
+- Broadcast events are node-level: `node-add`, `node-drag-start`, `node-drag-move`, `node-drag-end`, and `node-delete`.
+- Presence is editor-state only; node locks moved to Broadcast to avoid Presence rate-limit and channel churn.
+- Drag preview uses 120 ms latest-wins delivery and imperative marker/polyline updates instead of rebuilding all markers.
+- Remote updates are retained per node, stale sequences are fenced by session/drag/version, and drag-end final coordinates supersede delayed moves.
+- Channel recovery is silent, deduplicated, and reloads authoritative route nodes before re-enabling drag.
+- Local final ownership remains until authoritative acknowledgement, but a new remote owner can take over the same node.
+- Pending local commits are now stored per `segmentKey + nodeId`; quickly dragging P2 no longer overwrites P1's pending final commit.
+- Node add/delete are optimistic Broadcast operations with node-level DB persistence and inverse-event rollback on failure.
+- Delete stabilization now releases any unacknowledged local drag final for the same node, clears stale remote previews, lets a remote `node-delete` supersede local-final priority, and fences late drag-save responses so they cannot visually restore an already deleted handle.
+- User dual-account testing after the stabilization series reports multiplayer dragging is substantially more stable; final closeout QA remains pending.
+- Latest pushed commit: `0517a80 Track pending route commits per node`.
+
 ## Production Migration State
 
 Applied immutable migrations:
@@ -760,6 +778,8 @@ Applied immutable migrations:
 022 / 20260629012151 / add_transport_role_to_itinerary_items
 023 / 20260629014908 / reorder_itinerary_timed_auto_continuation
 024 / 20260629065754 / timeline_phase_4_7_fixed_anchor_continuation
+20260708063744 / add_itinerary_route_overrides
+20260710125337 / add_itinerary_route_override_nodes
 project: lqvuqamzmchepgxkftcw
 ```
 
@@ -771,7 +791,7 @@ none
 
 Important:
 
-- Never edit applied migrations 019, 020, 021, 022, 023, or 024 in place.
+- Never edit applied migrations 019, 020, 021, 022, 023, 024, `20260708063744`, or `20260710125337` in place.
 - Any future schema/RPC/permission correction after Phase 4.7 must use migration 025+.
 - Phase 4.3, 4.4, 4.5, and the Phase 4.5 Hotfix required no migration.
 
@@ -1251,9 +1271,22 @@ npx.cmd playwright test tests/phase-4-2c-reorder.spec.js passed 33/33 during 5.7
 latest pushed commit before CURRENT_TASK update: af8c81f Persist route edit overrides
 ```
 
+Phase 5.7c-1 node-level collaboration stabilization checks on 2026-07-10 to 2026-07-11:
+
+```text
+remote migration 20260710125337_add_itinerary_route_override_nodes confirmed applied
+npm.cmd run build passed after the latest per-node pending-commit change
+npx.cmd playwright test tests/mapProviderPrep.spec.js passed 36/36 after the latest change
+git diff --check passed with Windows LF/CRLF notices only
+earlier stabilization regression runs passed 83 focused Playwright tests
+Chrome dual-tab diagnostics confirmed node-drag-start/move/end delivery over the route-edit WebSocket channel
+user dual-account manual QA reports multiplayer node dragging is substantially more stable
+latest pushed commit: 0517a80 Track pending route commits per node
+```
+
 ## Protected Scope Preserved
 
-Latest Phase 5.7b route edit / route override work did not redesign or extend:
+Latest Phase 5.7b / 5.7c route edit work did not redesign or extend:
 
 - Auth / Google OAuth
 - Realtime subscription architecture
@@ -1294,9 +1327,14 @@ Latest Phase 5.7b route edit / route override work did not redesign or extend:
 - Phase 4.8d remote selection presence is intentionally visual-only. It can be missed or stale-filtered without affecting authoritative data.
 - Phase 4.8e trip-level online presence is best-effort Realtime UI state. Missing, delayed, or stale-filtered trip presence should not affect data correctness.
 - `BUG-025` remains Known Issue / Low Priority: foreign drag presence can occasionally clear by 12-second stale timeout instead of immediate clear, despite onDragEnd immediate clear mitigation.
+- Phase 5.7c Realtime Broadcast remains best effort during active drag; DB node rows are authoritative after drag-end.
+- Phase 5.7c per-node pending commits remove the confirmed P1-to-P2 overwrite path, but rapid alternating same-node handoff still needs repeated dual-account soak testing after deployment.
+- Multiplayer node add/delete and rollback paths are implemented but have not yet completed final dual-account closeout QA.
+- Idle/background channel recovery must still be verified for the first drag after returning to the foreground, with no recovery loop, duplicate topic, or inflated editor count.
+- The historical Phase 5.7c plan under `docs/todo/` has encoding damage and superseded architecture notes; do not use it as the current implementation source.
 - Phase 4.8e Day Tab presence border shows a compact first-version representation using the first remote presence color for that day.
 - Phase 4.8f remote drag source and insertion-line visuals are presence-driven hints only. They must not be treated as authoritative reorder state.
 
 ## Next Step
 
-Phase 5.7b-3 is complete and pushed on `codex/timeline-phase-5-7`. Remote Supabase migration history has been repaired to match GitHub's `001` to `024` migration series, and `20260708063744_add_itinerary_route_overrides.sql` has been applied to the linked remote database. Transportation cards are navigation-only; the in-app Routes / Directions travel-time query mode is removed. Route edit mode now supports persisted single-user route overrides for same-day adjacent destination segments, with auto-save, rollback on save failure, invalidation cleanup, and Static/Demo exclusion. Latest pushed code commit before this CURRENT_TASK update is `af8c81f Persist route edit overrides`. Next product decision can be Phase 5.7b closeout QA, 5.7c/5.7d planning, route edit UX polish, or merge/release flow. Do not infer Google Map loading changes, Routes API / Directions API query restoration, Google route polyline persistence, route override collaboration, node stable IDs, broader Places / POI persistence changes, map picker changes, Timeline reorder RPC changes, committed API keys, packages, or unrelated database changes without a separate approved goal.
+Continue Phase 5.7c-1 stabilization from `0517a80 Track pending route commits per node` on `codex/timeline-phase-5-7`. Start by reading `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`. Do not redesign the collaboration architecture unless a new reproducible failure proves it necessary. First complete dual-account manual QA for: A drags P1 then B drags P1 then P2; simultaneous different-node drags; node add/delete and failure rollback; five-node limit; refresh convergence; editor-count stability; background/idle recovery; and itinerary reorder/delete/coordinate invalidation while route editors are active. Use `?debugRouteCollab=1` only while diagnosing. If all cases pass, run the focused map/provider tests, build, and `git diff --check`, then write the Phase 5.7c closeout update. If a case fails, record the exact session/node/drag sequence and identify whether the last writer was local drag, remote preview, save response, or authoritative DB data before changing code. Do not restore same-day itinerary locking, a 15-second idle exit, segment-snapshot Broadcast, whole-`points_json` multiplayer writes, Routes/Directions travel-time queries, Google route polylines, or unrelated Timeline/Places/Auth/Budget changes.
