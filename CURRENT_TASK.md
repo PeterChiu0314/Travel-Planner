@@ -765,7 +765,7 @@ New/updated files:
 - Node add/delete are optimistic Broadcast operations with node-level DB persistence and inverse-event rollback on failure.
 - Delete stabilization now releases any unacknowledged local drag final for the same node, clears stale remote previews, lets a remote `node-delete` supersede local-final priority, and fences late drag-save responses so they cannot visually restore an already deleted handle.
 - User dual-account testing after the stabilization series reports multiplayer dragging is substantially more stable; final closeout QA remains pending.
-- Latest pushed commit: `0517a80 Track pending route commits per node`.
+- Latest pushed code commit: `b4867cd Stabilize collaborative route node deletion`.
 
 ## Production Migration State
 
@@ -1281,7 +1281,8 @@ git diff --check passed with Windows LF/CRLF notices only
 earlier stabilization regression runs passed 83 focused Playwright tests
 Chrome dual-tab diagnostics confirmed node-drag-start/move/end delivery over the route-edit WebSocket channel
 user dual-account manual QA reports multiplayer node dragging is substantially more stable
-latest pushed commit: 0517a80 Track pending route commits per node
+Chrome deployed two-session QA after b4867cd: remote delete synchronized immediately; drag-end then remote delete converged on both clients; deleting the segment's final custom node converged to zero; both-client refresh preserved identical node counts without restoration
+latest pushed code commit: b4867cd Stabilize collaborative route node deletion
 ```
 
 ## Protected Scope Preserved
@@ -1337,4 +1338,4 @@ Latest Phase 5.7b / 5.7c route edit work did not redesign or extend:
 
 ## Next Step
 
-Continue Phase 5.7c-1 stabilization from `0517a80 Track pending route commits per node` on `codex/timeline-phase-5-7`. Start by reading `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`. Do not redesign the collaboration architecture unless a new reproducible failure proves it necessary. First complete dual-account manual QA for: A drags P1 then B drags P1 then P2; simultaneous different-node drags; node add/delete and failure rollback; five-node limit; refresh convergence; editor-count stability; background/idle recovery; and itinerary reorder/delete/coordinate invalidation while route editors are active. Use `?debugRouteCollab=1` only while diagnosing. If all cases pass, run the focused map/provider tests, build, and `git diff --check`, then write the Phase 5.7c closeout update. If a case fails, record the exact session/node/drag sequence and identify whether the last writer was local drag, remote preview, save response, or authoritative DB data before changing code. Do not restore same-day itinerary locking, a 15-second idle exit, segment-snapshot Broadcast, whole-`points_json` multiplayer writes, Routes/Directions travel-time queries, Google route polylines, or unrelated Timeline/Places/Auth/Budget changes.
+Continue Phase 5.7c-1 stabilization from `b4867cd Stabilize collaborative route node deletion` on `codex/timeline-phase-5-7`. Start by reading `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`. The confirmed delete/pending-final race is fixed and deployed two-session Chrome QA passed remote delete, drag-then-delete, final-node delete, and refresh convergence. Do not redesign the collaboration architecture unless a new reproducible failure proves it necessary. Continue dual-account manual QA for: A drags P1 then B drags P1 then P2; simultaneous different-node drags; concurrent node add/delete and failure rollback; five-node limit; editor-count stability; background/idle recovery; and itinerary reorder/delete/coordinate invalidation while route editors are active. Use `?debugRouteCollab=1` only while diagnosing. If all cases pass, run the focused map/provider tests, build, and `git diff --check`, then write the Phase 5.7c closeout update. If a case fails, record the exact session/node/drag sequence and identify whether the last writer was local drag, remote preview, save response, or authoritative DB data before changing code. Do not restore same-day itinerary locking, a 15-second idle exit, segment-snapshot Broadcast, whole-`points_json` multiplayer writes, Routes/Directions travel-time queries, Google route polylines, or unrelated Timeline/Places/Auth/Budget changes.

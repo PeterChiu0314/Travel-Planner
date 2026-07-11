@@ -2,10 +2,10 @@
 
 Date: 2026-07-11  
 Branch: `codex/timeline-phase-5-7`  
-Latest pushed code commit: `0517a80 Track pending route commits per node`  
+Latest pushed code commit: `b4867cd Stabilize collaborative route node deletion`
 Status: stabilization in progress; multiplayer dragging is substantially more stable, but final closeout QA is not complete.
 
-Current local stabilization after `0517a80`: node deletion now supersedes an unacknowledged drag final for the same node. Local delete clears pending-final ownership and stale remote preview state; remote `node-delete` also releases local-final priority; a late response from the older drag save is fenced from restoring the deleted handle. Focused provider tests, production build, and diff validation pass. Deployed two-client drag-then-delete verification is still required before closeout.
+Deletion stabilization after `0517a80`: node deletion now supersedes an unacknowledged drag final for the same node. Local delete clears pending-final ownership and stale remote preview state; remote `node-delete` also releases local-final priority; a late response from the older drag save is fenced from restoring the deleted handle. Commit `b4867cd` is deployed. Chrome two-session QA passed immediate remote delete, drag-end followed by remote delete, deletion of the segment's final custom node, and both-client refresh convergence without node restoration. Focused provider tests, production build, and diff validation also pass.
 
 ## 1. New-chat startup
 
@@ -118,6 +118,7 @@ e46779b Preserve route node handoff previews
 4dec053 Move route node locks to broadcast
 3c3cce3 Release stale route node final ownership
 0517a80 Track pending route commits per node
+b4867cd Stabilize collaborative route node deletion
 ```
 
 Confirmed failures that were corrected:
