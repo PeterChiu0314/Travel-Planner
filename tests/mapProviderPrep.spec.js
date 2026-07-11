@@ -800,6 +800,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain('get("debugRouteCollab") === "1"');
   expect(appSource).toContain("[route-edit-collab]");
   expect(appSource).toContain("routeEditPresenceStatusRef");
+  expect(appSource).toContain("routeEditChannelReady");
   expect(appSource).toContain("routeEditChannelMetadataRef");
   expect(appSource).toContain("routeEditChannelRecoveryRef");
   expect(appSource).toContain("routeEditChannelVersion");
@@ -811,6 +812,13 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain('routeEditCollaborationDebug("pending broadcast replayed"');
   expect(appSource).toContain('routeEditCollaborationDebug("broadcast send"');
   expect(appSource).toContain('routeEditCollaborationDebug("subscribe status"');
+  expect(appSource).toContain('routeEditCollaborationDebug("presence synced"');
+  expect(appSource).toContain("latestPresenceBySession");
+  expect(appSource).toContain("editorUsers");
+  expect(appSource).toContain('ensureRouteEditChannelHealth("presence-heartbeat")');
+  expect(appSource).toContain('recoverOnForeground("visibility-visible")');
+  expect(appSource).toContain('recoverOnForeground("window-focus")');
+  expect(appSource).toContain('recoverOnForeground("window-online")');
   expect(appSource).toContain("routeEditRemoteMoveVersionRef");
   expect(appSource).toContain("incomingVersion <= previousVersion");
   expect(appSource).toContain("eventVersion: ++broadcast.eventVersion");
@@ -829,8 +837,10 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("node-drag-end");
   expect(googleProviderSource).toContain("node-add");
   expect(googleProviderSource).toContain("node-delete");
-  expect(googleProviderSource).toContain("draggable: !isLockedByRemote");
+  expect(googleProviderSource).toContain("draggable: !isLockedByRemote && routeEditChannelReadyRef.current");
   expect(googleProviderSource).toContain("const routeEditNodeLocksRef = useRef({})");
+  expect(googleProviderSource).toContain("const routeEditChannelReadyRef");
+  expect(googleProviderSource).toContain("isChannelReady && !isLockedByRemote");
   expect(googleProviderSource).toContain("const remoteRoutePreviewBySegmentRef = useRef({})");
   expect(googleProviderSource).toContain("function mergeRemoteRoutePreview(pointsBySegment = {})");
   expect(googleProviderSource).toContain("function mergeLocalRouteDragPreview(pointsBySegment = {})");

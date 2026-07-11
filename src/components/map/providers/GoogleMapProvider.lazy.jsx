@@ -250,6 +250,7 @@ export default function GoogleMapProvider(props) {
   const routeSegmentHitLineRefsRef = useRef([]);
   const routeEditHandleRefsRef = useRef([]);
   const routeEditNodeLocksRef = useRef({});
+  const routeEditChannelReadyRef = useRef(routeEditCollaboration.isChannelReady !== false);
   const remoteRoutePreviewBySegmentRef = useRef({});
   const routeEditRemoteAppliedReceiptRef = useRef(new Map());
   const routeEditDragRef = useRef({ commitId: null, isCommitPending: false, isDragging: false, lastDragEndedAt: 0, node: null, nodeId: null, segmentKey: null });
@@ -1036,15 +1037,17 @@ export default function GoogleMapProvider(props) {
 
   useEffect(() => {
     const nodeLocks = routeEditCollaboration.nodeLocks || {};
+    const isChannelReady = routeEditCollaboration.isChannelReady !== false;
     routeEditNodeLocksRef.current = nodeLocks;
+    routeEditChannelReadyRef.current = isChannelReady;
     routeEditHandleRefsRef.current.forEach((record) => {
       const nodeLock = nodeLocks[`${record.segmentKey}:${record.nodeId}`];
       const isLockedByRemote = Boolean(nodeLock);
       record.markerState.isLockedByRemote = isLockedByRemote;
-      record.marker?.setDraggable?.(!isLockedByRemote);
+      record.marker?.setDraggable?.(isChannelReady && !isLockedByRemote);
       record.marker?.setTitle?.(isLockedByRemote ? `${nodeLock.userName} 正在編輯` : "拖曳路線節點，點擊可刪除");
     });
-  }, [routeEditCollaboration.nodeLocks]);
+  }, [routeEditCollaboration.isChannelReady, routeEditCollaboration.nodeLocks]);
 
   useEffect(() => {
     routeLineRef.current?.setMap(null);
@@ -1121,7 +1124,7 @@ export default function GoogleMapProvider(props) {
         const markerState = { isLockedByRemote };
         const marker = new MarkerConstructor({
           clickable: true,
-          draggable: !isLockedByRemote,
+          draggable: !isLockedByRemote && routeEditChannelReadyRef.current,
           icon: routeEditHandleIcon(mapsNamespace),
           map: mapRef.current,
           position: point,
@@ -1130,7 +1133,7 @@ export default function GoogleMapProvider(props) {
         });
 
         marker.addListener?.("dragstart", () => {
-          if (markerState.isLockedByRemote) return;
+          if (markerState.isLockedByRemote || !routeEditChannelReadyRef.current) return;
           suppressRouteLineClick();
           onRouteEditCollaborationEvent?.({ phase: "node-drag-start", nodeId: point.id, segmentKey: segment.key });
           routeEditDragRef.current = {
