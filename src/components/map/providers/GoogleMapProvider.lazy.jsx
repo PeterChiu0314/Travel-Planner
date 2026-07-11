@@ -945,6 +945,28 @@ export default function GoogleMapProvider(props) {
 
   useEffect(() => {
     const authoritativePoints = routeOverridePointsBySegment || {};
+    const pendingLocalCommit = routeEditDragRef.current;
+    const acknowledgedLocalCommit = pendingLocalCommit.isCommitPending &&
+      !pendingLocalCommit.isDragging &&
+      pendingLocalCommit.segmentKey &&
+      pendingLocalCommit.nodeId &&
+      pendingLocalCommit.node &&
+      (authoritativePoints[pendingLocalCommit.segmentKey] || []).some(
+        (point) => point.id === pendingLocalCommit.nodeId &&
+          point.lat === pendingLocalCommit.node.lat &&
+          point.lng === pendingLocalCommit.node.lng,
+      );
+    if (acknowledgedLocalCommit) {
+      routeEditDragRef.current = {
+        commitId: null,
+        isCommitPending: false,
+        isDragging: false,
+        lastDragEndedAt: pendingLocalCommit.lastDragEndedAt || 0,
+        node: null,
+        nodeId: null,
+        segmentKey: null,
+      };
+    }
     Object.entries(remoteRoutePreviewBySegmentRef.current).forEach(([segmentKey, nodePreviews]) => {
       const formalPoints = authoritativePoints[segmentKey] || [];
       Object.entries(nodePreviews || {}).forEach(([nodeId, preview]) => {
@@ -1173,15 +1195,17 @@ export default function GoogleMapProvider(props) {
             points: customRoutePointsRef.current[segment.key] || [],
           })).then((result) => {
             if (routeEditDragRef.current.commitId !== commitId) return;
-            routeEditDragRef.current = {
-              commitId: null,
-              isCommitPending: false,
-              isDragging: false,
-              lastDragEndedAt,
-              node: null,
-              nodeId: null,
-              segmentKey: null,
-            };
+            if (result?.ok === false || !hasFinalPosition) {
+              routeEditDragRef.current = {
+                commitId: null,
+                isCommitPending: false,
+                isDragging: false,
+                lastDragEndedAt,
+                node: null,
+                nodeId: null,
+                segmentKey: null,
+              };
+            }
             if (result?.points) setRouteSegmentPoints(segment.key, result.points);
           });
         });

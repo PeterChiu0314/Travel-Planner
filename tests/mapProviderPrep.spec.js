@@ -795,7 +795,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("routeEditMode");
   expect(appSource).toContain("routeEditCollaboration");
   expect(appSource).toContain("remoteRouteEditUpdates");
-  expect(appSource).toContain("routeEditBroadcastThrottleMs = 180");
+  expect(appSource).toContain("routeEditBroadcastThrottleMs = 120");
   expect(appSource).toContain("routeEditPresenceHeartbeatMs = 8000");
   expect(appSource).toContain('get("debugRouteCollab") === "1"');
   expect(appSource).toContain("[route-edit-collab]");
@@ -837,6 +837,9 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("routeEditCollaboration.remoteUpdates || {}");
   expect(googleProviderSource).toContain("routeEditRemoteAppliedReceiptRef");
   expect(googleProviderSource).toContain("activeDrag.isDragging || activeDrag.isCommitPending");
+  expect(googleProviderSource).toContain("const acknowledgedLocalCommit = pendingLocalCommit.isCommitPending");
+  expect(googleProviderSource).toContain("point.lat === pendingLocalCommit.node.lat");
+  expect(googleProviderSource).toContain("if (result?.ok === false || !hasFinalPosition)");
   expect(googleProviderSource).toContain("const onRouteEditPresenceChangeRef = useRef(onRouteEditPresenceChange)");
   expect(googleProviderSource).toContain("onRouteEditPresenceChangeRef.current?.({ isEditing: true })");
   expect(googleProviderSource).toContain("onRouteEditPresenceChangeRef.current?.({ isEditing: false })");
