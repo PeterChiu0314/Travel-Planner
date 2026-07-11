@@ -2,12 +2,12 @@
 
 Date: 2026-07-11  
 Branch: `codex/timeline-phase-5-7`  
-Latest pushed code commit: `b4867cd Stabilize collaborative route node deletion`
+Latest pushed code commit: `40342b3 Clear stale previews after route invalidation`
 Status: stabilization in progress; multiplayer dragging is substantially more stable, but final closeout QA is not complete.
 
 Deletion stabilization after `0517a80`: node deletion now supersedes an unacknowledged drag final for the same node. Local delete clears pending-final ownership and stale remote preview state; remote `node-delete` also releases local-final priority; a late response from the older drag save is fenced from restoring the deleted handle. Commit `b4867cd` is deployed. Chrome two-session QA passed immediate remote delete, drag-end followed by remote delete, deletion of the segment's final custom node, and both-client refresh convergence without node restoration. Focused provider tests, production build, and diff validation also pass.
 
-Further Chrome two-session QA passed concurrent adds from three to five nodes, five-node limit enforcement, simultaneous different-node drags, refresh convergence, same-account editor-label deduplication, and the first drag after a simulated background lifecycle recovery. Endpoint-coordinate invalidation then exposed another stale-preview path: the database override was deleted correctly, but a remote editor retained five handles until refresh because old remote node previews were merged over an absent authoritative segment. The current fix tracks authoritative segment keys and clears remote previews plus pending local finals only when a segment transitions from present to absent. Automated provider tests, build, and diff validation pass; deployed endpoint-invalidation verification remains required.
+Further Chrome two-session QA passed concurrent adds from three to five nodes, five-node limit enforcement, simultaneous different-node drags, refresh convergence, same-account editor-label deduplication, and the first drag after a simulated background lifecycle recovery. Endpoint-coordinate invalidation then exposed another stale-preview path: the database override was deleted correctly, but a remote editor retained five handles until refresh because old remote node previews were merged over an absent authoritative segment. Deployed commit `40342b3` tracks authoritative segment keys and clears remote previews plus pending local finals only when a segment transitions from present to absent. Automated provider tests, build, and diff validation pass. A fresh deployed endpoint-invalidation replay remains pending because the invalidation QA consumed the available test nodes and Chrome automation did not trigger the first transparent hit-line node add; no direct database seeding was performed.
 
 ## 1. New-chat startup
 
@@ -121,6 +121,7 @@ e46779b Preserve route node handoff previews
 3c3cce3 Release stale route node final ownership
 0517a80 Track pending route commits per node
 b4867cd Stabilize collaborative route node deletion
+40342b3 Clear stale previews after route invalidation
 ```
 
 Confirmed failures that were corrected:
