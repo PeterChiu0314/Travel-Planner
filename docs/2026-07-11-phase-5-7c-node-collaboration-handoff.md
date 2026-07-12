@@ -1,9 +1,9 @@
-# Timeline Phase 5.7c-1 Node-level Collaboration Handoff
+# Timeline Phase 5.7c-1 Node-level Collaboration Closeout
 
 Date: 2026-07-11  
 Branch: `codex/timeline-phase-5-7`  
 Latest pushed implementation commit: `c6989a3 Preserve rapid route ownership handoff`
-Status: stabilization in progress; multiplayer dragging is substantially more stable, but final closeout QA is not complete.
+Status: complete; Phase 5.7c multiplayer route editing closeout QA passed.
 
 Deletion stabilization after `0517a80`: node deletion now supersedes an unacknowledged drag final for the same node. Local delete clears pending-final ownership and stale remote preview state; remote `node-delete` also releases local-final priority; a late response from the older drag save is fenced from restoring the deleted handle. Commit `b4867cd` is deployed. Chrome two-session QA passed immediate remote delete, drag-end followed by remote delete, deletion of the segment's final custom node, and both-client refresh convergence without node restoration. Focused provider tests, production build, and diff validation also pass.
 
@@ -21,7 +21,9 @@ The real background soak also passed: B was frozen for 319 seconds while A moved
 
 Final ownership soak reproduced one more batching edge: rapid A-to-B-to-A handoff could let `node-drag-start` be overwritten by the later position update under the same React state key, so the receiver retained its pending final until refresh. Commit `c6989a3` keeps two bounded slots per node (`ownership` and `position`) and applies them by local receipt order. Deployed Chrome replay passed live and refreshed A-to-B-to-A convergence. A second replay had B take P1 and immediately drag P2; both nodes converged identically live and after both clients refreshed.
 
-Itinerary reorder QA also passed. Swapping destinations 2 and 3 removed three affected route nodes on both clients. Repeating the reorder with one node on a far unchanged adjacency retained that node on both clients. The original destination order was restored; a reversible temporary-item destination-delete replay remains rather than deleting an original TEST-trip destination for QA.
+Itinerary reorder QA also passed. Swapping destinations 2 and 3 removed three affected route nodes on both clients. Repeating the reorder with one node on a far unchanged adjacency retained that node on both clients. The original destination order was restored.
+
+The final reversible destination-delete QA created `TEMP_ROUTE_DELETE_QA` with a valid coordinate and one adjacent custom node, alongside two existing nodes on an unaffected segment. Deleting the temporary destination removed it on both clients and reduced the still-editing remote client from three nodes to two without refresh. A re-entered route editor showed the same two retained positions on both clients, and both refreshed clients remained identical. Cleanup removed the temporary destination and all QA route nodes; final refresh confirmed no temporary item and zero route nodes on both clients.
 
 ## 1. New-chat startup
 
@@ -160,7 +162,7 @@ Chrome WebSocket diagnostics confirmed that `node-drag-start`, `node-drag-move`,
 
 The user reports that multiplayer node dragging is now substantially more stable.
 
-Do not mark Phase 5.7c complete yet. Add/delete, failed-delete rollback, idle recovery, editor deduplication, endpoint invalidation, reorder invalidation, unchanged-adjacency retention, alternating same-node handoff, P1-to-P2 handoff, and refresh convergence are verified. A reversible temporary-item destination-delete invalidation replay remains.
+Phase 5.7c is complete. Add/delete, preview-only delete, failed-delete rollback, idle recovery, editor deduplication, endpoint/reorder/destination-delete invalidation, unchanged-adjacency retention, alternating same-node handoff, P1-to-P2 handoff, concurrency limits, and refresh convergence are verified on the deployed preview.
 
 Most important first scenario:
 
@@ -172,7 +174,7 @@ A drags P1
 → both clients must converge after drag-end and refresh
 ```
 
-## 6. Remaining manual QA
+## 6. Final manual QA matrix
 
 ### Drag and ownership
 
@@ -284,11 +286,11 @@ Do not reintroduce or expand:
 
 ## 10. Closeout condition
 
-Phase 5.7c can close only after the remaining dual-account QA passes, both refreshed clients converge to identical DB-backed node state, editor count remains stable, idle recovery works silently, and add/delete/invalidation regressions pass.
+Phase 5.7c closeout conditions are satisfied: dual-client QA passed, refreshed clients converge to identical DB-backed node state, editor count remains stable, 319-second idle recovery works silently, and add/delete/rollback/invalidation regressions pass.
 
-When closing:
+Closeout completed:
 
-1. Update `CURRENT_TASK.md` with final manual QA and latest commit.
-2. Convert this handoff into the final Phase 5.7c closeout state or create a separate closeout document.
-3. Audit `AGENT.md` and `docs/UX_RULES.md` only for genuinely durable new rules.
-4. Keep `supabase/.temp/` and `test-results/` out of commits.
+1. `CURRENT_TASK.md` records final manual QA and latest implementation commit.
+2. This document is the final Phase 5.7c closeout state.
+3. No new cross-phase engineering or UX rule was introduced beyond the existing protected architecture, so `AGENT.md` and `docs/UX_RULES.md` require no change.
+4. `supabase/.temp/` and `test-results/` remain untracked.
