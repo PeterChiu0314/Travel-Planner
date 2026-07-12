@@ -792,6 +792,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const routeOverridesSource = readRepoFile("src/lib/routeOverrides.js");
   const nodeMigrationSource = readRepoFile("supabase/migrations/20260710125337_add_itinerary_route_override_nodes.sql");
+  const routeRealtimeMigrationSource = readRepoFile("supabase/migrations/20260712033758_add_route_tables_to_realtime.sql");
 
   expect(appSource).toContain("timeline-route-edit:${activeTripId}:${activeDay}");
   expect(appSource).toContain('event: "route-edit-update"');
@@ -897,6 +898,10 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).not.toContain("latestPoints.map");
   expect(nodeMigrationSource).toContain("create table if not exists public.itinerary_route_override_nodes");
   expect(nodeMigrationSource).toContain("unique (route_override_id, node_key)");
+  expect(routeRealtimeMigrationSource).toContain("alter table public.itinerary_route_overrides replica identity full");
+  expect(routeRealtimeMigrationSource).toContain("alter table public.itinerary_route_override_nodes replica identity full");
+  expect(routeRealtimeMigrationSource).toContain("alter publication supabase_realtime add table public.itinerary_route_overrides");
+  expect(routeRealtimeMigrationSource).toContain("alter publication supabase_realtime add table public.itinerary_route_override_nodes");
   expect(nodeMigrationSource).toContain("enforce_itinerary_route_override_node_limit");
   expect(nodeMigrationSource).toContain("pg_advisory_xact_lock");
   expect(nodeMigrationSource).toContain("alter table public.itinerary_route_override_nodes enable row level security");
