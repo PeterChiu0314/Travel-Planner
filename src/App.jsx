@@ -205,6 +205,12 @@ function timelineCardSelectionColorKey(seed = "") {
   return timelineCardSelectionColorKeys[hash % timelineCardSelectionColorKeys.length] || "blue";
 }
 
+// Phase 4.8's remote visuals must use one stable color per user. A session
+// is only a fallback for unauthenticated or legacy payloads that lack userId.
+function timelineCollaboratorColorKey(userId, sessionId) {
+  return timelineCardSelectionColorKey(userId || sessionId);
+}
+
 function timelineCardSelectionColor(colorKey) {
   return timelineCardSelectionColors[colorKey] || timelineCardSelectionColors.blue;
 }
@@ -2212,7 +2218,7 @@ export default function App() {
       userId: activeUserId,
       userName: timelineDragPresenceUserName,
       sessionId: timelineDragPresenceSessionIdRef.current,
-      colorKey: timelineCardSelectionColorKey(timelineDragPresenceSessionIdRef.current || activeUserId),
+      colorKey: timelineCollaboratorColorKey(activeUserId, timelineDragPresenceSessionIdRef.current),
       pageKey,
       dayIndex: pageKey === "timeline" ? activeDay : null,
       selectedItemId: selectedItem?.itemId || null,
@@ -3242,7 +3248,7 @@ export default function App() {
                 ...current,
                 [lockKey]: {
                   color: timelineCardSelectionColor(
-                    timelineCardSelectionColorKey(payload.userId || payload.sessionId),
+                    timelineCollaboratorColorKey(payload.userId, payload.sessionId),
                   ),
                   dragId: payload.dragId || null,
                   nodeId: payload.nodeId,
@@ -4250,7 +4256,7 @@ export default function App() {
       const channelReady = timelineDragPresenceReadyRef.current;
       const now = new Date().toISOString();
       const sessionId = timelineDragPresenceSessionIdRef.current;
-      const colorKey = timelineCardSelectionColorKey(sessionId || activeUserId);
+      const colorKey = timelineCollaboratorColorKey(activeUserId, sessionId);
       const itemType = isTransportationCard(item) ? "transport" : "destination";
       const nextPayload = {
         tripId: activeTripId,
@@ -10731,8 +10737,9 @@ function ItineraryTimeline({
   const foreignDragSourceItemId = foreignSameDayDragActive ? foreignDragPresence?.itemId : null;
   const foreignDragColor = foreignSameDayDragActive
     ? timelineCardSelectionColor(
-        timelineCardSelectionColorKey(
-          foreignDragPresence?.sessionId || foreignDragPresence?.userId || foreignDragPresence?.dragId,
+        timelineCollaboratorColorKey(
+          foreignDragPresence?.userId,
+          foreignDragPresence?.sessionId || foreignDragPresence?.dragId,
         ),
       )
     : "";

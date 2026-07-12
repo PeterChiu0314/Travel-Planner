@@ -51,6 +51,7 @@ Phase 5.7c synchronization remains closed. Phase 5.7d is a visual-only enhanceme
 - Local dragging keeps the existing green-center, white-outline node with no additional effect.
 - While a remote user owns a node drag lock, the green center remains unchanged.
 - The remote node's white outline changes to that user's existing stable `userId` hash color.
+- Trip avatar borders, Timeline drag visuals, and route-node visuals all derive from the same `userId`-first color helper; `sessionId` is only a legacy fallback.
 - A same-color translucent glow is shown without visually enlarging the node core.
 - The normal white outline and no-glow appearance return on drag-end, lock timeout, node deletion, segment invalidation, Day/trip change, route-edit exit, or channel cleanup.
 - No name label in this phase.

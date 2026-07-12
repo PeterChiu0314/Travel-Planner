@@ -858,7 +858,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("draggable: !isLockedByRemote && routeEditChannelReadyRef.current");
   expect(googleProviderSource).toContain('record.marker?.setIcon?.(routeEditHandleIcon(window.google?.maps, isLockedByRemote ? nodeLock.color : ""))');
   expect(googleProviderSource).toContain('icon: routeEditHandleIcon(mapsNamespace, isLockedByRemote ? nodeLock.color : "")');
-  expect(appSource).toContain("timelineCardSelectionColorKey(payload.userId || payload.sessionId)");
+  expect(appSource).toContain("timelineCollaboratorColorKey(payload.userId, payload.sessionId)");
   expect(googleProviderSource).toContain("const routeEditNodeLocksRef = useRef({})");
   expect(googleProviderSource).toContain("const routeEditChannelReadyRef");
   expect(googleProviderSource).toContain("routeEditCollaboration.recoveryGeneration");
