@@ -9,7 +9,7 @@ Deletion stabilization after `0517a80`: node deletion now supersedes an unacknow
 
 Further Chrome two-session QA passed concurrent adds from three to five nodes, five-node limit enforcement, simultaneous different-node drags, refresh convergence, same-account editor-label deduplication, and the first drag after a simulated background lifecycle recovery. Endpoint-coordinate invalidation then exposed another stale-preview path: the database override was deleted correctly, but a remote editor retained five handles until refresh because old remote node previews were merged over an absent authoritative segment. Deployed commit `40342b3` tracks authoritative segment keys and clears remote previews plus pending local finals only when a segment transitions from present to absent. Automated provider tests, build, and diff validation pass. A fresh deployed endpoint-invalidation replay remains pending because the invalidation QA consumed the available test nodes and Chrome automation did not trigger the first transparent hit-line node add; no direct database seeding was performed.
 
-The deployed replay subsequently created a fresh node through the planning-phase UI and confirmed one more missing link: the remote client retained the handle until refresh because it did not reliably reload route overrides after the endpoint's `itinerary_items` update. The route-override table is subscribed in code, but the applied route migrations do not add it to the Realtime publication. The current follow-up therefore reloads both trip data and active-day route overrides from the existing reliable itinerary-item Realtime callback. This requires no schema or migration change. Focused provider tests, production build, and diff validation pass; deployed two-client replay remains required.
+The deployed replay subsequently created a fresh node through the planning-phase UI and confirmed one more missing link: the remote client retained the handle until refresh because it did not reliably receive an absent authoritative segment after the endpoint's `itinerary_items` update. The route-override table is subscribed in code, but the applied route migrations do not add it to the Realtime publication. Commit `25a7b9e` attempted to reload overrides from the itinerary callback, but deployed replay proved that reload can run before the writer's follow-up DELETE and read the old segment back. The replacement invalidates affected local route overrides inside the same authoritative `loadTripData` call that first receives changed endpoint coordinates, before setting the new itinerary rows; the existing effect still performs the DB cleanup. This requires no schema or migration change. Focused provider tests, production build, and diff validation pass; deployed two-client replay remains required.
 
 ## 1. New-chat startup
 
@@ -124,6 +124,7 @@ e46779b Preserve route node handoff previews
 0517a80 Track pending route commits per node
 b4867cd Stabilize collaborative route node deletion
 40342b3 Clear stale previews after route invalidation
+25a7b9e Reload route overrides after itinerary changes (superseded by authoritative-load invalidation)
 ```
 
 Confirmed failures that were corrected:

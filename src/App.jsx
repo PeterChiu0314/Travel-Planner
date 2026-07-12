@@ -2858,6 +2858,25 @@ export default function App() {
       (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
     );
 
+    // Apply itinerary-primary route invalidation in the same authoritative
+    // load that receives changed endpoint coordinates.  Waiting for a later
+    // route-override reload can race the writer's follow-up DELETE and read
+    // the old segment back into this client.
+    const previousCoordinateSnapshot = routeOverrideCoordinateSnapshotRef.current;
+    const changedRouteEndpointIds = nextItems.reduce((changedIds, item) => {
+      if (isTransportationCard(item) || !previousCoordinateSnapshot.has(item.id)) return changedIds;
+      const signature = `${item.latitude ?? ""}:${item.longitude ?? ""}`;
+      if (previousCoordinateSnapshot.get(item.id) !== signature) changedIds.push(item.id);
+      return changedIds;
+    }, []);
+    if (changedRouteEndpointIds.length) {
+      setRouteOverrides((current) => current.filter(
+        (override) =>
+          !changedRouteEndpointIds.includes(override.from_item_id) &&
+          !changedRouteEndpointIds.includes(override.to_item_id),
+      ));
+    }
+
     setItems(nextItems);
     setAlternatives(nextAlternatives);
     setBudgetItems(budgetResult.data || []);
@@ -3488,14 +3507,7 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "itinerary_items", filter: `trip_id=eq.${activeTripId}` },
-        () => {
-          loadTripData(activeTripId);
-          // Itinerary adjacency and endpoint coordinates are authoritative for
-          // custom routes.  Reload the active day's overrides from the same
-          // reliable itinerary event instead of depending on a separate route
-          // override DELETE event being present in the Realtime publication.
-          loadRouteOverrides(activeTripId, activeDay);
-        },
+        () => loadTripData(activeTripId),
       )
       .on(
         "postgres_changes",
