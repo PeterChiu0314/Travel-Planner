@@ -193,9 +193,11 @@ function routeEditHandleIcon(mapsNamespace, remoteUserColor = "") {
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasSize}" height="${canvasSize}" viewBox="0 0 ${canvasSize} ${canvasSize}">`,
     safeRemoteColor
-      ? `<defs><filter id="remote-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2.1"/></filter></defs><circle cx="${center}" cy="${center}" r="5" fill="none" stroke="${safeRemoteColor}" stroke-width="3" opacity="0.72" filter="url(#remote-glow)"/>`
+      ? `<defs><filter id="remote-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2.1"/></filter></defs><circle cx="${center}" cy="${center}" r="7" fill="none" stroke="${safeRemoteColor}" stroke-width="3" opacity="0.48" filter="url(#remote-glow)"/><circle cx="${center}" cy="${center}" r="6.4" fill="#2f8f72" stroke="${safeRemoteColor}" stroke-width="2.6"/><circle cx="${center}" cy="${center}" r="4.9" fill="#2f8f72"/>`
       : "",
-    `<circle cx="${center}" cy="${center}" r="5" fill="#2f8f72" stroke="${safeRemoteColor || "#ffffff"}" stroke-width="2"/>`,
+    safeRemoteColor
+      ? ""
+      : `<circle cx="${center}" cy="${center}" r="5" fill="#2f8f72" stroke="#ffffff" stroke-width="2"/>`,
     "</svg>",
   ].join("");
   return {
