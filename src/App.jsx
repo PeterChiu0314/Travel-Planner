@@ -5608,6 +5608,7 @@ export default function App() {
 
   async function saveRouteOverrideChange({ fromItemId, operation = null, points = [], segmentKey, toItemId }) {
     const baselinePoints = activeRouteOverridePointsBySegment[segmentKey] || [];
+    let failurePoints = baselinePoints;
     if (!activeTrip || !canEditActiveTripContent || !fromItemId || !toItemId) {
       return { ok: false, points: baselinePoints };
     }
@@ -5688,6 +5689,11 @@ export default function App() {
       }
 
       const latestNodeRows = await loadNodeRows(routeOverride.id);
+      // A node may have arrived through Realtime/Broadcast before React's
+      // route-override baseline catches up.  Preserve the authoritative rows
+      // read immediately before the mutation so a failed DELETE can restore
+      // the node locally and publish the inverse node-add to collaborators.
+      failurePoints = nodeRowsToPoints(latestNodeRows);
       if (operation.type === "update" && operation.node?.id) {
         const { error } = await supabase
           .from("itinerary_route_override_nodes")
@@ -5756,7 +5762,7 @@ export default function App() {
       return { ok: true, points: nextPoints };
     } catch {
       showRouteOverrideSaveError();
-      return { ok: false, points: baselinePoints };
+      return { ok: false, points: failurePoints };
     }
   }
 

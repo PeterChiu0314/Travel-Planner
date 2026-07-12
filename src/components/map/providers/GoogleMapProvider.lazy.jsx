@@ -637,6 +637,14 @@ export default function GoogleMapProvider(props) {
 
   function setRouteSegmentPoints(segmentKey, points) {
     const nextPoints = Array.isArray(points) ? points : [];
+    const nextPointsBySegment = { ...customRoutePointsRef.current };
+    if (nextPoints.length) nextPointsBySegment[segmentKey] = nextPoints;
+    else delete nextPointsBySegment[segmentKey];
+    // Promise completions run outside the render that created the optimistic
+    // edit.  Keep the imperative source of truth aligned before broadcasting
+    // an inverse event, otherwise a failed delete can restore React state but
+    // leave the next merge operating on the already-deleted ref snapshot.
+    customRoutePointsRef.current = nextPointsBySegment;
     setCustomRoutePointsBySegment((current) => {
       if (!nextPoints.length) {
         const next = { ...current };

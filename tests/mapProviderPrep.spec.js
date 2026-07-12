@@ -876,6 +876,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("routeEditPendingCommitsRef.current.delete(commitKey)");
   expect(googleProviderSource).toContain('if (update.phase === "node-delete")');
   expect(googleProviderSource).toContain("if (!nodeStillExists) return result");
+  expect(googleProviderSource).toContain("customRoutePointsRef.current = nextPointsBySegment");
   expect(googleProviderSource).toContain("if (ownsNodePosition) return;");
   expect(googleProviderSource).toContain("if (result?.ok === false || !hasFinalPosition)");
   expect(googleProviderSource).toContain("const onRouteEditPresenceChangeRef = useRef(onRouteEditPresenceChange)");
@@ -895,6 +896,8 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("operation?.type");
   expect(appSource).toContain('operation?.type !== "delete" && routeOverridePointsEqual(requestedPoints, baselinePoints)');
   expect(appSource).toContain("must still issue the\n    // idempotent node DELETE");
+  expect(appSource).toContain("failurePoints = nodeRowsToPoints(latestNodeRows)");
+  expect(appSource).toContain("return { ok: false, points: failurePoints }");
   expect(appSource).toContain('from("itinerary_route_override_nodes")');
   expect(appSource).toContain("nodeRowsToPoints");
   expect(appSource).not.toContain("latestPoints.map");
