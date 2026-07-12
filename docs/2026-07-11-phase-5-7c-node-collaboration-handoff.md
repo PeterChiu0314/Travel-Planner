@@ -2,7 +2,7 @@
 
 Date: 2026-07-11  
 Branch: `codex/timeline-phase-5-7`  
-Latest pushed implementation commit: `7cb1b40 Restore route nodes after failed deletes`
+Latest pushed implementation commit: `c6989a3 Preserve rapid route ownership handoff`
 Status: stabilization in progress; multiplayer dragging is substantially more stable, but final closeout QA is not complete.
 
 Deletion stabilization after `0517a80`: node deletion now supersedes an unacknowledged drag final for the same node. Local delete clears pending-final ownership and stale remote preview state; remote `node-delete` also releases local-final priority; a late response from the older drag save is fenced from restoring the deleted handle. Commit `b4867cd` is deployed. Chrome two-session QA passed immediate remote delete, drag-end followed by remote delete, deletion of the segment's final custom node, and both-client refresh convergence without node restoration. Focused provider tests, production build, and diff validation also pass.
@@ -18,6 +18,10 @@ Post-migration delete QA then reproduced the original user-facing symptom throug
 Failure injection then exposed a separate rollback gap: when the deleting client had not yet incorporated the Realtime node into its React baseline, a failed DELETE returned an empty rollback snapshot. Commit `7cb1b40` preserves the authoritative node rows loaded immediately before the mutation and synchronizes the provider's imperative points ref before emitting inverse `node-add`. Chrome blocked four node-table REST attempts for 25 seconds; both clients restored one node, stayed at one after unblocking and refresh, and a following normal delete converged to zero before and after refresh. Focused provider tests passed 36/36, production build passed, and `git diff --check` passed.
 
 The real background soak also passed: B was frozen for 319 seconds while A moved the node, then B recovered to the exact position; B's first drag after recovery synchronized to A with dx=0/dy=0, and the editor label remained one unique user.
+
+Final ownership soak reproduced one more batching edge: rapid A-to-B-to-A handoff could let `node-drag-start` be overwritten by the later position update under the same React state key, so the receiver retained its pending final until refresh. Commit `c6989a3` keeps two bounded slots per node (`ownership` and `position`) and applies them by local receipt order. Deployed Chrome replay passed live and refreshed A-to-B-to-A convergence. A second replay had B take P1 and immediately drag P2; both nodes converged identically live and after both clients refreshed.
+
+Itinerary reorder QA also passed. Swapping destinations 2 and 3 removed three affected route nodes on both clients. Repeating the reorder with one node on a far unchanged adjacency retained that node on both clients. The original destination order was restored; a reversible temporary-item destination-delete replay remains rather than deleting an original TEST-trip destination for QA.
 
 ## 1. New-chat startup
 
@@ -156,7 +160,7 @@ Chrome WebSocket diagnostics confirmed that `node-drag-start`, `node-drag-move`,
 
 The user reports that multiplayer node dragging is now substantially more stable.
 
-Do not mark Phase 5.7c complete yet. Add/delete, failed-delete rollback, idle recovery, editor deduplication, endpoint invalidation, and refresh convergence are now verified; itinerary reorder/delete invalidation and repeated alternating same-node dual-account soak remain.
+Do not mark Phase 5.7c complete yet. Add/delete, failed-delete rollback, idle recovery, editor deduplication, endpoint invalidation, reorder invalidation, unchanged-adjacency retention, alternating same-node handoff, P1-to-P2 handoff, and refresh convergence are verified. A reversible temporary-item destination-delete invalidation replay remains.
 
 Most important first scenario:
 
@@ -251,7 +255,7 @@ npm.cmd run build
 git diff --check
 ```
 
-Latest verified result after `7cb1b40`:
+Latest verified result after `c6989a3`:
 
 ```text
 mapProviderPrep: 36 passed
