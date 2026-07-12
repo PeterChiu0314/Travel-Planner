@@ -3488,7 +3488,14 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "itinerary_items", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
+        () => {
+          loadTripData(activeTripId);
+          // Itinerary adjacency and endpoint coordinates are authoritative for
+          // custom routes.  Reload the active day's overrides from the same
+          // reliable itinerary event instead of depending on a separate route
+          // override DELETE event being present in the Realtime publication.
+          loadRouteOverrides(activeTripId, activeDay);
+        },
       )
       .on(
         "postgres_changes",
