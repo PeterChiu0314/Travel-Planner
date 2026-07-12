@@ -38,7 +38,7 @@ Archive rules:
 ```text
 Current phase: Timeline Phase 5.7d Multiplayer Route Editing Visual Feedback
 Status: Implemented and manually verified
-Branch: codex/timeline-phase-5-7 (pending merge to main)
+Branch: main
 Baseline implementation commit: c6989a3 Preserve rapid route ownership handoff
 Baseline closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
