@@ -37,11 +37,11 @@ Archive rules:
 
 ```text
 Current phase: Timeline Phase 5.7d Multiplayer Route Editing Visual Feedback
-Status: Implementation in progress
-Branch: codex/timeline-phase-5-7
+Status: Implemented and manually verified
+Branch: codex/timeline-phase-5-7 (pending merge to main)
 Baseline implementation commit: c6989a3 Preserve rapid route ownership handoff
 Baseline closeout commit: 23247de Close Timeline Phase 5.7c
-Phase 5.7d implementation commit: Not yet committed
+Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
 ```
 
 Phase 5.7c synchronization remains closed. Phase 5.7d is a visual-only enhancement and must not change its collaboration or persistence behavior.
@@ -102,6 +102,12 @@ git diff --check: passed (Windows LF/CRLF notices only)
 ```
 
 The Vite large-chunk warning is informational and was present in successful builds.
+
+Phase 5.7d manual verification:
+
+- User-confirmed two-client Chrome QA passed for consistent remote user color across the avatar border, Timeline drag visuals, and route-node outline/glow.
+- Local dragging remains unchanged; no name label was added.
+- No automated tests were run for the final color-source alignment fix; the user performed the requested manual verification.
 
 ## Production Migration State
 
@@ -165,10 +171,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Complete Phase 5.7d against `docs/2026-07-12-phase-5-7d-remote-route-node-visual-plan.md`:
-
-1. verify the remote-only outline and glow in deployed or local two-client Chrome;
-2. verify local drag appearance remains unchanged;
-3. verify cleanup on drag-end and stale-lock lifecycle;
-4. run `tests/mapProviderPrep.spec.js`, production build, and `git diff --check`;
-5. write the Phase 5.7d closeout without expanding 5.7c synchronization scope.
+Phase 5.7d is complete. Await the next explicitly requested Timeline phase without expanding the closed 5.7c synchronization scope.
