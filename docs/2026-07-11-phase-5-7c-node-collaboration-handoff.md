@@ -2,7 +2,7 @@
 
 Date: 2026-07-11  
 Branch: `codex/timeline-phase-5-7`  
-Latest pushed implementation commit: `73fed64 Publish route override tables to Realtime`
+Latest pushed implementation commit: `7cb1b40 Restore route nodes after failed deletes`
 Status: stabilization in progress; multiplayer dragging is substantially more stable, but final closeout QA is not complete.
 
 Deletion stabilization after `0517a80`: node deletion now supersedes an unacknowledged drag final for the same node. Local delete clears pending-final ownership and stale remote preview state; remote `node-delete` also releases local-final priority; a late response from the older drag save is fenced from restoring the deleted handle. Commit `b4867cd` is deployed. Chrome two-session QA passed immediate remote delete, drag-end followed by remote delete, deletion of the segment's final custom node, and both-client refresh convergence without node restoration. Focused provider tests, production build, and diff validation also pass.
@@ -13,7 +13,11 @@ The deployed replay subsequently created a fresh node through the planning-phase
 
 Repeated deployed replay after `f221032` proved the remote client still held both the old endpoint Map URL and the stale route node before refresh, so the prerequisite authoritative Realtime transition itself was not arriving. The applied `20260708063744` and `20260710125337` migrations created the route tables but omitted both `REPLICA IDENTITY FULL` and `supabase_realtime` publication membership. Migration `20260712033758_add_route_tables_to_realtime.sql` was explicitly approved and applied to production. Remote migration history matches local, and SQL verification confirms both route tables use full replica identity and belong to `supabase_realtime`. Post-apply Chrome two-client replay passed: both clients received one DB-backed node, an endpoint coordinate change reduced both to zero without refresh, and both remained zero after refresh.
 
-Post-migration delete QA then reproduced the original user-facing symptom through a narrower race. B received A's `node-add` Broadcast preview before B's authoritative baseline contained that node. When B deleted it, both requested points and baseline points were empty, so `saveRouteOverrideChange` returned early without issuing DB DELETE. A hid the Broadcast preview, but B retained/restored the DB node and refresh confirmed it still existed. Delete operations now bypass points-equality short-circuiting and always issue an idempotent node DELETE. Focused provider tests, build, and diff validation pass; deployed two-client replay remains required.
+Post-migration delete QA then reproduced the original user-facing symptom through a narrower race. B received A's `node-add` Broadcast preview before B's authoritative baseline contained that node. When B deleted it, both requested points and baseline points were empty, so `saveRouteOverrideChange` returned early without issuing DB DELETE. Commit `5985ce9` makes delete operations bypass points-equality short-circuiting and always issue an idempotent node DELETE. Deployed two-client replay passed immediate convergence to zero and both-client refresh without restoration.
+
+Failure injection then exposed a separate rollback gap: when the deleting client had not yet incorporated the Realtime node into its React baseline, a failed DELETE returned an empty rollback snapshot. Commit `7cb1b40` preserves the authoritative node rows loaded immediately before the mutation and synchronizes the provider's imperative points ref before emitting inverse `node-add`. Chrome blocked four node-table REST attempts for 25 seconds; both clients restored one node, stayed at one after unblocking and refresh, and a following normal delete converged to zero before and after refresh. Focused provider tests passed 36/36, production build passed, and `git diff --check` passed.
+
+The real background soak also passed: B was frozen for 319 seconds while A moved the node, then B recovered to the exact position; B's first drag after recovery synchronized to A with dx=0/dy=0, and the editor label remained one unique user.
 
 ## 1. New-chat startup
 
@@ -152,7 +156,7 @@ Chrome WebSocket diagnostics confirmed that `node-drag-start`, `node-drag-move`,
 
 The user reports that multiplayer node dragging is now substantially more stable.
 
-Do not mark Phase 5.7c complete yet. The latest per-node pending-commit change still requires deployed dual-account testing.
+Do not mark Phase 5.7c complete yet. Add/delete, failed-delete rollback, idle recovery, editor deduplication, endpoint invalidation, and refresh convergence are now verified; itinerary reorder/delete invalidation and repeated alternating same-node dual-account soak remain.
 
 Most important first scenario:
 
@@ -247,7 +251,7 @@ npm.cmd run build
 git diff --check
 ```
 
-Latest verified result after `0517a80`:
+Latest verified result after `7cb1b40`:
 
 ```text
 mapProviderPrep: 36 passed
