@@ -766,9 +766,10 @@ New/updated files:
 - Delete stabilization now releases any unacknowledged local drag final for the same node, clears stale remote previews, lets a remote `node-delete` supersede local-final priority, and fences late drag-save responses so they cannot visually restore an already deleted handle.
 - Authoritative segment invalidation now clears every stale remote node preview and pending local final for a segment that transitions from present to absent. This prevents endpoint-coordinate or itinerary invalidation from deleting the DB override while another client visually reconstructs it from old `node-add` / `node-drag-end` previews.
 - `loadTripData` now compares incoming itinerary endpoint coordinates against the previous authoritative snapshot and removes affected local route overrides before setting the new itinerary rows. This prevents an early route reload from racing the writer's follow-up DELETE and reading the old segment back into a remote client.
-- New pending migration `20260712033758_add_route_tables_to_realtime.sql` sets `REPLICA IDENTITY FULL` and adds both route override tables to `supabase_realtime`. Repeated Chrome replay proved the remote client receives neither the itinerary update nor the route DELETE reliably enough to close endpoint invalidation without the missing publication configuration.
+- Applied migration `20260712033758_add_route_tables_to_realtime.sql` sets `REPLICA IDENTITY FULL` and adds both route override tables to `supabase_realtime`. Remote SQL verification confirms both tables use full replica identity and are publication members. Post-apply Chrome two-client QA passed endpoint-coordinate invalidation without refresh and both-client refresh convergence at zero nodes.
+- Delete persistence no longer skips a remote-preview node when this client's authoritative baseline is still empty. `delete` operations bypass points-array equality short-circuiting and always issue an idempotent node DELETE; this closes the reproduced path where A removed the preview but B's refresh restored the DB node.
 - User dual-account testing after the stabilization series reports multiplayer dragging is substantially more stable; final closeout QA remains pending.
-- Latest pushed code commit: `40342b3 Clear stale previews after route invalidation`.
+- Latest pushed implementation commit: `73fed64 Publish route override tables to Realtime`.
 
 ## Production Migration State
 
@@ -783,6 +784,7 @@ Applied immutable migrations:
 024 / 20260629065754 / timeline_phase_4_7_fixed_anchor_continuation
 20260708063744 / add_itinerary_route_overrides
 20260710125337 / add_itinerary_route_override_nodes
+20260712033758 / add_route_tables_to_realtime
 project: lqvuqamzmchepgxkftcw
 ```
 
@@ -794,7 +796,7 @@ none
 
 Important:
 
-- Never edit applied migrations 019, 020, 021, 022, 023, 024, `20260708063744`, or `20260710125337` in place.
+- Never edit applied migrations 019, 020, 021, 022, 023, 024, `20260708063744`, `20260710125337`, or `20260712033758` in place.
 - Any future schema/RPC/permission correction after Phase 4.7 must use migration 025+.
 - Phase 4.3, 4.4, 4.5, and the Phase 4.5 Hotfix required no migration.
 
@@ -1286,8 +1288,9 @@ Chrome dual-tab diagnostics confirmed node-drag-start/move/end delivery over the
 user dual-account manual QA reports multiplayer node dragging is substantially more stable
 Chrome deployed two-session QA after b4867cd: remote delete synchronized immediately; drag-end then remote delete converged on both clients; deleting the segment's final custom node converged to zero; both-client refresh preserved identical node counts without restoration
 Chrome sustained two-session QA: concurrent adds from three nodes converged to five on both clients; the five-node limit rejected further adds; simultaneous different-node drags converged to identical positions before and after refresh; same-account editor labels stayed deduplicated; simulated background recovery synchronized the first valid drag
-Chrome reproduced an itinerary-priority bug: endpoint coordinate invalidation deleted the authoritative DB override, but stale remote previews kept handles visible until refresh. Commit 40342b3 correctly clears previews once Provider receives an absent authoritative segment. Deployed follow-up 25a7b9e reloaded too early; f221032 moved local invalidation into authoritative itinerary loads, but Chrome proved B did not receive the itinerary update itself. The route tables are absent from the applied Realtime publication, so migration 20260712033758 is now required and awaits explicit production-apply approval
-latest pushed code commit: f221032 Invalidate routes with authoritative itinerary loads
+Chrome reproduced and closed the itinerary-priority bug where endpoint coordinate invalidation deleted the authoritative DB override but stale remote previews kept handles visible until refresh. Commit 40342b3 clears previews after an absent authoritative segment; f221032 removes affected local overrides inside authoritative itinerary loads; applied migration 20260712033758 supplies the missing route-table Realtime events. Post-migration Chrome QA passed 1-to-0 convergence on both clients without refresh and remained 0 after both refreshed
+Post-migration delete QA reproduced a remote-preview baseline race: B saw A's Broadcast node before loading it authoritatively, then B's requested=[] and baseline=[] equality shortcut falsely skipped DB DELETE. The idempotent-delete bypass is implemented and awaiting deployed Chrome replay
+latest pushed implementation commit before delete bypass: 73fed64 Publish route override tables to Realtime
 ```
 
 ## Protected Scope Preserved
@@ -1343,4 +1346,4 @@ Latest Phase 5.7b / 5.7c route edit work did not redesign or extend:
 
 ## Next Step
 
-Continue Phase 5.7c-1 stabilization from `f221032 Invalidate routes with authoritative itinerary loads` plus pending migration `20260712033758_add_route_tables_to_realtime.sql` on `codex/timeline-phase-5-7`. Start by reading `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`. The confirmed delete/pending-final race is fixed and deployed two-session Chrome QA passed remote delete, drag-then-delete, final-node delete, concurrent add to the five-node limit, simultaneous different-node drag, same-account editor deduplication, simulated background recovery, and refresh convergence. Endpoint invalidation correctly deletes the DB override, but repeated deployed replay proved remote clients do not receive the necessary authoritative transition because the two route tables were never added to `supabase_realtime`. Apply the new migration only after explicit production approval, verify remote migration history, then repeat the one-node endpoint-coordinate invalidation without refreshing either client. Continue remaining QA for failure rollback, a real 5-to-10-minute idle/background recovery, and itinerary reorder/delete invalidation. Use `?debugRouteCollab=1` only while diagnosing. If all cases pass, run the focused map/provider tests, build, and `git diff --check`, then write the Phase 5.7c closeout update. If a case fails, record the exact session/node/drag sequence and identify whether the last writer was local drag, remote preview, save response, or authoritative DB data before changing code. Do not restore same-day itinerary locking, a 15-second idle exit, segment-snapshot Broadcast, whole-`points_json` multiplayer writes, Routes/Directions travel-time queries, Google route polylines, or unrelated Timeline/Places/Auth/Budget changes.
+Continue Phase 5.7c-1 stabilization from `73fed64 Publish route override tables to Realtime` on `codex/timeline-phase-5-7`. Start by reading `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`. The confirmed delete/pending-final race is fixed and deployed two-session Chrome QA passed remote delete, drag-then-delete, final-node delete, concurrent add to the five-node limit, simultaneous different-node drag, same-account editor deduplication, simulated background recovery, refresh convergence, and endpoint-coordinate invalidation. Production migration `20260712033758` is applied; both route tables use full replica identity and belong to `supabase_realtime`. Continue remaining QA for failure rollback, a real 5-to-10-minute idle/background recovery, and itinerary reorder/delete invalidation. Use `?debugRouteCollab=1` only while diagnosing. If all cases pass, run the focused map/provider tests, build, and `git diff --check`, then write the Phase 5.7c closeout update. If a case fails, record the exact session/node/drag sequence and identify whether the last writer was local drag, remote preview, save response, or authoritative DB data before changing code. Do not restore same-day itinerary locking, a 15-second idle exit, segment-snapshot Broadcast, whole-`points_json` multiplayer writes, Routes/Directions travel-time queries, Google route polylines, or unrelated Timeline/Places/Auth/Budget changes.

@@ -2,7 +2,7 @@
 
 Date: 2026-07-11  
 Branch: `codex/timeline-phase-5-7`  
-Latest pushed code commit: `40342b3 Clear stale previews after route invalidation`
+Latest pushed implementation commit: `73fed64 Publish route override tables to Realtime`
 Status: stabilization in progress; multiplayer dragging is substantially more stable, but final closeout QA is not complete.
 
 Deletion stabilization after `0517a80`: node deletion now supersedes an unacknowledged drag final for the same node. Local delete clears pending-final ownership and stale remote preview state; remote `node-delete` also releases local-final priority; a late response from the older drag save is fenced from restoring the deleted handle. Commit `b4867cd` is deployed. Chrome two-session QA passed immediate remote delete, drag-end followed by remote delete, deletion of the segment's final custom node, and both-client refresh convergence without node restoration. Focused provider tests, production build, and diff validation also pass.
@@ -11,7 +11,9 @@ Further Chrome two-session QA passed concurrent adds from three to five nodes, f
 
 The deployed replay subsequently created a fresh node through the planning-phase UI and confirmed one more missing link: the remote client retained the handle until refresh because it did not reliably receive an absent authoritative segment after the endpoint's `itinerary_items` update. The route-override table is subscribed in code, but the applied route migrations do not add it to the Realtime publication. Commit `25a7b9e` attempted to reload overrides from the itinerary callback, but deployed replay proved that reload can run before the writer's follow-up DELETE and read the old segment back. Commit `f221032` instead invalidates affected local route overrides inside the same authoritative `loadTripData` call that first receives changed endpoint coordinates, before setting the new itinerary rows; the existing effect still performs the DB cleanup. Focused provider tests, production build, and diff validation pass, but the next replay showed this client-only path was insufficient without the missing Realtime publication configuration.
 
-Repeated deployed replay after `f221032` proved the remote client still held both the old endpoint Map URL and the stale route node before refresh, so the prerequisite itinerary Realtime event itself was not arriving. The applied `20260708063744` and `20260710125337` migrations created the route tables but omitted both `REPLICA IDENTITY FULL` and `supabase_realtime` publication membership. New migration `20260712033758_add_route_tables_to_realtime.sql` corrects that omission idempotently for the segment and node tables. It is locally prepared and covered by focused tests, but production apply and post-apply Chrome replay require explicit approval.
+Repeated deployed replay after `f221032` proved the remote client still held both the old endpoint Map URL and the stale route node before refresh, so the prerequisite authoritative Realtime transition itself was not arriving. The applied `20260708063744` and `20260710125337` migrations created the route tables but omitted both `REPLICA IDENTITY FULL` and `supabase_realtime` publication membership. Migration `20260712033758_add_route_tables_to_realtime.sql` was explicitly approved and applied to production. Remote migration history matches local, and SQL verification confirms both route tables use full replica identity and belong to `supabase_realtime`. Post-apply Chrome two-client replay passed: both clients received one DB-backed node, an endpoint coordinate change reduced both to zero without refresh, and both remained zero after refresh.
+
+Post-migration delete QA then reproduced the original user-facing symptom through a narrower race. B received A's `node-add` Broadcast preview before B's authoritative baseline contained that node. When B deleted it, both requested points and baseline points were empty, so `saveRouteOverrideChange` returned early without issuing DB DELETE. A hid the Broadcast preview, but B retained/restored the DB node and refresh confirmed it still existed. Delete operations now bypass points-equality short-circuiting and always issue an idempotent node DELETE. Focused provider tests, build, and diff validation pass; deployed two-client replay remains required.
 
 ## 1. New-chat startup
 
@@ -105,6 +107,7 @@ Applied remote migrations:
 ```text
 20260708063744_add_itinerary_route_overrides.sql
 20260710125337_add_itinerary_route_override_nodes.sql
+20260712033758_add_route_tables_to_realtime.sql
 ```
 
 The node migration includes RLS, indexes, old-data conversion, and the concurrent five-node limit. Do not edit either applied migration in place.
@@ -127,6 +130,8 @@ e46779b Preserve route node handoff previews
 b4867cd Stabilize collaborative route node deletion
 40342b3 Clear stale previews after route invalidation
 25a7b9e Reload route overrides after itinerary changes (superseded by authoritative-load invalidation)
+f221032 Invalidate routes with authoritative itinerary loads
+73fed64 Publish route override tables to Realtime
 ```
 
 Confirmed failures that were corrected:

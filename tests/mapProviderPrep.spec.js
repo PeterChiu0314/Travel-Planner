@@ -893,6 +893,8 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(routeOverridesSource).toContain("legacy-${normalized.length}-${lat}-${lng}");
   expect(routeOverridesSource).toContain("point?.orderKey ?? point?.order_key");
   expect(appSource).toContain("operation?.type");
+  expect(appSource).toContain('operation?.type !== "delete" && routeOverridePointsEqual(requestedPoints, baselinePoints)');
+  expect(appSource).toContain("must still issue the\n    // idempotent node DELETE");
   expect(appSource).toContain('from("itinerary_route_override_nodes")');
   expect(appSource).toContain("nodeRowsToPoints");
   expect(appSource).not.toContain("latestPoints.map");

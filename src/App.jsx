@@ -5613,7 +5613,11 @@ export default function App() {
     }
 
     const requestedPoints = normalizeRouteOverridePoints(points);
-    if (routeOverridePointsEqual(requestedPoints, baselinePoints)) {
+    // A remote node-add preview can be visible before this client has loaded
+    // that node into its authoritative baseline.  Deleting the preview then
+    // produces requested=[] and baseline=[], but must still issue the
+    // idempotent node DELETE instead of reporting a false local success.
+    if (operation?.type !== "delete" && routeOverridePointsEqual(requestedPoints, baselinePoints)) {
       return { ok: true, points: baselinePoints };
     }
     if (!operation?.type) {
