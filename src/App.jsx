@@ -3241,6 +3241,9 @@ export default function App() {
               setRemoteRouteEditNodeLocks((current) => ({
                 ...current,
                 [lockKey]: {
+                  color: timelineCardSelectionColor(
+                    timelineCardSelectionColorKey(payload.userId || payload.sessionId),
+                  ),
                   dragId: payload.dragId || null,
                   nodeId: payload.nodeId,
                   segmentKey: payload.segmentKey,

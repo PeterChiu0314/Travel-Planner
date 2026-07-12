@@ -184,18 +184,24 @@ function fullRoutePath(routeSegments, customRoutePointsBySegment) {
   }, []);
 }
 
-function routeEditHandleIcon(mapsNamespace) {
+function routeEditHandleIcon(mapsNamespace, remoteUserColor = "") {
   const PointConstructor = mapsNamespace?.Point;
   const SizeConstructor = mapsNamespace?.Size;
+  const safeRemoteColor = /^#[0-9a-f]{6}$/i.test(remoteUserColor) ? remoteUserColor : "";
+  const canvasSize = safeRemoteColor ? 20 : 14;
+  const center = canvasSize / 2;
   const svg = [
-    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">',
-    '<circle cx="7" cy="7" r="5" fill="#2f8f72" stroke="#ffffff" stroke-width="2"/>',
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasSize}" height="${canvasSize}" viewBox="0 0 ${canvasSize} ${canvasSize}">`,
+    safeRemoteColor
+      ? `<defs><filter id="remote-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2.1"/></filter></defs><circle cx="${center}" cy="${center}" r="5" fill="none" stroke="${safeRemoteColor}" stroke-width="3" opacity="0.72" filter="url(#remote-glow)"/>`
+      : "",
+    `<circle cx="${center}" cy="${center}" r="5" fill="#2f8f72" stroke="${safeRemoteColor || "#ffffff"}" stroke-width="2"/>`,
     "</svg>",
   ].join("");
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    anchor: typeof PointConstructor === "function" ? new PointConstructor(7, 7) : undefined,
-    scaledSize: typeof SizeConstructor === "function" ? new SizeConstructor(14, 14) : undefined,
+    anchor: typeof PointConstructor === "function" ? new PointConstructor(center, center) : undefined,
+    scaledSize: typeof SizeConstructor === "function" ? new SizeConstructor(canvasSize, canvasSize) : undefined,
   };
 }
 
@@ -1145,6 +1151,7 @@ export default function GoogleMapProvider(props) {
       const isLockedByRemote = Boolean(nodeLock);
       record.markerState.isLockedByRemote = isLockedByRemote;
       record.marker?.setDraggable?.(isChannelReady && !isLockedByRemote);
+      record.marker?.setIcon?.(routeEditHandleIcon(window.google?.maps, isLockedByRemote ? nodeLock.color : ""));
       record.marker?.setTitle?.(isLockedByRemote ? `${nodeLock.userName} 正在編輯` : "拖曳路線節點，點擊可刪除");
     });
   }, [routeEditCollaboration.isChannelReady, routeEditCollaboration.nodeLocks]);
@@ -1225,7 +1232,7 @@ export default function GoogleMapProvider(props) {
         const marker = new MarkerConstructor({
           clickable: true,
           draggable: !isLockedByRemote && routeEditChannelReadyRef.current,
-          icon: routeEditHandleIcon(mapsNamespace),
+          icon: routeEditHandleIcon(mapsNamespace, isLockedByRemote ? nodeLock.color : ""),
           map: mapRef.current,
           position: point,
           title: isLockedByRemote ? `${nodeLock.userName} 正在編輯` : "拖曳路線節點，點擊可刪除",
