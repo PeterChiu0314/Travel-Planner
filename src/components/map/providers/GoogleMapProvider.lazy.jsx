@@ -1061,7 +1061,9 @@ export default function GoogleMapProvider(props) {
   }, [markersKey, routeOverridePointsBySegment]);
 
   useEffect(() => {
-    const updates = Object.values(routeEditCollaboration.remoteUpdates || {});
+    const updates = Object.values(routeEditCollaboration.remoteUpdates || {}).sort(
+      (left, right) => Number(left?.receiptId || 0) - Number(right?.receiptId || 0),
+    );
     updates.forEach((update) => {
       if (!update?.segmentKey || !update.nodeId) return;
       const receiptKey = `${update.sessionId}:${update.segmentKey}:${update.nodeId}`;

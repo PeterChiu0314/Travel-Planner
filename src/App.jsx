@@ -3261,9 +3261,15 @@ export default function App() {
               return next;
             });
           }
+          // Keep ownership transfer separate from position updates. React may
+          // batch a rapid drag-start/move/end sequence; using one node key can
+          // overwrite drag-start before the provider releases the previous
+          // owner's pending final. Two bounded slots per node preserve that
+          // causal edge without retaining an unbounded event queue.
+          const remoteUpdateSlot = payload.phase === "node-drag-start" ? "ownership" : "position";
           setRemoteRouteEditUpdates((current) => ({
             ...current,
-            [`${payload.segmentKey}:${payload.nodeId}`]: remoteUpdate,
+            [`${payload.segmentKey}:${payload.nodeId}:${remoteUpdateSlot}`]: remoteUpdate,
           }));
         }
       })

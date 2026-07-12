@@ -835,7 +835,8 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(appSource).toContain("setRemoteRouteEditNodeLocks((current) => ({");
   expect(appSource).toContain('["node-drag-start", "node-drag-move"].includes(payload.phase)');
   expect(appSource).toContain('["node-drag-end", "node-delete"].includes(payload.phase)');
-  expect(appSource).toContain("[`${payload.segmentKey}:${payload.nodeId}`]: remoteUpdate");
+  expect(appSource).toContain('const remoteUpdateSlot = payload.phase === "node-drag-start" ? "ownership" : "position"');
+  expect(appSource).toContain("[`${payload.segmentKey}:${payload.nodeId}:${remoteUpdateSlot}`]: remoteUpdate");
   expect(appSource).toContain("const isDragMove = event.phase === \"node-drag-move\"");
   expect(appSource).toContain("if (!isDragMove) {");
   expect(appSource).toContain("if (routeEditLocalStateRef.current.isEditing) {");
@@ -859,6 +860,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(googleProviderSource).toContain("function mergeRemoteRoutePreview(pointsBySegment = {})");
   expect(googleProviderSource).toContain("function mergeLocalRouteDragPreview(pointsBySegment = {})");
   expect(googleProviderSource).toContain("routeEditCollaboration.remoteUpdates || {}");
+  expect(googleProviderSource).toContain("Number(left?.receiptId || 0) - Number(right?.receiptId || 0)");
   expect(googleProviderSource).toContain("routeEditRemoteAppliedReceiptRef");
   expect(googleProviderSource).toContain("const ownsNodePosition = (activeDrag.isDragging &&");
   expect(googleProviderSource).toContain("const routeEditPendingCommitsRef = useRef(new Map())");
