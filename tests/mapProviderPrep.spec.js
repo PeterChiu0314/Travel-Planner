@@ -659,13 +659,15 @@ test("Phase 5.8a uses a compact custom numbered destination marker", () => {
   expect(googleProviderSource).toContain("marker?.markerColor");
   expect(googleProviderSource).toContain("setIcon(");
   expect(markerVisualSource).toContain("DESTINATION_MARKER_TRIANGLE_PATH");
-  expect(markerVisualSource).toContain('M 8 25.2 L 24 25.2 L 16 38 Z');
-  expect(markerVisualSource).toContain("const DESTINATION_MARKER_RADIUS = 13.8");
+  expect(markerVisualSource).toContain('M 4.5 25.2 L 27.5 25.2 L 16 38 Z');
+  expect(markerVisualSource).toContain("const DESTINATION_MARKER_RADIUS = 14");
+  expect(markerVisualSource).toContain("const DESTINATION_MARKER_CENTER_Y = 19");
   expect(markerVisualSource).toContain("fillColor = \"#dcefe8\"");
   expect(markerVisualSource).toContain("stroke=\"${borderColor}\"");
   expect(markerVisualSource).toContain("fill=\"${innerColor}\"");
   expect(markerVisualSource).toContain("font-size=\"${fontSize}\"");
   expect(markerVisualSource).toContain('font-weight=\"900\"');
+  expect(markerVisualSource).toContain('stroke-width=\"0.2\"');
   expect(markerSource).toContain("markerColor: timelineTypeMarkerColor(category)");
   expect(markerSource).toContain("markerFillColor: timelineTypeMarkerFillColor(category)");
   expect(googleProviderSource).not.toContain("focusedMarkerIcon");
