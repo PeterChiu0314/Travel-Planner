@@ -40,11 +40,25 @@ test("Phase 4.9a builds provider-neutral markers for destination items", () => {
       coordinateSource: "stored",
       provider: null,
       providerPlaceId: null,
+      category: "attraction",
+      markerColor: "#2f8f72",
       sequenceNumber: 1,
       dayIndex: 1,
       sortOrder: 20,
     },
   ]);
+});
+
+test("Phase 5.8a maps destination marker colors from the existing Timeline card type", () => {
+  const markers = buildDayMapMarkers([
+    { id: "attraction", item_type: "visit", type: "attraction", location_name: "A", map_url: "https://maps.example/a" },
+    { id: "hotel", item_type: "visit", type: "hotel", location_name: "B", map_url: "https://maps.example/b" },
+    { id: "transport-place", item_type: "visit", type: "transport", location_name: "C", map_url: "https://maps.example/c" },
+    { id: "unknown", item_type: "visit", type: "unknown", location_name: "D", map_url: "https://maps.example/d" },
+  ]);
+
+  expect(markers.map((marker) => marker.category)).toEqual(["attraction", "hotel", "transport", "attraction"]);
+  expect(markers.map((marker) => marker.markerColor)).toEqual(["#2f8f72", "#7865a8", "#5f8fb8", "#2f8f72"]);
 });
 
 test("Phase 4.9a excludes transportation cards and keeps marker order", () => {

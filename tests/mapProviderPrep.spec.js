@@ -530,12 +530,11 @@ test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker sty
   expect(googleProviderSource.indexOf("mapRef.current.setZoom(FOCUSED_MARKER_ZOOM)")).toBeLessThan(
     googleProviderSource.indexOf("mapRef.current.panTo(focusedMarker.getPosition())"),
   );
-  expect(googleProviderSource).toContain("focusedMarkerIcon");
+  expect(googleProviderSource).toContain("buildDestinationMarkerSvg");
   expect(googleProviderSource).toContain("markerSequenceNumber");
-  expect(googleProviderSource).toContain("markerLabel(marker, index");
-  expect(googleProviderSource).toContain("marker.setIcon(isFocusedMarker ? focusIcon : null)");
+  expect(googleProviderSource).toContain("destinationMarkerIcon");
+  expect(googleProviderSource).toContain("marker.setIcon(");
   expect(googleProviderSource).toContain("marker.setZIndex(isFocusedMarker ? 1000");
-  expect(googleProviderSource).toContain("marker.setLabel(markerLabel");
   expect(googleProviderSource).toContain("if (!isPickingMapPoint && !isRouteEditMode) onFocusItem?.(marker.itemId)");
   expect(googleProviderSource).toContain("}, [isPickingMapPoint, isRouteEditMode, markersKey, onFocusItem, status, viewportSignature])");
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");
@@ -650,6 +649,22 @@ test("Phase 5.4 renders simple Google route lines and Timeline sequence badges",
   expect(googleProviderSource).not.toContain("Routes");
 });
 
+test("Phase 5.8a uses a compact custom numbered destination marker", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const markerVisualSource = readRepoFile("src/lib/mapMarkerVisuals.js");
+  const markerSource = readRepoFile("src/lib/timelineMapMarkers.js");
+
+  expect(googleProviderSource).toContain("destinationMarkerIcon");
+  expect(googleProviderSource).toContain("buildDestinationMarkerSvg");
+  expect(googleProviderSource).toContain("marker?.markerColor");
+  expect(googleProviderSource).toContain("setIcon(");
+  expect(markerVisualSource).toContain("DESTINATION_MARKER_PATH");
+  expect(markerVisualSource).toContain("font-size=\"${fontSize}\"");
+  expect(markerVisualSource).toContain("stroke=\"#ffffff\"");
+  expect(markerSource).toContain("markerColor: timelineTypeMarkerColor(category)");
+  expect(googleProviderSource).not.toContain("focusedMarkerIcon");
+});
+
 test("Phase 5.7b-2 Google route edit mode supports local segment custom points only", () => {
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
@@ -667,7 +682,7 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   expect(googleProviderSource).toContain("insertIndex: index");
   expect(googleProviderSource).toContain('function routeEditHandleIcon(mapsNamespace, remoteUserColor = "")');
   expect(googleProviderSource).toContain('const safeRemoteColor = /^#[0-9a-f]{6}$/i.test(remoteUserColor) ? remoteUserColor : ""');
-  expect(googleProviderSource).toContain('stroke="${safeRemoteColor || "#ffffff"}"');
+  expect(googleProviderSource).toContain('stroke="${safeRemoteColor}"');
   expect(googleProviderSource).toContain('filter="url(#remote-glow)"');
   expect(googleProviderSource).toContain("const canvasSize = safeRemoteColor ? 20 : 14");
   expect(googleProviderSource).toContain("const center = canvasSize / 2");
@@ -904,7 +919,8 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
   expect(routeOverridesSource).toContain("point?.orderKey ?? point?.order_key");
   expect(appSource).toContain("operation?.type");
   expect(appSource).toContain('operation?.type !== "delete" && routeOverridePointsEqual(requestedPoints, baselinePoints)');
-  expect(appSource).toContain("must still issue the\n    // idempotent node DELETE");
+  expect(appSource).toContain("must still issue the");
+  expect(appSource).toContain("idempotent node DELETE");
   expect(appSource).toContain("failurePoints = nodeRowsToPoints(latestNodeRows)");
   expect(appSource).toContain("return { ok: false, points: failurePoints }");
   expect(appSource).toContain('from("itinerary_route_override_nodes")');

@@ -8,8 +8,16 @@ import {
 } from "../../../lib/googlePlacesAdapter.js";
 import { PLACE_DETAILS_FIELD_MASK_MINIMAL } from "../../../lib/googlePlacesConfig.js";
 import { loadGoogleMapsApi } from "../../../lib/googleMapsLoader.js";
+import {
+  DESTINATION_MARKER_ANCHOR_X,
+  DESTINATION_MARKER_ANCHOR_Y,
+  DESTINATION_MARKER_HEIGHT,
+  DESTINATION_MARKER_WIDTH,
+  buildDestinationMarkerSvg,
+} from "../../../lib/mapMarkerVisuals.js";
 import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
 import { MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT } from "../../../lib/routeOverrides.js";
+import { timelineTypeMarkerColor } from "../../../lib/timelineTypeStyles.js";
 import StaticMapProvider from "./StaticMapProvider.jsx";
 
 const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
@@ -27,25 +35,8 @@ const PENDING_POI_HINT_GAP = 43;
 const ROUTE_EDIT_ACTIVE_TOP_INSET_PX = 6;
 const ROUTE_EDIT_HIT_STROKE_WEIGHT = 22;
 const ROUTE_EDIT_SUPPRESS_LINE_CLICK_MS = 250;
-const DEFAULT_MARKER_LABEL_COLOR = "#1f2937";
-const FOCUSED_MARKER_LABEL_COLOR = "#ffffff";
-
 function googleMapsPointUrl(latitude, longitude) {
   return `https://www.google.com/maps?q=${latitude},${longitude}`;
-}
-
-function focusedMarkerIcon(mapsNamespace) {
-  const symbolPath = mapsNamespace?.SymbolPath?.CIRCLE;
-  if (!symbolPath) return null;
-  return {
-    path: symbolPath,
-    fillColor: "#2f8f72",
-    fillOpacity: 1,
-    scale: 12,
-    strokeColor: "#ffffff",
-    strokeOpacity: 1,
-    strokeWeight: 4,
-  };
 }
 
 function markerSequenceNumber(marker, fallbackIndex) {
@@ -53,11 +44,33 @@ function markerSequenceNumber(marker, fallbackIndex) {
   return Number.isFinite(sequenceNumber) && sequenceNumber > 0 ? sequenceNumber : fallbackIndex + 1;
 }
 
-function markerLabel(marker, fallbackIndex, isFocusedMarker = false) {
+function destinationMarkerIcon(
+  mapsNamespace,
+  marker,
+  fallbackIndex,
+  isFocusedMarker = false,
+  isDimmed = false,
+  isHovered = false,
+) {
+  const PointConstructor = mapsNamespace?.Point;
+  const SizeConstructor = mapsNamespace?.Size;
+  const svg = buildDestinationMarkerSvg({
+    order: markerSequenceNumber(marker, fallbackIndex),
+    color: marker?.markerColor || timelineTypeMarkerColor(marker?.category),
+    focused: isFocusedMarker,
+    dimmed: isDimmed,
+    hovered: isHovered,
+  });
   return {
-    text: String(markerSequenceNumber(marker, fallbackIndex)),
-    color: isFocusedMarker ? FOCUSED_MARKER_LABEL_COLOR : DEFAULT_MARKER_LABEL_COLOR,
-    fontWeight: "800",
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    anchor:
+      typeof PointConstructor === "function"
+        ? new PointConstructor(DESTINATION_MARKER_ANCHOR_X, DESTINATION_MARKER_ANCHOR_Y)
+        : undefined,
+    scaledSize:
+      typeof SizeConstructor === "function"
+        ? new SizeConstructor(DESTINATION_MARKER_WIDTH, DESTINATION_MARKER_HEIGHT)
+        : undefined,
   };
 }
 
@@ -136,7 +149,10 @@ function readBoundsLocationBias(bounds) {
 
 function coordinateKey(markers) {
   return markers
-    .map((marker) => `${marker.id}:${marker.latitude}:${marker.longitude}:${marker.title || marker.locationName || ""}`)
+    .map(
+      (marker) =>
+        `${marker.id}:${marker.latitude}:${marker.longitude}:${marker.title || marker.locationName || ""}:${marker.category || ""}:${marker.sequenceNumber || ""}`,
+    )
     .join("|");
 }
 
@@ -250,6 +266,7 @@ export default function GoogleMapProvider(props) {
   const placesSessionManagerRef = useRef(createPlacesAutocompleteSessionManager(() => placesLibraryRef.current));
   const placeDetailsCacheRef = useRef(new Map());
   const markerInstancesRef = useRef(new Map());
+  const markerHoverStateRef = useRef(new Map());
   const placesPreviewMarkerRef = useRef(null);
   const placesPreviewOverlayRef = useRef(null);
   const pendingPoiMarkerRef = useRef(null);
@@ -923,6 +940,7 @@ export default function GoogleMapProvider(props) {
 
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
+      markerHoverStateRef.current.clear();
 
       if (!coordinateMarkers.length) {
         if (!userChangedViewportRef.current) {
@@ -936,6 +954,7 @@ export default function GoogleMapProvider(props) {
         return () => {
           markerInstancesRef.current.forEach((marker) => marker.setMap(null));
           markerInstancesRef.current = new Map();
+          markerHoverStateRef.current.clear();
         };
       }
 
@@ -943,15 +962,27 @@ export default function GoogleMapProvider(props) {
       coordinateMarkers.forEach((marker, index) => {
         const position = { lat: marker.latitude, lng: marker.longitude };
         const googleMarker = new MarkerConstructor({
+          icon: destinationMarkerIcon(mapsNamespace, marker, index, false, isRouteEditMode),
           map: mapRef.current,
           position,
           title: marker.title || marker.locationName || "",
-          label: markerLabel(marker, index),
           zIndex: index + 1,
         });
 
         googleMarker.addListener("click", () => {
           if (!isPickingMapPoint && !isRouteEditMode) onFocusItem?.(marker.itemId);
+        });
+        const hoverState = { hovered: false };
+        markerHoverStateRef.current.set(marker.id, hoverState);
+        googleMarker.addListener("mouseover", () => {
+          if (isPickingMapPoint || isRouteEditMode || hoverState.hovered) return;
+          hoverState.hovered = true;
+          googleMarker.setIcon(destinationMarkerIcon(mapsNamespace, marker, index, false, false, true));
+        });
+        googleMarker.addListener("mouseout", () => {
+          if (!hoverState.hovered) return;
+          hoverState.hovered = false;
+          googleMarker.setIcon(destinationMarkerIcon(mapsNamespace, marker, index, false, false, false));
         });
         markerInstancesRef.current.set(marker.id, googleMarker);
         bounds.extend(position);
@@ -982,6 +1013,7 @@ export default function GoogleMapProvider(props) {
     return () => {
       markerInstancesRef.current.forEach((marker) => marker.setMap(null));
       markerInstancesRef.current = new Map();
+      markerHoverStateRef.current.clear();
     };
   }, [isPickingMapPoint, isRouteEditMode, markersKey, onFocusItem, status, viewportSignature]);
 
@@ -1480,15 +1512,23 @@ export default function GoogleMapProvider(props) {
     if (isRouteEditMode) return;
 
     const mapsNamespace = window.google?.maps;
-    const focusIcon = focusedMarkerIcon(mapsNamespace);
 
     markerInstancesRef.current.forEach((marker, markerId) => {
       const markerIndex = coordinateMarkers.findIndex((candidate) => candidate.id === markerId);
       const markerRecord = markerIndex >= 0 ? coordinateMarkers[markerIndex] : null;
       const isFocusedMarker = focusedMapState.focusedMarkerId === markerId;
+      const hoverState = markerHoverStateRef.current.get(markerId);
       marker.setZIndex(isFocusedMarker ? 1000 : Math.max(markerIndex + 1, 1));
-      marker.setIcon(isFocusedMarker ? focusIcon : null);
-      marker.setLabel(markerLabel(markerRecord, markerIndex >= 0 ? markerIndex : 0, isFocusedMarker));
+      marker.setIcon(
+        destinationMarkerIcon(
+          mapsNamespace,
+          markerRecord,
+          markerIndex >= 0 ? markerIndex : 0,
+          isFocusedMarker,
+          false,
+          Boolean(hoverState?.hovered),
+        ),
+      );
     });
 
     const focusedMarker = focusedMapState.focusedMarkerId

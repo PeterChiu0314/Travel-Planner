@@ -3761,7 +3761,8 @@ textarea {
 }
 
 .static-map-marker.focused .route-dot {
-  background: var(--coral);
+  background: var(--route-marker-color, var(--sky));
+  box-shadow: 0 0 0 3px rgba(47, 143, 114, 0.22), 0 2px 8px rgba(29, 45, 57, 0.16);
 }
 
 .static-map-marker-label {
@@ -4144,7 +4145,8 @@ textarea {
 }
 
 .route-stop.focused .route-dot {
-  background: var(--coral);
+  background: var(--route-marker-color, var(--sky));
+  box-shadow: 0 0 0 3px rgba(47, 143, 114, 0.22);
 }
 
 .route-stop.focused .route-name {
@@ -4174,7 +4176,7 @@ textarea {
   height: 34px;
   place-items: center;
   border-radius: 50%;
-  background: var(--sky);
+  background: var(--route-marker-color, var(--sky));
   color: #fff;
   font-size: 12px;
   font-weight: 900;

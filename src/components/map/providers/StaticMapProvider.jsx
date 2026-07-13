@@ -57,7 +57,7 @@ export default function StaticMapProvider({
             <button
               className={`static-map-marker${markerStateClass(marker)}`}
               key={marker.id}
-              style={markerPosition(marker, bounds)}
+              style={{ ...markerPosition(marker, bounds), "--route-marker-color": marker.markerColor || undefined }}
               type="button"
               onClick={() => onFocusItem?.(marker.itemId)}
             >
@@ -74,6 +74,7 @@ export default function StaticMapProvider({
             <button
               className={`route-stop${markerStateClass(marker)}`}
               key={marker.id}
+              style={{ "--route-marker-color": marker.markerColor || undefined }}
               type="button"
               onClick={() => onFocusItem?.(marker.itemId)}
             >
