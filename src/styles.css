@@ -4194,7 +4194,7 @@ textarea {
   z-index: 0;
   bottom: -8px;
   left: 50%;
-  width: 14px;
+  width: 16px;
   height: 10px;
   background: var(--route-marker-color, var(--sky));
   clip-path: polygon(0 0, 100% 0, 50% 100%);

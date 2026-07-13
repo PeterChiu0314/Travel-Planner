@@ -6,7 +6,7 @@ export const DESTINATION_MARKER_ANCHOR_Y = 40;
 const DESTINATION_MARKER_CENTER_X = 16;
 const DESTINATION_MARKER_CENTER_Y = 16;
 const DESTINATION_MARKER_RADIUS = 13.8;
-const DESTINATION_MARKER_TRIANGLE_PATH = "M 9.5 25.2 L 22.5 25.2 L 16 38 Z";
+const DESTINATION_MARKER_TRIANGLE_PATH = "M 8 25.2 L 24 25.2 L 16 38 Z";
 
 function safeHexColor(color, fallback = "#2f8f72") {
   return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? color : fallback;

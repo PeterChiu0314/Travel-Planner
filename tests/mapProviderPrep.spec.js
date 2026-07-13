@@ -659,7 +659,7 @@ test("Phase 5.8a uses a compact custom numbered destination marker", () => {
   expect(googleProviderSource).toContain("marker?.markerColor");
   expect(googleProviderSource).toContain("setIcon(");
   expect(markerVisualSource).toContain("DESTINATION_MARKER_TRIANGLE_PATH");
-  expect(markerVisualSource).toContain('M 9.5 25.2 L 22.5 25.2 L 16 38 Z');
+  expect(markerVisualSource).toContain('M 8 25.2 L 24 25.2 L 16 38 Z');
   expect(markerVisualSource).toContain("const DESTINATION_MARKER_RADIUS = 13.8");
   expect(markerVisualSource).toContain("fillColor = \"#dcefe8\"");
   expect(markerVisualSource).toContain("stroke=\"${borderColor}\"");
