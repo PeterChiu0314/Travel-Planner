@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import { buildDayMapMarkers } from "../src/lib/timelineMapMarkers.js";
+import { buildDestinationMarkerSvg } from "../src/lib/mapMarkerVisuals.js";
 import { timelineTypeMarkerTextColor } from "../src/lib/timelineTypeStyles.js";
 
 const repoRoot = process.cwd();
@@ -72,6 +73,21 @@ test("Phase 5.8a deepens only marker number colors by category", () => {
     "#3d5c77",
     "#774e10",
   ]);
+});
+
+test("Phase 5.8a focused marker uses the category color with white focus styling", () => {
+  const svg = buildDestinationMarkerSvg({
+    color: "#d85f49",
+    fillColor: "#f9dfd8",
+    textColor: "#974333",
+    focused: true,
+  });
+
+  expect(svg).toContain('stroke="#ffffff" stroke-width="2.4" stroke-opacity="0.24"');
+  expect(svg).toContain('fill="#d85f49" stroke="#ffffff" stroke-width="2.6"');
+  expect(svg).toContain('fill="#ffffff" stroke="#ffffff" stroke-width="0.2"');
+  expect(svg).not.toContain('fill="#f9dfd8"');
+  expect(svg).not.toContain('fill="#974333"');
 });
 
 test("Phase 4.9a excludes transportation cards and keeps marker order", () => {

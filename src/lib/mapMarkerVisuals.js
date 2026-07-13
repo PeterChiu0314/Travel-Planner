@@ -30,14 +30,17 @@ export function buildDestinationMarkerSvg({
   const borderColor = safeHexColor(color);
   const innerColor = safeHexColor(fillColor, "#dcefe8");
   const markerTextColor = safeHexColor(textColor, borderColor);
+  const focusedInnerColor = focused ? borderColor : innerColor;
+  const markerStrokeColor = focused ? "#ffffff" : borderColor;
+  const focusedTextColor = focused ? "#ffffff" : markerTextColor;
   const opacity = dimmed ? 0.72 : 1;
   const fontSize = label.length > 1 ? 11.5 : 13.5;
   const shadowOpacity = focused ? 0.34 : hovered ? 0.3 : 0.24;
   const hoverRing = hovered && !focused
     ? `<circle cx="${DESTINATION_MARKER_CENTER_X}" cy="${DESTINATION_MARKER_CENTER_Y}" r="${DESTINATION_MARKER_RADIUS + 1.4}" fill="none" stroke="${borderColor}" stroke-width="2.8" stroke-opacity="0.36"/>`
     : "";
-  const focusRing = focused
-    ? `<circle cx="${DESTINATION_MARKER_CENTER_X}" cy="${DESTINATION_MARKER_CENTER_Y}" r="${DESTINATION_MARKER_RADIUS + 2.2}" fill="none" stroke="#2f8f72" stroke-width="3.2" stroke-opacity="0.42"/>`
+  const focusHalo = focused
+    ? `<circle cx="${DESTINATION_MARKER_CENTER_X}" cy="${DESTINATION_MARKER_CENTER_Y}" r="${DESTINATION_MARKER_RADIUS + 2.2}" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-opacity="0.24"/>`
     : "";
 
   return [
@@ -45,10 +48,10 @@ export function buildDestinationMarkerSvg({
     `<defs><filter id="marker-shadow" x="-35%" y="-25%" width="170%" height="170%"><feDropShadow dx="0" dy="2" stdDeviation="1.6" flood-color="#1f2723" flood-opacity="${shadowOpacity}"/></filter></defs>`,
     `<g opacity="${opacity}" filter="url(#marker-shadow)">`,
     hoverRing,
-    focusRing,
+    focusHalo,
     `<path d="${DESTINATION_MARKER_TRIANGLE_PATH}" fill="${borderColor}"/>`,
-    `<circle cx="${DESTINATION_MARKER_CENTER_X}" cy="${DESTINATION_MARKER_CENTER_Y}" r="${DESTINATION_MARKER_RADIUS}" fill="${innerColor}" stroke="${borderColor}" stroke-width="2.6"/>`,
-    `<text x="${DESTINATION_MARKER_CENTER_X}" y="${DESTINATION_MARKER_CENTER_Y + 0.5}" fill="${markerTextColor}" stroke="${markerTextColor}" stroke-width="0.2" paint-order="stroke" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="${fontSize}" font-weight="900" text-anchor="middle" dominant-baseline="central">${label}</text>`,
+    `<circle cx="${DESTINATION_MARKER_CENTER_X}" cy="${DESTINATION_MARKER_CENTER_Y}" r="${DESTINATION_MARKER_RADIUS}" fill="${focusedInnerColor}" stroke="${markerStrokeColor}" stroke-width="2.6"/>`,
+    `<text x="${DESTINATION_MARKER_CENTER_X}" y="${DESTINATION_MARKER_CENTER_Y + 0.5}" fill="${focusedTextColor}" stroke="${focusedTextColor}" stroke-width="0.2" paint-order="stroke" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="${fontSize}" font-weight="900" text-anchor="middle" dominant-baseline="central">${label}</text>`,
     "</g>",
     "</svg>",
   ].join("");
