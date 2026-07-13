@@ -21,6 +21,7 @@ export function buildDestinationMarkerSvg({
   order = 1,
   color = "#2f8f72",
   fillColor = "#dcefe8",
+  textColor = "#1a4e3e",
   focused = false,
   dimmed = false,
   hovered = false,
@@ -28,6 +29,7 @@ export function buildDestinationMarkerSvg({
   const label = markerOrderLabel(order);
   const borderColor = safeHexColor(color);
   const innerColor = safeHexColor(fillColor, "#dcefe8");
+  const markerTextColor = safeHexColor(textColor, borderColor);
   const opacity = dimmed ? 0.72 : 1;
   const fontSize = label.length > 1 ? 11.5 : 13.5;
   const shadowOpacity = focused ? 0.34 : hovered ? 0.3 : 0.24;
@@ -46,7 +48,7 @@ export function buildDestinationMarkerSvg({
     focusRing,
     `<path d="${DESTINATION_MARKER_TRIANGLE_PATH}" fill="${borderColor}"/>`,
     `<circle cx="${DESTINATION_MARKER_CENTER_X}" cy="${DESTINATION_MARKER_CENTER_Y}" r="${DESTINATION_MARKER_RADIUS}" fill="${innerColor}" stroke="${borderColor}" stroke-width="2.6"/>`,
-    `<text x="${DESTINATION_MARKER_CENTER_X}" y="${DESTINATION_MARKER_CENTER_Y + 0.5}" fill="${borderColor}" stroke="${borderColor}" stroke-width="0.2" paint-order="stroke" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="${fontSize}" font-weight="900" text-anchor="middle" dominant-baseline="central">${label}</text>`,
+    `<text x="${DESTINATION_MARKER_CENTER_X}" y="${DESTINATION_MARKER_CENTER_Y + 0.5}" fill="${markerTextColor}" stroke="${markerTextColor}" stroke-width="0.2" paint-order="stroke" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="${fontSize}" font-weight="900" text-anchor="middle" dominant-baseline="central">${label}</text>`,
     "</g>",
     "</svg>",
   ].join("");

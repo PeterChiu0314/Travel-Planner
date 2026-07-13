@@ -21,6 +21,16 @@ export const timelineTypeMarkerFillColors = Object.freeze({
   note: "#faeac6",
 });
 
+// Marker number colors only: deepen each marker color by the same K increase
+// represented by the approved food color change from #d85f49 to #974333.
+export const timelineTypeMarkerTextColors = Object.freeze({
+  attraction: "#1a4e3e",
+  food: "#974333",
+  hotel: "#4a3e67",
+  transport: "#3d5c77",
+  note: "#774e10",
+});
+
 export function timelineTypeKey(type) {
   const key = String(type || "").trim().toLowerCase();
   return Object.prototype.hasOwnProperty.call(timelineTypeColors, key) ? key : "attraction";
@@ -36,4 +46,8 @@ export function timelineTypeMarkerColor(type) {
 
 export function timelineTypeMarkerFillColor(type) {
   return timelineTypeMarkerFillColors[timelineTypeKey(type)];
+}
+
+export function timelineTypeMarkerTextColor(type) {
+  return timelineTypeMarkerTextColors[timelineTypeKey(type)];
 }

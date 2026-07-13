@@ -20,6 +20,7 @@ import { MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT } from "../../../lib/routeOverrides
 import {
   timelineTypeMarkerColor,
   timelineTypeMarkerFillColor,
+  timelineTypeMarkerTextColor,
 } from "../../../lib/timelineTypeStyles.js";
 import StaticMapProvider from "./StaticMapProvider.jsx";
 
@@ -61,6 +62,7 @@ function destinationMarkerIcon(
     order: markerSequenceNumber(marker, fallbackIndex),
     color: marker?.markerColor || timelineTypeMarkerColor(marker?.category),
     fillColor: marker?.markerFillColor || timelineTypeMarkerFillColor(marker?.category),
+    textColor: marker?.markerTextColor || timelineTypeMarkerTextColor(marker?.category),
     focused: isFocusedMarker,
     dimmed: isDimmed,
     hovered: isHovered,

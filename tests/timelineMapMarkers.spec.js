@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import { buildDayMapMarkers } from "../src/lib/timelineMapMarkers.js";
+import { timelineTypeMarkerTextColor } from "../src/lib/timelineTypeStyles.js";
 
 const repoRoot = process.cwd();
 
@@ -61,6 +62,16 @@ test("Phase 5.8a maps destination marker colors from the existing Timeline card 
   expect(markers.map((marker) => marker.category)).toEqual(["attraction", "hotel", "transport", "attraction"]);
   expect(markers.map((marker) => marker.markerColor)).toEqual(["#2f8f72", "#7865a8", "#5f8fb8", "#2f8f72"]);
   expect(markers.map((marker) => marker.markerFillColor)).toEqual(["#dcefe8", "#e8e1f2", "#e0edf6", "#dcefe8"]);
+});
+
+test("Phase 5.8a deepens only marker number colors by category", () => {
+  expect(["attraction", "food", "hotel", "transport", "note"].map(timelineTypeMarkerTextColor)).toEqual([
+    "#1a4e3e",
+    "#974333",
+    "#4a3e67",
+    "#3d5c77",
+    "#774e10",
+  ]);
 });
 
 test("Phase 4.9a excludes transportation cards and keeps marker order", () => {
