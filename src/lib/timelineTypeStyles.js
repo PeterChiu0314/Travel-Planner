@@ -13,6 +13,14 @@ export const timelineTypeMarkerColors = Object.freeze({
   note: "#b87918",
 });
 
+export const timelineTypeMarkerFillColors = Object.freeze({
+  attraction: "#dcefe8",
+  food: "#f9dfd8",
+  hotel: "#e8e1f2",
+  transport: "#e0edf6",
+  note: "#faeac6",
+});
+
 export function timelineTypeKey(type) {
   const key = String(type || "").trim().toLowerCase();
   return Object.prototype.hasOwnProperty.call(timelineTypeColors, key) ? key : "attraction";
@@ -24,4 +32,8 @@ export function timelineTypeColor(type) {
 
 export function timelineTypeMarkerColor(type) {
   return timelineTypeMarkerColors[timelineTypeKey(type)];
+}
+
+export function timelineTypeMarkerFillColor(type) {
+  return timelineTypeMarkerFillColors[timelineTypeKey(type)];
 }

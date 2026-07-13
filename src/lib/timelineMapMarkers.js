@@ -1,5 +1,9 @@
 import { finiteNumber, hasValidMapPoint } from "./mapPoint.js";
-import { timelineTypeKey, timelineTypeMarkerColor } from "./timelineTypeStyles.js";
+import {
+  timelineTypeKey,
+  timelineTypeMarkerColor,
+  timelineTypeMarkerFillColor,
+} from "./timelineTypeStyles.js";
 import { isTransportationCard } from "./timelineTransportationRoles.js";
 
 function nullableText(value) {
@@ -65,6 +69,7 @@ export function buildDayMapMarkers(dayItems = [], options = {}) {
       providerPlaceId: providerPlaceIdFromItem(item),
       category,
       markerColor: timelineTypeMarkerColor(category),
+      markerFillColor: timelineTypeMarkerFillColor(category),
       sequenceNumber: destinationSequence,
       dayIndex: finiteNumber(item.day_index),
       sortOrder: finiteNumber(item.sort_order),

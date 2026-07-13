@@ -17,7 +17,10 @@ import {
 } from "../../../lib/mapMarkerVisuals.js";
 import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
 import { MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT } from "../../../lib/routeOverrides.js";
-import { timelineTypeMarkerColor } from "../../../lib/timelineTypeStyles.js";
+import {
+  timelineTypeMarkerColor,
+  timelineTypeMarkerFillColor,
+} from "../../../lib/timelineTypeStyles.js";
 import StaticMapProvider from "./StaticMapProvider.jsx";
 
 const DEFAULT_CENTER = { lat: 35.0116, lng: 135.7681 };
@@ -57,6 +60,7 @@ function destinationMarkerIcon(
   const svg = buildDestinationMarkerSvg({
     order: markerSequenceNumber(marker, fallbackIndex),
     color: marker?.markerColor || timelineTypeMarkerColor(marker?.category),
+    fillColor: marker?.markerFillColor || timelineTypeMarkerFillColor(marker?.category),
     focused: isFocusedMarker,
     dimmed: isDimmed,
     hovered: isHovered,

@@ -42,6 +42,7 @@ test("Phase 4.9a builds provider-neutral markers for destination items", () => {
       providerPlaceId: null,
       category: "attraction",
       markerColor: "#2f8f72",
+      markerFillColor: "#dcefe8",
       sequenceNumber: 1,
       dayIndex: 1,
       sortOrder: 20,
@@ -59,6 +60,7 @@ test("Phase 5.8a maps destination marker colors from the existing Timeline card 
 
   expect(markers.map((marker) => marker.category)).toEqual(["attraction", "hotel", "transport", "attraction"]);
   expect(markers.map((marker) => marker.markerColor)).toEqual(["#2f8f72", "#7865a8", "#5f8fb8", "#2f8f72"]);
+  expect(markers.map((marker) => marker.markerFillColor)).toEqual(["#dcefe8", "#e8e1f2", "#e0edf6", "#dcefe8"]);
 });
 
 test("Phase 4.9a excludes transportation cards and keeps marker order", () => {

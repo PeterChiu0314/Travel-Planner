@@ -3761,7 +3761,8 @@ textarea {
 }
 
 .static-map-marker.focused .route-dot {
-  background: var(--route-marker-color, var(--sky));
+  background: var(--route-marker-fill-color, #e6f0ec);
+  border-color: var(--route-marker-color, var(--sky));
   box-shadow: 0 0 0 3px rgba(47, 143, 114, 0.22), 0 2px 8px rgba(29, 45, 57, 0.16);
 }
 
@@ -4145,7 +4146,8 @@ textarea {
 }
 
 .route-stop.focused .route-dot {
-  background: var(--route-marker-color, var(--sky));
+  background: var(--route-marker-fill-color, #e6f0ec);
+  border-color: var(--route-marker-color, var(--sky));
   box-shadow: 0 0 0 3px rgba(47, 143, 114, 0.22);
 }
 
@@ -4158,11 +4160,13 @@ textarea {
 }
 
 .route-stop-transport-from .route-dot {
-  background: var(--mint-dark);
+  background: var(--route-marker-fill-color, #e6f0ec);
+  border-color: var(--route-marker-color, var(--mint-dark));
 }
 
 .route-stop-transport-to .route-dot {
-  background: var(--coral);
+  background: var(--route-marker-fill-color, #f9dfd8);
+  border-color: var(--route-marker-color, var(--coral));
 }
 
 .route-stop-transport-endpoint .route-name {
@@ -4170,16 +4174,31 @@ textarea {
 }
 
 .route-dot {
+  position: relative;
   display: grid;
   z-index: 1;
   width: 34px;
   height: 34px;
   place-items: center;
   border-radius: 50%;
-  background: var(--route-marker-color, var(--sky));
-  color: #fff;
+  border: 3px solid var(--route-marker-color, var(--sky));
+  background: var(--route-marker-fill-color, #e6f0ec);
+  color: var(--route-marker-color, var(--mint-dark));
   font-size: 12px;
   font-weight: 900;
+}
+
+.route-dot::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  bottom: -8px;
+  left: 50%;
+  width: 12px;
+  height: 10px;
+  background: var(--route-marker-color, var(--sky));
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform: translateX(-50%);
 }
 
 .route-name {
