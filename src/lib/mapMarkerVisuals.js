@@ -5,8 +5,8 @@ export const DESTINATION_MARKER_ANCHOR_Y = 40;
 
 const DESTINATION_MARKER_CENTER_X = 16;
 const DESTINATION_MARKER_CENTER_Y = 16;
-const DESTINATION_MARKER_RADIUS = 14.5;
-const DESTINATION_MARKER_TRIANGLE_PATH = "M 10.5 25.2 L 21.5 25.2 L 16 38 Z";
+const DESTINATION_MARKER_RADIUS = 13.8;
+const DESTINATION_MARKER_TRIANGLE_PATH = "M 9.5 25.2 L 22.5 25.2 L 16 38 Z";
 
 function safeHexColor(color, fallback = "#2f8f72") {
   return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? color : fallback;
@@ -46,7 +46,7 @@ export function buildDestinationMarkerSvg({
     focusRing,
     `<path d="${DESTINATION_MARKER_TRIANGLE_PATH}" fill="${borderColor}"/>`,
     `<circle cx="${DESTINATION_MARKER_CENTER_X}" cy="${DESTINATION_MARKER_CENTER_Y}" r="${DESTINATION_MARKER_RADIUS}" fill="${innerColor}" stroke="${borderColor}" stroke-width="2.6"/>`,
-    `<text x="${DESTINATION_MARKER_CENTER_X}" y="16.5" fill="${borderColor}" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="${fontSize}" font-weight="800" text-anchor="middle" dominant-baseline="central">${label}</text>`,
+    `<text x="${DESTINATION_MARKER_CENTER_X}" y="16.5" fill="${borderColor}" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="${fontSize}" font-weight="900" text-anchor="middle" dominant-baseline="central">${label}</text>`,
     "</g>",
     "</svg>",
   ].join("");

@@ -4181,7 +4181,7 @@ textarea {
   height: 34px;
   place-items: center;
   border-radius: 50%;
-  border: 3px solid var(--route-marker-color, var(--sky));
+  border: 3.5px solid var(--route-marker-color, var(--sky));
   background: var(--route-marker-fill-color, #e6f0ec);
   color: var(--route-marker-color, var(--mint-dark));
   font-size: 12px;
@@ -4194,7 +4194,7 @@ textarea {
   z-index: 0;
   bottom: -8px;
   left: 50%;
-  width: 12px;
+  width: 14px;
   height: 10px;
   background: var(--route-marker-color, var(--sky));
   clip-path: polygon(0 0, 100% 0, 50% 100%);
