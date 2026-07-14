@@ -1755,6 +1755,34 @@ export default function GoogleMapProvider(props) {
         )
       : null;
 
+  const renderMapAreaTools = (extraClassName = "") => (
+    <div className={`map-area-tools${extraClassName ? ` ${extraClassName}` : ""}`}>
+      <button
+        className={`mini-button map-route-edit-button${isRouteEditMode ? " active" : ""}`}
+        type="button"
+        title="編輯地圖路線"
+        aria-label="編輯地圖路線"
+        onClick={toggleRouteEditMode}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <Route aria-hidden="true" />
+      </button>
+      {canPickMapPoint ? (
+        <button
+          className={`mini-button map-area-point-button${isPickingMapPoint ? " active" : ""}`}
+          type="button"
+          title={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}
+          aria-label={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}
+          disabled={isRouteEditMode}
+          onClick={toggleMapAreaPointPick}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {isPickingMapPoint ? <X aria-hidden="true" /> : <MapPin aria-hidden="true" />}
+        </button>
+      ) : null}
+    </div>
+  );
+
   if (status === "failed" || renderFailed) {
     return <StaticMapProvider {...props} />;
   }
@@ -1788,7 +1816,8 @@ export default function GoogleMapProvider(props) {
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <div className="places-search-control">
+          <div className="places-search-row">
+            <div className="places-search-control">
             <input
               autoComplete="off"
               className="places-search-input"
@@ -1828,6 +1857,8 @@ export default function GoogleMapProvider(props) {
             >
               <Search aria-hidden="true" size={16} strokeWidth={2.2} />
             </button>
+            </div>
+            {renderMapAreaTools("in-search-row")}
           </div>
           {placesStatusMessage ? (
             <div className="places-search-message" role="status">
@@ -1907,7 +1938,7 @@ export default function GoogleMapProvider(props) {
           </button>
         </div>
       ) : null}
-      <div className={`map-area-tools${showPlacesSearchOverlay ? "" : " without-search"}`}>
+      <div className={`map-area-tools${showPlacesSearchOverlay ? " without-search-hidden" : " without-search"}`}>
         <button
           className={`mini-button map-route-edit-button${isRouteEditMode ? " active" : ""}`}
           type="button"

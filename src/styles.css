@@ -763,6 +763,10 @@ code {
   top: 18px;
 }
 
+.map-area-tools.without-search-hidden {
+  display: none;
+}
+
 .map-area-tools .mini-button {
   width: 38px;
   min-width: 38px;
@@ -3989,7 +3993,7 @@ textarea {
   left: 20px;
   z-index: 5;
   display: grid;
-  width: min(370px, calc(100% - 40px));
+  width: min(470px, calc(100% - 40px));
   gap: 6px;
 }
 
@@ -3998,13 +4002,33 @@ textarea {
   display: grid;
 }
 
+.places-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.places-search-row .places-search-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.places-search-row .map-area-tools {
+  position: static;
+  top: auto;
+  left: auto;
+  flex: 0 0 auto;
+}
+
 .places-search-input {
   width: 100%;
-  min-height: 42px;
+  height: 38px;
+  min-height: 38px;
   padding-left: 24px;
   padding-right: 38px;
-  border: 1px solid rgba(95, 143, 184, 0.28);
-  border-radius: 999px;
+  border: 0;
+  border-radius: 10px;
   background: #ffffffe8;
   box-shadow: 0 10px 28px rgba(31, 41, 55, 0.12);
   font-size: 14px;
@@ -5380,7 +5404,7 @@ textarea {
 
   .timeline-workbench:not(.route-collapsed) .places-search-overlay {
     left: calc(var(--timeline-dayboard-width) + 20px);
-    width: min(370px, calc(100% - var(--timeline-dayboard-width) - 40px));
+    width: min(470px, calc(100% - var(--timeline-dayboard-width) - 40px));
   }
 
   .timeline-workbench:not(.route-collapsed) .map-area-tools {

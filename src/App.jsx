@@ -41,8 +41,8 @@ import {
   Pencil,
   Plus,
   Repeat2,
-  Route,
   Settings,
+  Tally4,
   Trash2,
   Wallet,
   X,
@@ -9086,7 +9086,7 @@ function DemoApp({ initialSection }) {
                 {isRouteCollapsed ? (
                   <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
                 ) : (
-                  <Route size={18} strokeWidth={2.2} aria-hidden="true" />
+                  <Tally4 size={18} strokeWidth={2.2} aria-hidden="true" />
                 )}
               </button>
             </div>
@@ -10085,7 +10085,7 @@ function TripWorkspace(props) {
             {isRouteCollapsed ? (
               <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
             ) : (
-              <Route size={18} strokeWidth={2.2} aria-hidden="true" />
+              <Tally4 size={18} strokeWidth={2.2} aria-hidden="true" />
             )}
           </button>
         </div>
