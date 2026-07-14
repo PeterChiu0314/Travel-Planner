@@ -2484,8 +2484,6 @@ textarea {
 .timeline-top-row {
   --timeline-dayboard-width: clamp(380px, calc(30% + 6px), 550px);
   --timeline-columns: var(--timeline-dayboard-width) minmax(420px, 1fr);
-  --timeline-top-row-offset: 46px;
-  --timeline-map-lift: 64px;
   display: grid;
   grid-template-columns: var(--timeline-columns);
   align-items: center;
@@ -2540,10 +2538,11 @@ textarea {
 
 .timeline-workbench {
   --timeline-dayboard-width: clamp(380px, calc(30% + 6px), 550px);
-  --timeline-columns: var(--timeline-dayboard-width) minmax(420px, 1fr);
+  --timeline-dayboard-glass-background: rgba(238, 245, 239, 0.96);
+  --timeline-dayboard-glass-border: 1px solid rgba(255, 255, 255, 0.25);
+  --timeline-dayboard-glass-shadow: 6px 0 18px rgba(36, 43, 38, 0.07);
   --timeline-map-transition-duration: 220ms;
   --timeline-map-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
-  --timeline-top-row-offset: 46px;
   --timeline-map-lift: 64px;
   --board-scrollbar-width: 0px;
   align-items: stretch;
@@ -2630,25 +2629,22 @@ textarea {
 
 .timeline-workbench .itinerary-panel {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: var(--timeline-dayboard-glass-border);
   border-radius: 16px;
-  background: rgba(238, 245, 239, 0.96);
-  box-shadow: 0 12px 28px rgba(36, 43, 38, 0.1);
+  background: var(--timeline-dayboard-glass-background);
+  box-shadow: var(--timeline-dayboard-glass-shadow);
   color: var(--ink);
 }
 
 @supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
-  .timeline-top-row {
+  .timeline-workbench {
     --timeline-dayboard-glass-background: rgba(238, 245, 239, 0.78);
   }
 
-  .timeline-top-row:not(.route-collapsed)::before {
+  .timeline-workbench:not(.route-collapsed)::before,
+  .timeline-workbench .itinerary-panel::before {
     -webkit-backdrop-filter: blur(10px) saturate(140%);
     backdrop-filter: blur(10px) saturate(140%);
-  }
-
-  .timeline-workbench .itinerary-panel {
-    background: rgba(238, 245, 239, 0.78);
   }
 
   .timeline-workbench .itinerary-panel::before {
@@ -2658,8 +2654,6 @@ textarea {
     z-index: 0;
     border-radius: inherit;
     pointer-events: none;
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
-    backdrop-filter: blur(10px) saturate(140%);
   }
 
   .timeline-workbench .itinerary-panel > * {
@@ -5198,37 +5192,24 @@ textarea {
     min-height: 0;
   }
 
-  .timeline-top-row:not(.route-collapsed)::before {
+  .timeline-workbench:not(.route-collapsed)::before {
     content: "";
     position: absolute;
-    top: calc(-1 * var(--timeline-map-lift) + var(--timeline-top-row-offset));
-    bottom: -10px;
+    top: calc(-1 * var(--timeline-map-lift));
+    bottom: 0;
     left: 0;
-    z-index: 0;
+    z-index: 2;
     width: var(--timeline-dayboard-width);
-    border-right: 1px solid rgba(255, 255, 255, 0.25);
-    background: var(--timeline-dayboard-glass-background, rgba(238, 245, 239, 0.96));
-    box-shadow: 6px 0 18px rgba(36, 43, 38, 0.07);
+    border-right: var(--timeline-dayboard-glass-border);
+    background: var(--timeline-dayboard-glass-background);
+    box-shadow: var(--timeline-dayboard-glass-shadow);
     pointer-events: none;
-  }
-
-  .timeline-top-row:not(.route-collapsed) .day-tabs-shell {
-    position: relative;
-    z-index: 1;
   }
 
   .timeline-workbench {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
     gap: 0;
-    height: calc(100dvh - 144px);
-    margin-right: -10px;
-    margin-bottom: -10px;
-    max-height: calc(100dvh - 144px);
-  }
-
-  .timeline-workbench.route-collapsed {
-    grid-template-columns: minmax(0, 1fr);
     height: calc(100dvh - 144px);
     margin-left: -10px;
     margin-right: -10px;
@@ -5241,9 +5222,9 @@ textarea {
     max-height: calc(100dvh - 150px);
   }
 
-  .timeline-workbench .itinerary-panel {
+  .timeline-workbench:not(.route-collapsed) .itinerary-panel {
     grid-area: 1 / 1;
-    z-index: 2;
+    z-index: 3;
     align-self: start;
     width: var(--timeline-dayboard-width);
     min-width: 0;
@@ -5255,23 +5236,39 @@ textarea {
     overflow-y: auto;
     overflow-x: hidden;
     border: 0;
-    border-right: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 0;
-    box-shadow: 6px 0 18px rgba(36, 43, 38, 0.07);
+    background: transparent;
+    box-shadow: none;
     padding: 18px 14px 18px 18px;
     scrollbar-gutter: stable;
+  }
+
+  .timeline-workbench:not(.route-collapsed) .itinerary-panel::before {
+    display: none;
   }
 
   .timeline-workbench.route-collapsed .itinerary-panel {
     display: flex;
     align-items: flex-start;
     gap: 10px;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
     height: 100%;
     max-height: none;
+    margin: 0;
     overflow-x: auto;
     overflow-y: auto;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
     padding: 0 10px;
     scrollbar-gutter: auto;
+  }
+
+  .timeline-workbench.route-collapsed .itinerary-panel::before {
+    display: none;
   }
 
   .timeline-workbench.route-collapsed .itinerary-panel > :first-child {
@@ -5355,9 +5352,12 @@ textarea {
     left: calc(var(--timeline-dayboard-width) + 20px);
   }
 
+  .timeline-workbench:not(.route-collapsed) .google-map-canvas div:has(> a[href^="https://maps.google.com/maps?"]) {
+    left: var(--timeline-dayboard-width) !important;
+  }
+
   .timeline-workbench:not(.route-collapsed) .google-map-canvas a[href^="https://maps.google.com/maps?"] {
-    display: inline-block !important;
-    transform: translateX(var(--timeline-dayboard-width));
+    transform: none;
   }
 
   .timeline-workbench.route-collapsed .timeline-day-column,
@@ -5391,23 +5391,6 @@ textarea {
   .timeline-workbench.route-collapsed .timeline-column-header {
     align-items: flex-start;
     min-height: 36px;
-  }
-
-  .timeline-workbench.route-collapsed .itinerary-panel {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-    height: 100%;
-    max-height: none;
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .timeline-workbench.route-collapsed .itinerary-panel::before {
-    display: none;
   }
 
 }

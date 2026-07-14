@@ -84,7 +84,7 @@ for (const layout of [
       const workbench = document.querySelector(".timeline-workbench:not(.hidden-section)");
       const board = workbench?.querySelector(".itinerary-panel");
       const map = workbench?.querySelector(".side-panels > .route-panel");
-      const tabs = document.querySelector(".timeline-top-row");
+      const tabs = document.querySelector(".timeline-top-row .day-tabs-shell");
       const rect = (element) => {
         if (!element) return null;
         const box = element.getBoundingClientRect();
@@ -115,6 +115,10 @@ for (const layout of [
     expect(metrics.boardRect.top).toBeLessThan(metrics.mapRect.bottom);
     expect(metrics.pageScrollWidth).toBeLessThanOrEqual(metrics.pageClientWidth + 1);
     expect(metrics.tabsRight).toBeLessThanOrEqual(metrics.pageClientWidth + 1);
+    if (layout.width > 1100) {
+      expect(Math.abs(metrics.boardRect.left - metrics.workbenchRect.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(metrics.boardRect.right - metrics.tabsRight)).toBeLessThanOrEqual(1);
+    }
   });
 }
 
