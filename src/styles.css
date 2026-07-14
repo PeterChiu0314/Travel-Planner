@@ -2544,7 +2544,7 @@ textarea {
   --timeline-map-transition-duration: 220ms;
   --timeline-map-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --timeline-map-lift: 64px;
-  --board-scrollbar-width: 2px;
+  --board-scrollbar-width: 4px;
   --board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent);
   align-items: stretch;
   gap: 16px;
@@ -2638,8 +2638,8 @@ textarea {
 }
 
 .timeline-workbench .itinerary-panel::-webkit-scrollbar {
-  width: 2px;
-  height: 2px;
+  width: 4px;
+  height: 4px;
 }
 
 .timeline-workbench .itinerary-panel::-webkit-scrollbar-button,
@@ -5265,7 +5265,7 @@ textarea {
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    padding: 0 4px 5px 14px;
+    padding: 0 10px 5px 14px;
     scrollbar-gutter: stable;
   }
 

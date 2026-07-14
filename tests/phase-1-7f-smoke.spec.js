@@ -126,9 +126,9 @@ for (const layout of [
     if (layout.width > 1100) {
       expect(Math.abs(metrics.boardRect.left - metrics.workbenchRect.left)).toBeLessThanOrEqual(1);
       expect(Math.abs(metrics.boardRect.right - metrics.tabsRight)).toBeLessThanOrEqual(1);
-      expect(metrics.boardPadding).toBe("0px 4px 5px 14px");
+      expect(metrics.boardPadding).toBe("0px 10px 5px 14px");
       expect(metrics.boardScrollbarGutter).toBe("stable");
-      expect(metrics.boardScrollbarWidth).toBe("2px");
+      expect(metrics.boardScrollbarWidth).toBe("4px");
       expect(metrics.boardScrollbarButtonDisplay).toBe("none");
       expect(metrics.boardScrollbarButtonHeight).toBe("0px");
     }
