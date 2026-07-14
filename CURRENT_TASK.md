@@ -36,29 +36,36 @@ Archive rules:
 ## Current Status
 
 ```text
-Current phase: Timeline Phase 5.7d Multiplayer Route Editing Visual Feedback
-Status: Implemented and manually verified
-Branch: main
-Baseline implementation commit: c6989a3 Preserve rapid route ownership handoff
-Baseline closeout commit: 23247de Close Timeline Phase 5.7c
+Current phase: Timeline Phase 5.8 UI Polish
+Status: In progress; latest requested polish implemented and published
+Branch: codex/timeline-phase-5-8
+Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
+Latest Phase 5.8 implementation commit: 6c9fadd Polish map search controls
 ```
 
-Phase 5.7c synchronization remains closed. Phase 5.7d is a visual-only enhancement and must not change its collaboration or persistence behavior.
+Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed baselines. Phase 5.8 is a sequence of small UI-polish changes and must not change their collaboration or persistence behavior.
 
-## Phase 5.7d Scope
+## Phase 5.8 Current UI State
 
-- Local dragging keeps the existing green-center, white-outline node with no additional effect.
-- While a remote user owns a node drag lock, the green center remains unchanged.
-- The remote node's white outline changes to that user's existing stable `userId` hash color.
-- Trip avatar borders, Timeline drag visuals, and route-node visuals all derive from the same `userId`-first color helper; `sessionId` is only a legacy fallback.
-- A same-color translucent glow is shown without visually enlarging the node core.
-- The normal white outline and no-glow appearance return on drag-end, lock timeout, node deletion, segment invalidation, Day/trip change, route-edit exit, or channel cleanup.
-- No name label in this phase.
-- Do not change the existing color palette or hash assignment.
-- Do not add color to Broadcast payloads; compute it locally from the existing trusted palette.
-- Keep Marker updates imperative; do not rebuild markers for drag moves.
-- No Broadcast, ownership, Realtime, database, migration, RLS, RPC, route persistence, or itinerary behavior change.
+- Numbered destination markers use the compact Phase 5.8 proportions, refined number colors and weight, and preserve focused styling on hover.
+- The Map fills the Timeline workspace behind the Dayboard instead of starting at the Dayboard's right edge.
+- The Dayboard covers the complete left workspace column with a liquid-glass surface: `rgba(238, 245, 239, .78)`, a light white border, `blur(10px) saturate(140%)`, and the opaque `.96` fallback when backdrop filtering is unavailable.
+- Day tabs are visually integrated with the Dayboard when the Map is expanded, while retaining their existing horizontal drag/arrow behavior and normal collapsed-Map layout.
+- The Dayboard and tabs align directly against the sidebar and share the same right boundary without a gap or mismatched blur strip.
+- The Dayboard vertical scrollbar uses a transparent track, no arrow buttons, a 4 px softly muted thumb, and stable gutter. Expanded-panel padding is `0 10px 5px 14px`.
+- The trip title and title-edit input use 24 px / 500 weight; header metadata uses 500 weight. The header uses the compact 68 px grid layout and translucent warm-white background.
+- Route-edit masking begins at the Dayboard's right edge, the workspace fills the viewport bottom without a gap, and destination markers remain fully opaque while editing.
+- The Map search field is 38 px high with a 10 px radius and no border. Route-edit and add-point buttons sit to its right, and the Map-collapse control uses Lucide `Tally4`.
+- The Google logo remains visible immediately to the right of the Dayboard.
+- Formal Timeline and Demo stay visually aligned where the same controls exist; existing cards, map-marker behavior, scrolling, editing, and collapse behavior remain intact.
+
+## Phase 5.8 Scope Guard
+
+- Keep Phase 5.8 UI-only unless the user explicitly expands scope.
+- Do not change Broadcast, ownership, Presence, Realtime, route persistence, database, migration, RLS, RPC, Share/Invite, Auth, Budget, or itinerary write behavior.
+- Preserve Map search, route editing, custom-point creation, Dayboard scrolling, Day-tab navigation, and collapsed-Map operation while polishing layout and styling.
+- Continue small requested polish from the latest published implementation baseline instead of treating Phase 5.8 as a single large redesign.
 
 ## Phase 5.7c Final State
 
@@ -75,9 +82,18 @@ Phase 5.7c synchronization remains closed. Phase 5.7d is a visual-only enhanceme
 - Route-table Realtime changes use full replica identity and publication membership.
 - Database rows are authoritative after drag-end; active-drag Broadcast remains best effort.
 
-## Final Verification
+## Verification
 
-Deployed Chrome two-client QA passed:
+Latest Phase 5.8 verification:
+
+- Phase 5.8 desktop, tablet, mobile, and trip-title edit Playwright checks passed 4/4 through `44fd4d3`.
+- Focused Map/provider route-edit and workspace checks passed 2/2 through `44fd4d3`.
+- Chrome DOM inspection confirmed the latest `lucide-tally-4` Map-collapse control at `6c9fadd`.
+- `npm.cmd run build` passed at `6c9fadd`.
+- `git diff --check` passed for the latest implementation change.
+- The Vite large-chunk warning remains informational and was present in successful builds.
+
+Closed Phase 5.7c deployed Chrome two-client QA passed:
 
 - node add/delete, final-node delete, preview-only delete, and normal-delete refresh convergence;
 - delete immediately after drag-end without handle restoration or return-to-origin behavior;
@@ -100,8 +116,6 @@ npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js: 36/36 passed
 npm.cmd run build: passed
 git diff --check: passed (Windows LF/CRLF notices only)
 ```
-
-The Vite large-chunk warning is informational and was present in successful builds.
 
 Phase 5.7d manual verification:
 
@@ -171,4 +185,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Phase 5.7d is complete. Await the next explicitly requested Timeline phase without expanding the closed 5.7c synchronization scope.
+Continue user-directed Phase 5.8 UI polish from `6c9fadd` as the latest published implementation baseline. Preserve the closed Phase 5.7c synchronization and Phase 5.7d visual-feedback behavior.
