@@ -135,6 +135,28 @@ for (const layout of [
   });
 }
 
+test("Phase 5.8 trip header typography stays consistent while renaming", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/demo/timeline");
+
+  const header = page.locator(".trip-header");
+  const titleButton = header.locator(".trip-header-title-button");
+  const meta = header.locator(".trip-header-meta");
+
+  await expect(titleButton).toBeVisible();
+  expect(await titleButton.evaluate((element) => getComputedStyle(element).fontSize)).toBe("24px");
+  expect(await titleButton.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("500");
+  expect(await meta.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("500");
+  expect(await header.evaluate((element) => getComputedStyle(element).padding)).toBe("14px 10px 8px");
+  expect(await header.locator(".trip-header-main").evaluate((element) => getComputedStyle(element).gap)).toBe("2px");
+
+  await titleButton.click();
+  const titleInput = header.locator(".trip-header-title-input");
+  await expect(titleInput).toBeVisible();
+  expect(await titleInput.evaluate((element) => getComputedStyle(element).fontSize)).toBe("24px");
+  expect(await titleInput.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("500");
+});
+
 test("app shell loads without crashing", async ({ page }) => {
   const failures = collectConsoleFailures(page);
 

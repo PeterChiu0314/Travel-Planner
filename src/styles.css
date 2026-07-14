@@ -1277,8 +1277,8 @@ code {
   gap: 10px 18px;
   min-height: 68px;
   margin: -8px -10px 18px;
-  padding: 12px 10px;
-  background: rgba(255, 253, 248, 0.82);
+  padding: 14px 10px 8px;
+  background: #fffdf8d1;
 }
 
 .app-shell-workspace .trip-header {
@@ -1305,7 +1305,7 @@ code {
 
 .trip-header-main {
   display: grid;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -1324,13 +1324,19 @@ code {
   max-width: 100%;
 }
 
+.trip-header-title,
+.trip-header-title-button,
+.trip-header-title-input {
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.12;
+}
+
 .trip-header-title {
   min-width: 0;
   margin: 0;
   overflow: hidden;
   color: var(--ink);
-  font-size: clamp(24px, 2.4vw, 32px);
-  line-height: 1.12;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1342,9 +1348,6 @@ code {
   border-radius: 8px;
   background: transparent;
   color: var(--ink);
-  font-size: clamp(24px, 2.4vw, 32px);
-  font-weight: 700;
-  line-height: 1.12;
   overflow: hidden;
   padding: 2px 6px;
   text-align: left;
@@ -1377,9 +1380,6 @@ code {
   min-height: 38px;
   height: 38px;
   border-color: rgba(25, 109, 82, 0.32);
-  font-size: clamp(24px, 2.4vw, 32px);
-  font-weight: 900;
-  line-height: 1.12;
   padding: 3px 8px;
 }
 
@@ -1421,7 +1421,7 @@ code {
   min-width: 0;
   color: var(--muted);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
   margin-left: 2px;
 }
@@ -1442,7 +1442,7 @@ code {
   color: inherit;
   cursor: pointer;
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   padding: 2px 5px;
 }
 
@@ -1820,7 +1820,7 @@ code {
 
 .trip-header-meta-separator {
   color: #a8aea8;
-  font-weight: 900;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -5683,15 +5683,6 @@ textarea {
     min-height: 62px;
     margin: -2px -16px 16px;
     padding: 30px 16px 12px;
-  }
-
-  .trip-header-title,
-  .trip-header-title-button {
-    font-size: 22px;
-  }
-
-  .trip-header-title-input {
-    font-size: 22px;
   }
 
   .trip-header-actions {
