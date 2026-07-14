@@ -94,9 +94,17 @@ for (const layout of [
       const boardRect = rect(board);
       const mapRect = rect(map);
       const tabsRect = rect(tabs);
+      const boardStyle = board ? getComputedStyle(board) : null;
+      const scrollbarStyle = board ? getComputedStyle(board, "::-webkit-scrollbar") : null;
+      const scrollbarButtonStyle = board ? getComputedStyle(board, "::-webkit-scrollbar-button") : null;
       return {
-        boardOverflowY: board ? getComputedStyle(board).overflowY : null,
+        boardOverflowY: boardStyle?.overflowY ?? null,
+        boardPadding: boardStyle?.padding ?? null,
         boardRect,
+        boardScrollbarButtonDisplay: scrollbarButtonStyle?.display ?? null,
+        boardScrollbarButtonHeight: scrollbarButtonStyle?.height ?? null,
+        boardScrollbarGutter: boardStyle?.scrollbarGutter ?? null,
+        boardScrollbarWidth: scrollbarStyle?.width ?? null,
         mapRect,
         pageClientWidth: document.documentElement.clientWidth,
         pageScrollWidth: document.documentElement.scrollWidth,
@@ -118,6 +126,11 @@ for (const layout of [
     if (layout.width > 1100) {
       expect(Math.abs(metrics.boardRect.left - metrics.workbenchRect.left)).toBeLessThanOrEqual(1);
       expect(Math.abs(metrics.boardRect.right - metrics.tabsRight)).toBeLessThanOrEqual(1);
+      expect(metrics.boardPadding).toBe("0px 4px 5px 14px");
+      expect(metrics.boardScrollbarGutter).toBe("stable");
+      expect(metrics.boardScrollbarWidth).toBe("2px");
+      expect(metrics.boardScrollbarButtonDisplay).toBe("none");
+      expect(metrics.boardScrollbarButtonHeight).toBe("0px");
     }
   });
 }

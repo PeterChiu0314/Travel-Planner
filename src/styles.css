@@ -2545,6 +2545,7 @@ textarea {
   --timeline-map-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
   --timeline-map-lift: 64px;
   --board-scrollbar-width: 2px;
+  --board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent);
   align-items: stretch;
   gap: 16px;
   min-height: 0;
@@ -2634,8 +2635,6 @@ textarea {
   background: var(--timeline-dayboard-glass-background);
   box-shadow: var(--timeline-dayboard-glass-shadow);
   color: var(--ink);
-  scrollbar-color: var(--muted) transparent;
-  scrollbar-width: thin;
 }
 
 .timeline-workbench .itinerary-panel::-webkit-scrollbar {
@@ -2643,10 +2642,13 @@ textarea {
   height: 2px;
 }
 
-.timeline-workbench .itinerary-panel::-webkit-scrollbar-button {
+.timeline-workbench .itinerary-panel::-webkit-scrollbar-button,
+.timeline-workbench .itinerary-panel::-webkit-scrollbar-button:single-button {
   display: none;
   width: 0;
   height: 0;
+  border: 0;
+  background: transparent;
 }
 
 .timeline-workbench .itinerary-panel::-webkit-scrollbar-track {
@@ -2657,7 +2659,7 @@ textarea {
 .timeline-workbench .itinerary-panel::-webkit-scrollbar-thumb {
   border: 0;
   border-radius: 999px;
-  background: var(--muted);
+  background: var(--board-scrollbar-thumb);
 }
 
 @supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
@@ -5263,8 +5265,8 @@ textarea {
     border-radius: 0;
     background: transparent;
     box-shadow: none;
-    padding: 18px 14px 18px 18px;
-    scrollbar-gutter: auto;
+    padding: 0 4px 5px 14px;
+    scrollbar-gutter: stable;
   }
 
   .timeline-workbench:not(.route-collapsed) .itinerary-panel::before {
