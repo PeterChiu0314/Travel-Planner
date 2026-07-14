@@ -365,9 +365,10 @@ test("Phase 5.8b keeps the Map behind a full-height Dayboard glass panel", () =>
   expect(stylesSource).toContain("-webkit-backdrop-filter: blur(10px) saturate(140%)");
   expect(stylesSource).toContain("backdrop-filter: blur(10px) saturate(140%)");
   expect(stylesSource).toContain("overflow-y: auto");
-  expect(stylesSource).toContain("--board-scrollbar-width: 3px");
-  expect(stylesSource).toContain("scrollbar-color: var(--ink) transparent");
-  expect(stylesSource).toContain("width: 3px");
+  expect(stylesSource).toContain("--board-scrollbar-width: 2px");
+  expect(stylesSource).toContain("scrollbar-color: var(--muted) transparent");
+  expect(stylesSource).toContain("width: 2px");
+  expect(stylesSource).toContain("::-webkit-scrollbar-button");
   expect(stylesSource).toContain("background: transparent");
   expect(stylesSource).toContain(".timeline-workbench:not(.route-collapsed)::before");
   expect(stylesSource).toContain("left: calc(var(--timeline-dayboard-width) + 20px)");
