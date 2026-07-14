@@ -72,7 +72,7 @@ Actual current stack:
 - Supabase Storage for attachments.
 - Vercel for production deployment.
 - Vercel SPA rewrites in `vercel.json`.
-- A lightweight service worker in `public/sw.js` for shell/offline read behavior.
+- A lightweight service worker in `design/sw.js` for shell/offline read behavior.
 
 Important correction for future agents:
 
@@ -92,7 +92,7 @@ Key files:
 - `src/lib/draftAutosave.js`: local draft autosave utilities and hook.
 - `src/lib/editLocks.js`: edit lock utilities.
 - `supabase/migrations/*.sql`: schema, RLS, RPC, Storage, Realtime, edit-lock columns.
-- `public/sw.js`: offline shell cache.
+- `design/sw.js`: offline shell cache and static design-preview files.
 - `vercel.json`: SPA fallback for `/demo` routes.
 
 ## 3. Architecture
@@ -194,7 +194,7 @@ Offline read flow:
 
 - `readOfflineTrips`, `writeOfflineTrips`, `readOfflineTripData`, and `writeOfflineTripData` cache previously loaded data in `localStorage`.
 - If network/Supabase reads fail, cached data is used as readonly-ish fallback.
-- `public/sw.js` caches the shell and same-origin GET assets. This is lightweight offline read, not offline edit sync.
+- `design/sw.js` caches the shell and same-origin GET assets. This is lightweight offline read, not offline edit sync.
 
 ## 5. Auth Flow
 

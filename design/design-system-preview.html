@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Studio｜Design System Preview</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --color-bg: #f7f5ef;
+      --color-surface: #fcfbf7;
+      --color-surface-subtle: #eeece5;
+      --color-primary: #2f6b57;
+      --color-primary-hover: #245341;
+      --color-primary-foreground: #ffffff;
+      --color-accent: #a77a46;
+      --color-accent-text: #8d653a;
+      --color-text: #2d312f;
+      --color-text-secondary: #68706b;
+      --color-text-muted: #66716b;
+      --color-border: #d9d8d1;
+      --color-border-strong: #b6b7af;
+      --color-error: #b6544b;
+      --color-warning: #805c22;
+      --color-success: #3f654f;
+      --color-info: #486b6d;
+      --color-success-bg: #e8f0eb;
+      --color-warning-bg: #f7eedb;
+      --color-error-bg: #f7e9e6;
+      --color-info-bg: #e7f0ef;
+      --font-stack: Inter, "Noto Sans TC", "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-body: 14px;
+      --font-display: 36px;
+      --font-h1: 28px;
+      --font-h2: 22px;
+      --font-h3: 18px;
+      --font-caption: 12px;
+      --space-unit: 4px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --shadow-alpha: 0.1;
+      --shadow: 0 18px 42px rgba(38, 52, 45, var(--shadow-alpha));
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--color-bg); }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 30%),
+        radial-gradient(circle at 96% 8%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 28%),
+        var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-stack);
+      font-size: var(--font-body);
+      line-height: 1.55;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srgb, var(--color-accent-text) 80%, transparent); outline-offset: 2px; }
+    h1, h2, h3, h4, p { margin: 0; }
+    h1 { font-size: var(--font-h1); line-height: 1.25; font-weight: 500; }
+    h2 { font-size: var(--font-h2); line-height: 1.3; font-weight: 500; }
+    h3 { font-size: var(--font-h3); line-height: 1.35; font-weight: 500; }
+    small, .caption { color: var(--color-text-muted); font-size: var(--font-caption); }
+
+    .page {
+      display: grid;
+      grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+      gap: 20px;
+      width: min(1760px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 36px;
+    }
+
+    .control-panel,
+    .component-panel,
+    .app-preview {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+      box-shadow: var(--shadow);
+    }
+
+    .control-panel {
+      align-self: start;
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .control-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .eyebrow {
+      color: var(--color-text-muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .control-header p { margin-top: 5px; color: var(--color-text-secondary); font-size: 12px; }
+
+    .reset-button,
+    .button,
+    .icon-button,
+    .mini-button {
+      border-radius: var(--radius-sm);
+      transition: transform .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease, color .16s ease;
+    }
+
+    .reset-button {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-secondary);
+      font-size: 12px;
+    }
+
+    .reset-button:hover { border-color: var(--color-primary); color: var(--color-primary); transform: translateY(-1px); }
+
+    .control-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+    .io-button { padding: 7px 9px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-secondary); font-size: 11px; }
+    .io-button:hover, .io-button:focus-visible { border-color: var(--color-primary); color: var(--color-primary); transform: translateY(-1px); }
+    .file-status { margin: 10px 0 0; color: var(--color-text-muted); font-size: 11px; }
+    .file-status.error { color: var(--color-error); }
+
+    .control-group { display: grid; gap: 10px; padding: 16px 0; border-bottom: 1px solid var(--color-border); }
+    .control-group:last-child { border-bottom: 0; padding-bottom: 0; }
+    .control-group h3 { font-size: 15px; }
+    .control-group > p { color: var(--color-text-muted); font-size: 12px; }
+
+    .color-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 32px 78px;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      font-size: 12px;
+    }
+
+    .color-row input[type="color"] {
+      width: 30px;
+      height: 30px;
+      padding: 2px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface);
+    }
+
+    .hex-input,
+    .select-input {
+      width: 100%;
+      min-width: 0;
+      padding: 6px 7px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-size: 11px;
+    }
+
+    .range-row { display: grid; gap: 5px; font-size: 12px; }
+    .range-label { display: flex; justify-content: space-between; gap: 10px; }
+    .range-label output { color: var(--color-text-secondary); }
+    input[type="range"] { width: 100%; accent-color: var(--color-primary); }
+
+    .contrast-list { display: grid; gap: 4px; color: var(--color-text-muted); font-size: 11px; }
+    .contrast-line { display: flex; justify-content: space-between; gap: 12px; }
+    .contrast-line strong { color: var(--color-text); font-weight: 600; }
+
+    .content { min-width: 0; display: grid; gap: 16px; }
+    .stage-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; padding: 2px 4px; }
+    .stage-heading p { margin-top: 5px; color: var(--color-text-secondary); }
+    .stage-note { color: var(--color-text-muted); font-size: 12px; white-space: nowrap; }
+
+    .app-preview { overflow: hidden; }
+    .app-shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 710px; }
+    .app-sidebar { display: flex; flex-direction: column; min-width: 0; padding: 20px 10px 10px; border-right: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 90%, transparent); }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 4px 18px; }
+    .brand-mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: var(--radius-sm); background: var(--color-primary); color: var(--color-primary-foreground); font-weight: 800; }
+    .brand strong { display: block; font-size: 17px; font-weight: 600; }
+    .brand span { display: block; color: var(--color-text-muted); font-size: 11px; }
+    .sidebar-nav { display: grid; gap: 5px; }
+    .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--color-text-secondary); text-decoration: none; }
+    .sidebar-nav a:hover, .sidebar-nav a:focus-visible { background: var(--color-surface-subtle); color: var(--color-primary); }
+    .sidebar-nav a.active { border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); color: var(--color-primary); font-weight: 600; }
+    .nav-icon { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 7px; background: var(--color-surface-subtle); color: currentColor; font-size: 12px; }
+    .sidebar-section { display: grid; gap: 8px; margin-top: 22px; }
+    .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
+    .section-heading span { color: var(--color-text); font-size: 15px; font-weight: 600; }
+    .mini-button { width: 30px; height: 30px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); }
+    .mini-button:hover, .mini-button:focus-visible { border-color: var(--color-primary); color: var(--color-primary); }
+    .trip-list { display: grid; gap: 6px; }
+    .trip-card { display: block; width: 100%; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-surface) 90%, transparent); color: var(--color-text); text-align: left; }
+    .trip-card:hover, .trip-card:focus-visible { border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); }
+    .trip-card.active { border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); }
+    .trip-card strong, .trip-card span { display: block; }
+    .trip-card strong { font-size: 13px; font-weight: 600; }
+    .trip-card span { margin-top: 3px; color: var(--color-text-muted); font-size: 11px; }
+    .account-box { display: flex; align-items: center; gap: 9px; margin-top: auto; padding: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+    .avatar { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface)); color: var(--color-primary); font-size: 12px; font-weight: 700; }
+    .account-box strong { display: block; font-size: 12px; font-weight: 600; }
+    .account-box span { display: block; color: var(--color-text-muted); font-size: 10px; }
+
+    .workspace { min-width: 0; background: var(--color-bg); }
+    .trip-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 80px; padding: 15px 18px; border-bottom: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
+    .trip-header h1 { margin-top: 2px; font-size: var(--font-h1); }
+    .trip-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; color: var(--color-text-muted); font-size: 12px; }
+    .members { display: flex; align-items: center; }
+    .members .avatar { margin-left: -6px; border: 2px solid var(--color-surface); }
+    .members .avatar:first-child { margin-left: 0; }
+    .header-actions { display: flex; gap: 6px; margin-left: 12px; }
+    .icon-button { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); }
+    .icon-button:hover, .icon-button:focus-visible { border-color: var(--color-primary); color: var(--color-primary); transform: translateY(-1px); box-shadow: 0 8px 18px rgba(38, 52, 45, .12); }
+    .day-tabs { display: flex; flex-wrap: wrap; gap: 7px; padding: 13px 15px 0; }
+    .day-tab { padding: 7px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+    .day-tab:hover, .day-tab:focus-visible { border-color: var(--color-primary); color: var(--color-primary); }
+    .day-tab.active { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); color: var(--color-primary); }
+    .workbench { display: grid; grid-template-columns: minmax(350px, 42%) minmax(0, 1fr); gap: 0; margin-top: 13px; }
+    .timeline-column { min-width: 0; padding: 17px 14px; }
+    .timeline-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+    .timeline-heading h2 { margin-top: 3px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid transparent; font-weight: 600; }
+    .button.primary { border-color: var(--color-primary); background: var(--color-primary); color: var(--color-primary-foreground); }
+    .button.primary:hover, .button.primary:focus-visible { border-color: var(--color-primary-hover); background: var(--color-primary-hover); transform: translateY(-1px); box-shadow: 0 10px 22px rgba(38, 52, 45, .14); }
+    .button.secondary { border-color: var(--color-border); background: var(--color-surface); color: var(--color-text); }
+    .button.secondary:hover, .button.secondary:focus-visible { border-color: var(--color-primary); color: var(--color-primary); transform: translateY(-1px); }
+    .button.ghost { border-color: transparent; background: transparent; color: var(--color-text-secondary); }
+    .button.ghost:hover, .button.ghost:focus-visible { background: var(--color-surface-subtle); color: var(--color-primary); }
+    .button.danger { border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-border)); background: var(--color-surface); color: var(--color-error); }
+    .button.danger:hover, .button.danger:focus-visible { border-color: var(--color-error); background: var(--color-error-bg); }
+    .button.compact { min-height: 34px; padding: 0 10px; font-size: 12px; }
+    .notice { display: flex; align-items: start; gap: 8px; margin-bottom: 10px; padding: 10px 11px; border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 12px; }
+    .notice.warning { border-color: color-mix(in srgb, var(--color-warning) 28%, var(--color-border)); background: var(--color-warning-bg); color: var(--color-warning); }
+    .notice.error { border-color: color-mix(in srgb, var(--color-error) 28%, var(--color-border)); background: var(--color-error-bg); color: var(--color-error); }
+    .notice strong { font-weight: 600; }
+    .timeline-list { display: grid; gap: 9px; }
+    .itinerary-card { display: grid; grid-template-columns: 60px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); text-align: left; }
+    .itinerary-card:hover, .itinerary-card:focus-within { border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border)); box-shadow: 0 8px 20px rgba(38, 52, 45, .08); }
+    .itinerary-card.selected { border-color: var(--color-primary); box-shadow: inset 3px 0 0 var(--color-primary); }
+    .itinerary-time { color: var(--color-primary); font-size: 12px; font-weight: 700; }
+    .itinerary-card strong { display: block; font-weight: 600; }
+    .itinerary-card .caption { display: block; margin-top: 2px; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .badge { display: inline-flex; align-items: center; min-height: 22px; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge.success { background: var(--color-success-bg); color: var(--color-success); }
+    .badge.warning { background: var(--color-warning-bg); color: var(--color-warning); }
+    .badge.error { background: var(--color-error-bg); color: var(--color-error); }
+    .badge.info { background: var(--color-info-bg); color: var(--color-info); }
+    .card-actions { display: flex; gap: 5px; }
+    .card-actions .icon-button { width: 32px; height: 32px; }
+    .map-panel { position: relative; min-width: 0; min-height: 530px; border-left: 1px solid var(--color-border); background: #dfeadf; }
+    .map-toolbar { position: absolute; z-index: 2; top: 13px; left: 13px; right: 13px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .search-field { display: flex; align-items: center; gap: 8px; width: min(300px, 62%); padding: 9px 12px; border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border)); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-surface) 94%, transparent); box-shadow: 0 8px 18px rgba(38, 52, 45, .1); }
+    .search-field input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--color-text); }
+    .map-tools { display: flex; gap: 6px; }
+    .map-svg { display: block; width: 100%; height: 100%; min-height: 530px; }
+    .map-road { fill: none; stroke: #c6d3c6; stroke-width: 2; }
+    .map-ridge { fill: none; stroke: #b7d1bc; stroke-width: 38; opacity: .66; }
+    .map-route { fill: none; stroke: var(--color-primary); stroke-width: 4; stroke-linecap: round; opacity: .82; }
+    .map-label { fill: var(--color-text-muted); font-size: 13px; }
+    .marker circle { fill: var(--color-surface); stroke: var(--color-primary); stroke-width: 2; }
+    .marker text { fill: var(--color-primary); font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    .map-legend { position: absolute; right: 14px; bottom: 14px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font-size: 11px; }
+
+    .component-panel { display: grid; gap: 18px; padding: 18px; }
+    .component-panel-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+    .component-panel-heading p { margin-top: 4px; color: var(--color-text-secondary); font-size: 12px; }
+    .component-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .component-section { min-width: 0; padding: 13px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+    .component-section h3 { margin-bottom: 10px; font-size: 14px; }
+    .component-section .button + .button { margin-top: 7px; }
+    .component-section .button { width: 100%; }
+    .field-demo { display: grid; gap: 5px; }
+    .field-demo label { font-size: 12px; font-weight: 600; }
+    .field-demo input, .field-demo select { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-bg); color: var(--color-text); }
+    .field-demo input.focused { border-color: var(--color-primary); outline: 3px solid color-mix(in srgb, var(--color-accent-text) 45%, transparent); outline-offset: 1px; }
+    .field-demo .helper { color: var(--color-text-muted); font-size: 11px; }
+    .status-stack { display: grid; gap: 7px; }
+    .status-line { display: flex; align-items: center; gap: 7px; padding: 7px 8px; border-radius: var(--radius-sm); font-size: 11px; }
+    .status-line.success { background: var(--color-success-bg); color: var(--color-success); }
+    .status-line.warning { background: var(--color-warning-bg); color: var(--color-warning); }
+    .status-line.error { background: var(--color-error-bg); color: var(--color-error); }
+    .status-line.info { background: var(--color-info-bg); color: var(--color-info); }
+    .type-scale { display: grid; gap: 7px; }
+    .type-scale div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--color-border); padding-bottom: 5px; }
+    .type-scale strong { font-weight: 500; }
+    .type-scale span { color: var(--color-text-muted); font-size: 11px; }
+    .type-display { font-size: var(--font-display); line-height: 1.2; }
+    .type-h1 { font-size: var(--font-h1); }
+    .type-h2 { font-size: var(--font-h2); }
+    .type-h3 { font-size: var(--font-h3); }
+
+    @media (max-width: 1150px) {
+      .page { grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); width: min(100% - 24px, 1080px); }
+      .app-shell { grid-template-columns: 210px minmax(0, 1fr); }
+      .workbench { grid-template-columns: minmax(300px, 45%) minmax(0, 1fr); }
+      .component-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 860px) {
+      .page { grid-template-columns: 1fr; }
+      .control-panel { position: static; max-height: none; }
+      .control-group.colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .control-group.colors h3, .control-group.colors > p { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 680px) {
+      .page { width: min(100% - 16px, 560px); padding-top: 8px; }
+      .app-shell { grid-template-columns: 1fr; }
+      .app-sidebar { display: none; }
+      .trip-header { align-items: start; }
+      .members { display: none; }
+      .workbench { grid-template-columns: 1fr; }
+      .map-panel { min-height: 300px; border-top: 1px solid var(--color-border); border-left: 0; }
+      .map-svg { min-height: 300px; }
+      .component-grid { grid-template-columns: 1fr; }
+      .control-group.colors { grid-template-columns: 1fr; }
+      .control-group.colors h3, .control-group.colors > p { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <aside class="control-panel" aria-label="視覺設計系統控制面板">
+      <div class="control-header">
+        <div><div class="eyebrow">Travel Studio</div><h2>視覺設計系統</h2><p>調整左側 Token，預覽會即時更新。</p></div>
+        <div class="control-actions"><button type="button" class="reset-button" id="resetButton">Reset</button><button type="button" class="io-button" id="exportButton">匯出設定</button><button type="button" class="io-button" id="importButton">匯入設計檔</button><input id="importFile" type="file" accept="application/json,.json" hidden></div>
+      </div>
+      <p class="file-status" id="fileStatus" role="status">設定檔格式：Travel Studio Design Tokens v1</p>
+
+      <section class="control-group colors">
+        <h3>色彩 Token</h3>
+        <p>每個色碼都會套用到右側的整體版面與元件。</p>
+        <label class="color-row"><span>頁面背景</span><input type="color" data-color="color-bg" value="#F7F5EF"><input class="hex-input" data-hex="color-bg" value="#F7F5EF" aria-label="頁面背景色碼"></label>
+        <label class="color-row"><span>Surface／卡片</span><input type="color" data-color="color-surface" value="#FCFBF7"><input class="hex-input" data-hex="color-surface" value="#FCFBF7" aria-label="Surface 色碼"></label>
+        <label class="color-row"><span>Surface Secondary</span><input type="color" data-color="color-surface-subtle" value="#EEECE5"><input class="hex-input" data-hex="color-surface-subtle" value="#EEECE5" aria-label="次要 Surface 色碼"></label>
+        <label class="color-row"><span>主要品牌色</span><input type="color" data-color="color-primary" value="#2F6B57"><input class="hex-input" data-hex="color-primary" value="#2F6B57" aria-label="主要品牌色色碼"></label>
+        <label class="color-row"><span>Primary Hover</span><input type="color" data-color="color-primary-hover" value="#245341"><input class="hex-input" data-hex="color-primary-hover" value="#245341" aria-label="Primary Hover 色碼"></label>
+        <label class="color-row"><span>Primary 文字</span><input type="color" data-color="color-primary-foreground" value="#FFFFFF"><input class="hex-input" data-hex="color-primary-foreground" value="#FFFFFF" aria-label="Primary 文字色碼"></label>
+        <label class="color-row"><span>Accent／銅棕</span><input type="color" data-color="color-accent" value="#A77A46"><input class="hex-input" data-hex="color-accent" value="#A77A46" aria-label="Accent 色碼"></label>
+        <label class="color-row"><span>Accent 文字</span><input type="color" data-color="color-accent-text" value="#8D653A"><input class="hex-input" data-hex="color-accent-text" value="#8D653A" aria-label="Accent 文字色碼"></label>
+        <label class="color-row"><span>主要文字</span><input type="color" data-color="color-text" value="#2D312F"><input class="hex-input" data-hex="color-text" value="#2D312F" aria-label="主要文字色碼"></label>
+        <label class="color-row"><span>次要文字</span><input type="color" data-color="color-text-secondary" value="#68706B"><input class="hex-input" data-hex="color-text-secondary" value="#68706B" aria-label="次要文字色碼"></label>
+        <label class="color-row"><span>輔助文字</span><input type="color" data-color="color-text-muted" value="#66716B"><input class="hex-input" data-hex="color-text-muted" value="#66716B" aria-label="輔助文字色碼"></label>
+        <label class="color-row"><span>Border</span><input type="color" data-color="color-border" value="#D9D8D1"><input class="hex-input" data-hex="color-border" value="#D9D8D1" aria-label="Border 色碼"></label>
+        <label class="color-row"><span>Error</span><input type="color" data-color="color-error" value="#B6544B"><input class="hex-input" data-hex="color-error" value="#B6544B" aria-label="Error 色碼"></label>
+        <label class="color-row"><span>Warning</span><input type="color" data-color="color-warning" value="#805C22"><input class="hex-input" data-hex="color-warning" value="#805C22" aria-label="Warning 色碼"></label>
+        <label class="color-row"><span>Success</span><input type="color" data-color="color-success" value="#3F654F"><input class="hex-input" data-hex="color-success" value="#3F654F" aria-label="Success 色碼"></label>
+        <label class="color-row"><span>Info</span><input type="color" data-color="color-info" value="#486B6D"><input class="hex-input" data-hex="color-info" value="#486B6D" aria-label="Info 色碼"></label>
+      </section>
+
+      <section class="control-group">
+        <h3>字體與字級</h3>
+        <label class="range-row"><span class="range-label"><span>基礎字級</span><output data-output="font-body">14px</output></span><input type="range" data-range="font-body" min="12" max="18" step="1" value="14"></label>
+        <label class="range-row"><span class="range-label"><span>Display</span><output data-output="font-display">36px</output></span><input type="range" data-range="font-display" min="24" max="52" step="1" value="36"></label>
+        <label class="range-row"><span class="range-label"><span>H1</span><output data-output="font-h1">28px</output></span><input type="range" data-range="font-h1" min="20" max="40" step="1" value="28"></label>
+        <label class="range-row"><span class="range-label"><span>H2</span><output data-output="font-h2">22px</output></span><input type="range" data-range="font-h2" min="18" max="32" step="1" value="22"></label>
+        <label class="range-row"><span class="range-label"><span>H3</span><output data-output="font-h3">18px</output></span><input type="range" data-range="font-h3" min="16" max="26" step="1" value="18"></label>
+        <label class="range-row"><span class="range-label"><span>輔助文字</span><output data-output="font-caption">12px</output></span><input type="range" data-range="font-caption" min="11" max="16" step="1" value="12"></label>
+        <label class="range-row"><span class="range-label"><span>字體</span></span><select class="select-input" data-font-select><option value='Inter, "Noto Sans TC", "Noto Sans JP", system-ui, sans-serif'>Inter + Noto Sans</option><option value='"Noto Sans TC", "Noto Sans JP", system-ui, sans-serif'>Noto Sans TC 優先</option><option value='system-ui, -apple-system, "Segoe UI", sans-serif'>System UI</option></select></label>
+      </section>
+
+      <section class="control-group">
+        <h3>間距與圓角</h3>
+        <label class="range-row"><span class="range-label"><span>基礎間距單位</span><output data-output="space-unit">4px</output></span><input type="range" data-range="space-unit" min="2" max="8" step="1" value="4"></label>
+        <label class="range-row"><span class="range-label"><span>小圓角</span><output data-output="radius-sm">8px</output></span><input type="range" data-range="radius-sm" min="0" max="16" step="1" value="8"></label>
+        <label class="range-row"><span class="range-label"><span>中圓角</span><output data-output="radius-md">12px</output></span><input type="range" data-range="radius-md" min="0" max="22" step="1" value="12"></label>
+        <label class="range-row"><span class="range-label"><span>大圓角</span><output data-output="radius-lg">16px</output></span><input type="range" data-range="radius-lg" min="0" max="28" step="1" value="16"></label>
+        <label class="range-row"><span class="range-label"><span>超大圓角</span><output data-output="radius-xl">20px</output></span><input type="range" data-range="radius-xl" min="0" max="36" step="1" value="20"></label>
+      </section>
+
+      <section class="control-group">
+        <h3>陰影與對比</h3>
+        <label class="range-row"><span class="range-label"><span>陰影強度</span><output data-output="shadow-alpha">0.10</output></span><input type="range" data-range="shadow-alpha" min="0" max=".24" step=".01" value=".10"></label>
+        <div class="contrast-list"><div class="contrast-line"><span>主要文字／背景</span><strong data-contrast="text-bg">—</strong></div><div class="contrast-line"><span>Primary／文字</span><strong data-contrast="primary-fg">—</strong></div><div class="contrast-line"><span>Accent 文字／Surface</span><strong data-contrast="accent-surface">—</strong></div></div>
+      </section>
+    </aside>
+
+    <main class="content">
+      <header class="stage-heading"><div><div class="eyebrow">Live style preview</div><h1>旅程工房｜Travel Studio</h1><p>以現有 Travel Planner 的 Sidebar、Timeline、Map 工作區為基礎，集中檢視第 6 章視覺規範。</p></div><span class="stage-note">Hover / Focus only</span></header>
+
+      <section class="app-preview" aria-label="整體網站版面預覽">
+        <div class="app-shell">
+          <aside class="app-sidebar">
+            <div class="brand"><div class="brand-mark">TS</div><div><strong>旅程工房</strong><span>Travel Studio</span></div></div>
+            <nav class="sidebar-nav" aria-label="主要導覽"><a href="#" class="active"><span class="nav-icon">⌘</span>總覽</a><a href="#"><span class="nav-icon">▣</span>行程</a><a href="#"><span class="nav-icon">$</span>預算</a><a href="#"><span class="nav-icon">⌂</span>住宿</a><a href="#"><span class="nav-icon">✓</span>待辦</a></nav>
+            <section class="sidebar-section"><div class="section-heading"><span>我的旅程</span><button type="button" class="mini-button" aria-label="新增旅程">＋</button></div><div class="trip-list"><button type="button" class="trip-card active"><strong>系統測試專用</strong><span>日本・京都・2027/07/08</span></button><button type="button" class="trip-card"><strong>京都琵琶湖之旅</strong><span>京都・滋賀・2027/04/12</span></button><button type="button" class="trip-card"><strong>A_TEST</strong><span>Taiwan・Yilan・2026/06/23</span></button></div></section>
+            <div class="account-box"><span class="avatar">P</span><div><strong>Peter Chiu</strong><span>travel planner</span></div></div>
+          </aside>
+
+          <section class="workspace">
+            <header class="trip-header"><div><div class="eyebrow">TRIP WORKSPACE</div><h1>系統測試專用</h1><div class="trip-meta"><span>日本・京都</span><span>•</span><span>2027/07/08–07/11</span><span>•</span><span>4 天</span></div></div><div class="members" aria-label="協作成員"><span class="avatar">P</span><span class="avatar">T</span><span class="avatar">T</span><div class="header-actions"><button type="button" class="icon-button" aria-label="分享">↗</button><button type="button" class="icon-button" aria-label="更多">⋮</button></div></div></header>
+            <nav class="day-tabs" aria-label="旅程日期"><button type="button" class="day-tab active">DAY 1 · 7/8</button><button type="button" class="day-tab">DAY 2 · 7/9</button><button type="button" class="day-tab">DAY 3 · 7/10</button><button type="button" class="day-tab">DAY 4 · 7/11</button></nav>
+            <div class="workbench">
+              <section class="timeline-column" aria-label="Timeline 行程卡片"><div class="timeline-heading"><div><div class="eyebrow">DAY 1</div><h2>7/8（星期四）</h2></div><button type="button" class="button primary compact">＋ 新增行程</button></div><div class="notice warning"><strong>待確認</strong><span>有一個交通時間需要旅伴確認。</span></div><div class="timeline-list"><article class="itinerary-card selected"><div class="itinerary-time">09:30</div><div><strong>清水寺</strong><span class="caption">京都市東山區・景點</span><div class="badge-row"><span class="badge success">景點</span><span class="badge warning">備案</span></div></div><div class="card-actions"><button type="button" class="icon-button" aria-label="編輯清水寺">✎</button><button type="button" class="icon-button" aria-label="刪除清水寺">×</button></div></article><article class="itinerary-card"><div class="itinerary-time">11:00</div><div><strong>祇園白川</strong><span class="caption">東山區・步行移動</span><div class="badge-row"><span class="badge info">交通</span></div></div><div class="card-actions"><button type="button" class="icon-button" aria-label="編輯祇園白川">✎</button><button type="button" class="icon-button" aria-label="刪除祇園白川">×</button></div></article><article class="itinerary-card"><div class="itinerary-time">13:00</div><div><strong>錦市場</strong><span class="caption">中京區・午餐與採買</span><div class="badge-row"><span class="badge success">餐飲</span></div></div><div class="card-actions"><button type="button" class="icon-button" aria-label="編輯錦市場">✎</button><button type="button" class="icon-button" aria-label="刪除錦市場">×</button></div></article><article class="itinerary-card"><div class="itinerary-time">16:00</div><div><strong>鴨川散步</strong><span class="caption">京都市・自由活動</span></div><div class="card-actions"><button type="button" class="icon-button" aria-label="編輯鴨川散步">✎</button><button type="button" class="icon-button" aria-label="刪除鴨川散步">×</button></div></article></div></section>
+              <section class="map-panel" aria-label="Map 地圖預覽"><div class="map-toolbar"><label class="search-field"><span aria-hidden="true">⌕</span><input type="search" placeholder="搜尋地點" aria-label="搜尋地點"></label><div class="map-tools"><button type="button" class="icon-button" aria-label="編輯路線">⌁</button><button type="button" class="icon-button" aria-label="定位">⊙</button></div></div><svg class="map-svg" viewBox="0 0 760 530" role="img" aria-label="京都旅程地圖示意"><rect width="760" height="530" fill="#dfebdf"/><path class="map-ridge" d="M-30 130 C120 70 205 205 345 125 S580 105 800 180"/><g class="map-road"><path d="M20 20 L240 520"/><path d="M170 0 L390 530"/><path d="M360 0 L190 530"/><path d="M570 0 L350 530"/><path d="M730 0 L520 530"/><path d="M0 220 L760 150"/><path d="M0 340 L760 410"/><path d="M80 520 L700 50"/></g><text class="map-label" x="332" y="250">京都市</text><text class="map-label" x="100" y="120">北山・嵐山</text><text class="map-label" x="560" y="310">東山區</text><path class="map-route" d="M610 130 C540 198 520 260 420 335 S310 420 190 470"/><g class="marker"><circle cx="610" cy="130" r="16"/><text x="610" y="131">1</text></g><g class="marker"><circle cx="420" cy="335" r="16"/><text x="420" y="336">2</text></g><g class="marker"><circle cx="190" cy="470" r="16"/><text x="190" y="471">3</text></g></svg><div class="map-legend">路線順序　1 → 2 → 3</div></section>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="component-panel" aria-label="元件樣式預覽">
+        <div class="component-panel-heading"><div><div class="eyebrow">Components</div><h2>元件與狀態</h2><p>只保留 Hover、Focus 與視覺狀態，不執行實際操作。</p></div></div>
+        <div class="component-grid">
+          <section class="component-section"><h3>Button</h3><button type="button" class="button primary">Primary Button</button><button type="button" class="button secondary">Secondary Button</button><button type="button" class="button ghost">Ghost Button</button><button type="button" class="button danger">Danger Button</button></section>
+          <section class="component-section"><h3>Input / Select</h3><div class="field-demo"><label for="demo-place">地點名稱</label><input id="demo-place" value="京都市" class="focused"><span class="helper">Focus 狀態保留清楚外框。</span><select aria-label="行程類型"><option>景點</option><option>住宿</option><option>交通</option></select></div></section>
+          <section class="component-section"><h3>Badge / Status</h3><div class="badge-row"><span class="badge success">Success</span><span class="badge warning">Warning</span><span class="badge error">Error</span><span class="badge info">Info</span></div><div class="status-stack" style="margin-top:10px"><div class="status-line success">✓ 已同步</div><div class="status-line warning">! 待確認</div><div class="status-line error">× 儲存失敗</div><div class="status-line info">i 地圖載入中</div></div></section>
+          <section class="component-section"><h3>Typography</h3><div class="type-scale"><div><strong class="type-display">Display</strong><span>Display</span></div><div><strong class="type-h1">頁面標題</strong><span>H1</span></div><div><strong class="type-h2">區塊標題</strong><span>H2</span></div><div><strong class="type-h3">元件標題</strong><span>H3</span></div><div><strong>主要內文與說明</strong><span>Body</span></div></div></section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const defaults = {
+        "color-bg": "#F7F5EF", "color-surface": "#FCFBF7", "color-surface-subtle": "#EEECE5", "color-primary": "#2F6B57", "color-primary-hover": "#245341", "color-primary-foreground": "#FFFFFF", "color-accent": "#A77A46", "color-accent-text": "#8D653A", "color-text": "#2D312F", "color-text-secondary": "#68706B", "color-text-muted": "#66716B", "color-border": "#D9D8D1", "color-error": "#B6544B", "color-warning": "#805C22", "color-success": "#3F654F", "color-info": "#486B6D", "font-body": "14", "font-display": "36", "font-h1": "28", "font-h2": "22", "font-h3": "18", "font-caption": "12", "space-unit": "4", "radius-sm": "8", "radius-md": "12", "radius-lg": "16", "radius-xl": "20", "shadow-alpha": ".10"
+      };
+      const hexPattern = /^#[0-9a-fA-F]{6}$/;
+      const by = (selector) => root.querySelector(selector);
+      const setCss = (key, value) => root.style.setProperty(`--${key.replaceAll("_", "-")}`, value);
+      const syncColor = (token, value) => {
+        if (!hexPattern.test(value)) return;
+        setCss(token, value.toUpperCase());
+        const picker = by(`[data-color="${token}"]`);
+        const hex = by(`[data-hex="${token}"]`);
+        if (picker) picker.value = value;
+        if (hex && hex.value !== value.toUpperCase()) hex.value = value.toUpperCase();
+        updateContrast();
+      };
+      document.querySelectorAll("[data-color]").forEach((input) => input.addEventListener("input", () => syncColor(input.dataset.color, input.value)));
+      document.querySelectorAll("[data-hex]").forEach((input) => input.addEventListener("input", () => syncColor(input.dataset.hex, input.value.trim())));
+      document.querySelectorAll("[data-range]").forEach((input) => input.addEventListener("input", () => {
+        const key = input.dataset.range;
+        const value = input.value;
+        setCss(key, key === "shadow-alpha" ? value : `${value}px`);
+        const output = by(`[data-output="${key}"]`);
+        if (output) output.textContent = key === "shadow-alpha" ? Number(value).toFixed(2) : `${value}px`;
+      }));
+      const select = by("[data-font-select]");
+      const defaultFontStack = select ? select.value : "Inter, \"Noto Sans TC\", \"Noto Sans JP\", system-ui, sans-serif";
+      if (select) select.addEventListener("change", () => setCss("font-stack", select.value));
+      const luminance = (hex) => {
+        const rgb = [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16) / 255).map((value) => value <= .03928 ? value / 12.92 : Math.pow((value + .055) / 1.055, 2.4));
+        return .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2];
+      };
+      const contrast = (first, second) => { const a = luminance(first); const b = luminance(second); return ((Math.max(a, b) + .05) / (Math.min(a, b) + .05)).toFixed(2); };
+      const css = (key) => getComputedStyle(root).getPropertyValue(`--${key}`).trim();
+      const updateContrast = () => {
+        const values = { "text-bg": contrast(css("color-text"), css("color-bg")), "primary-fg": contrast(css("color-primary"), css("color-primary-foreground")), "accent-surface": contrast(css("color-accent-text"), css("color-surface")) };
+        Object.entries(values).forEach(([key, value]) => { const node = by(`[data-contrast="${key}"]`); if (node) node.textContent = `${value}:1`; });
+      };
+      const setStatus = (message, isError = false) => {
+        const status = by("#fileStatus");
+        if (!status) return;
+        status.textContent = message;
+        status.classList.toggle("error", isError);
+      };
+      const readSettings = () => {
+        const tokens = {};
+        Object.keys(defaults).forEach((key) => {
+          const input = key.startsWith("color-") ? by(`[data-hex="${key}"]`) : by(`[data-range="${key}"]`);
+          tokens[key] = input ? input.value : defaults[key];
+        });
+        tokens.fontStack = select ? select.value : defaultFontStack;
+        return tokens;
+      };
+      const applySettings = (data, statusMessage = "設計檔已匯入") => {
+        const incoming = data?.tokens || data?.settings || data;
+        if (!incoming || typeof incoming !== "object") throw new Error("設定檔格式無效");
+        Object.entries(defaults).forEach(([key, fallback]) => {
+          const value = incoming[key] ?? fallback;
+          if (key.startsWith("color-")) {
+            if (!hexPattern.test(String(value))) throw new Error(`${key} 不是有效色碼`);
+            syncColor(key, String(value).toUpperCase());
+            return;
+          }
+          const input = by(`[data-range="${key}"]`);
+          if (!input || !Number.isFinite(Number(value))) return;
+          input.value = String(value);
+          input.dispatchEvent(new Event("input"));
+        });
+        const fontStack = incoming.fontStack || incoming["font-stack"];
+        if (fontStack && select && Array.from(select.options).some((option) => option.value === fontStack)) {
+          select.value = fontStack;
+          setCss("font-stack", fontStack);
+        }
+        updateContrast();
+        setStatus(statusMessage);
+      };
+      by("#resetButton").addEventListener("click", () => applySettings({ tokens: defaults, fontStack: defaultFontStack }, "已重設為預設設計 Token"));
+      by("#exportButton").addEventListener("click", () => {
+        const payload = { schema: "travel-studio.design-system", version: 1, project: "Travel Studio", exportedAt: new Date().toISOString(), tokens: readSettings() };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "travel-studio-design-system.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        setStatus("設定檔已匯出：travel-studio-design-system.json");
+      });
+      const importInput = by("#importFile");
+      by("#importButton").addEventListener("click", () => importInput?.click());
+      importInput?.addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+          const data = JSON.parse(await file.text());
+          applySettings(data, `已匯入設計檔：${file.name}`);
+        } catch (error) {
+          setStatus(`匯入失敗：${error.message || "JSON 格式無效"}`, true);
+        } finally {
+          event.target.value = "";
+        }
+      });
+      updateContrast();
+    })();
+  </script>
+</body>
+</html>

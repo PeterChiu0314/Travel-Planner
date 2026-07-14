@@ -225,7 +225,7 @@ test("Phase 5.1d Google Maps loader uses basic Maps library and safe diagnostics
 });
 
 test("Phase 5.1d service worker leaves Google Maps external loading network-only", () => {
-  const serviceWorkerSource = readRepoFile("public/sw.js");
+  const serviceWorkerSource = readRepoFile("design/sw.js");
 
   expect(serviceWorkerSource).toContain('"maps.googleapis.com"');
   expect(serviceWorkerSource).toContain('"maps.gstatic.com"');
