@@ -535,6 +535,10 @@ test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker sty
   expect(googleProviderSource).toContain("destinationMarkerIcon");
   expect(googleProviderSource).toContain("marker.setIcon(");
   expect(googleProviderSource).toContain("marker.setZIndex(isFocusedMarker ? 1000");
+  expect(googleProviderSource).toContain("const hoverState = { focused: false, hovered: false }");
+  expect(googleProviderSource).toContain("hoverState.focused, false, true");
+  expect(googleProviderSource).toContain("hoverState.focused, false, false");
+  expect(googleProviderSource).toContain("hoverState.focused = isFocusedMarker");
   expect(googleProviderSource).toContain("if (!isPickingMapPoint && !isRouteEditMode) onFocusItem?.(marker.itemId)");
   expect(googleProviderSource).toContain("}, [isPickingMapPoint, isRouteEditMode, markersKey, onFocusItem, status, viewportSignature])");
   expect(googleProviderSource).not.toContain("AdvancedMarkerElement");

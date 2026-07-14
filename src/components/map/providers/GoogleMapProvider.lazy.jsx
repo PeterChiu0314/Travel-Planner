@@ -978,17 +978,17 @@ export default function GoogleMapProvider(props) {
         googleMarker.addListener("click", () => {
           if (!isPickingMapPoint && !isRouteEditMode) onFocusItem?.(marker.itemId);
         });
-        const hoverState = { hovered: false };
+        const hoverState = { focused: false, hovered: false };
         markerHoverStateRef.current.set(marker.id, hoverState);
         googleMarker.addListener("mouseover", () => {
           if (isPickingMapPoint || isRouteEditMode || hoverState.hovered) return;
           hoverState.hovered = true;
-          googleMarker.setIcon(destinationMarkerIcon(mapsNamespace, marker, index, false, false, true));
+          googleMarker.setIcon(destinationMarkerIcon(mapsNamespace, marker, index, hoverState.focused, false, true));
         });
         googleMarker.addListener("mouseout", () => {
           if (!hoverState.hovered) return;
           hoverState.hovered = false;
-          googleMarker.setIcon(destinationMarkerIcon(mapsNamespace, marker, index, false, false, false));
+          googleMarker.setIcon(destinationMarkerIcon(mapsNamespace, marker, index, hoverState.focused, false, false));
         });
         markerInstancesRef.current.set(marker.id, googleMarker);
         bounds.extend(position);
@@ -1523,7 +1523,9 @@ export default function GoogleMapProvider(props) {
       const markerIndex = coordinateMarkers.findIndex((candidate) => candidate.id === markerId);
       const markerRecord = markerIndex >= 0 ? coordinateMarkers[markerIndex] : null;
       const isFocusedMarker = focusedMapState.focusedMarkerId === markerId;
-      const hoverState = markerHoverStateRef.current.get(markerId);
+      const hoverState = markerHoverStateRef.current.get(markerId) || { focused: false, hovered: false };
+      hoverState.focused = isFocusedMarker;
+      markerHoverStateRef.current.set(markerId, hoverState);
       marker.setZIndex(isFocusedMarker ? 1000 : Math.max(markerIndex + 1, 1));
       marker.setIcon(
         destinationMarkerIcon(
