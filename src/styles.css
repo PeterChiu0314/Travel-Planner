@@ -5210,11 +5210,17 @@ textarea {
 
 @media (min-width: 1101px) {
   .app-shell-workspace .workspace:has(.timeline-workbench:not(.hidden-section)) {
+    display: flex;
+    flex-direction: column;
     overflow-y: hidden;
+    padding-bottom: 0;
     scrollbar-gutter: auto;
   }
 
   .app-shell-workspace .trip-editor:has(.timeline-workbench:not(.hidden-section)) {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
     min-height: 0;
   }
 
@@ -5243,9 +5249,12 @@ textarea {
     max-height: calc(100dvh - 144px);
   }
 
+  .app-shell-workspace .workspace:has(.timeline-workbench:not(.hidden-section)) > .timeline-workbench,
   .app-shell-workspace .trip-editor:has(.timeline-workbench:not(.hidden-section)) .timeline-workbench {
-    height: calc(100dvh - 150px);
-    max-height: calc(100dvh - 150px);
+    flex: 1 1 auto;
+    height: auto;
+    margin-bottom: 0;
+    max-height: none;
   }
 
   .timeline-workbench:not(.route-collapsed) .itinerary-panel {

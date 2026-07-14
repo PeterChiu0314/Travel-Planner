@@ -588,6 +588,11 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
   expect(googleProviderSource).toContain("createPortal(");
   expect(googleProviderSource).toContain("document.body");
   expect(googleProviderSource).toContain("updateRouteEditOverlayRect");
+  expect(googleProviderSource).toContain('closest?.(".timeline-workbench")');
+  expect(googleProviderSource).toContain('querySelector?.(".itinerary-panel")');
+  expect(googleProviderSource).toContain("dayBoardRect?.width > 0 ? dayBoardRect.right : mapRect.left");
+  expect(googleProviderSource).toContain("destinationMarkerIcon(mapsNamespace, marker, index, false, false)");
+  expect(googleProviderSource).not.toContain("destinationMarkerIcon(mapsNamespace, marker, index, false, isRouteEditMode)");
   expect(googleProviderSource).toContain('aria-label="離開路線編輯模式"');
   expect(googleProviderSource).toContain("onClick={exitRouteEditMode}");
   expect(googleProviderSource).not.toContain("route-edit-interaction-layer");

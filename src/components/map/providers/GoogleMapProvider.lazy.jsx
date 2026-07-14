@@ -579,19 +579,27 @@ export default function GoogleMapProvider(props) {
   }
 
   function updateRouteEditOverlayRect() {
-    const rect = mapElementRef.current?.parentElement?.getBoundingClientRect?.();
-    if (!rect) {
+    const mapRect = mapElementRef.current?.parentElement?.getBoundingClientRect?.();
+    if (!mapRect) {
       setRouteEditOverlayRect(null);
       return;
     }
-    const top = Math.min(rect.bottom, rect.top + ROUTE_EDIT_ACTIVE_TOP_INSET_PX);
+    const workbench = mapElementRef.current?.closest?.(".timeline-workbench");
+    const dayBoardRect = !workbench?.classList?.contains("route-collapsed")
+      ? workbench?.querySelector?.(".itinerary-panel")?.getBoundingClientRect?.()
+      : null;
+    const left = Math.min(
+      mapRect.right,
+      Math.max(mapRect.left, dayBoardRect?.width > 0 ? dayBoardRect.right : mapRect.left),
+    );
+    const top = Math.min(mapRect.bottom, mapRect.top + ROUTE_EDIT_ACTIVE_TOP_INSET_PX);
     setRouteEditOverlayRect({
-      bottom: Math.max(0, window.innerHeight - rect.bottom),
-      height: Math.max(0, rect.bottom - top),
-      left: Math.max(0, rect.left),
-      right: Math.max(0, window.innerWidth - rect.right),
+      bottom: Math.max(0, window.innerHeight - mapRect.bottom),
+      height: Math.max(0, mapRect.bottom - top),
+      left: Math.max(0, left),
+      right: Math.max(0, window.innerWidth - mapRect.right),
       top: Math.max(0, top),
-      width: Math.max(0, rect.width),
+      width: Math.max(0, mapRect.right - left),
     });
   }
 
@@ -968,7 +976,7 @@ export default function GoogleMapProvider(props) {
       coordinateMarkers.forEach((marker, index) => {
         const position = { lat: marker.latitude, lng: marker.longitude };
         const googleMarker = new MarkerConstructor({
-          icon: destinationMarkerIcon(mapsNamespace, marker, index, false, isRouteEditMode),
+          icon: destinationMarkerIcon(mapsNamespace, marker, index, false, false),
           map: mapRef.current,
           position,
           title: marker.title || marker.locationName || "",

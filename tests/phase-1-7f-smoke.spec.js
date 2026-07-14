@@ -94,6 +94,7 @@ for (const layout of [
       const boardRect = rect(board);
       const mapRect = rect(map);
       const tabsRect = rect(tabs);
+      const workspace = document.querySelector(".workspace");
       const boardStyle = board ? getComputedStyle(board) : null;
       const scrollbarStyle = board ? getComputedStyle(board, "::-webkit-scrollbar") : null;
       const scrollbarButtonStyle = board ? getComputedStyle(board, "::-webkit-scrollbar-button") : null;
@@ -109,6 +110,8 @@ for (const layout of [
         pageClientWidth: document.documentElement.clientWidth,
         pageScrollWidth: document.documentElement.scrollWidth,
         tabsRight: tabsRect?.right ?? null,
+        viewportHeight: window.innerHeight,
+        workspacePaddingBottom: workspace ? getComputedStyle(workspace).paddingBottom : null,
         workbenchRect,
       };
     });
@@ -131,6 +134,9 @@ for (const layout of [
       expect(metrics.boardScrollbarWidth).toBe("4px");
       expect(metrics.boardScrollbarButtonDisplay).toBe("none");
       expect(metrics.boardScrollbarButtonHeight).toBe("0px");
+      expect(metrics.workspacePaddingBottom).toBe("0px");
+      expect(metrics.workbenchRect.bottom).toBeGreaterThanOrEqual(metrics.viewportHeight - 1);
+      expect(metrics.workbenchRect.bottom).toBeLessThanOrEqual(metrics.viewportHeight + 3);
     }
   });
 }
