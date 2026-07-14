@@ -354,6 +354,20 @@ test("Phase 5.1e Google map layout fills the route map surface", () => {
   expect(stylesSource).toContain("min-height: 220px");
 });
 
+test("Phase 5.8b keeps the Map behind a floating Dayboard glass panel", () => {
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(stylesSource).toContain(".timeline-workbench .itinerary-panel");
+  expect(stylesSource).toContain("grid-area: 1 / 1");
+  expect(stylesSource).toContain("background: rgba(238, 245, 239, 0.96)");
+  expect(stylesSource).toContain("background: rgba(238, 245, 239, 0.78)");
+  expect(stylesSource).toContain("-webkit-backdrop-filter: blur(10px) saturate(140%)");
+  expect(stylesSource).toContain("backdrop-filter: blur(10px) saturate(140%)");
+  expect(stylesSource).toContain("overflow-y: auto");
+  expect(stylesSource).toContain(".timeline-top-row {\n    --timeline-columns: minmax(0, 1fr);");
+  expect(stylesSource).toContain(".timeline-workbench .side-panels > .route-panel > .google-map-surface");
+});
+
 test("Phase 5.2 map point warning overlays without resizing the map canvas", () => {
   const appSource = readRepoFile("src/App.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");

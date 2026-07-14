@@ -71,6 +71,53 @@ async function openDemoNewVisitForm(page, title, startTime, endTime) {
   return form;
 }
 
+for (const layout of [
+  { name: "desktop", width: 1440, height: 900 },
+  { name: "tablet", width: 900, height: 800 },
+  { name: "mobile", width: 390, height: 844 },
+]) {
+  test(`Phase 5.8b ${layout.name} keeps the Map behind the Dayboard`, async ({ page }) => {
+    await page.setViewportSize({ width: layout.width, height: layout.height });
+    await page.goto("/demo/timeline");
+
+    const metrics = await page.evaluate(() => {
+      const workbench = document.querySelector(".timeline-workbench:not(.hidden-section)");
+      const board = workbench?.querySelector(".itinerary-panel");
+      const map = workbench?.querySelector(".side-panels > .route-panel");
+      const tabs = document.querySelector(".timeline-top-row");
+      const rect = (element) => {
+        if (!element) return null;
+        const box = element.getBoundingClientRect();
+        return { bottom: box.bottom, left: box.left, right: box.right, top: box.top, width: box.width };
+      };
+      const workbenchRect = rect(workbench);
+      const boardRect = rect(board);
+      const mapRect = rect(map);
+      const tabsRect = rect(tabs);
+      return {
+        boardOverflowY: board ? getComputedStyle(board).overflowY : null,
+        boardRect,
+        mapRect,
+        pageClientWidth: document.documentElement.clientWidth,
+        pageScrollWidth: document.documentElement.scrollWidth,
+        tabsRight: tabsRect?.right ?? null,
+        workbenchRect,
+      };
+    });
+
+    expect(metrics.workbenchRect).not.toBeNull();
+    expect(metrics.boardRect).not.toBeNull();
+    expect(metrics.mapRect).not.toBeNull();
+    expect(metrics.boardOverflowY).toBe("auto");
+    expect(metrics.mapRect.width).toBeGreaterThanOrEqual(metrics.workbenchRect.width - 2);
+    expect(metrics.boardRect.width).toBeLessThanOrEqual(metrics.workbenchRect.width);
+    expect(metrics.boardRect.left).toBeLessThan(metrics.mapRect.right);
+    expect(metrics.boardRect.top).toBeLessThan(metrics.mapRect.bottom);
+    expect(metrics.pageScrollWidth).toBeLessThanOrEqual(metrics.pageClientWidth + 1);
+    expect(metrics.tabsRight).toBeLessThanOrEqual(metrics.pageClientWidth + 1);
+  });
+}
+
 test("app shell loads without crashing", async ({ page }) => {
   const failures = collectConsoleFailures(page);
 

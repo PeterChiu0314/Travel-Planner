@@ -2626,6 +2626,37 @@ textarea {
   gap: 18px;
 }
 
+.timeline-workbench .itinerary-panel {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  background: rgba(238, 245, 239, 0.96);
+  box-shadow: 0 12px 28px rgba(36, 43, 38, 0.1);
+  color: var(--ink);
+}
+
+@supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+  .timeline-workbench .itinerary-panel {
+    background: rgba(238, 245, 239, 0.78);
+  }
+
+  .timeline-workbench .itinerary-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    backdrop-filter: blur(10px) saturate(140%);
+  }
+
+  .timeline-workbench .itinerary-panel > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
 @keyframes timeline-map-reveal {
   from {
     clip-path: inset(0 0 0 100%);
@@ -5157,7 +5188,8 @@ textarea {
   }
 
   .timeline-workbench {
-    grid-template-columns: var(--timeline-columns);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: 0;
     height: calc(100dvh - 144px);
     margin-right: -10px;
@@ -5180,14 +5212,19 @@ textarea {
   }
 
   .timeline-workbench .itinerary-panel {
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    height: 100%;
-    max-height: none;
+    grid-area: 1 / 1;
+    z-index: 2;
+    align-self: start;
+    width: min(550px, calc(30% + 6px));
+    min-width: 380px;
+    max-width: calc(100% - 24px);
+    height: calc(100% - 24px);
+    max-height: calc(100% - 24px);
+    margin: 12px 0 12px 16px;
     min-height: 0;
     overflow-y: auto;
-    padding: 0px 0px 0 5px;
+    overflow-x: hidden;
+    padding: 18px 14px 18px 18px;
     scrollbar-gutter: stable;
   }
 
@@ -5212,6 +5249,7 @@ textarea {
   }
 
   .timeline-workbench .side-panels {
+    grid-area: 1 / 1;
     display: grid;
     animation: timeline-map-reveal var(--timeline-map-transition-duration) var(--timeline-map-transition-easing) both;
     height: calc(100% + var(--timeline-map-lift, 64px));
@@ -5220,6 +5258,7 @@ textarea {
     position: sticky;
     top: 74px;
     z-index: 1;
+    width: 100%;
   }
 
   .timeline-workbench .side-panels.is-closing {
@@ -5256,7 +5295,6 @@ textarea {
     height: 100%;
     min-height: 0;
     border: 0;
-    border-left: 1px solid rgba(95, 143, 184, 0.18);
     border-radius: 0;
     padding: 76px 24px 24px;
   }
@@ -5305,6 +5343,23 @@ textarea {
   .timeline-workbench.route-collapsed .timeline-column-header {
     align-items: flex-start;
     min-height: 36px;
+  }
+
+  .timeline-workbench.route-collapsed .itinerary-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .timeline-workbench.route-collapsed .itinerary-panel::before {
+    display: none;
   }
 
 }
@@ -5424,6 +5479,95 @@ textarea {
 
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .timeline-top-row {
+    --timeline-columns: minmax(0, 1fr);
+  }
+
+  .timeline-workbench {
+    --timeline-columns: minmax(0, 1fr);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0;
+    height: clamp(420px, calc(100dvh - 176px), 720px);
+    min-height: 0;
+    position: relative;
+    overflow: visible;
+  }
+
+  .timeline-workbench .itinerary-panel {
+    grid-area: 1 / 1;
+    z-index: 2;
+    align-self: start;
+    width: min(520px, calc(100% - 24px));
+    min-width: 0;
+    max-width: calc(100% - 24px);
+    height: calc(100% - 24px);
+    max-height: calc(100% - 24px);
+    margin: 12px;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 16px 12px 16px 16px;
+    scrollbar-gutter: stable;
+  }
+
+  .timeline-workbench .side-panels {
+    grid-area: 1 / 1;
+    display: block;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .timeline-workbench .side-panels > .route-panel {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(90deg, rgba(95, 143, 184, 0.16) 1px, transparent 1px),
+      linear-gradient(rgba(95, 143, 184, 0.13) 1px, transparent 1px),
+      #f8fbfd;
+    background-size: 26px 26px;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .timeline-workbench .side-panels .panel-heading.tight {
+    position: absolute;
+    top: 18px;
+    left: 24px;
+    z-index: 2;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .timeline-workbench .route-map {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 76px 24px 24px;
+  }
+
+  .timeline-workbench .side-panels > .route-panel > .google-map-surface {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 0;
   }
 
   .budget-overview {
