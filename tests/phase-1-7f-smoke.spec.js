@@ -163,6 +163,54 @@ test("Phase 5.8 trip header typography stays consistent while renaming", async (
   expect(await titleInput.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("500");
 });
 
+test("Phase 5.8 Timeline confirmation dialogs stay viewport-centered", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/demo/timeline");
+
+  await page.locator('.timeline-item button[title="刪除"]:not([disabled])').first().click();
+  const backdrop = page.locator("body > .modal-backdrop");
+  const dialog = backdrop.locator('.dialog-card[role="dialog"]');
+
+  await expect(backdrop).toBeVisible();
+  await expect(dialog).toBeVisible();
+
+  const metrics = await page.evaluate(() => {
+    const backdropElement = document.querySelector("body > .modal-backdrop");
+    const dialogElement = backdropElement?.querySelector('.dialog-card[role="dialog"]');
+    if (!backdropElement || !dialogElement) return null;
+    const backdropRect = backdropElement.getBoundingClientRect();
+    const dialogRect = dialogElement.getBoundingClientRect();
+    const backdropStyle = getComputedStyle(backdropElement);
+    const dialogStyle = getComputedStyle(dialogElement);
+    return {
+      backdropBackground: backdropStyle.backgroundColor,
+      backdropBottom: backdropRect.bottom,
+      backdropLeft: backdropRect.left,
+      backdropPosition: backdropStyle.position,
+      backdropRight: backdropRect.right,
+      backdropTop: backdropRect.top,
+      dialogBackground: dialogStyle.backgroundColor,
+      dialogBorderRadius: dialogStyle.borderRadius,
+      dialogCenterX: dialogRect.left + dialogRect.width / 2,
+      dialogCenterY: dialogRect.top + dialogRect.height / 2,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(metrics).not.toBeNull();
+  expect(metrics.backdropPosition).toBe("fixed");
+  expect(metrics.backdropBackground).toBe("rgba(24, 32, 28, 0.36)");
+  expect(metrics.dialogBackground).toBe("rgb(255, 255, 255)");
+  expect(metrics.dialogBorderRadius).toBe("8px");
+  expect(Math.abs(metrics.backdropLeft)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.backdropTop)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.backdropRight - metrics.viewportWidth)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.backdropBottom - metrics.viewportHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.dialogCenterX - metrics.viewportWidth / 2)).toBeLessThanOrEqual(1);
+  expect(Math.abs(metrics.dialogCenterY - metrics.viewportHeight / 2)).toBeLessThanOrEqual(1);
+});
+
 test("app shell loads without crashing", async ({ page }) => {
   const failures = collectConsoleFailures(page);
 

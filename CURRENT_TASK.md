@@ -59,6 +59,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - The Map search control is 38 px high with a 10 px liquid-glass radius. Route-edit and add-point buttons sit to its right, and the Map-collapse control uses Lucide `Tally4`.
 - The current Map liquid-glass tokens use `rgba(255, 255, 255, .4)` for the supported surface, `rgba(255, 255, 255, .55)` for the border, `rgba(20, 55, 46, .92)` for fallback, `blur(8px)`, and `saturate(140%)`. The Dayboard background and border reference the same shared tokens in both fallback and supported states.
 - Timeline visit cards, transportation cards, collapsed-day preview cards, Day tabs, the add-itinerary button, and Dayboard editing forms use a translucent solid surface (`rgba(255, 255, 255, .85)`) without `backdrop-filter`.
+- Timeline delete, transportation-delete, and move confirmation dialogs render through a body-level portal so their original full-viewport dimmer and centered white dialog are preserved above the glass Dayboard and Map.
 - Missing-coordinate and route-edit status overlays are centered within the Map area that remains visible to the right of the Dayboard.
 - The Map search control, route-edit button, and custom-point button use the Phase 5.8 liquid-glass tokens, including a deep-green fallback, translucent supported surface, white border, 8 px blur, 140% saturation, and reduced-motion-safe interaction states.
 - The Google logo remains visible immediately to the right of the Dayboard.
@@ -90,6 +91,8 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 
 Latest Phase 5.8 verification:
 
+- Phase 5.8 filtered browser smoke checks passed 5/5, including a body-level Timeline confirmation dialog with a full-viewport fixed dimmer, centered white card, and preserved 8 px radius.
+- The full legacy smoke suite was also attempted: its first eight checks passed, then three unrelated Demo tail-transport timing cases reached their existing 30-second timeout; no confirmation-dialog check failed.
 - Phase 5.8 desktop, tablet, mobile, and trip-title edit Playwright checks passed 4/4 through `44fd4d3`.
 - Focused Map/provider route-edit and workspace checks passed 2/2 through `44fd4d3`.
 - Chrome DOM inspection confirmed the latest `lucide-tally-4` Map-collapse control at `6c9fadd`.

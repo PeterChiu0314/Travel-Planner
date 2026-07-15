@@ -1,4 +1,5 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   closestCenter,
   DndContext,
@@ -137,6 +138,11 @@ const tripPresencePageToSection = {
   timeline: "timeline",
   todo: "todo",
 };
+
+function BodyPortal({ children }) {
+  if (typeof document === "undefined") return null;
+  return createPortal(children, document.body);
+}
 
 function timelineDragPresenceDebugEnabled() {
   if (typeof window === "undefined") return false;
@@ -12698,6 +12704,7 @@ function ItineraryTimeline({
       : "此操作無法復原。";
   return (
     <>
+    <BodyPortal>
     {deleteTarget ? (
       <div className="modal-backdrop">
         <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
@@ -12817,6 +12824,7 @@ function ItineraryTimeline({
         </div>
       </div>
     ) : null}
+    </BodyPortal>
     <div className="timeline-day-column active" data-day-index={activeDay} ref={activeDayColumnRef} style={{ order: activeDay }}>
       <div className="panel-heading timeline-column-header">
         <div className="timeline-column-title">
