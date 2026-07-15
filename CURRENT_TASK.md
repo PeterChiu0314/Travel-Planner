@@ -57,9 +57,10 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - The trip title and title-edit input use 24 px / 500 weight; header metadata uses 500 weight. The header uses the compact 68 px grid layout and translucent warm-white background.
 - Route-edit masking begins at the Dayboard's right edge, the workspace fills the viewport bottom without a gap, and destination markers remain fully opaque while editing.
 - The Map search control is 38 px high with a 10 px liquid-glass radius. Route-edit and add-point buttons sit to its right, and the Map-collapse control uses Lucide `Tally4`.
-- The current Map liquid-glass tokens use `rgba(255, 255, 255, .1)` for the supported surface, `rgba(255, 255, 255, .55)` for the border, `rgba(20, 55, 46, .92)` for fallback, `blur(10px)`, and `saturate(140%)`. The Dayboard background and border reference the same shared tokens in both fallback and supported states.
+- The current Map liquid-glass tokens use `rgba(255, 255, 255, .1)` for the supported surface, `rgba(255, 255, 255, .55)` for the border, `rgba(20, 55, 46, .92)` for fallback, `blur(8px)`, and `saturate(140%)`. The Dayboard background and border reference the same shared tokens in both fallback and supported states.
+- Timeline visit cards, transportation cards, and collapsed-day preview cards use a translucent solid surface (`rgba(255, 255, 255, .72)`) without `backdrop-filter`; fixed cards use a softer warm-white variant.
 - Missing-coordinate and route-edit status overlays are centered within the Map area that remains visible to the right of the Dayboard.
-- The Map search control, route-edit button, and custom-point button use the Phase 5.8 liquid-glass tokens, including a deep-green fallback, translucent supported surface, white border, 10 px blur, 140% saturation, and reduced-motion-safe interaction states.
+- The Map search control, route-edit button, and custom-point button use the Phase 5.8 liquid-glass tokens, including a deep-green fallback, translucent supported surface, white border, 8 px blur, 140% saturation, and reduced-motion-safe interaction states.
 - The Google logo remains visible immediately to the right of the Dayboard.
 - Formal Timeline and Demo stay visually aligned where the same controls exist; existing cards, map-marker behavior, scrolling, editing, and collapse behavior remain intact.
 

@@ -13,7 +13,7 @@
   --map-glass-bg: rgba(255, 255, 255, 0.1);
   --map-glass-bg-fallback: rgba(20, 55, 46, 0.92);
   --map-glass-border: rgba(255, 255, 255, 0.55);
-  --map-glass-blur: 10px;
+  --map-glass-blur: 8px;
   --map-glass-saturation: 140%;
   --map-glass-transition: 160ms ease;
 }
@@ -2812,7 +2812,7 @@ textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.72);
   color: var(--ink);
   padding: 10px;
   text-align: left;
@@ -2984,7 +2984,7 @@ textarea {
   align-items: start;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.72);
   min-height: 118px;
   overflow: hidden;
   padding: 14px;
@@ -2994,7 +2994,7 @@ textarea {
 
 .timeline-item.fixed {
   border-color: rgba(15, 95, 71, 0.42);
-  background: #fbfcfa;
+  background: rgba(251, 252, 250, 0.72);
 }
 
 .timeline-item.drag-enabled {
@@ -3202,7 +3202,7 @@ textarea {
   align-items: center;
   border: 2px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.72);
   cursor: pointer;
   padding: 7px 14px;
 }
@@ -3515,7 +3515,7 @@ textarea {
 .timeline-item.timeline-item-remote-drag-source,
 .timeline-item.focused.timeline-item-remote-drag-source {
   border: 2px solid var(--timeline-remote-drag-color, #2f8f72);
-  background: linear-gradient(0deg, var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), transparent), #fff;
+  background: linear-gradient(0deg, var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), transparent), rgba(255, 255, 255, 0.72);
   box-shadow: none;
   opacity: 0.56;
 }

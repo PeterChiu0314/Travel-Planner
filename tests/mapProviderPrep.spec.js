@@ -369,6 +369,10 @@ test("Phase 5.8b keeps the Map behind a full-height Dayboard glass panel", () =>
   expect(stylesSource).toContain("backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturation))");
   expect(stylesSource).toContain(".places-search-control");
   expect(stylesSource).toContain("border-radius: 10px");
+  expect(stylesSource).toContain("background: rgba(255, 255, 255, 0.72)");
+  expect(stylesSource).toContain("background: rgba(251, 252, 250, 0.72)");
+  expect(stylesSource).toContain(".timeline-item");
+  expect(stylesSource).toContain(".transport-card");
   expect(stylesSource).toContain("overflow-y: auto");
   expect(stylesSource).toContain("--board-scrollbar-width: 4px");
   expect(stylesSource).toContain("--board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent)");
