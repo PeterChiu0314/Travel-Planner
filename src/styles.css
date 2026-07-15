@@ -10,7 +10,7 @@
   --coral: #d85f49;
   --sky: #5f8fb8;
   --shadow: 0 20px 45px rgba(36, 43, 38, 0.11);
-  --map-glass-bg: rgba(255, 255, 255, 0.1);
+  --map-glass-bg: rgba(255, 255, 255, 0.4);
   --map-glass-bg-fallback: rgba(20, 55, 46, 0.92);
   --map-glass-border: rgba(255, 255, 255, 0.55);
   --map-glass-blur: 8px;
@@ -1270,6 +1270,7 @@ code {
   min-width: 46px;
   height: 34px;
   min-height: 34px;
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .timeline-add-button svg {
@@ -2458,7 +2459,7 @@ textarea {
   height: 36px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.85);
   color: var(--ink);
   padding: 0 10px;
   font-size: 14px;
@@ -2467,7 +2468,7 @@ textarea {
 }
 
 .day-tab.active {
-  background: #e8f5ee;
+  background: rgba(255, 255, 255, 0.85);
   border: 2px solid transparent;
   border-color: var(--mint);
   color: var(--ink);
@@ -2812,7 +2813,7 @@ textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.85);
   color: var(--ink);
   padding: 10px;
   text-align: left;
@@ -2869,6 +2870,10 @@ textarea {
   background: #fbfcfa;
   padding: 14px;
   margin-bottom: 16px;
+}
+
+.timeline-workbench .item-form {
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .form-grid {
@@ -2984,7 +2989,7 @@ textarea {
   align-items: start;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.85);
   min-height: 118px;
   overflow: hidden;
   padding: 14px;
@@ -2994,7 +2999,7 @@ textarea {
 
 .timeline-item.fixed {
   border-color: rgba(15, 95, 71, 0.42);
-  background: rgba(251, 252, 250, 0.72);
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .timeline-item.drag-enabled {
@@ -3202,7 +3207,7 @@ textarea {
   align-items: center;
   border: 2px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   padding: 7px 14px;
 }
@@ -3515,7 +3520,7 @@ textarea {
 .timeline-item.timeline-item-remote-drag-source,
 .timeline-item.focused.timeline-item-remote-drag-source {
   border: 2px solid var(--timeline-remote-drag-color, #2f8f72);
-  background: linear-gradient(0deg, var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), transparent), rgba(255, 255, 255, 0.72);
+  background: linear-gradient(0deg, var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), transparent), rgba(255, 255, 255, 0.85);
   box-shadow: none;
   opacity: 0.56;
 }
