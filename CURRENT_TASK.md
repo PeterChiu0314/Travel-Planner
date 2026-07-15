@@ -53,7 +53,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - The Dayboard covers the complete left workspace column with a liquid-glass surface: `rgba(238, 245, 239, .78)`, a light white border, `blur(10px) saturate(140%)`, and the opaque `.96` fallback when backdrop filtering is unavailable.
 - Day tabs are visually integrated with the Dayboard when the Map is expanded, while retaining their existing horizontal drag/arrow behavior and normal collapsed-Map layout.
 - The Dayboard and tabs align directly against the sidebar and share the same right boundary without a gap or mismatched blur strip.
-- The Dayboard vertical scrollbar uses a transparent track, no arrow buttons, a 4 px softly muted thumb, and stable gutter. Expanded-panel padding is `0 10px 5px 14px`.
+- The Dayboard vertical scrollbar uses a transparent track, no arrow buttons, a 4 px softly muted thumb, and stable gutter. Expanded-panel padding is `0 6px 5px 10px`.
 - The trip title and title-edit input use 24 px / 500 weight; header metadata uses 500 weight. The header uses the compact 68 px grid layout and translucent warm-white background.
 - The desktop Timeline header is a non-shrinking flex item, and its 10 px lower shadow uses a stable gradient instead of sampling the Map/Dayboard through a second backdrop blur, so dense Dayboard content cannot visually erode the header edge.
 - Route-edit masking begins at the Dayboard's right edge, the workspace fills the viewport bottom without a gap, and destination markers remain fully opaque while editing.
@@ -67,6 +67,8 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - The Map search control, route-edit button, and custom-point button use the Phase 5.8 liquid-glass tokens, including a deep-green fallback, translucent supported surface, white border, 8 px blur, 140% saturation, and reduced-motion-safe interaction states.
 - Places suggestions align exactly with the search-field column rather than extending under the Map tool buttons, and reuse the search control's liquid-glass background, border, blur, saturation, radius, and fallback tokens.
 - Starting custom-point picking keeps the search field and Map tool row in place. The search input and search action become disabled while the custom-point button retains its original position and switches to its cancel state.
+- Timeline visit-to-visit, visit-to-transport, and transport-to-visit spacing is consistently 4 px. Empty transport insertion zones stay compact at rest and expand to 22 px for the existing `新增交通資訊` hover/focus interaction.
+- Transportation cards use a 1 px border, 4 px vertical padding, and 13 px title. Transportation categories now render aligned Lucide icons instead of emoji in cards, editors, and collapsed-day previews.
 - The Google logo remains visible immediately to the right of the Dayboard.
 - Formal Timeline and Demo stay visually aligned where the same controls exist; existing cards, map-marker behavior, scrolling, editing, and collapse behavior remain intact.
 
@@ -96,6 +98,9 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 
 Latest Phase 5.8 verification:
 
+- In-app Browser computed measurements confirmed 3.99 px gaps for visit-to-visit, visit-to-transport, and transport-to-visit sequences; the expanded Dayboard padding is `0px 6px 5px 10px`.
+- Transportation-card computed styles confirmed a 1 px border, 4 px vertical padding, 13 px title, and an 18 px Lucide category icon. Clicking an existing transport-insert zone still opened one transportation editor, and browser console errors remained at zero.
+- `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 39/39 for the current spacing, insertion-zone, Dayboard-padding, and transport-icon contracts.
 - In-app Browser verification confirmed the member, Share, More, and Map-collapse controls render at 38 px; the divider/invite area remains fixed at the member control's right edge with five displayed avatar entries.
 - Map collapse/reopen interaction passed: the collapsed state renders `lucide-map`, reopening restores `lucide-panel-right-close`, and browser console errors remained at zero.
 - The latest Places/search-control implementation passes `npm.cmd run build`. Authenticated branch-preview verification confirmed exact search/menu alignment, the shared translucent glass tokens, persistent disabled search controls during custom-point picking, unchanged point-button position, and no browser console errors.

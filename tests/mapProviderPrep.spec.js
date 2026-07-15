@@ -378,7 +378,7 @@ test("Phase 5.8b keeps the Map behind a full-height Dayboard glass panel", () =>
   expect(stylesSource).toContain("--board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent)");
   expect(stylesSource).toContain("width: 4px");
   expect(stylesSource).toContain("::-webkit-scrollbar-button");
-  expect(stylesSource).toContain("padding: 0 10px 5px 14px");
+  expect(stylesSource).toContain("padding: 0 6px 5px 10px");
   expect(stylesSource).toContain("scrollbar-gutter: stable");
   expect(stylesSource).toContain("background: transparent");
   expect(stylesSource).toContain(".timeline-workbench:not(.route-collapsed)::before");
@@ -386,6 +386,22 @@ test("Phase 5.8b keeps the Map behind a full-height Dayboard glass panel", () =>
   expect(stylesSource).toContain('div:has(> a[href^="https://maps.google.com/maps?"])');
   expect(stylesSource).toContain("transform: none");
   expect(stylesSource).toContain(".timeline-workbench .side-panels > .route-panel > .google-map-surface");
+});
+
+test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icons", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(stylesSource).toContain(".timeline {\n  display: grid;\n  gap: 4px");
+  expect(stylesSource).toContain(".timeline-sortable-entry.has-flow-attachments {\n  gap: 4px");
+  expect(stylesSource).toContain("height: 22px");
+  expect(stylesSource).toContain("border: 1px solid var(--line)");
+  expect(stylesSource).toContain("padding: 4px 14px");
+  expect(stylesSource).toContain(".transport-card-main strong {\n  font-size: 13px");
+  expect(stylesSource).toContain(".transport-icon svg");
+  expect(appSource).toContain("function TransportCategoryIcon({ category })");
+  expect(appSource).toContain('{ value: "drive", label: "自駕", icon: CarFront }');
+  expect(appSource).not.toContain('icon: "🚗"');
 });
 
 test("Phase 5.2 map point warning overlays without resizing the map canvas", () => {

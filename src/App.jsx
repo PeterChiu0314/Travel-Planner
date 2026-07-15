@@ -20,11 +20,16 @@ import { CSS as DndCSS } from "@dnd-kit/utilities";
 import {
   BadgeInfo,
   Bed,
+  BusFront,
+  CarFront,
+  CarTaxiFront,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   ClipboardCheck,
+  CircleEllipsis,
+  Footprints,
   HandCoins,
   LayoutDashboard,
   LayoutList,
@@ -41,10 +46,14 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   Pencil,
+  Plane,
   Plus,
   Repeat2,
   Settings,
+  Ship,
   Trash2,
+  TrainFront,
+  TramFront,
   Wallet,
   X,
 } from "lucide-react";
@@ -392,15 +401,15 @@ const typeColors = {
 };
 
 const transportCategories = [
-  { value: "jr", label: "JR", icon: "🚆" },
-  { value: "train", label: "電車", icon: "🚆" },
-  { value: "bus", label: "公車", icon: "🚌" },
-  { value: "walk", label: "步行", icon: "🚶" },
-  { value: "drive", label: "自駕", icon: "🚗" },
-  { value: "taxi", label: "計程車", icon: "🚗" },
-  { value: "ferry", label: "渡輪", icon: "⛴️" },
-  { value: "flight", label: "飛機", icon: "✈️" },
-  { value: "other", label: "其他", icon: "➡️" },
+  { value: "jr", label: "JR", icon: TrainFront },
+  { value: "train", label: "電車", icon: TramFront },
+  { value: "bus", label: "公車", icon: BusFront },
+  { value: "walk", label: "步行", icon: Footprints },
+  { value: "drive", label: "自駕", icon: CarFront },
+  { value: "taxi", label: "計程車", icon: CarTaxiFront },
+  { value: "ferry", label: "渡輪", icon: Ship },
+  { value: "flight", label: "飛機", icon: Plane },
+  { value: "other", label: "其他", icon: CircleEllipsis },
 ];
 
 const defaultTransportCategory = "train";
@@ -779,6 +788,11 @@ function googleMapsPointUrl(latitude, longitude) {
 
 function transportCategoryMeta(category) {
   return transportCategories.find((item) => item.value === category) || transportCategories[transportCategories.length - 1];
+}
+
+function TransportCategoryIcon({ category }) {
+  const Icon = transportCategoryMeta(category).icon;
+  return <Icon aria-hidden="true" />;
 }
 
 function formatDurationMinutes(value) {
@@ -12089,7 +12103,7 @@ function ItineraryTimeline({
         ) : null}
         <div className="transport-editor-heading">
           <span className="transport-icon" aria-hidden="true">
-            {transportCategoryMeta(category).icon}
+            <TransportCategoryIcon category={category} />
           </span>
           <strong>{editorHeadingTitle}</strong>
         </div>
@@ -12252,7 +12266,7 @@ function ItineraryTimeline({
       >
         <span className="transport-card-icon" aria-hidden="true">
           <span className="transport-icon" aria-hidden="true">
-            {transportCategoryMeta(category).icon}
+            <TransportCategoryIcon category={category} />
           </span>
         </span>
         <div className="transport-card-main">
@@ -13359,7 +13373,7 @@ function MultiDayTimelineColumns({
                       }}
                     >
                       <span className="transport-icon" aria-hidden="true">
-                        {transportCategoryMeta(transportItem.transport_category).icon}
+                        <TransportCategoryIcon category={transportItem.transport_category} />
                       </span>
                       <span>
                         <strong>{transportCardTitle(transportItem)}</strong>
