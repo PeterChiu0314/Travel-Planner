@@ -10,9 +10,9 @@
   --coral: #d85f49;
   --sky: #5f8fb8;
   --shadow: 0 20px 45px rgba(36, 43, 38, 0.11);
-  --map-glass-bg: rgba(255, 255, 255, 0.08);
+  --map-glass-bg: rgba(255, 255, 255, 0.1);
   --map-glass-bg-fallback: rgba(20, 55, 46, 0.92);
-  --map-glass-border: rgba(255, 255, 255, 0.25);
+  --map-glass-border: rgba(255, 255, 255, 0.55);
   --map-glass-blur: 10px;
   --map-glass-saturation: 140%;
   --map-glass-transition: 160ms ease;
@@ -2565,8 +2565,8 @@ textarea {
 
 .timeline-workbench {
   --timeline-dayboard-width: clamp(380px, calc(30% + 6px), 550px);
-  --timeline-dayboard-glass-background: rgba(238, 245, 239, 0.96);
-  --timeline-dayboard-glass-border: 1px solid rgba(255, 255, 255, 0.25);
+  --timeline-dayboard-glass-background: var(--map-glass-bg-fallback);
+  --timeline-dayboard-glass-border: 1px solid var(--map-glass-border);
   --timeline-dayboard-glass-shadow: 6px 0 18px rgba(36, 43, 38, 0.07);
   --timeline-map-transition-duration: 220ms;
   --timeline-map-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
@@ -2691,13 +2691,13 @@ textarea {
 
 @supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
   .timeline-workbench {
-    --timeline-dayboard-glass-background: rgba(238, 245, 239, 0.78);
+    --timeline-dayboard-glass-background: var(--map-glass-bg);
   }
 
   .timeline-workbench:not(.route-collapsed)::before,
   .timeline-workbench .itinerary-panel::before {
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
-    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturation));
+    backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturation));
   }
 
   .timeline-workbench .itinerary-panel::before {
@@ -4036,7 +4036,7 @@ textarea {
   height: 38px;
   min-height: 38px;
   border: 1px solid var(--map-glass-border);
-  border-radius: 16px;
+  border-radius: 10px;
   background: var(--map-glass-bg-fallback);
   box-shadow: 0 14px 30px rgba(20, 55, 46, 0.22);
   color: #fff;

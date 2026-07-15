@@ -56,7 +56,8 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - The Dayboard vertical scrollbar uses a transparent track, no arrow buttons, a 4 px softly muted thumb, and stable gutter. Expanded-panel padding is `0 10px 5px 14px`.
 - The trip title and title-edit input use 24 px / 500 weight; header metadata uses 500 weight. The header uses the compact 68 px grid layout and translucent warm-white background.
 - Route-edit masking begins at the Dayboard's right edge, the workspace fills the viewport bottom without a gap, and destination markers remain fully opaque while editing.
-- The Map search control is 38 px high with a 16 px liquid-glass radius. Route-edit and add-point buttons sit to its right, and the Map-collapse control uses Lucide `Tally4`.
+- The Map search control is 38 px high with a 10 px liquid-glass radius. Route-edit and add-point buttons sit to its right, and the Map-collapse control uses Lucide `Tally4`.
+- The current Map liquid-glass tokens use `rgba(255, 255, 255, .1)` for the supported surface, `rgba(255, 255, 255, .55)` for the border, `rgba(20, 55, 46, .92)` for fallback, `blur(10px)`, and `saturate(140%)`. The Dayboard background and border reference the same shared tokens in both fallback and supported states.
 - Missing-coordinate and route-edit status overlays are centered within the Map area that remains visible to the right of the Dayboard.
 - The Map search control, route-edit button, and custom-point button use the Phase 5.8 liquid-glass tokens, including a deep-green fallback, translucent supported surface, white border, 10 px blur, 140% saturation, and reduced-motion-safe interaction states.
 - The Google logo remains visible immediately to the right of the Dayboard.
@@ -95,6 +96,7 @@ Latest Phase 5.8 verification:
 - `npm.cmd run build` passed at `6c9fadd`.
 - `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 38/38 for the latest Map polish.
 - `npm.cmd run build` and `git diff --check` passed for the latest Map polish.
+- After the shared-token update, `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 38/38 and `git diff --check` passed.
 - `git diff --check` passed for the latest implementation change.
 - The Vite large-chunk warning remains informational and was present in successful builds.
 
