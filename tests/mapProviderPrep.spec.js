@@ -394,12 +394,18 @@ test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icon
 
   expect(stylesSource).toContain(".timeline {\n  display: grid;\n  gap: 4px");
   expect(stylesSource).toContain(".timeline-sortable-entry.has-flow-attachments {\n  gap: 4px");
+  expect(stylesSource).toContain("grid-template-columns: 14px max-content minmax(24px, 1fr)");
+  expect(stylesSource).toContain("grid-template-columns: 14px max-content minmax(24px, 1fr);\n  gap: 2px");
+  expect(stylesSource).toContain("height: 8px");
   expect(stylesSource).toContain("height: 22px");
+  expect(stylesSource).toContain(".transport-insert-icon svg");
+  expect(stylesSource).toContain("font-weight: 500");
   expect(stylesSource).toContain("border: 1px solid var(--line)");
   expect(stylesSource).toContain("padding: 4px 14px");
   expect(stylesSource).toContain(".transport-card-main strong {\n  font-size: 13px");
   expect(stylesSource).toContain(".transport-icon svg");
   expect(appSource).toContain("function TransportCategoryIcon({ category })");
+  expect(appSource).toContain('<span className="transport-insert-icon" aria-hidden="true">');
   expect(appSource).toContain('{ value: "drive", label: "自駕", icon: CarFront }');
   expect(appSource).not.toContain('icon: "🚗"');
 });

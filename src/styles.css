@@ -3137,37 +3137,22 @@ textarea {
 
 .transport-insert-zone {
   display: grid;
-  grid-template-columns: 22px max-content minmax(24px, 1fr);
-  gap: 8px;
+  grid-template-columns: 14px max-content minmax(24px, 1fr);
+  gap: 2px;
   align-items: center;
   width: 100%;
-  height: 4px;
+  height: 8px;
   overflow: visible;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--mint-dark);
   opacity: 1;
-  margin-bottom: -4px;
+  margin-bottom: -8px;
   padding: 0;
   position: relative;
   text-align: left;
   transition: height 0.14s ease, opacity 0.14s ease;
-}
-
-.transport-insert-zone::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: 0;
-  left: 30px;
-  height: 18px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.06);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition: opacity 0.14s ease;
 }
 
 .transport-insert-zone:hover,
@@ -3180,15 +3165,10 @@ textarea {
   align-items: center;
   display: inline-flex;
   flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
+  width: 14px;
+  height: 14px;
   justify-content: center;
-  border-radius: 50%;
-  background: var(--mint);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(15, 95, 71, 0.22);
-  font-size: 18px;
-  font-weight: 900;
+  color: var(--muted);
   line-height: 1;
   opacity: 0;
   position: relative;
@@ -3196,10 +3176,16 @@ textarea {
   z-index: 1;
 }
 
+.transport-insert-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
 .transport-insert-label {
   color: var(--muted);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   line-height: 1;
   white-space: nowrap;
   opacity: 0;
@@ -3210,17 +3196,17 @@ textarea {
 
 .transport-insert-line {
   display: block;
+  align-self: center;
   height: 1px;
   min-width: 0;
   background: rgba(47, 143, 114, 0.48);
   opacity: 0;
   position: relative;
+  transform: translateY(0.5px);
   transition: opacity 0.14s ease;
   z-index: 1;
 }
 
-.transport-insert-zone:hover::before,
-.transport-insert-zone:focus-visible::before,
 .transport-insert-zone:hover .transport-insert-icon,
 .transport-insert-zone:hover .transport-insert-label,
 .transport-insert-zone:hover .transport-insert-line,

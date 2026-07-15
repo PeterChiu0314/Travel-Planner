@@ -67,7 +67,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - The Map search control, route-edit button, and custom-point button use the Phase 5.8 liquid-glass tokens, including a deep-green fallback, translucent supported surface, white border, 8 px blur, 140% saturation, and reduced-motion-safe interaction states.
 - Places suggestions align exactly with the search-field column rather than extending under the Map tool buttons, and reuse the search control's liquid-glass background, border, blur, saturation, radius, and fallback tokens.
 - Starting custom-point picking keeps the search field and Map tool row in place. The search input and search action become disabled while the custom-point button retains its original position and switches to its cancel state.
-- Timeline visit-to-visit, visit-to-transport, and transport-to-visit spacing is consistently 4 px. Empty transport insertion zones stay compact at rest and expand to 22 px for the existing `新增交通資訊` hover/focus interaction.
+- Timeline visit-to-visit, visit-to-transport, and transport-to-visit spacing is consistently 4 px. Empty transport insertion zones use an 8 px resting trigger area and expand to 22 px for the existing hover/focus interaction. Their revealed presentation is a 14 px Lucide Plus with no circular background, a 2 px icon-to-label gap, 500-weight copy, and a vertically centered trailing line.
 - Transportation cards use a 1 px border, 4 px vertical padding, and 13 px title. Transportation categories now render aligned Lucide icons instead of emoji in cards, editors, and collapsed-day previews.
 - The Google logo remains visible immediately to the right of the Dayboard.
 - Formal Timeline and Demo stay visually aligned where the same controls exist; existing cards, map-marker behavior, scrolling, editing, and collapse behavior remain intact.
@@ -99,7 +99,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 Latest Phase 5.8 verification:
 
 - In-app Browser computed measurements confirmed 3.99 px gaps for visit-to-visit, visit-to-transport, and transport-to-visit sequences; the expanded Dayboard padding is `0px 6px 5px 10px`.
-- Transportation-card computed styles confirmed a 1 px border, 4 px vertical padding, 13 px title, and an 18 px Lucide category icon. Clicking an existing transport-insert zone still opened one transportation editor, and browser console errors remained at zero.
+- Transportation-card computed styles confirmed a 1 px border, 4 px vertical padding, 13 px title, and an 18 px Lucide category icon. The transport-insert zone computes to 8 px at rest and 22 px on hover, with a 2 px Plus-to-label gap, 500 label weight, no icon background or shadow, and a trailing-line center offset below 1 px. Clicking it still opened the transportation editor, and browser console errors remained at zero.
 - `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 39/39 for the current spacing, insertion-zone, Dayboard-padding, and transport-icon contracts.
 - In-app Browser verification confirmed the member, Share, More, and Map-collapse controls render at 38 px; the divider/invite area remains fixed at the member control's right edge with five displayed avatar entries.
 - Map collapse/reopen interaction passed: the collapsed state renders `lucide-map`, reopening restores `lucide-panel-right-close`, and browser console errors remained at zero.

@@ -12372,7 +12372,9 @@ function ItineraryTimeline({
         onKeyDown={(event) => event.stopPropagation()}
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <span className="transport-insert-icon">+</span>
+        <span className="transport-insert-icon" aria-hidden="true">
+          <Plus />
+        </span>
         <span className="transport-insert-label">新增交通資訊</span>
         <span className="transport-insert-line" aria-hidden="true" />
       </button>
@@ -12390,7 +12392,9 @@ function ItineraryTimeline({
         onKeyDown={(event) => event.stopPropagation()}
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <span className="transport-insert-icon">+</span>
+        <span className="transport-insert-icon" aria-hidden="true">
+          <Plus />
+        </span>
         <span className="transport-insert-label">新增尾端交通</span>
         <span className="transport-insert-line" aria-hidden="true" />
       </button>
