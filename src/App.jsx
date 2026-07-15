@@ -39,11 +39,11 @@ import {
   Navigation,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
   Pencil,
   Plus,
   Repeat2,
   Settings,
-  Tally4,
   Trash2,
   Wallet,
   X,
@@ -7086,7 +7086,9 @@ function HeaderMemberPreview({ disabled, members = [], onOpen, pendingCount = 0 
         {overflowCount > 0 ? <span className="member-avatar compact more">+{overflowCount}</span> : null}
       </span>
       {pendingCount > 0 ? <span className="trip-header-member-pending">待審 {pendingCount}</span> : null}
-      <TripHeaderIcon name="invite" />
+      <span className="trip-header-member-open-button" aria-hidden="true">
+        <TripHeaderIcon name="invite" />
+      </span>
     </button>
   );
 }
@@ -9092,7 +9094,7 @@ function DemoApp({ initialSection }) {
                 {isRouteCollapsed ? (
                   <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
                 ) : (
-                  <Tally4 size={18} strokeWidth={2.2} aria-hidden="true" />
+                  <PanelRightClose size={18} strokeWidth={2.2} aria-hidden="true" />
                 )}
               </button>
             </div>
@@ -10091,7 +10093,7 @@ function TripWorkspace(props) {
             {isRouteCollapsed ? (
               <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />
             ) : (
-              <Tally4 size={18} strokeWidth={2.2} aria-hidden="true" />
+              <PanelRightClose size={18} strokeWidth={2.2} aria-hidden="true" />
             )}
           </button>
         </div>
