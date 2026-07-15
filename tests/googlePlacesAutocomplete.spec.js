@@ -265,7 +265,7 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(stylesSource).toContain("right: 10px;");
   expect(stylesSource).toContain(".places-search-button");
   expect(stylesSource).toContain(".places-prediction-list");
-  expect(stylesSource).toContain(".places-prediction-list,\n  .places-search-message,");
+  expect(stylesSource).toContain(".places-prediction-list,\n  .places-search-message {");
   expect(stylesSource).toContain("padding: 10px 24px;");
   expect(stylesSource).toContain(".route-panel:has(.places-search-overlay) > .panel-heading");
 });
