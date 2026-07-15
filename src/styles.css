@@ -10,6 +10,12 @@
   --coral: #d85f49;
   --sky: #5f8fb8;
   --shadow: 0 20px 45px rgba(36, 43, 38, 0.11);
+  --map-glass-bg: rgba(255, 255, 255, 0.08);
+  --map-glass-bg-fallback: rgba(20, 55, 46, 0.92);
+  --map-glass-border: rgba(255, 255, 255, 0.25);
+  --map-glass-blur: 10px;
+  --map-glass-saturation: 140%;
+  --map-glass-transition: 160ms ease;
 }
 
 * {
@@ -773,9 +779,16 @@ code {
   height: 38px;
   min-height: 38px;
   padding: 0;
-  border-color: rgba(47, 143, 114, 0.34);
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--mint-dark);
+  border-color: var(--map-glass-border);
+  border-radius: 14px;
+  background: var(--map-glass-bg-fallback);
+  box-shadow: 0 12px 26px rgba(20, 55, 46, 0.2);
+  color: #fff;
+  transition:
+    border-color var(--map-glass-transition),
+    background var(--map-glass-transition),
+    box-shadow var(--map-glass-transition),
+    transform var(--map-glass-transition);
 }
 
 .map-area-tools .mini-button svg {
@@ -793,8 +806,18 @@ code {
 .map-area-point-button.active,
 .map-route-edit-button.active {
   border-color: rgba(216, 95, 73, 0.32);
-  background: rgba(255, 255, 255, 0.96);
-  color: #9f3f30;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffd4cb;
+}
+
+.map-area-tools .mini-button:hover:not(:disabled),
+.map-area-tools .mini-button:focus-visible {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: #245341;
+  box-shadow:
+    0 16px 32px rgba(20, 55, 46, 0.24),
+    0 0 0 3px rgba(228, 123, 37, 0.28);
+  outline: 0;
 }
 
 .timeline-add-editor-anchor {
@@ -3861,6 +3884,7 @@ textarea {
 }
 
 .google-map-surface {
+  --map-visible-left-inset: 0px;
   position: relative;
   display: grid;
   min-height: 220px;
@@ -3894,9 +3918,13 @@ textarea {
 
 .route-edit-mode-banner {
   position: absolute;
-  left: 50%;
+  right: 0;
+  left: var(--map-visible-left-inset);
   bottom: 76px;
   z-index: 5;
+  width: max-content;
+  max-width: min(360px, calc(100% - var(--map-visible-left-inset) - 32px));
+  margin-inline: auto;
   padding: 8px 12px;
   border: 1px solid rgba(47, 143, 114, 0.28);
   border-radius: 999px;
@@ -3904,16 +3932,19 @@ textarea {
   color: var(--mint-dark);
   font-size: 13px;
   font-weight: 900;
-  transform: translateX(-50%);
+  text-align: center;
   pointer-events: none;
 }
 
 .route-edit-save-error {
   position: absolute;
-  left: 50%;
+  right: 0;
+  left: var(--map-visible-left-inset);
   bottom: 122px;
   z-index: 5;
-  max-width: min(360px, calc(100% - 32px));
+  max-width: min(360px, calc(100% - var(--map-visible-left-inset) - 32px));
+  width: max-content;
+  margin-inline: auto;
   padding: 7px 10px;
   border: 1px solid rgba(216, 95, 73, 0.28);
   border-radius: 6px;
@@ -3921,7 +3952,7 @@ textarea {
   color: #9f3f30;
   font-size: 12px;
   font-weight: 700;
-  transform: translateX(-50%);
+  text-align: center;
   pointer-events: none;
 }
 
@@ -3953,10 +3984,13 @@ textarea {
 
 .map-point-warning {
   position: absolute;
-  left: 50%;
+  right: 0;
+  left: var(--map-visible-left-inset);
   top: 58px;
   z-index: 3;
-  max-width: min(360px, calc(100% - 32px));
+  width: max-content;
+  max-width: min(360px, calc(100% - var(--map-visible-left-inset) - 32px));
+  margin-inline: auto;
   padding: 7px 10px;
   border: 1px solid rgba(216, 95, 73, 0.28);
   border-radius: 6px;
@@ -3965,7 +3999,6 @@ textarea {
   font-size: 13px;
   font-weight: 800;
   text-align: center;
-  transform: translateX(-50%);
   pointer-events: none;
 }
 
@@ -4000,6 +4033,29 @@ textarea {
 .places-search-control {
   position: relative;
   display: grid;
+  height: 38px;
+  min-height: 38px;
+  border: 1px solid var(--map-glass-border);
+  border-radius: 16px;
+  background: var(--map-glass-bg-fallback);
+  box-shadow: 0 14px 30px rgba(20, 55, 46, 0.22);
+  color: #fff;
+  transition:
+    border-color var(--map-glass-transition),
+    box-shadow var(--map-glass-transition),
+    transform var(--map-glass-transition);
+}
+
+.places-search-control:hover {
+  border-color: rgba(255, 255, 255, 0.42);
+}
+
+.places-search-control:focus-within {
+  border-color: var(--mint-dark);
+  box-shadow:
+    0 18px 36px rgba(20, 55, 46, 0.22),
+    0 0 0 3px rgba(228, 123, 37, 0.28);
+  transform: translateY(-1px);
 }
 
 .places-search-row {
@@ -4023,16 +4079,22 @@ textarea {
 
 .places-search-input {
   width: 100%;
-  height: 38px;
-  min-height: 38px;
+  height: 100%;
+  min-height: 0;
   padding-left: 24px;
   padding-right: 38px;
   border: 0;
-  border-radius: 10px;
-  background: #ffffffe8;
-  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.12);
+  border-radius: 15px;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
   font-size: 14px;
   font-weight: 500;
+  outline: 0;
+}
+
+.places-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .places-search-button {
@@ -4046,12 +4108,44 @@ textarea {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--mint-dark);
+  color: inherit;
   transform: translateY(-50%);
 }
 
 .places-search-button:hover {
-  background: rgba(47, 143, 114, 0.08);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+  .places-search-control,
+  .map-area-tools .mini-button {
+    border-color: var(--map-glass-border);
+    background: var(--map-glass-bg);
+    -webkit-backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturation));
+    backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturation));
+    color: var(--ink);
+  }
+
+  .map-area-tools .mini-button:hover:not(:disabled),
+  .map-area-tools .mini-button:focus-visible {
+    border-color: rgba(255, 255, 255, 0.42);
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .map-area-point-button.active,
+  .map-route-edit-button.active {
+    border-color: rgba(216, 95, 73, 0.42);
+    background: rgba(255, 255, 255, 0.2);
+    color: #9f3f30;
+  }
+
+  .places-search-input::placeholder {
+    color: rgba(45, 49, 47, 0.62);
+  }
+
+  .places-search-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
 }
 
 .places-prediction-list,
@@ -5411,6 +5505,10 @@ textarea {
     left: calc(var(--timeline-dayboard-width) + 20px);
   }
 
+  .timeline-workbench:not(.route-collapsed) .google-map-surface {
+    --map-visible-left-inset: var(--timeline-dayboard-width);
+  }
+
   .timeline-workbench:not(.route-collapsed) .google-map-canvas div:has(> a[href^="https://maps.google.com/maps?"]) {
     left: var(--timeline-dayboard-width) !important;
   }
@@ -5457,6 +5555,11 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .timeline-workbench .side-panels {
     animation: none;
+  }
+
+  .places-search-control,
+  .map-area-tools .mini-button {
+    transition: none;
   }
 }
 

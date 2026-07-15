@@ -41,7 +41,7 @@ Status: In progress; latest requested polish implemented and published
 Branch: codex/timeline-phase-5-8
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
-Latest Phase 5.8 implementation commit: 6c9fadd Polish map search controls
+Latest Phase 5.8 implementation: current branch HEAD, Center map overlays and add liquid-glass controls
 ```
 
 Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed baselines. Phase 5.8 is a sequence of small UI-polish changes and must not change their collaboration or persistence behavior.
@@ -56,7 +56,9 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - The Dayboard vertical scrollbar uses a transparent track, no arrow buttons, a 4 px softly muted thumb, and stable gutter. Expanded-panel padding is `0 10px 5px 14px`.
 - The trip title and title-edit input use 24 px / 500 weight; header metadata uses 500 weight. The header uses the compact 68 px grid layout and translucent warm-white background.
 - Route-edit masking begins at the Dayboard's right edge, the workspace fills the viewport bottom without a gap, and destination markers remain fully opaque while editing.
-- The Map search field is 38 px high with a 10 px radius and no border. Route-edit and add-point buttons sit to its right, and the Map-collapse control uses Lucide `Tally4`.
+- The Map search control is 38 px high with a 16 px liquid-glass radius. Route-edit and add-point buttons sit to its right, and the Map-collapse control uses Lucide `Tally4`.
+- Missing-coordinate and route-edit status overlays are centered within the Map area that remains visible to the right of the Dayboard.
+- The Map search control, route-edit button, and custom-point button use the Phase 5.8 liquid-glass tokens, including a deep-green fallback, translucent supported surface, white border, 10 px blur, 140% saturation, and reduced-motion-safe interaction states.
 - The Google logo remains visible immediately to the right of the Dayboard.
 - Formal Timeline and Demo stay visually aligned where the same controls exist; existing cards, map-marker behavior, scrolling, editing, and collapse behavior remain intact.
 
@@ -89,7 +91,10 @@ Latest Phase 5.8 verification:
 - Phase 5.8 desktop, tablet, mobile, and trip-title edit Playwright checks passed 4/4 through `44fd4d3`.
 - Focused Map/provider route-edit and workspace checks passed 2/2 through `44fd4d3`.
 - Chrome DOM inspection confirmed the latest `lucide-tally-4` Map-collapse control at `6c9fadd`.
+- Chrome rendered-style inspection confirmed 38 px search/tool controls, the requested liquid-glass computed styles, and 0 px horizontal-center error for both Map status overlays.
 - `npm.cmd run build` passed at `6c9fadd`.
+- `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 38/38 for the latest Map polish.
+- `npm.cmd run build` and `git diff --check` passed for the latest Map polish.
 - `git diff --check` passed for the latest implementation change.
 - The Vite large-chunk warning remains informational and was present in successful builds.
 
@@ -185,4 +190,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Continue user-directed Phase 5.8 UI polish from `6c9fadd` as the latest published implementation baseline. Preserve the closed Phase 5.7c synchronization and Phase 5.7d visual-feedback behavior.
+Continue user-directed Phase 5.8 UI polish from the current published branch HEAD. Preserve the closed Phase 5.7c synchronization and Phase 5.7d visual-feedback behavior.
