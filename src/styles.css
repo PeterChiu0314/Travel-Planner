@@ -4029,8 +4029,10 @@ textarea {
   left: 20px;
   z-index: 5;
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   width: min(470px, calc(100% - 40px));
-  gap: 6px;
+  column-gap: 8px;
+  row-gap: 6px;
 }
 
 .places-search-control {
@@ -4062,14 +4064,11 @@ textarea {
 }
 
 .places-search-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+  display: contents;
 }
 
 .places-search-row .places-search-control {
-  flex: 1 1 auto;
+  grid-column: 1;
   min-width: 0;
 }
 
@@ -4077,7 +4076,7 @@ textarea {
   position: static;
   top: auto;
   left: auto;
-  flex: 0 0 auto;
+  grid-column: 2;
 }
 
 .places-search-input {
@@ -4121,6 +4120,8 @@ textarea {
 
 @supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
   .places-search-control,
+  .places-prediction-list,
+  .places-search-message,
   .map-area-tools .mini-button {
     border-color: var(--map-glass-border);
     background: var(--map-glass-bg);
@@ -4146,6 +4147,11 @@ textarea {
     color: rgba(45, 49, 47, 0.62);
   }
 
+  .places-prediction-option em,
+  .places-search-message {
+    color: var(--muted);
+  }
+
   .places-search-button:hover {
     background: rgba(255, 255, 255, 0.2);
   }
@@ -4153,16 +4159,19 @@ textarea {
 
 .places-prediction-list,
 .places-search-message {
+  grid-column: 1;
   overflow: hidden;
-  border: 1px solid rgba(95, 143, 184, 0.22);
-  border-radius: 20px;
-  background: #ffffffe8;
-  box-shadow: 0 14px 30px rgba(31, 41, 55, 0.14);
+  min-width: 0;
+  border: 1px solid var(--map-glass-border);
+  border-radius: 10px;
+  background: var(--map-glass-bg-fallback);
+  box-shadow: 0 14px 30px rgba(20, 55, 46, 0.22);
+  color: #fff;
 }
 
 .places-search-message {
   padding: 8px 10px;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 12px;
   font-weight: 800;
 }
@@ -4174,7 +4183,7 @@ textarea {
   border: 0;
   border-bottom: 1px solid rgba(95, 143, 184, 0.12);
   background: transparent;
-  color: var(--ink);
+  color: inherit;
   font: inherit;
   text-align: left;
 }
@@ -4185,7 +4194,7 @@ textarea {
 
 .places-prediction-option:hover,
 .places-prediction-option.selected {
-  background: rgba(47, 143, 114, 0.08);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .places-prediction-option span {
@@ -4198,7 +4207,7 @@ textarea {
 
 .places-prediction-option em {
   overflow: hidden;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.72);
   font-size: 12px;
   font-style: normal;
   text-overflow: ellipsis;

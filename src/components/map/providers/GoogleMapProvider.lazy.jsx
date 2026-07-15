@@ -340,7 +340,7 @@ export default function GoogleMapProvider(props) {
   const placesLibraries = Array.isArray(providerConfig.placesLibraries) ? providerConfig.placesLibraries : [];
   const placesSearchAvailable = status === "ready" && providerConfig.placesEnabled === true && placesReady;
   const canSearchPlaces = placesSearchAvailable && !isPickingMapPoint && !isRouteEditMode;
-  const showPlacesSearchOverlay = canSearchPlaces || (isRouteEditMode && placesSearchAvailable);
+  const showPlacesSearchOverlay = placesSearchAvailable;
   const disableMapAreaPointPick = isRouteEditMode || !canPickMapPoint;
 
   const handleMapElementRef = useCallback((element) => {
@@ -1821,7 +1821,7 @@ export default function GoogleMapProvider(props) {
             <input
               autoComplete="off"
               className="places-search-input"
-              disabled={isRouteEditMode}
+              disabled={isRouteEditMode || isPickingMapPoint}
               placeholder="搜尋地點"
               value={placesSearchInput}
               onChange={(event) => {
@@ -1848,7 +1848,7 @@ export default function GoogleMapProvider(props) {
             <button
               aria-label="搜尋地點"
               className="places-search-button"
-              disabled={isRouteEditMode}
+              disabled={isRouteEditMode || isPickingMapPoint}
               type="button"
               onClick={() => {
                 if (placesSearchComposingRef.current) return;

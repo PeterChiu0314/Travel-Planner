@@ -41,7 +41,7 @@ Status: In progress; latest requested polish implemented and published
 Branch: codex/timeline-phase-5-8
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
-Latest Phase 5.8 implementation: current branch HEAD, Stabilize Timeline header edge
+Latest Phase 5.8 implementation: current branch HEAD
 ```
 
 Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed baselines. Phase 5.8 is a sequence of small UI-polish changes and must not change their collaboration or persistence behavior.
@@ -63,6 +63,8 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - Timeline delete, transportation-delete, and move confirmation dialogs render through a body-level portal so their original full-viewport dimmer and centered white dialog are preserved above the glass Dayboard and Map.
 - Missing-coordinate and route-edit status overlays are centered within the Map area that remains visible to the right of the Dayboard.
 - The Map search control, route-edit button, and custom-point button use the Phase 5.8 liquid-glass tokens, including a deep-green fallback, translucent supported surface, white border, 8 px blur, 140% saturation, and reduced-motion-safe interaction states.
+- Places suggestions align exactly with the search-field column rather than extending under the Map tool buttons, and reuse the search control's liquid-glass background, border, blur, saturation, radius, and fallback tokens.
+- Starting custom-point picking keeps the search field and Map tool row in place. The search input and search action become disabled while the custom-point button retains its original position and switches to its cancel state.
 - The Google logo remains visible immediately to the right of the Dayboard.
 - Formal Timeline and Demo stay visually aligned where the same controls exist; existing cards, map-marker behavior, scrolling, editing, and collapse behavior remain intact.
 
@@ -92,6 +94,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 
 Latest Phase 5.8 verification:
 
+- The latest Places/search-control implementation passes `npm.cmd run build`; authenticated visual verification is performed against the published branch preview because localhost browser sessions do not share the production login.
 - User verified that the Timeline header lower edge remains visually complete with a dense Dayboard after the non-shrinking header and stable-gradient shadow fix.
 - Phase 5.8 filtered browser smoke checks passed 5/5, including stable header geometry after adding 24 Dayboard cards and a body-level Timeline confirmation dialog with a full-viewport fixed dimmer, centered white card, and preserved 8 px radius.
 - The full legacy smoke suite was also attempted: its first eight checks passed, then three unrelated Demo tail-transport timing cases reached their existing 30-second timeout; no confirmation-dialog check failed.
