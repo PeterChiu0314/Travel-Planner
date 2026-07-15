@@ -1313,6 +1313,8 @@ code {
   position: sticky;
   top: 0;
   z-index: 40;
+  flex: 0 0 auto;
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
@@ -1324,11 +1326,7 @@ code {
   bottom: -10px;
   height: 10px;
   pointer-events: none;
-  background: rgb(0 0 0 / 10%);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
-  -webkit-mask-image: linear-gradient(to bottom, black, transparent);
-  mask-image: linear-gradient(to bottom, black, transparent);
+  background: linear-gradient(to bottom, rgb(36 43 38 / 10%), transparent);
 }
 
 .trip-header-main {

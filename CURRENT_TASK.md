@@ -55,6 +55,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - The Dayboard and tabs align directly against the sidebar and share the same right boundary without a gap or mismatched blur strip.
 - The Dayboard vertical scrollbar uses a transparent track, no arrow buttons, a 4 px softly muted thumb, and stable gutter. Expanded-panel padding is `0 10px 5px 14px`.
 - The trip title and title-edit input use 24 px / 500 weight; header metadata uses 500 weight. The header uses the compact 68 px grid layout and translucent warm-white background.
+- The desktop Timeline header is a non-shrinking flex item, and its 10 px lower shadow uses a stable gradient instead of sampling the Map/Dayboard through a second backdrop blur, so dense Dayboard content cannot visually erode the header edge.
 - Route-edit masking begins at the Dayboard's right edge, the workspace fills the viewport bottom without a gap, and destination markers remain fully opaque while editing.
 - The Map search control is 38 px high with a 10 px liquid-glass radius. Route-edit and add-point buttons sit to its right, and the Map-collapse control uses Lucide `Tally4`.
 - The current Map liquid-glass tokens use `rgba(255, 255, 255, .4)` for the supported surface, `rgba(255, 255, 255, .55)` for the border, `rgba(20, 55, 46, .92)` for fallback, `blur(8px)`, and `saturate(140%)`. The Dayboard background and border reference the same shared tokens in both fallback and supported states.
@@ -91,7 +92,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 
 Latest Phase 5.8 verification:
 
-- Phase 5.8 filtered browser smoke checks passed 5/5, including a body-level Timeline confirmation dialog with a full-viewport fixed dimmer, centered white card, and preserved 8 px radius.
+- Phase 5.8 filtered browser smoke checks passed 5/5, including stable header geometry after adding 24 Dayboard cards and a body-level Timeline confirmation dialog with a full-viewport fixed dimmer, centered white card, and preserved 8 px radius.
 - The full legacy smoke suite was also attempted: its first eight checks passed, then three unrelated Demo tail-transport timing cases reached their existing 30-second timeout; no confirmation-dialog check failed.
 - Phase 5.8 desktop, tablet, mobile, and trip-title edit Playwright checks passed 4/4 through `44fd4d3`.
 - Focused Map/provider route-edit and workspace checks passed 2/2 through `44fd4d3`.

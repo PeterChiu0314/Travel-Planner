@@ -154,7 +154,32 @@ test("Phase 5.8 trip header typography stays consistent while renaming", async (
   expect(await titleButton.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("500");
   expect(await meta.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("500");
   expect(await header.evaluate((element) => getComputedStyle(element).padding)).toBe("14px 10px 8px");
+  expect(await header.evaluate((element) => getComputedStyle(element).flexShrink)).toBe("0");
+  expect(await header.evaluate((element) => getComputedStyle(element, "::after").backdropFilter)).toBe("none");
+  expect(await header.evaluate((element) => getComputedStyle(element, "::after").backgroundImage)).toContain("linear-gradient");
   expect(await header.locator(".trip-header-main").evaluate((element) => getComputedStyle(element).gap)).toBe("2px");
+
+  const headerBeforeDenseBoard = await header.boundingBox();
+  const denseBoardMetrics = await page.evaluate(() => {
+    const activeDay = document.querySelector(".timeline-day-column.active");
+    const card = activeDay?.querySelector(".timeline-flow-entry");
+    if (!activeDay || !card) return null;
+    const scrollHeightBefore = activeDay.scrollHeight;
+    for (let index = 0; index < 24; index += 1) activeDay.append(card.cloneNode(true));
+    return {
+      addedCards: 24,
+      scrollHeightAfter: activeDay.scrollHeight,
+      scrollHeightBefore,
+    };
+  });
+  const headerAfterDenseBoard = await header.boundingBox();
+  expect(denseBoardMetrics).not.toBeNull();
+  expect(denseBoardMetrics.addedCards).toBe(24);
+  expect(denseBoardMetrics.scrollHeightAfter).toBeGreaterThan(denseBoardMetrics.scrollHeightBefore);
+  expect(headerBeforeDenseBoard).not.toBeNull();
+  expect(headerAfterDenseBoard).not.toBeNull();
+  expect(Math.abs(headerAfterDenseBoard.height - headerBeforeDenseBoard.height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(headerAfterDenseBoard.y - headerBeforeDenseBoard.y)).toBeLessThanOrEqual(1);
 
   await titleButton.click();
   const titleInput = header.locator(".trip-header-title-input");
