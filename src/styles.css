@@ -428,9 +428,9 @@ code {
   border-radius: 8px;
   background: transparent;
   color: #18201cbf;
-  padding: 4px 10px;
+  padding: 4px 10px 4px 20px;
   text-align: left;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .section-nav-button.active {
@@ -1228,7 +1228,7 @@ code {
 
   .section-nav-button {
     min-height: 32px;
-    padding: 5px 8px;
+    padding: 5px 8px 5px 20px;
   }
 
   .section-nav-icon {

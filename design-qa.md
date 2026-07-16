@@ -1,42 +1,41 @@
-# Phase 5.8 Timeline Editor Gap Design QA
+# Phase 5.8 Sidebar Navigation Design QA
 
 ## Comparison Target
 
-- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-fefdc3e2-a92a-417f-bdf2-16af33c7d2b4.png`, `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-169d96fe-4861-4ce5-b3a6-34877332d91d.png`, and `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-fa25847f-4d4f-40e9-a9a9-cd34026f2ebe.png`.
-- Implementation screenshot: unavailable because the in-app Browser session repeatedly reset while opening the local preview; the user completed manual visual acceptance after the pushed fix.
-- User requirement: make the lower gap after visit and transportation editor cards, and the upper gap before the add-destination editor, consistently 4 px like normal Timeline cards.
-- Implementation evidence: computed browser geometry and `tests/mapProviderPrep.spec.js` verify the scoped spacing contracts.
-- Viewport: local Demo Timeline desktop; focused comparison uses the editor-to-card boundaries shown in the source crops.
-- States checked: visit edit, transportation edit, and add-destination editor.
+- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-90e76263-3ce3-4e0f-9042-4505131608a3.png`.
+- Implementation screenshot: unavailable because the in-app Browser integration is unstable in this desktop session; source contracts and production build are used before user acceptance.
+- User requirement: replace all seven expanded-sidebar navigation labels, use 500 font weight, and align their text start with `旅程規劃室`.
+- Implementation evidence: `tests/phase-1-8-source-guards.spec.js` verifies the labels, regular desktop padding, compact-height padding, and weight contracts.
+- Viewport: desktop expanded sidebar, including the compact-height rule used by the supplied screenshot.
+- States checked: normal and active navigation rows; collapsed sidebar remains structurally unchanged.
 
 ## Findings
 
-- No remaining P0, P1, or P2 mismatch. The user verified all three corrected spacing boundaries render normally at 4 px.
+- Source-level implementation is complete. Final visual acceptance remains pending because browser capture is unavailable.
 
 ## Required Fidelity Surfaces
 
-- Fonts and typography: unchanged by this spacing-only correction.
-- Spacing and layout rhythm: target is exactly 4 px at all three editor/card boundaries.
+- Fonts and typography: all seven labels use 500 weight.
+- Spacing and layout rhythm: the text column uses 20 px left button padding in both regular and compact-height desktop rules, matching the brand-heading start after accounting for icon sizes and gaps.
 - Colors and visual tokens: unchanged.
 - Image quality and asset fidelity: no image or icon assets are changed.
-- Copy and content: unchanged.
+- Copy and content: all seven labels match the user-provided names exactly.
 
 ## Interaction And Runtime Checks
 
 - `npm.cmd run build`: passed.
 - `git diff --check`: passed.
-- Automated browser geometry and console verification was unavailable because the in-app Browser session repeatedly reset.
-- User manual verification: passed for visit edit, transportation edit, add-destination spacing, and related interactions.
+- Source guard contracts were updated for all labels, both padding rules, and 500 weight; the Playwright-based source guard was not executed because browser automation was not requested for this iteration.
+- Automated browser geometry and console verification remains unavailable because the in-app Browser session repeatedly reset during the preceding task.
 
 ## Comparison History
 
-1. Source screenshots show an oversized lower gap after visit and transportation editors, plus an oversized upper gap before the standalone add-destination editor.
-2. The implementation removes the inherited 16 px bottom margin only for forms inside `.timeline` and changes the standalone add-editor anchor from 12 px to 4 px.
-3. Post-fix automated browser evidence remained unavailable, so the user performed manual visual and interaction verification after publication.
-4. The user confirmed all three spacing cases and related interactions are normal.
+1. The source screenshot shows short legacy labels at 700 weight, with their text column starting left of the brand heading.
+2. The implementation replaces all seven labels, changes weight to 500, and moves the expanded text column right by 10 px in regular desktop and 12 px in compact-height desktop.
+3. Post-fix manual visual acceptance is pending.
 
 ## Follow-up Polish
 
-- None required for this request.
+- Manually confirm the text start aligns with `旅程規劃室` at the user's display scale.
 
-final result: passed
+final result: blocked

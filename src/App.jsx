@@ -357,13 +357,13 @@ function timelineAnimateLayoutChanges(args) {
 }
 
 const desktopNavItems = [
-  { id: "today", label: "總覽", shortLabel: "覽" },
-  { id: "timeline", label: "行程", shortLabel: "程" },
-  { id: "budget", label: "預算", shortLabel: "錢" },
-  { id: "accommodation", label: "住宿", shortLabel: "宿" },
-  { id: "todo", label: "待辦", shortLabel: "辦" },
-  { id: "luggage", label: "行李", shortLabel: "李" },
-  { id: "settlement", label: "結算", shortLabel: "結" },
+  { id: "today", label: "旅程總覽", shortLabel: "覽" },
+  { id: "timeline", label: "行程路線", shortLabel: "程" },
+  { id: "budget", label: "預算管理", shortLabel: "錢" },
+  { id: "accommodation", label: "住宿資訊", shortLabel: "宿" },
+  { id: "todo", label: "待辦指南", shortLabel: "辦" },
+  { id: "luggage", label: "行李清單", shortLabel: "李" },
+  { id: "settlement", label: "分帳結算", shortLabel: "結" },
 ];
 
 const desktopNavIcons = {

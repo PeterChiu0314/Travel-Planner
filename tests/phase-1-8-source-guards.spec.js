@@ -53,7 +53,16 @@ test("phase 1.8 members dialog keeps required labels and disabled states", () =>
 });
 
 test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", () => {
-  expect(appSource).toContain('{ id: "today", label: "總覽", shortLabel: "覽" }');
+  expect(appSource).toContain('{ id: "today", label: "旅程總覽", shortLabel: "覽" }');
+  expect(appSource).toContain('{ id: "timeline", label: "行程路線", shortLabel: "程" }');
+  expect(appSource).toContain('{ id: "budget", label: "預算管理", shortLabel: "錢" }');
+  expect(appSource).toContain('{ id: "accommodation", label: "住宿資訊", shortLabel: "宿" }');
+  expect(appSource).toContain('{ id: "todo", label: "待辦指南", shortLabel: "辦" }');
+  expect(appSource).toContain('{ id: "luggage", label: "行李清單", shortLabel: "李" }');
+  expect(appSource).toContain('{ id: "settlement", label: "分帳結算", shortLabel: "結" }');
+  expect(styleSource).toContain("padding: 4px 10px 4px 20px");
+  expect(styleSource).toContain("font-weight: 500");
+  expect(styleSource).toContain("padding: 5px 8px 5px 20px");
   expect(appSource).not.toContain('{ id: "settings", label: "設定", shortLabel: "設" }');
   expect(appSource).toContain("function SidebarTripSection({");
   expect(appSource).toContain('headingId="sidebar-trips-title"');
