@@ -421,14 +421,14 @@ code {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 19px;
   width: 100%;
   min-height: 42px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: #18201cbf;
-  padding: 4px 10px 4px 20px;
+  padding: 4px 10px 4px 11px;
   text-align: left;
   font-weight: 500;
 }
@@ -1227,8 +1227,9 @@ code {
   }
 
   .section-nav-button {
+    gap: 18px;
     min-height: 32px;
-    padding: 5px 8px 5px 20px;
+    padding: 5px 8px 5px 12px;
   }
 
   .section-nav-icon {

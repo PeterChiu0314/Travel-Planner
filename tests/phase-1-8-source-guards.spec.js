@@ -60,9 +60,11 @@ test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", 
   expect(appSource).toContain('{ id: "todo", label: "待辦指南", shortLabel: "辦" }');
   expect(appSource).toContain('{ id: "luggage", label: "行李清單", shortLabel: "李" }');
   expect(appSource).toContain('{ id: "settlement", label: "分帳結算", shortLabel: "結" }');
-  expect(styleSource).toContain("padding: 4px 10px 4px 20px");
+  expect(styleSource).toContain("gap: 19px");
+  expect(styleSource).toContain("padding: 4px 10px 4px 11px");
   expect(styleSource).toContain("font-weight: 500");
-  expect(styleSource).toContain("padding: 5px 8px 5px 20px");
+  expect(styleSource).toContain("gap: 18px");
+  expect(styleSource).toContain("padding: 5px 8px 5px 12px");
   expect(appSource).not.toContain('{ id: "settings", label: "設定", shortLabel: "設" }');
   expect(appSource).toContain("function SidebarTripSection({");
   expect(appSource).toContain('headingId="sidebar-trips-title"');
