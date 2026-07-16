@@ -292,13 +292,16 @@ test("Phase 5.8 transport insertion stays centered and triggers from adjacent ca
     const lineRect = line.getBoundingClientRect();
     const zoneRect = element.getBoundingClientRect();
     const ghostStyle = getComputedStyle(element, "::before");
+    const zoneStyle = getComputedStyle(element);
     return {
       contentStartOffset: iconRect.left - timeRect.left,
       gapCenter: previousRect.bottom + (nextRect.top - previousRect.bottom) / 2,
       ghostBackground: ghostStyle.backgroundColor,
       ghostBorderWidth: ghostStyle.borderTopWidth,
+      ghostBottom: ghostStyle.bottom,
       ghostBoxShadow: ghostStyle.boxShadow,
       ghostOpacity: ghostStyle.opacity,
+      ghostTop: ghostStyle.top,
       lineCenter: lineRect.top + lineRect.height / 2,
       nextTop: nextRect.top,
       previousBottom: previousRect.bottom,
@@ -306,6 +309,7 @@ test("Phase 5.8 transport insertion stays centered and triggers from adjacent ca
       zoneHeight: zoneRect.height,
       zoneWidth: zoneRect.width,
       previousWidth: previousRect.width,
+      rightPadding: zoneStyle.paddingRight,
     };
   });
 
@@ -317,10 +321,13 @@ test("Phase 5.8 transport insertion stays centered and triggers from adjacent ca
   expect(expandedMetrics.lineCenter - expandedMetrics.gapCenter).toBeLessThanOrEqual(1.5);
   expect(Math.abs(expandedMetrics.zoneWidth - expandedMetrics.previousWidth)).toBeLessThanOrEqual(1);
   expect(Math.abs(expandedMetrics.contentStartOffset)).toBeLessThanOrEqual(4);
-  expect(expandedMetrics.ghostBackground).toBe("rgba(36, 43, 38, 0.16)");
+  expect(expandedMetrics.ghostBackground).toBe("rgba(36, 43, 38, 0.06)");
   expect(expandedMetrics.ghostBorderWidth).toBe("0px");
+  expect(expandedMetrics.ghostTop).toBe("2px");
+  expect(expandedMetrics.ghostBottom).toBe("2px");
   expect(expandedMetrics.ghostBoxShadow).toBe("none");
   expect(Number(expandedMetrics.ghostOpacity)).toBeGreaterThan(0.9);
+  expect(expandedMetrics.rightPadding).toBe("20px");
 
   await page.mouse.move(0, 0);
   await expect.poll(async () => (await zone.boundingBox())?.height ?? 0).toBeLessThan(6);

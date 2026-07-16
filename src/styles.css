@@ -3150,7 +3150,7 @@ textarea {
   color: var(--mint-dark);
   opacity: 1;
   margin-bottom: -4px;
-  padding: 0 14px 0 30px;
+  padding: 0 20px 0 30px;
   position: relative;
   z-index: 2;
   text-align: left;
@@ -3164,11 +3164,11 @@ textarea {
 }
 
 .transport-insert-zone::before {
-  inset: 0;
+  inset: 2px 0;
   z-index: 0;
   border: 0;
   border-radius: inherit;
-  background: rgba(36, 43, 38, 0.16);
+  background: rgba(36, 43, 38, 0.06);
   box-shadow: none;
   opacity: 0;
   pointer-events: none;

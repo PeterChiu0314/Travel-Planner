@@ -401,10 +401,11 @@ test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icon
   expect(stylesSource).toContain("height: 4px");
   expect(stylesSource).toContain("height: 22px");
   expect(stylesSource).toContain("margin-bottom: -4px");
-  expect(stylesSource).toContain("padding: 0 14px 0 30px");
+  expect(stylesSource).toContain("padding: 0 20px 0 30px");
   expect(stylesSource).toContain(".transport-insert-zone::before,\n.transport-insert-zone::after");
   expect(stylesSource).toContain("inset: -4px 0");
-  expect(stylesSource).toContain("background: rgba(36, 43, 38, 0.16)");
+  expect(stylesSource).toContain("inset: 2px 0");
+  expect(stylesSource).toContain("background: rgba(36, 43, 38, 0.06)");
   expect(stylesSource).toContain("box-shadow: none");
   expect(stylesSource).toContain("transform: translateY(1px)");
   expect(stylesSource).toContain(".transport-insert-icon svg");
