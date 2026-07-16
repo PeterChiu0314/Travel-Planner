@@ -28,6 +28,21 @@
       --color-warning-bg: #f7eedb;
       --color-error-bg: #f7e9e6;
       --color-info-bg: #e7f0ef;
+      --color-type-attraction: #2f8f72;
+      --color-type-attraction-fill: #dcefe8;
+      --color-type-attraction-text: #1a4e3e;
+      --color-type-food: #d85f49;
+      --color-type-food-fill: #f9dfd8;
+      --color-type-food-text: #974333;
+      --color-type-hotel: #7865a8;
+      --color-type-hotel-fill: #e8e1f2;
+      --color-type-hotel-text: #4a3e67;
+      --color-type-transport: #5f8fb8;
+      --color-type-transport-fill: #e0edf6;
+      --color-type-transport-text: #3d5c77;
+      --color-type-note: #b87918;
+      --color-type-note-fill: #faeac6;
+      --color-type-note-text: #774e10;
       --font-stack: Inter, "Noto Sans TC", "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       --font-body: 14px;
       --font-display: 36px;
@@ -475,9 +490,11 @@
     .formal-route-copy p { overflow: hidden; margin-top: 6px; color: var(--color-text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
     .formal-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
     .formal-badge { display: inline-flex; align-items: center; min-height: 21px; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; }
-    .formal-badge.meal { background: color-mix(in srgb, var(--color-error) 11%, var(--color-surface)); color: var(--color-error); }
-    .formal-badge.transport { background: var(--color-info-bg); color: var(--color-info); }
-    .formal-badge.scenic { background: var(--color-success-bg); color: var(--color-success); }
+    .formal-badge.food { background: var(--color-type-food-fill); color: var(--color-type-food-text); }
+    .formal-badge.transport { background: var(--color-type-transport-fill); color: var(--color-type-transport-text); }
+    .formal-badge.attraction { background: var(--color-type-attraction-fill); color: var(--color-type-attraction-text); }
+    .formal-badge.hotel { background: var(--color-type-hotel-fill); color: var(--color-type-hotel-text); }
+    .formal-badge.note { background: var(--color-type-note-fill); color: var(--color-type-note-text); }
     .formal-badge.cost { background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface)); color: var(--color-success); }
     .formal-badge.pending { background: color-mix(in srgb, var(--color-warning) 13%, var(--color-surface)); color: var(--color-warning); }
     .formal-route-actions { display: flex; width: 100px; justify-content: flex-end; gap: 8px; }
@@ -506,8 +523,14 @@
     .formal-map-road.major { stroke: #8fa7b9; stroke-width: 3; }
     .formal-map-label { fill: var(--color-text-muted); font-size: 13px; font-weight: 500; }
     .formal-map-route { fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: .92; }
-    .formal-map-marker circle { fill: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); stroke: var(--color-accent); stroke-width: 2.5; }
-    .formal-map-marker text { fill: var(--color-accent-text); font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    .formal-map-marker { --marker-color: var(--color-type-attraction); --marker-fill: var(--color-type-attraction-fill); --marker-text: var(--color-type-attraction-text); filter: url(#formal-marker-shadow); }
+    .formal-map-marker.food { --marker-color: var(--color-type-food); --marker-fill: var(--color-type-food-fill); --marker-text: var(--color-type-food-text); }
+    .formal-map-marker.hotel { --marker-color: var(--color-type-hotel); --marker-fill: var(--color-type-hotel-fill); --marker-text: var(--color-type-hotel-text); }
+    .formal-map-marker.transport { --marker-color: var(--color-type-transport); --marker-fill: var(--color-type-transport-fill); --marker-text: var(--color-type-transport-text); }
+    .formal-map-marker.note { --marker-color: var(--color-type-note); --marker-fill: var(--color-type-note-fill); --marker-text: var(--color-type-note-text); }
+    .formal-map-marker .marker-tip { fill: var(--marker-color); }
+    .formal-map-marker circle { fill: var(--marker-fill); stroke: var(--marker-color); stroke-width: 2.6; }
+    .formal-map-marker text { fill: var(--marker-text); stroke: var(--marker-text); stroke-width: .2; paint-order: stroke; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13.5px; font-weight: 900; text-anchor: middle; dominant-baseline: central; }
     .formal-map-search { position: absolute; top: 14px; left: 18px; z-index: 3; display: flex; align-items: center; gap: 9px; width: min(380px, calc(100% - 120px)); min-height: 42px; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 12px; background: rgba(20, 55, 46, .92); box-shadow: 0 14px 30px rgba(20, 55, 46, .18); color: #fff; }
     .formal-map-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: inherit; font-size: 11px; }
     .formal-map-search input::placeholder { color: currentColor; opacity: .72; }
@@ -578,6 +601,16 @@
         <label class="color-row"><span><strong>Warning</strong><small>警告與待確認狀態</small></span><input type="color" data-color="color-warning" value="#AB7A2B"><input class="hex-input" data-hex="color-warning" value="#AB7A2B" aria-label="Warning 色碼"></label>
         <label class="color-row"><span><strong>Success</strong><small>完成、儲存與同步狀態</small></span><input type="color" data-color="color-success" value="#3F654F"><input class="hex-input" data-hex="color-success" value="#3F654F" aria-label="Success 色碼"></label>
         <label class="color-row"><span><strong>Info</strong><small>一般資訊與補充提示</small></span><input type="color" data-color="color-info" value="#486B6D"><input class="hex-input" data-hex="color-info" value="#486B6D" aria-label="Info 色碼"></label>
+      </section>
+
+      <section class="control-group type-colors">
+        <h3>行程類型色</h3>
+        <p>同一組類型色會同步套用到行程卡標籤與地圖 Marker。</p>
+        <label class="color-row"><span><strong>景點</strong><small>景點、公園與活動</small></span><input type="color" data-color="color-type-attraction" value="#2F8F72"><input class="hex-input" data-hex="color-type-attraction" value="#2F8F72" aria-label="景點類型色碼"></label>
+        <label class="color-row"><span><strong>餐飲</strong><small>餐廳、咖啡與用餐</small></span><input type="color" data-color="color-type-food" value="#D85F49"><input class="hex-input" data-hex="color-type-food" value="#D85F49" aria-label="餐飲類型色碼"></label>
+        <label class="color-row"><span><strong>住宿</strong><small>飯店與住宿地點</small></span><input type="color" data-color="color-type-hotel" value="#7865A8"><input class="hex-input" data-hex="color-type-hotel" value="#7865A8" aria-label="住宿類型色碼"></label>
+        <label class="color-row"><span><strong>交通</strong><small>車站、機場與交通點</small></span><input type="color" data-color="color-type-transport" value="#5F8FB8"><input class="hex-input" data-hex="color-type-transport" value="#5F8FB8" aria-label="交通類型色碼"></label>
+        <label class="color-row"><span><strong>備註</strong><small>自訂與備註地點</small></span><input type="color" data-color="color-type-note" value="#B87918"><input class="hex-input" data-hex="color-type-note" value="#B87918" aria-label="備註類型色碼"></label>
       </section>
 
       <section class="control-group">
@@ -672,7 +705,7 @@
                   <article class="formal-route-card">
                     <span class="formal-route-index">1</span>
                     <div class="formal-time-stack"><span>07:00</span><span class="formal-time-line" aria-hidden="true"></span><span>09:00</span></div>
-                    <div class="formal-route-copy"><strong>京都山科山樂酒店</strong><p>飯店早餐07:00-09:00</p><div class="formal-badges"><span class="formal-badge meal">餐飲</span><span class="formal-badge pending">待確認</span></div></div>
+                    <div class="formal-route-copy"><strong>京都山科山樂酒店</strong><p>飯店早餐07:00-09:00</p><div class="formal-badges"><span class="formal-badge food">餐飲</span><span class="formal-badge pending">待確認</span></div></div>
                     <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定酒店"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯酒店"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除酒店"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
                   </article>
 
@@ -690,7 +723,7 @@
                   <article class="formal-route-card">
                     <span class="formal-route-index">3</span>
                     <div class="formal-time-stack"><span>11:30</span><span class="formal-time-line" aria-hidden="true"></span><span>13:00</span></div>
-                    <div class="formal-route-copy"><strong>Napoli</strong><p>義式餐廳・午餐</p><div class="formal-badges"><span class="formal-badge meal">餐飲</span></div></div>
+                    <div class="formal-route-copy"><strong>Napoli</strong><p>義式餐廳・午餐</p><div class="formal-badges"><span class="formal-badge food">餐飲</span></div></div>
                     <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定餐廳"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯餐廳"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除餐廳"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
                   </article>
 
@@ -699,7 +732,7 @@
                   <article class="formal-route-card">
                     <span class="formal-route-index">4</span>
                     <div class="formal-time-stack"><span>13:30</span><span class="formal-time-line" aria-hidden="true"></span><span>14:30</span></div>
-                    <div class="formal-route-copy"><strong>笠原櫻公園</strong><p>琵琶湖畔・散步景點</p><div class="formal-badges"><span class="formal-badge scenic">景點</span></div></div>
+                    <div class="formal-route-copy"><strong>笠原櫻公園</strong><p>琵琶湖畔・散步景點</p><div class="formal-badges"><span class="formal-badge attraction">景點</span></div></div>
                     <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定公園"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯公園"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除公園"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
                   </article>
 
@@ -708,7 +741,7 @@
                   <article class="formal-route-card">
                     <span class="formal-route-index">5</span>
                     <div class="formal-time-stack"><span>15:00</span><span class="formal-time-line" aria-hidden="true"></span><span>15:30</span></div>
-                    <div class="formal-route-copy"><strong>近江八幡夢園Villa</strong><p>check in</p><div class="formal-badges"><span class="formal-badge scenic">住宿</span></div></div>
+                    <div class="formal-route-copy"><strong>近江八幡夢園Villa</strong><p>check in</p><div class="formal-badges"><span class="formal-badge hotel">住宿</span></div></div>
                     <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定住宿"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯住宿"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除住宿"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
                   </article>
                 </div>
@@ -719,6 +752,11 @@
               <svg class="formal-map-art" viewBox="0 0 900 760" preserveAspectRatio="xMidYMid slice" role="img" aria-labelledby="formal-map-title formal-map-desc">
                 <title id="formal-map-title">京都與琵琶湖旅程簡略地圖</title>
                 <desc id="formal-map-desc">Accent 色路線串連五個地圖 Marker。</desc>
+                <defs>
+                  <filter id="formal-marker-shadow" x="-35%" y="-25%" width="170%" height="170%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="1.6" flood-color="#1f2723" flood-opacity=".24"></feDropShadow>
+                  </filter>
+                </defs>
                 <rect class="formal-map-land" width="900" height="760"></rect>
                 <path class="formal-map-water" d="M0 0H250C285 85 235 165 280 245C320 315 255 380 300 450C348 525 288 620 335 760H0Z"></path>
                 <path class="formal-map-green" d="M-80 160C120 90 260 220 430 135S730 120 990 205"></path>
@@ -730,11 +768,11 @@
                 <g class="formal-map-road major"><path d="M310 0C350 165 420 260 560 370S760 545 900 605"></path><path d="M0 540C230 530 405 490 580 390S770 235 900 210"></path></g>
                 <text class="formal-map-label" x="95" y="310">大津市</text><text class="formal-map-label" x="405" y="405">守山市</text><text class="formal-map-label" x="650" y="280">近江八幡市</text><text class="formal-map-label" x="660" y="580">野洲市</text><text class="formal-map-label" x="75" y="690">琵琶湖</text>
                 <path class="formal-map-route" d="M735 120C660 170 610 235 560 300S450 420 350 495S250 560 165 585"></path>
-                <g class="formal-map-marker"><circle cx="735" cy="120" r="17"></circle><text x="735" y="121">1</text></g>
-                <g class="formal-map-marker"><circle cx="560" cy="300" r="17"></circle><text x="560" y="301">2</text></g>
-                <g class="formal-map-marker"><circle cx="350" cy="495" r="17"></circle><text x="350" y="496">3</text></g>
-                <g class="formal-map-marker"><circle cx="250" cy="560" r="17"></circle><text x="250" y="561">4</text></g>
-                <g class="formal-map-marker"><circle cx="165" cy="585" r="17"></circle><text x="165" y="586">5</text></g>
+                <g class="formal-map-marker food" transform="translate(719 80)"><path class="marker-tip" d="M 4.5 25.2 L 27.5 25.2 L 16 38 Z"></path><circle cx="16" cy="18.5" r="13"></circle><text x="16" y="19">1</text></g>
+                <g class="formal-map-marker transport" transform="translate(544 260)"><path class="marker-tip" d="M 4.5 25.2 L 27.5 25.2 L 16 38 Z"></path><circle cx="16" cy="18.5" r="13"></circle><text x="16" y="19">2</text></g>
+                <g class="formal-map-marker food" transform="translate(334 455)"><path class="marker-tip" d="M 4.5 25.2 L 27.5 25.2 L 16 38 Z"></path><circle cx="16" cy="18.5" r="13"></circle><text x="16" y="19">3</text></g>
+                <g class="formal-map-marker" transform="translate(234 520)"><path class="marker-tip" d="M 4.5 25.2 L 27.5 25.2 L 16 38 Z"></path><circle cx="16" cy="18.5" r="13"></circle><text x="16" y="19">4</text></g>
+                <g class="formal-map-marker hotel" transform="translate(149 545)"><path class="marker-tip" d="M 4.5 25.2 L 27.5 25.2 L 16 38 Z"></path><circle cx="16" cy="18.5" r="13"></circle><text x="16" y="19">5</text></g>
               </svg>
 
               <label class="formal-map-search"><i data-lucide="search" aria-hidden="true"></i><input type="search" placeholder="搜尋地點" aria-label="搜尋地點"></label>
@@ -752,18 +790,33 @@
     (() => {
       const root = document.documentElement;
       const defaults = {
-        "color-bg": "#FCFBF7", "color-surface": "#FCFBF7", "color-surface-subtle": "#EEECE5", "color-primary": "#325248", "color-primary-hover": "#245341", "color-primary-foreground": "#FFFFFF", "color-accent": "#755D43", "color-accent-text": "#755D43", "color-text": "#2D312F", "color-text-secondary": "#68706B", "color-text-muted": "#66716B", "color-border": "#D9D8D1", "color-error": "#B6544B", "color-warning": "#AB7A2B", "color-success": "#3F654F", "color-info": "#486B6D", "font-body": "14", "font-display": "36", "font-h1": "28", "font-h2": "22", "font-h3": "18", "font-caption": "12", "space-unit": "4", "radius-sm": "8", "radius-md": "12", "radius-lg": "16", "radius-xl": "20", "shadow-alpha": "0.1"
+        "color-bg": "#FCFBF7", "color-surface": "#FCFBF7", "color-surface-subtle": "#EEECE5", "color-primary": "#325248", "color-primary-hover": "#245341", "color-primary-foreground": "#FFFFFF", "color-accent": "#755D43", "color-accent-text": "#755D43", "color-text": "#2D312F", "color-text-secondary": "#68706B", "color-text-muted": "#66716B", "color-border": "#D9D8D1", "color-error": "#B6544B", "color-warning": "#AB7A2B", "color-success": "#3F654F", "color-info": "#486B6D", "color-type-attraction": "#2F8F72", "color-type-food": "#D85F49", "color-type-hotel": "#7865A8", "color-type-transport": "#5F8FB8", "color-type-note": "#B87918", "font-body": "14", "font-display": "36", "font-h1": "28", "font-h2": "22", "font-h3": "18", "font-caption": "12", "space-unit": "4", "radius-sm": "8", "radius-md": "12", "radius-lg": "16", "radius-xl": "20", "shadow-alpha": "0.1"
+      };
+      const typeToneDefaults = {
+        "color-type-attraction": { fill: "#DCEFE8", text: "#1A4E3E" },
+        "color-type-food": { fill: "#F9DFD8", text: "#974333" },
+        "color-type-hotel": { fill: "#E8E1F2", text: "#4A3E67" },
+        "color-type-transport": { fill: "#E0EDF6", text: "#3D5C77" },
+        "color-type-note": { fill: "#FAEAC6", text: "#774E10" }
       };
       const hexPattern = /^#[0-9a-fA-F]{6}$/;
       const by = (selector) => root.querySelector(selector);
       const setCss = (key, value) => root.style.setProperty(`--${key.replaceAll("_", "-")}`, value);
       const syncColor = (token, value) => {
         if (!hexPattern.test(value)) return;
-        setCss(token, value.toUpperCase());
+        const normalized = value.toUpperCase();
+        setCss(token, normalized);
+        if (typeToneDefaults[token]) {
+          const tones = normalized === defaults[token]
+            ? typeToneDefaults[token]
+            : { fill: `color-mix(in srgb, ${normalized} 18%, #FFFFFF)`, text: `color-mix(in srgb, ${normalized} 72%, #111111)` };
+          setCss(`${token}-fill`, tones.fill);
+          setCss(`${token}-text`, tones.text);
+        }
         const picker = by(`[data-color="${token}"]`);
         const hex = by(`[data-hex="${token}"]`);
         if (picker) picker.value = value;
-        if (hex && hex.value !== value.toUpperCase()) hex.value = value.toUpperCase();
+        if (hex && hex.value !== normalized) hex.value = normalized;
         updateContrast();
       };
       document.querySelectorAll("[data-color]").forEach((input) => input.addEventListener("input", () => syncColor(input.dataset.color, input.value)));
@@ -807,7 +860,8 @@
         const incoming = data?.tokens || data?.settings || data;
         if (!incoming || typeof incoming !== "object") throw new Error("設定檔格式無效");
         Object.entries(defaults).forEach(([key, fallback]) => {
-          const value = incoming[key] ?? fallback;
+          const legacyMarkerKey = key.startsWith("color-type-") ? key.replace("color-type-", "color-marker-") : null;
+          const value = incoming[key] ?? (legacyMarkerKey ? incoming[legacyMarkerKey] : undefined) ?? fallback;
           if (key.startsWith("color-")) {
             if (!hexPattern.test(String(value))) throw new Error(`${key} 不是有效色碼`);
             syncColor(key, String(value).toUpperCase());
