@@ -296,6 +296,8 @@ test("Phase 5.8 transport insertion stays centered and triggers from adjacent ca
       contentStartOffset: iconRect.left - timeRect.left,
       gapCenter: previousRect.bottom + (nextRect.top - previousRect.bottom) / 2,
       ghostBackground: ghostStyle.backgroundColor,
+      ghostBorderWidth: ghostStyle.borderTopWidth,
+      ghostBoxShadow: ghostStyle.boxShadow,
       ghostOpacity: ghostStyle.opacity,
       lineCenter: lineRect.top + lineRect.height / 2,
       nextTop: nextRect.top,
@@ -311,10 +313,13 @@ test("Phase 5.8 transport insertion stays centered and triggers from adjacent ca
   expect(Math.abs(expandedMetrics.zoneHeight - 22)).toBeLessThanOrEqual(1);
   expect(Math.abs(expandedMetrics.nextTop - expandedMetrics.previousBottom - 22)).toBeLessThanOrEqual(1);
   expect(Math.abs(expandedMetrics.zoneCenter - expandedMetrics.gapCenter)).toBeLessThanOrEqual(1);
-  expect(Math.abs(expandedMetrics.lineCenter - expandedMetrics.gapCenter)).toBeLessThanOrEqual(1);
+  expect(expandedMetrics.lineCenter - expandedMetrics.gapCenter).toBeGreaterThanOrEqual(0.5);
+  expect(expandedMetrics.lineCenter - expandedMetrics.gapCenter).toBeLessThanOrEqual(1.5);
   expect(Math.abs(expandedMetrics.zoneWidth - expandedMetrics.previousWidth)).toBeLessThanOrEqual(1);
   expect(Math.abs(expandedMetrics.contentStartOffset)).toBeLessThanOrEqual(4);
-  expect(expandedMetrics.ghostBackground).toBe("rgba(255, 255, 255, 0.58)");
+  expect(expandedMetrics.ghostBackground).toBe("rgba(36, 43, 38, 0.16)");
+  expect(expandedMetrics.ghostBorderWidth).toBe("0px");
+  expect(expandedMetrics.ghostBoxShadow).toBe("none");
   expect(Number(expandedMetrics.ghostOpacity)).toBeGreaterThan(0.9);
 
   await page.mouse.move(0, 0);
