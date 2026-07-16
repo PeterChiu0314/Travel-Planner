@@ -529,7 +529,8 @@ test("Phase 5.3 hotfix scrolls and spaces the bottom add editor", () => {
   expect(appSource).toContain("transportPairConflict");
   expect(appSource).toContain("autoContinuationPrompt");
   expect(stylesSource).toContain(".timeline-add-editor-anchor");
-  expect(stylesSource).toContain("margin-top: 12px");
+  expect(stylesSource).toContain("margin-top: 4px");
+  expect(stylesSource).toContain(".timeline .item-form {\n  margin-bottom: 0");
 });
 
 test("Phase 5.3 destination editor exposes one map point picker icon button", () => {

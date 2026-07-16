@@ -821,7 +821,7 @@ code {
 }
 
 .timeline-add-editor-anchor {
-  margin-top: 12px;
+  margin-top: 4px;
 }
 
 .trip-list {
@@ -2904,6 +2904,10 @@ textarea {
 
 .timeline-workbench .item-form {
   background: rgba(255, 255, 255, 0.85);
+}
+
+.timeline .item-form {
+  margin-bottom: 0;
 }
 
 .form-grid {
