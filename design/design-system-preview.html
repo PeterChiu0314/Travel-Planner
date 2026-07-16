@@ -7,21 +7,21 @@
   <style>
     :root {
       color-scheme: light;
-      --color-bg: #f7f5ef;
+      --color-bg: #fcfbf7;
       --color-surface: #fcfbf7;
       --color-surface-subtle: #eeece5;
-      --color-primary: #2f6b57;
+      --color-primary: #325248;
       --color-primary-hover: #245341;
       --color-primary-foreground: #ffffff;
-      --color-accent: #a77a46;
-      --color-accent-text: #8d653a;
+      --color-accent: #755d43;
+      --color-accent-text: #755d43;
       --color-text: #2d312f;
       --color-text-secondary: #68706b;
       --color-text-muted: #66716b;
       --color-border: #d9d8d1;
       --color-border-strong: #b6b7af;
       --color-error: #b6544b;
-      --color-warning: #805c22;
+      --color-warning: #ab7a2b;
       --color-success: #3f654f;
       --color-info: #486b6d;
       --color-success-bg: #e8f0eb;
@@ -153,6 +153,10 @@
       font-size: 12px;
     }
 
+    .color-row > span { display: grid; min-width: 0; gap: 2px; }
+    .color-row > span strong { font-weight: 500; }
+    .color-row > span small { color: var(--color-text-muted); font-size: 10px; line-height: 1.25; }
+
     .color-row input[type="color"] {
       width: 30px;
       height: 30px;
@@ -272,11 +276,44 @@
     .map-svg { display: block; width: 100%; height: 100%; min-height: 530px; }
     .map-road { fill: none; stroke: #c6d3c6; stroke-width: 2; }
     .map-ridge { fill: none; stroke: #b7d1bc; stroke-width: 38; opacity: .66; }
-    .map-route { fill: none; stroke: var(--color-primary); stroke-width: 4; stroke-linecap: round; opacity: .82; }
+    .map-route { fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; opacity: .88; }
     .map-label { fill: var(--color-text-muted); font-size: 13px; }
-    .marker circle { fill: var(--color-surface); stroke: var(--color-primary); stroke-width: 2; }
-    .marker text { fill: var(--color-primary); font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    .marker circle { fill: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); stroke: var(--color-accent); stroke-width: 2; }
+    .marker text { fill: var(--color-accent-text); font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
     .map-legend { position: absolute; right: 14px; bottom: 14px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text-muted); font-size: 11px; }
+
+    .token-preview-panel { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-surface) 94%, transparent); box-shadow: var(--shadow); }
+    .token-preview-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+    .token-preview-heading p { margin-top: 4px; color: var(--color-text-secondary); font-size: 12px; }
+    .token-usage-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .token-usage-card { display: grid; gap: 8px; min-width: 0; padding: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+    .token-usage-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+    .token-usage-label strong { overflow: hidden; color: var(--color-text); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+    .token-usage-label span { flex: 0 0 auto; color: var(--color-text-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 9px; }
+    .token-demo { display: grid; align-content: center; min-height: 58px; padding: 9px; border-radius: var(--radius-sm); font-size: 11px; }
+    .token-demo-page { border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); }
+    .token-demo-page strong, .token-demo-page span { display: block; }
+    .token-demo-page span { margin-top: 3px; color: var(--color-text-muted); font-size: 10px; }
+    .token-demo-surface { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); box-shadow: 0 5px 12px rgba(38, 52, 45, .08); }
+    .token-demo-surface strong { font-weight: 600; }
+    .token-demo-subtle { border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border)); background: var(--color-surface-subtle); color: var(--color-primary); }
+    .token-demo-button { border: 1px solid var(--color-primary); background: var(--color-primary); color: var(--color-primary-foreground); font-weight: 600; text-align: center; }
+    .token-demo-button-hover { border-color: var(--color-primary-hover); background: var(--color-primary-hover); color: var(--color-primary-foreground); font-weight: 600; text-align: center; }
+    .token-demo-primary-text { border: 1px solid var(--color-primary); background: var(--color-primary); color: var(--color-primary-foreground); font-weight: 500; }
+    .token-demo-accent { display: flex; align-items: center; gap: 7px; border-left: 4px solid var(--color-accent); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); color: var(--color-accent); font-weight: 600; }
+    .token-demo-accent-dot { width: 12px; height: 12px; flex: 0 0 auto; border-radius: 50%; background: var(--color-accent); }
+    .token-demo-accent-text { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-accent-text); font-weight: 600; }
+    .token-demo-text { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font-size: 15px; font-weight: 600; }
+    .token-demo-secondary { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); }
+    .token-demo-muted { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); font-size: 10px; }
+    .token-demo-border { border: 2px solid var(--color-border); background: var(--color-surface); color: var(--color-text-secondary); }
+    .token-demo-error { display: flex; align-items: start; gap: 7px; border: 1px solid color-mix(in srgb, var(--color-error) 38%, var(--color-border)); background: var(--color-error-bg); color: var(--color-error); }
+    .token-demo-error strong, .token-demo-error span { display: block; }
+    .token-demo-error span { margin-top: 3px; font-size: 10px; line-height: 1.35; }
+    .token-demo-status { display: inline-flex; align-items: center; gap: 6px; width: fit-content; min-height: 28px; padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .token-demo-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+    .token-demo-success { background: var(--color-success-bg); color: var(--color-success); }
+    .token-demo-info { background: var(--color-info-bg); color: var(--color-info); }
 
     .component-panel { display: grid; gap: 18px; padding: 18px; }
     .component-panel-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
@@ -310,6 +347,7 @@
       .page { grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); width: min(100% - 24px, 1080px); }
       .app-shell { grid-template-columns: 210px minmax(0, 1fr); }
       .workbench { grid-template-columns: minmax(300px, 45%) minmax(0, 1fr); }
+      .token-usage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .component-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
@@ -329,11 +367,188 @@
       .workbench { grid-template-columns: 1fr; }
       .map-panel { min-height: 300px; border-top: 1px solid var(--color-border); border-left: 0; }
       .map-svg { min-height: 300px; }
+      .token-usage-grid { grid-template-columns: 1fr; }
       .component-grid { grid-template-columns: 1fr; }
       .control-group.colors { grid-template-columns: 1fr; }
       .control-group.colors h3, .control-group.colors > p { grid-column: auto; }
     }
+
+    /* 正式頁結構預覽：保留 Token 控制欄，右側比照正式 Travel Planner。 */
+    .content { display: block; min-width: 0; }
+    .formal-preview-shell {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      width: 100%;
+      height: min(880px, calc(100vh - 40px));
+      min-height: 720px;
+      overflow: hidden;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-bg);
+      box-shadow: var(--shadow);
+    }
+
+    .formal-sidebar {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 1px solid var(--color-border);
+      background: color-mix(in srgb, var(--color-surface) 93%, transparent);
+      padding: 18px 10px 8px;
+    }
+    .formal-brand { display: flex; align-items: center; gap: 12px; padding: 0 4px 18px; }
+    .formal-brand-mark { display: grid; width: 44px; height: 44px; flex: 0 0 auto; place-items: center; border-radius: var(--radius-sm); background: var(--color-primary); color: var(--color-primary-foreground); font-size: 16px; font-weight: 700; }
+    .formal-brand-copy { min-width: 0; }
+    .formal-brand-copy strong { display: block; overflow: hidden; color: var(--color-text); font-size: 18px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .formal-brand-copy span { display: block; margin-top: 1px; color: var(--color-text-muted); font-size: 11px; }
+    .formal-collapse-button { display: grid; width: 32px; height: 32px; flex: 0 0 auto; margin-left: auto; place-items: center; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-secondary); }
+
+    .formal-nav { display: grid; gap: 5px; }
+    .formal-nav-button { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; gap: 9px; min-height: 42px; padding: 4px 9px 4px 6px; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--color-text-secondary); text-align: left; }
+    .formal-nav-button:hover, .formal-nav-button:focus-visible { border-color: color-mix(in srgb, var(--color-primary) 20%, var(--color-border)); background: var(--color-surface-subtle); color: var(--color-primary); }
+    .formal-nav-button.active { border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); color: var(--color-primary); box-shadow: inset 4px 0 0 var(--color-primary); font-weight: 600; }
+    .formal-nav-icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; background: var(--color-surface-subtle); color: currentColor; }
+    .formal-nav-button.active .formal-nav-icon { background: var(--color-primary); color: var(--color-primary-foreground); }
+    .formal-nav-icon svg, .formal-collapse-button svg { width: 16px; height: 16px; stroke-width: 1.8; }
+
+    .formal-trip-section { display: grid; gap: 9px; margin-top: 24px; }
+    .formal-trip-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 2px; }
+    .formal-trip-heading h3 { color: var(--color-text); font-size: 17px; font-weight: 600; }
+    .formal-add-trip { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-secondary); }
+    .formal-add-trip svg { width: 16px; height: 16px; }
+    .formal-trip-list { display: grid; gap: 6px; }
+    .formal-trip-card { display: block; width: 100%; min-height: 68px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text); text-align: left; }
+    .formal-trip-card:hover, .formal-trip-card:focus-visible { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)); }
+    .formal-trip-card.active { border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); }
+    .formal-trip-card strong { display: block; overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .formal-trip-card span { display: block; overflow: hidden; margin-top: 5px; color: var(--color-text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .formal-account { display: flex; align-items: center; gap: 9px; margin-top: auto; padding: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+    .formal-account-avatar { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)); color: var(--color-primary); font-size: 11px; font-weight: 600; }
+    .formal-account-copy { min-width: 0; }
+    .formal-account-copy strong { display: block; overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .formal-account-copy span { display: block; overflow: hidden; margin-top: 2px; color: var(--color-text-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+
+    .formal-workspace { display: grid; grid-template-rows: 74px minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; }
+    .formal-header { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 18px; min-width: 0; border-bottom: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 94%, transparent); padding: 12px 12px 10px 16px; box-shadow: 0 8px 20px rgba(38, 52, 45, .08); }
+    .formal-header-main { min-width: 0; }
+    .formal-header h1 { overflow: hidden; color: var(--color-text); font-size: 24px; font-weight: 600; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+    .formal-header-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; margin-top: 5px; color: var(--color-text-muted); font-size: 11px; }
+    .formal-header-meta .stage { border-radius: 999px; background: var(--color-surface-subtle); padding: 2px 7px; }
+    .formal-header-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .formal-member-chip { display: flex; align-items: center; min-height: 38px; padding: 3px 7px; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-surface); }
+    .formal-member-avatar { display: grid; width: 25px; height: 25px; margin-left: -3px; place-items: center; border: 1px solid var(--color-surface); border-radius: 50%; background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); color: var(--color-primary); font-size: 10px; font-weight: 600; }
+    .formal-member-avatar:first-child { margin-left: 0; }
+    .formal-member-add { display: grid; width: 28px; height: 28px; margin-left: 5px; place-items: center; border: 0; border-left: 1px solid var(--color-border); background: transparent; color: var(--color-text); }
+    .formal-icon-button { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--color-border); border-radius: 11px; background: var(--color-surface); color: var(--color-text-secondary); }
+    .formal-icon-button:hover, .formal-icon-button:focus-visible, .formal-collapse-button:hover, .formal-collapse-button:focus-visible, .formal-add-trip:hover, .formal-add-trip:focus-visible { border-color: var(--color-primary); color: var(--color-primary); transform: translateY(-1px); }
+    .formal-icon-button svg, .formal-member-add svg { width: 17px; height: 17px; stroke-width: 1.8; }
+
+    .formal-workbody { display: grid; grid-template-columns: minmax(400px, 43%) minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; }
+    .formal-timeline { position: relative; z-index: 3; min-width: 0; min-height: 0; overflow: hidden; border-right: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)); box-shadow: 6px 0 18px rgba(38, 52, 45, .07); }
+    .formal-day-tabs { display: flex; align-items: center; gap: 5px; padding: 12px 10px 8px; }
+    .formal-day-tab { min-width: 0; flex: 1 1 0; min-height: 38px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: 10px; background: color-mix(in srgb, var(--color-surface) 95%, transparent); color: var(--color-text-secondary); font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .formal-day-tab:hover, .formal-day-tab:focus-visible { border-color: var(--color-primary); color: var(--color-primary); }
+    .formal-day-tab.active { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); color: var(--color-text); box-shadow: inset 0 -2px 0 var(--color-primary); }
+    .formal-day-tab strong { color: var(--color-text); font-weight: 700; }
+    .formal-day-next { display: grid; width: 32px; height: 38px; flex: 0 0 auto; place-items: center; border: 0; background: transparent; color: var(--color-text-secondary); }
+    .formal-day-next svg { width: 17px; height: 17px; }
+    .formal-timeline-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 12px 9px; }
+    .formal-timeline-title { display: flex; align-items: baseline; gap: 10px; }
+    .formal-timeline-title span { color: var(--color-text-muted); font-size: 10px; text-transform: uppercase; }
+    .formal-timeline-title strong { color: var(--color-text); font-size: 17px; font-weight: 600; }
+    .formal-add-stop { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 9px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text-secondary); }
+    .formal-add-stop:hover, .formal-add-stop:focus-visible { border-color: var(--color-primary); color: var(--color-primary); }
+    .formal-add-stop svg { width: 15px; height: 15px; }
+    .formal-timeline-scroll { height: calc(100% - 102px); overflow: hidden; padding: 0 9px 12px; }
+    .formal-flow { display: grid; gap: 5px; }
+
+    .formal-route-card { position: relative; display: grid; grid-template-columns: 68px minmax(0, 1fr) 100px; gap: 14px; align-items: start; min-height: 118px; overflow: hidden; padding: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text); transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+    .formal-route-card:hover, .formal-route-card:focus-within { border-color: var(--color-primary); box-shadow: inset 4px 0 0 var(--color-primary), 0 8px 18px rgba(38, 52, 45, .08); transform: translateY(-1px); }
+    .formal-route-index { position: absolute; top: 6px; left: 8px; color: var(--color-text-muted); font-size: 10px; }
+    .formal-time-stack { display: flex; min-height: 86px; flex-direction: column; align-items: center; justify-content: space-between; color: var(--color-primary); font-size: 11px; font-weight: 600; text-align: center; }
+    .formal-time-line { width: 1px; min-height: 22px; margin: 4px 0; background: var(--color-border); }
+    .formal-route-copy { display: flex; min-width: 0; min-height: 86px; flex-direction: column; justify-content: center; }
+    .formal-route-copy strong { display: block; overflow: hidden; color: var(--color-text); font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .formal-route-copy p { overflow: hidden; margin-top: 6px; color: var(--color-text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .formal-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+    .formal-badge { display: inline-flex; align-items: center; min-height: 21px; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+    .formal-badge.meal { background: color-mix(in srgb, var(--color-error) 11%, var(--color-surface)); color: var(--color-error); }
+    .formal-badge.transport { background: var(--color-info-bg); color: var(--color-info); }
+    .formal-badge.scenic { background: var(--color-success-bg); color: var(--color-success); }
+    .formal-badge.cost { background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface)); color: var(--color-success); }
+    .formal-badge.pending { background: color-mix(in srgb, var(--color-warning) 13%, var(--color-surface)); color: var(--color-warning); }
+    .formal-route-actions { display: flex; width: 100px; justify-content: flex-end; gap: 8px; }
+    .formal-action-button { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-secondary); }
+    .formal-action-button:hover, .formal-action-button:focus-visible { border-color: var(--color-primary); color: var(--color-primary); }
+    .formal-action-button svg { width: 14px; height: 14px; stroke-width: 1.8; }
+
+    .formal-transport-card { position: relative; display: grid; grid-template-columns: 68px minmax(0, 1fr) 28px; align-items: center; column-gap: 14px; min-height: 38px; padding: 4px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-surface) 92%, transparent); color: var(--color-text); }
+    .formal-transport-card:hover, .formal-transport-card:focus-within { border-color: var(--color-primary); box-shadow: inset 4px 0 0 var(--color-primary); }
+    .formal-transport-card.changed { border-color: color-mix(in srgb, var(--color-error) 48%, var(--color-border)); box-shadow: inset 4px 0 0 var(--color-error); }
+    .formal-change-alert { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; color: var(--color-error); font-size: 9px; font-weight: 600; }
+    .formal-change-alert svg { width: 12px; height: 12px; }
+    .formal-transport-icon { display: grid; width: 28px; justify-self: center; place-items: center; color: var(--color-text-secondary); }
+    .formal-transport-icon svg { width: 16px; height: 16px; stroke-width: 1.8; }
+    .formal-transport-card > strong { display: flex; min-width: 0; align-items: center; gap: 12px; overflow: hidden; font-size: 11px; font-weight: 600; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+    .formal-nav-to-map { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-text-secondary); }
+    .formal-nav-to-map:hover, .formal-nav-to-map:focus-visible { border-color: var(--color-accent); color: var(--color-accent-text); }
+    .formal-nav-to-map svg { width: 14px; height: 14px; }
+
+    .formal-map { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #dfeadf; }
+    .formal-map-art { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+    .formal-map-water { fill: #a6d9e4; }
+    .formal-map-land { fill: #e6f0e3; }
+    .formal-map-green { fill: none; stroke: #b4d5b8; stroke-width: 56; opacity: .72; }
+    .formal-map-road { fill: none; stroke: #b8c8c0; stroke-width: 2; }
+    .formal-map-road.major { stroke: #8fa7b9; stroke-width: 3; }
+    .formal-map-label { fill: var(--color-text-muted); font-size: 13px; font-weight: 500; }
+    .formal-map-route { fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: .92; }
+    .formal-map-marker circle { fill: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); stroke: var(--color-accent); stroke-width: 2.5; }
+    .formal-map-marker text { fill: var(--color-accent-text); font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    .formal-map-search { position: absolute; top: 14px; left: 18px; z-index: 3; display: flex; align-items: center; gap: 9px; width: min(380px, calc(100% - 120px)); min-height: 42px; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 12px; background: rgba(20, 55, 46, .92); box-shadow: 0 14px 30px rgba(20, 55, 46, .18); color: #fff; }
+    .formal-map-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: inherit; font-size: 11px; }
+    .formal-map-search input::placeholder { color: currentColor; opacity: .72; }
+    .formal-map-search svg { width: 16px; height: 16px; flex: 0 0 auto; }
+    .formal-map-tools { position: absolute; top: 14px; left: min(412px, calc(100% - 92px)); z-index: 3; display: flex; gap: 6px; }
+    .formal-map-tool, .formal-map-side-button { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(255, 255, 255, .25); border-radius: 12px; background: rgba(20, 55, 46, .92); color: #fff; box-shadow: 0 12px 26px rgba(20, 55, 46, .16); }
+    .formal-map-tool:hover, .formal-map-tool:focus-visible, .formal-map-side-button:hover, .formal-map-side-button:focus-visible { border-color: var(--color-accent); color: var(--color-accent-text); transform: translateY(-1px); }
+    .formal-map-tool svg, .formal-map-side-button svg { width: 17px; height: 17px; }
+    .formal-map-side-button { position: absolute; top: 14px; right: 12px; z-index: 3; }
+    .formal-map-legend { position: absolute; right: 14px; bottom: 14px; z-index: 3; padding: 8px 10px; border: 1px solid rgba(255, 255, 255, .35); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-surface) 88%, transparent); color: var(--color-text-muted); font-size: 10px; box-shadow: 0 8px 18px rgba(38, 52, 45, .08); }
+
+    @supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+      .formal-map-search, .formal-map-tool, .formal-map-side-button { background: rgba(255, 255, 255, .08); -webkit-backdrop-filter: blur(10px) saturate(140%); backdrop-filter: blur(10px) saturate(140%); color: var(--color-text); }
+    }
+
+    @media (max-width: 1320px) {
+      .formal-preview-shell { grid-template-columns: 215px minmax(0, 1fr); }
+      .formal-workbody { grid-template-columns: minmax(360px, 45%) minmax(0, 1fr); }
+      .formal-route-card { grid-template-columns: 64px minmax(0, 1fr) 64px; gap: 10px; }
+      .formal-route-actions { width: 64px; }
+      .formal-route-actions .formal-action-button:first-child { display: none; }
+      .formal-map-tools { display: none; }
+    }
+
+    @media (max-width: 1150px) {
+      .formal-preview-shell { grid-template-columns: minmax(0, 1fr); }
+      .formal-sidebar { display: none; }
+      .formal-workbody { grid-template-columns: minmax(340px, 44%) minmax(0, 1fr); }
+    }
+
+    @media (max-width: 720px) {
+      .formal-preview-shell { height: auto; min-height: 0; }
+      .formal-workspace { grid-template-rows: auto auto; }
+      .formal-header { align-items: flex-start; padding: 12px; }
+      .formal-header-actions .formal-member-chip { display: none; }
+      .formal-workbody { grid-template-columns: 1fr; overflow: visible; }
+      .formal-timeline { min-height: 690px; border-right: 0; }
+      .formal-map { min-height: 380px; border-top: 1px solid var(--color-border); }
+    }
   </style>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.js"></script>
 </head>
 <body>
   <div class="page">
@@ -347,22 +562,22 @@
       <section class="control-group colors">
         <h3>色彩 Token</h3>
         <p>每個色碼都會套用到右側的整體版面與元件。</p>
-        <label class="color-row"><span>頁面背景</span><input type="color" data-color="color-bg" value="#F7F5EF"><input class="hex-input" data-hex="color-bg" value="#F7F5EF" aria-label="頁面背景色碼"></label>
-        <label class="color-row"><span>Surface／卡片</span><input type="color" data-color="color-surface" value="#FCFBF7"><input class="hex-input" data-hex="color-surface" value="#FCFBF7" aria-label="Surface 色碼"></label>
-        <label class="color-row"><span>Surface Secondary</span><input type="color" data-color="color-surface-subtle" value="#EEECE5"><input class="hex-input" data-hex="color-surface-subtle" value="#EEECE5" aria-label="次要 Surface 色碼"></label>
-        <label class="color-row"><span>主要品牌色</span><input type="color" data-color="color-primary" value="#2F6B57"><input class="hex-input" data-hex="color-primary" value="#2F6B57" aria-label="主要品牌色色碼"></label>
-        <label class="color-row"><span>Primary Hover</span><input type="color" data-color="color-primary-hover" value="#245341"><input class="hex-input" data-hex="color-primary-hover" value="#245341" aria-label="Primary Hover 色碼"></label>
-        <label class="color-row"><span>Primary 文字</span><input type="color" data-color="color-primary-foreground" value="#FFFFFF"><input class="hex-input" data-hex="color-primary-foreground" value="#FFFFFF" aria-label="Primary 文字色碼"></label>
-        <label class="color-row"><span>Accent／銅棕</span><input type="color" data-color="color-accent" value="#A77A46"><input class="hex-input" data-hex="color-accent" value="#A77A46" aria-label="Accent 色碼"></label>
-        <label class="color-row"><span>Accent 文字</span><input type="color" data-color="color-accent-text" value="#8D653A"><input class="hex-input" data-hex="color-accent-text" value="#8D653A" aria-label="Accent 文字色碼"></label>
-        <label class="color-row"><span>主要文字</span><input type="color" data-color="color-text" value="#2D312F"><input class="hex-input" data-hex="color-text" value="#2D312F" aria-label="主要文字色碼"></label>
-        <label class="color-row"><span>次要文字</span><input type="color" data-color="color-text-secondary" value="#68706B"><input class="hex-input" data-hex="color-text-secondary" value="#68706B" aria-label="次要文字色碼"></label>
-        <label class="color-row"><span>輔助文字</span><input type="color" data-color="color-text-muted" value="#66716B"><input class="hex-input" data-hex="color-text-muted" value="#66716B" aria-label="輔助文字色碼"></label>
-        <label class="color-row"><span>Border</span><input type="color" data-color="color-border" value="#D9D8D1"><input class="hex-input" data-hex="color-border" value="#D9D8D1" aria-label="Border 色碼"></label>
-        <label class="color-row"><span>Error</span><input type="color" data-color="color-error" value="#B6544B"><input class="hex-input" data-hex="color-error" value="#B6544B" aria-label="Error 色碼"></label>
-        <label class="color-row"><span>Warning</span><input type="color" data-color="color-warning" value="#805C22"><input class="hex-input" data-hex="color-warning" value="#805C22" aria-label="Warning 色碼"></label>
-        <label class="color-row"><span>Success</span><input type="color" data-color="color-success" value="#3F654F"><input class="hex-input" data-hex="color-success" value="#3F654F" aria-label="Success 色碼"></label>
-        <label class="color-row"><span>Info</span><input type="color" data-color="color-info" value="#486B6D"><input class="hex-input" data-hex="color-info" value="#486B6D" aria-label="Info 色碼"></label>
+        <label class="color-row"><span><strong>頁面背景</strong><small>整個預覽的底色</small></span><input type="color" data-color="color-bg" value="#FCFBF7"><input class="hex-input" data-hex="color-bg" value="#FCFBF7" aria-label="頁面背景色碼"></label>
+        <label class="color-row"><span><strong>Surface／卡片</strong><small>卡片、Panel 與浮層</small></span><input type="color" data-color="color-surface" value="#FCFBF7"><input class="hex-input" data-hex="color-surface" value="#FCFBF7" aria-label="Surface 色碼"></label>
+        <label class="color-row"><span><strong>Surface Secondary</strong><small>次要區塊與 Hover 背景</small></span><input type="color" data-color="color-surface-subtle" value="#EEECE5"><input class="hex-input" data-hex="color-surface-subtle" value="#EEECE5" aria-label="次要 Surface 色碼"></label>
+        <label class="color-row"><span><strong>主要品牌色</strong><small>主要 CTA 與選取狀態</small></span><input type="color" data-color="color-primary" value="#325248"><input class="hex-input" data-hex="color-primary" value="#325248" aria-label="主要品牌色色碼"></label>
+        <label class="color-row"><span><strong>Primary Hover</strong><small>主要按鈕的 Hover 狀態</small></span><input type="color" data-color="color-primary-hover" value="#245341"><input class="hex-input" data-hex="color-primary-hover" value="#245341" aria-label="Primary Hover 色碼"></label>
+        <label class="color-row"><span><strong>Primary 文字</strong><small>品牌色背景上的文字</small></span><input type="color" data-color="color-primary-foreground" value="#FFFFFF"><input class="hex-input" data-hex="color-primary-foreground" value="#FFFFFF" aria-label="Primary 文字色碼"></label>
+        <label class="color-row"><span><strong>Accent／橘棕</strong><small>裝飾、重點與提示</small></span><input type="color" data-color="color-accent" value="#755D43"><input class="hex-input" data-hex="color-accent" value="#755D43" aria-label="Accent 色碼"></label>
+        <label class="color-row"><span><strong>Accent 文字</strong><small>Accent 圖示與小標</small></span><input type="color" data-color="color-accent-text" value="#755D43"><input class="hex-input" data-hex="color-accent-text" value="#755D43" aria-label="Accent 文字色碼"></label>
+        <label class="color-row"><span><strong>主要文字</strong><small>標題與主要內文</small></span><input type="color" data-color="color-text" value="#2D312F"><input class="hex-input" data-hex="color-text" value="#2D312F" aria-label="主要文字色碼"></label>
+        <label class="color-row"><span><strong>次要文字</strong><small>次要資訊與說明</small></span><input type="color" data-color="color-text-secondary" value="#68706B"><input class="hex-input" data-hex="color-text-secondary" value="#68706B" aria-label="次要文字色碼"></label>
+        <label class="color-row"><span><strong>輔助文字</strong><small>時間、標籤與提示</small></span><input type="color" data-color="color-text-muted" value="#66716B"><input class="hex-input" data-hex="color-text-muted" value="#66716B" aria-label="輔助文字色碼"></label>
+        <label class="color-row"><span><strong>Border</strong><small>邊框與分隔線</small></span><input type="color" data-color="color-border" value="#D9D8D1"><input class="hex-input" data-hex="color-border" value="#D9D8D1" aria-label="Border 色碼"></label>
+        <label class="color-row"><span><strong>Error</strong><small>錯誤與危險操作</small></span><input type="color" data-color="color-error" value="#B6544B"><input class="hex-input" data-hex="color-error" value="#B6544B" aria-label="Error 色碼"></label>
+        <label class="color-row"><span><strong>Warning</strong><small>警告與待確認狀態</small></span><input type="color" data-color="color-warning" value="#AB7A2B"><input class="hex-input" data-hex="color-warning" value="#AB7A2B" aria-label="Warning 色碼"></label>
+        <label class="color-row"><span><strong>Success</strong><small>完成、儲存與同步狀態</small></span><input type="color" data-color="color-success" value="#3F654F"><input class="hex-input" data-hex="color-success" value="#3F654F" aria-label="Success 色碼"></label>
+        <label class="color-row"><span><strong>Info</strong><small>一般資訊與補充提示</small></span><input type="color" data-color="color-info" value="#486B6D"><input class="hex-input" data-hex="color-info" value="#486B6D" aria-label="Info 色碼"></label>
       </section>
 
       <section class="control-group">
@@ -393,36 +608,142 @@
     </aside>
 
     <main class="content">
-      <header class="stage-heading"><div><div class="eyebrow">Live style preview</div><h1>旅程工房｜Travel Studio</h1><p>以現有 Travel Planner 的 Sidebar、Timeline、Map 工作區為基礎，集中檢視第 6 章視覺規範。</p></div><span class="stage-note">Hover / Focus only</span></header>
+      <section class="formal-preview-shell" aria-label="接近正式網站的旅程規劃版面預覽">
+        <aside class="formal-sidebar">
+          <div class="formal-brand">
+            <div class="formal-brand-mark">TP</div>
+            <div class="formal-brand-copy"><strong>旅程規劃室</strong><span>4 個旅程</span></div>
+            <button type="button" class="formal-collapse-button" aria-label="收合側邊欄"><i data-lucide="panel-left-close" aria-hidden="true"></i></button>
+          </div>
 
-      <section class="app-preview" aria-label="整體網站版面預覽">
-        <div class="app-shell">
-          <aside class="app-sidebar">
-            <div class="brand"><div class="brand-mark">TS</div><div><strong>旅程工房</strong><span>Travel Studio</span></div></div>
-            <nav class="sidebar-nav" aria-label="主要導覽"><a href="#" class="active"><span class="nav-icon">⌘</span>總覽</a><a href="#"><span class="nav-icon">▣</span>行程</a><a href="#"><span class="nav-icon">$</span>預算</a><a href="#"><span class="nav-icon">⌂</span>住宿</a><a href="#"><span class="nav-icon">✓</span>待辦</a></nav>
-            <section class="sidebar-section"><div class="section-heading"><span>我的旅程</span><button type="button" class="mini-button" aria-label="新增旅程">＋</button></div><div class="trip-list"><button type="button" class="trip-card active"><strong>系統測試專用</strong><span>日本・京都・2027/07/08</span></button><button type="button" class="trip-card"><strong>京都琵琶湖之旅</strong><span>京都・滋賀・2027/04/12</span></button><button type="button" class="trip-card"><strong>A_TEST</strong><span>Taiwan・Yilan・2026/06/23</span></button></div></section>
-            <div class="account-box"><span class="avatar">P</span><div><strong>Peter Chiu</strong><span>travel planner</span></div></div>
-          </aside>
+          <nav class="formal-nav" aria-label="正式頁主要導覽">
+            <button type="button" class="formal-nav-button"><span class="formal-nav-icon"><i data-lucide="layout-grid" aria-hidden="true"></i></span><span>旅程總覽</span></button>
+            <button type="button" class="formal-nav-button active"><span class="formal-nav-icon"><i data-lucide="map" aria-hidden="true"></i></span><span>行程路線</span></button>
+            <button type="button" class="formal-nav-button"><span class="formal-nav-icon"><i data-lucide="wallet-cards" aria-hidden="true"></i></span><span>預算管理</span></button>
+            <button type="button" class="formal-nav-button"><span class="formal-nav-icon"><i data-lucide="bed-double" aria-hidden="true"></i></span><span>住宿資訊</span></button>
+            <button type="button" class="formal-nav-button"><span class="formal-nav-icon"><i data-lucide="clipboard-check" aria-hidden="true"></i></span><span>待辦指南</span></button>
+            <button type="button" class="formal-nav-button"><span class="formal-nav-icon"><i data-lucide="luggage" aria-hidden="true"></i></span><span>行李清單</span></button>
+            <button type="button" class="formal-nav-button"><span class="formal-nav-icon"><i data-lucide="hand-coins" aria-hidden="true"></i></span><span>分帳結算</span></button>
+          </nav>
 
-          <section class="workspace">
-            <header class="trip-header"><div><div class="eyebrow">TRIP WORKSPACE</div><h1>系統測試專用</h1><div class="trip-meta"><span>日本・京都</span><span>•</span><span>2027/07/08–07/11</span><span>•</span><span>4 天</span></div></div><div class="members" aria-label="協作成員"><span class="avatar">P</span><span class="avatar">T</span><span class="avatar">T</span><div class="header-actions"><button type="button" class="icon-button" aria-label="分享">↗</button><button type="button" class="icon-button" aria-label="更多">⋮</button></div></div></header>
-            <nav class="day-tabs" aria-label="旅程日期"><button type="button" class="day-tab active">DAY 1 · 7/8</button><button type="button" class="day-tab">DAY 2 · 7/9</button><button type="button" class="day-tab">DAY 3 · 7/10</button><button type="button" class="day-tab">DAY 4 · 7/11</button></nav>
-            <div class="workbench">
-              <section class="timeline-column" aria-label="Timeline 行程卡片"><div class="timeline-heading"><div><div class="eyebrow">DAY 1</div><h2>7/8（星期四）</h2></div><button type="button" class="button primary compact">＋ 新增行程</button></div><div class="notice warning"><strong>待確認</strong><span>有一個交通時間需要旅伴確認。</span></div><div class="timeline-list"><article class="itinerary-card selected"><div class="itinerary-time">09:30</div><div><strong>清水寺</strong><span class="caption">京都市東山區・景點</span><div class="badge-row"><span class="badge success">景點</span><span class="badge warning">備案</span></div></div><div class="card-actions"><button type="button" class="icon-button" aria-label="編輯清水寺">✎</button><button type="button" class="icon-button" aria-label="刪除清水寺">×</button></div></article><article class="itinerary-card"><div class="itinerary-time">11:00</div><div><strong>祇園白川</strong><span class="caption">東山區・步行移動</span><div class="badge-row"><span class="badge info">交通</span></div></div><div class="card-actions"><button type="button" class="icon-button" aria-label="編輯祇園白川">✎</button><button type="button" class="icon-button" aria-label="刪除祇園白川">×</button></div></article><article class="itinerary-card"><div class="itinerary-time">13:00</div><div><strong>錦市場</strong><span class="caption">中京區・午餐與採買</span><div class="badge-row"><span class="badge success">餐飲</span></div></div><div class="card-actions"><button type="button" class="icon-button" aria-label="編輯錦市場">✎</button><button type="button" class="icon-button" aria-label="刪除錦市場">×</button></div></article><article class="itinerary-card"><div class="itinerary-time">16:00</div><div><strong>鴨川散步</strong><span class="caption">京都市・自由活動</span></div><div class="card-actions"><button type="button" class="icon-button" aria-label="編輯鴨川散步">✎</button><button type="button" class="icon-button" aria-label="刪除鴨川散步">×</button></div></article></div></section>
-              <section class="map-panel" aria-label="Map 地圖預覽"><div class="map-toolbar"><label class="search-field"><span aria-hidden="true">⌕</span><input type="search" placeholder="搜尋地點" aria-label="搜尋地點"></label><div class="map-tools"><button type="button" class="icon-button" aria-label="編輯路線">⌁</button><button type="button" class="icon-button" aria-label="定位">⊙</button></div></div><svg class="map-svg" viewBox="0 0 760 530" role="img" aria-label="京都旅程地圖示意"><rect width="760" height="530" fill="#dfebdf"/><path class="map-ridge" d="M-30 130 C120 70 205 205 345 125 S580 105 800 180"/><g class="map-road"><path d="M20 20 L240 520"/><path d="M170 0 L390 530"/><path d="M360 0 L190 530"/><path d="M570 0 L350 530"/><path d="M730 0 L520 530"/><path d="M0 220 L760 150"/><path d="M0 340 L760 410"/><path d="M80 520 L700 50"/></g><text class="map-label" x="332" y="250">京都市</text><text class="map-label" x="100" y="120">北山・嵐山</text><text class="map-label" x="560" y="310">東山區</text><path class="map-route" d="M610 130 C540 198 520 260 420 335 S310 420 190 470"/><g class="marker"><circle cx="610" cy="130" r="16"/><text x="610" y="131">1</text></g><g class="marker"><circle cx="420" cy="335" r="16"/><text x="420" y="336">2</text></g><g class="marker"><circle cx="190" cy="470" r="16"/><text x="190" y="471">3</text></g></svg><div class="map-legend">路線順序　1 → 2 → 3</div></section>
+          <section class="formal-trip-section" aria-label="我的旅程">
+            <div class="formal-trip-heading"><h3>我的旅程</h3><button type="button" class="formal-add-trip" aria-label="新增旅程"><i data-lucide="plus" aria-hidden="true"></i></button></div>
+            <div class="formal-trip-list">
+              <button type="button" class="formal-trip-card"><strong>系統測試專用</strong><span>日本・京都・2027-07-08</span></button>
+              <button type="button" class="formal-trip-card active"><strong>京都琵琶湖之旅-TEST</strong><span>京都・琵琶湖，日本・2027-04-12</span></button>
+              <button type="button" class="formal-trip-card"><strong>A_TEST</strong><span>Taiwan・Yilan・2026-06-23</span></button>
+              <button type="button" class="formal-trip-card"><strong>野人沒有日記</strong><span>綠野山林・2026-05-30</span></button>
             </div>
           </section>
-        </div>
-      </section>
 
-      <section class="component-panel" aria-label="元件樣式預覽">
-        <div class="component-panel-heading"><div><div class="eyebrow">Components</div><h2>元件與狀態</h2><p>只保留 Hover、Focus 與視覺狀態，不執行實際操作。</p></div></div>
-        <div class="component-grid">
-          <section class="component-section"><h3>Button</h3><button type="button" class="button primary">Primary Button</button><button type="button" class="button secondary">Secondary Button</button><button type="button" class="button ghost">Ghost Button</button><button type="button" class="button danger">Danger Button</button></section>
-          <section class="component-section"><h3>Input / Select</h3><div class="field-demo"><label for="demo-place">地點名稱</label><input id="demo-place" value="京都市" class="focused"><span class="helper">Focus 狀態保留清楚外框。</span><select aria-label="行程類型"><option>景點</option><option>住宿</option><option>交通</option></select></div></section>
-          <section class="component-section"><h3>Badge / Status</h3><div class="badge-row"><span class="badge success">Success</span><span class="badge warning">Warning</span><span class="badge error">Error</span><span class="badge info">Info</span></div><div class="status-stack" style="margin-top:10px"><div class="status-line success">✓ 已同步</div><div class="status-line warning">! 待確認</div><div class="status-line error">× 儲存失敗</div><div class="status-line info">i 地圖載入中</div></div></section>
-          <section class="component-section"><h3>Typography</h3><div class="type-scale"><div><strong class="type-display">Display</strong><span>Display</span></div><div><strong class="type-h1">頁面標題</strong><span>H1</span></div><div><strong class="type-h2">區塊標題</strong><span>H2</span></div><div><strong class="type-h3">元件標題</strong><span>H3</span></div><div><strong>主要內文與說明</strong><span>Body</span></div></div></section>
-        </div>
+          <div class="formal-account"><span class="formal-account-avatar">P</span><div class="formal-account-copy"><strong>Peter Chiu</strong><span>box.peter.box@gmail.com</span></div></div>
+        </aside>
+
+        <section class="formal-workspace">
+          <header class="formal-header">
+            <div class="formal-header-main">
+              <h1>京都琵琶湖之旅-TEST</h1>
+              <div class="formal-header-meta"><span>京都・琵琶湖，日本</span><span>•</span><span>2027/04/12 - 2027/04/17</span><span>•</span><span>6 天</span><span>•</span><span class="stage">規劃階段</span><span>•</span><span>1 位成員</span></div>
+            </div>
+            <div class="formal-header-actions">
+              <div class="formal-member-chip" aria-label="旅程成員"><span class="formal-member-avatar">P</span><button type="button" class="formal-member-add" aria-label="新增成員"><i data-lucide="user-plus" aria-hidden="true"></i></button></div>
+              <button type="button" class="formal-icon-button" aria-label="分享旅程"><i data-lucide="share-2" aria-hidden="true"></i></button>
+              <button type="button" class="formal-icon-button" aria-label="更多選項"><i data-lucide="more-vertical" aria-hidden="true"></i></button>
+            </div>
+          </header>
+
+          <div class="formal-workbody">
+            <section class="formal-timeline" aria-label="行程時間軸與交通卡">
+              <nav class="formal-day-tabs" aria-label="旅程日期">
+                <button type="button" class="formal-day-tab"><strong>DAY 1</strong>・4/12</button>
+                <button type="button" class="formal-day-tab"><strong>DAY 2</strong>・4/13</button>
+                <button type="button" class="formal-day-tab active"><strong>DAY 3</strong>・4/14</button>
+                <button type="button" class="formal-day-tab"><strong>DAY 4</strong>・4/15</button>
+                <button type="button" class="formal-day-next" aria-label="下一個日期"><i data-lucide="chevron-right" aria-hidden="true"></i></button>
+              </nav>
+
+              <div class="formal-timeline-heading">
+                <div class="formal-timeline-title"><span>DAY 3</span><strong>4/14（星期二）</strong></div>
+                <button type="button" class="formal-add-stop"><i data-lucide="plus" aria-hidden="true"></i><i data-lucide="map-pin" aria-hidden="true"></i></button>
+              </div>
+
+              <div class="formal-timeline-scroll">
+                <div class="formal-flow">
+                  <article class="formal-route-card">
+                    <span class="formal-route-index">1</span>
+                    <div class="formal-time-stack"><span>07:00</span><span class="formal-time-line" aria-hidden="true"></span><span>09:00</span></div>
+                    <div class="formal-route-copy"><strong>京都山科山樂酒店</strong><p>飯店早餐07:00-09:00</p><div class="formal-badges"><span class="formal-badge meal">餐飲</span><span class="formal-badge pending">待確認</span></div></div>
+                    <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定酒店"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯酒店"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除酒店"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
+                  </article>
+
+                  <article class="formal-transport-card changed"><span class="formal-transport-icon"><i data-lucide="train-front" aria-hidden="true"></i></span><strong>山科站→大津站・10分鐘 <span class="formal-change-alert"><i data-lucide="triangle-alert" aria-hidden="true"></i>地點變更</span></strong><button type="button" class="formal-nav-to-map" aria-label="在地圖查看交通路線"><i data-lucide="navigation" aria-hidden="true"></i></button></article>
+
+                  <article class="formal-route-card">
+                    <span class="formal-route-index">2</span>
+                    <div class="formal-time-stack"><span>09:30</span><span class="formal-time-line" aria-hidden="true"></span><span>11:00</span></div>
+                    <div class="formal-route-copy"><strong>Orix Rent-a-car大津駅南口店</strong><p>大津市・租車取車</p><div class="formal-badges"><span class="formal-badge transport">交通</span><span class="formal-badge cost">$2,491</span></div></div>
+                    <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定租車"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯租車"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除租車"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
+                  </article>
+
+                  <article class="formal-transport-card"><span class="formal-transport-icon"><i data-lucide="car-front" aria-hidden="true"></i></span><strong>自駕・15分鐘</strong><button type="button" class="formal-nav-to-map" aria-label="在地圖查看自駕路線"><i data-lucide="navigation" aria-hidden="true"></i></button></article>
+
+                  <article class="formal-route-card">
+                    <span class="formal-route-index">3</span>
+                    <div class="formal-time-stack"><span>11:30</span><span class="formal-time-line" aria-hidden="true"></span><span>13:00</span></div>
+                    <div class="formal-route-copy"><strong>Napoli</strong><p>義式餐廳・午餐</p><div class="formal-badges"><span class="formal-badge meal">餐飲</span></div></div>
+                    <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定餐廳"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯餐廳"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除餐廳"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
+                  </article>
+
+                  <article class="formal-transport-card"><span class="formal-transport-icon"><i data-lucide="car-front" aria-hidden="true"></i></span><strong>自駕・25分鐘</strong><button type="button" class="formal-nav-to-map" aria-label="在地圖查看自駕路線"><i data-lucide="navigation" aria-hidden="true"></i></button></article>
+
+                  <article class="formal-route-card">
+                    <span class="formal-route-index">4</span>
+                    <div class="formal-time-stack"><span>13:30</span><span class="formal-time-line" aria-hidden="true"></span><span>14:30</span></div>
+                    <div class="formal-route-copy"><strong>笠原櫻公園</strong><p>琵琶湖畔・散步景點</p><div class="formal-badges"><span class="formal-badge scenic">景點</span></div></div>
+                    <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定公園"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯公園"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除公園"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
+                  </article>
+
+                  <article class="formal-transport-card"><span class="formal-transport-icon"><i data-lucide="car-front" aria-hidden="true"></i></span><strong>自駕・24分鐘</strong><button type="button" class="formal-nav-to-map" aria-label="在地圖查看自駕路線"><i data-lucide="navigation" aria-hidden="true"></i></button></article>
+
+                  <article class="formal-route-card">
+                    <span class="formal-route-index">5</span>
+                    <div class="formal-time-stack"><span>15:00</span><span class="formal-time-line" aria-hidden="true"></span><span>15:30</span></div>
+                    <div class="formal-route-copy"><strong>近江八幡夢園Villa</strong><p>check in</p><div class="formal-badges"><span class="formal-badge scenic">住宿</span></div></div>
+                    <div class="formal-route-actions"><button type="button" class="formal-action-button" aria-label="鎖定住宿"><i data-lucide="lock" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="編輯住宿"><i data-lucide="pencil" aria-hidden="true"></i></button><button type="button" class="formal-action-button" aria-label="刪除住宿"><i data-lucide="trash-2" aria-hidden="true"></i></button></div>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="formal-map" aria-label="琵琶湖簡略地圖與 Accent 路線 Marker">
+              <svg class="formal-map-art" viewBox="0 0 900 760" preserveAspectRatio="xMidYMid slice" role="img" aria-labelledby="formal-map-title formal-map-desc">
+                <title id="formal-map-title">京都與琵琶湖旅程簡略地圖</title>
+                <desc id="formal-map-desc">Accent 色路線串連五個地圖 Marker。</desc>
+                <rect class="formal-map-land" width="900" height="760"></rect>
+                <path class="formal-map-water" d="M0 0H250C285 85 235 165 280 245C320 315 255 380 300 450C348 525 288 620 335 760H0Z"></path>
+                <path class="formal-map-green" d="M-80 160C120 90 260 220 430 135S730 120 990 205"></path>
+                <path class="formal-map-green" d="M-60 650C130 565 300 700 470 605S735 565 980 650" opacity=".46"></path>
+                <g class="formal-map-road">
+                  <path d="M75 0L390 760"></path><path d="M250 0L530 760"></path><path d="M460 0L185 760"></path><path d="M710 0L430 760"></path><path d="M860 55L635 760"></path>
+                  <path d="M0 235L900 170"></path><path d="M0 385L900 470"></path><path d="M0 580L900 625"></path><path d="M115 760L820 25"></path>
+                </g>
+                <g class="formal-map-road major"><path d="M310 0C350 165 420 260 560 370S760 545 900 605"></path><path d="M0 540C230 530 405 490 580 390S770 235 900 210"></path></g>
+                <text class="formal-map-label" x="95" y="310">大津市</text><text class="formal-map-label" x="405" y="405">守山市</text><text class="formal-map-label" x="650" y="280">近江八幡市</text><text class="formal-map-label" x="660" y="580">野洲市</text><text class="formal-map-label" x="75" y="690">琵琶湖</text>
+                <path class="formal-map-route" d="M735 120C660 170 610 235 560 300S450 420 350 495S250 560 165 585"></path>
+                <g class="formal-map-marker"><circle cx="735" cy="120" r="17"></circle><text x="735" y="121">1</text></g>
+                <g class="formal-map-marker"><circle cx="560" cy="300" r="17"></circle><text x="560" y="301">2</text></g>
+                <g class="formal-map-marker"><circle cx="350" cy="495" r="17"></circle><text x="350" y="496">3</text></g>
+                <g class="formal-map-marker"><circle cx="250" cy="560" r="17"></circle><text x="250" y="561">4</text></g>
+                <g class="formal-map-marker"><circle cx="165" cy="585" r="17"></circle><text x="165" y="586">5</text></g>
+              </svg>
+
+              <label class="formal-map-search"><i data-lucide="search" aria-hidden="true"></i><input type="search" placeholder="搜尋地點" aria-label="搜尋地點"></label>
+              <div class="formal-map-tools"><button type="button" class="formal-map-tool" aria-label="編輯路線"><i data-lucide="route" aria-hidden="true"></i></button><button type="button" class="formal-map-tool" aria-label="定位目前位置"><i data-lucide="map-pin" aria-hidden="true"></i></button></div>
+              <button type="button" class="formal-map-side-button" aria-label="收合地圖"><i data-lucide="panel-right-close" aria-hidden="true"></i></button>
+              <div class="formal-map-legend">Accent 路線　1 → 2 → 3 → 4 → 5</div>
+            </section>
+          </div>
+        </section>
       </section>
     </main>
   </div>
@@ -431,7 +752,7 @@
     (() => {
       const root = document.documentElement;
       const defaults = {
-        "color-bg": "#F7F5EF", "color-surface": "#FCFBF7", "color-surface-subtle": "#EEECE5", "color-primary": "#2F6B57", "color-primary-hover": "#245341", "color-primary-foreground": "#FFFFFF", "color-accent": "#A77A46", "color-accent-text": "#8D653A", "color-text": "#2D312F", "color-text-secondary": "#68706B", "color-text-muted": "#66716B", "color-border": "#D9D8D1", "color-error": "#B6544B", "color-warning": "#805C22", "color-success": "#3F654F", "color-info": "#486B6D", "font-body": "14", "font-display": "36", "font-h1": "28", "font-h2": "22", "font-h3": "18", "font-caption": "12", "space-unit": "4", "radius-sm": "8", "radius-md": "12", "radius-lg": "16", "radius-xl": "20", "shadow-alpha": ".10"
+        "color-bg": "#FCFBF7", "color-surface": "#FCFBF7", "color-surface-subtle": "#EEECE5", "color-primary": "#325248", "color-primary-hover": "#245341", "color-primary-foreground": "#FFFFFF", "color-accent": "#755D43", "color-accent-text": "#755D43", "color-text": "#2D312F", "color-text-secondary": "#68706B", "color-text-muted": "#66716B", "color-border": "#D9D8D1", "color-error": "#B6544B", "color-warning": "#AB7A2B", "color-success": "#3F654F", "color-info": "#486B6D", "font-body": "14", "font-display": "36", "font-h1": "28", "font-h2": "22", "font-h3": "18", "font-caption": "12", "space-unit": "4", "radius-sm": "8", "radius-md": "12", "radius-lg": "16", "radius-xl": "20", "shadow-alpha": "0.1"
       };
       const hexPattern = /^#[0-9a-fA-F]{6}$/;
       const by = (selector) => root.querySelector(selector);
@@ -534,6 +855,7 @@
         }
       });
       updateContrast();
+      if (window.lucide) window.lucide.createIcons();
     })();
   </script>
 </body>
