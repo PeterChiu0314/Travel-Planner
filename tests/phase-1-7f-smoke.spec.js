@@ -129,7 +129,7 @@ for (const layout of [
     if (layout.width > 1100) {
       expect(Math.abs(metrics.boardRect.left - metrics.workbenchRect.left)).toBeLessThanOrEqual(1);
       expect(Math.abs(metrics.boardRect.right - metrics.tabsRight)).toBeLessThanOrEqual(1);
-      expect(metrics.boardPadding).toBe("0px 10px 5px 14px");
+      expect(metrics.boardPadding).toBe("0px 6px 5px 10px");
       expect(metrics.boardScrollbarGutter).toBe("stable");
       expect(metrics.boardScrollbarWidth).toBe("4px");
       expect(metrics.boardScrollbarButtonDisplay).toBe("none");
@@ -234,6 +234,103 @@ test("Phase 5.8 Timeline confirmation dialogs stay viewport-centered", async ({ 
   expect(Math.abs(metrics.backdropBottom - metrics.viewportHeight)).toBeLessThanOrEqual(1);
   expect(Math.abs(metrics.dialogCenterX - metrics.viewportWidth / 2)).toBeLessThanOrEqual(1);
   expect(Math.abs(metrics.dialogCenterY - metrics.viewportHeight / 2)).toBeLessThanOrEqual(1);
+});
+
+test("Phase 5.8 transport insertion stays centered and triggers from adjacent card edges", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/demo/timeline");
+
+  const zone = page.locator(".transport-insert-zone:not(.tail)").first();
+  await expect(zone).toBeVisible();
+
+  const restingMetrics = await zone.evaluate((element) => {
+    const entry = element.closest(".timeline-sortable-entry");
+    const previousCard = entry?.querySelector(":scope > .timeline-item");
+    const nextCard = entry?.nextElementSibling?.querySelector(":scope > .timeline-item");
+    if (!previousCard || !nextCard) return null;
+    const previousRect = previousCard.getBoundingClientRect();
+    const nextRect = nextCard.getBoundingClientRect();
+    const zoneRect = element.getBoundingClientRect();
+    return {
+      nextTop: nextRect.top,
+      previousBottom: previousRect.bottom,
+      zoneHeight: zoneRect.height,
+      zoneWidth: zoneRect.width,
+      previousWidth: previousRect.width,
+    };
+  });
+
+  expect(restingMetrics).not.toBeNull();
+  expect(Math.abs(restingMetrics.zoneHeight - 4)).toBeLessThanOrEqual(1);
+  expect(Math.abs(restingMetrics.nextTop - restingMetrics.previousBottom - 4)).toBeLessThanOrEqual(1);
+  expect(Math.abs(restingMetrics.zoneWidth - restingMetrics.previousWidth)).toBeLessThanOrEqual(1);
+
+  const upperEdgeTarget = await zone.evaluate((element) => {
+    const entry = element.closest(".timeline-sortable-entry");
+    const previousCard = entry?.querySelector(":scope > .timeline-item");
+    if (!previousCard) return null;
+    const cardRect = previousCard.getBoundingClientRect();
+    const zoneRect = element.getBoundingClientRect();
+    return { x: zoneRect.left + zoneRect.width / 2, y: cardRect.bottom - 3 };
+  });
+  expect(upperEdgeTarget).not.toBeNull();
+  await page.mouse.move(upperEdgeTarget.x, upperEdgeTarget.y);
+  await expect.poll(async () => (await zone.boundingBox())?.height ?? 0).toBeGreaterThan(20);
+
+  const expandedMetrics = await zone.evaluate((element) => {
+    const entry = element.closest(".timeline-sortable-entry");
+    const previousCard = entry?.querySelector(":scope > .timeline-item");
+    const nextCard = entry?.nextElementSibling?.querySelector(":scope > .timeline-item");
+    const timeText = previousCard?.querySelector(".time-block > span:first-child");
+    const icon = element.querySelector(".transport-insert-icon");
+    const line = element.querySelector(".transport-insert-line");
+    if (!previousCard || !nextCard || !timeText || !icon || !line) return null;
+    const previousRect = previousCard.getBoundingClientRect();
+    const nextRect = nextCard.getBoundingClientRect();
+    const timeRect = timeText.getBoundingClientRect();
+    const iconRect = icon.getBoundingClientRect();
+    const lineRect = line.getBoundingClientRect();
+    const zoneRect = element.getBoundingClientRect();
+    const ghostStyle = getComputedStyle(element, "::before");
+    return {
+      contentStartOffset: iconRect.left - timeRect.left,
+      gapCenter: previousRect.bottom + (nextRect.top - previousRect.bottom) / 2,
+      ghostBackground: ghostStyle.backgroundColor,
+      ghostOpacity: ghostStyle.opacity,
+      lineCenter: lineRect.top + lineRect.height / 2,
+      nextTop: nextRect.top,
+      previousBottom: previousRect.bottom,
+      zoneCenter: zoneRect.top + zoneRect.height / 2,
+      zoneHeight: zoneRect.height,
+      zoneWidth: zoneRect.width,
+      previousWidth: previousRect.width,
+    };
+  });
+
+  expect(expandedMetrics).not.toBeNull();
+  expect(Math.abs(expandedMetrics.zoneHeight - 22)).toBeLessThanOrEqual(1);
+  expect(Math.abs(expandedMetrics.nextTop - expandedMetrics.previousBottom - 22)).toBeLessThanOrEqual(1);
+  expect(Math.abs(expandedMetrics.zoneCenter - expandedMetrics.gapCenter)).toBeLessThanOrEqual(1);
+  expect(Math.abs(expandedMetrics.lineCenter - expandedMetrics.gapCenter)).toBeLessThanOrEqual(1);
+  expect(Math.abs(expandedMetrics.zoneWidth - expandedMetrics.previousWidth)).toBeLessThanOrEqual(1);
+  expect(Math.abs(expandedMetrics.contentStartOffset)).toBeLessThanOrEqual(4);
+  expect(expandedMetrics.ghostBackground).toBe("rgba(255, 255, 255, 0.58)");
+  expect(Number(expandedMetrics.ghostOpacity)).toBeGreaterThan(0.9);
+
+  await page.mouse.move(0, 0);
+  await expect.poll(async () => (await zone.boundingBox())?.height ?? 0).toBeLessThan(6);
+
+  const lowerEdgeTarget = await zone.evaluate((element) => {
+    const entry = element.closest(".timeline-sortable-entry");
+    const nextCard = entry?.nextElementSibling?.querySelector(":scope > .timeline-item");
+    if (!nextCard) return null;
+    const cardRect = nextCard.getBoundingClientRect();
+    const zoneRect = element.getBoundingClientRect();
+    return { x: zoneRect.left + zoneRect.width / 2, y: cardRect.top + 3 };
+  });
+  expect(lowerEdgeTarget).not.toBeNull();
+  await page.mouse.move(lowerEdgeTarget.x, lowerEdgeTarget.y);
+  await expect.poll(async () => (await zone.boundingBox())?.height ?? 0).toBeGreaterThan(20);
 });
 
 test("app shell loads without crashing", async ({ page }) => {

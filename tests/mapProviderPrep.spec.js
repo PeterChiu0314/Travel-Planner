@@ -19,7 +19,7 @@ import {
 const repoRoot = process.cwd();
 
 function readRepoFile(filePath) {
-  return fs.readFileSync(path.join(repoRoot, filePath), "utf8");
+  return fs.readFileSync(path.join(repoRoot, filePath), "utf8").replace(/\r\n/g, "\n");
 }
 
 test("Phase 4.9c keeps the default map provider static and Google lazy-only", () => {
@@ -394,10 +394,17 @@ test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icon
 
   expect(stylesSource).toContain(".timeline {\n  display: grid;\n  gap: 4px");
   expect(stylesSource).toContain(".timeline-sortable-entry.has-flow-attachments {\n  gap: 4px");
+  expect(stylesSource).toContain('.timeline[data-dnd-preview="active"] .timeline-sortable-entry');
+  expect(stylesSource).toContain("will-change: transform");
   expect(stylesSource).toContain("grid-template-columns: 14px max-content minmax(24px, 1fr)");
   expect(stylesSource).toContain("grid-template-columns: 14px max-content minmax(24px, 1fr);\n  gap: 2px");
-  expect(stylesSource).toContain("height: 8px");
+  expect(stylesSource).toContain("height: 4px");
   expect(stylesSource).toContain("height: 22px");
+  expect(stylesSource).toContain("margin-bottom: -4px");
+  expect(stylesSource).toContain("padding: 0 14px 0 30px");
+  expect(stylesSource).toContain(".transport-insert-zone::before,\n.transport-insert-zone::after");
+  expect(stylesSource).toContain("inset: -4px 0");
+  expect(stylesSource).toContain("background: rgba(255, 255, 255, 0.58)");
   expect(stylesSource).toContain(".transport-insert-icon svg");
   expect(stylesSource).toContain("font-weight: 500");
   expect(stylesSource).toContain("border: 1px solid var(--line)");

@@ -2953,7 +2953,6 @@ textarea {
   gap: 0;
   position: relative;
   touch-action: none;
-  will-change: transform;
 }
 
 .timeline-sortable-entry.has-flow-attachments {
@@ -2996,6 +2995,7 @@ textarea {
 
 .timeline[data-dnd-preview="active"] .timeline-sortable-entry {
   transition: transform 120ms ease;
+  will-change: transform;
 }
 
 .timeline-flow-entry:has(.transport-insert-zone) {
@@ -3140,19 +3140,44 @@ textarea {
   grid-template-columns: 14px max-content minmax(24px, 1fr);
   gap: 2px;
   align-items: center;
+  box-sizing: border-box;
   width: 100%;
-  height: 8px;
+  height: 4px;
   overflow: visible;
   border: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   background: transparent;
   color: var(--mint-dark);
   opacity: 1;
-  margin-bottom: -8px;
-  padding: 0;
+  margin-bottom: -4px;
+  padding: 0 14px 0 30px;
   position: relative;
+  z-index: 2;
   text-align: left;
   transition: height 0.14s ease, opacity 0.14s ease;
+}
+
+.transport-insert-zone::before,
+.transport-insert-zone::after {
+  content: "";
+  position: absolute;
+}
+
+.transport-insert-zone::before {
+  inset: 0;
+  z-index: 0;
+  border: 1px solid rgba(217, 216, 209, 0.42);
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 4px 12px rgba(36, 43, 38, 0.035);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+}
+
+.transport-insert-zone::after {
+  inset: -4px 0;
+  z-index: 3;
 }
 
 .transport-insert-zone:hover,
@@ -3202,11 +3227,12 @@ textarea {
   background: rgba(47, 143, 114, 0.48);
   opacity: 0;
   position: relative;
-  transform: translateY(0.5px);
   transition: opacity 0.14s ease;
   z-index: 1;
 }
 
+.transport-insert-zone:hover::before,
+.transport-insert-zone:focus-visible::before,
 .transport-insert-zone:hover .transport-insert-icon,
 .transport-insert-zone:hover .transport-insert-label,
 .transport-insert-zone:hover .transport-insert-line,
