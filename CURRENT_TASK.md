@@ -107,6 +107,7 @@ Latest Phase 5.8 verification:
 - Map collapse/reopen interaction passed: the collapsed state renders `lucide-map`, reopening restores `lucide-panel-right-close`, and browser console errors remained at zero.
 - The latest Places/search-control implementation passes `npm.cmd run build`. Authenticated branch-preview verification confirmed exact search/menu alignment, the shared translucent glass tokens, persistent disabled search controls during custom-point picking, unchanged point-button position, and no browser console errors.
 - User verified that the Timeline header lower edge remains visually complete with a dense Dayboard after the non-shrinking header and stable-gradient shadow fix.
+- User manually verified the visit-editor lower gap, transportation-editor lower gap, and add-destination editor upper gap; all three now match the normal 4 px Timeline card spacing and related interactions remain normal.
 - Phase 5.8 filtered browser smoke checks passed 5/5, including stable header geometry after adding 24 Dayboard cards and a body-level Timeline confirmation dialog with a full-viewport fixed dimmer, centered white card, and preserved 8 px radius.
 - The full legacy smoke suite was also attempted: its first eight checks passed, then three unrelated Demo tail-transport timing cases reached their existing 30-second timeout; no confirmation-dialog check failed.
 - Phase 5.8 desktop, tablet, mobile, and trip-title edit Playwright checks passed 4/4 through `44fd4d3`.
