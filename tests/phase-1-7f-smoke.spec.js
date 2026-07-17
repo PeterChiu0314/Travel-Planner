@@ -396,6 +396,52 @@ test("demo trip switch resets an out-of-range selected day board", async ({ page
   expect(failures).toEqual([]);
 });
 
+test("Phase 5.8 Timeline cards stage focus before expansion and reset across markers and days", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/demo/timeline");
+
+  const firstVisit = page.locator(".timeline-day-column.active .timeline-item").first();
+  await firstVisit.click();
+  await expect(firstVisit).toHaveClass(/focused/);
+  await expect(firstVisit).not.toHaveClass(/expanded/);
+
+  await firstVisit.click();
+  await expect(firstVisit).toHaveClass(/focused/);
+  await expect(firstVisit).toHaveClass(/expanded/);
+
+  const markers = page.locator(".static-map-marker");
+  expect(await markers.count()).toBeGreaterThan(1);
+  await markers.nth(1).evaluate((marker) => marker.click());
+  await expect(firstVisit).not.toHaveClass(/focused/);
+  await expect(firstVisit).not.toHaveClass(/expanded/);
+  await expect(page.locator(".timeline-day-column.active .timeline-item.focused")).toHaveCount(1);
+  await expect(page.locator(".timeline-day-column.active .timeline-item.expanded")).toHaveCount(0);
+
+  const firstTransport = page.locator(".timeline-day-column.active .transport-card").first();
+  await firstTransport.click();
+  await expect(firstTransport).toHaveClass(/focused/);
+  await expect(firstTransport).not.toHaveClass(/expanded/);
+
+  await firstTransport.click();
+  await expect(firstTransport).toHaveClass(/focused/);
+  await expect(firstTransport).toHaveClass(/expanded/);
+
+  await page.locator('.day-tab[data-day-index="1"]').click();
+  await expect(page.locator('.timeline-day-column.active[data-day-index="1"]')).toHaveCount(1);
+  await expect(page.locator(".timeline-day-column.active .focused")).toHaveCount(0);
+  await expect(page.locator(".timeline-day-column.active .expanded")).toHaveCount(0);
+
+  await page.locator('.day-tab[data-day-index="0"]').click();
+  await expect(page.locator('.timeline-day-column.active[data-day-index="0"]')).toHaveCount(1);
+  await expect(page.locator(".timeline-day-column.active .focused")).toHaveCount(0);
+  await expect(page.locator(".timeline-day-column.active .expanded")).toHaveCount(0);
+  expect(supabaseRequests).toEqual([]);
+  expect(failures).toEqual([]);
+});
+
 for (const scenario of [
   { durationMinutes: "1", expectedStartTime: "21:35", label: "rounds one minute up to five minutes" },
   { durationMinutes: "17", expectedStartTime: "21:50", label: "rounds up to the next five-minute step" },

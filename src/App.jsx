@@ -8382,6 +8382,7 @@ function DemoApp({ initialSection }) {
   }
 
   function selectTimelineDay(dayIndex) {
+    if (Number(dayIndex) !== Number(activeDay)) setFocusedItemId(null);
     setActiveDay(dayIndex);
     if (isRouteLayoutCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
@@ -9161,9 +9162,9 @@ function DemoApp({ initialSection }) {
                     budgetsByItem={budgetsByItem}
                     days={days}
                     itemsByDay={itemsByDay}
-                    onActiveDay={setActiveDay}
-                  onFocusItem={setFocusedItemId}
-                />
+                    onActiveDay={selectTimelineDay}
+                    onFocusItem={setFocusedItemId}
+                  />
               ) : null}
               </section>
               {isRouteLayoutCollapsed ? (
@@ -10062,6 +10063,7 @@ function TripWorkspace(props) {
   };
 
   function selectTimelineDay(dayIndex) {
+    if (Number(dayIndex) !== Number(activeDay)) setFocusedItemId(null);
     onActiveDay(dayIndex);
     if (isRouteLayoutCollapsed) dayBoardNavigation.scrollToDay(dayIndex);
   }
@@ -10082,7 +10084,7 @@ function TripWorkspace(props) {
           trip={activeTrip}
           onGoBudget={() => onSectionChange("budget")}
           onGoTimeline={() => {
-            onActiveDay(todayDayIndex);
+            selectTimelineDay(todayDayIndex);
             onSectionChange("timeline");
           }}
         />
@@ -10263,7 +10265,7 @@ function TripWorkspace(props) {
                   days={days}
                   itemsByDay={itemsByDay}
                   dayBoardPresenceByDay={timelineDayTabPresenceByDay}
-                  onActiveDay={onActiveDay}
+                  onActiveDay={selectTimelineDay}
                   onFocusItem={setFocusedItemId}
                 />
               ) : null}
@@ -10794,6 +10796,14 @@ function ItineraryTimeline({
   );
 
   useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
+
+  useEffect(() => {
+    setExpandedId(null);
+  }, [activeDay, activeTrip?.id]);
+
+  useEffect(() => {
+    setExpandedId((current) => (current && current !== focusedItemId ? null : current));
+  }, [focusedItemId]);
 
   const hasBlockingTimelineEditor =
     isOpen || hasActiveEditorGuard({ excludeId: activeEditorGuardId, tripId: activeTrip?.id });
@@ -12259,9 +12269,7 @@ function ItineraryTimeline({
         data-remote-selection-label={remoteSelection?.userName || undefined}
         style={remoteSelectionStyle}
         onClick={() => {
-          setExpandedId(expanded ? null : item.id);
-          onFocusItem(item.id);
-          if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);
+          focusOrToggleTimelineCard(item);
         }}
       >
         <span className="transport-card-icon" aria-hidden="true">
@@ -12359,6 +12367,14 @@ function ItineraryTimeline({
         ) : null}
       </article>
     );
+  }
+
+  function focusOrToggleTimelineCard(item) {
+    setExpandedId((current) =>
+      focusedItemId === item.id ? (current === item.id ? null : item.id) : null,
+    );
+    onFocusItem(item.id);
+    if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);
   }
 
   function renderTransportInsert(previousItem, nextItem) {
@@ -13024,9 +13040,7 @@ function ItineraryTimeline({
               title={hasBlockingTimelineEditor ? "請先儲存或放棄目前編輯，再重排行程" : undefined}
               onClick={() => {
                 if (isPickingMapPoint) return;
-                setExpandedId(expandedId === item.id ? null : item.id);
-                onFocusItem(item.id);
-                if (typeof onPublishCardSelection === "function") onPublishCardSelection(item);
+                focusOrToggleTimelineCard(item);
               }}
             >
               <span className="destination-sequence-badge">{index + 1}</span>

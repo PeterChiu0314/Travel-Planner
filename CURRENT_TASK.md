@@ -73,6 +73,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - Transportation cards use a 1 px border, 4 px vertical padding, and 13 px title. Transportation categories now render aligned Lucide icons instead of emoji in cards, editors, and collapsed-day previews.
 - The Google logo remains visible immediately to the right of the Dayboard.
 - Formal Timeline and Demo stay visually aligned where the same controls exist; existing cards, map-marker behavior, scrolling, editing, and collapse behavior remain intact.
+- Timeline visit and transportation cards use staged direct-click interaction: the first Dayboard click focuses without expanding, a second click on the focused card toggles expansion, and clicking a different card focuses it while collapsing the previous card. Marker focus changes collapse any previously expanded card before focusing and scrolling to the new destination. Switching to a different Day clears both focus and expansion so returning to the original Day starts with neutral cards.
 
 ## Phase 5.8 Scope Guard
 
@@ -100,6 +101,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 
 Latest Phase 5.8 verification:
 
+- The focused Phase 5.8 Timeline interaction smoke test passed 1/1: visit and transportation cards focus before expanding, marker changes collapse the previous expanded card, and Day changes clear focus plus expansion. `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` also passed 39/39, and the production build passed.
 - In-app Browser computed measurements confirmed 3.99 px gaps for visit-to-visit, visit-to-transport, and transport-to-visit sequences; the expanded Dayboard padding is `0px 6px 5px 10px`.
 - Transportation-card computed styles confirmed a 1 px border, 4 px vertical padding, 13 px title, and an 18 px Lucide category icon. The transport-insert zone preserves a 4 px resting card gap, triggers from 3 px inside both adjacent card edges, and expands to a centered 22 px gap. Its 18 px full-width ghost surface uses `rgba(36, 43, 38, .06)` without border or shadow and leaves 2 px above and below; the 13 px Plus begins within 4 px of the visit time text, while the trailing line ends at 20 px right padding and sits 1 px below the gap center.
 - Phase 5.8 browser checks passed 6/6, including the adjacent-edge trigger, centered insertion row, ghost-card width, time-column alignment, and existing viewport/header/dialog contracts.
