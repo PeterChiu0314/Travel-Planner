@@ -740,8 +740,8 @@ test("Phase 5.8a uses a compact custom numbered destination marker", () => {
   expect(markerVisualSource).toContain('M 4.5 25.2 L 27.5 25.2 L 16 38 Z');
   expect(markerVisualSource).toContain("const DESTINATION_MARKER_RADIUS = 13");
   expect(markerVisualSource).toContain("const DESTINATION_MARKER_CENTER_Y = 18.5");
-  expect(markerVisualSource).toContain('textColor = "#1a4e3e"');
-  expect(markerVisualSource).toContain("fillColor = \"#dcefe8\"");
+  expect(markerVisualSource).toContain('textColor = timelineTypeMarkerTextColor("attraction")');
+  expect(markerVisualSource).toContain('fillColor = timelineTypeMarkerFillColor("attraction")');
   expect(markerVisualSource).toContain("stroke=\"${markerStrokeColor}\"");
   expect(markerVisualSource).toContain("fill=\"${focusedInnerColor}\"");
   expect(markerVisualSource).toContain("font-size=\"${fontSize}\"");
@@ -750,6 +750,7 @@ test("Phase 5.8a uses a compact custom numbered destination marker", () => {
   expect(markerVisualSource).toContain('fill=\"${focusedTextColor}\"');
   expect(markerSource).toContain("markerColor: timelineTypeMarkerColor(category)");
   expect(markerSource).toContain("markerFillColor: timelineTypeMarkerFillColor(category)");
+  expect(markerSource).toContain("markerTextColor: timelineTypeMarkerTextColor(category)");
   expect(googleProviderSource).not.toContain("focusedMarkerIcon");
 });
 
@@ -774,7 +775,7 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
   expect(googleProviderSource).toContain('filter="url(#remote-glow)"');
   expect(googleProviderSource).toContain("const canvasSize = safeRemoteColor ? 20 : 14");
   expect(googleProviderSource).toContain("const center = canvasSize / 2");
-  expect(googleProviderSource).toContain('fill="#2f8f72"');
+  expect(googleProviderSource).toContain('fill="${designColors.primary}"');
   expect(googleProviderSource).toContain("encodeURIComponent(svg)");
   expect(googleProviderSource).toContain("new PointConstructor(center, center)");
   expect(googleProviderSource).toContain("new SizeConstructor(canvasSize, canvasSize)");

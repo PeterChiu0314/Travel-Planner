@@ -191,7 +191,7 @@
 
 ### 6.1 設計方向
 
-目前採用「深墨綠 v3」方向：以 `#436B5E` 低飽和深墨綠作為主要品牌色，搭配暖白、米灰、低飽和棕色 Accent 與柔和的行程類型色，呈現自然、穩定、溫暖且具有生活感的旅程規劃工具。
+目前採用「深墨綠 v3」方向：以 `#325248` 深墨綠作為主要品牌色，搭配暖白、米灰、低飽和棕色 Accent 與柔和的行程類型色，呈現自然、穩定、溫暖且具有生活感的旅程規劃工具。
 
 先前草案曾探索灰墨綠 `#445A50` 與 Warm Taupe `#68594A`；目前設計中的預設版本以 [design-system-深墨綠v3.json](./design-system-深墨綠v3.json) 與 [設計系統預覽](./design-system-preview.html) 為準。
 
@@ -202,7 +202,7 @@
 | `color-bg` | `#FCFBF7` | 頁面背景 |
 | `color-surface` | `#FCFBF7` | 卡片、Panel、浮層 |
 | `color-surface-subtle` | `#EEECE5` | 次要區塊與 Hover 背景 |
-| `color-primary` | `#436B5E` | 主要品牌色、主要 CTA、選取狀態 |
+| `color-primary` | `#325248` | 主要品牌色、主要 CTA、選取狀態 |
 | `color-primary-hover` | `#436B5E` | 主要 CTA Hover |
 | `color-primary-foreground` | `#FFFFFF` | 主要色背景上的文字 |
 | `color-accent` | `#755D43` | 裝飾、重點提示、品牌細節 |

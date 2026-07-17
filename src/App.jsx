@@ -80,6 +80,7 @@ import {
   transportRoles,
 } from "./lib/timelineTransportationRoles.js";
 import { buildRoutePanelStops, getFocusedMapState } from "./lib/timelineMapMarkers.js";
+import { timelineTypeColors } from "./lib/timelineTypeStyles.js";
 import {
   normalizeRouteOverridePoints,
   routeOverridePointsEqual,
@@ -392,13 +393,7 @@ const typeLabels = {
   note: "備註",
 };
 
-const typeColors = {
-  attraction: "#2f8f72",
-  food: "#d85f49",
-  hotel: "#7865a8",
-  transport: "#5f8fb8",
-  note: "#f3b64b",
-};
+const typeColors = timelineTypeColors;
 
 const transportCategories = [
   { value: "jr", label: "JR", icon: TrainFront },

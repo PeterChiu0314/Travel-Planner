@@ -2,13 +2,14 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const styleSource = readFileSync("src/styles.css", "utf8");
+const designColorTokenSource = readFileSync("src/lib/designColorTokens.js", "utf8");
 
 test("formal UI exposes the DESIGN.md semantic color tokens", () => {
   const requiredTokens = [
     "--color-bg: #fcfbf7;",
     "--color-surface: #fcfbf7;",
     "--color-surface-subtle: #eeece5;",
-    "--color-primary: #436b5e;",
+    "--color-primary: #325248;",
     "--color-primary-hover: #436b5e;",
     "--color-primary-foreground: #ffffff;",
     "--color-accent: #755d43;",
@@ -41,6 +42,25 @@ test("formal UI keeps legacy neutral aliases while using semantic colors for sha
   expect(styleSource).toMatch(/\.brand-mark\s*\{[\s\S]*?background:\s*var\(--color-primary\);/);
   expect(styleSource).toMatch(/\.primary-button\s*\{[\s\S]*?background:\s*var\(--color-primary\);/);
   expect(styleSource).toMatch(/\.trip-header-title-error\s*\{[\s\S]*?color:\s*var\(--color-error\);/);
+});
+
+test("Timeline and Map share the semantic type and status palette", () => {
+  for (const token of [
+    'primary: "#325248"',
+    'error: "#d25b51"',
+    'warning: "#ab7a2b"',
+    'success: "#3f654f"',
+    'info: "#486b6d"',
+    'attraction: "#82674a"',
+    'food: "#cb8848"',
+    'hotel: "#ac6885"',
+    'transport: "#708e8f"',
+    'note: "#6e6e6e"',
+  ]) {
+    expect(designColorTokenSource).toContain(token);
+  }
+
+  expect(styleSource).toMatch(/\.section-nav-button\s*\{[\s\S]*?letter-spacing:\s*0\.04em;/);
 });
 
 test("existing Timeline and Map liquid-glass effect contracts remain intact", () => {
@@ -79,7 +99,7 @@ test("formal login renders the semantic palette without console errors", async (
   });
 
   expect(rendered).toMatchObject({
-    primary: "#436b5e",
+    primary: "#325248",
     text: "#2d312f",
     surface: "#fcfbf7",
     error: "#d25b51",

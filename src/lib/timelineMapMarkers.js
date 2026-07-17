@@ -3,6 +3,7 @@ import {
   timelineTypeKey,
   timelineTypeMarkerColor,
   timelineTypeMarkerFillColor,
+  timelineTypeMarkerTextColor,
 } from "./timelineTypeStyles.js";
 import { isTransportationCard } from "./timelineTransportationRoles.js";
 
@@ -70,6 +71,7 @@ export function buildDayMapMarkers(dayItems = [], options = {}) {
       category,
       markerColor: timelineTypeMarkerColor(category),
       markerFillColor: timelineTypeMarkerFillColor(category),
+      markerTextColor: timelineTypeMarkerTextColor(category),
       sequenceNumber: destinationSequence,
       dayIndex: finiteNumber(item.day_index),
       sortOrder: finiteNumber(item.sort_order),

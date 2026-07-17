@@ -3,7 +3,7 @@
   --color-bg: #fcfbf7;
   --color-surface: #fcfbf7;
   --color-surface-subtle: #eeece5;
-  --color-primary: #436b5e;
+  --color-primary: #325248;
   --color-primary-hover: #436b5e;
   --color-primary-foreground: #ffffff;
   --color-accent: #755d43;
@@ -44,11 +44,11 @@
   --paper: var(--color-bg);
   --panel: var(--color-surface);
 
-  /* Timeline and Map type colors stay on their existing contract until step 3. */
-  --mint: #2f8f72;
-  --mint-dark: #17624c;
-  --coral: #d85f49;
-  --sky: #5f8fb8;
+  /* Deprecated aliases retained while older component selectors are migrated. */
+  --mint: var(--color-primary);
+  --mint-dark: var(--color-primary);
+  --coral: var(--color-error);
+  --sky: var(--color-info);
   --shadow: 0 20px 45px rgba(36, 43, 38, 0.11);
   --map-glass-bg: rgba(255, 255, 255, 0.4);
   --map-glass-bg-fallback: rgba(20, 55, 46, 0.92);
@@ -471,6 +471,7 @@ code {
   padding: 4px 10px 4px 11px;
   text-align: left;
   font-weight: 500;
+  letter-spacing: 0.04em;
 }
 
 .section-nav-button.active {
@@ -789,9 +790,9 @@ code {
 }
 
 .map-point-picker-button.active {
-  border-color: rgba(47, 143, 114, 0.4);
-  background: rgba(47, 143, 114, 0.1);
-  color: var(--mint-dark);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
 }
 
 .map-point-picker-button svg {
@@ -850,9 +851,9 @@ code {
 
 .map-area-point-button.active,
 .map-route-edit-button.active {
-  border-color: rgba(216, 95, 73, 0.32);
+  border-color: color-mix(in srgb, var(--color-error) 32%, transparent);
   background: rgba(255, 255, 255, 0.18);
-  color: #ffd4cb;
+  color: var(--color-error-bg);
 }
 
 .map-area-tools .mini-button:hover:not(:disabled),
@@ -3136,7 +3137,7 @@ textarea {
   width: var(--timeline-drag-overlay-width, min(100%, calc(100vw - 32px)));
   min-height: var(--timeline-drag-overlay-height, 118px);
   cursor: grabbing;
-  border-color: rgba(47, 143, 114, 0.55);
+  border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
   background: rgba(250, 255, 252, 0.98);
   box-shadow: 0 18px 44px rgba(29, 39, 34, 0.22);
   opacity: 0.96;
@@ -3151,8 +3152,8 @@ textarea {
   margin: 0 0 8px;
   padding: 6px 10px;
   border-radius: 8px;
-  background: rgba(141, 103, 38, 0.1);
-  color: #72551f;
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  color: var(--color-warning);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -3162,10 +3163,10 @@ textarea {
   max-width: 100%;
   margin: 0 0 8px;
   padding: 6px 10px;
-  border: 1px solid rgba(47, 143, 114, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-success) 18%, transparent);
   border-radius: 8px;
-  background: rgba(47, 143, 114, 0.08);
-  color: #245f4b;
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
+  color: var(--color-success);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -3174,7 +3175,7 @@ textarea {
   height: 3px;
   margin: 4px 10px;
   border-radius: 999px;
-  background: var(--timeline-remote-drag-color, #2f8f72);
+  background: var(--timeline-remote-drag-color, var(--color-primary));
   box-shadow: 0 0 0 2px var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14));
   opacity: 0.7;
 }
@@ -3274,7 +3275,7 @@ textarea {
   align-self: center;
   height: 1px;
   min-width: 0;
-  background: rgba(47, 143, 114, 0.48);
+  background: color-mix(in srgb, var(--color-primary) 48%, transparent);
   opacity: 0;
   position: relative;
   transform: translateY(1px);
@@ -3312,7 +3313,7 @@ textarea {
 }
 
 .transport-card.warning {
-  border-color: var(--coral);
+  border-color: var(--color-error);
 }
 
 .transport-card.warning.expanded,
@@ -3418,7 +3419,7 @@ textarea {
 .transport-warning-badge {
   align-items: center;
   align-self: center;
-  color: #b4533f;
+  color: var(--color-warning);
   display: inline-flex;
   font-size: 12px;
   font-weight: 800;
@@ -3428,7 +3429,7 @@ textarea {
 }
 
 .transport-card.general-warning .transport-warning-badge {
-  color: #d65445;
+  color: var(--color-error);
   font-size: 16px;
 }
 
@@ -3439,7 +3440,7 @@ textarea {
 }
 
 .transport-warning-detail {
-  color: var(--coral);
+  color: var(--color-error);
   display: none;
   font-size: 14px;
   font-weight: 500;
@@ -3627,8 +3628,8 @@ textarea {
 
 .timeline-item.timeline-item-remote-drag-source,
 .timeline-item.focused.timeline-item-remote-drag-source {
-  border: 2px solid var(--timeline-remote-drag-color, #2f8f72);
-  background: linear-gradient(0deg, var(--timeline-remote-drag-color-soft, rgba(47, 143, 114, 0.14)), transparent), rgba(255, 255, 255, 0.85);
+  border: 2px solid var(--timeline-remote-drag-color, var(--color-primary));
+  background: linear-gradient(0deg, var(--timeline-remote-drag-color-soft, color-mix(in srgb, var(--color-primary) 14%, transparent)), transparent), rgba(255, 255, 255, 0.85);
   box-shadow: none;
   opacity: 0.56;
 }
@@ -3963,9 +3964,9 @@ textarea {
 }
 
 .static-map-marker.focused .route-dot {
-  background: var(--route-marker-fill-color, #e6f0ec);
-  border-color: var(--route-marker-color, var(--sky));
-  box-shadow: 0 0 0 3px rgba(47, 143, 114, 0.22), 0 2px 8px rgba(29, 45, 57, 0.16);
+  background: var(--route-marker-fill-color, var(--color-type-attraction-fill));
+  border-color: var(--route-marker-color, var(--color-type-attraction));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent), 0 2px 8px rgba(29, 45, 57, 0.16);
 }
 
 .static-map-marker-label {
@@ -4039,7 +4040,7 @@ textarea {
   max-width: min(360px, calc(100% - var(--map-visible-left-inset) - 32px));
   margin-inline: auto;
   padding: 8px 12px;
-  border: 1px solid rgba(47, 143, 114, 0.28);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.9);
   color: var(--mint-dark);
@@ -4059,10 +4060,10 @@ textarea {
   width: max-content;
   margin-inline: auto;
   padding: 7px 10px;
-  border: 1px solid rgba(216, 95, 73, 0.28);
+  border: 1px solid color-mix(in srgb, var(--color-error) 28%, transparent);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.92);
-  color: #9f3f30;
+  color: var(--color-error);
   font-size: 12px;
   font-weight: 700;
   text-align: center;
@@ -4105,10 +4106,10 @@ textarea {
   max-width: min(360px, calc(100% - var(--map-visible-left-inset) - 32px));
   margin-inline: auto;
   padding: 7px 10px;
-  border: 1px solid rgba(216, 95, 73, 0.28);
+  border: 1px solid color-mix(in srgb, var(--color-error) 28%, transparent);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.92);
-  color: #9f3f30;
+  color: var(--color-error);
   font-size: 13px;
   font-weight: 800;
   text-align: center;
@@ -4122,7 +4123,7 @@ textarea {
   z-index: 4;
   max-width: min(320px, calc(100% - 32px));
   padding: 8px 12px;
-  border: 1px solid rgba(47, 143, 114, 0.3);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.92);
   color: var(--mint-dark);
@@ -4246,9 +4247,9 @@ textarea {
 
   .map-area-point-button.active,
   .map-route-edit-button.active {
-    border-color: rgba(216, 95, 73, 0.42);
+    border-color: color-mix(in srgb, var(--color-error) 42%, transparent);
     background: rgba(255, 255, 255, 0.2);
-    color: #9f3f30;
+    color: var(--color-error);
   }
 
   .places-search-input::placeholder {
@@ -4333,7 +4334,7 @@ textarea {
 
   .places-prediction-option:hover,
   .places-prediction-option.selected {
-    background: rgba(47, 143, 114, 0.08);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   }
 }
 
@@ -4443,7 +4444,7 @@ textarea {
   bottom: 36px;
   width: 3px;
   border-radius: 3px;
-  background: var(--sky);
+  background: var(--color-type-transport);
 }
 
 .route-stop {
@@ -4461,9 +4462,9 @@ textarea {
 }
 
 .route-stop.focused .route-dot {
-  background: var(--route-marker-fill-color, #e6f0ec);
-  border-color: var(--route-marker-color, var(--sky));
-  box-shadow: 0 0 0 3px rgba(47, 143, 114, 0.22);
+  background: var(--route-marker-fill-color, var(--color-type-attraction-fill));
+  border-color: var(--route-marker-color, var(--color-type-attraction));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 
 .route-stop.focused .route-name {
@@ -4475,13 +4476,13 @@ textarea {
 }
 
 .route-stop-transport-from .route-dot {
-  background: var(--route-marker-fill-color, #e6f0ec);
-  border-color: var(--route-marker-color, var(--mint-dark));
+  background: var(--route-marker-fill-color, var(--color-type-attraction-fill));
+  border-color: var(--route-marker-color, var(--color-type-attraction));
 }
 
 .route-stop-transport-to .route-dot {
-  background: var(--route-marker-fill-color, #f9dfd8);
-  border-color: var(--route-marker-color, var(--coral));
+  background: var(--route-marker-fill-color, var(--color-type-food-fill));
+  border-color: var(--route-marker-color, var(--color-type-food));
 }
 
 .route-stop-transport-endpoint .route-name {
@@ -4496,9 +4497,9 @@ textarea {
   height: 34px;
   place-items: center;
   border-radius: 50%;
-  border: 3.5px solid var(--route-marker-color, var(--sky));
-  background: var(--route-marker-fill-color, #e6f0ec);
-  color: var(--route-marker-color, var(--mint-dark));
+  border: 3.5px solid var(--route-marker-color, var(--color-type-attraction));
+  background: var(--route-marker-fill-color, var(--color-type-attraction-fill));
+  color: var(--route-marker-text-color, var(--color-type-attraction-text));
   font-size: 12px;
   font-weight: 900;
 }
@@ -4511,7 +4512,7 @@ textarea {
   left: 50%;
   width: 16px;
   height: 10px;
-  background: var(--route-marker-color, var(--sky));
+  background: var(--route-marker-color, var(--color-type-attraction));
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   transform: translateX(-50%);
 }
@@ -4609,12 +4610,12 @@ textarea {
 }
 
 .positive-balance {
-  color: var(--mint-dark);
+  color: var(--color-success);
   font-weight: 900;
 }
 
 .negative-balance {
-  color: var(--coral);
+  color: var(--color-error);
   font-weight: 900;
 }
 
@@ -5137,7 +5138,7 @@ textarea {
   height: 130px;
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(47, 143, 114, 0.9), rgba(95, 143, 184, 0.88)),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 90%, transparent), color-mix(in srgb, var(--color-info) 88%, transparent)),
     #ddd;
   box-shadow: var(--shadow);
 }
@@ -5330,9 +5331,9 @@ textarea {
   align-items: center;
   justify-content: center;
   min-width: 88px;
-  border: 1px solid rgba(25, 109, 82, 0.16);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, transparent);
   border-radius: 999px;
-  background: #f4fbf7;
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
   color: var(--mint-dark);
   padding: 5px 9px;
   font-size: 12px;
@@ -5354,7 +5355,7 @@ textarea {
 }
 
 .compact-select:focus-visible {
-  outline: 3px solid rgba(25, 109, 82, 0.22);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
   outline-offset: 1px;
 }
 
@@ -5369,19 +5370,19 @@ textarea {
 }
 
 .member-role-menu-trigger:hover {
-  border-color: rgba(25, 109, 82, 0.3);
-  background: #eef8f2;
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
 }
 
 .member-role-menu-trigger:focus-visible {
-  border-color: rgba(25, 109, 82, 0.42);
-  background: #fffefa;
-  outline: 3px solid rgba(25, 109, 82, 0.2);
+  border-color: color-mix(in srgb, var(--color-primary) 42%, transparent);
+  background: var(--color-surface);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
   outline-offset: 2px;
 }
 
 .member-role-menu-caret {
-  color: rgba(25, 109, 82, 0.72);
+  color: color-mix(in srgb, var(--color-primary) 72%, transparent);
   font-size: 11px;
   line-height: 1;
 }
@@ -5393,9 +5394,9 @@ textarea {
   z-index: 90;
   display: grid;
   min-width: 148px;
-  border: 1px solid rgba(25, 109, 82, 0.16);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, transparent);
   border-radius: 8px;
-  background: #fffefa;
+  background: var(--color-surface);
   box-shadow: 0 14px 32px rgba(30, 45, 36, 0.14);
   padding: 6px;
 }
@@ -5429,12 +5430,12 @@ textarea {
 }
 
 .member-role-menu-item.danger {
-  color: #9d3325;
+  color: var(--color-error);
 }
 
 .member-role-menu-item.danger:hover,
 .member-role-menu-item.danger:focus-visible {
-  background: #fff8f5;
+  background: var(--color-error-bg);
 }
 
 .member-role-menu-check {
@@ -5452,13 +5453,13 @@ textarea {
 }
 
 .mini-button.danger {
-  border-color: rgba(157, 51, 37, 0.2);
-  color: #9d3325;
+  border-color: color-mix(in srgb, var(--color-error) 20%, transparent);
+  color: var(--color-error);
 }
 
 .mini-button.danger:hover:not(:disabled) {
-  background: #fff8f5;
-  border-color: rgba(157, 51, 37, 0.36);
+  background: var(--color-error-bg);
+  border-color: color-mix(in srgb, var(--color-error) 36%, transparent);
 }
 
 @media (min-width: 1101px) {
@@ -6165,9 +6166,9 @@ textarea {
   }
 
   .mobile-tabs button.active {
-    border-color: rgba(47, 143, 114, 0.28);
-    background: #eef6f1;
-    color: var(--mint-dark);
+    border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    color: var(--color-primary);
   }
 
   .todo-guide-column {
@@ -6228,7 +6229,7 @@ textarea {
   }
 
   .bottom-nav-button.active {
-    background: #eef6f1;
-    color: var(--mint-dark);
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+    color: var(--color-primary);
   }
 }

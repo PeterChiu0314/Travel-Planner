@@ -16,6 +16,7 @@ import {
   buildDestinationMarkerSvg,
 } from "../../../lib/mapMarkerVisuals.js";
 import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
+import { designColors } from "../../../lib/designColorTokens.js";
 import { MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT } from "../../../lib/routeOverrides.js";
 import {
   timelineTypeMarkerColor,
@@ -85,7 +86,7 @@ function placesPreviewMarkerIcon(mapsNamespace) {
   if (!symbolPath) return null;
   return {
     path: symbolPath,
-    fillColor: "#2f8f72",
+    fillColor: designColors.primary,
     fillOpacity: 1,
     scale: 12,
     strokeColor: "#ffffff",
@@ -215,11 +216,11 @@ function routeEditHandleIcon(mapsNamespace, remoteUserColor = "") {
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasSize}" height="${canvasSize}" viewBox="0 0 ${canvasSize} ${canvasSize}">`,
     safeRemoteColor
-      ? `<defs><filter id="remote-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2.1"/></filter></defs><circle cx="${center}" cy="${center}" r="7" fill="none" stroke="${safeRemoteColor}" stroke-width="3" opacity="0.48" filter="url(#remote-glow)"/><circle cx="${center}" cy="${center}" r="6.4" fill="#2f8f72" stroke="${safeRemoteColor}" stroke-width="2.6"/><circle cx="${center}" cy="${center}" r="4.9" fill="#2f8f72"/>`
+      ? `<defs><filter id="remote-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2.1"/></filter></defs><circle cx="${center}" cy="${center}" r="7" fill="none" stroke="${safeRemoteColor}" stroke-width="3" opacity="0.48" filter="url(#remote-glow)"/><circle cx="${center}" cy="${center}" r="6.4" fill="${designColors.primary}" stroke="${safeRemoteColor}" stroke-width="2.6"/><circle cx="${center}" cy="${center}" r="4.9" fill="${designColors.primary}"/>`
       : "",
     safeRemoteColor
       ? ""
-      : `<circle cx="${center}" cy="${center}" r="5" fill="#2f8f72" stroke="#ffffff" stroke-width="2"/>`,
+      : `<circle cx="${center}" cy="${center}" r="5" fill="${designColors.primary}" stroke="#ffffff" stroke-width="2"/>`,
     "</svg>",
   ].join("");
   return {
@@ -1218,7 +1219,7 @@ export default function GoogleMapProvider(props) {
       geodesic: false,
       map: mapRef.current,
       path: fullRoutePath(routeSegments, customRoutePointsRef.current),
-      strokeColor: "#2f8f72",
+      strokeColor: designColors.primary,
       strokeOpacity: 0.7,
       strokeWeight: 3,
       zIndex: 10,

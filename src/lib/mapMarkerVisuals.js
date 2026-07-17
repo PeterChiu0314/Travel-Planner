@@ -1,3 +1,9 @@
+import {
+  timelineTypeMarkerColor,
+  timelineTypeMarkerFillColor,
+  timelineTypeMarkerTextColor,
+} from "./timelineTypeStyles.js";
+
 export const DESTINATION_MARKER_WIDTH = 32;
 export const DESTINATION_MARKER_HEIGHT = 40;
 export const DESTINATION_MARKER_ANCHOR_X = 16;
@@ -8,7 +14,7 @@ const DESTINATION_MARKER_CENTER_Y = 18.5;
 const DESTINATION_MARKER_RADIUS = 13;
 const DESTINATION_MARKER_TRIANGLE_PATH = "M 4.5 25.2 L 27.5 25.2 L 16 38 Z";
 
-function safeHexColor(color, fallback = "#2f8f72") {
+function safeHexColor(color, fallback = timelineTypeMarkerColor("attraction")) {
   return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? color : fallback;
 }
 
@@ -19,16 +25,16 @@ function markerOrderLabel(order) {
 
 export function buildDestinationMarkerSvg({
   order = 1,
-  color = "#2f8f72",
-  fillColor = "#dcefe8",
-  textColor = "#1a4e3e",
+  color = timelineTypeMarkerColor("attraction"),
+  fillColor = timelineTypeMarkerFillColor("attraction"),
+  textColor = timelineTypeMarkerTextColor("attraction"),
   focused = false,
   dimmed = false,
   hovered = false,
 } = {}) {
   const label = markerOrderLabel(order);
   const borderColor = safeHexColor(color);
-  const innerColor = safeHexColor(fillColor, "#dcefe8");
+  const innerColor = safeHexColor(fillColor, timelineTypeMarkerFillColor("attraction"));
   const markerTextColor = safeHexColor(textColor, borderColor);
   const focusedInnerColor = focused ? borderColor : innerColor;
   const markerStrokeColor = focused ? "#ffffff" : borderColor;

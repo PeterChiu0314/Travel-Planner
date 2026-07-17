@@ -61,6 +61,7 @@ export default function StaticMapProvider({
                 ...markerPosition(marker, bounds),
                 "--route-marker-color": marker.markerColor || undefined,
                 "--route-marker-fill-color": marker.markerFillColor || undefined,
+                "--route-marker-text-color": marker.markerTextColor || undefined,
               }}
               type="button"
               onClick={() => onFocusItem?.(marker.itemId)}
@@ -81,6 +82,7 @@ export default function StaticMapProvider({
               style={{
                 "--route-marker-color": marker.markerColor || undefined,
                 "--route-marker-fill-color": marker.markerFillColor || undefined,
+                "--route-marker-text-color": marker.markerTextColor || undefined,
               }}
               type="button"
               onClick={() => onFocusItem?.(marker.itemId)}
