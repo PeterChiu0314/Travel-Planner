@@ -9,9 +9,9 @@
 
 ## Required Fidelity Surfaces
 
-- Typography: the brand uses the new Chinese and English names. `我的旅程` is reduced to 17 px / 600 and the 11 px trip count is placed beneath it.
+- Typography: the brand uses the new Chinese and English names. `我的旅程` uses 20 px / 500, with the 13 px trip count aligned on the same baseline to its right.
 - Spacing and layout rhythm: the existing sidebar, Dayboard, card spacing, and liquid-glass geometry are unchanged.
-- Colors and states: hover/focus uses primary `#325248`. The active Day tab now copies the formal preview's 1 px primary outline, 8% primary-tinted surface, and inset 2 px bottom accent. Navigation keeps a transparent border; trip cards use a subtle primary tint; neutral Timeline cards use a 1 px primary border, 1 px lift, and restrained outer shadow.
+- Colors and states: hover/focus uses primary `#325248`. The active Day tab keeps the 1 px primary outline and inset 2 px bottom accent while restoring the existing translucent white surface. Navigation keeps a transparent border; the active trip card uses an 8% primary tint over transparency; neutral Timeline cards use a 1 px primary border, 1 px lift, and restrained outer shadow.
 - Image and icon assets: no image or icon asset was replaced.
 - Copy and content: formal, Demo, version dialog, and browser title use the updated product name.
 
@@ -32,10 +32,11 @@
 3. The card treatment removed the preview's thick left hover accent and kept only the thin primary border, slight lift, and restrained shadow.
 4. The final browser comparison confirmed the requested hierarchy and selective state treatment without changing active, warning, drag, or collaborator-owned visuals.
 5. The user identified a P1 mismatch: the production active Day tab still used the legacy uniform 2 px border instead of the preview's thin outline plus thick bottom accent.
-6. The active rule was replaced with the exact formal-preview treatment. Post-fix browser evidence confirmed the 1 px outline, 2 px inset bottom accent, 8% tint, and zero console errors.
+6. The active rule was replaced with the formal-preview border treatment. Post-fix browser evidence confirmed the 1 px outline and 2 px inset bottom accent.
+7. Per user direction, the active tint was removed, the Sidebar trip heading was rebalanced, and both requested Sidebar controls were set to 30 x 30 px. This latest adjustment is pending user testing; automated and browser verification were intentionally skipped.
 
 ## Findings
 
-- No actionable P0, P1, or P2 visual differences remain within the requested scope.
+- The latest user-directed adjustment is pending manual acceptance.
 
-final result: passed
+final result: blocked
