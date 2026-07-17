@@ -4,7 +4,7 @@
 
 - 專案名稱：旅程工房｜Travel Studio
 - 版本：v0.1 草案
-- 最後更新日期：2026 年 7 月 14 日
+- 最後更新日期：2026 年 7 月 17 日
 - 負責人：Peter Chiu
 - 適用範圍：
   - TravelPlanner 正式網站
@@ -17,7 +17,7 @@
 相關檔案：
 
 - [設計系統預覽](./design-system-preview.html)
-- [主要品牌色為 #68594A 的設定檔](./travel-studio-design-system-68594a.json)
+- [深墨綠 v3 設定檔](./design-system-深墨綠v3.json)
 
 ## 2. 設計目標
 
@@ -191,30 +191,42 @@
 
 ### 6.1 設計方向
 
-目前採用「Warm Taupe Editorial」方向：以 `#68594A` 暖灰棕作為主要品牌色，搭配暖白、米灰、低飽和銅棕與自然綠色狀態，呈現溫暖、穩定、具有生活感的旅程規劃工具。
+目前採用「深墨綠 v3」方向：以 `#436B5E` 低飽和深墨綠作為主要品牌色，搭配暖白、米灰、低飽和棕色 Accent 與柔和的行程類型色，呈現自然、穩定、溫暖且具有生活感的旅程規劃工具。
 
-原始 v0.1 草案曾以灰墨綠 `#445A50` 探索；目前可實作的版本以 [travel-studio-design-system-68594a.json](./travel-studio-design-system-68594a.json) 為準。
+先前草案曾探索灰墨綠 `#445A50` 與 Warm Taupe `#68594A`；目前設計中的預設版本以 [design-system-深墨綠v3.json](./design-system-深墨綠v3.json) 與 [設計系統預覽](./design-system-preview.html) 為準。
 
 ### 6.2 色彩 Token
 
 | Token | 預設值 | 用途 |
 |---|---|---|
-| `color-bg` | `#F7F4EF` | 頁面背景 |
-| `color-surface` | `#FFFCF8` | 卡片、Panel、浮層 |
-| `color-surface-subtle` | `#EEE8DF` | 次要區塊與 Hover 背景 |
-| `color-primary` | `#68594A` | 主要品牌色、主要 CTA、選取狀態 |
-| `color-primary-hover` | `#514438` | 主要 CTA Hover |
+| `color-bg` | `#FCFBF7` | 頁面背景 |
+| `color-surface` | `#FCFBF7` | 卡片、Panel、浮層 |
+| `color-surface-subtle` | `#EEECE5` | 次要區塊與 Hover 背景 |
+| `color-primary` | `#436B5E` | 主要品牌色、主要 CTA、選取狀態 |
+| `color-primary-hover` | `#436B5E` | 主要 CTA Hover |
 | `color-primary-foreground` | `#FFFFFF` | 主要色背景上的文字 |
-| `color-accent` | `#B8895F` | 裝飾、重點提示、品牌細節 |
-| `color-accent-text` | `#765333` | Accent 文字與圖示 |
-| `color-text` | `#312C28` | 主要文字 |
-| `color-text-secondary` | `#655E57` | 次要文字 |
-| `color-text-muted` | `#746D65` | 輔助文字與時間資訊 |
-| `color-border` | `#DDD7CF` | 一般邊框與分隔線 |
-| `color-error` | `#B65E50` | 錯誤與危險操作 |
-| `color-warning` | `#8D681F` | 警告與待確認狀態 |
-| `color-success` | `#526F5A` | 成功與同步狀態 |
-| `color-info` | `#55717A` | 一般資訊提示 |
+| `color-accent` | `#755D43` | 裝飾、重點提示、品牌細節 |
+| `color-accent-text` | `#755D43` | Accent 文字與圖示 |
+| `color-text` | `#2D312F` | 主要文字 |
+| `color-text-secondary` | `#68706B` | 次要文字 |
+| `color-text-muted` | `#66716B` | 輔助文字與時間資訊 |
+| `color-border` | `#D9D8D1` | 一般邊框與分隔線 |
+| `color-error` | `#D25B51` | 錯誤與危險操作 |
+| `color-warning` | `#AB7A2B` | 警告與待確認狀態 |
+| `color-success` | `#3F654F` | 成功與同步狀態 |
+| `color-info` | `#486B6D` | 一般資訊提示 |
+
+#### 行程類型色
+
+行程卡類型標籤與地圖 Marker 共用同一組類型色，不另外建立 Marker 專用色票。
+
+| Token | 預設值 | 用途 |
+|---|---|---|
+| `color-type-attraction` | `#82674A` | 景點、公園與活動 |
+| `color-type-food` | `#CB8848` | 餐廳、咖啡與用餐 |
+| `color-type-hotel` | `#AC6885` | 飯店與住宿地點 |
+| `color-type-transport` | `#708E8F` | 車站、機場與交通點 |
+| `color-type-note` | `#6E6E6E` | 自訂與備註地點 |
 
 #### 色彩使用原則
 
@@ -223,7 +235,7 @@
 - Accent 僅作為小面積重點，不作為一般內文色。
 - Sidebar 不使用整片深色背景，避免視覺重量過重。
 - 狀態色必須搭配文字、圖示或標籤，不可單靠顏色判讀。
-- Marker 顏色與 Timeline 順序保持一致。
+- Marker 與 Timeline 行程卡類型標籤使用相同類型色，順序編號也必須一致。
 - 路線色必須與地圖底色具有足夠對比。
 
 ### 6.3 字體與字級

@@ -1,10 +1,50 @@
 :root {
   color-scheme: light;
-  --ink: #18201c;
-  --muted: #69736d;
-  --line: #d9ded8;
-  --paper: #f6f5ef;
-  --panel: #ffffff;
+  --color-bg: #fcfbf7;
+  --color-surface: #fcfbf7;
+  --color-surface-subtle: #eeece5;
+  --color-primary: #436b5e;
+  --color-primary-hover: #436b5e;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #755d43;
+  --color-accent-text: #755d43;
+  --color-text: #2d312f;
+  --color-text-secondary: #68706b;
+  --color-text-muted: #66716b;
+  --color-border: #d9d8d1;
+  --color-border-strong: #b6b7af;
+  --color-error: #d25b51;
+  --color-warning: #ab7a2b;
+  --color-success: #3f654f;
+  --color-info: #486b6d;
+  --color-success-bg: #e8f0eb;
+  --color-warning-bg: #f7eedb;
+  --color-error-bg: #f7e9e6;
+  --color-info-bg: #e7f0ef;
+  --color-type-attraction: #82674a;
+  --color-type-attraction-fill: #e9e4de;
+  --color-type-attraction-text: #624f3a;
+  --color-type-food: #cb8848;
+  --color-type-food-fill: #f6eade;
+  --color-type-food-text: #976739;
+  --color-type-hotel: #ac6885;
+  --color-type-hotel-fill: #f0e4e9;
+  --color-type-hotel-text: #815065;
+  --color-type-transport: #708e8f;
+  --color-type-transport-fill: #e5ebeb;
+  --color-type-transport-text: #556b6c;
+  --color-type-note: #6e6e6e;
+  --color-type-note-fill: #e5e5e5;
+  --color-type-note-text: #545454;
+
+  /* Compatibility aliases for existing neutral surfaces and text. */
+  --ink: var(--color-text);
+  --muted: var(--color-text-secondary);
+  --line: var(--color-border);
+  --paper: var(--color-bg);
+  --panel: var(--color-surface);
+
+  /* Timeline and Map type colors stay on their existing contract until step 3. */
   --mint: #2f8f72;
   --mint-dark: #17624c;
   --coral: #d85f49;
@@ -26,8 +66,8 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(47, 143, 114, 0.11), transparent 34%),
-    linear-gradient(225deg, rgba(216, 95, 73, 0.09), transparent 32%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 11%, transparent), transparent 34%),
+    linear-gradient(225deg, color-mix(in srgb, var(--color-accent) 9%, transparent), transparent 32%),
     var(--paper);
   color: var(--ink);
   font-family:
@@ -64,7 +104,7 @@ p {
 
 code {
   border-radius: 6px;
-  background: #eef3ef;
+  background: var(--color-surface-subtle);
   padding: 2px 5px;
 }
 
@@ -98,7 +138,7 @@ code {
   gap: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   box-shadow: var(--shadow);
   padding: 28px;
 }
@@ -138,7 +178,7 @@ code {
   flex-direction: column;
   min-height: 100vh;
   border-right: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.72);
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
   backdrop-filter: blur(18px);
   padding: 22px 10px 8px;
 }
@@ -183,8 +223,8 @@ code {
   place-items: center;
   border: 0;
   border-radius: 8px;
-  background: var(--mint-dark);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
   cursor: pointer;
   font: inherit;
   font-weight: 800;
@@ -277,7 +317,7 @@ code {
 }
 
 .share-day h3 {
-  color: var(--mint-dark);
+  color: var(--color-primary);
   font-size: 18px;
 }
 
@@ -287,7 +327,7 @@ code {
   gap: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
   padding: 16px;
 }
 
@@ -305,7 +345,7 @@ code {
 }
 
 .share-card a {
-  color: var(--mint-dark);
+  color: var(--color-primary);
   font-weight: 900;
 }
 
@@ -313,7 +353,7 @@ code {
   display: grid;
   align-content: start;
   gap: 4px;
-  color: var(--mint-dark);
+  color: var(--color-primary);
 }
 
 .share-time span {
@@ -343,7 +383,7 @@ code {
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface);
   padding: 12px;
 }
 
@@ -380,7 +420,7 @@ code {
   flex-direction: column;
   min-height: 100vh;
   border-right: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.78);
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
   backdrop-filter: blur(18px);
   padding: 24px 10px 8px;
 }
@@ -427,22 +467,22 @@ code {
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: #18201cbf;
+  color: color-mix(in srgb, var(--color-text) 75%, transparent);
   padding: 4px 10px 4px 11px;
   text-align: left;
   font-weight: 500;
 }
 
 .section-nav-button.active {
-  border-color: rgba(47, 143, 114, 0.48);
-  background: #e8f5ee;
-  color: var(--mint-dark);
-  box-shadow: inset 4px 0 0 var(--mint), 0 10px 24px rgba(25, 109, 82, 0.08);
+  border-color: color-mix(in srgb, var(--color-primary) 48%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  color: var(--color-primary);
+  box-shadow: inset 4px 0 0 var(--color-primary), 0 10px 24px color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .section-nav-button.active .section-nav-icon {
-  background: var(--mint-dark);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
 }
 
 .section-nav-icon {
@@ -452,7 +492,7 @@ code {
   height: 30px;
   place-items: center;
   border-radius: 8px;
-  background: #edf3ef;
+  background: var(--color-surface-subtle);
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
@@ -495,8 +535,8 @@ code {
 }
 
 .sidebar.collapsed .section-nav-button.active .section-nav-icon {
-  background: var(--mint-dark);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
 }
 
 .sidebar.collapsed .sidebar-trip-heading h2,
@@ -681,8 +721,8 @@ code {
   gap: 8px;
   width: 100%;
   border: 0;
-  background: var(--mint-dark);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
   padding: 0 16px;
   font-weight: 700;
 }
@@ -691,16 +731,21 @@ code {
   width: auto;
 }
 
+.primary-button:hover:not(:disabled),
+.primary-button:focus-visible {
+  background: var(--color-primary-hover);
+}
+
 .ghost-button {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--color-surface);
   color: var(--ink);
   padding: 0 14px;
   font-weight: 700;
 }
 
 .ghost-button.danger {
-  color: #9d3325;
+  color: var(--color-error);
 }
 
 .icon-button {
@@ -723,7 +768,7 @@ code {
   height: 28px;
   min-height: 28px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--color-surface);
   color: var(--ink);
   font-size: 12px;
   font-weight: 600;
@@ -879,9 +924,9 @@ code {
 .sidebar-trip-menu-button.active,
 .sidebar-trip-menu-button:hover:not(:disabled),
 .sidebar-trip-menu-button:focus-visible:not(:disabled) {
-  border-color: rgba(47, 143, 114, 0.34);
-  background: rgba(232, 245, 238, 0.78);
-  color: var(--mint-dark);
+  border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
 }
 
 .sidebar-trip-list-region {
@@ -896,17 +941,17 @@ code {
   align-self: start;
   width: 100%;
   min-height: 68px;
-  border: 1px solid rgba(217, 222, 216, 0.72);
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
   color: var(--ink);
   padding: 8px 14px;
   text-align: left;
 }
 
 .trip-card.active {
-  border-color: rgba(47, 143, 114, 0.34);
-  background: rgba(232, 245, 238, 0.62);
+  border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
   box-shadow: none;
 }
 
@@ -928,16 +973,16 @@ code {
 
 .trip-card em {
   margin-top: 6px;
-  color: #9d6c0c;
+  color: var(--color-warning);
   font-weight: 800;
 }
 
 .trip-empty-card {
   width: 100%;
   min-height: 78px;
-  border: 1px dashed rgba(105, 115, 109, 0.34);
+  border: 1px dashed color-mix(in srgb, var(--color-text-muted) 34%, transparent);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.5);
+  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
   color: var(--muted);
   padding: 14px;
   text-align: center;
@@ -946,9 +991,9 @@ code {
 
 .trip-empty-card:hover,
 .trip-empty-card:focus-visible {
-  border-color: rgba(47, 143, 114, 0.36);
-  background: rgba(232, 245, 238, 0.72);
-  color: var(--mint-dark);
+  border-color: color-mix(in srgb, var(--color-primary) 36%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
 }
 
 .user-box {
@@ -975,7 +1020,7 @@ code {
   min-height: 56px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
   color: var(--ink);
   padding: 8px 10px;
   text-align: left;
@@ -985,7 +1030,7 @@ code {
 
 .user-box-card:hover,
 .user-box-card:focus-visible {
-  background: rgba(255, 255, 255, 0.96);
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
   box-shadow: 0 10px 24px rgba(38, 45, 40, 0.12);
   outline: 0;
 }
@@ -999,10 +1044,10 @@ code {
   width: 32px;
   height: 32px;
   place-items: center;
-  border: 1px solid rgba(25, 109, 82, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
   border-radius: 999px;
-  background: #eef6f1;
-  color: var(--mint-dark);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  color: var(--color-primary);
   font-size: 13px;
   font-weight: 900;
 }
@@ -1040,7 +1085,7 @@ code {
   gap: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fffefa;
+  background: var(--color-surface);
   box-shadow: 0 18px 42px rgba(38, 45, 40, 0.16);
   margin-bottom: 8px;
   padding: 6px;
@@ -1064,8 +1109,8 @@ code {
 
 .account-menu-item:hover:not(:disabled),
 .account-menu-item:focus-visible:not(:disabled) {
-  background: #eef6f1;
-  color: var(--mint-dark);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  color: var(--color-primary);
   outline: 0;
 }
 
@@ -1155,8 +1200,8 @@ code {
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
-  color: var(--mint-dark);
+  background: var(--color-surface);
+  color: var(--color-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -1165,15 +1210,15 @@ code {
 }
 
 .member-avatar.more {
-  background: #edf3ef;
+  background: var(--color-surface-subtle);
 }
 
 .member-avatar.compact {
   width: 28px;
   height: 28px;
   margin-left: -7px;
-  border-color: rgba(25, 109, 82, 0.18);
-  box-shadow: 0 0 0 2px #fffefa;
+  border-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  box-shadow: 0 0 0 2px var(--color-surface);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1307,7 +1352,7 @@ code {
   min-height: 68px;
   margin: -8px -10px 18px;
   padding: 14px 10px 8px;
-  background: #fffdf8d1;
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
 }
 
 .app-shell-workspace .trip-header {
@@ -1327,7 +1372,7 @@ code {
   bottom: -10px;
   height: 10px;
   pointer-events: none;
-  background: linear-gradient(to bottom, rgb(36 43 38 / 10%), transparent);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-text) 10%, transparent), transparent);
 }
 
 .trip-header-main {
@@ -1385,13 +1430,13 @@ code {
 
 .trip-header-title-button:hover,
 .trip-header-title-button:focus-visible {
-  background: rgba(232, 246, 239, 0.82);
-  color: var(--mint-dark);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
 }
 
 .trip-header-title-button:focus-visible,
 .trip-header-title-input:focus-visible {
-  outline: 3px solid rgba(25, 109, 82, 0.28);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
   outline-offset: 2px;
 }
 
@@ -1406,7 +1451,7 @@ code {
   width: min(100%, 720px);
   min-height: 38px;
   height: 38px;
-  border-color: rgba(25, 109, 82, 0.32);
+  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
   padding: 3px 8px;
 }
 
@@ -1419,10 +1464,10 @@ code {
   top: calc(100% + 4px);
   left: 0;
   z-index: 3;
-  border: 1px solid rgba(157, 51, 37, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
   border-radius: 6px;
-  background: #fff8f5;
-  color: #9d3325;
+  background: var(--color-error-bg);
+  color: var(--color-error);
   padding: 3px 7px;
   font-size: 12px;
   font-weight: 800;
@@ -1474,12 +1519,12 @@ code {
 }
 
 .trip-header-meta-action:hover {
-  background: rgba(232, 246, 239, 0.82);
-  color: var(--mint-dark);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
 }
 
 .trip-header-meta-action:focus-visible {
-  outline: 3px solid rgba(25, 109, 82, 0.28);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
   outline-offset: 1px;
 }
 
@@ -1494,8 +1539,8 @@ code {
 }
 
 .trip-header-stage.is-traveling {
-  background: rgba(25, 109, 82, 0.12);
-  color: var(--mint-dark);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
 }
 
 .trip-header-stage.is-settled {
@@ -1520,7 +1565,7 @@ code {
   gap: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fffefa;
+  background: var(--color-surface);
   box-shadow: 0 14px 34px rgba(38, 45, 40, 0.14);
   color: var(--ink);
   padding: 12px;
@@ -1545,7 +1590,7 @@ code {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #fff;
+  background: var(--color-surface);
   color: var(--ink);
   font: inherit;
   font-size: 14px;
@@ -1554,8 +1599,8 @@ code {
 }
 
 .trip-header-destination-field input:focus-visible {
-  border-color: rgba(25, 109, 82, 0.32);
-  outline: 3px solid rgba(25, 109, 82, 0.28);
+  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
   outline-offset: 2px;
 }
 
@@ -1568,10 +1613,10 @@ code {
 }
 
 .trip-header-destination-error {
-  border: 1px solid rgba(157, 51, 37, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
   border-radius: 7px;
-  background: #fff8f5;
-  color: #9d3325;
+  background: var(--color-error-bg);
+  color: var(--color-error);
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 900;
@@ -1594,7 +1639,7 @@ code {
   gap: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fffefa;
+  background: var(--color-surface);
   box-shadow: 0 18px 42px rgba(38, 45, 40, 0.16);
   color: var(--ink);
   padding: 12px;
@@ -1611,14 +1656,14 @@ code {
   gap: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface);
   color: var(--muted);
   padding: 9px 18px;
 }
 
 .trip-date-range-summary-item.is-active {
-  border-color: rgba(47, 143, 114, 0.48);
-  box-shadow: inset 3px 0 0 var(--mint);
+  border-color: color-mix(in srgb, var(--color-primary) 48%, transparent);
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
 .trip-date-range-summary-item span {
@@ -1706,8 +1751,8 @@ code {
 
 .trip-date-range-day:hover:not(:disabled),
 .trip-date-range-day:focus-visible {
-  border-color: rgba(47, 143, 114, 0.32);
-  background: rgba(232, 246, 239, 0.78);
+  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   outline: none;
 }
 
@@ -1723,20 +1768,20 @@ code {
 .trip-date-range-day.is-range-start,
 .trip-date-range-day.is-range-end,
 .trip-date-range-day.is-single-day {
-  border-color: var(--mint-dark);
-  background: var(--mint-dark);
-  color: #fff;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
 }
 
 .trip-date-range-day.is-in-range {
-  background: rgba(47, 143, 114, 0.14);
-  color: var(--mint-dark);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
 }
 
 .trip-date-range-day.is-preview-range {
-  border-color: rgba(47, 143, 114, 0.24);
-  background: rgba(47, 143, 114, 0.08);
-  color: var(--mint-dark);
+  border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-primary);
 }
 
 .trip-date-range-day:disabled {
@@ -1752,16 +1797,16 @@ code {
 
 .trip-header-date-summary {
   min-width: max-content;
-  color: var(--mint-dark);
+  color: var(--color-primary);
   font-size: 14px;
   font-weight: 700;
 }
 
 .trip-header-date-error {
-  border: 1px solid rgba(157, 51, 37, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
   border-radius: 7px;
-  background: #fff8f5;
-  color: #9d3325;
+  background: var(--color-error-bg);
+  color: var(--color-error);
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 900;
@@ -1770,19 +1815,19 @@ code {
 .trip-date-change-preview {
   display: grid;
   gap: 8px;
-  border: 1px solid rgba(54, 109, 87, 0.18);
+  border: 1px solid color-mix(in srgb, var(--color-success) 18%, transparent);
   border-radius: 7px;
-  background: #f7fbf8;
-  color: #2e5f4c;
+  background: var(--color-success-bg);
+  color: var(--color-success);
   padding: 9px 10px;
   font-size: 12px;
   line-height: 1.45;
 }
 
 .trip-date-change-preview.is-blocked {
-  border-color: rgba(157, 51, 37, 0.24);
-  background: #fff8f5;
-  color: #9d3325;
+  border-color: color-mix(in srgb, var(--color-error) 24%, transparent);
+  background: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .trip-date-change-preview p {
@@ -1814,7 +1859,7 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border-top: 1px solid rgba(157, 51, 37, 0.18);
+  border-top: 1px solid color-mix(in srgb, var(--color-error) 18%, transparent);
   padding-top: 8px;
 }
 
@@ -1868,7 +1913,7 @@ code {
   box-sizing: border-box;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   color: var(--ink);
   padding: 0 8px 0 12px;
   font: inherit;
@@ -1881,14 +1926,14 @@ code {
 }
 
 .trip-header-member-preview:hover:not(:disabled) {
-  border-color: rgba(25, 109, 82, 0.28);
-  background: rgba(232, 246, 239, 0.88);
-  color: var(--mint-dark);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
 }
 
 .trip-header-member-preview.disabled:hover {
   border-color: var(--line);
-  background: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   color: var(--ink);
 }
 
@@ -1934,10 +1979,10 @@ code {
 }
 
 .trip-header-member-pending {
-  border: 1px solid rgba(157, 51, 37, 0.16);
+  border: 1px solid color-mix(in srgb, var(--color-error) 16%, transparent);
   border-radius: 999px;
-  background: #fff8f5;
-  color: #9d3325;
+  background: var(--color-error-bg);
+  color: var(--color-error);
   padding: 3px 7px;
   font-size: 12px;
   line-height: 1;
@@ -1966,7 +2011,7 @@ code {
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.88);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   color: var(--ink);
   align-content: center;
   justify-content: center;
@@ -1983,15 +2028,15 @@ code {
 }
 
 .trip-header-icon-button:hover:not(:disabled) {
-  border-color: rgba(25, 109, 82, 0.28);
-  background: rgba(232, 246, 239, 0.88);
-  color: var(--mint-dark);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
 }
 
 .trip-header-member-preview:focus-visible,
 .trip-header-icon-button:focus-visible,
 .trip-header-more-menu button:focus-visible {
-  outline: 3px solid rgba(25, 109, 82, 0.28);
+  outline: 3px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
   outline-offset: 2px;
 }
 
@@ -2008,7 +2053,7 @@ code {
   min-width: 168px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface);
   box-shadow: 0 18px 42px rgba(38, 45, 40, 0.16);
   padding: 6px;
 }
@@ -2026,11 +2071,11 @@ code {
 }
 
 .trip-header-more-menu button:hover:not(:disabled) {
-  background: rgba(232, 246, 239, 0.88);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .trip-header-more-menu button.danger {
-  color: #9d3325;
+  color: var(--color-error);
 }
 
 .trip-header-developer-tools {
@@ -2063,10 +2108,10 @@ code {
 }
 
 .trip-header-developer-tools-error {
-  border: 1px solid rgba(157, 51, 37, 0.2);
+  border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
   border-radius: 7px;
-  background: #fff8f5;
-  color: #9d3325;
+  background: var(--color-error-bg);
+  color: var(--color-error);
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 900;
@@ -2104,10 +2149,10 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid #e6d19c;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 38%, var(--color-border));
   border-radius: 8px;
-  background: #fff8e6;
-  color: #6f4d08;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
   padding: 12px 14px;
   margin-bottom: 14px;
 }
@@ -2123,10 +2168,10 @@ code {
 .lock-note {
   display: grid;
   gap: 4px;
-  border: 1px solid rgba(216, 95, 73, 0.28);
+  border: 1px solid color-mix(in srgb, var(--color-error) 28%, transparent);
   border-radius: 8px;
-  background: rgba(216, 95, 73, 0.08);
-  color: #7b2f23;
+  background: var(--color-error-bg);
+  color: var(--color-error);
   padding: 10px 12px;
 }
 
@@ -2144,8 +2189,8 @@ code {
 }
 
 .lock-pill {
-  background: rgba(216, 95, 73, 0.12);
-  color: #7b2f23;
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
 }
 
 .center-state {
@@ -2187,7 +2232,7 @@ label {
 }
 
 .field-inline-error {
-  color: #9d3325;
+  color: var(--color-error);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.25;
@@ -2209,7 +2254,7 @@ textarea {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-surface);
   color: var(--ink);
   padding: 10px 12px;
 }
@@ -2255,7 +2300,7 @@ textarea {
   min-height: 148px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   box-shadow: var(--shadow);
   padding: 16px;
 }

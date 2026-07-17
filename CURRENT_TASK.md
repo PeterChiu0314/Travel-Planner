@@ -48,6 +48,8 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 
 ## Phase 5.8 Current UI State
 
+- Formal shared UI colors now use the semantic palette from `design/DESIGN.md`: warm neutral page/surface/text/border tokens, deep-green `#436B5E` primary actions, and dedicated error/warning/success/info tokens. Compatibility aliases keep existing neutral consumers stable while Login, Sidebar, Header, shared buttons, forms, and status surfaces use the new semantic roles.
+- Existing Timeline/Map type colors and collaborator colors remain on their previous contracts for a later scoped migration. All existing liquid-glass transparency, fallback, border, blur, saturation, and transition contracts are unchanged.
 - Numbered destination markers use the compact Phase 5.8 proportions, refined number colors and weight, and preserve focused styling on hover.
 - The Map fills the Timeline workspace behind the Dayboard instead of starting at the Dayboard's right edge.
 - The Dayboard covers the complete left workspace column with a liquid-glass surface: `rgba(238, 245, 239, .78)`, a light white border, `blur(10px) saturate(140%)`, and the opaque `.96` fallback when backdrop filtering is unavailable.
@@ -101,6 +103,7 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 
 Latest Phase 5.8 verification:
 
+- The formal color-token migration passed its rendered login check 4/4, including computed semantic colors, preserved Map glass tokens, and zero browser console errors. The combined design-token, Phase 1.8 source-guard, and Map/provider suites passed 50/50; the production build and `git diff --check` passed.
 - The focused Phase 5.8 Timeline interaction smoke test passed 1/1: visit and transportation cards focus before expanding, marker changes collapse the previous expanded card, and Day changes clear focus plus expansion. `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` also passed 39/39, and the production build passed.
 - In-app Browser computed measurements confirmed 3.99 px gaps for visit-to-visit, visit-to-transport, and transport-to-visit sequences; the expanded Dayboard padding is `0px 6px 5px 10px`.
 - Transportation-card computed styles confirmed a 1 px border, 4 px vertical padding, 13 px title, and an 18 px Lucide category icon. The transport-insert zone preserves a 4 px resting card gap, triggers from 3 px inside both adjacent card edges, and expands to a centered 22 px gap. Its 18 px full-width ghost surface uses `rgba(36, 43, 38, .06)` without border or shadow and leaves 2 px above and below; the 13 px Plus begins within 4 px of the visit time text, while the trailing line ends at 20 px right padding and sits 1 px below the gap center.
