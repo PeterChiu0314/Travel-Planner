@@ -472,6 +472,14 @@ code {
   text-align: left;
   font-weight: 500;
   letter-spacing: 0.04em;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.section-nav-button:hover:not(:disabled),
+.section-nav-button:focus-visible:not(:disabled) {
+  border-color: transparent;
+  background: var(--color-surface-subtle);
+  color: var(--color-primary);
 }
 
 .section-nav-button.active {
@@ -540,7 +548,7 @@ code {
   color: var(--color-primary-foreground);
 }
 
-.sidebar.collapsed .sidebar-trip-heading h2,
+.sidebar.collapsed .sidebar-trip-heading-copy,
 .sidebar.collapsed .user-account {
   display: none;
 }
@@ -646,11 +654,14 @@ code {
   padding-inline: 0;
 }
 
-.sidebar.collapsed .sidebar-trip-flyout .sidebar-trip-heading h2 {
+.sidebar.collapsed .sidebar-trip-flyout .sidebar-trip-heading-copy {
   display: block;
   margin: 0;
+}
+
+.sidebar.collapsed .sidebar-trip-flyout .sidebar-trip-heading h2 {
   color: var(--ink);
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -730,6 +741,12 @@ code {
 
 .primary-button.compact {
   width: auto;
+}
+
+.sidebar.collapsed .section-nav-button:hover:not(:disabled),
+.sidebar.collapsed .section-nav-button:focus-visible:not(:disabled) {
+  border-color: transparent;
+  background: var(--color-surface-subtle);
 }
 
 .primary-button:hover:not(:disabled),
@@ -893,11 +910,23 @@ code {
   align-items: center;
 }
 
-.sidebar-trip-heading h2 {
-  color: var(--ink);
-  font-size: 20px;
-  font-weight: 600;
+.sidebar-trip-heading-copy {
+  min-width: 0;
   margin-left: 4px;
+}
+
+.sidebar-trip-heading-copy h2 {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.sidebar-trip-heading-copy p {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.25;
 }
 
 .sidebar-create-trip {
@@ -948,6 +977,13 @@ code {
   color: var(--ink);
   padding: 8px 14px;
   text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.trip-card:hover:not(:disabled),
+.trip-card:focus-visible:not(:disabled) {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
 }
 
 .trip-card.active {
@@ -2510,13 +2546,20 @@ textarea {
   font-size: 14px;
   line-height: 1;
   white-space: nowrap;
+  transition: border-color 140ms ease, color 140ms ease;
+}
+
+.day-tab:not(.has-remote-presence):hover,
+.day-tab:not(.has-remote-presence):focus-visible {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .day-tab.active {
-  background: rgba(255, 255, 255, 0.85);
-  border: 2px solid transparent;
-  border-color: var(--mint);
+  border: 1px solid var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
   color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
 }
 
 .day-tab.has-remote-presence {
@@ -3078,6 +3121,12 @@ textarea {
   transition: border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease, transform 120ms ease;
 }
 
+.timeline-item:hover:not(.focused):not(.dragging):not(.timeline-item-remote-selected):not(.timeline-item-remote-drag-source) {
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 20px rgba(38, 52, 45, 0.08);
+  transform: translateY(-1px);
+}
+
 .timeline-item.fixed {
   border-color: rgba(15, 95, 71, 0.42);
   background: rgba(255, 255, 255, 0.85);
@@ -3304,6 +3353,13 @@ textarea {
   background: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   padding: 4px 14px;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.transport-card:hover:not(.focused):not(.expanded):not(.warning):not(.timeline-item-remote-selected) {
+  border-color: var(--color-primary);
+  box-shadow: 0 8px 20px rgba(38, 52, 45, 0.08);
+  transform: translateY(-1px);
 }
 
 .transport-card.focused,
@@ -5694,7 +5750,12 @@ textarea {
   }
 
   .places-search-control,
-  .map-area-tools .mini-button {
+  .map-area-tools .mini-button,
+  .section-nav-button,
+  .trip-card,
+  .day-tab,
+  .timeline-item,
+  .transport-card {
     transition: none;
   }
 }
@@ -5737,7 +5798,7 @@ textarea {
     display: block;
   }
 
-  .sidebar.collapsed .sidebar-trip-heading h2 {
+  .sidebar.collapsed .sidebar-trip-heading-copy {
     display: block;
   }
 

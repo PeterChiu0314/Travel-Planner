@@ -6256,8 +6256,8 @@ function exportTrip() {
             ) : null}
           </button>
           <div className="brand-copy">
-            <h1>旅程規劃室</h1>
-            <p>{trips.length} 個旅程</p>
+            <h1>旅程工房</h1>
+            <p>Travel Studio</p>
           </div>
           <button
             className="mini-button sidebar-toggle"
@@ -6665,7 +6665,10 @@ function SidebarTripSection({
     return (
       <section className="sidebar-trip-section" aria-labelledby={headingId}>
         <div className="sidebar-trip-heading">
-          <h2 id={headingId}>我的旅程</h2>
+          <div className="sidebar-trip-heading-copy">
+            <h2 id={headingId}>我的旅程</h2>
+            <p>{trips.length} 個旅程</p>
+          </div>
           <button className="mini-button sidebar-create-trip" type="button" title={createTitle} aria-label={createTitle} disabled={createDisabled} onClick={handleCreate}>
             +
           </button>
@@ -6694,7 +6697,10 @@ function SidebarTripSection({
       {isFlyoutOpen ? (
         <div className="sidebar-trip-flyout" id={flyoutId}>
           <div className="sidebar-trip-heading">
-            <h2 id={headingId}>我的旅程</h2>
+            <div className="sidebar-trip-heading-copy">
+              <h2 id={headingId}>我的旅程</h2>
+              <p>{trips.length} 個旅程</p>
+            </div>
             <button className="mini-button sidebar-create-trip" type="button" title={createTitle} aria-label={createTitle} disabled={createDisabled} onClick={handleCreate}>
               +
             </button>
@@ -8984,8 +8990,8 @@ function DemoApp({ initialSection }) {
             ) : null}
           </button>
           <div className="brand-copy">
-            <h1>旅遊規劃</h1>
-            <p>展示模式</p>
+            <h1>旅程工房</h1>
+            <p>Travel Studio</p>
           </div>
           <button
             className="mini-button sidebar-toggle"
@@ -10583,8 +10589,8 @@ function VersionInfoDialog({ onClose }) {
         <div className="version-dialog-logo" aria-hidden="true">TP</div>
         <div className="version-dialog-heading">
           <span className="version-dialog-stage">Development Preview</span>
-          <h2 id="version-dialog-title">旅程規劃室</h2>
-          <p>Travel Planner</p>
+          <h2 id="version-dialog-title">旅程工房</h2>
+          <p>Travel Studio</p>
         </div>
         <dl className="version-dialog-facts">
           <div>

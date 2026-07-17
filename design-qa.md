@@ -1,42 +1,41 @@
-# Phase 5.8 Sidebar Navigation Design QA
+# Phase 5.8 Interaction Polish And Brand Design QA
 
 ## Comparison Target
 
-- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-90e76263-3ce3-4e0f-9042-4505131608a3.png`.
-- Implementation screenshot: unavailable because the in-app Browser integration is unstable in this desktop session; source contracts and production build are used before user acceptance.
-- User requirement: retain the seven labels and 500 weight, align their text start with `旅程規劃室`, and keep every navigation icon centered under the TP logo instead of moving with the text.
-- Implementation evidence: `tests/phase-1-8-source-guards.spec.js` verifies the labels, weight, and separate regular/compact icon-padding and label-gap contracts.
-- Viewport: desktop expanded sidebar, including the compact-height rule used by the supplied screenshot.
-- States checked: normal and active navigation rows; collapsed sidebar remains structurally unchanged.
-
-## Findings
-
-- Source-level implementation is complete. Final visual acceptance remains pending because browser capture is unavailable.
+- Source visual truth: the user-supplied interaction screenshots, including `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-0d3b1231-295f-4ad3-b6ef-78b1ddb9b975.png`, together with the exact `.formal-day-tab.active` rule in `design/design-system-preview.html`.
+- Implementation screenshots: `test-results/phase-5-8-interaction-default.png`, `test-results/phase-5-8-interaction-hover.png`, `test-results/phase-5-8-card-focus-hover.png`, and `test-results/phase-5-8-day-tab-active-preview-match.png`.
+- Route and viewport: `/demo/timeline` at 1280 x 720 in the in-app Browser.
+- Requested copy: `旅程工房`, `Travel Studio`, and browser title `旅程工房｜Travel Studio`.
 
 ## Required Fidelity Surfaces
 
-- Fonts and typography: all seven labels use 500 weight.
-- Spacing and layout rhythm: regular desktop uses 11 px left padding plus a 19 px label gap; compact-height desktop uses 12 px left padding plus an 18 px label gap. These pairs center the 30/24 px icons under the 44/40 px TP logo while preserving the brand-heading text start.
-- Colors and visual tokens: unchanged.
-- Image quality and asset fidelity: no image or icon assets are changed.
-- Copy and content: all seven labels match the user-provided names exactly.
+- Typography: the brand uses the new Chinese and English names. `我的旅程` is reduced to 17 px / 600 and the 11 px trip count is placed beneath it.
+- Spacing and layout rhythm: the existing sidebar, Dayboard, card spacing, and liquid-glass geometry are unchanged.
+- Colors and states: hover/focus uses primary `#325248`. The active Day tab now copies the formal preview's 1 px primary outline, 8% primary-tinted surface, and inset 2 px bottom accent. Navigation keeps a transparent border; trip cards use a subtle primary tint; neutral Timeline cards use a 1 px primary border, 1 px lift, and restrained outer shadow.
+- Image and icon assets: no image or icon asset was replaced.
+- Copy and content: formal, Demo, version dialog, and browser title use the updated product name.
 
 ## Interaction And Runtime Checks
 
-- `npm.cmd run build`: passed.
-- `git diff --check`: passed.
-- Source guard contracts were updated for all labels, both icon-padding/label-gap pairs, and 500 weight; the Playwright-based source guard was not executed because browser automation was not requested for this iteration.
-- Automated browser geometry and console verification remains unavailable because the in-app Browser session repeatedly reset during the preceding task.
+- In-app Browser DOM inspection confirmed the brand, subtitle, relocated trip count, and exact browser title.
+- Active Day-tab computed styles confirmed a 1 px `#325248` border and `inset 0 -2px 0 #325248` bottom accent; the focused source screenshot and browser-rendered implementation were compared in the same visual input.
+- Forced hover-state inspection confirmed the Day tab and Timeline card primary borders, the Timeline card `translateY(-1px)` and outer shadow, the navigation's transparent border and subtle surface, and the trip-card primary border/tint.
+- A normal transportation card exists in the production Demo data and matches the guarded hover selector. Warning, focused, expanded, dragging, and collaborator-owned states are intentionally excluded so existing behavior remains intact.
+- Browser console errors: 0.
+- `npm.cmd run build`: passed. The existing Vite large-chunk warning remains informational.
+- `git diff --check`: passed; Windows LF/CRLF notices are informational.
 
 ## Comparison History
 
-1. The source screenshot shows short legacy labels at 700 weight, with their text column starting left of the brand heading.
-2. The first implementation replaced all seven labels, changed weight to 500, and moved the entire row content right, which also shifted the icons.
-3. The correction moves the icons back under the TP logo and increases only the icon-to-label gap, preserving the aligned text column.
-4. Post-fix manual visual acceptance is pending.
+1. The preview supplied stronger interaction cues, including borders and card elevation that were not consistently present on the formal site.
+2. The first production mapping selected only the four requested interaction families and retained the existing liquid-glass surfaces.
+3. The card treatment removed the preview's thick left hover accent and kept only the thin primary border, slight lift, and restrained shadow.
+4. The final browser comparison confirmed the requested hierarchy and selective state treatment without changing active, warning, drag, or collaborator-owned visuals.
+5. The user identified a P1 mismatch: the production active Day tab still used the legacy uniform 2 px border instead of the preview's thin outline plus thick bottom accent.
+6. The active rule was replaced with the exact formal-preview treatment. Post-fix browser evidence confirmed the 1 px outline, 2 px inset bottom accent, 8% tint, and zero console errors.
 
-## Follow-up Polish
+## Findings
 
-- Manually confirm the icon centers align with the TP logo and the text start aligns with `旅程規劃室` at the user's display scale.
+- No actionable P0, P1, or P2 visual differences remain within the requested scope.
 
-final result: blocked
+final result: passed
