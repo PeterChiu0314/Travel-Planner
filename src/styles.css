@@ -3012,6 +3012,15 @@ textarea {
   margin-bottom: 0;
 }
 
+.timeline .item-form input:not([type="hidden"]),
+.timeline .item-form select,
+.timeline .item-form textarea,
+.timeline .item-form .item-form-cancel-button,
+.timeline .item-form .map-point-picker-button,
+.timeline .item-form .transport-editor-navigation-button {
+  background: transparent;
+}
+
 .form-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }

@@ -12184,7 +12184,7 @@ function ItineraryTimeline({
               <button className="primary-button compact transport-editor-action-button" disabled={!canMutateThisDay} type="submit">
                 保存
               </button>
-              <button className="ghost-button compact transport-editor-action-button" type="button" onClick={() => closeEditor()}>
+              <button className="ghost-button compact transport-editor-action-button item-form-cancel-button" type="button" onClick={() => closeEditor()}>
                 取消
               </button>
             </div>
@@ -12586,7 +12586,7 @@ function ItineraryTimeline({
           </label>
         </div>
         <div className="form-actions">
-          <button className="ghost-button" type="button" onClick={() => closeEditor()}>
+          <button className="ghost-button item-form-cancel-button" type="button" onClick={() => closeEditor()}>
             取消
           </button>
           {editingId && !isTransportEditor ? (

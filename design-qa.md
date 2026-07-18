@@ -34,9 +34,12 @@
 5. The user identified a P1 mismatch: the production active Day tab still used the legacy uniform 2 px border instead of the preview's thin outline plus thick bottom accent.
 6. The active rule was replaced with the formal-preview border treatment. Post-fix browser evidence confirmed the 1 px outline and 2 px inset bottom accent.
 7. Per user direction, the active tint was removed, the Sidebar trip heading was rebalanced, and both requested Sidebar controls were set to 30 x 30 px. This latest adjustment is pending user testing; automated and browser verification were intentionally skipped.
+8. The visit and transportation editor form controls were scoped to transparent backgrounds so they inherit the translucent white editor-card surface without changing other site forms or primary save actions.
 
 ## Findings
 
-- The latest user-directed adjustment is pending manual acceptance.
+- No blocking mismatch remains in the requested editor-control scope. Both editor cards retain their existing translucent white surface, while the nested fields and secondary controls no longer add an opaque surface layer.
+- Primary save actions remain filled with `#325248`; borders, icons, spacing, copy, and liquid-glass behavior are unchanged.
+- The visit and transportation source/implementation pairs were each compared together. Browser-computed styles confirmed transparent input, select, textarea, cancel, map-point, and navigation backgrounds, with zero console errors.
 
-final result: blocked
+final result: passed
