@@ -1653,14 +1653,6 @@ code {
   outline-offset: 2px;
 }
 
-.trip-header-destination-hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-
 .trip-header-destination-error {
   border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
   border-radius: 7px;
@@ -5279,6 +5271,12 @@ textarea {
   width: min(640px, 100%);
   max-height: calc(100vh - 32px);
   overflow: auto;
+}
+
+.create-trip-destination-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .create-trip-date-picker {

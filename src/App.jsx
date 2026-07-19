@@ -2188,7 +2188,8 @@ export default function App() {
   const routeOverrideLoadTargetRef = useRef({ dayIndex: null, isDemoMode: false, tripId: null });
   const [tripForm, setTripForm] = useState({
     title: "京都五日散策",
-    destination: "京都, 日本",
+    destination_country: "日本",
+    destination_city: "京都",
     start_date: todayInput(),
     end_date: todayInput(2),
   });
@@ -4416,7 +4417,10 @@ export default function App() {
     const safeEndDate =
       tripForm.end_date < tripForm.start_date ? tripForm.start_date : tripForm.end_date;
     const tripId = crypto.randomUUID();
-    const destinationPatch = destinationPatchFromText(tripForm.destination);
+    const destinationPatch = destinationPatchFromParts(
+      tripForm.destination_country,
+      tripForm.destination_city,
+    );
     const { error: tripError } = await supabase.from("trips").insert({
       id: tripId,
       title: tripForm.title.trim(),
@@ -4453,7 +4457,8 @@ export default function App() {
     setIsTripDialogOpen(false);
     setTripForm({
       title: "京都五日散策",
-      destination: "京都, 日本",
+      destination_country: "日本",
+      destination_city: "京都",
       start_date: todayInput(),
       end_date: todayInput(2),
     });
@@ -8018,9 +8023,6 @@ function TripHeader({
                               />
                             </label>
                           </div>
-                          <p className="trip-header-destination-hint">
-                            使用 Map 編輯第一天行程時，系統將自動填入目的地。
-                          </p>
                           {destinationError ? (
                             <div
                               className="trip-header-destination-error"
@@ -16285,15 +16287,26 @@ function TripDialog({ form, onChange, onClose, onSubmit }) {
             onChange={(event) => onChange({ ...form, title: event.target.value })}
           />
         </label>
-        <label>
-          目的地
-          <input
-            autoComplete="off"
-            required
-            value={form.destination}
-            onChange={(event) => onChange({ ...form, destination: event.target.value })}
-          />
-        </label>
+        <div className="create-trip-destination-fields">
+          <label>
+            國家
+            <input
+              autoComplete="off"
+              required
+              value={form.destination_country}
+              onChange={(event) => onChange({ ...form, destination_country: event.target.value })}
+            />
+          </label>
+          <label>
+            城市
+            <input
+              autoComplete="off"
+              required
+              value={form.destination_city}
+              onChange={(event) => onChange({ ...form, destination_city: event.target.value })}
+            />
+          </label>
+        </div>
         <div className="create-trip-date-picker">
           <TripDateRangeSelector
             activeStep={dateSelectionStep}

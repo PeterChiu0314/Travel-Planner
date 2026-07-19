@@ -2,6 +2,9 @@
 
 ## Comparison Target
 
+- Current source visual truth: `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-1e89039a-c159-46d9-9ae2-c8f322c1eb9b.png` for the create-trip dialog and `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-642f2635-c1a4-442b-9b1d-ddbf947184b5.png` for the Header destination editor.
+- Current implementation screenshots: `test-results/phase-5-8-create-trip-country-city.png` and `test-results/phase-5-8-header-destination-hint-removed.png`.
+- Current states: create-trip dialog open with its default values; Header destination popover open with existing country/city values.
 - Current source visual truth: `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-955ae0c0-e122-479a-99fe-462f8ed3effe.png`.
 - Current implementation screenshot: `test-results/phase-5-8-transparent-card-mini-buttons.png`.
 - Current state: normal Timeline visit cards and a collapsed transportation card with their mini controls visible.
@@ -16,11 +19,14 @@
 - Spacing and layout rhythm: the existing sidebar, Dayboard, card spacing, and liquid-glass geometry are unchanged.
 - Colors and states: hover/focus uses primary `#325248`. The active Day tab keeps the 1 px primary outline and inset 2 px bottom accent while restoring the existing translucent white surface. Navigation keeps a transparent border; the active trip card uses an 8% primary tint over transparency; neutral Timeline cards use a 1 px primary border, 1 px lift, and restrained outer shadow.
 - Card controls: visit-card and transportation-card mini controls use transparent backgrounds so the card's translucent white surface is the only fill. Transportation navigation icons render at 14 x 14 px with a 1.5 px stroke.
+- Destination forms: the create-trip destination uses equal-width Country and City fields on one row; the Header editor retains its existing fields and actions while omitting the unimplemented Map auto-fill message.
 - Image and icon assets: no image or icon asset was replaced.
 - Copy and content: formal, Demo, version dialog, and browser title use the updated product name.
 
 ## Interaction And Runtime Checks
 
+- Browser inspection confirmed the create-trip destination grid renders as two equal columns, its labels and default values are `國家 / 日本` and `城市 / 京都`, and the existing date-selection UI remains unchanged.
+- Browser inspection opened the real Header destination popover and confirmed its Country/City fields remain populated while the Map auto-fill sentence is absent. Both current source/implementation pairs were compared in the same visual inputs.
 - Focused browser inspection confirmed all visible `.timeline-item .mini-button` and `.transport-card .mini-button` backgrounds compute to transparent. The navigation icon computes to approximately 14 x 14 px with a 1.5 px stroke.
 - The current source crop and browser-rendered implementation were compared in the same visual input. Button borders, spacing, card surfaces, and icon assets remain unchanged.
 - In-app Browser DOM inspection confirmed the brand, subtitle, relocated trip count, and exact browser title.
@@ -42,6 +48,7 @@
 7. Per user direction, the active tint was removed, the Sidebar trip heading was rebalanced, and both requested Sidebar controls were set to 30 x 30 px. This latest adjustment is pending user testing; automated and browser verification were intentionally skipped.
 8. The visit and transportation editor form controls were scoped to transparent backgrounds so they inherit the translucent white editor-card surface without changing other site forms or primary save actions.
 9. Visit-card and transportation-card mini controls were scoped to transparent backgrounds, and the transportation navigation icon was refined from 15 px / 2 px to 14 px / 1.5 px. Post-fix computed-style and visual comparison found no actionable mismatch.
+10. The create-trip destination was split into an equal two-column Country/City row using the existing structured destination fields. The unimplemented Header Map auto-fill helper was removed. Post-fix browser and visual comparisons found no actionable mismatch.
 
 ## Findings
 
@@ -49,5 +56,6 @@
 - Primary save actions remain filled with `#325248`; borders, icons, spacing, copy, and liquid-glass behavior are unchanged.
 - The visit and transportation source/implementation pairs were each compared together. Browser-computed styles confirmed transparent input, select, textarea, cancel, map-point, and navigation backgrounds, with zero console errors.
 - The current mini-button comparison passed with transparent card-control backgrounds, the requested 14 px / 1.5 px navigation icon, and zero browser console errors.
+- The create-trip and Header destination changes passed with the requested field hierarchy, preserved form styling and date flow, removed unsupported copy, and zero browser console errors.
 
 final result: passed
