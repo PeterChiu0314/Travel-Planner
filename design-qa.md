@@ -2,6 +2,9 @@
 
 ## Comparison Target
 
+- Current source visual truth: `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-955ae0c0-e122-479a-99fe-462f8ed3effe.png`.
+- Current implementation screenshot: `test-results/phase-5-8-transparent-card-mini-buttons.png`.
+- Current state: normal Timeline visit cards and a collapsed transportation card with their mini controls visible.
 - Source visual truth: the user-supplied interaction screenshots, including `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-0d3b1231-295f-4ad3-b6ef-78b1ddb9b975.png`, together with the exact `.formal-day-tab.active` rule in `design/design-system-preview.html`.
 - Implementation screenshots: `test-results/phase-5-8-interaction-default.png`, `test-results/phase-5-8-interaction-hover.png`, `test-results/phase-5-8-card-focus-hover.png`, and `test-results/phase-5-8-day-tab-active-preview-match.png`.
 - Route and viewport: `/demo/timeline` at 1280 x 720 in the in-app Browser.
@@ -12,11 +15,14 @@
 - Typography: the brand uses the new Chinese and English names. `我的旅程` uses 20 px / 500, with the 13 px trip count aligned on the same baseline to its right.
 - Spacing and layout rhythm: the existing sidebar, Dayboard, card spacing, and liquid-glass geometry are unchanged.
 - Colors and states: hover/focus uses primary `#325248`. The active Day tab keeps the 1 px primary outline and inset 2 px bottom accent while restoring the existing translucent white surface. Navigation keeps a transparent border; the active trip card uses an 8% primary tint over transparency; neutral Timeline cards use a 1 px primary border, 1 px lift, and restrained outer shadow.
+- Card controls: visit-card and transportation-card mini controls use transparent backgrounds so the card's translucent white surface is the only fill. Transportation navigation icons render at 14 x 14 px with a 1.5 px stroke.
 - Image and icon assets: no image or icon asset was replaced.
 - Copy and content: formal, Demo, version dialog, and browser title use the updated product name.
 
 ## Interaction And Runtime Checks
 
+- Focused browser inspection confirmed all visible `.timeline-item .mini-button` and `.transport-card .mini-button` backgrounds compute to transparent. The navigation icon computes to approximately 14 x 14 px with a 1.5 px stroke.
+- The current source crop and browser-rendered implementation were compared in the same visual input. Button borders, spacing, card surfaces, and icon assets remain unchanged.
 - In-app Browser DOM inspection confirmed the brand, subtitle, relocated trip count, and exact browser title.
 - Active Day-tab computed styles confirmed a 1 px `#325248` border and `inset 0 -2px 0 #325248` bottom accent; the focused source screenshot and browser-rendered implementation were compared in the same visual input.
 - Forced hover-state inspection confirmed the Day tab and Timeline card primary borders, the Timeline card `translateY(-1px)` and outer shadow, the navigation's transparent border and subtle surface, and the trip-card primary border/tint.
@@ -35,11 +41,13 @@
 6. The active rule was replaced with the formal-preview border treatment. Post-fix browser evidence confirmed the 1 px outline and 2 px inset bottom accent.
 7. Per user direction, the active tint was removed, the Sidebar trip heading was rebalanced, and both requested Sidebar controls were set to 30 x 30 px. This latest adjustment is pending user testing; automated and browser verification were intentionally skipped.
 8. The visit and transportation editor form controls were scoped to transparent backgrounds so they inherit the translucent white editor-card surface without changing other site forms or primary save actions.
+9. Visit-card and transportation-card mini controls were scoped to transparent backgrounds, and the transportation navigation icon was refined from 15 px / 2 px to 14 px / 1.5 px. Post-fix computed-style and visual comparison found no actionable mismatch.
 
 ## Findings
 
 - No blocking mismatch remains in the requested editor-control scope. Both editor cards retain their existing translucent white surface, while the nested fields and secondary controls no longer add an opaque surface layer.
 - Primary save actions remain filled with `#325248`; borders, icons, spacing, copy, and liquid-glass behavior are unchanged.
 - The visit and transportation source/implementation pairs were each compared together. Browser-computed styles confirmed transparent input, select, textarea, cancel, map-point, and navigation backgrounds, with zero console errors.
+- The current mini-button comparison passed with transparent card-control backgrounds, the requested 14 px / 1.5 px navigation icon, and zero browser console errors.
 
 final result: passed

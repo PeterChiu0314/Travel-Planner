@@ -3440,9 +3440,9 @@ textarea {
 }
 
 .transport-navigation-button svg {
-  width: 15px;
-  height: 15px;
-  stroke-width: 2;
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.5;
 }
 
 .transport-card-main,
@@ -3982,6 +3982,11 @@ textarea {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.timeline-item .mini-button,
+.transport-card .mini-button {
+  background: transparent;
 }
 
 .lock-button {
