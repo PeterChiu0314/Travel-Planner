@@ -205,8 +205,8 @@
 | `color-primary` | `#325248` | 主要品牌色、主要 CTA、選取狀態 |
 | `color-primary-hover` | `#436B5E` | 主要 CTA Hover |
 | `color-primary-foreground` | `#FFFFFF` | 主要色背景上的文字 |
-| `color-accent` | `#755D43` | 裝飾、重點提示、品牌細節 |
-| `color-accent-text` | `#755D43` | Accent 文字與圖示 |
+| `color-accent` | `#D98A3F` | 裝飾、重點提示、品牌細節與路線線條 |
+| `color-accent-text` | `#8A4F18` | Accent 文字與圖示 |
 | `color-text` | `#2D312F` | 主要文字 |
 | `color-text-secondary` | `#68706B` | 次要文字 |
 | `color-text-muted` | `#66716B` | 輔助文字與時間資訊 |
@@ -222,10 +222,10 @@
 
 | Token | 預設值 | 用途 |
 |---|---|---|
-| `color-type-attraction` | `#82674A` | 景點、公園與活動 |
-| `color-type-food` | `#CB8848` | 餐廳、咖啡與用餐 |
-| `color-type-hotel` | `#AC6885` | 飯店與住宿地點 |
-| `color-type-transport` | `#708E8F` | 車站、機場與交通點 |
+| `color-type-attraction` | `#D98A3F` | 景點、公園與活動；fill `#F8E8D9`、text `#8A4F18` |
+| `color-type-food` | `#DD7373` | 餐廳、咖啡與用餐；fill `#FAE3E3`、text `#8E3F3F` |
+| `color-type-hotel` | `#B871C6` | 飯店與住宿地點；fill `#F0E2F3`、text `#73457D` |
+| `color-type-transport` | `#68B3B6` | 車站、機場與交通點；fill `#DFF1F1`、text `#356F72` |
 | `color-type-note` | `#6E6E6E` | 自訂與備註地點 |
 
 #### 色彩使用原則

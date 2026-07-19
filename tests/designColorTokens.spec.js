@@ -12,7 +12,8 @@ test("formal UI exposes the DESIGN.md semantic color tokens", () => {
     "--color-primary: #325248;",
     "--color-primary-hover: #436b5e;",
     "--color-primary-foreground: #ffffff;",
-    "--color-accent: #755d43;",
+    "--color-accent: #d98a3f;",
+    "--color-accent-text: #8a4f18;",
     "--color-text: #2d312f;",
     "--color-text-secondary: #68706b;",
     "--color-text-muted: #66716b;",
@@ -21,10 +22,18 @@ test("formal UI exposes the DESIGN.md semantic color tokens", () => {
     "--color-warning: #ab7a2b;",
     "--color-success: #3f654f;",
     "--color-info: #486b6d;",
-    "--color-type-attraction: #82674a;",
-    "--color-type-food: #cb8848;",
-    "--color-type-hotel: #ac6885;",
-    "--color-type-transport: #708e8f;",
+    "--color-type-attraction: #d98a3f;",
+    "--color-type-attraction-fill: #f8e8d9;",
+    "--color-type-attraction-text: #8a4f18;",
+    "--color-type-food: #dd7373;",
+    "--color-type-food-fill: #fae3e3;",
+    "--color-type-food-text: #8e3f3f;",
+    "--color-type-hotel: #b871c6;",
+    "--color-type-hotel-fill: #f0e2f3;",
+    "--color-type-hotel-text: #73457d;",
+    "--color-type-transport: #68b3b6;",
+    "--color-type-transport-fill: #dff1f1;",
+    "--color-type-transport-text: #356f72;",
     "--color-type-note: #6e6e6e;",
   ];
 
@@ -47,18 +56,21 @@ test("formal UI keeps legacy neutral aliases while using semantic colors for sha
 test("Timeline and Map share the semantic type and status palette", () => {
   for (const token of [
     'primary: "#325248"',
+    'accent: "#d98a3f"',
     'error: "#d25b51"',
     'warning: "#ab7a2b"',
     'success: "#3f654f"',
     'info: "#486b6d"',
-    'attraction: "#82674a"',
-    'food: "#cb8848"',
-    'hotel: "#ac6885"',
-    'transport: "#708e8f"',
+    'attraction: "#d98a3f"',
+    'food: "#dd7373"',
+    'hotel: "#b871c6"',
+    'transport: "#68b3b6"',
     'note: "#6e6e6e"',
   ]) {
     expect(designColorTokenSource).toContain(token);
   }
+
+  expect(styleSource).toMatch(/\.route-line\s*\{[\s\S]*?background:\s*var\(--color-accent\);/);
 
   expect(styleSource).toMatch(/\.section-nav-button\s*\{[\s\S]*?letter-spacing:\s*0\.04em;/);
 });

@@ -719,6 +719,7 @@ test("Phase 5.4 renders simple Google route lines and Timeline sequence badges",
   expect(googleProviderSource).toContain("routeLineRef");
   expect(googleProviderSource).toContain("new mapsNamespace.Polyline");
   expect(googleProviderSource).toContain("path: fullRoutePath(routeSegments, customRoutePointsRef.current)");
+  expect(googleProviderSource).toContain("strokeColor: designColors.accent");
   expect(googleProviderSource).toContain("clickable: false");
   expect(googleProviderSource).toContain("markerSequenceNumber(marker");
   expect(staticProviderSource).not.toContain("Polyline");

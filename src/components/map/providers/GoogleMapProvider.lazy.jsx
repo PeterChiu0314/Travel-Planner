@@ -1219,7 +1219,7 @@ export default function GoogleMapProvider(props) {
       geodesic: false,
       map: mapRef.current,
       path: fullRoutePath(routeSegments, customRoutePointsRef.current),
-      strokeColor: designColors.primary,
+      strokeColor: designColors.accent,
       strokeOpacity: 0.7,
       strokeWeight: 3,
       zIndex: 10,

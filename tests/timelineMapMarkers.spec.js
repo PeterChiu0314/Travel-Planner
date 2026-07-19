@@ -43,9 +43,9 @@ test("Phase 4.9a builds provider-neutral markers for destination items", () => {
       provider: null,
       providerPlaceId: null,
       category: "attraction",
-      markerColor: "#82674a",
-      markerFillColor: "#e9e4de",
-      markerTextColor: "#624f3a",
+      markerColor: "#d98a3f",
+      markerFillColor: "#f8e8d9",
+      markerTextColor: "#8a4f18",
       sequenceNumber: 1,
       dayIndex: 1,
       sortOrder: 20,
@@ -62,34 +62,34 @@ test("Phase 5.8a maps destination marker colors from the existing Timeline card 
   ]);
 
   expect(markers.map((marker) => marker.category)).toEqual(["attraction", "hotel", "transport", "attraction"]);
-  expect(markers.map((marker) => marker.markerColor)).toEqual(["#82674a", "#ac6885", "#708e8f", "#82674a"]);
-  expect(markers.map((marker) => marker.markerFillColor)).toEqual(["#e9e4de", "#f0e4e9", "#e5ebeb", "#e9e4de"]);
-  expect(markers.map((marker) => marker.markerTextColor)).toEqual(["#624f3a", "#815065", "#556b6c", "#624f3a"]);
+  expect(markers.map((marker) => marker.markerColor)).toEqual(["#d98a3f", "#b871c6", "#68b3b6", "#d98a3f"]);
+  expect(markers.map((marker) => marker.markerFillColor)).toEqual(["#f8e8d9", "#f0e2f3", "#dff1f1", "#f8e8d9"]);
+  expect(markers.map((marker) => marker.markerTextColor)).toEqual(["#8a4f18", "#73457d", "#356f72", "#8a4f18"]);
 });
 
 test("Phase 5.8 maps marker number colors from the semantic type palette", () => {
   expect(["attraction", "food", "hotel", "transport", "note"].map(timelineTypeMarkerTextColor)).toEqual([
-    "#624f3a",
-    "#976739",
-    "#815065",
-    "#556b6c",
+    "#8a4f18",
+    "#8e3f3f",
+    "#73457d",
+    "#356f72",
     "#545454",
   ]);
 });
 
 test("Phase 5.8a focused marker uses the category color with white focus styling", () => {
   const svg = buildDestinationMarkerSvg({
-    color: "#cb8848",
-    fillColor: "#f6eade",
-    textColor: "#976739",
+    color: "#dd7373",
+    fillColor: "#fae3e3",
+    textColor: "#8e3f3f",
     focused: true,
   });
 
   expect(svg).toContain('stroke="#ffffff" stroke-width="2.4" stroke-opacity="0.24"');
-  expect(svg).toContain('fill="#cb8848" stroke="#ffffff" stroke-width="2.6"');
+  expect(svg).toContain('fill="#dd7373" stroke="#ffffff" stroke-width="2.6"');
   expect(svg).toContain('fill="#ffffff" stroke="#ffffff" stroke-width="0.2"');
-  expect(svg).not.toContain('fill="#f6eade"');
-  expect(svg).not.toContain('fill="#976739"');
+  expect(svg).not.toContain('fill="#fae3e3"');
+  expect(svg).not.toContain('fill="#8e3f3f"');
 });
 
 test("Phase 4.9a excludes transportation cards and keeps marker order", () => {

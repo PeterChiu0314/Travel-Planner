@@ -6,8 +6,8 @@
   --color-primary: #325248;
   --color-primary-hover: #436b5e;
   --color-primary-foreground: #ffffff;
-  --color-accent: #755d43;
-  --color-accent-text: #755d43;
+  --color-accent: #d98a3f;
+  --color-accent-text: #8a4f18;
   --color-text: #2d312f;
   --color-text-secondary: #68706b;
   --color-text-muted: #66716b;
@@ -21,18 +21,18 @@
   --color-warning-bg: #f7eedb;
   --color-error-bg: #f7e9e6;
   --color-info-bg: #e7f0ef;
-  --color-type-attraction: #82674a;
-  --color-type-attraction-fill: #e9e4de;
-  --color-type-attraction-text: #624f3a;
-  --color-type-food: #cb8848;
-  --color-type-food-fill: #f6eade;
-  --color-type-food-text: #976739;
-  --color-type-hotel: #ac6885;
-  --color-type-hotel-fill: #f0e4e9;
-  --color-type-hotel-text: #815065;
-  --color-type-transport: #708e8f;
-  --color-type-transport-fill: #e5ebeb;
-  --color-type-transport-text: #556b6c;
+  --color-type-attraction: #d98a3f;
+  --color-type-attraction-fill: #f8e8d9;
+  --color-type-attraction-text: #8a4f18;
+  --color-type-food: #dd7373;
+  --color-type-food-fill: #fae3e3;
+  --color-type-food-text: #8e3f3f;
+  --color-type-hotel: #b871c6;
+  --color-type-hotel-fill: #f0e2f3;
+  --color-type-hotel-text: #73457d;
+  --color-type-transport: #68b3b6;
+  --color-type-transport-fill: #dff1f1;
+  --color-type-transport-text: #356f72;
   --color-type-note: #6e6e6e;
   --color-type-note-fill: #e5e5e5;
   --color-type-note-text: #545454;
@@ -4518,7 +4518,7 @@ textarea {
   bottom: 36px;
   width: 3px;
   border-radius: 3px;
-  background: var(--color-type-transport);
+  background: var(--color-accent);
 }
 
 .route-stop {
