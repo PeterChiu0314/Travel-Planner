@@ -2,7 +2,7 @@ export const designColors = Object.freeze({
   primary: "#325248",
   primaryHover: "#436b5e",
   primaryForeground: "#ffffff",
-  accent: "#d98a3f",
+  accent: "#896c4d",
   text: "#2d312f",
   textSecondary: "#68706b",
   textMuted: "#66716b",
@@ -14,7 +14,7 @@ export const designColors = Object.freeze({
 });
 
 export const designTypeColors = Object.freeze({
-  attraction: "#d98a3f",
+  attraction: "#896c4d",
   food: "#dd7373",
   hotel: "#b871c6",
   transport: "#68b3b6",
@@ -22,7 +22,7 @@ export const designTypeColors = Object.freeze({
 });
 
 export const designTypeFillColors = Object.freeze({
-  attraction: "#f8e8d9",
+  attraction: "#ebe5de",
   food: "#fae3e3",
   hotel: "#f0e2f3",
   transport: "#dff1f1",
@@ -30,7 +30,7 @@ export const designTypeFillColors = Object.freeze({
 });
 
 export const designTypeTextColors = Object.freeze({
-  attraction: "#8a4f18",
+  attraction: "#654e37",
   food: "#8e3f3f",
   hotel: "#73457d",
   transport: "#356f72",

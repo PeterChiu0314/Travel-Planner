@@ -18,7 +18,7 @@
 - Typography: the brand uses the new Chinese and English names. `我的旅程` uses 20 px / 500, with the 13 px trip count aligned on the same baseline to its right.
 - Spacing and layout rhythm: the existing sidebar, Dayboard, card spacing, and liquid-glass geometry are unchanged.
 - Colors and states: hover/focus uses primary `#325248`. The active Day tab keeps the 1 px primary outline and inset 2 px bottom accent while restoring the existing translucent white surface. Navigation keeps a transparent border; the active trip card uses an 8% primary tint over transparency; neutral Timeline cards use a 1 px primary border, 1 px lift, and restrained outer shadow.
-- Revised palette: accent and attraction use `#D98A3F`, food uses `#DD7373`, transport uses `#68B3B6`, and hotel uses `#B871C6`. Their paired fill/text tones retain at least 4.9:1 contrast, and both Static and Google route lines consume the accent color.
+- Revised palette: accent and attraction use `#896C4D`, food uses `#DD7373`, transport uses `#68B3B6`, and hotel uses `#B871C6`. Their paired fill/text tones retain accessible contrast, and both Static and Google route lines consume the accent color.
 - Card controls: visit-card and transportation-card mini controls use transparent backgrounds so the card's translucent white surface is the only fill. Transportation navigation icons render at 14 x 14 px with a 1.5 px stroke.
 - Destination forms: the create-trip destination uses equal-width Country and City fields on one row; the Header editor retains its existing fields and actions while omitting the unimplemented Map auto-fill message.
 - Image and icon assets: no image or icon asset was replaced.
@@ -60,5 +60,6 @@
 - The current mini-button comparison passed with transparent card-control backgrounds, the requested 14 px / 1.5 px navigation icon, and zero browser console errors.
 - The create-trip and Header destination changes passed with the requested field hierarchy, preserved form styling and date flow, removed unsupported copy, and zero browser console errors.
 - The revised palette has no blocking token drift: formal CSS, JS marker tokens, design documentation, preview defaults, exported v3 tokens, and both route providers are aligned; the four fill/text pairs pass normal-text contrast targets.
+- Per user direction, the final Accent/Attraction adjustment to `#896C4D` with fill `#EBE5DE` and text `#654E37` was published without automated or browser verification.
 
-final result: passed
+final result: blocked

@@ -43,9 +43,9 @@ test("Phase 4.9a builds provider-neutral markers for destination items", () => {
       provider: null,
       providerPlaceId: null,
       category: "attraction",
-      markerColor: "#d98a3f",
-      markerFillColor: "#f8e8d9",
-      markerTextColor: "#8a4f18",
+      markerColor: "#896c4d",
+      markerFillColor: "#ebe5de",
+      markerTextColor: "#654e37",
       sequenceNumber: 1,
       dayIndex: 1,
       sortOrder: 20,
@@ -62,14 +62,14 @@ test("Phase 5.8a maps destination marker colors from the existing Timeline card 
   ]);
 
   expect(markers.map((marker) => marker.category)).toEqual(["attraction", "hotel", "transport", "attraction"]);
-  expect(markers.map((marker) => marker.markerColor)).toEqual(["#d98a3f", "#b871c6", "#68b3b6", "#d98a3f"]);
-  expect(markers.map((marker) => marker.markerFillColor)).toEqual(["#f8e8d9", "#f0e2f3", "#dff1f1", "#f8e8d9"]);
-  expect(markers.map((marker) => marker.markerTextColor)).toEqual(["#8a4f18", "#73457d", "#356f72", "#8a4f18"]);
+  expect(markers.map((marker) => marker.markerColor)).toEqual(["#896c4d", "#b871c6", "#68b3b6", "#896c4d"]);
+  expect(markers.map((marker) => marker.markerFillColor)).toEqual(["#ebe5de", "#f0e2f3", "#dff1f1", "#ebe5de"]);
+  expect(markers.map((marker) => marker.markerTextColor)).toEqual(["#654e37", "#73457d", "#356f72", "#654e37"]);
 });
 
 test("Phase 5.8 maps marker number colors from the semantic type palette", () => {
   expect(["attraction", "food", "hotel", "transport", "note"].map(timelineTypeMarkerTextColor)).toEqual([
-    "#8a4f18",
+    "#654e37",
     "#8e3f3f",
     "#73457d",
     "#356f72",
