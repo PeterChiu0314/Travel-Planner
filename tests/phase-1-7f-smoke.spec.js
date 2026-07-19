@@ -62,12 +62,23 @@ function collectSupabaseRequests(page) {
   return requests;
 }
 
+async function setTimelineTime(form, name, value) {
+  const field = form.locator(`.timeline-segmented-time-field[data-name="${name}"]`);
+  await field.locator(".timeline-time-menu-toggle").click();
+  await field.getByRole("option", { name: value, exact: true }).click();
+}
+
 async function openDemoNewVisitForm(page, title, startTime, endTime) {
   await page.locator(".timeline-add-button").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await form.locator('input[name="location_name"]').fill(title);
-  if (startTime !== null) await form.locator('select[name="start_time"]').selectOption(startTime);
-  if (endTime !== null) await form.locator('select[name="end_time"]').selectOption(endTime);
+  await form.getByRole("button", { name: "貼上 Google Maps 連結" }).click();
+  const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
+  await mapUrlInput.fill("https://www.google.com/maps?q=25.033,121.5654");
+  await mapUrlInput.blur();
+  await expect(form.locator(".visit-map-url-editor")).toHaveCount(0);
+  if (startTime !== null) await setTimelineTime(form, "start_time", startTime);
+  if (endTime !== null) await setTimelineTime(form, "end_time", endTime);
   return form;
 }
 
@@ -374,6 +385,70 @@ test("demo timeline renders without authentication", async ({ page }) => {
   await expect(page).toHaveURL(/\/$/);
 });
 
+test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time input", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/demo/timeline");
+
+  const firstVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
+  await firstVisit.click();
+  await firstVisit.getByTitle("編輯").click();
+  const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+
+  const primaryLabels = form.locator(".visit-editor-primary-row > label");
+  const typeBox = await primaryLabels.nth(0).boundingBox();
+  const destinationBox = await primaryLabels.nth(1).boundingBox();
+  const typeControlBox = await primaryLabels.nth(0).locator("select").boundingBox();
+  const destinationControlBox = await primaryLabels.nth(1).locator("input").boundingBox();
+  expect(Math.abs(typeBox.y - destinationBox.y)).toBeLessThan(2);
+  expect(destinationBox.width).toBeGreaterThan(typeBox.width * 2);
+  expect(typeControlBox.height).toBeCloseTo(36, 0);
+  expect(destinationControlBox.height).toBeCloseTo(36, 0);
+
+  const startField = form.locator('.timeline-segmented-time-field[data-name="start_time"]');
+  const endField = form.locator('.timeline-segmented-time-field[data-name="end_time"]');
+  const startBox = await startField.boundingBox();
+  const endBox = await endField.boundingBox();
+  const durationBox = await form.locator('input[name="duration_minutes"]').boundingBox();
+  expect(Math.max(startBox.y, endBox.y, durationBox.y) - Math.min(startBox.y, endBox.y, durationBox.y)).toBeLessThanOrEqual(2);
+  expect(startBox.height).toBeCloseTo(36, 0);
+  expect(endBox.height).toBeCloseTo(36, 0);
+  expect(durationBox.height).toBeCloseTo(36, 0);
+
+  const startInput = form.locator('input[name="start_time"]');
+  await setTimelineTime(form, "start_time", "09:45");
+  await expect(startInput).toHaveValue("09:45");
+  await startField.locator(".timeline-time-segment.minute").press("ArrowUp");
+  await expect(startInput).toHaveValue("09:50");
+
+  await startField.locator(".timeline-time-menu-toggle").click();
+  await expect(startField.locator(".timeline-time-menu")).toBeVisible();
+  expect(await startField.locator('.timeline-time-menu [role="option"]').count()).toBeGreaterThan(20);
+  await startField.locator('.timeline-time-menu [role="option"]', { hasText: "10:00" }).click();
+  await expect(startInput).toHaveValue("10:00");
+
+  const durationInput = form.locator('input[name="duration_minutes"]');
+  await durationInput.fill("90");
+  await durationInput.blur();
+  await expect(durationInput).toHaveValue("1小時30分鐘");
+  await expect(form.locator('input[name="end_time"]')).toHaveValue("11:30");
+
+  await expect(form.getByRole("button", { name: "調整點位" })).toBeVisible();
+  await expect(form.getByRole("button", { name: "搜尋替換" })).toBeVisible();
+  await expect(form.locator(".visit-maps-link")).toContainText("打開地圖");
+  await expect(form.locator(".visit-map-point-title")).toHaveCount(0);
+  await expect(form.locator(".visit-map-point-actions .lucide-map-pin")).toHaveCount(1);
+  await expect(form.locator(".visit-map-point-actions .lucide-search")).toHaveCount(1);
+  await expect(form.locator(".visit-map-point-actions .lucide-map")).toHaveCount(1);
+  const noteBox = await form.locator(".visit-note-field textarea").boundingBox();
+  expect(noteBox.height).toBeLessThanOrEqual(56);
+  await expect(form.locator('.visit-map-url-editor input[name="map_url"]')).toHaveCount(0);
+  await form.getByRole("button", { name: "貼上 Google Maps 連結" }).click();
+  await expect(form.locator('.visit-map-url-editor input[name="map_url"]')).toBeVisible();
+  await expect(form.getByRole("button", { name: "套用" })).toHaveCount(0);
+  expect(failures).toEqual([]);
+});
+
 test("demo trip switch resets an out-of-range selected day board", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
@@ -457,8 +532,9 @@ for (const scenario of [
     const lastVisit = page.locator(".timeline .timeline-item").last();
     await lastVisit.click();
     await lastVisit.getByTitle("編輯").click();
-    await page.locator('select[name="end_time"]').selectOption("21:30");
-    await page.locator(".item-form").getByRole("button", { name: "儲存" }).click();
+    const editForm = page.locator(".item-form");
+    await setTimelineTime(editForm, "end_time", "21:30");
+    await editForm.getByRole("button", { name: "儲存" }).click();
 
     await page.getByRole("button", { name: "新增尾端交通" }).click({ force: true });
     await page.locator('input[name="transport_duration_minutes"]').fill(scenario.durationMinutes);
@@ -467,10 +543,10 @@ for (const scenario of [
 
     await expect(page.getByText("下一目的地尚未設定", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "新增行程" }).click();
-    const startTimeSelect = page.locator('select[name="start_time"]');
-    await expect(startTimeSelect).toHaveValue(scenario.expectedStartTime);
-    await startTimeSelect.selectOption("22:00");
-    await expect(startTimeSelect).toHaveValue("22:00");
+    const startTimeInput = page.locator('input[name="start_time"]');
+    await expect(startTimeInput).toHaveValue(scenario.expectedStartTime);
+    await setTimelineTime(page.locator(".item-form"), "start_time", "22:00");
+    await expect(startTimeInput).toHaveValue("22:00");
     expect(supabaseRequests).toEqual([]);
     expect(failures).toEqual([]);
   });
@@ -580,15 +656,15 @@ test("demo edited timed visit prompts when moved into a valid pair gap", async (
   await originalCard.click();
   await originalCard.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
-  await form.locator('select[name="start_time"]').selectOption("10:55");
-  await form.locator('select[name="end_time"]').selectOption("11:20");
+  await setTimelineTime(form, "start_time", "10:55");
+  await setTimelineTime(form, "end_time", "11:20");
   await form.locator('button[type="submit"]').click();
 
   await expect(page.getByTestId("transport-pair-conflict-dialog")).toBeVisible();
   await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
   await page.getByTestId("transport-pair-conflict-dialog").getByRole("button", { name: "恢復" }).click();
   await expect(form).toBeVisible();
-  await expect(form.locator('select[name="start_time"]')).toHaveValue("10:55");
+  await expect(form.locator('input[name="start_time"]')).toHaveValue("10:55");
   page.once("dialog", (dialog) => dialog.accept());
   await form.getByRole("button", { name: "取消" }).click();
   await expect(page.locator(".timeline-item").filter({ hasText: "02:20" }).locator(".time-block")).toContainText("02:20");
@@ -645,9 +721,9 @@ test("demo time edit can save only the current visit", async ({ page }) => {
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
-  await expect(form.getByRole("button")).toHaveText(["取消", "接續", "儲存"]);
+  await expect(form.locator(".form-actions").getByRole("button")).toHaveText(["取消", "接續", "儲存"]);
   await expect(form.getByRole("button", { name: "接續", exact: true })).toBeDisabled();
-  await form.locator('select[name="start_time"]').selectOption("02:30");
+  await setTimelineTime(form, "start_time", "02:30");
   await expect(form.getByRole("button", { name: "接續", exact: true })).toBeEnabled();
   await form.getByRole("button", { name: "儲存", exact: true }).click();
   await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
@@ -671,7 +747,7 @@ test("demo auto continuation preserves downstream durations and gaps", async ({ 
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
-  await form.locator('select[name="start_time"]').selectOption("02:30");
+  await setTimelineTime(form, "start_time", "02:30");
   await form.getByRole("button", { name: "接續", exact: true }).click();
   const dialog = page.getByTestId("auto-continuation-dialog");
   await expect(dialog.getByRole("heading", { name: "自動接續後續行程？" })).toBeVisible();
@@ -697,13 +773,13 @@ test("demo continuation can be cancelled without saving", async ({ page }) => {
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
-  await form.locator('select[name="start_time"]').selectOption("02:30");
+  await setTimelineTime(form, "start_time", "02:30");
   await form.getByRole("button", { name: "接續", exact: true }).click();
   await page.getByTestId("auto-continuation-dialog").getByRole("button", { name: "取消" }).click();
 
   await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
   await expect(form).toBeVisible();
-  await expect(form.locator('select[name="start_time"]')).toHaveValue("02:30");
+  await expect(form.locator('input[name="start_time"]')).toHaveValue("02:30");
   page.once("dialog", (dialog) => dialog.accept());
   await form.getByRole("button", { name: "取消", exact: true }).click();
   await expect(firstVisit.locator(".time-block")).toContainText("02:20");
@@ -724,7 +800,7 @@ test("demo fixed anchor stays put and overflowing followers become untimed", asy
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
-  await form.locator('select[name="end_time"]').selectOption("06:40");
+  await setTimelineTime(form, "end_time", "06:40");
   await form.getByRole("button", { name: "接續", exact: true }).click();
 
   const dialog = page.getByTestId("auto-continuation-dialog");

@@ -1,4 +1,4 @@
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   closestCenter,
@@ -49,6 +49,7 @@ import {
   Plane,
   Plus,
   Repeat2,
+  Search,
   Settings,
   Ship,
   Trash2,
@@ -66,7 +67,7 @@ import {
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { resolveGoogleMapsShortUrl } from "./lib/googleMapsShortLinkResolver.js";
 import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "./lib/googleMapsNavigation.js";
-import { countMissingMapPoints, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
+import { countMissingMapPoints, hasValidMapPoint, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import { planTimelineAutoContinuation } from "./lib/timelineAutoContinuation.js";
 import { findBrokenTransportationPair } from "./lib/timelineTransportationConflicts.js";
@@ -742,6 +743,31 @@ function formatTimeDisplay(value) {
   return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
 }
 
+function normalizeTimelineTimeInput(value) {
+  const text = String(value || "").trim();
+  if (!text) return { ok: true, value: "" };
+  const compact = text.replace(/\s+/g, "");
+  let hours;
+  let minutes;
+  if (/^\d{1,2}:\d{1,2}$/.test(compact)) {
+    [hours, minutes] = compact.split(":").map(Number);
+  } else if (/^\d{3,4}$/.test(compact)) {
+    hours = Number(compact.slice(0, -2));
+    minutes = Number(compact.slice(-2));
+  } else {
+    return { ok: false, value: text };
+  }
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return { ok: false, value: text };
+  }
+  const rounded = ((hours * 60 + Math.round(minutes / 5) * 5) % (24 * 60) + 24 * 60) % (24 * 60);
+  return { ok: true, value: minutesToTimeValue(rounded) };
+}
+
+function wrapTimelineMinutes(totalMinutes) {
+  return ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+}
+
 function buildTimeOptions(stepMinutes = 5) {
   const options = [];
   for (let minutes = 0; minutes < 24 * 60; minutes += stepMinutes) {
@@ -753,14 +779,165 @@ function buildTimeOptions(stepMinutes = 5) {
 }
 
 const timelineTimeOptions = buildTimeOptions(5);
-const timelineDurationOptions = buildDurationOptions(5, 24 * 60 - 5);
 
-function buildDurationOptions(stepMinutes = 5, maxMinutes = 12 * 60) {
-  const options = [];
-  for (let minutes = stepMinutes; minutes <= maxMinutes; minutes += stepMinutes) {
-    options.push(minutes);
+function TimelineSegmentedTimeField({ disabled = false, label, name, onValueChange, value }) {
+  const initialSegments = String(value || "").split(":");
+  const rootRef = useRef(null);
+  const hourRef = useRef(null);
+  const minuteRef = useRef(null);
+  const menuRef = useRef(null);
+  const draftRef = useRef({ hour: initialSegments[0] || "", minute: initialSegments[1] || "" });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [draftHour, setDraftHour] = useState(initialSegments[0] || "");
+  const [draftMinute, setDraftMinute] = useState(initialSegments[1] || "");
+
+  useLayoutEffect(() => {
+    const [hour = "", minute = ""] = String(value || "").split(":");
+    draftRef.current = { hour, minute };
+    setDraftHour(hour);
+    setDraftMinute(minute);
+  }, [value]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    window.requestAnimationFrame(() => menuRef.current?.querySelector(".selected")?.scrollIntoView({ block: "center" }));
+    const closeMenu = (event) => {
+      if (!rootRef.current?.contains(event.target)) setIsMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    return () => document.removeEventListener("pointerdown", closeMenu);
+  }, [isMenuOpen]);
+
+  function commitDraft(hour = draftRef.current.hour, minute = draftRef.current.minute) {
+    if (!hour && !minute) {
+      onValueChange("");
+      return;
+    }
+    const normalized = normalizeTimelineTimeInput(`${hour || "0"}:${minute || "0"}`);
+    if (normalized.ok) onValueChange(normalized.value);
+    else {
+      const [currentHour = "", currentMinute = ""] = String(value || "").split(":");
+      setDraftHour(currentHour);
+      setDraftMinute(currentMinute);
+    }
   }
-  return options;
+
+  function adjustSegment(segment, direction) {
+    const current = timeToMinutes(value || `${draftHour || "0"}:${draftMinute || "0"}`);
+    const nextValue = minutesToTimeValue(wrapTimelineMinutes((current ?? 0) + direction * (segment === "hour" ? 60 : 5)));
+    onValueChange(nextValue);
+  }
+
+  function handleSegmentKeyDown(event, segment) {
+    if (event.key === "ArrowDown" && event.altKey) {
+      event.preventDefault();
+      setIsMenuOpen(true);
+    } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      adjustSegment(segment, event.key === "ArrowUp" ? 1 : -1);
+    } else if (event.key === "ArrowRight" && segment === "hour") {
+      event.preventDefault();
+      minuteRef.current?.focus();
+      minuteRef.current?.select();
+    } else if (event.key === "ArrowLeft" && segment === "minute") {
+      event.preventDefault();
+      hourRef.current?.focus();
+      hourRef.current?.select();
+    }
+  }
+
+  function handleWholeTimePaste(event) {
+    const normalized = normalizeTimelineTimeInput(event.clipboardData.getData("text"));
+    if (!normalized.ok || !normalized.value) return;
+    event.preventDefault();
+    onValueChange(normalized.value);
+  }
+
+  useEffect(() => {
+    const bindings = [
+      [hourRef.current, (event) => { event.preventDefault(); adjustSegment("hour", event.deltaY < 0 ? 1 : -1); }],
+      [minuteRef.current, (event) => { event.preventDefault(); adjustSegment("minute", event.deltaY < 0 ? 1 : -1); }],
+    ].filter(([element]) => Boolean(element));
+    bindings.forEach(([element, handler]) => element.addEventListener("wheel", handler, { passive: false }));
+    return () => bindings.forEach(([element, handler]) => element.removeEventListener("wheel", handler));
+  });
+
+  return (
+    <div className="visit-time-field">
+      <span className="visit-time-label">{label}</span>
+      <div className={`timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`} data-name={name} ref={rootRef}>
+        <input name={name} type="hidden" value={value || ""} />
+        <div className="timeline-time-segments" role="group" aria-label={`${label}時間`}>
+          <input
+            aria-label={`${label}小時`}
+            className="timeline-time-segment hour"
+            disabled={disabled}
+            inputMode="numeric"
+            maxLength="2"
+            placeholder="時"
+            ref={hourRef}
+            value={draftHour}
+            onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) commitDraft(); }}
+            onChange={(event) => {
+              const next = event.target.value.replace(/\D/g, "").slice(0, 2);
+              draftRef.current.hour = next;
+              setDraftHour(next);
+            }}
+            onClick={(event) => event.currentTarget.select()}
+            onKeyDown={(event) => handleSegmentKeyDown(event, "hour")}
+            onPaste={handleWholeTimePaste}
+          />
+          <span aria-hidden="true">:</span>
+          <input
+            aria-label={`${label}分鐘`}
+            className="timeline-time-segment minute"
+            disabled={disabled}
+            inputMode="numeric"
+            maxLength="2"
+            placeholder="分"
+            ref={minuteRef}
+            value={draftMinute}
+            onBlur={() => commitDraft()}
+            onChange={(event) => {
+              const next = event.target.value.replace(/\D/g, "").slice(0, 2);
+              draftRef.current.minute = next;
+              setDraftMinute(next);
+            }}
+            onClick={(event) => event.currentTarget.select()}
+            onKeyDown={(event) => handleSegmentKeyDown(event, "minute")}
+            onPaste={handleWholeTimePaste}
+          />
+        </div>
+        <button
+          aria-label={`開啟${label}時間選單`}
+          aria-expanded={isMenuOpen}
+          className="timeline-time-menu-toggle"
+          disabled={disabled}
+          type="button"
+          onClick={() => setIsMenuOpen((current) => !current)}
+        >
+          <ChevronDown aria-hidden="true" />
+        </button>
+        {isMenuOpen ? (
+          <div className="timeline-time-menu" ref={menuRef} role="listbox" aria-label={`${label}時間選項`}>
+            {timelineTimeOptions.map((time) => (
+              <button
+                aria-selected={time === value}
+                className={time === value ? "selected" : ""}
+                key={time}
+                role="option"
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => { onValueChange(time); setIsMenuOpen(false); }}
+              >
+                {time}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function minutesToTimeValue(totalMinutes) {
@@ -9972,6 +10149,7 @@ function TripWorkspace(props) {
   const [mapPointPickFeedback, setMapPointPickFeedback] = useState("");
   const [pickedMapPoint, setPickedMapPoint] = useState(null);
   const [mapPointEditorState, setMapPointEditorState] = useState({ canPick: false, isOpen: false });
+  const [isMapSearchReplaceActive, setIsMapSearchReplaceActive] = useState(false);
   const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const alternativesByItem = useMemo(() => {
     const next = {};
@@ -10006,6 +10184,16 @@ function TripWorkspace(props) {
     setMapPointPickFeedback("");
   }
 
+  function startMapSearchReplace() {
+    if (isRouteLayoutCollapsed || !mapPointEditorState.canPick) return;
+    cancelMapPointPick();
+    setIsMapSearchReplaceActive(true);
+  }
+
+  function cancelMapSearchReplace() {
+    setIsMapSearchReplaceActive(false);
+  }
+
   function pickMapPoint(point) {
     if (!point) return;
     setPickedMapPoint({ ...point, pickedAt: Date.now(), source: mapPickingMode || "editor" });
@@ -10027,7 +10215,7 @@ function TripWorkspace(props) {
       longitude,
       pickedAt: Date.now(),
       placeId: details.id || "",
-      source: "places-details",
+      source: isMapSearchReplaceActive ? "places-replace" : "places-details",
     });
   }
 
@@ -10049,19 +10237,23 @@ function TripWorkspace(props) {
 
   useEffect(() => {
     if (isRouteLayoutCollapsed && mapPickingMode) cancelMapPointPick();
-  }, [isRouteLayoutCollapsed, mapPickingMode]);
+    if (isRouteLayoutCollapsed && isMapSearchReplaceActive) cancelMapSearchReplace();
+  }, [isMapSearchReplaceActive, isRouteLayoutCollapsed, mapPickingMode]);
 
   const mapPointPicker = {
     canPickMapPoint: !isRouteLayoutCollapsed && canEdit && (!mapPointEditorState.isOpen || mapPointEditorState.canPick),
     hasActiveMapPointEditor: mapPointEditorState.canPick,
     isPickingMapPoint: Boolean(mapPickingMode),
+    isMapSearchReplaceActive,
     mapPickingMode,
     mapPointPickFeedback,
     pickedMapPoint,
     onCancelMapPointPick: cancelMapPointPick,
+    onCancelMapSearchReplace: cancelMapSearchReplace,
     onMapPointEditorActiveChange: setMapPointEditorState,
     onPickMapPoint: pickMapPoint,
     onSelectPlaceDetails: selectPlaceDetails,
+    onStartMapSearchReplace: startMapSearchReplace,
     onStartMapPointPick: startMapPointPick,
   };
 
@@ -10690,6 +10882,7 @@ function ItineraryTimeline({
   focusedItemId,
   canPickMapPoint = false,
   isPickingMapPoint = false,
+  isMapSearchReplaceActive = false,
   pickedMapPoint = null,
   foreignCardSelection = null,
   foreignDragPresence = null,
@@ -10704,7 +10897,9 @@ function ItineraryTimeline({
   onClearCardSelection,
   onFocusItem,
   onCancelMapPointPick,
+  onCancelMapSearchReplace,
   onMapPointEditorActiveChange,
+  onStartMapSearchReplace,
   onStartMapPointPick,
   onPublishCardSelection,
   onPublishDragPresence,
@@ -10727,6 +10922,8 @@ function ItineraryTimeline({
   const [timeError, setTimeError] = useState("");
   const [mapUrlError, setMapUrlError] = useState("");
   const [isResolvingMapUrl, setIsResolvingMapUrl] = useState(false);
+  const [isMapUrlExpanded, setIsMapUrlExpanded] = useState(false);
+  const [durationInput, setDurationInput] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
   const [alternativeFormsByItem, setAlternativeFormsByItem] = useState({});
@@ -10818,6 +11015,9 @@ function ItineraryTimeline({
   const activeDayColumnRef = useRef(null);
   const activeTimelineListRef = useRef(null);
   const newVisitEditorRef = useRef(null);
+  const visitNoteRef = useRef(null);
+  const visitDurationRef = useRef(null);
+  const mapUrlApplyRef = useRef(false);
   const lastAppliedMapPointPickRef = useRef(null);
   const restrictTimelineDragToDayColumn = useCallback(
     ({ activeNodeRect, overlayNodeRect, transform }) => {
@@ -11284,6 +11484,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
+    setIsMapUrlExpanded(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -11407,6 +11608,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
+    setIsMapUrlExpanded(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(item.id);
@@ -11426,6 +11628,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
+    setIsMapUrlExpanded(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -11433,6 +11636,7 @@ function ItineraryTimeline({
     setInsertionPair(null);
     setRestoredDraftKey(null);
     onCancelMapPointPick?.();
+    onCancelMapSearchReplace?.();
     setIsOpen(false);
   }
 
@@ -11482,6 +11686,15 @@ function ItineraryTimeline({
       submittedForm.note = submittedForm.transport_note.trim();
       submittedForm.description = submittedForm.transport_note.trim();
     } else {
+      const normalizedStart = normalizeTimelineTimeInput(submittedForm.start_time);
+      const normalizedEnd = normalizeTimelineTimeInput(submittedForm.end_time);
+      if (!normalizedStart.ok || !normalizedEnd.ok) {
+        setTimeError("請輸入有效的 24 小時時間，例如 09:45。");
+        setForm(submittedForm);
+        return false;
+      }
+      submittedForm.start_time = normalizedStart.value;
+      submittedForm.end_time = normalizedEnd.value;
       if (!submittedForm.start_time || !submittedForm.end_time) {
         submittedForm.start_time = "";
         submittedForm.end_time = "";
@@ -11490,7 +11703,30 @@ function ItineraryTimeline({
       submittedForm.transportation_note = "";
       submittedForm.cost = "0";
     }
-    if (submittedForm.item_type !== "transport") {
+    const invalidTimeRange =
+      submittedForm.item_type !== "transport" && isInvalidTimeRange(submittedForm.start_time, submittedForm.end_time);
+    if (invalidTimeRange) {
+      setTimeError("結束時間必須晚於開始時間。");
+      setForm(submittedForm);
+      return false;
+    }
+    const overlapItem = findOverlappingVisitItem({
+      dayIndex: activeDay,
+      editingId,
+      items: dayItems,
+      payload: submittedForm,
+    });
+    if (overlapItem) {
+      setTimeError(formatTimelineOverlapError(overlapItem));
+      setForm(submittedForm);
+      return false;
+    }
+    const mapPointChanged =
+      !editingItem ||
+      String(submittedForm.map_url || "").trim() !== String(editingItem.map_url || "").trim() ||
+      Number(submittedForm.latitude) !== Number(editingItem.latitude) ||
+      Number(submittedForm.longitude) !== Number(editingItem.longitude);
+    if (submittedForm.item_type !== "transport" && mapPointChanged) {
       if (isResolvingMapUrl) return false;
       setIsResolvingMapUrl(true);
       let mapUrlValidation;
@@ -11523,24 +11759,6 @@ function ItineraryTimeline({
             dayItems.find((item) => item.id === submittedForm.to_item_id),
           )
         : {};
-    const invalidTimeRange =
-      submittedForm.item_type !== "transport" && isInvalidTimeRange(submittedForm.start_time, submittedForm.end_time);
-    if (invalidTimeRange) {
-      setTimeError("結束時間必須晚於開始時間。");
-      setForm(submittedForm);
-      return false;
-    }
-    const overlapItem = findOverlappingVisitItem({
-      dayIndex: activeDay,
-      editingId,
-      items: dayItems,
-      payload: submittedForm,
-    });
-    if (overlapItem) {
-      setTimeError(formatTimelineOverlapError(overlapItem));
-      setForm(submittedForm);
-      return false;
-    }
     if (submittedForm.item_type !== "transport" && !options.transportConflict) {
       const brokenPair = findBrokenTransportationPair({
         candidate: submittedForm,
@@ -11710,7 +11928,7 @@ function ItineraryTimeline({
 
   useEffect(() => {
     if (!pickedMapPoint?.pickedAt || lastAppliedMapPointPickRef.current === pickedMapPoint.pickedAt) return;
-    if (pickedMapPoint.source === "places-details") {
+    if (pickedMapPoint.source === "places-details" && !isMapSearchReplaceActive) {
       lastAppliedMapPointPickRef.current = pickedMapPoint.pickedAt;
       void openNewItem(pickedMapPoint);
       return;
@@ -11728,11 +11946,42 @@ function ItineraryTimeline({
     setMapUrlError("");
     setForm({
       ...form,
+      ...(pickedMapPoint.source === "places-replace"
+        ? {
+            title: pickedMapPoint.displayName || form.title,
+            location: pickedMapPoint.displayName || form.location,
+            location_name: pickedMapPoint.displayName || form.location_name,
+          }
+        : {}),
       latitude,
       longitude,
       map_url: googleMapsPointUrl(latitude, longitude),
     });
-  }, [form, isOpen, isTransportEditor, pickedMapPoint, setForm]);
+    if (pickedMapPoint.source === "places-replace") onCancelMapSearchReplace?.();
+  }, [form, isMapSearchReplaceActive, isOpen, isTransportEditor, onCancelMapSearchReplace, pickedMapPoint, setForm]);
+
+  useEffect(() => {
+    if (!isOpen || isTransportEditor) return;
+    const duration = getDurationMinutes(form.start_time, form.end_time);
+    if (document.activeElement?.name !== "duration_minutes") {
+      setDurationInput(duration ? formatDurationMinutes(duration) : "");
+    }
+  }, [form.end_time, form.start_time, isOpen, isTransportEditor]);
+
+  useEffect(() => {
+    const textarea = visitNoteRef.current;
+    if (!textarea || !isOpen || isTransportEditor) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 112)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 112 ? "auto" : "hidden";
+  }, [form.description, form.note, isOpen, isTransportEditor]);
+
+  useEffect(() => {
+    if (!isOpen || isTransportEditor) return undefined;
+    const bindings = [[visitDurationRef.current, handleDurationWheel]].filter(([element]) => Boolean(element));
+    bindings.forEach(([element, handler]) => element.addEventListener("wheel", handler, { passive: false }));
+    return () => bindings.forEach(([element, handler]) => element.removeEventListener("wheel", handler));
+  }, [form.end_time, form.start_time, isOpen, isTransportEditor]);
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
   const visitItemIds = useMemo(() => visitItems.map((item) => item.id), [visitItems]);
   useEffect(() => {
@@ -12428,6 +12677,90 @@ function ItineraryTimeline({
     else onStartMapPointPick?.();
   }
 
+  function updateVisitTime(field, nextValue, preservedDuration = null) {
+    setTimeError("");
+    if (field === "start_time") {
+      if (!nextValue) {
+        setForm({ ...form, start_time: "", end_time: "" });
+        return;
+      }
+      const duration = Number(preservedDuration || getDurationMinutes(form.start_time, form.end_time));
+      const startMinutes = timeToMinutes(nextValue);
+      const nextEnd =
+        startMinutes !== null && Number.isFinite(duration) && duration > 0
+          ? minutesToTimeValue(startMinutes + duration)
+          : form.end_time;
+      setForm({ ...form, start_time: nextValue, end_time: nextEnd || form.end_time });
+      return;
+    }
+    setForm(nextValue ? { ...form, end_time: nextValue } : { ...form, start_time: "", end_time: "" });
+  }
+
+  function commitDurationInput(rawValue) {
+    const text = String(rawValue || "").trim();
+    const hourMatch = text.match(/(\d+)\s*小時/);
+    const minuteMatch = text.match(/(\d+)\s*分鐘/);
+    const numeric = /^\d+$/.test(text)
+      ? Number(text)
+      : Number(hourMatch?.[1] || 0) * 60 + Number(minuteMatch?.[1] || 0);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+      setTimeError("停留時間請輸入大於 0 的分鐘數。");
+      return false;
+    }
+    const duration = Math.min(24 * 60 - 5, Math.max(5, Math.round(numeric / 5) * 5));
+    const start = timeToMinutes(form.start_time);
+    if (start === null) return false;
+    const nextEnd = minutesToTimeValue(start + duration);
+    if (!nextEnd) {
+      setTimeError("停留時間不可超過當日 24:00。");
+      return false;
+    }
+    setTimeError("");
+    setDurationInput(formatDurationMinutes(duration));
+    setForm({ ...form, end_time: nextEnd });
+    return true;
+  }
+
+  function handleDurationWheel(event) {
+    event.preventDefault();
+    const start = timeToMinutes(form.start_time);
+    const current = Number(getDurationMinutes(form.start_time, form.end_time));
+    if (start === null || !Number.isFinite(current)) return;
+    const direction = event.deltaY < 0 ? 1 : -1;
+    const nextDuration = Math.min(24 * 60 - 5, Math.max(5, current + direction * 5));
+    const nextEnd = minutesToTimeValue(start + nextDuration);
+    if (!nextEnd) return;
+    setTimeError("");
+    setDurationInput(formatDurationMinutes(nextDuration));
+    setForm({ ...form, end_time: nextEnd });
+  }
+
+  async function applyMapUrlDraft() {
+    if (mapUrlApplyRef.current || !String(form.map_url || "").trim()) return;
+    mapUrlApplyRef.current = true;
+    setIsResolvingMapUrl(true);
+    let result;
+    try {
+      result = await resolveDestinationMapUrlPoint(form.map_url, { resolveShortUrl: resolveGoogleMapsShortUrl });
+    } finally {
+      mapUrlApplyRef.current = false;
+      setIsResolvingMapUrl(false);
+    }
+    if (!result.ok) {
+      setMapUrlError(result.errorMessage);
+      return;
+    }
+    const nextUrl = result.expandedUrl || form.map_url;
+    setMapUrlError("");
+    setForm({ ...form, latitude: result.point.latitude, longitude: result.point.longitude, map_url: nextUrl });
+    setIsMapUrlExpanded(false);
+  }
+
+  const hasEditorMapPoint = hasValidMapPoint(form);
+  const editorMapsUrl = hasEditorMapPoint
+    ? form.map_url || googleMapsPointUrl(form.latitude, form.longitude)
+    : "";
+
   function renderVisitEditorForm() {
     return (
       <form autoComplete="off" className="item-form" onSubmit={submit}>
@@ -12446,8 +12779,16 @@ function ItineraryTimeline({
             <span>{foreignDragSaveBlockedMessage}</span>
           </div>
         ) : null}
-        <div className="field-group form-grid wide single destination-field">
+        <div className="visit-editor-primary-row">
           <label>
+            類型
+            <select name="type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+              {Object.entries(typeLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="destination-field">
             目的地
             <input
               autoComplete="off"
@@ -12455,137 +12796,105 @@ function ItineraryTimeline({
               name="location_name"
               required
               value={form.location_name || form.location}
-              onChange={(event) =>
-                setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })
-              }
+              onChange={(event) => setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })}
             />
           </label>
         </div>
-        <div className="field-group form-grid">
-          <label>
-            類型
-            <select name="type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
-              {Object.entries(typeLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            開始
-            <select
-              name="start_time"
-              value={form.start_time}
-              onChange={(event) => {
-                setTimeError("");
-                const nextStart = event.target.value;
-                if (!nextStart) {
-                  setForm({ ...form, start_time: "", end_time: "" });
-                  return;
-                }
-                const duration = Number(getDurationMinutes(form.start_time, form.end_time));
-                const startMinutes = timeToMinutes(nextStart);
-                const nextEnd =
-                  startMinutes !== null && Number.isFinite(duration) && duration > 0
-                    ? minutesToTimeValue(startMinutes + duration)
-                    : form.end_time;
-                setForm({ ...form, start_time: nextStart, end_time: nextEnd || form.end_time });
-              }}
-            >
-              <option value="">未設定</option>
-              {timelineTimeOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            結束
-            <select
-              name="end_time"
-              value={form.end_time}
-              onChange={(event) => {
-                setTimeError("");
-                const nextEnd = event.target.value;
-                setForm(nextEnd ? { ...form, end_time: nextEnd } : { ...form, start_time: "", end_time: "" });
-              }}
-            >
-              <option value="">未設定</option>
-              {timelineTimeOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            停留時長
-            <select
-              value={getDurationMinutes(form.start_time, form.end_time)}
+        <div className="visit-editor-time-row">
+          <TimelineSegmentedTimeField
+            label="開始"
+            name="start_time"
+            value={form.start_time}
+            onValueChange={(nextValue) => updateVisitTime("start_time", nextValue, getDurationMinutes(form.start_time, form.end_time))}
+          />
+          <span className="visit-time-link" aria-hidden="true" />
+          <TimelineSegmentedTimeField
+            label="結束"
+            name="end_time"
+            value={form.end_time}
+            onValueChange={(nextValue) => updateVisitTime("end_time", nextValue)}
+          />
+          <span className="visit-time-link" aria-hidden="true" />
+          <label className="visit-time-field duration">
+            停留時間
+            <input
+              autoComplete="off"
+              inputMode="numeric"
+              name="duration_minutes"
+              ref={visitDurationRef}
               disabled={!form.start_time}
-              onChange={(event) => {
-                setTimeError("");
-                const start = timeToMinutes(form.start_time);
-                const duration = Number(event.target.value);
-                if (start === null || !Number.isFinite(duration) || duration <= 0) return;
-                const nextEnd = minutesToTimeValue(start + duration);
-                if (nextEnd) setForm({ ...form, end_time: nextEnd });
-              }}
-            >
-              <option value="">未設定</option>
-              {timelineDurationOptions.map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {formatDurationMinutes(minutes)}
-                </option>
-              ))}
-            </select>
+              placeholder="分鐘"
+              value={durationInput}
+              onChange={(event) => setDurationInput(event.target.value)}
+              onFocus={(event) => event.currentTarget.select()}
+              onBlur={(event) => commitDurationInput(event.target.value)}
+            />
           </label>
         </div>
-        <label className="full-label">
+        <label className="full-label visit-note-field">
           備註
           <textarea
             autoComplete="off"
             name="description"
-            rows="3"
+            ref={visitNoteRef}
+            rows="2"
             value={form.description || form.note}
             onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
           />
         </label>
-        <div className="field-group form-grid wide single">
-          <label>
-            <span className="field-label-row">
-              <span>Map URL</span>
-              <span className="field-label-actions">
-                {mapUrlError ? (
-                  <span className="field-inline-error" role="alert">
-                    {mapUrlError}
-                  </span>
-                ) : null}
-                <button
-                  className={`mini-button map-point-picker-button${isPickingMapPoint ? " active" : ""}`}
-                  disabled={!canPickMapPoint}
-                  type="button"
-                  title={isPickingMapPoint ? "\u53d6\u6d88\u5730\u5716\u9078\u9ede" : "\u5f9e\u5730\u5716\u9078\u9ede"}
-                  aria-label={isPickingMapPoint ? "\u53d6\u6d88\u5730\u5716\u9078\u9ede" : "\u5f9e\u5730\u5716\u9078\u9ede"}
-                  onClick={toggleMapPointPick}
-                >
-                  {isPickingMapPoint ? <X aria-hidden="true" /> : <MapPin aria-hidden="true" />}
-                </button>
-              </span>
-            </span>
-            <input
-              autoComplete="off"
-              name="map_url"
-              placeholder="https://maps.google.com/..."
-              value={form.map_url}
-              onChange={(event) => {
-                setMapUrlError("");
-                setForm({ ...form, map_url: event.target.value });
+        <div className="visit-map-point-section">
+          <div className="visit-map-point-actions">
+            <button className={`ghost-button compact map-point-picker-button${isPickingMapPoint ? " active" : ""}`} disabled={!canPickMapPoint} type="button" onClick={toggleMapPointPick}>
+              <MapPin aria-hidden="true" />
+              <span>{isPickingMapPoint ? "取消選點" : "調整點位"}</span>
+            </button>
+            <button
+              className={`ghost-button compact${isMapSearchReplaceActive ? " active" : ""}`}
+              disabled={!canPickMapPoint}
+              type="button"
+              onClick={() => {
+                onCancelMapPointPick?.();
+                if (isMapSearchReplaceActive) onCancelMapSearchReplace?.();
+                else onStartMapSearchReplace?.();
               }}
-            />
-          </label>
+            >
+              <Search aria-hidden="true" />
+              <span>{isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"}</span>
+            </button>
+            <a
+              aria-disabled={!editorMapsUrl}
+              className={`ghost-button compact visit-maps-link${editorMapsUrl ? "" : " disabled"}`}
+              href={editorMapsUrl || undefined}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(event) => { if (!editorMapsUrl) event.preventDefault(); }}
+            >
+              <MapIcon aria-hidden="true" />
+              <span>打開地圖</span>
+            </a>
+          </div>
+          <button className="visit-map-url-toggle" type="button" aria-expanded={isMapUrlExpanded} onClick={() => setIsMapUrlExpanded((current) => !current)}>
+            <ChevronRight aria-hidden="true" />
+            貼上 Google Maps 連結
+          </button>
+          {isMapUrlExpanded ? (
+            <div className="visit-map-url-editor">
+              <input
+                autoComplete="off"
+                name="map_url"
+                placeholder="https://maps.google.com/..."
+                value={form.map_url}
+                onChange={(event) => { setMapUrlError(""); setForm({ ...form, map_url: event.target.value }); }}
+                onBlur={() => { void applyMapUrlDraft(); }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  void applyMapUrlDraft();
+                }}
+              />
+            </div>
+          ) : <input name="map_url" type="hidden" value={form.map_url} />}
+          {mapUrlError ? <span className="field-inline-error visit-map-url-error" role="alert">{mapUrlError}</span> : null}
         </div>
         <div className="form-actions">
           <button className="ghost-button item-form-cancel-button" type="button" onClick={() => closeEditor()}>
@@ -13422,6 +13731,7 @@ function RoutePanel({
   hasActiveMapPointEditor = false,
   headingEyebrow = "Route",
   isPickingMapPoint = false,
+  isMapSearchReplaceActive = false,
   mapPickingMode = null,
   mapPointPickFeedback = "",
   mode = "formal",
@@ -13431,11 +13741,13 @@ function RoutePanel({
   viewportKey,
   onFocusItem,
   onCancelMapPointPick,
+  onCancelMapSearchReplace,
   onPickMapPoint,
   onRouteOverrideChange,
   onRouteEditCollaborationEvent,
   onRouteEditPresenceChange,
   onSelectPlaceDetails,
+  onStartMapSearchReplace,
   onStartMapPointPick,
 }) {
   const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
@@ -13458,15 +13770,18 @@ function RoutePanel({
         canPickMapPoint={canPickMapPoint}
         hasActiveMapPointEditor={hasActiveMapPointEditor}
         isPickingMapPoint={isPickingMapPoint}
+        isMapSearchReplaceActive={isMapSearchReplaceActive}
         mapPickingMode={mapPickingMode}
         mapPointPickFeedback={mapPointPickFeedback}
         onFocusItem={onFocusItem}
         onCancelMapPointPick={onCancelMapPointPick}
+        onCancelMapSearchReplace={onCancelMapSearchReplace}
         onPickMapPoint={onPickMapPoint}
         onRouteOverrideChange={onRouteOverrideChange}
         onRouteEditCollaborationEvent={onRouteEditCollaborationEvent}
         onRouteEditPresenceChange={onRouteEditPresenceChange}
         onSelectPlaceDetails={onSelectPlaceDetails}
+        onStartMapSearchReplace={onStartMapSearchReplace}
         onStartMapPointPick={onStartMapPointPick}
         routeOverridePointsBySegment={routeOverridePointsBySegment}
         routeOverrideSaveError={routeOverrideSaveError}

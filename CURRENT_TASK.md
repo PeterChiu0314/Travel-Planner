@@ -20,6 +20,7 @@ Read these current sources before implementation:
 
 Relevant latest closeouts and plans:
 
+- `docs/2026-07-19-phase-5-9-itinerary-editor-ui-handoff.md`
 - `docs/2026-07-12-phase-5-7d-remote-route-node-visual-plan.md`
 - `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`
 - `docs/2026-07-05-phase-5-6-places-closeout-handoff.md`
@@ -36,15 +37,26 @@ Archive rules:
 ## Current Status
 
 ```text
-Current phase: Timeline Phase 5.8 UI Polish
-Status: In progress; color-token steps 3-4 and selective interaction polish implemented
-Branch: codex/timeline-phase-5-8
+Current phase: Timeline Phase 5.9 Itinerary Editor UI
+Status: In progress; first itinerary-editor UI slice implemented and automated verification passed
+Branch: codex/timeline-phase-5-9
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
-Latest Phase 5.8 implementation: current branch HEAD
+Latest Phase 5.9 implementation: current branch HEAD
 ```
 
-Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed baselines. Phase 5.8 is a sequence of small UI-polish changes and must not change their collaboration or persistence behavior.
+Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Phase 5.8 UI baseline remain protected. Phase 5.9 continues UI-only itinerary-editor work and must not change their collaboration or persistence behavior.
+
+## Phase 5.9 Current UI State
+
+- The visit editor now uses compact type/destination and linked start/end/duration rows. Start/end are custom 24-hour segmented fields: hours and minutes are independently focusable, typeable, arrow/wheel adjustable, and paired with a scrollable 288-option five-minute menu instead of the browser-native datalist.
+- The type/destination and start/end/duration controls use a compact 36 px height. Visit notes start at two lines with reduced padding and auto-grow to approximately five lines before scrolling internally.
+- The point section removes the redundant title and uses three explicit icon-and-text actions: MapPin + Adjust Point, Search + Search/Replace, and Map + Open Map. The expandable Google Maps URL input applies automatically on blur or Enter; there is no Apply button.
+- Visit-editor inputs, selects, and textareas use a consistent 14 px input font size.
+- Existing Map point picking and Places search/preview flows are reused; point changes update only the active editor draft until Save.
+- New visits still require a valid point. Existing legacy visits may edit unrelated fields when their unchanged point data is missing or invalid.
+- Search/Replace masks non-Map UI, keeps Map/Places controls interactive, changes the preview confirmation to `更改地點`, and exits after applying the selected place to the draft.
+- Full implementation and remaining manual QA notes are in `docs/2026-07-19-phase-5-9-itinerary-editor-ui-handoff.md`.
 
 ## Phase 5.8 Current UI State
 
@@ -108,6 +120,15 @@ Phase 5.7c synchronization and Phase 5.7d remote-drag visuals remain closed base
 - Database rows are authoritative after drag-end; active-drag Broadcast remains best effort.
 
 ## Verification
+
+Latest Phase 5.9 verification:
+
+- `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
+- `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 40/40.
+- `npm.cmd run test:e2e -- tests/phase-1-7f-smoke.spec.js` passed 30/30.
+- The 1280 x 720 Phase 5.9 rendered smoke check confirmed compact same-row geometry, independent hour/minute input, minute `+5`, a multi-option custom time menu, `90 -> 1小時30分鐘`, linked end-time updates, collapsed URL input, and zero console errors.
+- In-app Browser Demo QA at 624 x 800 confirmed 36 px primary/time controls, a 55 px two-line note, a roughly 44 px point row, three unclipped icon-and-text actions, the removed point title, and zero console errors. Focused Phase 5.9 checks passed 4/4 after the final density adjustment.
+- Authenticated Formal Google Maps visual comparison remains pending for the Search/Replace overlay and Places flow.
 
 Latest Phase 5.8 verification:
 
@@ -234,4 +255,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Continue user-directed Phase 5.8 UI polish from the current published branch HEAD. Preserve the closed Phase 5.7c synchronization and Phase 5.7d visual-feedback behavior.
+Continue user-directed Phase 5.9 itinerary-editor UI review from the verified local implementation. Next, perform authenticated Formal Google Maps visual QA and apply any user-directed density or proportion polish before publish. Preserve the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, and Phase 5.8 UI baseline.

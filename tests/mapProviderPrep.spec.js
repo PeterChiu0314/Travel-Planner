@@ -449,7 +449,7 @@ test("Phase 5.2 map URL parsing is wired into hidden coordinate persistence only
   expect(appSource).not.toContain('name="longitude"');
 });
 
-test("Phase 5.2b destination editor blocks invalid Map URLs with label-level feedback", () => {
+test("Phase 5.9 destination editor keeps invalid Map URL feedback inside the expandable point section", () => {
   const appSource = readRepoFile("src/App.jsx");
   const mapPointSource = readRepoFile("src/lib/mapPoint.js");
   const stylesSource = readRepoFile("src/styles.css");
@@ -459,12 +459,14 @@ test("Phase 5.2b destination editor blocks invalid Map URLs with label-level fee
   expect(appSource).toContain("setMapUrlError(mapUrlValidation.errorMessage)");
   expect(appSource).toContain("setForm(submittedForm)");
   expect(appSource).toContain("return false");
-  expect(appSource).toContain("field-label-row");
+  expect(appSource).toContain("visit-map-url-editor");
+  expect(appSource).toContain("visit-map-url-error");
+  expect(appSource).toContain("applyMapUrlDraft");
   expect(appSource).toContain("field-inline-error");
   expect(mapPointSource).toContain("請貼上有效 Map URL");
   expect(mapPointSource).toContain("無法取得有效點位");
-  expect(stylesSource).toContain(".field-label-row");
-  expect(stylesSource).toContain("justify-content: space-between");
+  expect(stylesSource).toContain(".visit-map-url-editor");
+  expect(stylesSource).toContain(".visit-map-url-error");
   expect(stylesSource).toContain(".field-inline-error");
 });
 
@@ -533,19 +535,44 @@ test("Phase 5.3 hotfix scrolls and spaces the bottom add editor", () => {
   expect(stylesSource).toContain(".timeline .item-form {\n  margin-bottom: 0");
 });
 
-test("Phase 5.3 destination editor exposes one map point picker icon button", () => {
+test("Phase 5.9 destination editor reuses the existing map point picker through a text action", () => {
   const appSource = readRepoFile("src/App.jsx");
   const stylesSource = readRepoFile("src/styles.css");
 
   expect(appSource).toContain("map-point-picker-button");
   expect(appSource).toContain("onStartMapPointPick?.()");
   expect(appSource).toContain("onCancelMapPointPick?.()");
-  expect(appSource).toContain("<MapPin aria-hidden=\"true\" />");
-  expect(appSource).toContain("<X aria-hidden=\"true\" />");
+  expect(appSource).toContain('isPickingMapPoint ? "取消選點" : "調整點位"');
+  expect(appSource).toContain('isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"');
   expect(appSource).toContain("canPickMapPoint: !isRouteLayoutCollapsed && canEdit");
   expect(appSource).toContain("canPickMapPoint: false");
   expect(stylesSource).toContain(".map-point-picker-button");
-  expect(stylesSource).toContain(".field-label-actions");
+  expect(stylesSource).toContain(".visit-map-point-actions");
+});
+
+test("Phase 5.9 visit editor uses compact linked time controls and a draft-only point workflow", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+
+  expect(appSource).toContain("visit-editor-primary-row");
+  expect(appSource).toContain("visit-editor-time-row");
+  expect(appSource).toContain("normalizeTimelineTimeInput");
+  expect(appSource).toContain("TimelineSegmentedTimeField");
+  expect(appSource).toContain("timeline-time-menu");
+  expect(appSource).toContain("<Search aria-hidden=\"true\" />");
+  expect(appSource).toContain("<span>打開地圖</span>");
+  expect(appSource).not.toContain("visit-map-point-title");
+  expect(appSource).toContain("handleDurationWheel");
+  expect(appSource).toContain('rows="2"');
+  expect(appSource).toContain('onStartMapSearchReplace?.()');
+  expect(appSource).toContain('source: isMapSearchReplaceActive ? "places-replace" : "places-details"');
+  expect(googleProviderSource).toContain('isMapSearchReplaceActive ? "更改地點"');
+  expect(googleProviderSource).toContain("map-search-replace-overlay");
+  expect(stylesSource).toContain(".visit-editor-primary-row");
+  expect(stylesSource).toContain(".visit-editor-time-row");
+  expect(stylesSource).toContain("height: 36px");
+  expect(stylesSource).toContain(".visit-note-field textarea");
 });
 
 test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () => {
@@ -636,11 +663,11 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
   expect(googleProviderSource).toContain("dayBoardRect?.width > 0 ? dayBoardRect.right : mapRect.left");
   expect(googleProviderSource).toContain("destinationMarkerIcon(mapsNamespace, marker, index, false, false)");
   expect(googleProviderSource).not.toContain("destinationMarkerIcon(mapsNamespace, marker, index, false, isRouteEditMode)");
-  expect(googleProviderSource).toContain('aria-label="離開路線編輯模式"');
-  expect(googleProviderSource).toContain("onClick={exitRouteEditMode}");
+  expect(googleProviderSource).toContain('isMapSearchReplaceActive ? "取消搜尋替換" : "離開路線編輯模式"');
+  expect(googleProviderSource).toContain("isMapSearchReplaceActive ? exitMapSearchReplace : exitRouteEditMode");
   expect(googleProviderSource).not.toContain("route-edit-interaction-layer");
   expect(googleProviderSource).toContain('event.key === "Escape"');
-  expect(googleProviderSource).toContain("disabled={isRouteEditMode}");
+  expect(googleProviderSource).toContain("disabled={isRouteEditMode || isMapSearchReplaceActive}");
   expect(googleProviderSource).toContain('title={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}');
   expect(googleProviderSource).toContain('aria-label={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}');
   expect(googleProviderSource).toContain("if (!isPickingMapPoint && !isRouteEditMode) onFocusItem?.(marker.itemId)");

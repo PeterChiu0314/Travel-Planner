@@ -62,4 +62,52 @@
 - The revised palette has no blocking token drift: formal CSS, JS marker tokens, design documentation, preview defaults, exported v3 tokens, and both route providers are aligned; the four fill/text pairs pass normal-text contrast targets.
 - Per user direction, the final Accent/Attraction adjustment to `#896C4D` with fill `#EBE5DE` and text `#654E37` was published without automated or browser verification.
 
-final result: blocked
+Phase 5.8 final result: blocked
+
+---
+
+# Timeline Phase 5.9 Editor Density Design QA
+
+## Comparison Target
+
+- Source visual truth: `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-4b357021-3fa9-48bd-8c37-6b7d1b539e24.png`.
+- Browser-rendered implementation: `test-results/phase-5-9-density-qa-full.png` with focused crop `test-results/phase-5-9-density-qa-form.png`.
+- Combined comparison evidence: `test-results/phase-5-9-density-qa-comparison.png`.
+- Route and viewport: `/demo/timeline` at a 624 x 800 in-app Browser viewport.
+- State: the first visit editor is open with its populated type, destination, start/end/duration, note, and collapsed point/URL controls.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: the existing `Inter`, `Noto Sans TC`, and system fallback stack is unchanged. Input typography remains the established 14 px / 500 treatment; labels and button copy retain their existing hierarchy. No text wraps or truncates in the final point controls.
+- Spacing and layout rhythm: type/destination and start/end/duration controls render at 35.99 px (the requested 36 px). The note starts at 55 px, equivalent to two text lines with reduced vertical padding. The point section remains a single 43.89 px row at this viewport.
+- Colors and visual tokens: existing transparent editor controls, borders, primary color, disabled opacity, and liquid-glass surface tokens are unchanged.
+- Image quality and asset fidelity: this editor contains no raster imagery. Existing Lucide icons are used for MapPin, Search, and Map; no custom SVG, CSS drawing, emoji, or placeholder asset was introduced.
+- Copy and content: the point title and leading icon were removed. The three controls now read `調整點位`, `搜尋替換`, and `打開地圖`, each paired with its requested icon.
+
+## Full-view And Focused Comparison Evidence
+
+- The full browser screenshot confirms the compact editor remains aligned inside the narrow Dayboard without hiding the save actions or overflowing into the Map.
+- The focused side-by-side comparison confirms the two input rows are shorter, the note begins at two lines, and the removed point title creates enough room for three explicit icon-and-text controls.
+- Focused DOM measurements confirm each final point control is approximately 84.82 px wide, with `clientWidth === scrollWidth` for all three labels. No focused crop beyond the editor was required because all requested typography, spacing, icons, and copy are readable in the combined component comparison.
+
+## Comparison History
+
+1. Initial implementation removed the point title, added MapPin/Search/Map icons, reduced the two input rows to 36 px, and reduced the note to a two-line 55 px start height.
+2. First in-app Browser comparison found a P1 truncation: the shared `.map-point-picker-button` rule forced `調整點位` to 30 px while its content required 48 px or more.
+3. The visit-editor action row now overrides that shared icon-only width with `width: auto`, `min-width: 0`, and non-shrinking action children.
+4. Post-fix evidence shows all three controls at approximately 84.82 px, identical client and scroll widths, and no overlap or clipping.
+
+## Findings
+
+- No actionable P0, P1, or P2 mismatch remains in the requested editor-density scope.
+- The three point controls are complete and readable. Their disabled Demo appearance is intentional and preserves existing behavior.
+- The 36 px controls and two-line note materially reduce vertical density while preserving labels, time linkage, focus treatment, and save actions.
+- Browser console errors: 0.
+- Focused Phase 5.9 checks: 4/4 passed.
+- Production build: passed; the existing Vite large-chunk warning remains informational.
+
+## Follow-up Polish
+
+- P3: authenticated Formal QA can separately confirm the enabled hover/active appearance of the three Map actions, but it does not block this layout change.
+
+final result: passed

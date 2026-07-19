@@ -99,6 +99,10 @@ Do:
 - Keep transportation cards visually attached to their semantic visit pair during drag preview, but do not make transportation cards themselves draggable.
 - For collaborative drag presence, keep the remote signal quiet: show who is dragging, show a muted insertion line when available, and disable same-day destination drag handles only while the foreign drag is active.
 - Treat collaborative drag presence as a soft coordination hint, not as official order state.
+- Keep the visit editor compact: type and destination share one row; start, end, and duration share one linked row; notes start at two lines and grow only as needed.
+- Keep visit time input on a 24-hour, five-minute system. Hours and minutes must be independently focusable and adjustable by typing, arrow keys, and wheel; provide a custom scrollable menu with multiple visible time options rather than relying on browser-native `datalist` UI, and do not add plus/minus controls.
+- Keep the first two visit-editor control rows at the compact 36 px height, and let notes start at two lines with restrained padding before auto-growing.
+- Preserve the existing start/end/duration linkage and existing overlap, transportation-pair, and auto-continuation rules when changing the editor UI.
 
 Do not:
 
@@ -155,6 +159,11 @@ Do:
 - Require an explicit Add to itinerary action before opening the Timeline add editor.
 - Keep the editor prefill parseable by the existing map URL validation, using `https://www.google.com/maps?q={lat},{lng}` for Places-derived coordinates.
 - Preserve user input on failed Place Details fetches so the user can adjust the search.
+- Show editor point status and actions without exposing place names, addresses, coordinates, or full Map URLs in the collapsed point section.
+- In the collapsed point section, avoid a redundant section title when the available actions are self-explanatory. Use compact Lucide icon-and-text actions for Adjust Point, Search/Replace, and Open Map, and do not force these labels into icon-only widths.
+- Reuse the existing map-pick and Places search/preview lifecycles for Adjust Point and Search/Replace; keep their results in the active editor draft until Save.
+- Keep the Google Maps URL input collapsed by default, apply a completed URL on blur or Enter without a separate Apply button, and show parse errors at the field instead of only in a global notice.
+- During Search/Replace, mask non-Map UI while keeping the Map, Places suggestions, preview, confirmation, and cancellation controls interactive.
 
 Do not:
 
