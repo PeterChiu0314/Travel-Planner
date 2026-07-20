@@ -41,9 +41,22 @@ test("add-location cancellation and all point sources keep the existing confirma
   expect(googleProviderSource).toContain("clearPendingPoi();");
   expect(googleProviderSource).toContain("clearPlacesPreview();");
   expect(googleProviderSource).toContain("resetPlacesSearch();");
-  expect(googleProviderSource).toContain('source: "custom-point"');
+  expect(googleProviderSource.match(/onPickMapPoint\?\.\(\{ latitude, longitude \}\)/g)).toHaveLength(2);
+  expect(googleProviderSource).not.toContain('source: "custom-point"');
   expect(googleProviderSource).toContain("onSelectPlaceDetails?.(placesPreview)");
   expect(googleProviderSource).toContain('placesPreview.source === "map-url" || !isMapSearchReplaceActive');
+});
+
+test("custom Map points open a coordinate-backed new editor with an immediate draft marker", () => {
+  const appSource = readRepoFile("src/App.jsx");
+
+  expect(appSource).toContain('source: mapPickingMode || "editor"');
+  expect(appSource).toContain('if (pickedMapPoint.source === "map-add")');
+  expect(appSource).toContain("void openNewItem(pickedMapPoint)");
+  expect(appSource).toContain('id: "itinerary-editor-preview"');
+  expect(appSource).toContain("locationName: form.location_name || form.location || form.title || \"新增地點\"");
+  expect(appSource).toContain("latitude: previewMapPoint.latitude");
+  expect(appSource).toContain("longitude: previewMapPoint.longitude");
 });
 
 test("new and existing visit editors share the same point editing section", () => {

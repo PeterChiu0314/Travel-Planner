@@ -1756,19 +1756,7 @@ export default function GoogleMapProvider(props) {
         event.stop?.();
         if (isPickingMapPoint) {
           if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-            if (mapPickingMode === "map-add") {
-              onCancelMapPointPick?.();
-              showPlacesPreview({
-                displayName: "",
-                googleMapsUri: googleMapsPointUrl(latitude, longitude),
-                id: "",
-                latitude,
-                longitude,
-                source: "custom-point",
-              });
-            } else {
-              onPickMapPoint?.({ latitude, longitude });
-            }
+            onPickMapPoint?.({ latitude, longitude });
           }
           return;
         }
@@ -1795,19 +1783,7 @@ export default function GoogleMapProvider(props) {
       }
       if (!isPickingMapPoint) return;
       if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-        if (mapPickingMode === "map-add") {
-          onCancelMapPointPick?.();
-          showPlacesPreview({
-            displayName: "",
-            googleMapsUri: googleMapsPointUrl(latitude, longitude),
-            id: "",
-            latitude,
-            longitude,
-            source: "custom-point",
-          });
-        } else {
-          onPickMapPoint?.({ latitude, longitude });
-        }
+        onPickMapPoint?.({ latitude, longitude });
       }
     });
 

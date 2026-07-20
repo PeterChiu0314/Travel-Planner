@@ -64,6 +64,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - New and existing visit editors share the same collapsed `更改地點` / `Maps` section, including point adjustment, Places replacement, and Google Maps URL input. Demo remains static-only and keeps its existing local add behavior.
 - Places-backed new visits normalize the selected point to a coordinate Google Maps URL before opening the editor, so Save can validate and persist the draft; pasted Google Maps URLs still preserve their effective URL. New-card URL validation errors display under the shared location section.
 - While Map add-location mode is active, the search field keeps keyboard focus and the adjacent add-point button shares the active visual state. The route-edit control continues to act as the mode Cancel button.
+- Custom Map-point picking in add-location mode now opens the new visit editor immediately with its latitude, longitude, and coordinate Maps URL, matching the original direct-pick behavior. The unsaved new visit is appended only as a provider-facing draft marker preview, so its marker updates immediately without creating an itinerary record before Save.
 
 ## Phase 5.9 Current UI State
 

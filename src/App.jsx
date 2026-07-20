@@ -12022,12 +12022,26 @@ function ItineraryTimeline({
       ? {
           itemId: editingId,
           latitude,
+          locationName: form.location_name || form.location || form.title || "新增地點",
           longitude,
           mapUrl: form.map_url || googleMapsPointUrl(latitude, longitude),
+          type: form.type,
         }
       : null;
     onMapPointEditorActiveChange?.({ canPick: true, isOpen: true, previewMapPoint });
-  }, [editingId, form.latitude, form.longitude, form.map_url, isOpen, isTransportEditor, onMapPointEditorActiveChange]);
+  }, [
+    editingId,
+    form.latitude,
+    form.location,
+    form.location_name,
+    form.longitude,
+    form.map_url,
+    form.title,
+    form.type,
+    isOpen,
+    isTransportEditor,
+    onMapPointEditorActiveChange,
+  ]);
 
   useEffect(() => {
     if (!pickedMapPoint?.pickedAt || lastAppliedMapPointPickRef.current === pickedMapPoint.pickedAt) return;
@@ -13869,7 +13883,22 @@ function RoutePanel({
           map_url: previewMapPoint.mapUrl,
         }
       : item)
-    : dayItems;
+    : previewMapPoint
+      ? [
+          ...dayItems,
+          {
+            id: "itinerary-editor-preview",
+            item_type: "visit",
+            latitude: previewMapPoint.latitude,
+            location: previewMapPoint.locationName,
+            location_name: previewMapPoint.locationName,
+            longitude: previewMapPoint.longitude,
+            map_url: previewMapPoint.mapUrl,
+            title: previewMapPoint.locationName,
+            type: previewMapPoint.type || "attraction",
+          },
+        ]
+      : dayItems;
   const stops = buildRoutePanelStops(sortedVisitItems(previewDayItems), { requireLocation: true });
   const focusedMapState = getFocusedMapState(previewDayItems, stops, focusedItemId);
   const missingMapPointCount = countMissingMapPoints(dayItems);
