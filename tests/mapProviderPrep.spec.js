@@ -563,6 +563,7 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
 
   expect(appSource).toContain("visit-editor-primary-row");
   expect(appSource).toContain("visit-editor-time-row");
+  expect(appSource).toContain('<div className="form-mode-label">{editingId ? "編輯行程" : "新增行程"}</div>');
   expect(appSource).toContain("normalizeTimelineTimeInput");
   expect(appSource).toContain("TimelineSegmentedTimeField");
   expect(appSource).toContain("timeline-time-menu");
@@ -580,6 +581,8 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(googleProviderSource).toContain("map-search-replace-overlay");
   expect(stylesSource).toContain(".visit-editor-primary-row");
   expect(stylesSource).toContain(".visit-editor-time-row");
+  expect(stylesSource).toContain(".visit-map-search-replace-button");
+  expect(stylesSource).toMatch(/\.visit-map-search-replace-button,\s*\.visit-maps-link \{\s*background: transparent;/);
   expect(stylesSource).toContain("height: 36px");
   expect(stylesSource).toContain(".visit-note-field textarea");
 });

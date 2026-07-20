@@ -12886,7 +12886,7 @@ function ItineraryTimeline({
     return (
       <form autoComplete="off" className="item-form" onSubmit={submit}>
         <input name="item_type" type="hidden" value="visit" />
-        {editingId ? <div className="form-mode-label">編輯主行程</div> : null}
+        <div className="form-mode-label">{editingId ? "編輯行程" : "新增行程"}</div>
         {conflict ? (
           <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
         ) : null}
@@ -12989,7 +12989,7 @@ function ItineraryTimeline({
                   <span>{isPickingMapPoint ? "取消選點" : "調整點位"}</span>
                 </button>
                 <button
-                  className={`ghost-button compact${isMapSearchReplaceActive ? " active" : ""}`}
+                  className={`ghost-button compact visit-map-search-replace-button${isMapSearchReplaceActive ? " active" : ""}`}
                   disabled={!canPickMapPoint}
                   type="button"
                   onClick={() => {

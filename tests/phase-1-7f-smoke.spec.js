@@ -71,6 +71,7 @@ async function setTimelineTime(form, name, value) {
 async function openDemoNewVisitForm(page, title, startTime, endTime) {
   await page.locator(".timeline-add-button").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+  await expect(form.locator(".form-mode-label")).toHaveText("新增行程");
   await form.locator('input[name="location_name"]').fill(title);
   await form.getByRole("button", { name: "更改地點" }).click();
   const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
@@ -395,6 +396,7 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+  await expect(form.locator(".form-mode-label")).toHaveText("編輯行程");
 
   const primaryLabels = form.locator(".visit-editor-primary-row > label");
   const typeBox = await primaryLabels.nth(0).boundingBox();

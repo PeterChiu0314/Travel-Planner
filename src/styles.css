@@ -3287,6 +3287,11 @@ textarea {
   white-space: nowrap;
 }
 
+.visit-map-search-replace-button,
+.visit-maps-link {
+  background: transparent;
+}
+
 .visit-map-point-actions .map-point-picker-button {
   width: auto;
   min-width: 0;
