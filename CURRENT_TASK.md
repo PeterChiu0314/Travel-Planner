@@ -37,7 +37,7 @@ Archive rules:
 ## Current Status
 
 ```text
-Current phase: Map search Google Maps URL support (first stage)
+Current phase: Dayboard add-itinerary Map location flow (second stage)
 Status: Implemented; focused automated verification and production build passed
 Branch: codex/timeline-phase-5-9
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
@@ -55,6 +55,13 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Invalid recognizable URLs preserve the input and any prior valid pending preview while showing a search-area error.
 - The short-link extension has not been run through automated or production-build verification in this slice; user manual QA is pending.
 - The itinerary editor's location section now stays open through URL resolution and other point updates until the user explicitly toggles it closed. A valid edited-card draft point is also previewed immediately in the existing Map marker before Save, without mutating the stored itinerary item.
+
+## Current Dayboard Add Location State
+
+- Formal Dayboard `＋新增行程` now enters an explicit Map add-location mode instead of opening an empty visit editor. If the Map is collapsed, it is reopened and mode activation waits for the real reveal animation to finish; the Google provider then waits for a positive container size, triggers the existing Map resize path, and focuses the Places/URL search field without a guessed timeout.
+- Places, Google Maps URL, POI, and custom map-point choices retain the existing pending preview and `加入行程` confirmation, then share the existing point-backed `openNewItem(point)` draft flow at the end of the active Day. Custom points now preview before confirmation only in `map-add`; existing-editor point adjustment remains immediate.
+- Cancel, Escape, outside-overlay click, Day/trip/section change, and mode exit clear pending markers, preview/search/URL state, and custom-point picking without opening an editor. An automatically reopened Map stays open.
+- New visit editors keep their already-selected Map URL in a hidden form field and no longer show the URL/location replacement section; existing visit editors retain the Phase 5.9 point-editing UI. Demo remains static-only and keeps its existing local add behavior.
 
 ## Phase 5.9 Current UI State
 
@@ -133,6 +140,13 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 Latest Map search URL verification:
 
 - `npm.cmd run test:e2e -- tests/googlePlacesAutocomplete.spec.js tests/mapPoint.spec.js --reporter=line` passed 25/25, including normal autocomplete, coordinate URL recognition, URL request guards, invalid-state guards, and existing Places preview/POI behavior.
+- `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
+- `git diff --check` passed; Windows line-ending notices remain informational.
+
+Latest Dayboard add-location verification:
+
+- `npm.cmd run test:e2e -- tests/googlePlacesAutocomplete.spec.js tests/mapPoint.spec.js --reporter=line` passed 28/28, covering existing Places/URL parsing and request guards plus Dayboard mode entry, reveal/resize/focus gating, cancellation cleanup, custom-point confirmation, and hidden new-draft Map URL wiring.
+- `npm.cmd run test:e2e -- tests/phase-1-7f-smoke.spec.js --reporter=line` passed 30/30 after preserving the Static-only Demo add flow and updating its helper to collapse the point section only through an explicit user click.
 - `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
 - `git diff --check` passed; Windows line-ending notices remain informational.
 
@@ -270,4 +284,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Continue user-directed Phase 5.9 itinerary-editor UI review from the verified local implementation. Next, perform authenticated Formal Google Maps visual QA and apply any user-directed density or proportion polish before publish. Preserve the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, and Phase 5.8 UI baseline.
+Perform authenticated Formal Google Maps manual QA for the Dayboard add-location flow with the Map both expanded and collapsed, including Places, Google Maps URL, custom point, confirmation, and cancellation. Preserve the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, and existing-editor Phase 5.9 point workflow.

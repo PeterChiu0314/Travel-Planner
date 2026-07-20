@@ -1596,10 +1596,20 @@ function useTimelineMapTransition() {
     }, closeDelay);
   }, [isMapClosing, isRouteCollapsed]);
 
+  const openRouteMap = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      window.clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setIsMapClosing(false);
+    setIsRouteCollapsed(false);
+  }, []);
+
   return {
     isMapClosing,
     isRouteCollapsed,
     isRouteLayoutCollapsed: isRouteCollapsed,
+    openRouteMap,
     toggleRouteMap,
   };
 }
@@ -10151,7 +10161,12 @@ function TripWorkspace(props) {
   const [pickedMapPoint, setPickedMapPoint] = useState(null);
   const [mapPointEditorState, setMapPointEditorState] = useState({ canPick: false, isOpen: false });
   const [isMapSearchReplaceActive, setIsMapSearchReplaceActive] = useState(false);
-  const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
+  const [isMapAddLocationActive, setIsMapAddLocationActive] = useState(false);
+  const [isMapAddLocationPending, setIsMapAddLocationPending] = useState(false);
+  const [mapAddLocationRequestId, setMapAddLocationRequestId] = useState(0);
+  const mapAddLocationPendingRef = useRef(false);
+  const sidePanelsRef = useRef(null);
+  const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, openRouteMap, toggleRouteMap } = useTimelineMapTransition();
   const alternativesByItem = useMemo(() => {
     const next = {};
     alternatives.forEach((alternative) => {
@@ -10195,11 +10210,47 @@ function TripWorkspace(props) {
     setIsMapSearchReplaceActive(false);
   }
 
+  const activateMapAddLocation = useCallback(() => {
+    if (!mapAddLocationPendingRef.current) return;
+    mapAddLocationPendingRef.current = false;
+    setIsMapAddLocationPending(false);
+    setIsMapAddLocationActive(true);
+    setMapAddLocationRequestId((current) => current + 1);
+  }, []);
+
+  function startMapAddLocation() {
+    cancelMapPointPick();
+    cancelMapSearchReplace();
+    setPickedMapPoint(null);
+    mapAddLocationPendingRef.current = true;
+    setIsMapAddLocationPending(true);
+    if (isRouteLayoutCollapsed || isMapClosing) {
+      openRouteMap();
+      return;
+    }
+    activateMapAddLocation();
+  }
+
+  function cancelMapAddLocation() {
+    mapAddLocationPendingRef.current = false;
+    setIsMapAddLocationPending(false);
+    setIsMapAddLocationActive(false);
+    setPickedMapPoint(null);
+    cancelMapPointPick();
+  }
+
+  function finishMapAddLocation() {
+    mapAddLocationPendingRef.current = false;
+    setIsMapAddLocationPending(false);
+    setIsMapAddLocationActive(false);
+  }
+
   function pickMapPoint(point) {
     if (!point) return;
     setPickedMapPoint({ ...point, pickedAt: Date.now(), source: mapPickingMode || "editor" });
     setMapPickingMode(null);
     setMapPointPickFeedback("picked");
+    if (isMapAddLocationActive) finishMapAddLocation();
     window.setTimeout(() => {
       setMapPointPickFeedback((current) => (current === "picked" ? "" : current));
     }, 1500);
@@ -10219,7 +10270,32 @@ function TripWorkspace(props) {
       placeId: details.id || "",
       source: isMapUrlPoint || !isMapSearchReplaceActive ? "places-details" : "places-replace",
     });
+    if (isMapAddLocationActive) finishMapAddLocation();
   }
+
+  useLayoutEffect(() => {
+    if (!isMapAddLocationPending || isRouteLayoutCollapsed) return undefined;
+    const sidePanels = sidePanelsRef.current;
+    if (!sidePanels) return undefined;
+    const revealAnimations = typeof sidePanels.getAnimations === "function"
+      ? sidePanels.getAnimations().filter((animation) => animation.animationName === "timeline-map-reveal")
+      : [];
+    if (!revealAnimations.length) {
+      activateMapAddLocation();
+      return undefined;
+    }
+    let cancelled = false;
+    Promise.allSettled(revealAnimations.map((animation) => animation.finished)).then(() => {
+      if (!cancelled) activateMapAddLocation();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activateMapAddLocation, isMapAddLocationPending, isRouteLayoutCollapsed]);
+
+  useEffect(() => {
+    cancelMapAddLocation();
+  }, [activeDay, activeTrip?.id, activeSection]);
 
   useEffect(() => {
     if (!mapPickingMode) return undefined;
@@ -10247,15 +10323,19 @@ function TripWorkspace(props) {
     hasActiveMapPointEditor: mapPointEditorState.canPick,
     isPickingMapPoint: Boolean(mapPickingMode),
     isMapSearchReplaceActive,
+    isMapAddLocationActive,
+    mapAddLocationRequestId,
     mapPickingMode,
     mapPointPickFeedback,
     pickedMapPoint,
     previewMapPoint: mapPointEditorState.previewMapPoint || null,
     onCancelMapPointPick: cancelMapPointPick,
+    onCancelMapAddLocation: cancelMapAddLocation,
     onCancelMapSearchReplace: cancelMapSearchReplace,
     onMapPointEditorActiveChange: setMapPointEditorState,
     onPickMapPoint: pickMapPoint,
     onSelectPlaceDetails: selectPlaceDetails,
+    onStartMapAddLocation: startMapAddLocation,
     onStartMapSearchReplace: startMapSearchReplace,
     onStartMapPointPick: startMapPointPick,
   };
@@ -10481,7 +10561,7 @@ function TripWorkspace(props) {
               </button>
             ) : null}
             {isRouteLayoutCollapsed ? null : (
-              <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`}>
+              <aside className={`side-panels${isMapClosing ? " is-closing" : ""}`} ref={sidePanelsRef}>
                 <RoutePanel
                   dayItems={dayItems}
                   focusedItemId={focusedItemId}
@@ -10902,6 +10982,7 @@ function ItineraryTimeline({
   onCancelMapPointPick,
   onCancelMapSearchReplace,
   onMapPointEditorActiveChange,
+  onStartMapAddLocation,
   onStartMapSearchReplace,
   onStartMapPointPick,
   onPublishCardSelection,
@@ -11953,7 +12034,7 @@ function ItineraryTimeline({
       void openNewItem(pickedMapPoint);
       return;
     }
-    if (pickedMapPoint.source === "map-add" && !isOpen) {
+    if (pickedMapPoint.source === "map-add") {
       lastAppliedMapPointPickRef.current = pickedMapPoint.pickedAt;
       void openNewItem(pickedMapPoint);
       return;
@@ -12861,7 +12942,7 @@ function ItineraryTimeline({
             onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
           />
         </label>
-        <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
+        {editingId || !useEditLocks ? <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
           <div className="visit-map-point-header">
             <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>
               <ChevronRight aria-hidden="true" />
@@ -12918,7 +12999,7 @@ function ItineraryTimeline({
             </div>
           ) : <input name="map_url" type="hidden" value={form.map_url} />}
           {mapUrlError ? <span className="field-inline-error visit-map-url-error" role="alert">{mapUrlError}</span> : null}
-        </div>
+        </div> : <input name="map_url" type="hidden" value={form.map_url} />}
         <div className="form-actions">
           <button className="ghost-button item-form-cancel-button" type="button" onClick={() => closeEditor()}>
             取消
@@ -13208,7 +13289,7 @@ function ItineraryTimeline({
           type="button"
           title="新增行程"
           aria-label="新增行程"
-          onClick={openNewItem}
+          onClick={onStartMapAddLocation || openNewItem}
         >
           <Plus aria-hidden="true" />
           <MapPin aria-hidden="true" />
@@ -13754,7 +13835,9 @@ function RoutePanel({
   hasActiveMapPointEditor = false,
   headingEyebrow = "Route",
   isPickingMapPoint = false,
+  isMapAddLocationActive = false,
   isMapSearchReplaceActive = false,
+  mapAddLocationRequestId = 0,
   mapPickingMode = null,
   mapPointPickFeedback = "",
   previewMapPoint = null,
@@ -13765,6 +13848,7 @@ function RoutePanel({
   viewportKey,
   onFocusItem,
   onCancelMapPointPick,
+  onCancelMapAddLocation,
   onCancelMapSearchReplace,
   onPickMapPoint,
   onRouteOverrideChange,
@@ -13804,11 +13888,14 @@ function RoutePanel({
         canPickMapPoint={canPickMapPoint}
         hasActiveMapPointEditor={hasActiveMapPointEditor}
         isPickingMapPoint={isPickingMapPoint}
+        isMapAddLocationActive={isMapAddLocationActive}
         isMapSearchReplaceActive={isMapSearchReplaceActive}
+        mapAddLocationRequestId={mapAddLocationRequestId}
         mapPickingMode={mapPickingMode}
         mapPointPickFeedback={mapPointPickFeedback}
         onFocusItem={onFocusItem}
         onCancelMapPointPick={onCancelMapPointPick}
+        onCancelMapAddLocation={onCancelMapAddLocation}
         onCancelMapSearchReplace={onCancelMapSearchReplace}
         onPickMapPoint={onPickMapPoint}
         onRouteOverrideChange={onRouteOverrideChange}

@@ -76,6 +76,7 @@ async function openDemoNewVisitForm(page, title, startTime, endTime) {
   const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
   await mapUrlInput.fill("https://www.google.com/maps?q=25.033,121.5654");
   await mapUrlInput.blur();
+  await form.getByRole("button", { name: "更改地點" }).click();
   await expect(form.locator(".visit-map-url-editor")).toHaveCount(0);
   if (startTime !== null) await setTimelineTime(form, "start_time", startTime);
   if (endTime !== null) await setTimelineTime(form, "end_time", endTime);

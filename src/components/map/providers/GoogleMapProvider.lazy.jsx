@@ -251,10 +251,13 @@ export default function GoogleMapProvider(props) {
     canPickMapPoint = false,
     hasActiveMapPointEditor = false,
     isPickingMapPoint = false,
+    isMapAddLocationActive = false,
     isMapSearchReplaceActive = false,
+    mapAddLocationRequestId = 0,
     mapPickingMode = null,
     mapPointPickFeedback = "",
     onCancelMapPointPick,
+    onCancelMapAddLocation,
     onCancelMapSearchReplace,
     onFocusItem,
     onPickMapPoint,
@@ -304,6 +307,8 @@ export default function GoogleMapProvider(props) {
   const userChangedViewportRef = useRef(false);
   const autoViewportSignatureRef = useRef(null);
   const placesSearchComposingRef = useRef(false);
+  const placesSearchInputRef = useRef(null);
+  const wasMapAddLocationActiveRef = useRef(false);
   const placesAutocompleteRequestSeqRef = useRef(0);
   const placesUrlRequestSeqRef = useRef(0);
   const lastRequestedPlacesQueryRef = useRef("");
@@ -629,7 +634,7 @@ export default function GoogleMapProvider(props) {
       onCancelMapPointPick?.();
       return;
     }
-    onStartMapPointPick?.(hasActiveMapPointEditor ? "editor" : "map-add");
+    onStartMapPointPick?.(isMapAddLocationActive ? "map-add" : hasActiveMapPointEditor ? "editor" : "map-add");
   }
 
   function toggleRouteEditMode(event) {
@@ -649,6 +654,14 @@ export default function GoogleMapProvider(props) {
     onCancelMapSearchReplace?.();
   }
 
+  function exitMapAddLocation() {
+    clearPendingPoi();
+    clearPlacesPreview();
+    resetPlacesSearch();
+    if (isPickingMapPointRef.current) onCancelMapPointPickRef.current?.();
+    onCancelMapAddLocation?.();
+  }
+
   function updateRouteEditOverlayRect() {
     const mapRect = mapElementRef.current?.parentElement?.getBoundingClientRect?.();
     if (!mapRect) {
@@ -665,7 +678,7 @@ export default function GoogleMapProvider(props) {
     );
     const top = Math.min(
       mapRect.bottom,
-      isMapSearchReplaceActive ? mapRect.top : mapRect.top + ROUTE_EDIT_ACTIVE_TOP_INSET_PX,
+      isMapSearchReplaceActive || isMapAddLocationActive ? mapRect.top : mapRect.top + ROUTE_EDIT_ACTIVE_TOP_INSET_PX,
     );
     setRouteEditOverlayRect({
       bottom: Math.max(0, window.innerHeight - mapRect.bottom),
@@ -951,6 +964,67 @@ export default function GoogleMapProvider(props) {
       window.clearTimeout(timerId);
     };
   }, [canSearchPlaces, placesSearchInput, placesSearchIsComposing]);
+
+  useEffect(() => {
+    if (!isMapAddLocationActive) {
+      if (wasMapAddLocationActiveRef.current) {
+        clearPendingPoi();
+        clearPlacesPreview();
+        resetPlacesSearch();
+        if (isPickingMapPointRef.current) onCancelMapPointPickRef.current?.();
+      }
+      wasMapAddLocationActiveRef.current = false;
+      return undefined;
+    }
+
+    wasMapAddLocationActiveRef.current = true;
+    if (isRouteEditMode) setIsRouteEditMode(false);
+    clearPendingPoi();
+    clearPlacesPreview();
+    resetPlacesSearch();
+    updateRouteEditOverlayRect();
+
+    function handleMapAddLocationKeyDown(event) {
+      if (event.key === "Escape") exitMapAddLocation();
+    }
+
+    function handleMapAddLocationViewportChange() {
+      updateRouteEditOverlayRect();
+    }
+
+    document.addEventListener("keydown", handleMapAddLocationKeyDown);
+    window.addEventListener("resize", handleMapAddLocationViewportChange);
+    window.addEventListener("scroll", handleMapAddLocationViewportChange, true);
+    return () => {
+      document.removeEventListener("keydown", handleMapAddLocationKeyDown);
+      window.removeEventListener("resize", handleMapAddLocationViewportChange);
+      window.removeEventListener("scroll", handleMapAddLocationViewportChange, true);
+    };
+  }, [isMapAddLocationActive]);
+
+  useEffect(() => {
+    if (!isMapAddLocationActive || status !== "ready" || !placesReady) return undefined;
+    const mapElement = mapElementRef.current;
+    const searchInput = placesSearchInputRef.current;
+    if (!mapElement || !searchInput || !mapRef.current) return undefined;
+
+    let observer = null;
+    function focusWhenMapHasSize() {
+      const bounds = mapElement.getBoundingClientRect();
+      if (bounds.width <= 0 || bounds.height <= 0) return false;
+      window.google?.maps?.event?.trigger?.(mapRef.current, "resize");
+      updatePlacesLocationBias(mapRef.current);
+      searchInput.focus({ preventScroll: true });
+      observer?.disconnect();
+      return true;
+    }
+
+    if (!focusWhenMapHasSize() && typeof ResizeObserver === "function") {
+      observer = new ResizeObserver(focusWhenMapHasSize);
+      observer.observe(mapElement);
+    }
+    return () => observer?.disconnect();
+  }, [isMapAddLocationActive, mapAddLocationRequestId, placesReady, status]);
 
   useEffect(() => {
     if (!isRouteEditMode) return undefined;
@@ -1682,7 +1756,19 @@ export default function GoogleMapProvider(props) {
         event.stop?.();
         if (isPickingMapPoint) {
           if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-            onPickMapPoint?.({ latitude, longitude });
+            if (mapPickingMode === "map-add") {
+              onCancelMapPointPick?.();
+              showPlacesPreview({
+                displayName: "",
+                googleMapsUri: googleMapsPointUrl(latitude, longitude),
+                id: "",
+                latitude,
+                longitude,
+                source: "custom-point",
+              });
+            } else {
+              onPickMapPoint?.({ latitude, longitude });
+            }
           }
           return;
         }
@@ -1709,7 +1795,19 @@ export default function GoogleMapProvider(props) {
       }
       if (!isPickingMapPoint) return;
       if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-        onPickMapPoint?.({ latitude, longitude });
+        if (mapPickingMode === "map-add") {
+          onCancelMapPointPick?.();
+          showPlacesPreview({
+            displayName: "",
+            googleMapsUri: googleMapsPointUrl(latitude, longitude),
+            id: "",
+            latitude,
+            longitude,
+            source: "custom-point",
+          });
+        } else {
+          onPickMapPoint?.({ latitude, longitude });
+        }
       }
     });
 
@@ -1717,7 +1815,7 @@ export default function GoogleMapProvider(props) {
       mapPointClickListenerRef.current?.remove?.();
       mapPointClickListenerRef.current = null;
     };
-  }, [isPickingMapPoint, isRouteEditMode, onPickMapPoint, pendingPoi, placesPreview, status]);
+  }, [isPickingMapPoint, isRouteEditMode, mapPickingMode, onCancelMapPointPick, onPickMapPoint, pendingPoi, placesPreview, status]);
 
   useEffect(() => {
     clearPendingPoi();
@@ -1842,16 +1940,16 @@ export default function GoogleMapProvider(props) {
       ]
     : [];
   const routeEditOverlay =
-    (isRouteEditMode || isMapSearchReplaceActive) && routeEditOverlayPanes.length && typeof document !== "undefined"
+    (isRouteEditMode || isMapSearchReplaceActive || isMapAddLocationActive) && routeEditOverlayPanes.length && typeof document !== "undefined"
       ? createPortal(
           routeEditOverlayPanes.map((pane) => (
             <button
-              aria-label={isMapSearchReplaceActive ? "取消搜尋替換" : "離開路線編輯模式"}
-              className={`route-edit-page-overlay-pane ${pane.name}${isMapSearchReplaceActive ? " map-search-replace-overlay" : ""}`}
+              aria-label={isMapAddLocationActive ? "取消新增地點" : isMapSearchReplaceActive ? "取消搜尋替換" : "離開路線編輯模式"}
+              className={`route-edit-page-overlay-pane ${pane.name}${isMapSearchReplaceActive ? " map-search-replace-overlay" : ""}${isMapAddLocationActive ? " map-add-location-overlay" : ""}`}
               key={pane.name}
               style={pane.style}
               type="button"
-              onClick={isMapSearchReplaceActive ? exitMapSearchReplace : exitRouteEditMode}
+              onClick={isMapAddLocationActive ? exitMapAddLocation : isMapSearchReplaceActive ? exitMapSearchReplace : exitRouteEditMode}
             />
           )),
           document.body,
@@ -1860,17 +1958,30 @@ export default function GoogleMapProvider(props) {
 
   const renderMapAreaTools = (extraClassName = "") => (
     <div className={`map-area-tools${extraClassName ? ` ${extraClassName}` : ""}`}>
-      <button
-        className={`mini-button map-route-edit-button${isRouteEditMode ? " active" : ""}`}
-        disabled={isMapSearchReplaceActive}
-        type="button"
-        title="編輯地圖路線"
-        aria-label="編輯地圖路線"
-        onClick={toggleRouteEditMode}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <Route aria-hidden="true" />
-      </button>
+      {isMapAddLocationActive ? (
+        <button
+          className="mini-button map-add-location-cancel-button active"
+          type="button"
+          title="取消新增地點"
+          aria-label="取消新增地點"
+          onClick={exitMapAddLocation}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <X aria-hidden="true" />
+        </button>
+      ) : (
+        <button
+          className={`mini-button map-route-edit-button${isRouteEditMode ? " active" : ""}`}
+          disabled={isMapSearchReplaceActive}
+          type="button"
+          title="編輯地圖路線"
+          aria-label="編輯地圖路線"
+          onClick={toggleRouteEditMode}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <Route aria-hidden="true" />
+        </button>
+      )}
       {canPickMapPoint ? (
         <button
           className={`mini-button map-area-point-button${isPickingMapPoint ? " active" : ""}`}
@@ -1927,6 +2038,7 @@ export default function GoogleMapProvider(props) {
               className="places-search-input"
               disabled={isRouteEditMode || isPickingMapPoint}
               placeholder="搜尋地點或貼上 Google Maps 連結"
+              ref={placesSearchInputRef}
               value={placesSearchInput}
               onChange={(event) => {
                 setSelectedPlacePrediction(null);

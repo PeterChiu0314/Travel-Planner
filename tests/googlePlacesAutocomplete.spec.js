@@ -15,6 +15,45 @@ function readRepoFile(filePath) {
   return fs.readFileSync(path.join(repoRoot, filePath), "utf8");
 }
 
+test("Dayboard add waits for a ready Map and enters the shared add-location flow", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+
+  expect(appSource).toContain("onClick={onStartMapAddLocation || openNewItem}");
+  expect(appSource).toContain("if (isRouteLayoutCollapsed || isMapClosing)");
+  expect(appSource).toContain("openRouteMap();");
+  expect(appSource).toContain('animation.animationName === "timeline-map-reveal"');
+  expect(appSource).toContain("Promise.allSettled(revealAnimations.map((animation) => animation.finished))");
+  expect(mapPanelSource).toContain("isMapAddLocationActive");
+  expect(googleProviderSource).toContain("new ResizeObserver(focusWhenMapHasSize)");
+  expect(googleProviderSource).toContain('trigger?.(mapRef.current, "resize")');
+  expect(googleProviderSource).toContain("searchInput.focus({ preventScroll: true })");
+});
+
+test("add-location cancellation and all point sources keep the existing confirmation handoff", () => {
+  const appSource = readRepoFile("src/App.jsx");
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+
+  expect(appSource).toContain("setPickedMapPoint(null)");
+  expect(appSource).toContain('if (pickedMapPoint.source === "map-add")');
+  expect(googleProviderSource).toContain("function exitMapAddLocation()");
+  expect(googleProviderSource).toContain("clearPendingPoi();");
+  expect(googleProviderSource).toContain("clearPlacesPreview();");
+  expect(googleProviderSource).toContain("resetPlacesSearch();");
+  expect(googleProviderSource).toContain('source: "custom-point"');
+  expect(googleProviderSource).toContain("onSelectPlaceDetails?.(placesPreview)");
+  expect(googleProviderSource).toContain('placesPreview.source === "map-url" || !isMapSearchReplaceActive');
+});
+
+test("new visit drafts keep the selected Map URL hidden while existing visits retain point editing", () => {
+  const appSource = readRepoFile("src/App.jsx");
+
+  expect(appSource).toContain('editingId || !useEditLocks ? <div className={`visit-map-point-section');
+  expect(appSource).toContain(': <input name="map_url" type="hidden" value={form.map_url} />}');
+  expect(appSource).toContain("const nextForm = buildNewVisitForm(initialPoint)");
+});
+
 test("Phase 5.6b normalizes Places autocomplete predictions without Place Details", () => {
   expect(
     normalizeAutocompletePrediction({
