@@ -538,7 +538,7 @@ test("Phase 5.3 hotfix scrolls and spaces the bottom add editor", () => {
   expect(appSource).toContain("autoContinuationPrompt");
   expect(stylesSource).toContain(".timeline-add-editor-anchor");
   expect(stylesSource).toContain("margin-top: 4px");
-  expect(stylesSource).toContain(".timeline .item-form {\n  margin-bottom: 0");
+  expect(stylesSource).toMatch(/\.timeline \.item-form,\s*\.timeline-add-editor-anchor \.item-form \{\s*margin-bottom: 0;/);
 });
 
 test("Phase 5.9 destination editor reuses the existing map point picker through a text action", () => {
@@ -581,6 +581,10 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(googleProviderSource).toContain("map-search-replace-overlay");
   expect(stylesSource).toContain(".visit-editor-primary-row");
   expect(stylesSource).toContain(".visit-editor-time-row");
+  expect(stylesSource).toMatch(/\.timeline \.item-form,\s*\.timeline-add-editor-anchor \.item-form \{\s*margin-bottom: 0;/);
+  expect(stylesSource).toContain('.timeline-add-editor-anchor .item-form input:not([type="hidden"])');
+  expect(stylesSource).toContain(".timeline-add-editor-anchor .item-form .item-form-cancel-button");
+  expect(stylesSource).toContain(".timeline-add-editor-anchor .item-form .map-point-picker-button");
   expect(stylesSource).toContain(".visit-map-search-replace-button");
   expect(stylesSource).toMatch(/\.visit-map-search-replace-button,\s*\.visit-maps-link \{\s*background: transparent;/);
   expect(stylesSource).toContain("height: 36px");

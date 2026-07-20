@@ -74,6 +74,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - The type/destination and start/end/duration controls use a compact 36 px height. Visit notes start at two lines with reduced padding and auto-grow to approximately five lines before scrolling internally.
 - The point section is collapsed by default with `更改地點` on the left and an always-visible `Maps` external link on the right. Expanding reveals Adjust Point, Search/Replace, and the full-width Google Maps URL input; blur or Enter applies the URL without a separate Apply button.
 - New and existing visit cards now share the same visible mode heading: `新增行程` for new drafts and `編輯行程` for stored visits. Search/Replace and Maps controls use transparent backgrounds while retaining their borders and interaction behavior.
+- The standalone new-visit editor now also inherits the existing Timeline editor's transparent field/control surfaces and zero form bottom margin, removing the visual mismatch caused by its placement outside the `.timeline` wrapper.
 - Visit-editor inputs, selects, and textareas use a consistent 14 px input font size.
 - Existing Map point picking and Places search/preview flows are reused; point changes update only the active editor draft until Save.
 - New visits still require a valid point. Existing legacy visits may edit unrelated fields when their unchanged point data is missing or invalid.

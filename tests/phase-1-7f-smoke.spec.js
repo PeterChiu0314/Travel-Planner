@@ -458,6 +458,33 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(failures).toEqual([]);
 });
 
+test("Phase 5.9 new visit editor uses the same transparent card controls as the existing editor", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/demo/timeline");
+
+  await page.locator(".timeline-add-button").click();
+  const form = page.locator(".timeline-day-column.active .timeline-add-editor-anchor .item-form");
+  await expect(form.locator(".form-mode-label")).toHaveText("新增行程");
+
+  const visualStyles = await form.evaluate((element) => ({
+    marginBottom: getComputedStyle(element).marginBottom,
+    destinationBackground: getComputedStyle(element.querySelector('input[name="location_name"]')).backgroundColor,
+    typeBackground: getComputedStyle(element.querySelector('select[name="type"]')).backgroundColor,
+    noteBackground: getComputedStyle(element.querySelector('textarea[name="description"]')).backgroundColor,
+    cancelBackground: getComputedStyle(element.querySelector(".item-form-cancel-button")).backgroundColor,
+  }));
+
+  expect(visualStyles).toEqual({
+    marginBottom: "0px",
+    destinationBackground: "rgba(0, 0, 0, 0)",
+    typeBackground: "rgba(0, 0, 0, 0)",
+    noteBackground: "rgba(0, 0, 0, 0)",
+    cancelBackground: "rgba(0, 0, 0, 0)",
+  });
+  expect(failures).toEqual([]);
+});
+
 test("demo trip switch resets an out-of-range selected day board", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
