@@ -50,9 +50,10 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 ## Current Map Search URL State
 
 - The Google Map search field accepts normal Places text or a recognizable Google Maps coordinate URL; normal text keeps the existing autocomplete, IME, debounce, session-token, location-bias, suggestion, and POI flows.
-- Coordinate URLs reuse `parseMapUrlToPoint`, move the Map to the parsed point, and open the existing pending preview with `加入行程` without Autocomplete, Place Details, Text Search, or Geocoding requests.
-- URL-created visits keep latitude, longitude, and the original Map URL with an empty place ID, then open the existing new-item editor and remain appended by the existing ordering flow.
+- Coordinate URLs reuse `resolveDestinationMapUrlPoint` and its existing parser; supported Google Maps short URLs use the existing `resolveGoogleMapsShortUrl` Edge Function before moving the Map and opening the pending preview with `加入行程`. Neither path calls Autocomplete, Place Details, Text Search, or Geocoding.
+- URL-created visits keep latitude, longitude, and the effective Map URL (expanded for short links) with an empty place ID, then open the existing new-item editor and remain appended by the existing ordering flow.
 - Invalid recognizable URLs preserve the input and any prior valid pending preview while showing a search-area error.
+- The short-link extension has not been run through automated or production-build verification in this slice; user manual QA is pending.
 
 ## Phase 5.9 Current UI State
 

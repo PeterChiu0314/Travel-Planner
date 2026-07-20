@@ -8,6 +8,7 @@ import {
 } from "../../../lib/googlePlacesAdapter.js";
 import { PLACE_DETAILS_FIELD_MASK_MINIMAL } from "../../../lib/googlePlacesConfig.js";
 import { loadGoogleMapsApi } from "../../../lib/googleMapsLoader.js";
+import { resolveGoogleMapsShortUrl } from "../../../lib/googleMapsShortLinkResolver.js";
 import {
   DESTINATION_MARKER_ANCHOR_X,
   DESTINATION_MARKER_ANCHOR_Y,
@@ -16,7 +17,7 @@ import {
   buildDestinationMarkerSvg,
 } from "../../../lib/mapMarkerVisuals.js";
 import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
-import { isGoogleMapsUrl, parseMapUrlToPoint } from "../../../lib/mapPoint.js";
+import { isGoogleMapsUrl, resolveDestinationMapUrlPoint } from "../../../lib/mapPoint.js";
 import { designColors } from "../../../lib/designColorTokens.js";
 import { MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT } from "../../../lib/routeOverrides.js";
 import {
@@ -304,6 +305,7 @@ export default function GoogleMapProvider(props) {
   const autoViewportSignatureRef = useRef(null);
   const placesSearchComposingRef = useRef(false);
   const placesAutocompleteRequestSeqRef = useRef(0);
+  const placesUrlRequestSeqRef = useRef(0);
   const lastRequestedPlacesQueryRef = useRef("");
   const latestPlacesLocationBiasRef = useRef(null);
   const [status, setStatus] = useState("idle");
@@ -329,6 +331,7 @@ export default function GoogleMapProvider(props) {
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
   const [placesDetailsStatus, setPlacesDetailsStatus] = useState("idle");
   const [placesUrlError, setPlacesUrlError] = useState("");
+  const [placesUrlStatus, setPlacesUrlStatus] = useState("idle");
   const [isRouteEditMode, setIsRouteEditMode] = useState(false);
   const [routeEditOverlayRect, setRouteEditOverlayRect] = useState(null);
   const [customRoutePointsBySegment, setCustomRoutePointsBySegment] = useState({});
@@ -396,6 +399,8 @@ export default function GoogleMapProvider(props) {
     setPlacesSearchStatus("idle");
     setPlacesDetailsStatus("idle");
     setPlacesUrlError("");
+    setPlacesUrlStatus("idle");
+    placesUrlRequestSeqRef.current += 1;
     placesSearchComposingRef.current = false;
     lastRequestedPlacesQueryRef.current = "";
     placesSessionManagerRef.current.resetSessionToken();
@@ -488,40 +493,54 @@ export default function GoogleMapProvider(props) {
     }
   }
 
-  function applyGoogleMapsUrlInput(rawInput) {
+  async function applyGoogleMapsUrlInput(rawInput) {
     const input = rawInput.trim();
     if (!isGoogleMapsUrl(input)) return false;
 
+    const requestId = placesUrlRequestSeqRef.current + 1;
+    placesUrlRequestSeqRef.current = requestId;
     placesAutocompleteRequestSeqRef.current += 1;
     lastRequestedPlacesQueryRef.current = "";
     setPlacesPredictions([]);
     setSelectedPlacePrediction(null);
     setPlacesSearchStatus("idle");
     setPlacesDetailsStatus("idle");
+    setPlacesUrlError("");
+    setPlacesUrlStatus("loading");
     placesSessionManagerRef.current.resetSessionToken();
 
-    const point = parseMapUrlToPoint(input);
-    if (!point) {
+    const result = await resolveDestinationMapUrlPoint(input, {
+      resolveShortUrl: resolveGoogleMapsShortUrl,
+    });
+    if (placesUrlRequestSeqRef.current !== requestId) return true;
+    if (!result.ok) {
       setPlacesUrlError("無法從這個 Google Maps 連結取得座標");
+      setPlacesUrlStatus("error");
       return true;
     }
 
     setPlacesUrlError("");
+    setPlacesUrlStatus("idle");
     clearPendingPoi();
     showPlacesPreview({
       displayName: "Google Maps 地點",
-      googleMapsUri: input,
+      googleMapsUri: result.expandedUrl || input,
       id: "",
-      latitude: point.latitude,
-      longitude: point.longitude,
+      latitude: result.point.latitude,
+      longitude: result.point.longitude,
       source: "map-url",
     });
     return true;
   }
 
   function submitPlacesSearch(rawInput) {
-    if (applyGoogleMapsUrlInput(rawInput)) return;
+    if (isGoogleMapsUrl(rawInput.trim())) {
+      void applyGoogleMapsUrlInput(rawInput);
+      return;
+    }
+    placesUrlRequestSeqRef.current += 1;
     setPlacesUrlError("");
+    setPlacesUrlStatus("idle");
     void requestPlacesAutocomplete(rawInput);
   }
 
@@ -1781,7 +1800,7 @@ export default function GoogleMapProvider(props) {
   ]);
 
   const placesStatusMessage =
-    placesUrlError ||
+    (placesUrlStatus === "loading" ? "正在展開 Google Maps 連結..." : placesUrlError) ||
     (placesDetailsStatus === "loading"
       ? "\u8f09\u5165\u5730\u9ede\u8cc7\u6599\u4e2d..."
       : placesDetailsStatus === "missing-location"
@@ -1915,7 +1934,13 @@ export default function GoogleMapProvider(props) {
                 const nextInput = event.target.value;
                 setPlacesSearchInput(nextInput);
                 if (placesSearchComposingRef.current) return;
-                if (!applyGoogleMapsUrlInput(nextInput)) setPlacesUrlError("");
+                if (isGoogleMapsUrl(nextInput.trim())) {
+                  void applyGoogleMapsUrlInput(nextInput);
+                } else {
+                  placesUrlRequestSeqRef.current += 1;
+                  setPlacesUrlError("");
+                  setPlacesUrlStatus("idle");
+                }
               }}
               onCompositionStart={() => {
                 placesSearchComposingRef.current = true;

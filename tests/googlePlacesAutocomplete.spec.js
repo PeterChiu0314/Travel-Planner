@@ -280,18 +280,22 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
 test("Map search handles Google Maps URLs without Places requests", () => {
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const applyUrlSource =
-    googleProviderSource.match(/function applyGoogleMapsUrlInput\(rawInput\) \{[\s\S]*?\n  \}/)?.[0] || "";
+    googleProviderSource.match(/async function applyGoogleMapsUrlInput\(rawInput\) \{[\s\S]*?\n  \}/)?.[0] || "";
   const requestAutocompleteSource =
     googleProviderSource.match(/async function requestPlacesAutocomplete\(rawInput\) \{[\s\S]*?\n  \}/)?.[0] || "";
 
   expect(requestAutocompleteSource).toContain("if (isGoogleMapsUrl(input)) return false");
-  expect(applyUrlSource).toContain("parseMapUrlToPoint(input)");
+  expect(applyUrlSource).toContain("resolveDestinationMapUrlPoint(input");
+  expect(applyUrlSource).toContain("resolveShortUrl: resolveGoogleMapsShortUrl");
+  expect(applyUrlSource).toContain("result.expandedUrl || input");
+  expect(applyUrlSource).toContain("placesUrlRequestSeqRef.current !== requestId");
   expect(applyUrlSource).toContain('source: "map-url"');
   expect(applyUrlSource).toContain("showPlacesPreview({");
   expect(applyUrlSource).not.toContain("fetchPlaceAutocompletePredictions");
   expect(applyUrlSource).not.toContain("fetchPlaceDetailsForPrediction");
   expect(applyUrlSource).not.toContain("clearPlacesPreview()");
   expect(googleProviderSource).toContain("無法從這個 Google Maps 連結取得座標");
+  expect(googleProviderSource).toContain("正在展開 Google Maps 連結...");
   expect(googleProviderSource).toContain('placesPreview.source === "map-url"');
 });
 
