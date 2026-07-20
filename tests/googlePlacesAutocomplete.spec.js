@@ -7,7 +7,7 @@ import {
   normalizeAutocompletePrediction,
 } from "../src/lib/googlePlacesAdapter.js";
 import { PLACE_DETAILS_FIELD_MASK_MINIMAL } from "../src/lib/googlePlacesConfig.js";
-import { parseMapUrlToPoint } from "../src/lib/mapPoint.js";
+import { isGoogleMapsUrl, parseMapUrlToPoint } from "../src/lib/mapPoint.js";
 
 const repoRoot = process.cwd();
 
@@ -33,6 +33,14 @@ test("Phase 5.6b normalizes Places autocomplete predictions without Place Detail
     secondaryText: "Kyoto, Japan",
     description: "Kyoto Station, Kyoto, Japan",
   });
+});
+
+test("Map search recognizes supported Google Maps coordinate URLs", () => {
+  const url = "https://www.google.com/maps/place/Kyoto/@35.0116,135.7681,15z";
+
+  expect(isGoogleMapsUrl(url)).toBe(true);
+  expect(parseMapUrlToPoint(url)).toEqual({ latitude: 35.0116, longitude: 135.7681 });
+  expect(isGoogleMapsUrl("Kyoto Station")).toBe(false);
 });
 
 test("Phase 5.6b autocomplete adapter skips short input and uses session token", async () => {
@@ -191,7 +199,7 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(googleProviderSource).toContain("onCompositionEnd");
   expect(googleProviderSource).toContain("onKeyDown");
   expect(googleProviderSource).toContain("event.nativeEvent?.isComposing");
-  expect(googleProviderSource).toContain("void requestPlacesAutocomplete(placesSearchInput)");
+  expect(googleProviderSource).toContain("submitPlacesSearch(placesSearchInput)");
   expect(googleProviderSource).toContain("placesSessionManagerRef.current.getOrCreateSessionToken()");
   expect(googleProviderSource).toContain("latestPlacesLocationBiasRef");
   expect(googleProviderSource).toContain("readBoundsLocationBias(map?.getBounds?.())");
@@ -227,21 +235,20 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(googleProviderSource).toContain("places-search-button");
   expect(googleProviderSource).toContain("aria-label=\"搜尋地點\"");
   expect(googleProviderSource).toContain("const placesStatusMessage");
-  expect(googleProviderSource).toContain("placeholder=\"搜尋地點\"");
+  expect(googleProviderSource).toContain("placeholder=\"搜尋地點或貼上 Google Maps 連結\"");
   expect(googleProviderSource).not.toContain("placeholder=\"\\\\u641c\\\\u5c0b\\\\u5730\\\\u9ede\"");
   expect(googleProviderSource).not.toContain("placeholder=\"\\u641c\\u5c0b\\u5730\\u9ede...\"");
   expect(googleProviderSource).not.toContain("onSaveItem");
   expect(googleProviderSource).not.toContain("supabase");
   expect(mapPanelSource).toContain("onSelectPlaceDetails");
-  expect(appSource).toContain('source: "places-details"');
+  expect(appSource).toContain('? "places-details" : "places-replace"');
   expect(appSource).toContain('pickedMapPoint.source === "places-details"');
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
   expect(appSource).toContain("displayName: details.displayName || \"\"");
   expect(appSource).toContain("googleMapsUri: details.googleMapsUri || \"\"");
   expect(appSource).toContain("title: placeName");
   expect(appSource).toContain("location_name: placeName");
-  expect(appSource).toContain("map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : \"\"");
-  expect(appSource).not.toContain("const mapUrl = String(initialPoint?.googleMapsUri");
+  expect(appSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
   expect(appSource).not.toContain("provider_place_id");
   expect(staticProviderSource).not.toContain("places-search-overlay");
   expect(staticProviderSource).not.toContain("map-route-edit-button");
@@ -255,19 +262,37 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(stylesSource).toContain("grid-column: 1;");
   expect(stylesSource).toContain("top: 18px;");
   expect(stylesSource).toContain("left: 20px;");
-  expect(stylesSource).toContain("width: min(370px, calc(100% - 40px));");
-  expect(stylesSource).toContain("min-height: 42px;");
+  expect(stylesSource).toContain("width: min(470px, calc(100% - 40px));");
+  expect(stylesSource).toContain("min-height: 38px;");
   expect(stylesSource).toContain("padding-left: 24px;");
   expect(stylesSource).toContain("background: var(--map-glass-bg-fallback);");
-  expect(stylesSource).toContain("border-radius: 999px;");
+  expect(stylesSource).toContain("border-radius: 10px;");
   expect(stylesSource).toContain("font-size: 14px;");
   expect(stylesSource).toContain("font-weight: 500;");
   expect(stylesSource).toContain("right: 10px;");
   expect(stylesSource).toContain(".places-search-button");
   expect(stylesSource).toContain(".places-prediction-list");
-  expect(stylesSource).toContain(".places-prediction-list,\n  .places-search-message {");
+  expect(stylesSource).toMatch(/\.places-prediction-list,\s*\.places-search-message \{/);
   expect(stylesSource).toContain("padding: 10px 24px;");
   expect(stylesSource).toContain(".route-panel:has(.places-search-overlay) > .panel-heading");
+});
+
+test("Map search handles Google Maps URLs without Places requests", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const applyUrlSource =
+    googleProviderSource.match(/function applyGoogleMapsUrlInput\(rawInput\) \{[\s\S]*?\n  \}/)?.[0] || "";
+  const requestAutocompleteSource =
+    googleProviderSource.match(/async function requestPlacesAutocomplete\(rawInput\) \{[\s\S]*?\n  \}/)?.[0] || "";
+
+  expect(requestAutocompleteSource).toContain("if (isGoogleMapsUrl(input)) return false");
+  expect(applyUrlSource).toContain("parseMapUrlToPoint(input)");
+  expect(applyUrlSource).toContain('source: "map-url"');
+  expect(applyUrlSource).toContain("showPlacesPreview({");
+  expect(applyUrlSource).not.toContain("fetchPlaceAutocompletePredictions");
+  expect(applyUrlSource).not.toContain("fetchPlaceDetailsForPrediction");
+  expect(applyUrlSource).not.toContain("clearPlacesPreview()");
+  expect(googleProviderSource).toContain("無法從這個 Google Maps 連結取得座標");
+  expect(googleProviderSource).toContain('placesPreview.source === "map-url"');
 });
 
 test("Phase 5.6d places details show a map preview before opening the add editor", () => {
@@ -310,7 +335,7 @@ test("Phase 5.6d places details show a map preview before opening the add editor
   expect(googleProviderSource).toContain("setPlacesPreview(null)");
   expect(googleProviderSource).not.toContain("setPickedMapPoint(nextPreview)");
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
-  expect(appSource).toContain("map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : \"\"");
+  expect(appSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
   expect(staticProviderSource).not.toContain("places-preview-dialog");
   expect(stylesSource).toContain(".places-preview-dialog");
   expect(stylesSource).toContain(".places-preview-add-button");

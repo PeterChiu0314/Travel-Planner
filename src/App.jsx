@@ -10209,6 +10209,7 @@ function TripWorkspace(props) {
     const latitude = Number(details?.latitude);
     const longitude = Number(details?.longitude);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    const isMapUrlPoint = details.source === "map-url";
     setPickedMapPoint({
       displayName: details.displayName || "",
       googleMapsUri: details.googleMapsUri || "",
@@ -10216,7 +10217,7 @@ function TripWorkspace(props) {
       longitude,
       pickedAt: Date.now(),
       placeId: details.id || "",
-      source: isMapSearchReplaceActive ? "places-replace" : "places-details",
+      source: isMapUrlPoint || !isMapSearchReplaceActive ? "places-details" : "places-replace",
     });
   }
 
@@ -11457,7 +11458,9 @@ function ItineraryTimeline({
       location_name: placeName,
       latitude: hasPoint ? latitude : null,
       longitude: hasPoint ? longitude : null,
-      map_url: hasPoint ? googleMapsPointUrl(latitude, longitude) : "",
+      map_url: hasPoint
+        ? String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)
+        : "",
     };
   }
 

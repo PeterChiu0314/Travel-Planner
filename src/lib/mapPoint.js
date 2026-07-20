@@ -53,6 +53,16 @@ export function isGoogleMapsShortUrl(mapUrl) {
   return hostname === "goo.gl" && url.pathname.toLowerCase().startsWith("/maps");
 }
 
+export function isGoogleMapsUrl(mapUrl) {
+  const url = parsedUrl(mapUrl);
+  if (!url || !["http:", "https:"].includes(url.protocol)) return false;
+
+  const hostname = url.hostname.toLowerCase();
+  if (isGoogleMapsShortUrl(mapUrl)) return true;
+  if (hostname === "maps.google.com" || hostname.startsWith("maps.google.")) return true;
+  return /(^|\.)google\.[a-z.]+$/.test(hostname) && url.pathname.toLowerCase().startsWith("/maps");
+}
+
 function parseUrlSearchPoint(text) {
   let url;
   try {

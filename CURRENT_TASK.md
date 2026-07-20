@@ -37,8 +37,8 @@ Archive rules:
 ## Current Status
 
 ```text
-Current phase: Timeline Phase 5.9 Itinerary Editor UI
-Status: In progress; first itinerary-editor UI slice implemented and automated verification passed
+Current phase: Map search Google Maps URL support (first stage)
+Status: Implemented; focused automated verification and production build passed
 Branch: codex/timeline-phase-5-9
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
@@ -46,6 +46,13 @@ Latest Phase 5.9 implementation: current branch HEAD
 ```
 
 Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Phase 5.8 UI baseline remain protected. Phase 5.9 continues UI-only itinerary-editor work and must not change their collaboration or persistence behavior.
+
+## Current Map Search URL State
+
+- The Google Map search field accepts normal Places text or a recognizable Google Maps coordinate URL; normal text keeps the existing autocomplete, IME, debounce, session-token, location-bias, suggestion, and POI flows.
+- Coordinate URLs reuse `parseMapUrlToPoint`, move the Map to the parsed point, and open the existing pending preview with `加入行程` without Autocomplete, Place Details, Text Search, or Geocoding requests.
+- URL-created visits keep latitude, longitude, and the original Map URL with an empty place ID, then open the existing new-item editor and remain appended by the existing ordering flow.
+- Invalid recognizable URLs preserve the input and any prior valid pending preview while showing a search-area error.
 
 ## Phase 5.9 Current UI State
 
@@ -120,6 +127,12 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Database rows are authoritative after drag-end; active-drag Broadcast remains best effort.
 
 ## Verification
+
+Latest Map search URL verification:
+
+- `npm.cmd run test:e2e -- tests/googlePlacesAutocomplete.spec.js tests/mapPoint.spec.js --reporter=line` passed 25/25, including normal autocomplete, coordinate URL recognition, URL request guards, invalid-state guards, and existing Places preview/POI behavior.
+- `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
+- `git diff --check` passed; Windows line-ending notices remain informational.
 
 Latest Phase 5.9 verification:
 

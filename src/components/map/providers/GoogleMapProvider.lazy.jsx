@@ -16,6 +16,7 @@ import {
   buildDestinationMarkerSvg,
 } from "../../../lib/mapMarkerVisuals.js";
 import { shouldLogMapProviderDiagnostics } from "../../../lib/mapProviderDiagnostics.js";
+import { isGoogleMapsUrl, parseMapUrlToPoint } from "../../../lib/mapPoint.js";
 import { designColors } from "../../../lib/designColorTokens.js";
 import { MAX_CUSTOM_ROUTE_POINTS_PER_SEGMENT } from "../../../lib/routeOverrides.js";
 import {
@@ -327,6 +328,7 @@ export default function GoogleMapProvider(props) {
   const [placesPreviewDialogPosition, setPlacesPreviewDialogPosition] = useState(null);
   const [placesSearchStatus, setPlacesSearchStatus] = useState("idle");
   const [placesDetailsStatus, setPlacesDetailsStatus] = useState("idle");
+  const [placesUrlError, setPlacesUrlError] = useState("");
   const [isRouteEditMode, setIsRouteEditMode] = useState(false);
   const [routeEditOverlayRect, setRouteEditOverlayRect] = useState(null);
   const [customRoutePointsBySegment, setCustomRoutePointsBySegment] = useState({});
@@ -393,6 +395,7 @@ export default function GoogleMapProvider(props) {
     setSelectedPlacePrediction(null);
     setPlacesSearchStatus("idle");
     setPlacesDetailsStatus("idle");
+    setPlacesUrlError("");
     placesSearchComposingRef.current = false;
     lastRequestedPlacesQueryRef.current = "";
     placesSessionManagerRef.current.resetSessionToken();
@@ -427,6 +430,7 @@ export default function GoogleMapProvider(props) {
       latitude,
       longitude,
       mapUrl: googleMapsPointUrl(latitude, longitude),
+      source: details.source || "",
     };
     setPlacesPreview(nextPreview);
     runProgrammaticViewportUpdate(() => {
@@ -439,6 +443,7 @@ export default function GoogleMapProvider(props) {
   async function requestPlacesAutocomplete(rawInput) {
     const input = rawInput.trim();
     if (!canSearchPlaces) return false;
+    if (isGoogleMapsUrl(input)) return false;
     if (input.length < 2) {
       lastRequestedPlacesQueryRef.current = "";
       setPlacesPredictions([]);
@@ -481,6 +486,43 @@ export default function GoogleMapProvider(props) {
       }
       return false;
     }
+  }
+
+  function applyGoogleMapsUrlInput(rawInput) {
+    const input = rawInput.trim();
+    if (!isGoogleMapsUrl(input)) return false;
+
+    placesAutocompleteRequestSeqRef.current += 1;
+    lastRequestedPlacesQueryRef.current = "";
+    setPlacesPredictions([]);
+    setSelectedPlacePrediction(null);
+    setPlacesSearchStatus("idle");
+    setPlacesDetailsStatus("idle");
+    placesSessionManagerRef.current.resetSessionToken();
+
+    const point = parseMapUrlToPoint(input);
+    if (!point) {
+      setPlacesUrlError("無法從這個 Google Maps 連結取得座標");
+      return true;
+    }
+
+    setPlacesUrlError("");
+    clearPendingPoi();
+    showPlacesPreview({
+      displayName: "Google Maps 地點",
+      googleMapsUri: input,
+      id: "",
+      latitude: point.latitude,
+      longitude: point.longitude,
+      source: "map-url",
+    });
+    return true;
+  }
+
+  function submitPlacesSearch(rawInput) {
+    if (applyGoogleMapsUrlInput(rawInput)) return;
+    setPlacesUrlError("");
+    void requestPlacesAutocomplete(rawInput);
   }
 
   async function selectPlacePrediction(prediction) {
@@ -874,6 +916,7 @@ export default function GoogleMapProvider(props) {
     if (placesSearchIsComposing) return undefined;
 
     const input = placesSearchInput.trim();
+    if (isGoogleMapsUrl(input)) return undefined;
     if (input.length < 2) {
       lastRequestedPlacesQueryRef.current = "";
       setPlacesPredictions([]);
@@ -1738,7 +1781,8 @@ export default function GoogleMapProvider(props) {
   ]);
 
   const placesStatusMessage =
-    placesDetailsStatus === "loading"
+    placesUrlError ||
+    (placesDetailsStatus === "loading"
       ? "\u8f09\u5165\u5730\u9ede\u8cc7\u6599\u4e2d..."
       : placesDetailsStatus === "missing-location"
         ? "\u9019\u500b\u5730\u9ede\u6c92\u6709\u53ef\u7528\u7684\u5ea7\u6a19"
@@ -1750,7 +1794,7 @@ export default function GoogleMapProvider(props) {
               ? "\u627e\u4e0d\u5230\u7b26\u5408\u7684\u5730\u9ede"
               : placesSearchStatus === "error"
                 ? "\u641c\u5c0b\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"
-                : "";
+                : "");
   const routeEditOverlayPanes = routeEditOverlayRect
     ? [
         { name: "top", style: { height: `${routeEditOverlayRect.top}px`, left: 0, right: 0, top: 0 } },
@@ -1863,12 +1907,15 @@ export default function GoogleMapProvider(props) {
               autoComplete="off"
               className="places-search-input"
               disabled={isRouteEditMode || isPickingMapPoint}
-              placeholder="搜尋地點"
+              placeholder="搜尋地點或貼上 Google Maps 連結"
               value={placesSearchInput}
               onChange={(event) => {
                 setSelectedPlacePrediction(null);
                 setPlacesDetailsStatus("idle");
-                setPlacesSearchInput(event.target.value);
+                const nextInput = event.target.value;
+                setPlacesSearchInput(nextInput);
+                if (placesSearchComposingRef.current) return;
+                if (!applyGoogleMapsUrlInput(nextInput)) setPlacesUrlError("");
               }}
               onCompositionStart={() => {
                 placesSearchComposingRef.current = true;
@@ -1883,7 +1930,7 @@ export default function GoogleMapProvider(props) {
                 if (event.key !== "Enter") return;
                 if (placesSearchComposingRef.current || event.nativeEvent?.isComposing) return;
                 event.preventDefault();
-                void requestPlacesAutocomplete(placesSearchInput);
+                submitPlacesSearch(placesSearchInput);
               }}
             />
             <button
@@ -1893,7 +1940,7 @@ export default function GoogleMapProvider(props) {
               type="button"
               onClick={() => {
                 if (placesSearchComposingRef.current) return;
-                void requestPlacesAutocomplete(placesSearchInput);
+                submitPlacesSearch(placesSearchInput);
               }}
             >
               <Search aria-hidden="true" size={16} strokeWidth={2.2} />
@@ -1975,7 +2022,7 @@ export default function GoogleMapProvider(props) {
           </a>
           <p>{"\u5df2\u53d6\u5f97\u5730\u9ede\u5ea7\u6a19"}</p>
           <button className="primary-button places-preview-add-button" type="button" onClick={confirmPlacesPreviewAdd}>
-            {isMapSearchReplaceActive ? "更改地點" : "\u52a0\u5165\u884c\u7a0b"}
+            {placesPreview.source === "map-url" || !isMapSearchReplaceActive ? "\u52a0\u5165\u884c\u7a0b" : "更改地點"}
           </button>
         </div>
       ) : null}
