@@ -54,6 +54,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - URL-created visits keep latitude, longitude, and the effective Map URL (expanded for short links) with an empty place ID, then open the existing new-item editor and remain appended by the existing ordering flow.
 - Invalid recognizable URLs preserve the input and any prior valid pending preview while showing a search-area error.
 - The short-link extension has not been run through automated or production-build verification in this slice; user manual QA is pending.
+- The itinerary editor's location section now stays open through URL resolution and other point updates until the user explicitly toggles it closed. A valid edited-card draft point is also previewed immediately in the existing Map marker before Save, without mutating the stored itinerary item.
 
 ## Phase 5.9 Current UI State
 

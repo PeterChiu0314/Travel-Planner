@@ -462,6 +462,12 @@ test("Phase 5.9 destination editor keeps invalid Map URL feedback inside the exp
   expect(appSource).toContain("visit-map-url-editor");
   expect(appSource).toContain("visit-map-url-error");
   expect(appSource).toContain("applyMapUrlDraft");
+  const applyMapUrlDraftSource = appSource.match(/async function applyMapUrlDraft\(\) \{[\s\S]*?\n  \}/)?.[0] || "";
+  expect(applyMapUrlDraftSource).not.toContain("setIsMapPointExpanded(false)");
+  expect(appSource).toContain("previewMapPoint: mapPointEditorState.previewMapPoint || null");
+  expect(appSource).toContain("onMapPointEditorActiveChange?.({ canPick: true, isOpen: true, previewMapPoint })");
+  expect(appSource).toContain("const previewDayItems = previewMapPoint?.itemId");
+  expect(appSource).toContain("buildRoutePanelStops(sortedVisitItems(previewDayItems)");
   expect(appSource).toContain("field-inline-error");
   expect(mapPointSource).toContain("請貼上有效 Map URL");
   expect(mapPointSource).toContain("無法取得有效點位");

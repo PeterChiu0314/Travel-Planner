@@ -10250,6 +10250,7 @@ function TripWorkspace(props) {
     mapPickingMode,
     mapPointPickFeedback,
     pickedMapPoint,
+    previewMapPoint: mapPointEditorState.previewMapPoint || null,
     onCancelMapPointPick: cancelMapPointPick,
     onCancelMapSearchReplace: cancelMapSearchReplace,
     onMapPointEditorActiveChange: setMapPointEditorState,
@@ -11931,6 +11932,21 @@ function ItineraryTimeline({
   }, [isOpen, isTransportEditor, onMapPointEditorActiveChange]);
 
   useEffect(() => {
+    if (!isOpen || isTransportEditor) return;
+    const latitude = Number(form.latitude);
+    const longitude = Number(form.longitude);
+    const previewMapPoint = Number.isFinite(latitude) && Number.isFinite(longitude)
+      ? {
+          itemId: editingId,
+          latitude,
+          longitude,
+          mapUrl: form.map_url || googleMapsPointUrl(latitude, longitude),
+        }
+      : null;
+    onMapPointEditorActiveChange?.({ canPick: true, isOpen: true, previewMapPoint });
+  }, [editingId, form.latitude, form.longitude, form.map_url, isOpen, isTransportEditor, onMapPointEditorActiveChange]);
+
+  useEffect(() => {
     if (!pickedMapPoint?.pickedAt || lastAppliedMapPointPickRef.current === pickedMapPoint.pickedAt) return;
     if (pickedMapPoint.source === "places-details" && !isMapSearchReplaceActive) {
       lastAppliedMapPointPickRef.current = pickedMapPoint.pickedAt;
@@ -12757,7 +12773,6 @@ function ItineraryTimeline({
     const nextUrl = result.expandedUrl || form.map_url;
     setMapUrlError("");
     setForm({ ...form, latitude: result.point.latitude, longitude: result.point.longitude, map_url: nextUrl });
-    setIsMapPointExpanded(false);
   }
 
   const hasEditorMapPoint = hasValidMapPoint(form);
@@ -13742,6 +13757,7 @@ function RoutePanel({
   isMapSearchReplaceActive = false,
   mapPickingMode = null,
   mapPointPickFeedback = "",
+  previewMapPoint = null,
   mode = "formal",
   routeOverridePointsBySegment = {},
   routeOverrideSaveError = "",
@@ -13758,8 +13774,18 @@ function RoutePanel({
   onStartMapSearchReplace,
   onStartMapPointPick,
 }) {
-  const stops = buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true });
-  const focusedMapState = getFocusedMapState(dayItems, stops, focusedItemId);
+  const previewDayItems = previewMapPoint?.itemId
+    ? dayItems.map((item) => item.id === previewMapPoint.itemId
+      ? {
+          ...item,
+          latitude: previewMapPoint.latitude,
+          longitude: previewMapPoint.longitude,
+          map_url: previewMapPoint.mapUrl,
+        }
+      : item)
+    : dayItems;
+  const stops = buildRoutePanelStops(sortedVisitItems(previewDayItems), { requireLocation: true });
+  const focusedMapState = getFocusedMapState(previewDayItems, stops, focusedItemId);
   const missingMapPointCount = countMissingMapPoints(dayItems);
   return (
     <section className="panel route-panel">
