@@ -1920,7 +1920,7 @@ export default function GoogleMapProvider(props) {
                 ? "\u641c\u5c0b\u66ab\u6642\u7121\u6cd5\u4f7f\u7528"
                 : "");
   const hasPlacesSearchInput = Boolean(placesSearchInput.trim());
-  const showPlacesSearchCancel = isMapAddLocationActive && hasPlacesSearchInput;
+  const showPlacesSearchCancel = !isMapAddLocationActive && hasPlacesSearchInput;
   const routeEditOverlayPanes = routeEditOverlayRect
     ? [
         { name: "top", style: { height: `${routeEditOverlayRect.top}px`, left: 0, right: 0, top: 0 } },
@@ -1996,12 +1996,12 @@ export default function GoogleMapProvider(props) {
           className={`mini-button map-route-edit-button${isRouteEditMode ? " active" : ""}`}
           disabled={isMapSearchReplaceActive}
           type="button"
-          title="編輯地圖路線"
-          aria-label="編輯地圖路線"
+          title={isRouteEditMode ? "退出路線編輯" : "編輯地圖路線"}
+          aria-label={isRouteEditMode ? "退出路線編輯" : "編輯地圖路線"}
           onClick={toggleRouteEditMode}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <Route aria-hidden="true" />
+          {isRouteEditMode ? <X aria-hidden="true" /> : <Route aria-hidden="true" />}
         </button>
       )}
     </div>

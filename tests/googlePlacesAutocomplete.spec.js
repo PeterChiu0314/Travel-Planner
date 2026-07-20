@@ -348,10 +348,11 @@ test("Map add-location tools share the route mask, accent state, order, and sear
   expect(googleProviderSource).toContain('isPickingMapPoint ? "取消選點" : "離開路線編輯模式"');
   expect(googleProviderSource).toContain("isPickingMapPoint ? onCancelMapPointPick : exitRouteEditMode");
   expect(googleProviderSource).toContain("function cancelPlacesSearchInput(event)");
-  expect(googleProviderSource).toContain("const showPlacesSearchCancel = isMapAddLocationActive && hasPlacesSearchInput");
+  expect(googleProviderSource).toContain("const showPlacesSearchCancel = !isMapAddLocationActive && hasPlacesSearchInput");
   expect(googleProviderSource).toContain('showPlacesSearchCancel ? "清除搜尋"');
   expect(googleProviderSource).toContain("showPlacesSearchCancel || isPickingMapPoint ? <X");
   expect(toolsSource.indexOf("map-area-point-button")).toBeLessThan(toolsSource.indexOf("map-route-edit-button"));
+  expect(toolsSource).toContain('isRouteEditMode ? <X aria-hidden="true" /> : <Route aria-hidden="true" />');
   expect(stylesSource).toContain(".google-map-surface.is-map-add-location .places-search-control");
   expect(stylesSource).toContain(".google-map-surface.is-map-add-location .places-search-button");
   expect(stylesSource).toContain("border-color: var(--color-accent)");

@@ -657,8 +657,9 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
 
   expect(googleProviderSource).toContain('const [isRouteEditMode, setIsRouteEditMode] = useState(false)');
   expect(googleProviderSource).toContain("function toggleRouteEditMode(event)");
-  expect(googleProviderSource).toContain('title="編輯地圖路線"');
-  expect(googleProviderSource).toContain('aria-label="編輯地圖路線"');
+  expect(googleProviderSource).toContain('title={isRouteEditMode ? "退出路線編輯" : "編輯地圖路線"}');
+  expect(googleProviderSource).toContain('aria-label={isRouteEditMode ? "退出路線編輯" : "編輯地圖路線"}');
+  expect(googleProviderSource).toContain('isRouteEditMode ? <X aria-hidden="true" /> : <Route aria-hidden="true" />');
   expect(googleProviderSource).toContain("map-route-edit-button");
   expect(googleProviderSource).toContain("路線編輯模式");
   expect(googleProviderSource).toContain("routeEditOverlayRect");
