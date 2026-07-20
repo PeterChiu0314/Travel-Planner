@@ -3212,13 +3212,50 @@ textarea {
 }
 
 .visit-map-point-section {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px 10px;
   margin-top: 12px;
   padding-top: 9px;
   border-top: 1px solid var(--line);
+}
+
+.visit-map-point-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+}
+
+.visit-map-point-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 5px 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.visit-map-point-toggle svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  stroke-width: 1.8;
+  transform: rotate(0deg);
+  transition: transform 120ms ease;
+}
+
+.visit-map-point-toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+.visit-map-point-body {
+  display: grid;
+  gap: 7px;
+  padding-top: 6px;
 }
 
 .visit-map-point-actions {
@@ -3256,59 +3293,34 @@ textarea {
   stroke-width: 1.8;
 }
 
+.visit-map-point-header .visit-maps-link svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  stroke-width: 1.8;
+}
+
 .visit-maps-link.disabled {
   opacity: 0.42;
   pointer-events: none;
 }
 
-.visit-map-url-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-self: end;
-  gap: 4px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  padding: 2px 0;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.visit-map-url-toggle svg {
-  width: 14px;
-  height: 14px;
-  transform: rotate(0deg);
-  transition: transform 120ms ease;
-}
-
-.visit-map-url-toggle[aria-expanded="true"] svg {
-  transform: rotate(90deg);
-}
-
-.visit-map-url-editor {
-  grid-column: 1 / -1;
-}
-
 .visit-map-url-editor input {
   width: 100%;
+  min-height: 36px;
+  height: 36px;
+  padding: 6px 10px;
 }
 
 .visit-map-url-error {
-  grid-column: 1 / -1;
+  display: block;
+  margin-top: 5px;
   text-align: left;
 }
 
 @media (max-width: 520px) {
-  .visit-map-point-section {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .visit-map-point-actions {
     flex-wrap: wrap;
-  }
-
-  .visit-map-url-toggle {
-    justify-self: start;
   }
 }
 

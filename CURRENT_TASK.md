@@ -51,7 +51,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 
 - The visit editor now uses compact type/destination and linked start/end/duration rows. Start/end are custom 24-hour segmented fields: hours and minutes are independently focusable, typeable, arrow/wheel adjustable, and paired with a scrollable 288-option five-minute menu instead of the browser-native datalist.
 - The type/destination and start/end/duration controls use a compact 36 px height. Visit notes start at two lines with reduced padding and auto-grow to approximately five lines before scrolling internally.
-- The point section removes the redundant title and uses three explicit icon-and-text actions: MapPin + Adjust Point, Search + Search/Replace, and Map + Open Map. The expandable Google Maps URL input applies automatically on blur or Enter; there is no Apply button.
+- The point section is collapsed by default with `更改地點` on the left and an always-visible `Maps` external link on the right. Expanding reveals Adjust Point, Search/Replace, and the full-width Google Maps URL input; blur or Enter applies the URL without a separate Apply button.
 - Visit-editor inputs, selects, and textareas use a consistent 14 px input font size.
 - Existing Map point picking and Places search/preview flows are reused; point changes update only the active editor draft until Save.
 - New visits still require a valid point. Existing legacy visits may edit unrelated fields when their unchanged point data is missing or invalid.
@@ -127,7 +127,7 @@ Latest Phase 5.9 verification:
 - `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 40/40.
 - `npm.cmd run test:e2e -- tests/phase-1-7f-smoke.spec.js` passed 30/30.
 - The 1280 x 720 Phase 5.9 rendered smoke check confirmed compact same-row geometry, independent hour/minute input, minute `+5`, a multi-option custom time menu, `90 -> 1小時30分鐘`, linked end-time updates, collapsed URL input, and zero console errors.
-- In-app Browser Demo QA at 624 x 800 confirmed 36 px primary/time controls, a 55 px two-line note, a roughly 44 px point row, three unclipped icon-and-text actions, the removed point title, and zero console errors. Focused Phase 5.9 checks passed 4/4 after the final density adjustment.
+- In-app Browser Demo QA at 624 x 800 confirmed the collapsed `更改地點` / `Maps` header and the expanded point-action row with a 36 px full-width URL input. The 486 px editor had no horizontal overflow, save actions remained visible, and console errors were zero.
 - Authenticated Formal Google Maps visual comparison remains pending for the Search/Replace overlay and Places flow.
 
 Latest Phase 5.8 verification:

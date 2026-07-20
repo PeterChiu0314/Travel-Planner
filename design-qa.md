@@ -111,3 +111,54 @@ Phase 5.8 final result: blocked
 - P3: authenticated Formal QA can separately confirm the enabled hover/active appearance of the three Map actions, but it does not block this layout change.
 
 final result: passed
+
+---
+
+# Timeline Phase 5.9 Collapsible Location Controls Design QA
+
+## Comparison Target
+
+- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-915725f2-9fb1-4940-8b63-a7c4f493e9b6.png`, together with the user's explicit collapsed and expanded layout specification.
+- Browser-rendered implementation: `test-results/phase-5-9-editor-collapsed-full.png` and `test-results/phase-5-9-editor-expanded-full.png`.
+- Focused implementation screenshots: `test-results/phase-5-9-editor-collapsed.png` and `test-results/phase-5-9-editor-expanded.png`.
+- Combined source/collapsed/expanded comparison evidence: `test-results/phase-5-9-editor-comparison.png`.
+- Route and viewport: `/demo/timeline` in the in-app Browser at the 624 x 800 responsive test viewport; focused editor crops are 486 px wide.
+- States: a new visit editor with the location controls collapsed, followed by the same editor with `更改地點` expanded.
+
+## Required Fidelity Surfaces
+
+- Fonts and typography: the existing editor font stack and 14 px input typography are unchanged. `更改地點`, `Maps`, `調整點位`, `搜尋替換`, and the URL placeholder remain legible without wrapping or truncation.
+- Spacing and layout rhythm: the collapsed header is 34 px high with left/right alignment matching the requested disclosure and Maps action. The expanded action row is 34 px high, the URL input is 36 px high and full width, and the 486 px editor has no horizontal overflow.
+- Colors and visual tokens: existing card, border, muted, disabled, focus, and primary-action tokens remain unchanged. The expanded URL input keeps the existing focus outline.
+- Image quality and asset fidelity: the editor contains no raster imagery. ChevronRight, MapPin, Search, and ExternalLink use the existing Lucide icon system; no custom SVG, CSS drawing, emoji, or placeholder asset was introduced.
+- Copy and content: the collapsed row reads `更改地點` and `Maps`. The expanded body reads `調整點位`, `搜尋替換`, and `貼上 Google Maps 連結`, matching the requested content hierarchy.
+
+## Full-view And Focused Comparison Evidence
+
+- Full-view captures confirm the editor remains inside the Dayboard, the disclosure opens and closes, the save actions remain visible, and no horizontal overflow is introduced.
+- The combined focused comparison places the supplied 486 px source card beside the final collapsed and expanded 486 px implementation crops. The existing card typography, borders, radii, and field rhythm remain consistent while the point actions move into the requested disclosure.
+- No additional image crop was needed because the complete changed component and all relevant labels, icons, input geometry, and actions are readable in the focused evidence.
+
+## Comparison History
+
+1. The first implementation moved `調整點位` and `搜尋替換` into a collapsed `更改地點` disclosure, kept `Maps` at the right edge, and placed the URL input below the two expanded actions.
+2. The first browser comparison found one P2 density mismatch: the URL input inherited the general 46 px form-control height while the surrounding compact controls used 34–36 px.
+3. The URL input was adjusted to 36 px with 6 px by 10 px padding.
+4. Post-fix browser evidence measured the input at exactly 36 px, the expanded body at 127 px, no horizontal overflow, and zero console errors.
+
+## Findings
+
+- No actionable P0, P1, or P2 mismatch remains in the requested location-control scope.
+- Collapsed state contains only the disclosure and Maps action; the two point controls and URL input are absent from the rendered DOM until expansion.
+- Expanded state exposes both point controls and the full-width URL input. Existing draft-only point selection, Places replacement, URL blur/Enter application, and save behavior are unchanged.
+- The disabled point controls and Maps link in Demo are intentional because Demo uses the static map provider; source guards and Formal behavior remain intact.
+- Browser console errors: 0.
+- `npm.cmd run build`: passed; the existing Vite large-chunk warning remains informational.
+- `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js`: 40/40 passed.
+- `npm.cmd run test:e2e -- tests/phase-1-7f-smoke.spec.js`: 30/30 passed with the final 36 px URL-input assertion.
+
+## Follow-up Polish
+
+- P3: authenticated Formal Google Maps QA can confirm the enabled hover/active appearance of `調整點位`, `搜尋替換`, and `Maps`; this does not block the component layout.
+
+final result: passed

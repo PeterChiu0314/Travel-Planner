@@ -14,9 +14,9 @@ Phase 5.9 updates the Timeline visit editor UI without changing itinerary persis
 - Hour changes use one-hour steps, minute changes use five-minute steps, and start-time edits preserve the current duration/linkage behavior.
 - The duration field accepts minutes and renders a localized hour/minute label.
 - The visit note starts at two lines with reduced padding, auto-grows to about five lines, then scrolls internally.
-- The point section removes the redundant title and leading icon. Its roughly 44 px action row uses three explicit icon-and-text controls: MapPin + `調整點位`, Search + `搜尋替換`, and Map + `打開地圖`.
-- The old always-visible Map URL field is replaced by an expandable URL input beside the compact point actions.
-- The URL input has no Apply button. Blur or Enter resolves and applies the completed URL, then collapses the input on success while keeping inline validation visible on failure.
+- The point section is collapsed by default. Its header shows a `更改地點` disclosure on the left and a compact `Maps` external link on the right.
+- Expanding `更改地點` reveals the existing MapPin + `調整點位` and Search + `搜尋替換` actions, followed by the full-width Google Maps URL input.
+- The URL input has no Apply button. Blur or Enter resolves and applies the completed URL, then collapses the point section on success while keeping it expanded with inline validation on failure.
 - Visit-editor input, select, and textarea typography is consistently 14 px.
 - Adjust Point reuses the existing map pick mode and only updates the editor draft.
 - Search/Replace reuses the existing Places search and preview; the confirmation action reads `更改地點`, updates the current draft, and exits the mode.
@@ -30,7 +30,7 @@ Phase 5.9 updates the Timeline visit editor UI without changing itinerary persis
 - `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 40/40.
 - `npm.cmd run test:e2e -- tests/phase-1-7f-smoke.spec.js` passed 30/30.
 - The Phase 5.9 rendered smoke check at 1280 x 720 confirmed same-row geometry, independently adjustable hour/minute segments, minute `+5`, the multi-option custom menu, `90 -> 1小時30分鐘`, linked end-time updates, collapsed URL input, and zero console errors.
-- In-app Browser Demo QA at 624 x 800 confirmed 36 px primary/time controls, a 55 px two-line note, a roughly 44 px point row, the removed point title, and three approximately 84.82 px actions whose client and scroll widths match without clipping. Console errors remained zero.
+- In-app Browser Demo QA at 624 x 800 confirmed the collapsed 34 px `更改地點` / `Maps` header and the expanded 34 px point-action row plus 36 px full-width URL input. The 486 px editor had no horizontal overflow, save actions remained visible, and console errors remained zero.
 - The focused Phase 5.9 density checks passed 4/4 after the final point-action width fix.
 - `git diff --check` passed.
 

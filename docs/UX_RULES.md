@@ -160,9 +160,9 @@ Do:
 - Keep the editor prefill parseable by the existing map URL validation, using `https://www.google.com/maps?q={lat},{lng}` for Places-derived coordinates.
 - Preserve user input on failed Place Details fetches so the user can adjust the search.
 - Show editor point status and actions without exposing place names, addresses, coordinates, or full Map URLs in the collapsed point section.
-- In the collapsed point section, avoid a redundant section title when the available actions are self-explanatory. Use compact Lucide icon-and-text actions for Adjust Point, Search/Replace, and Open Map, and do not force these labels into icon-only widths.
+- Keep the point section collapsed by default. Its header uses a compact `更改地點` disclosure on the left and an always-available `Maps` external link on the right; expanding reveals the Adjust Point and Search/Replace actions plus the Google Maps URL input.
 - Reuse the existing map-pick and Places search/preview lifecycles for Adjust Point and Search/Replace; keep their results in the active editor draft until Save.
-- Keep the Google Maps URL input collapsed by default, apply a completed URL on blur or Enter without a separate Apply button, and show parse errors at the field instead of only in a global notice.
+- Apply a completed Google Maps URL on blur or Enter without a separate Apply button, collapse the point section after success, and keep it expanded with an inline parse error on failure.
 - During Search/Replace, mask non-Map UI while keeping the Map, Places suggestions, preview, confirmation, and cancellation controls interactive.
 
 Do not:

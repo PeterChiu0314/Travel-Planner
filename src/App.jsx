@@ -29,6 +29,7 @@ import {
   ChevronUp,
   ClipboardCheck,
   CircleEllipsis,
+  ExternalLink,
   Footprints,
   HandCoins,
   LayoutDashboard,
@@ -10922,7 +10923,7 @@ function ItineraryTimeline({
   const [timeError, setTimeError] = useState("");
   const [mapUrlError, setMapUrlError] = useState("");
   const [isResolvingMapUrl, setIsResolvingMapUrl] = useState(false);
-  const [isMapUrlExpanded, setIsMapUrlExpanded] = useState(false);
+  const [isMapPointExpanded, setIsMapPointExpanded] = useState(false);
   const [durationInput, setDurationInput] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
@@ -11484,7 +11485,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
-    setIsMapUrlExpanded(false);
+    setIsMapPointExpanded(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -11608,7 +11609,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
-    setIsMapUrlExpanded(false);
+    setIsMapPointExpanded(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(item.id);
@@ -11628,7 +11629,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
-    setIsMapUrlExpanded(false);
+    setIsMapPointExpanded(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -12753,7 +12754,7 @@ function ItineraryTimeline({
     const nextUrl = result.expandedUrl || form.map_url;
     setMapUrlError("");
     setForm({ ...form, latitude: result.point.latitude, longitude: result.point.longitude, map_url: nextUrl });
-    setIsMapUrlExpanded(false);
+    setIsMapPointExpanded(false);
   }
 
   const hasEditorMapPoint = hasValidMapPoint(form);
@@ -12842,24 +12843,11 @@ function ItineraryTimeline({
             onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
           />
         </label>
-        <div className="visit-map-point-section">
-          <div className="visit-map-point-actions">
-            <button className={`ghost-button compact map-point-picker-button${isPickingMapPoint ? " active" : ""}`} disabled={!canPickMapPoint} type="button" onClick={toggleMapPointPick}>
-              <MapPin aria-hidden="true" />
-              <span>{isPickingMapPoint ? "取消選點" : "調整點位"}</span>
-            </button>
-            <button
-              className={`ghost-button compact${isMapSearchReplaceActive ? " active" : ""}`}
-              disabled={!canPickMapPoint}
-              type="button"
-              onClick={() => {
-                onCancelMapPointPick?.();
-                if (isMapSearchReplaceActive) onCancelMapSearchReplace?.();
-                else onStartMapSearchReplace?.();
-              }}
-            >
-              <Search aria-hidden="true" />
-              <span>{isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"}</span>
+        <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
+          <div className="visit-map-point-header">
+            <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>
+              <ChevronRight aria-hidden="true" />
+              <span>更改地點</span>
             </button>
             <a
               aria-disabled={!editorMapsUrl}
@@ -12869,29 +12857,46 @@ function ItineraryTimeline({
               rel="noreferrer"
               onClick={(event) => { if (!editorMapsUrl) event.preventDefault(); }}
             >
-              <MapIcon aria-hidden="true" />
-              <span>打開地圖</span>
+              <span>Maps</span>
+              <ExternalLink aria-hidden="true" />
             </a>
           </div>
-          <button className="visit-map-url-toggle" type="button" aria-expanded={isMapUrlExpanded} onClick={() => setIsMapUrlExpanded((current) => !current)}>
-            <ChevronRight aria-hidden="true" />
-            貼上 Google Maps 連結
-          </button>
-          {isMapUrlExpanded ? (
-            <div className="visit-map-url-editor">
-              <input
-                autoComplete="off"
-                name="map_url"
-                placeholder="https://maps.google.com/..."
-                value={form.map_url}
-                onChange={(event) => { setMapUrlError(""); setForm({ ...form, map_url: event.target.value }); }}
-                onBlur={() => { void applyMapUrlDraft(); }}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter") return;
-                  event.preventDefault();
-                  void applyMapUrlDraft();
-                }}
-              />
+          {isMapPointExpanded ? (
+            <div className="visit-map-point-body">
+              <div className="visit-map-point-actions">
+                <button className={`ghost-button compact map-point-picker-button${isPickingMapPoint ? " active" : ""}`} disabled={!canPickMapPoint} type="button" onClick={toggleMapPointPick}>
+                  <MapPin aria-hidden="true" />
+                  <span>{isPickingMapPoint ? "取消選點" : "調整點位"}</span>
+                </button>
+                <button
+                  className={`ghost-button compact${isMapSearchReplaceActive ? " active" : ""}`}
+                  disabled={!canPickMapPoint}
+                  type="button"
+                  onClick={() => {
+                    onCancelMapPointPick?.();
+                    if (isMapSearchReplaceActive) onCancelMapSearchReplace?.();
+                    else onStartMapSearchReplace?.();
+                  }}
+                >
+                  <Search aria-hidden="true" />
+                  <span>{isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"}</span>
+                </button>
+              </div>
+              <div className="visit-map-url-editor">
+                <input
+                  autoComplete="off"
+                  name="map_url"
+                  placeholder="貼上 Google Maps 連結"
+                  value={form.map_url}
+                  onChange={(event) => { setMapUrlError(""); setForm({ ...form, map_url: event.target.value }); }}
+                  onBlur={() => { void applyMapUrlDraft(); }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    void applyMapUrlDraft();
+                  }}
+                />
+              </div>
             </div>
           ) : <input name="map_url" type="hidden" value={form.map_url} />}
           {mapUrlError ? <span className="field-inline-error visit-map-url-error" role="alert">{mapUrlError}</span> : null}

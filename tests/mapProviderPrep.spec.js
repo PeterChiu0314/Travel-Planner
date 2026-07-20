@@ -561,7 +561,10 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(appSource).toContain("TimelineSegmentedTimeField");
   expect(appSource).toContain("timeline-time-menu");
   expect(appSource).toContain("<Search aria-hidden=\"true\" />");
-  expect(appSource).toContain("<span>打開地圖</span>");
+  expect(appSource).toContain("visit-map-point-toggle");
+  expect(appSource).toContain("<span>更改地點</span>");
+  expect(appSource).toContain("<span>Maps</span>");
+  expect(appSource).toContain("<ExternalLink aria-hidden=\"true\" />");
   expect(appSource).not.toContain("visit-map-point-title");
   expect(appSource).toContain("handleDurationWheel");
   expect(appSource).toContain('rows="2"');
