@@ -879,6 +879,16 @@ code {
   color: var(--color-error-bg);
 }
 
+.google-map-surface.is-map-add-location .places-search-control,
+.google-map-surface.is-map-add-location .map-area-point-button {
+  border-color: var(--color-accent);
+}
+
+.google-map-surface.is-map-add-location .places-search-button,
+.google-map-surface.is-map-add-location .map-area-point-button {
+  color: var(--color-accent);
+}
+
 .map-area-tools .mini-button:hover:not(:disabled),
 .map-area-tools .mini-button:focus-visible {
   border-color: rgba(255, 255, 255, 0.42);
@@ -4613,6 +4623,16 @@ textarea {
     border-color: color-mix(in srgb, var(--color-error) 42%, transparent);
     background: rgba(255, 255, 255, 0.2);
     color: var(--color-error);
+  }
+
+  .google-map-surface.is-map-add-location .places-search-control,
+  .google-map-surface.is-map-add-location .map-area-point-button {
+    border-color: var(--color-accent);
+  }
+
+  .google-map-surface.is-map-add-location .places-search-button,
+  .google-map-surface.is-map-add-location .map-area-point-button {
+    color: var(--color-accent);
   }
 
   .places-search-input::placeholder {

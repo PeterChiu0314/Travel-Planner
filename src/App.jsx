@@ -10239,6 +10239,11 @@ function TripWorkspace(props) {
     cancelMapPointPick();
   }
 
+  function toggleRouteMapWithAddLocationCleanup() {
+    if (!isRouteCollapsed && (isMapAddLocationActive || isMapAddLocationPending)) cancelMapAddLocation();
+    toggleRouteMap();
+  }
+
   function finishMapAddLocation() {
     mapAddLocationPendingRef.current = false;
     setIsMapAddLocationPending(false);
@@ -10384,7 +10389,7 @@ function TripWorkspace(props) {
             type="button"
             title={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
             aria-label={isRouteCollapsed ? "顯示地圖" : "隱藏地圖"}
-            onClick={toggleRouteMap}
+            onClick={toggleRouteMapWithAddLocationCleanup}
           >
             {isRouteCollapsed ? (
               <MapIcon size={18} strokeWidth={2.2} aria-hidden="true" />

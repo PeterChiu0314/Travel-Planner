@@ -25,6 +25,9 @@ test("Dayboard add waits for a ready Map and enters the shared add-location flow
   expect(appSource).toContain("openRouteMap();");
   expect(appSource).toContain('animation.animationName === "timeline-map-reveal"');
   expect(appSource).toContain("Promise.allSettled(revealAnimations.map((animation) => animation.finished))");
+  expect(appSource).toContain("function toggleRouteMapWithAddLocationCleanup()");
+  expect(appSource).toContain("if (!isRouteCollapsed && (isMapAddLocationActive || isMapAddLocationPending)) cancelMapAddLocation()");
+  expect(appSource).toContain("onClick={toggleRouteMapWithAddLocationCleanup}");
   expect(mapPanelSource).toContain("isMapAddLocationActive");
   expect(googleProviderSource).toContain("new ResizeObserver(focusWhenMapHasSize)");
   expect(googleProviderSource).toContain('trigger?.(mapRef.current, "resize")');
@@ -333,6 +336,26 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(stylesSource).toContain(".route-panel:has(.places-search-overlay) > .panel-heading");
   expect(googleProviderSource.match(/isPickingMapPoint \|\| isMapAddLocationActive/g)).toHaveLength(2);
   expect(appSource).toContain('field-inline-error visit-map-url-error');
+});
+
+test("Map add-location tools share the route mask, accent state, order, and search cancel behavior", () => {
+  const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
+  const stylesSource = readRepoFile("src/styles.css");
+  const toolsSource = googleProviderSource.match(/const renderMapAreaTools = [\s\S]*?\n  \);/)?.[0] || "";
+
+  expect(googleProviderSource).toContain("mapRect.top + ROUTE_EDIT_ACTIVE_TOP_INSET_PX");
+  expect(googleProviderSource).toContain("isMapAddLocationActive || isPickingMapPoint");
+  expect(googleProviderSource).toContain('isPickingMapPoint ? "取消選點" : "離開路線編輯模式"');
+  expect(googleProviderSource).toContain("isPickingMapPoint ? onCancelMapPointPick : exitRouteEditMode");
+  expect(googleProviderSource).toContain("function cancelPlacesSearchInput(event)");
+  expect(googleProviderSource).toContain("const showPlacesSearchCancel = isMapAddLocationActive && hasPlacesSearchInput");
+  expect(googleProviderSource).toContain('showPlacesSearchCancel ? "清除搜尋"');
+  expect(googleProviderSource).toContain("showPlacesSearchCancel || isPickingMapPoint ? <X");
+  expect(toolsSource.indexOf("map-area-point-button")).toBeLessThan(toolsSource.indexOf("map-route-edit-button"));
+  expect(stylesSource).toContain(".google-map-surface.is-map-add-location .places-search-control");
+  expect(stylesSource).toContain(".google-map-surface.is-map-add-location .places-search-button");
+  expect(stylesSource).toContain("border-color: var(--color-accent)");
+  expect(stylesSource).toContain("color: var(--color-accent)");
 });
 
 test("Map search handles Google Maps URLs without Places requests", () => {
