@@ -10263,7 +10263,9 @@ function TripWorkspace(props) {
     const isMapUrlPoint = details.source === "map-url";
     setPickedMapPoint({
       displayName: details.displayName || "",
-      googleMapsUri: details.googleMapsUri || "",
+      googleMapsUri: isMapUrlPoint
+        ? details.googleMapsUri || googleMapsPointUrl(latitude, longitude)
+        : googleMapsPointUrl(latitude, longitude),
       latitude,
       longitude,
       pickedAt: Date.now(),
@@ -12942,7 +12944,7 @@ function ItineraryTimeline({
             onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
           />
         </label>
-        {editingId || !useEditLocks ? <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
+        <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
           <div className="visit-map-point-header">
             <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>
               <ChevronRight aria-hidden="true" />
@@ -12999,7 +13001,7 @@ function ItineraryTimeline({
             </div>
           ) : <input name="map_url" type="hidden" value={form.map_url} />}
           {mapUrlError ? <span className="field-inline-error visit-map-url-error" role="alert">{mapUrlError}</span> : null}
-        </div> : <input name="map_url" type="hidden" value={form.map_url} />}
+        </div>
         <div className="form-actions">
           <button className="ghost-button item-form-cancel-button" type="button" onClick={() => closeEditor()}>
             取消

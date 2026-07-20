@@ -1984,7 +1984,7 @@ export default function GoogleMapProvider(props) {
       )}
       {canPickMapPoint ? (
         <button
-          className={`mini-button map-area-point-button${isPickingMapPoint ? " active" : ""}`}
+          className={`mini-button map-area-point-button${isPickingMapPoint || isMapAddLocationActive ? " active" : ""}`}
           type="button"
           title={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}
           aria-label={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}
@@ -2177,7 +2177,7 @@ export default function GoogleMapProvider(props) {
         </button>
         {canPickMapPoint ? (
           <button
-            className={`mini-button map-area-point-button${isPickingMapPoint ? " active" : ""}`}
+            className={`mini-button map-area-point-button${isPickingMapPoint || isMapAddLocationActive ? " active" : ""}`}
             type="button"
             title={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}
             aria-label={isPickingMapPoint ? "取消選點" : "在地圖選點新增景點"}

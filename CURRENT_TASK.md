@@ -61,7 +61,9 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Formal Dayboard `＋新增行程` now enters an explicit Map add-location mode instead of opening an empty visit editor. If the Map is collapsed, it is reopened and mode activation waits for the real reveal animation to finish; the Google provider then waits for a positive container size, triggers the existing Map resize path, and focuses the Places/URL search field without a guessed timeout.
 - Places, Google Maps URL, POI, and custom map-point choices retain the existing pending preview and `加入行程` confirmation, then share the existing point-backed `openNewItem(point)` draft flow at the end of the active Day. Custom points now preview before confirmation only in `map-add`; existing-editor point adjustment remains immediate.
 - Cancel, Escape, outside-overlay click, Day/trip/section change, and mode exit clear pending markers, preview/search/URL state, and custom-point picking without opening an editor. An automatically reopened Map stays open.
-- New visit editors keep their already-selected Map URL in a hidden form field and no longer show the URL/location replacement section; existing visit editors retain the Phase 5.9 point-editing UI. Demo remains static-only and keeps its existing local add behavior.
+- New and existing visit editors share the same collapsed `更改地點` / `Maps` section, including point adjustment, Places replacement, and Google Maps URL input. Demo remains static-only and keeps its existing local add behavior.
+- Places-backed new visits normalize the selected point to a coordinate Google Maps URL before opening the editor, so Save can validate and persist the draft; pasted Google Maps URLs still preserve their effective URL. New-card URL validation errors display under the shared location section.
+- While Map add-location mode is active, the search field keeps keyboard focus and the adjacent add-point button shares the active visual state. The route-edit control continues to act as the mode Cancel button.
 
 ## Phase 5.9 Current UI State
 

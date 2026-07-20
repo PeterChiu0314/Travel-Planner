@@ -46,11 +46,13 @@ test("add-location cancellation and all point sources keep the existing confirma
   expect(googleProviderSource).toContain('placesPreview.source === "map-url" || !isMapSearchReplaceActive');
 });
 
-test("new visit drafts keep the selected Map URL hidden while existing visits retain point editing", () => {
+test("new and existing visit editors share the same point editing section", () => {
   const appSource = readRepoFile("src/App.jsx");
 
-  expect(appSource).toContain('editingId || !useEditLocks ? <div className={`visit-map-point-section');
-  expect(appSource).toContain(': <input name="map_url" type="hidden" value={form.map_url} />}');
+  expect(appSource).toContain('<div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>');
+  expect(appSource).not.toContain('editingId || !useEditLocks ? <div className={`visit-map-point-section');
+  expect(appSource).toContain("更改地點");
+  expect(appSource).toContain("搜尋替換");
   expect(appSource).toContain("const nextForm = buildNewVisitForm(initialPoint)");
 });
 
@@ -284,7 +286,9 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(appSource).toContain('pickedMapPoint.source === "places-details"');
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
   expect(appSource).toContain("displayName: details.displayName || \"\"");
-  expect(appSource).toContain("googleMapsUri: details.googleMapsUri || \"\"");
+  expect(appSource).toContain("googleMapsUri: isMapUrlPoint");
+  expect(appSource).toContain("? details.googleMapsUri || googleMapsPointUrl(latitude, longitude)");
+  expect(appSource).toContain(": googleMapsPointUrl(latitude, longitude)");
   expect(appSource).toContain("title: placeName");
   expect(appSource).toContain("location_name: placeName");
   expect(appSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
@@ -314,6 +318,8 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(stylesSource).toMatch(/\.places-prediction-list,\s*\.places-search-message \{/);
   expect(stylesSource).toContain("padding: 10px 24px;");
   expect(stylesSource).toContain(".route-panel:has(.places-search-overlay) > .panel-heading");
+  expect(googleProviderSource.match(/isPickingMapPoint \|\| isMapAddLocationActive/g)).toHaveLength(2);
+  expect(appSource).toContain('field-inline-error visit-map-url-error');
 });
 
 test("Map search handles Google Maps URLs without Places requests", () => {
