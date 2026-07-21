@@ -97,7 +97,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Transportation category menus close on captured outside pointer events and focus leaving the field. Transportation names are 36 px high, editor navigation controls are 36 px square, and expanded transportation notes reuse the thin time-menu scrollbar without native arrow buttons.
 - Visit and transportation editor notes share one auto-growing textarea: two visible lines initially, growth through five visible lines, then internal scrolling for additional content.
 - Visit-note textareas start at two visible lines, grow with content through five visible lines, and then switch to internal scrolling. Their floating-label frame grows with the textarea and remains unclipped so the label stays fully visible.
-- Visit and transportation note content uses the same effective 4 px left inset as the adjusted transportation name and duration controls.
+- Visit and transportation note content uses shared `8px 8px 8px 12px` textarea padding.
 - The existing next-itinerary suggestion still computes from the unchanged transportation duration and rounds the suggested start upward with `roundMinutesUpToStep(..., 5)`; it does not write the rounded value back into transportation duration.
 - The existing Google Maps navigation control remains immediately to the right of transportation duration and keeps its existing directions URL behavior.
 

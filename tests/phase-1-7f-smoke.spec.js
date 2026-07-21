@@ -571,7 +571,7 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(visitNoteContainment.labelTop).toBeLessThan(0);
   expect(visitNoteContainment.overflowY).toBe("auto");
   expect(visitNoteContainment.textareaHeight).toBe(118);
-  await expect(visitNote).toHaveCSS("padding-left", "4px");
+  await expect(visitNote).toHaveCSS("padding", "8px 8px 8px 12px");
   const visitNoteLabel = form.locator(".visit-note-field .floating-outlined-label");
   await expect(visitNote).not.toHaveValue("");
   await expect(visitNoteLabel).toHaveCSS("font-size", "11px");
@@ -783,7 +783,7 @@ test("transport editor uses compact floating fields and preserves exact minute i
   expect(noteScrollbar.width).toBe("4px");
   expect(noteScrollbar.buttonDisplay).toBe("none");
   expect(noteScrollbar.thumbBackground).not.toBe("rgba(0, 0, 0, 0)");
-  await expect(note).toHaveCSS("padding-left", "4px");
+  await expect(note).toHaveCSS("padding", "8px 8px 8px 12px");
   await note.fill("第一行\n第二行\n第三行");
   const threeLineTransportNote = await note.evaluate((textarea) => ({
     height: textarea.getBoundingClientRect().height,

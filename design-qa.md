@@ -16,7 +16,7 @@ The source screenshots are focused defect captures rather than full-page target 
 
 ## Focused-region comparison evidence
 
-- Visit note: Chrome verified the two-line 62 px starting frame, contained scrolling, visible floating label, and 4 px left padding matching the adjusted name/duration controls. The later shared auto-growth behavior through five lines is covered by the focused component tests.
+- Visit note: Chrome verified the two-line 62 px starting frame, contained scrolling, and visible floating label. The later shared auto-growth behavior through five lines and `8px 8px 8px 12px` padding are covered by focused component tests.
 - Transportation editor: Chrome measured a 36 px name field, a 36 × 36 px navigation control, and zero bottom-alignment delta against duration.
 - Transportation category: Chrome observed the listbox open, then observed zero listboxes and `aria-expanded="false"` after clicking transportation name.
 - Expanded transportation note: Chrome measured a 4 px scrollbar, no WebKit scrollbar buttons, a non-transparent rounded thumb, and `overflow: auto`.

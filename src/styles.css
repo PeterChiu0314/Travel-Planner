@@ -4219,7 +4219,7 @@ textarea {
 .timeline .item-form .transport-editor-note-field textarea,
 .timeline-add-editor-anchor .item-form .visit-note-field textarea,
 .timeline-add-editor-anchor .item-form .transport-editor-note-field textarea {
-  padding: 8px 12px 8px 4px;
+  padding: 8px 8px 8px 12px;
 }
 
 .visit-note-field textarea::-webkit-scrollbar,
