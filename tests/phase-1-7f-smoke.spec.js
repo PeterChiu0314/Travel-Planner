@@ -429,18 +429,28 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
     const link = row.querySelector(".visit-time-link")?.getBoundingClientRect();
     const separator = row.querySelector(".timeline-time-separator")?.getBoundingClientRect();
     const toggle = row.querySelector(".timeline-time-menu-toggle")?.getBoundingClientRect();
+    const toggleIcon = row.querySelector(".timeline-time-menu-toggle svg")?.getBoundingClientRect();
+    const durationInput = row.querySelector('.visit-time-field.duration input[name="duration_minutes"]');
     return {
       fieldCenter: start ? start.top + start.height / 2 : null,
       linkCenter: link ? link.top + link.height / 2 : null,
       linkWidth: link?.width ?? null,
       separatorCenter: separator ? separator.top + separator.height / 2 : null,
       toggleWidth: toggle?.width ?? null,
+      toggleIconOffset: toggle && toggleIcon
+        ? toggleIcon.left + toggleIcon.width / 2 - (toggle.left + toggle.width / 2)
+        : null,
+      toggleRightGap: start && toggle ? start.right - toggle.right : null,
+      durationPaddingLeft: durationInput ? getComputedStyle(durationInput).paddingLeft : null,
     };
   });
   expect(timeAlignment.linkCenter - timeAlignment.fieldCenter).toBeCloseTo(4, 0);
   expect(timeAlignment.linkWidth).toBeCloseTo(12, 0);
   expect(timeAlignment.separatorCenter - timeAlignment.fieldCenter).toBeCloseTo(1.5, 0);
-  expect(timeAlignment.toggleWidth).toBeCloseTo(24, 0);
+  expect(timeAlignment.toggleWidth).toBeCloseTo(20, 0);
+  expect(Math.abs(timeAlignment.toggleIconOffset)).toBeLessThanOrEqual(0.5);
+  expect(timeAlignment.toggleRightGap).toBeCloseTo(1, 0);
+  expect(timeAlignment.durationPaddingLeft).toBe("0px");
 
   const startInput = form.locator('input[name="start_time"]');
   await setTimelineTime(form, "start_time", "09:45");
@@ -468,7 +478,9 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(form.getByRole("button", { name: "更改地點" })).toBeVisible();
   await expect(form.getByRole("button", { name: "調整點位" })).toHaveCount(0);
   await expect(form.getByRole("button", { name: "搜尋替換" })).toHaveCount(0);
-  await expect(form.locator(".visit-maps-link")).toContainText("Maps");
+  await expect(form.locator(".visit-maps-link")).toContainText("Google Map");
+  await expect(form.locator(".visit-maps-link")).toHaveCSS("border-top-width", "0px");
+  await expect(form.locator(".visit-maps-link")).toHaveCSS("min-height", "24px");
   await expect(form.locator(".visit-map-point-title")).toHaveCount(0);
   await expect(form.locator(".visit-map-point-header .lucide-external-link")).toHaveCount(1);
   const noteBox = await form.locator(".visit-note-field textarea").boundingBox();
@@ -483,6 +495,7 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   const mapUrlField = form.locator(".visit-map-url-editor");
   await expect(mapUrlInput).toBeVisible();
   await expect(mapUrlField.locator("legend")).toHaveText("Google Maps URL");
+  await expect(mapUrlField.locator("legend")).toHaveCSS("overflow", "visible");
   await expect(mapUrlInput).toHaveAttribute("placeholder", "貼上 Google Maps 連結");
   const mapUrlBox = await mapUrlField.boundingBox();
   expect(mapUrlBox.height).toBeCloseTo(42, 0);

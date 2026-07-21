@@ -3176,6 +3176,11 @@ textarea {
   min-width: 0;
 }
 
+.visit-time-field .outlined-field-control {
+  width: calc(100% + 12px);
+  margin-inline: -6px;
+}
+
 .timeline-segmented-time-field {
   position: relative;
   min-width: 0;
@@ -3228,14 +3233,14 @@ textarea {
 
 .timeline-time-menu-toggle {
   display: grid;
-  place-items: center end;
+  place-items: center;
   align-self: stretch;
-  width: 24px;
+  width: 20px;
   border: 0;
   border-left: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   background: transparent;
   color: var(--muted);
-  padding: 0 2px 0 0;
+  padding: 0;
 }
 
 .timeline-time-menu-toggle svg {
@@ -3295,7 +3300,7 @@ textarea {
 
 .visit-time-field.duration .outlined-field-control > input {
   flex: 1;
-  padding-left: 4px;
+  padding-left: 0;
 }
 
 .visit-note-field {
@@ -3409,6 +3414,24 @@ textarea {
   stroke-width: 1.8;
 }
 
+.visit-map-point-header .visit-maps-link {
+  min-height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  padding: 2px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.visit-map-point-header .visit-maps-link:hover,
+.visit-map-point-header .visit-maps-link:focus-visible {
+  background: color-mix(in srgb, var(--mint) 16%, transparent);
+  color: var(--mint-dark);
+}
+
 .visit-maps-link.disabled {
   opacity: 0.42;
   pointer-events: none;
@@ -3417,6 +3440,12 @@ textarea {
 .visit-map-url-editor .outlined-field-control,
 .visit-map-url-editor input {
   width: 100%;
+}
+
+.visit-map-url-editor legend {
+  overflow: visible;
+  line-height: 1.25;
+  text-overflow: clip;
 }
 
 .visit-map-url-error {

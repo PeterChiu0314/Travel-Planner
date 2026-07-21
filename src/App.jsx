@@ -13076,7 +13076,7 @@ function ItineraryTimeline({
               rel="noreferrer"
               onClick={(event) => { if (!editorMapsUrl) event.preventDefault(); }}
             >
-              <span>Maps</span>
+              <span>Google Map</span>
               <ExternalLink aria-hidden="true" />
             </a>
           </div>
