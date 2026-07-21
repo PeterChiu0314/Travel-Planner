@@ -3152,6 +3152,43 @@ textarea {
   font-weight: 500;
 }
 
+.visit-type-field {
+  position: relative;
+  min-width: 0;
+}
+
+.visit-type-field .outlined-field-control {
+  width: calc(100% + 12px);
+  margin-inline: -6px;
+}
+
+.timeline-type-select-trigger {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0;
+}
+
+.timeline-type-select-trigger:focus-visible {
+  outline: 0;
+}
+
+.timeline-type-select-value {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  padding-left: 10px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .timeline .item-form input:not([type="hidden"]),
 .timeline .item-form select,
 .timeline .item-form textarea,
@@ -3189,10 +3226,10 @@ textarea {
 .timeline-time-segments {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: left;
   min-width: 0;
   flex: 1;
-  gap: 2px;
+  padding-left: 4px;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -3211,7 +3248,7 @@ textarea {
   color: inherit;
   text-align: center;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 500;
   outline: none;
 }
 
@@ -3235,7 +3272,7 @@ textarea {
   display: grid;
   place-items: center;
   align-self: stretch;
-  width: 20px;
+  width: 24px;
   border: 0;
   border-left: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   background: transparent;
@@ -3253,6 +3290,10 @@ textarea {
   transform: rotate(180deg);
 }
 
+.timeline-type-select-trigger[aria-expanded="true"] .timeline-time-menu-toggle svg {
+  transform: rotate(180deg);
+}
+
 .timeline-time-menu {
   position: absolute;
   z-index: 30;
@@ -3267,6 +3308,32 @@ textarea {
   box-shadow: 0 12px 28px rgb(37 49 43 / 18%);
   padding: 5px;
   scrollbar-width: thin;
+  scrollbar-color: var(--board-scrollbar-thumb) transparent;
+}
+
+.timeline-time-menu::-webkit-scrollbar {
+  width: var(--board-scrollbar-width);
+  height: var(--board-scrollbar-width);
+}
+
+.timeline-time-menu::-webkit-scrollbar-button,
+.timeline-time-menu::-webkit-scrollbar-button:single-button {
+  display: none;
+  width: 0;
+  height: 0;
+  border: 0;
+  background: transparent;
+}
+
+.timeline-time-menu::-webkit-scrollbar-track {
+  border: 0;
+  background: transparent;
+}
+
+.timeline-time-menu::-webkit-scrollbar-thumb {
+  border: 0;
+  border-radius: 999px;
+  background: var(--board-scrollbar-thumb);
 }
 
 .timeline-time-menu button {

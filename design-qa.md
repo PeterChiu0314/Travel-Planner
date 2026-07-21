@@ -114,6 +114,27 @@ final result: passed
 
 ---
 
+# Timeline Phase 5.9 Custom Editor Menus Design QA
+
+## Comparison Target
+
+- Source visuals: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-0110d074-c822-4741-a135-633a70ea6110.png` and `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-b1de7576-ba6c-4737-a864-5ba19891f687.png`.
+- Route: `/demo/timeline` in the Codex in-app Browser with the first visit editor open.
+- States: Type menu open, Start menu open, and Duration menu open.
+
+## Findings
+
+- Type now uses the shared custom menu surface and ChevronDown treatment instead of the browser-native select popup; selecting an option updates the hidden form value.
+- Start, End, and Duration menus share the Dayboard 4 px scrollbar, transparent track, hidden scrollbar buttons, and semantic rounded thumb token.
+- Time segments have no gap, use 500 weight, align left, and retain 4 px container padding.
+- Menu toggle areas measure 24 px and open-state arrows rotate consistently.
+- The editor has zero horizontal overflow and the browser console reports zero errors.
+- `npm.cmd run build` and `git diff --check` passed; the existing Vite large-chunk warning remains informational.
+
+final result: passed
+
+---
+
 # Timeline Phase 5.9 Collapsible Location Controls Design QA
 
 ## Comparison Target

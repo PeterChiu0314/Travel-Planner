@@ -564,7 +564,9 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(appSource).toContain("visit-editor-primary-row");
   expect(appSource).toContain("visit-editor-time-row");
   expect(appSource).toContain("function OutlinedField");
-  expect(appSource).toContain('<OutlinedField label="類型">');
+  expect(appSource).toContain("function TimelineTypeField");
+  expect(appSource).toContain('<OutlinedField className={`visit-type-field${isMenuOpen ? " menu-open" : ""}`}');
+  expect(appSource).toContain('<TimelineTypeField value={form.type}');
   expect(appSource).toContain('<OutlinedField className="destination-field" label="目的地">');
   expect(appSource).toContain('className={`visit-time-field timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`}');
   expect(appSource).toContain("<TimelineDurationField");

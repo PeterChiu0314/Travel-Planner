@@ -404,7 +404,9 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   const primaryFields = form.locator(".visit-editor-primary-row > .outlined-field");
   const typeBox = await primaryFields.nth(0).boundingBox();
   const destinationBox = await primaryFields.nth(1).boundingBox();
-  const typeControlBox = await primaryFields.nth(0).locator("select").boundingBox();
+  const typeField = primaryFields.nth(0);
+  const typeTrigger = typeField.getByRole("combobox", { name: "類型" });
+  const typeControlBox = await typeTrigger.boundingBox();
   const destinationControlBox = await primaryFields.nth(1).locator("input").boundingBox();
   expect(Math.abs(typeBox.y - destinationBox.y)).toBeLessThan(2);
   expect(destinationBox.width).toBeGreaterThan(typeBox.width * 2);
@@ -412,6 +414,24 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(destinationBox.height).toBeCloseTo(42, 0);
   expect(typeControlBox.height).toBeGreaterThan(20);
   expect(destinationControlBox.height).toBeGreaterThan(20);
+  await expect(typeField.locator("select")).toHaveCount(0);
+  await expect(typeTrigger.locator(".timeline-time-menu-toggle")).toHaveCSS("width", "24px");
+  await expect(typeTrigger.locator(".lucide-chevron-down")).toHaveCount(1);
+  await typeTrigger.click();
+  const typeMenu = typeField.getByRole("listbox", { name: "類型選項" });
+  await expect(typeMenu).toBeVisible();
+  await expect(typeMenu.getByRole("option")).toHaveText(["景點", "餐飲", "住宿", "交通", "備註"]);
+  const typeScrollbar = await typeMenu.evaluate((menu) => ({
+    buttonDisplay: getComputedStyle(menu, "::-webkit-scrollbar-button").display,
+    thumbBackground: getComputedStyle(menu, "::-webkit-scrollbar-thumb").backgroundColor,
+    width: getComputedStyle(menu, "::-webkit-scrollbar").width,
+  }));
+  expect(typeScrollbar.width).toBe("4px");
+  expect(typeScrollbar.buttonDisplay).toBe("none");
+  expect(typeScrollbar.thumbBackground).not.toBe("rgba(0, 0, 0, 0)");
+  await typeMenu.getByRole("option", { name: "景點", exact: true }).click();
+  await expect(form.locator('input[name="type"]')).toHaveValue("attraction");
+  await expect(typeTrigger).toContainText("景點");
 
   const startField = form.locator('.timeline-segmented-time-field[data-name="start_time"]');
   const endField = form.locator('.timeline-segmented-time-field[data-name="end_time"]');
@@ -424,6 +444,11 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(endBox.height).toBeCloseTo(42, 0);
   expect(durationBox.height).toBeCloseTo(42, 0);
   await expect(startField.locator(".timeline-time-separator")).toHaveCSS("font-weight", "400");
+  await expect(startField.locator(".timeline-time-segments")).toHaveCSS("gap", "normal");
+  await expect(startField.locator(".timeline-time-segments")).toHaveCSS("justify-content", "left");
+  await expect(startField.locator(".timeline-time-segments")).toHaveCSS("padding-left", "4px");
+  await expect(startField.locator(".timeline-time-segment.hour")).toHaveCSS("font-weight", "500");
+  await expect(startField.locator(".timeline-time-segment.minute")).toHaveCSS("font-weight", "500");
   const timeAlignment = await form.locator(".visit-editor-time-row").evaluate((row) => {
     const start = row.querySelector('.timeline-segmented-time-field[data-name="start_time"]')?.getBoundingClientRect();
     const link = row.querySelector(".visit-time-link")?.getBoundingClientRect();
@@ -458,7 +483,7 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(timeAlignment.linkCenter - timeAlignment.fieldCenter).toBeCloseTo(4, 0);
   expect(timeAlignment.linkWidth).toBeCloseTo(12, 0);
   expect(timeAlignment.separatorCenter - timeAlignment.fieldCenter).toBeCloseTo(1.5, 0);
-  expect(timeAlignment.toggleWidth).toBeCloseTo(20, 0);
+  expect(timeAlignment.toggleWidth).toBeCloseTo(24, 0);
   expect(Math.abs(timeAlignment.toggleIconOffset)).toBeLessThanOrEqual(0.5);
   expect(timeAlignment.toggleRightGap).toBeCloseTo(1, 0);
   expect(timeAlignment.hourPaddingLeft).toBe("0px");
@@ -473,7 +498,16 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(startInput).toHaveValue("09:50");
 
   await startField.locator(".timeline-time-menu-toggle").click();
-  await expect(startField.locator(".timeline-time-menu")).toBeVisible();
+  const startTimeMenu = startField.locator(".timeline-time-menu");
+  await expect(startTimeMenu).toBeVisible();
+  const timeScrollbar = await startTimeMenu.evaluate((menu) => ({
+    buttonDisplay: getComputedStyle(menu, "::-webkit-scrollbar-button").display,
+    thumbBackground: getComputedStyle(menu, "::-webkit-scrollbar-thumb").backgroundColor,
+    width: getComputedStyle(menu, "::-webkit-scrollbar").width,
+  }));
+  expect(timeScrollbar.width).toBe("4px");
+  expect(timeScrollbar.buttonDisplay).toBe("none");
+  expect(timeScrollbar.thumbBackground).not.toBe("rgba(0, 0, 0, 0)");
   expect(await startField.locator('.timeline-time-menu [role="option"]').count()).toBeGreaterThan(20);
   await startField.locator('.timeline-time-menu [role="option"]', { hasText: "10:00" }).click();
   await expect(startInput).toHaveValue("10:00");

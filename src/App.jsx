@@ -802,6 +802,69 @@ function OutlinedField({ children, className = "", fieldRef = null, invalid = fa
   );
 }
 
+function TimelineTypeField({ onValueChange, value }) {
+  const rootRef = useRef(null);
+  const menuRef = useRef(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    window.requestAnimationFrame(() => menuRef.current?.querySelector(".selected")?.scrollIntoView({ block: "nearest" }));
+    const closeMenu = (event) => {
+      if (!rootRef.current?.contains(event.target)) setIsMenuOpen(false);
+    };
+    const closeMenuWithKeyboard = (event) => {
+      if (event.key === "Escape") setIsMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeMenuWithKeyboard);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("keydown", closeMenuWithKeyboard);
+    };
+  }, [isMenuOpen]);
+
+  return (
+    <OutlinedField className={`visit-type-field${isMenuOpen ? " menu-open" : ""}`} fieldRef={rootRef} label="類型">
+      <input name="type" type="hidden" value={value} />
+      <button
+        aria-expanded={isMenuOpen}
+        aria-haspopup="listbox"
+        aria-label="類型"
+        className="timeline-type-select-trigger"
+        role="combobox"
+        type="button"
+        onClick={() => setIsMenuOpen((current) => !current)}
+      >
+        <span className="timeline-type-select-value">{typeLabels[value] || typeLabels.attraction}</span>
+        <span className="timeline-time-menu-toggle" aria-hidden="true">
+          <ChevronDown />
+        </span>
+      </button>
+      {isMenuOpen ? (
+        <div className="timeline-time-menu timeline-type-menu" ref={menuRef} role="listbox" aria-label="類型選項">
+          {Object.entries(typeLabels).map(([optionValue, label]) => (
+            <button
+              aria-selected={optionValue === value}
+              className={optionValue === value ? "selected" : ""}
+              key={optionValue}
+              role="option"
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onValueChange(optionValue);
+                setIsMenuOpen(false);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </OutlinedField>
+  );
+}
+
 function TimelineSegmentedTimeField({ disabled = false, label, name, onValueChange, value }) {
   const initialSegments = String(value || "").split(":");
   const rootRef = useRef(null);
@@ -13008,13 +13071,7 @@ function ItineraryTimeline({
           </div>
         ) : null}
         <div className="visit-editor-primary-row">
-          <OutlinedField label="類型">
-            <select aria-label="類型" name="type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
-              {Object.entries(typeLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </OutlinedField>
+          <TimelineTypeField value={form.type} onValueChange={(type) => setForm({ ...form, type })} />
           <OutlinedField className="destination-field" label="目的地">
             <input
               aria-label="目的地"
