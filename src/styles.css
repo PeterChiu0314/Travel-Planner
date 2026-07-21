@@ -3088,7 +3088,7 @@ textarea {
 .outlined-field:focus-within,
 .outlined-field.menu-open {
   border-color: var(--mint-dark);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mint-dark) 14%, transparent);
+  box-shadow: none;
 }
 
 .outlined-field:focus-within legend,
@@ -3300,7 +3300,7 @@ textarea {
 
 .visit-time-field.duration .outlined-field-control > input {
   flex: 1;
-  padding-left: 0;
+  padding-left: 4px;
 }
 
 .visit-note-field {
@@ -3322,7 +3322,6 @@ textarea {
 
 .visit-map-point-section {
   margin-top: 12px;
-  padding-top: 9px;
   border-top: 1px solid var(--line);
 }
 

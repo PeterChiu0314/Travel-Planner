@@ -450,7 +450,7 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(timeAlignment.toggleWidth).toBeCloseTo(20, 0);
   expect(Math.abs(timeAlignment.toggleIconOffset)).toBeLessThanOrEqual(0.5);
   expect(timeAlignment.toggleRightGap).toBeCloseTo(1, 0);
-  expect(timeAlignment.durationPaddingLeft).toBe("0px");
+  expect(timeAlignment.durationPaddingLeft).toBe("4px");
 
   const startInput = form.locator('input[name="start_time"]');
   await setTimelineTime(form, "start_time", "09:45");
@@ -497,6 +497,8 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(mapUrlField.locator("legend")).toHaveText("Google Maps URL");
   await expect(mapUrlField.locator("legend")).toHaveCSS("overflow", "visible");
   await expect(mapUrlInput).toHaveAttribute("placeholder", "貼上 Google Maps 連結");
+  await mapUrlInput.click();
+  await expect(mapUrlField).toHaveCSS("box-shadow", "none");
   const mapUrlBox = await mapUrlField.boundingBox();
   expect(mapUrlBox.height).toBeCloseTo(42, 0);
   await mapUrlInput.fill("https://www.google.com/maps/place/not-a-coordinate");
