@@ -38,7 +38,7 @@ Archive rules:
 
 ```text
 Current phase: Transportation card add/edit UI refresh
-Status: Implemented; focused and combined automated verification plus production build passed
+Status: Completed and user-accepted on 2026-07-21
 Branch: codex/timeline-phase-5-9
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
@@ -185,6 +185,7 @@ Latest Dayboard add-location verification:
 
 Latest Phase 5.9 verification:
 
+- User acceptance completed on 2026-07-21 for the transportation card add/edit UI refresh and the shared visit/transportation note-field behavior.
 - `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
 - `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 40/40.
 - `npm.cmd run test:e2e -- tests/phase-1-7f-smoke.spec.js` passed 31/31, including outlined-label rendering, Map URL error geometry, segmented-time behavior, disabled duration state, and narrow-card overflow coverage.
@@ -326,4 +327,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Transportation card add/edit UI refresh is implemented and verified. Await the next requested phase while preserving the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, Phase 5.9 point workflow, and existing transportation pairing/navigation behavior.
+Transportation card add/edit UI refresh is completed, verified, and user-accepted. Await the next requested phase while preserving the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, completed Phase 5.9 itinerary/transportation editor behavior, and existing transportation pairing/navigation behavior.
