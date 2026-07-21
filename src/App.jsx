@@ -811,7 +811,7 @@ function FloatingOutlinedField({ children, className = "", label }) {
   );
 }
 
-function TimelineTypeField({ onValueChange, value }) {
+function OutlinedMenuField({ className = "", label, listboxLabel, name, onValueChange, options, required = false, value }) {
   const rootRef = useRef(null);
   const menuRef = useRef(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -834,43 +834,79 @@ function TimelineTypeField({ onValueChange, value }) {
   }, [isMenuOpen]);
 
   return (
-    <OutlinedField className={`visit-type-field${isMenuOpen ? " menu-open" : ""}`} fieldRef={rootRef} label="類型">
-      <input name="type" type="hidden" value={value} />
+    <OutlinedField
+      className={`outlined-menu-field${className ? ` ${className}` : ""}${isMenuOpen ? " menu-open" : ""}`}
+      fieldRef={rootRef}
+      label={label}
+    >
+      <input name={name} required={required} type="hidden" value={value} />
       <button
         aria-expanded={isMenuOpen}
         aria-haspopup="listbox"
-        aria-label="類型"
+        aria-label={label}
+        aria-required={required || undefined}
         className="timeline-type-select-trigger"
         role="combobox"
         type="button"
         onClick={() => setIsMenuOpen((current) => !current)}
       >
-        <span className="timeline-type-select-value">{typeLabels[value] || typeLabels.attraction}</span>
+        <span className="timeline-type-select-value">
+          {options.find((option) => option.value === value)?.label || options[0]?.label}
+        </span>
         <span className="timeline-time-menu-toggle" aria-hidden="true">
           <ChevronDown />
         </span>
       </button>
       {isMenuOpen ? (
-        <div className="timeline-time-menu timeline-type-menu" ref={menuRef} role="listbox" aria-label="類型選項">
-          {Object.entries(typeLabels).map(([optionValue, label]) => (
+        <div className="timeline-time-menu timeline-type-menu" ref={menuRef} role="listbox" aria-label={listboxLabel}>
+          {options.map((option) => (
             <button
-              aria-selected={optionValue === value}
-              className={optionValue === value ? "selected" : ""}
-              key={optionValue}
+              aria-selected={option.value === value}
+              className={option.value === value ? "selected" : ""}
+              key={option.value}
               role="option"
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
-                onValueChange(optionValue);
+                onValueChange(option.value);
                 setIsMenuOpen(false);
               }}
             >
-              {label}
+              {option.label}
             </button>
           ))}
         </div>
       ) : null}
     </OutlinedField>
+  );
+}
+
+function TimelineTypeField({ onValueChange, value }) {
+  return (
+    <OutlinedMenuField
+      className="visit-type-field"
+      label="類型"
+      listboxLabel="類型選項"
+      name="type"
+      onValueChange={onValueChange}
+      options={Object.entries(typeLabels).map(([optionValue, label]) => ({ label, value: optionValue }))}
+      value={value}
+    />
+  );
+}
+
+function TransportCategoryField({ onValueChange, value }) {
+  return (
+    <OutlinedMenuField
+      className="transport-category-field"
+      label="交通類別"
+      listboxLabel="交通類別選項"
+      name="transport_category"
+      onValueChange={onValueChange}
+      options={transportCategories}
+      required
+      value={value}
+    />
   );
 }
 
@@ -12756,21 +12792,10 @@ function ItineraryTimeline({
         </div>
         <div className="transport-editor-edit-mode">
           <div className="form-grid wide transport-editor-route-row">
-            <OutlinedField className="transport-category-field" label="交通類別">
-              <select
-                aria-label="交通類別"
-                name="transport_category"
-                required
-                value={category}
-                onChange={(event) => setForm({ ...form, transport_category: event.target.value })}
-              >
-                {transportCategories.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </OutlinedField>
+            <TransportCategoryField
+              value={category}
+              onValueChange={(transportCategory) => setForm({ ...form, transport_category: transportCategory })}
+            />
             <TransportDurationField
               value={form.transport_duration_minutes}
               onValueChange={(transportDurationMinutes) =>

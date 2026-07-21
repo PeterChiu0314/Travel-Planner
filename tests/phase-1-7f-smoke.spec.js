@@ -688,7 +688,9 @@ test("transport editor uses compact floating fields and preserves exact minute i
 
   await page.getByRole("button", { name: "新增尾端交通" }).click({ force: true });
   const form = page.locator(".transport-editor-form");
-  const category = form.locator('select[name="transport_category"]');
+  const category = form.locator('input[type="hidden"][name="transport_category"]');
+  const categoryField = form.locator(".transport-category-field");
+  const categoryTrigger = categoryField.getByRole("combobox", { name: "交通類別" });
   const duration = form.locator('input[name="transport_duration_minutes"]');
   const name = form.locator('input[name="transport_name"]');
   const note = form.locator('textarea[name="transport_note"]');
@@ -696,6 +698,15 @@ test("transport editor uses compact floating fields and preserves exact minute i
   await expect(form.locator(".outlined-field > legend")).toHaveText(["交通類別", "交通時間"]);
   await expect(form.locator(".floating-outlined-label")).toHaveText(["交通名稱", "備註"]);
   await expect(category).toHaveAttribute("required", "");
+  await expect(categoryField.locator("select")).toHaveCount(0);
+  await expect(categoryTrigger.locator(".timeline-time-menu-toggle")).toHaveCSS("width", "24px");
+  await expect(categoryTrigger.locator(".lucide-chevron-down")).toHaveCount(1);
+  await categoryTrigger.click();
+  const categoryMenu = categoryField.getByRole("listbox", { name: "交通類別選項" });
+  await expect(categoryMenu).toBeVisible();
+  await expect(categoryMenu.getByRole("option")).toHaveText(["JR", "電車", "公車", "步行", "自駕", "計程車", "渡輪", "飛機", "其他"]);
+  await categoryMenu.getByRole("option", { name: "電車", exact: true }).click();
+  await expect(category).toHaveValue("train");
   await expect(duration).toHaveAttribute("required", "");
   await expect(name).not.toHaveAttribute("required", "");
   await expect(name).toHaveValue("");
@@ -705,7 +716,16 @@ test("transport editor uses compact floating fields and preserves exact minute i
   await expect(form).toHaveCSS("min-height", "0px");
   await expect(form.locator(".transport-editor-edit-mode")).toHaveCSS("min-height", "0px");
   expect((await form.boundingBox()).height).toBeLessThan(380);
-  expect((await note.boundingBox()).height).toBeLessThanOrEqual(54);
+  await expect(form.locator(".transport-editor-note-field")).toHaveCSS("height", "62px");
+  expect((await note.boundingBox()).height).toBeLessThanOrEqual(60);
+  const noteScrollbar = await note.evaluate((textarea) => ({
+    buttonDisplay: getComputedStyle(textarea, "::-webkit-scrollbar-button").display,
+    thumbBackground: getComputedStyle(textarea, "::-webkit-scrollbar-thumb").backgroundColor,
+    width: getComputedStyle(textarea, "::-webkit-scrollbar").width,
+  }));
+  expect(noteScrollbar.width).toBe("4px");
+  expect(noteScrollbar.buttonDisplay).toBe("none");
+  expect(noteScrollbar.thumbBackground).not.toBe("rgba(0, 0, 0, 0)");
 
   const nameFloatingLabel = form.locator(".transport-editor-name-field .floating-outlined-label");
   await expect(nameFloatingLabel).toHaveCSS("font-size", "14px");
@@ -717,6 +737,16 @@ test("transport editor uses compact floating fields and preserves exact minute i
   expect(await form.locator(".transport-editor-route-row").evaluate((row) =>
     Array.from(row.children).map((child) => child.classList.contains("transport-editor-navigation-button") ? "navigation" : child.tagName),
   )).toEqual(["FIELDSET", "FIELDSET", "navigation"]);
+  const navigationButton = form.locator(".transport-editor-navigation-button");
+  await expect(navigationButton).toHaveCSS("width", "42px");
+  await expect(navigationButton).toHaveCSS("height", "42px");
+  const routeAlignment = await form.locator(".transport-editor-route-row").evaluate((row) => {
+    const durationField = row.querySelector(".transport-duration-field").getBoundingClientRect();
+    const navigation = row.querySelector(".transport-editor-navigation-button").getBoundingClientRect();
+    return { bottomDelta: Math.abs(durationField.bottom - navigation.bottom), heightDelta: Math.abs(durationField.height - navigation.height) };
+  });
+  expect(routeAlignment.bottomDelta).toBeLessThanOrEqual(1);
+  expect(routeAlignment.heightDelta).toBeLessThanOrEqual(1);
 
   await form.getByRole("button", { name: "保存" }).click();
   await expect(form).toBeVisible();

@@ -92,6 +92,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Transportation duration remains an integer minute value internally. The unfocused field and card title render natural labels such as `9 分鐘`, `1 小時`, and `1 小時 12 分鐘`; focused numeric entry accepts any positive integer without five-minute snapping. Wheel adjustments immediately return the field to this natural format, including values over 60 minutes.
 - Arrow Up / wheel up add five minutes and Arrow Down / wheel down subtract five minutes relative to the current exact value. The duration field has no dropdown.
 - Transportation editors no longer reserve a fixed minimum height, and the note field now reserves two rows to match the itinerary editor.
+- Transportation category now reuses the itinerary type menu structure, including its custom chevron, selected state, and menu styling. The note field is 62 px high and uses the time-menu scrollbar treatment; the adjacent navigation button is 42 px square to match and align with the outlined fields.
 - The existing next-itinerary suggestion still computes from the unchanged transportation duration and rounds the suggested start upward with `roundMinutesUpToStep(..., 5)`; it does not write the rounded value back into transportation duration.
 - The existing Google Maps navigation control remains immediately to the right of transportation duration and keeps its existing directions URL behavior.
 

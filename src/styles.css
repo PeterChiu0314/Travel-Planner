@@ -3225,12 +3225,12 @@ textarea {
   font-weight: 500;
 }
 
-.visit-type-field {
+.outlined-menu-field {
   position: relative;
   min-width: 0;
 }
 
-.visit-type-field .outlined-field-control {
+.outlined-menu-field .outlined-field-control {
   width: calc(100% + 12px);
   margin-inline: -6px;
 }
@@ -4158,7 +4158,7 @@ textarea {
 
 .form-grid.wide.transport-editor-route-row {
   display: grid;
-  grid-template-columns: minmax(0, 0.96fr) minmax(0, 0.84fr) 40px;
+  grid-template-columns: minmax(0, 0.96fr) minmax(0, 0.84fr) 42px;
   align-items: end;
   column-gap: 10px;
   margin-top: 8px;
@@ -4168,14 +4168,12 @@ textarea {
   min-width: 0;
 }
 
-.transport-editor-route-row input,
-.transport-editor-route-row select {
+.transport-editor-route-row input {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
 }
 
-.transport-category-field select,
 .transport-duration-field input,
 .transport-editor-name-field input,
 .transport-editor-note-field textarea {
@@ -4187,16 +4185,43 @@ textarea {
 }
 
 .transport-editor-note-field {
-  height: 54px;
+  height: 62px;
 }
 
 .transport-editor-note-field textarea {
   width: 100%;
-  height: 52px;
-  min-height: 52px;
+  height: 60px;
+  min-height: 60px;
   padding: 8px 12px;
   line-height: 1.45;
   resize: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--board-scrollbar-thumb) transparent;
+}
+
+.transport-editor-note-field textarea::-webkit-scrollbar {
+  width: var(--board-scrollbar-width);
+  height: var(--board-scrollbar-width);
+}
+
+.transport-editor-note-field textarea::-webkit-scrollbar-button,
+.transport-editor-note-field textarea::-webkit-scrollbar-button:single-button {
+  display: none;
+  width: 0;
+  height: 0;
+  border: 0;
+  background: transparent;
+}
+
+.transport-editor-note-field textarea::-webkit-scrollbar-track {
+  border: 0;
+  background: transparent;
+}
+
+.transport-editor-note-field textarea::-webkit-scrollbar-thumb {
+  border: 0;
+  border-radius: 999px;
+  background: var(--board-scrollbar-thumb);
 }
 
 .transport-editor-note-field .floating-outlined-label {
@@ -4213,10 +4238,10 @@ textarea {
 .transport-editor-navigation-button {
   align-self: end;
   justify-self: end;
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
   margin-bottom: 0;
   flex: 0 0 auto;
 }
@@ -6801,7 +6826,7 @@ textarea {
   }
 
   .form-grid.wide.transport-editor-route-row {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.78fr) 40px;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.78fr) 42px;
     column-gap: 8px;
   }
 
