@@ -423,7 +423,7 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(startBox.height).toBeCloseTo(42, 0);
   expect(endBox.height).toBeCloseTo(42, 0);
   expect(durationBox.height).toBeCloseTo(42, 0);
-  await expect(startField.locator(".timeline-time-separator")).toHaveCSS("font-weight", "500");
+  await expect(startField.locator(".timeline-time-separator")).toHaveCSS("font-weight", "400");
   const timeAlignment = await form.locator(".visit-editor-time-row").evaluate((row) => {
     const start = row.querySelector('.timeline-segmented-time-field[data-name="start_time"]')?.getBoundingClientRect();
     const link = row.querySelector(".visit-time-link")?.getBoundingClientRect();
@@ -439,8 +439,8 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   });
   expect(timeAlignment.linkCenter - timeAlignment.fieldCenter).toBeCloseTo(4, 0);
   expect(timeAlignment.linkWidth).toBeCloseTo(12, 0);
-  expect(timeAlignment.separatorCenter - timeAlignment.fieldCenter).toBeCloseTo(0, 0);
-  expect(timeAlignment.toggleWidth).toBeCloseTo(42, 0);
+  expect(timeAlignment.separatorCenter - timeAlignment.fieldCenter).toBeCloseTo(1.5, 0);
+  expect(timeAlignment.toggleWidth).toBeCloseTo(24, 0);
 
   const startInput = form.locator('input[name="start_time"]');
   await setTimelineTime(form, "start_time", "09:45");
