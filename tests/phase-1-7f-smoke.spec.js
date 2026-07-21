@@ -583,7 +583,7 @@ test("Phase 5.9 new visit editor uses the same transparent card controls as the 
   const visualStyles = await form.evaluate((element) => ({
     marginBottom: getComputedStyle(element).marginBottom,
     destinationBackground: getComputedStyle(element.querySelector('input[name="location_name"]')).backgroundColor,
-    typeBackground: getComputedStyle(element.querySelector('select[name="type"]')).backgroundColor,
+    typeBackground: getComputedStyle(element.querySelector(".timeline-type-select-trigger")).backgroundColor,
     noteBackground: getComputedStyle(element.querySelector('textarea[name="description"]')).backgroundColor,
     cancelBackground: getComputedStyle(element.querySelector(".item-form-cancel-button")).backgroundColor,
   }));
@@ -663,6 +663,76 @@ test("Phase 5.8 Timeline cards stage focus before expansion and reset across mar
   await expect(page.locator('.timeline-day-column.active[data-day-index="0"]')).toHaveCount(1);
   await expect(page.locator(".timeline-day-column.active .focused")).toHaveCount(0);
   await expect(page.locator(".timeline-day-column.active .expanded")).toHaveCount(0);
+  expect(supabaseRequests).toEqual([]);
+  expect(failures).toEqual([]);
+});
+
+test("transport editor shares outlined fields and preserves exact minute input", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
+
+  await page.goto("/demo/timeline");
+
+  const navigationLinks = page.locator(".timeline-day-column.active .transport-card a.transport-navigation-button");
+  expect(await navigationLinks.count()).toBeGreaterThan(0);
+  await expect(navigationLinks.first()).toHaveAttribute("href", /google\.com\/maps\/dir/);
+  await expect(navigationLinks.first()).toHaveAttribute("target", "_blank");
+
+  const existingTransport = page.locator(".timeline-day-column.active .transport-card:has(a.transport-navigation-button)").first();
+  await existingTransport.click();
+  await existingTransport.click();
+  await existingTransport.getByTitle("編輯").click();
+  await expect(page.locator(".transport-editor-form .outlined-field > legend")).toHaveText(["交通類別", "交通時間", "交通名稱", "備註"]);
+  await page.locator(".transport-editor-form").getByRole("button", { name: "取消" }).click();
+
+  await page.getByRole("button", { name: "新增尾端交通" }).click({ force: true });
+  const form = page.locator(".transport-editor-form");
+  const category = form.locator('select[name="transport_category"]');
+  const duration = form.locator('input[name="transport_duration_minutes"]');
+  const name = form.locator('input[name="transport_name"]');
+  const note = form.locator('textarea[name="transport_note"]');
+
+  await expect(form.locator(".outlined-field > legend")).toHaveText(["交通類別", "交通時間", "交通名稱", "備註"]);
+  await expect(category).toHaveAttribute("required", "");
+  await expect(duration).toHaveAttribute("required", "");
+  await expect(name).not.toHaveAttribute("required", "");
+  await expect(name).toHaveValue("");
+  await expect(note).toHaveAttribute("placeholder", "加入交通及轉乘資訊");
+  await expect(form.locator(".transport-duration-field .timeline-time-menu-toggle")).toHaveCount(0);
+  expect(await form.locator(".transport-editor-route-row").evaluate((row) =>
+    Array.from(row.children).map((child) => child.classList.contains("transport-editor-navigation-button") ? "navigation" : child.tagName),
+  )).toEqual(["FIELDSET", "FIELDSET", "navigation"]);
+
+  await form.getByRole("button", { name: "保存" }).click();
+  await expect(form).toBeVisible();
+  expect(await duration.evaluate((input) => input.validity.valueMissing)).toBe(true);
+
+  await duration.fill("12");
+  await duration.press("ArrowDown");
+  await expect(duration).toHaveValue("7");
+  await duration.press("ArrowUp");
+  await duration.press("ArrowUp");
+  await expect(duration).toHaveValue("17");
+  await duration.evaluate((input) => input.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -100 })));
+  await expect(duration).toHaveValue("22");
+  await duration.evaluate((input) => input.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100 })));
+  await expect(duration).toHaveValue("17");
+
+  await duration.fill("9");
+  await name.click();
+  await expect(duration).toHaveValue("9 分鐘");
+  await duration.fill("60");
+  await name.click();
+  await expect(duration).toHaveValue("1 小時");
+  await duration.fill("72");
+  await name.click();
+  await expect(duration).toHaveValue("1 小時 12 分鐘");
+  await duration.fill("12");
+  await name.click();
+  await form.getByRole("button", { name: "保存" }).click();
+
+  const fallbackTitle = page.getByText("電車・12 分鐘", { exact: true });
+  await expect(fallbackTitle).toBeVisible();
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });

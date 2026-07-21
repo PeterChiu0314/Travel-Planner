@@ -1097,6 +1097,57 @@ function TimelineDurationField({ disabled = false, inputRef, maxMinutes, onCommi
   );
 }
 
+function TransportDurationField({ onValueChange, value }) {
+  const inputRef = useRef(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const rawValue = String(value ?? "");
+  const displayValue = isEditing ? rawValue : formatTransportDurationMinutes(rawValue);
+
+  function adjustDuration(step) {
+    const current = Number(rawValue);
+    const baseMinutes = Number.isInteger(current) && current > 0 ? current : 0;
+    setIsEditing(true);
+    onValueChange(String(Math.max(1, baseMinutes + step)));
+  }
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return undefined;
+    const handleWheel = (event) => {
+      event.preventDefault();
+      adjustDuration(event.deltaY < 0 ? 5 : -5);
+    };
+    input.addEventListener("wheel", handleWheel, { passive: false });
+    return () => input.removeEventListener("wheel", handleWheel);
+  }, [rawValue, onValueChange]);
+
+  return (
+    <OutlinedField className="transport-duration-field" label="交通時間">
+      <input
+        aria-label="交通時間"
+        autoComplete="off"
+        inputMode="numeric"
+        name="transport_duration_minutes"
+        placeholder="分鐘"
+        ref={inputRef}
+        required
+        value={displayValue}
+        onBlur={() => setIsEditing(false)}
+        onChange={(event) => {
+          setIsEditing(true);
+          onValueChange(event.target.value.replace(/\D/g, ""));
+        }}
+        onFocus={(event) => event.currentTarget.select()}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+          event.preventDefault();
+          adjustDuration(event.key === "ArrowUp" ? 5 : -5);
+        }}
+      />
+    </OutlinedField>
+  );
+}
+
 function minutesToTimeValue(totalMinutes) {
   if (!Number.isFinite(totalMinutes) || totalMinutes < 0 || totalMinutes >= 24 * 60) return "";
   const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
@@ -1134,6 +1185,16 @@ function formatDurationMinutes(value) {
   return `${hours}小時${remainingMinutes}分鐘`;
 }
 
+function formatTransportDurationMinutes(value) {
+  const minutes = Number(value || 0);
+  if (!Number.isFinite(minutes) || minutes <= 0) return "";
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (!hours) return `${remainingMinutes} 分鐘`;
+  if (!remainingMinutes) return `${hours} 小時`;
+  return `${hours} 小時 ${remainingMinutes} 分鐘`;
+}
+
 function parseDurationMinutes(value) {
   const text = String(value || "").trim();
   const hourMatch = text.match(/(\d+)\s*小時/);
@@ -1143,9 +1204,17 @@ function parseDurationMinutes(value) {
     : Number(hourMatch?.[1] || 0) * 60 + Number(minuteMatch?.[1] || 0);
 }
 
+function transportNameValue(item) {
+  const explicitName = String(item?.transport_name || "").trim();
+  if (explicitName) return explicitName;
+  const legacyTitle = String(item?.title || "").trim();
+  const categoryLabel = transportCategoryMeta(item?.transport_category).label;
+  return legacyTitle && legacyTitle !== categoryLabel ? legacyTitle : "";
+}
+
 function transportCardTitle(item) {
-  const name = item?.transport_name || item?.title || transportCategoryMeta(item?.transport_category).label;
-  const duration = formatDurationMinutes(item?.transport_duration_minutes);
+  const name = transportNameValue(item) || transportCategoryMeta(item?.transport_category).label;
+  const duration = formatTransportDurationMinutes(item?.transport_duration_minutes);
   return duration ? `${name}・${duration}` : name;
 }
 
@@ -2236,7 +2305,7 @@ function createDemoTimelineItems() {
       transportation_note: item.transportation_note || item.transport_note || "",
       cost: Number(item.cost || 0),
       transport_category: item.item_type === "transport" ? item.transport_category || defaultTransportCategory : item.transport_category || null,
-      transport_name: item.item_type === "transport" ? item.transport_name || item.title || "" : item.transport_name || null,
+      transport_name: item.item_type === "transport" ? transportNameValue(item) : item.transport_name || null,
       transport_duration_minutes:
         item.item_type === "transport" && Number.isFinite(Number(item.transport_duration_minutes))
           ? Number(item.transport_duration_minutes)
@@ -6862,7 +6931,7 @@ function exportTrip() {
 
 function normalizeItemPayload(payload) {
   if (payload.item_type === "transport") {
-    const transportName = String(payload.transport_name || payload.title || "").trim();
+    const transportName = transportNameValue(payload);
     const transportNote = String(payload.transport_note || payload.transportation_note || payload.description || payload.note || "").trim();
     const durationMinutes = Number(payload.transport_duration_minutes || 0);
     return {
@@ -11848,7 +11917,7 @@ function ItineraryTimeline({
       description: item.description || item.note || "",
       transportation_note: item.transportation_note || "",
       transport_category: item.transport_category || defaultTransportCategory,
-      transport_name: item.transport_name || item.title || "",
+      transport_name: transportNameValue(item),
       transport_duration_minutes: item.transport_duration_minutes || "",
       transport_note: item.transport_note || item.transportation_note || item.description || item.note || "",
       from_item_id: item.from_item_id || null,
@@ -11944,7 +12013,22 @@ function ItineraryTimeline({
       cost: String(formData.get("cost") ?? form.cost ?? 0),
     };
     if (submittedForm.item_type === "transport") {
-      submittedForm.title = submittedForm.transport_name.trim();
+      const transportCategory = submittedForm.transport_category.trim();
+      const transportDurationMinutes = parseDurationMinutes(submittedForm.transport_duration_minutes);
+      if (!transportCategory) {
+        setTimeError("請選擇交通類別。");
+        setForm(submittedForm);
+        return false;
+      }
+      if (!Number.isInteger(transportDurationMinutes) || transportDurationMinutes <= 0) {
+        setTimeError("交通時間請輸入大於 0 的整數分鐘。");
+        setForm(submittedForm);
+        return false;
+      }
+      submittedForm.transport_category = transportCategory;
+      submittedForm.transport_duration_minutes = String(transportDurationMinutes);
+      submittedForm.transport_name = submittedForm.transport_name.trim();
+      submittedForm.title = submittedForm.transport_name;
       submittedForm.transportation_note = submittedForm.transport_note.trim();
       submittedForm.note = submittedForm.transport_note.trim();
       submittedForm.description = submittedForm.transport_note.trim();
@@ -12662,11 +12746,12 @@ function ItineraryTimeline({
           <strong>{editorHeadingTitle}</strong>
         </div>
         <div className="transport-editor-edit-mode">
-          <div className="field-group form-grid wide transport-editor-route-row">
-            <label>
-              交通類別
+          <div className="form-grid wide transport-editor-route-row">
+            <OutlinedField className="transport-category-field" label="交通類別">
               <select
+                aria-label="交通類別"
                 name="transport_category"
+                required
                 value={category}
                 onChange={(event) => setForm({ ...form, transport_category: event.target.value })}
               >
@@ -12676,39 +12761,31 @@ function ItineraryTimeline({
                   </option>
                 ))}
               </select>
-            </label>
-            <label>
-              交通時間
-              <input
-                autoComplete="off"
-                min="1"
-                name="transport_duration_minutes"
-                placeholder="25"
-                required
-                step="1"
-                type="number"
-                value={form.transport_duration_minutes}
-                onChange={(event) => setForm({ ...form, transport_duration_minutes: event.target.value })}
-              />
-            </label>
+            </OutlinedField>
+            <TransportDurationField
+              value={form.transport_duration_minutes}
+              onValueChange={(transportDurationMinutes) =>
+                setForm({ ...form, transport_duration_minutes: transportDurationMinutes })
+              }
+            />
             {renderTransportNavigationControl(editorNavigationUrl, "mini-button transport-navigation-button transport-editor-navigation-button")}
           </div>
-          <label className="full-label">
-            交通名稱
+          <OutlinedField className="transport-editor-name-field" label="交通名稱">
             <input
+              aria-label="交通名稱"
               autoComplete="off"
               name="transport_name"
               placeholder="JR 特急"
-              required
               value={form.transport_name}
               onChange={(event) => setForm({ ...form, transport_name: event.target.value, title: event.target.value })}
             />
-          </label>
-          <label className="full-label">
-            備註
+          </OutlinedField>
+          <OutlinedField className="transport-editor-note-field" label="備註">
             <textarea
+              aria-label="備註"
               autoComplete="off"
               name="transport_note"
+              placeholder="加入交通及轉乘資訊"
               rows="3"
               value={form.transport_note}
               onChange={(event) =>
@@ -12721,7 +12798,7 @@ function ItineraryTimeline({
                 })
               }
             />
-          </label>
+          </OutlinedField>
           <div className="transport-editor-footer-actions navigation-only">
             <div className="transport-editor-save-actions">
               <button className="primary-button compact transport-editor-action-button" disabled={!canMutateThisDay} type="submit">

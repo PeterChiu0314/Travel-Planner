@@ -4091,7 +4091,7 @@ textarea {
   margin-top: 8px;
 }
 
-.transport-editor-route-row > label {
+.transport-editor-route-row > .outlined-field {
   min-width: 0;
 }
 
@@ -4100,6 +4100,34 @@ textarea {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
+}
+
+.transport-category-field select,
+.transport-duration-field input,
+.transport-editor-name-field input,
+.transport-editor-note-field textarea {
+  font-size: 14px;
+}
+
+.transport-duration-field input {
+  font-variant-numeric: tabular-nums;
+}
+
+.transport-editor-note-field {
+  height: auto;
+  padding-bottom: 6px;
+}
+
+.transport-editor-note-field .outlined-field-control {
+  height: auto;
+}
+
+.transport-editor-note-field textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 4px 0 0;
+  line-height: 1.45;
+  resize: none;
 }
 
 .transport-editor-navigation-button {
@@ -4158,6 +4186,7 @@ textarea {
 
 .transport-editor-edit-mode {
   display: grid;
+  gap: 12px;
   min-height: 330px;
 }
 

@@ -37,8 +37,8 @@ Archive rules:
 ## Current Status
 
 ```text
-Current phase: Dayboard add-itinerary Map location flow (second stage)
-Status: Implemented; focused automated verification and production build passed
+Current phase: Transportation card add/edit UI refresh
+Status: Implemented; focused and combined automated verification plus production build passed
 Branch: codex/timeline-phase-5-9
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
@@ -84,6 +84,15 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - New visits still require a valid point. Existing legacy visits may edit unrelated fields when their unchanged point data is missing or invalid.
 - Search/Replace masks non-Map UI, keeps Map/Places controls interactive, changes the preview confirmation to `更改地點`, and exits after applying the selected place to the draft.
 - Full implementation and remaining manual QA notes are in `docs/2026-07-19-phase-5-9-itinerary-editor-ui-handoff.md`.
+
+## Transportation Card Add/Edit UI State
+
+- The shared Formal/Demo transportation editor now uses the existing outlined `fieldset` / `legend` design for category, duration, optional name, and optional note fields. The note placeholder is `加入交通及轉乘資訊`.
+- Transportation category and duration are required. Transportation name remains empty unless the user enters one; saving an empty name keeps `transport_name` and the persisted compatibility title empty, while card and collapsed-preview titles fall back to the selected category.
+- Transportation duration remains an integer minute value internally. The unfocused field and card title render natural labels such as `9 分鐘`, `1 小時`, and `1 小時 12 分鐘`; focused numeric entry accepts any positive integer without five-minute snapping.
+- Arrow Up / wheel up add five minutes and Arrow Down / wheel down subtract five minutes relative to the current exact value. The duration field has no dropdown.
+- The existing next-itinerary suggestion still computes from the unchanged transportation duration and rounds the suggested start upward with `roundMinutesUpToStep(..., 5)`; it does not write the rounded value back into transportation duration.
+- The existing Google Maps navigation control remains immediately to the right of transportation duration and keeps its existing directions URL behavior.
 
 ## Phase 5.8 Current UI State
 
@@ -147,6 +156,12 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Database rows are authoritative after drag-end; active-drag Broadcast remains best effort.
 
 ## Verification
+
+Latest transportation card add/edit UI verification:
+
+- `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js tests/phase-1-7f-smoke.spec.js --reporter=line --output=.tmp-phase-transport-results` passed 72/72, including required/optional fields, outlined labels for add/edit, blank-name category fallback, natural duration labels, exact-minute keyboard entry, Arrow Up/Down and wheel increments, no duration dropdown, navigation URL/placement, and the existing next-itinerary five-minute ceiling cases.
+- `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
+- `git diff --check` passed; Windows LF/CRLF notices remain informational.
 
 Latest Map search URL verification:
 
@@ -304,4 +319,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Perform authenticated Formal Google Maps manual QA for the Dayboard add-location flow with the Map both expanded and collapsed, including Places, Google Maps URL, custom point, confirmation, and cancellation. Preserve the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, and existing-editor Phase 5.9 point workflow.
+Transportation card add/edit UI refresh is implemented and verified. Await the next requested phase while preserving the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, Phase 5.9 point workflow, and existing transportation pairing/navigation behavior.
