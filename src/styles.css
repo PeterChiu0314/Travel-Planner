@@ -3114,6 +3114,79 @@ textarea {
   color: color-mix(in srgb, var(--muted) 70%, transparent);
 }
 
+.floating-outlined-field {
+  position: relative;
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.floating-outlined-field > input,
+.floating-outlined-field > textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+}
+
+.floating-outlined-field > input {
+  height: 100%;
+  padding: 0 12px;
+}
+
+.floating-outlined-field > textarea {
+  padding: 10px 12px;
+}
+
+.floating-outlined-label {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  z-index: 1;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  padding: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.1;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  transition: top 120ms ease, left 120ms ease, padding 120ms ease, color 120ms ease, font-size 120ms ease;
+}
+
+.floating-outlined-field > input::placeholder,
+.floating-outlined-field > textarea::placeholder {
+  color: transparent;
+}
+
+.floating-outlined-field:focus-within {
+  border-color: var(--mint-dark);
+}
+
+.floating-outlined-field:focus-within .floating-outlined-label,
+.floating-outlined-field:has(> input:not(:placeholder-shown)) .floating-outlined-label,
+.floating-outlined-field:has(> textarea:not(:placeholder-shown)) .floating-outlined-label {
+  top: 0;
+  left: 8px;
+  padding: 0 4px;
+  font-size: 11px;
+  background: var(--panel);
+}
+
+.floating-outlined-field:focus-within .floating-outlined-label {
+  color: var(--mint-dark);
+}
+
 .form-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -4114,20 +4187,27 @@ textarea {
 }
 
 .transport-editor-note-field {
-  height: auto;
-  padding-bottom: 6px;
-}
-
-.transport-editor-note-field .outlined-field-control {
-  height: auto;
+  height: 54px;
 }
 
 .transport-editor-note-field textarea {
   width: 100%;
-  min-height: 76px;
-  padding: 4px 0 0;
+  height: 52px;
+  min-height: 52px;
+  padding: 8px 12px;
   line-height: 1.45;
   resize: none;
+}
+
+.transport-editor-note-field .floating-outlined-label {
+  top: 10px;
+  transform: none;
+}
+
+.transport-editor-note-field:focus-within .floating-outlined-label,
+.transport-editor-note-field:has(> textarea:not(:placeholder-shown)) .floating-outlined-label {
+  top: 0;
+  transform: translateY(-50%);
 }
 
 .transport-editor-navigation-button {
@@ -4155,8 +4235,8 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: auto;
-  padding-top: 12px;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .transport-editor-footer-actions.navigation-only {
@@ -4166,7 +4246,7 @@ textarea {
 .transport-editor-form {
   border-color: var(--mint);
   display: grid;
-  min-height: 424px;
+  min-height: 0;
   box-shadow: inset 4px 0 0 var(--mint);
 }
 
@@ -4187,7 +4267,7 @@ textarea {
 .transport-editor-edit-mode {
   display: grid;
   gap: 12px;
-  min-height: 330px;
+  min-height: 0;
 }
 
 .transport-editor-edit-mode {
@@ -6726,11 +6806,11 @@ textarea {
   }
 
   .transport-editor-form {
-    min-height: 408px;
+    min-height: 0;
   }
 
   .transport-editor-edit-mode {
-    min-height: 314px;
+    min-height: 0;
   }
 
   .transport-editor-footer-actions {

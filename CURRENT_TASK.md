@@ -87,10 +87,11 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 
 ## Transportation Card Add/Edit UI State
 
-- The shared Formal/Demo transportation editor now uses the existing outlined `fieldset` / `legend` design for category, duration, optional name, and optional note fields. The note placeholder is `加入交通及轉乘資訊`.
+- The shared Formal/Demo transportation editor keeps outlined labels for category and duration. Optional name and note use floating labels: `交通名稱` and `備註` sit inside empty fields, then move to the border on focus or when content exists.
 - Transportation category and duration are required. Transportation name remains empty unless the user enters one; saving an empty name keeps `transport_name` and the persisted compatibility title empty, while card and collapsed-preview titles fall back to the selected category.
-- Transportation duration remains an integer minute value internally. The unfocused field and card title render natural labels such as `9 分鐘`, `1 小時`, and `1 小時 12 分鐘`; focused numeric entry accepts any positive integer without five-minute snapping.
+- Transportation duration remains an integer minute value internally. The unfocused field and card title render natural labels such as `9 分鐘`, `1 小時`, and `1 小時 12 分鐘`; focused numeric entry accepts any positive integer without five-minute snapping. Wheel adjustments immediately return the field to this natural format, including values over 60 minutes.
 - Arrow Up / wheel up add five minutes and Arrow Down / wheel down subtract five minutes relative to the current exact value. The duration field has no dropdown.
+- Transportation editors no longer reserve a fixed minimum height, and the note field now reserves two rows to match the itinerary editor.
 - The existing next-itinerary suggestion still computes from the unchanged transportation duration and rounds the suggested start upward with `roundMinutesUpToStep(..., 5)`; it does not write the rounded value back into transportation duration.
 - The existing Google Maps navigation control remains immediately to the right of transportation duration and keeps its existing directions URL behavior.
 

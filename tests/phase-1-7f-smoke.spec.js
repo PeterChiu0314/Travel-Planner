@@ -667,7 +667,7 @@ test("Phase 5.8 Timeline cards stage focus before expansion and reset across mar
   expect(failures).toEqual([]);
 });
 
-test("transport editor shares outlined fields and preserves exact minute input", async ({ page }) => {
+test("transport editor uses compact floating fields and preserves exact minute input", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
@@ -682,7 +682,8 @@ test("transport editor shares outlined fields and preserves exact minute input",
   await existingTransport.click();
   await existingTransport.click();
   await existingTransport.getByTitle("編輯").click();
-  await expect(page.locator(".transport-editor-form .outlined-field > legend")).toHaveText(["交通類別", "交通時間", "交通名稱", "備註"]);
+  await expect(page.locator(".transport-editor-form .outlined-field > legend")).toHaveText(["交通類別", "交通時間"]);
+  await expect(page.locator(".transport-editor-form .floating-outlined-label")).toHaveText(["交通名稱", "備註"]);
   await page.locator(".transport-editor-form").getByRole("button", { name: "取消" }).click();
 
   await page.getByRole("button", { name: "新增尾端交通" }).click({ force: true });
@@ -692,12 +693,26 @@ test("transport editor shares outlined fields and preserves exact minute input",
   const name = form.locator('input[name="transport_name"]');
   const note = form.locator('textarea[name="transport_note"]');
 
-  await expect(form.locator(".outlined-field > legend")).toHaveText(["交通類別", "交通時間", "交通名稱", "備註"]);
+  await expect(form.locator(".outlined-field > legend")).toHaveText(["交通類別", "交通時間"]);
+  await expect(form.locator(".floating-outlined-label")).toHaveText(["交通名稱", "備註"]);
   await expect(category).toHaveAttribute("required", "");
   await expect(duration).toHaveAttribute("required", "");
   await expect(name).not.toHaveAttribute("required", "");
   await expect(name).toHaveValue("");
-  await expect(note).toHaveAttribute("placeholder", "加入交通及轉乘資訊");
+  await expect(name).toHaveAttribute("placeholder", "交通名稱");
+  await expect(note).toHaveAttribute("placeholder", "備註");
+  await expect(note).toHaveAttribute("rows", "2");
+  await expect(form).toHaveCSS("min-height", "0px");
+  await expect(form.locator(".transport-editor-edit-mode")).toHaveCSS("min-height", "0px");
+  expect((await form.boundingBox()).height).toBeLessThan(380);
+  expect((await note.boundingBox()).height).toBeLessThanOrEqual(54);
+
+  const nameFloatingLabel = form.locator(".transport-editor-name-field .floating-outlined-label");
+  await expect(nameFloatingLabel).toHaveCSS("font-size", "14px");
+  await name.focus();
+  await expect(nameFloatingLabel).toHaveCSS("font-size", "11px");
+  await note.focus();
+  await expect(form.locator(".transport-editor-note-field .floating-outlined-label")).toHaveCSS("font-size", "11px");
   await expect(form.locator(".transport-duration-field .timeline-time-menu-toggle")).toHaveCount(0);
   expect(await form.locator(".transport-editor-route-row").evaluate((row) =>
     Array.from(row.children).map((child) => child.classList.contains("transport-editor-navigation-button") ? "navigation" : child.tagName),
@@ -713,10 +728,11 @@ test("transport editor shares outlined fields and preserves exact minute input",
   await duration.press("ArrowUp");
   await duration.press("ArrowUp");
   await expect(duration).toHaveValue("17");
+  await duration.fill("57");
   await duration.evaluate((input) => input.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: -100 })));
-  await expect(duration).toHaveValue("22");
+  await expect(duration).toHaveValue("1 小時 2 分鐘");
   await duration.evaluate((input) => input.dispatchEvent(new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 100 })));
-  await expect(duration).toHaveValue("17");
+  await expect(duration).toHaveValue("57 分鐘");
 
   await duration.fill("9");
   await name.click();

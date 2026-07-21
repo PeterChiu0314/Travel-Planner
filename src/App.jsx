@@ -802,6 +802,15 @@ function OutlinedField({ children, className = "", fieldRef = null, invalid = fa
   );
 }
 
+function FloatingOutlinedField({ children, className = "", label }) {
+  return (
+    <div className={`floating-outlined-field${className ? ` ${className}` : ""}`}>
+      {children}
+      <span aria-hidden="true" className="floating-outlined-label">{label}</span>
+    </div>
+  );
+}
+
 function TimelineTypeField({ onValueChange, value }) {
   const rootRef = useRef(null);
   const menuRef = useRef(null);
@@ -1103,10 +1112,10 @@ function TransportDurationField({ onValueChange, value }) {
   const rawValue = String(value ?? "");
   const displayValue = isEditing ? rawValue : formatTransportDurationMinutes(rawValue);
 
-  function adjustDuration(step) {
+  function adjustDuration(step, showNaturalFormat = false) {
     const current = Number(rawValue);
     const baseMinutes = Number.isInteger(current) && current > 0 ? current : 0;
-    setIsEditing(true);
+    setIsEditing(!showNaturalFormat);
     onValueChange(String(Math.max(1, baseMinutes + step)));
   }
 
@@ -1115,7 +1124,7 @@ function TransportDurationField({ onValueChange, value }) {
     if (!input) return undefined;
     const handleWheel = (event) => {
       event.preventDefault();
-      adjustDuration(event.deltaY < 0 ? 5 : -5);
+      adjustDuration(event.deltaY < 0 ? 5 : -5, true);
     };
     input.addEventListener("wheel", handleWheel, { passive: false });
     return () => input.removeEventListener("wheel", handleWheel);
@@ -12770,23 +12779,23 @@ function ItineraryTimeline({
             />
             {renderTransportNavigationControl(editorNavigationUrl, "mini-button transport-navigation-button transport-editor-navigation-button")}
           </div>
-          <OutlinedField className="transport-editor-name-field" label="交通名稱">
+          <FloatingOutlinedField className="transport-editor-name-field" label="交通名稱">
             <input
               aria-label="交通名稱"
               autoComplete="off"
               name="transport_name"
-              placeholder="JR 特急"
+              placeholder="交通名稱"
               value={form.transport_name}
               onChange={(event) => setForm({ ...form, transport_name: event.target.value, title: event.target.value })}
             />
-          </OutlinedField>
-          <OutlinedField className="transport-editor-note-field" label="備註">
+          </FloatingOutlinedField>
+          <FloatingOutlinedField className="transport-editor-note-field" label="備註">
             <textarea
               aria-label="備註"
               autoComplete="off"
               name="transport_note"
-              placeholder="加入交通及轉乘資訊"
-              rows="3"
+              placeholder="備註"
+              rows="2"
               value={form.transport_note}
               onChange={(event) =>
                 setForm({
@@ -12798,7 +12807,7 @@ function ItineraryTimeline({
                 })
               }
             />
-          </OutlinedField>
+          </FloatingOutlinedField>
           <div className="transport-editor-footer-actions navigation-only">
             <div className="transport-editor-save-actions">
               <button className="primary-button compact transport-editor-action-button" disabled={!canMutateThisDay} type="submit">
