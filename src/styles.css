@@ -3164,7 +3164,7 @@ textarea {
 
 .visit-editor-time-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr) 18px minmax(0, 1.25fr);
+  grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr) 12px minmax(0, 1.25fr);
   align-items: end;
   gap: 6px;
   margin-top: 12px;
@@ -3222,13 +3222,14 @@ textarea {
   min-width: 4px;
   font-weight: 500;
   line-height: 1;
+  transform: translateY(-3px);
 }
 
 .timeline-time-menu-toggle {
   display: grid;
   place-items: center end;
   align-self: stretch;
-  width: 32px;
+  width: 42px;
   border: 0;
   border-left: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   background: transparent;
@@ -3288,7 +3289,7 @@ textarea {
   height: 1px;
   margin: 0;
   background: var(--line);
-  transform: translateY(1px);
+  transform: translateY(4px);
 }
 
 .visit-time-field.duration .outlined-field-control > input {
@@ -6577,7 +6578,7 @@ textarea {
   }
 
   .visit-editor-time-row {
-    grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr) 10px minmax(0, 1.2fr);
+    grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr) 12px minmax(0, 1.2fr);
     gap: 4px;
   }
 

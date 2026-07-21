@@ -427,9 +427,20 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   const timeAlignment = await form.locator(".visit-editor-time-row").evaluate((row) => {
     const start = row.querySelector('.timeline-segmented-time-field[data-name="start_time"]')?.getBoundingClientRect();
     const link = row.querySelector(".visit-time-link")?.getBoundingClientRect();
-    return { fieldCenter: start ? start.top + start.height / 2 : null, linkCenter: link ? link.top + link.height / 2 : null };
+    const separator = row.querySelector(".timeline-time-separator")?.getBoundingClientRect();
+    const toggle = row.querySelector(".timeline-time-menu-toggle")?.getBoundingClientRect();
+    return {
+      fieldCenter: start ? start.top + start.height / 2 : null,
+      linkCenter: link ? link.top + link.height / 2 : null,
+      linkWidth: link?.width ?? null,
+      separatorCenter: separator ? separator.top + separator.height / 2 : null,
+      toggleWidth: toggle?.width ?? null,
+    };
   });
-  expect(Math.abs(timeAlignment.linkCenter - timeAlignment.fieldCenter)).toBeLessThanOrEqual(1.5);
+  expect(timeAlignment.linkCenter - timeAlignment.fieldCenter).toBeCloseTo(4, 0);
+  expect(timeAlignment.linkWidth).toBeCloseTo(12, 0);
+  expect(timeAlignment.separatorCenter - timeAlignment.fieldCenter).toBeCloseTo(0, 0);
+  expect(timeAlignment.toggleWidth).toBeCloseTo(42, 0);
 
   const startInput = form.locator('input[name="start_time"]');
   await setTimelineTime(form, "start_time", "09:45");
