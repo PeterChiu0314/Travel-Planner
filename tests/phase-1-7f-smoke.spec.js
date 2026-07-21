@@ -431,6 +431,11 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
     const toggle = row.querySelector(".timeline-time-menu-toggle")?.getBoundingClientRect();
     const toggleIcon = row.querySelector(".timeline-time-menu-toggle svg")?.getBoundingClientRect();
     const durationInput = row.querySelector('.visit-time-field.duration input[name="duration_minutes"]');
+    const durationLegend = row.querySelector(".visit-time-field.duration legend");
+    const durationInputRect = durationInput?.getBoundingClientRect();
+    const durationLegendRect = durationLegend?.getBoundingClientRect();
+    const durationInputStyle = durationInput ? getComputedStyle(durationInput) : null;
+    const durationLegendStyle = durationLegend ? getComputedStyle(durationLegend) : null;
     return {
       fieldCenter: start ? start.top + start.height / 2 : null,
       linkCenter: link ? link.top + link.height / 2 : null,
@@ -441,7 +446,13 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
         ? toggleIcon.left + toggleIcon.width / 2 - (toggle.left + toggle.width / 2)
         : null,
       toggleRightGap: start && toggle ? start.right - toggle.right : null,
-      durationPaddingLeft: durationInput ? getComputedStyle(durationInput).paddingLeft : null,
+      hourPaddingLeft: getComputedStyle(row.querySelector(".timeline-time-segment.hour")).paddingLeft,
+      minutePaddingLeft: getComputedStyle(row.querySelector(".timeline-time-segment.minute")).paddingLeft,
+      durationPaddingLeft: durationInputStyle?.paddingLeft ?? null,
+      durationTextOffset: durationInputRect && durationLegendRect && durationInputStyle && durationLegendStyle
+        ? durationInputRect.left + Number.parseFloat(durationInputStyle.paddingLeft)
+          - durationLegendRect.left - Number.parseFloat(durationLegendStyle.paddingLeft)
+        : null,
     };
   });
   expect(timeAlignment.linkCenter - timeAlignment.fieldCenter).toBeCloseTo(4, 0);
@@ -450,7 +461,10 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(timeAlignment.toggleWidth).toBeCloseTo(20, 0);
   expect(Math.abs(timeAlignment.toggleIconOffset)).toBeLessThanOrEqual(0.5);
   expect(timeAlignment.toggleRightGap).toBeCloseTo(1, 0);
-  expect(timeAlignment.durationPaddingLeft).toBe("4px");
+  expect(timeAlignment.hourPaddingLeft).toBe("0px");
+  expect(timeAlignment.minutePaddingLeft).toBe("0px");
+  expect(timeAlignment.durationPaddingLeft).toBe("8px");
+  expect(timeAlignment.durationTextOffset).toBeCloseTo(0, 0);
 
   const startInput = form.locator('input[name="start_time"]');
   await setTimelineTime(form, "start_time", "09:45");
