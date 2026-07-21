@@ -3452,23 +3452,6 @@ textarea {
   padding-left: 9px;
 }
 
-.visit-note-field {
-  height: auto;
-  padding-bottom: 6px;
-}
-
-.visit-note-field .outlined-field-control {
-  height: auto;
-}
-
-.visit-note-field textarea {
-  min-height: 54px;
-  max-height: 112px;
-  padding: 4px 0 0;
-  resize: none;
-  line-height: 1.45;
-}
-
 .visit-map-point-section {
   margin-top: 12px;
   border-top: 1px solid var(--line);
@@ -4184,10 +4167,12 @@ textarea {
   font-variant-numeric: tabular-nums;
 }
 
+.visit-note-field,
 .transport-editor-note-field {
   height: 62px;
 }
 
+.visit-note-field textarea,
 .transport-editor-note-field textarea {
   width: 100%;
   height: 60px;
@@ -4199,11 +4184,14 @@ textarea {
   scrollbar-color: var(--board-scrollbar-thumb) transparent;
 }
 
+.visit-note-field textarea::-webkit-scrollbar,
 .transport-editor-note-field textarea::-webkit-scrollbar {
   width: var(--board-scrollbar-width);
   height: var(--board-scrollbar-width);
 }
 
+.visit-note-field textarea::-webkit-scrollbar-button,
+.visit-note-field textarea::-webkit-scrollbar-button:single-button,
 .transport-editor-note-field textarea::-webkit-scrollbar-button,
 .transport-editor-note-field textarea::-webkit-scrollbar-button:single-button {
   display: none;
@@ -4213,22 +4201,27 @@ textarea {
   background: transparent;
 }
 
+.visit-note-field textarea::-webkit-scrollbar-track,
 .transport-editor-note-field textarea::-webkit-scrollbar-track {
   border: 0;
   background: transparent;
 }
 
+.visit-note-field textarea::-webkit-scrollbar-thumb,
 .transport-editor-note-field textarea::-webkit-scrollbar-thumb {
   border: 0;
   border-radius: 999px;
   background: var(--board-scrollbar-thumb);
 }
 
+.visit-note-field .floating-outlined-label,
 .transport-editor-note-field .floating-outlined-label {
   top: 10px;
   transform: none;
 }
 
+.visit-note-field:focus-within .floating-outlined-label,
+.visit-note-field:has(> textarea:not(:placeholder-shown)) .floating-outlined-label,
 .transport-editor-note-field:focus-within .floating-outlined-label,
 .transport-editor-note-field:has(> textarea:not(:placeholder-shown)) .floating-outlined-label {
   top: 0;

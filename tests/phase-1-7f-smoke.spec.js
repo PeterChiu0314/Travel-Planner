@@ -399,7 +399,8 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(form.locator(".form-mode-label")).toHaveText("編輯行程");
   await expect(form.locator(".form-mode-label")).toHaveCSS("font-weight", "600");
 
-  await expect(form.locator(".outlined-field > legend")).toHaveText(["類型", "目的地", "開始", "結束", "停留時間", "備註"]);
+  await expect(form.locator(".outlined-field > legend")).toHaveText(["類型", "目的地", "開始", "結束", "停留時間"]);
+  await expect(form.locator(".visit-note-field .floating-outlined-label")).toHaveText("備註");
   expect(await form.locator(".outlined-field > legend").first().evaluate((legend) => getComputedStyle(legend).fontWeight)).toBe("400");
   const primaryFields = form.locator(".visit-editor-primary-row > .outlined-field");
   const typeBox = await primaryFields.nth(0).boundingBox();
@@ -537,8 +538,14 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(form.locator(".visit-maps-link")).toHaveCSS("min-height", "24px");
   await expect(form.locator(".visit-map-point-title")).toHaveCount(0);
   await expect(form.locator(".visit-map-point-header .lucide-external-link")).toHaveCount(1);
-  const noteBox = await form.locator(".visit-note-field textarea").boundingBox();
-  expect(noteBox.height).toBeLessThanOrEqual(56);
+  const visitNote = form.locator(".visit-note-field textarea");
+  await expect(visitNote).toHaveAttribute("placeholder", "備註");
+  await expect(form.locator(".visit-note-field")).toHaveCSS("height", "62px");
+  const noteBox = await visitNote.boundingBox();
+  expect(noteBox.height).toBeLessThanOrEqual(60);
+  const visitNoteLabel = form.locator(".visit-note-field .floating-outlined-label");
+  await expect(visitNote).not.toHaveValue("");
+  await expect(visitNoteLabel).toHaveCSS("font-size", "11px");
   await expect(form.locator('.visit-map-url-editor input[name="map_url"]')).toHaveCount(0);
   await form.getByRole("button", { name: "更改地點" }).click();
   await expect(form.getByRole("button", { name: "調整點位" })).toBeVisible();
@@ -576,7 +583,14 @@ test("Phase 5.9 new visit editor uses the same transparent card controls as the 
   await page.locator(".timeline-add-button").click();
   const form = page.locator(".timeline-day-column.active .timeline-add-editor-anchor .item-form");
   await expect(form.locator(".form-mode-label")).toHaveText("新增行程");
-  await expect(form.locator(".outlined-field > legend")).toHaveText(["類型", "目的地", "開始", "結束", "停留時間", "備註"]);
+  await expect(form.locator(".outlined-field > legend")).toHaveText(["類型", "目的地", "開始", "結束", "停留時間"]);
+  const visitNote = form.locator('.visit-note-field textarea[name="description"]');
+  const visitNoteLabel = form.locator(".visit-note-field .floating-outlined-label");
+  await expect(visitNoteLabel).toHaveText("備註");
+  await expect(visitNote).toHaveAttribute("placeholder", "備註");
+  await expect(visitNoteLabel).toHaveCSS("font-size", "14px");
+  await visitNote.focus();
+  await expect(visitNoteLabel).toHaveCSS("font-size", "11px");
   await expect(form.locator(".visit-time-field.duration input")).toBeDisabled();
   await expect(form.locator(".visit-time-field.duration input")).toHaveValue("1小時");
 

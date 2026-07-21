@@ -13219,17 +13219,18 @@ function ItineraryTimeline({
             onInputChange={setDurationInput}
           />
         </div>
-        <OutlinedField className="full-label visit-note-field" label="備註">
+        <FloatingOutlinedField className="full-label visit-note-field" label="備註">
           <textarea
             aria-label="備註"
             autoComplete="off"
             name="description"
+            placeholder="備註"
             ref={visitNoteRef}
             rows="2"
             value={form.description || form.note}
             onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
           />
-        </OutlinedField>
+        </FloatingOutlinedField>
         <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
           <div className="visit-map-point-header">
             <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>

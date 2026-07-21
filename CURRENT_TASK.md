@@ -80,6 +80,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Visit editor time links use fixed 12 px grid tracks and sit 4 px below the field center. The segmented-time colon uses a 1.5 px upward optical correction.
 - Visit time controls now opt out of the shared form-field horizontal padding: their control surface extends to the field edges, Duration keeps zero left padding, and each dropdown uses a centered 20 px toggle. Only the Google Maps URL legend receives the expanded anti-clipping line box; other outlined labels retain their existing geometry. The external location link now reads `Google Map` and uses a compact borderless link treatment.
 - Visit-editor inputs, selects, and textareas use a consistent 14 px input font size.
+- Visit-editor notes now reuse the transportation note floating-label field: `備註` starts inside an empty field and moves to the border on focus or when content exists.
 - Existing Map point picking and Places search/preview flows are reused; point changes update only the active editor draft until Save.
 - New visits still require a valid point. Existing legacy visits may edit unrelated fields when their unchanged point data is missing or invalid.
 - Search/Replace masks non-Map UI, keeps Map/Places controls interactive, changes the preview confirmation to `更改地點`, and exits after applying the selected place to the draft.
