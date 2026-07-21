@@ -416,11 +416,13 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(destinationControlBox.height).toBeGreaterThan(20);
   await expect(typeField.locator("select")).toHaveCount(0);
   await expect(typeTrigger.locator(".timeline-time-menu-toggle")).toHaveCSS("width", "24px");
+  await expect(typeTrigger.locator(".timeline-time-menu-toggle")).toHaveCSS("border-left-width", "0px");
   await expect(typeTrigger.locator(".lucide-chevron-down")).toHaveCount(1);
   await typeTrigger.click();
   const typeMenu = typeField.getByRole("listbox", { name: "類型選項" });
   await expect(typeMenu).toBeVisible();
   await expect(typeMenu.getByRole("option")).toHaveText(["景點", "餐飲", "住宿", "交通", "備註"]);
+  await expect(typeMenu.locator(".selected")).toHaveCSS("font-weight", "600");
   const typeScrollbar = await typeMenu.evaluate((menu) => ({
     buttonDisplay: getComputedStyle(menu, "::-webkit-scrollbar-button").display,
     thumbBackground: getComputedStyle(menu, "::-webkit-scrollbar-thumb").backgroundColor,
@@ -446,9 +448,13 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(startField.locator(".timeline-time-separator")).toHaveCSS("font-weight", "400");
   await expect(startField.locator(".timeline-time-segments")).toHaveCSS("gap", "normal");
   await expect(startField.locator(".timeline-time-segments")).toHaveCSS("justify-content", "left");
-  await expect(startField.locator(".timeline-time-segments")).toHaveCSS("padding-left", "4px");
+  await expect(startField.locator(".timeline-time-segments")).toHaveCSS("padding-left", "6px");
   await expect(startField.locator(".timeline-time-segment.hour")).toHaveCSS("font-weight", "500");
   await expect(startField.locator(".timeline-time-segment.minute")).toHaveCSS("font-weight", "500");
+  await expect(startField.locator(".timeline-time-segment.hour")).toHaveCSS("width", "22px");
+  await expect(startField.locator(".timeline-time-segment.hour")).toHaveCSS("height", "22px");
+  await expect(startField.locator(".timeline-time-segment.minute")).toHaveCSS("width", "22px");
+  await expect(startField.locator(".timeline-time-segment.minute")).toHaveCSS("height", "22px");
   const timeAlignment = await form.locator(".visit-editor-time-row").evaluate((row) => {
     const start = row.querySelector('.timeline-segmented-time-field[data-name="start_time"]')?.getBoundingClientRect();
     const link = row.querySelector(".visit-time-link")?.getBoundingClientRect();
@@ -488,8 +494,8 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(timeAlignment.toggleRightGap).toBeCloseTo(1, 0);
   expect(timeAlignment.hourPaddingLeft).toBe("0px");
   expect(timeAlignment.minutePaddingLeft).toBe("0px");
-  expect(timeAlignment.durationPaddingLeft).toBe("8px");
-  expect(timeAlignment.durationTextOffset).toBeCloseTo(0, 0);
+  expect(timeAlignment.durationPaddingLeft).toBe("9px");
+  expect(timeAlignment.durationTextOffset).toBeCloseTo(1, 0);
 
   const startInput = form.locator('input[name="start_time"]');
   await setTimelineTime(form, "start_time", "09:45");
@@ -537,6 +543,8 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await form.getByRole("button", { name: "更改地點" }).click();
   await expect(form.getByRole("button", { name: "調整點位" })).toBeVisible();
   await expect(form.getByRole("button", { name: "搜尋替換" })).toBeVisible();
+  await expect(form.getByRole("button", { name: "調整點位" })).toHaveCSS("font-weight", "500");
+  await expect(form.getByRole("button", { name: "搜尋替換" })).toHaveCSS("font-weight", "500");
   await expect(form.locator(".visit-map-point-actions .lucide-map-pin")).toHaveCount(1);
   await expect(form.locator(".visit-map-point-actions .lucide-search")).toHaveCount(1);
   const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
