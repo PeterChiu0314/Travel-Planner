@@ -4105,6 +4105,33 @@ textarea {
   overflow: auto;
   font-size: 13px;
   white-space: normal;
+  scrollbar-width: thin;
+  scrollbar-color: var(--board-scrollbar-thumb) transparent;
+}
+
+.transport-card-details p::-webkit-scrollbar {
+  width: var(--board-scrollbar-width);
+  height: var(--board-scrollbar-width);
+}
+
+.transport-card-details p::-webkit-scrollbar-button,
+.transport-card-details p::-webkit-scrollbar-button:single-button {
+  display: none;
+  width: 0;
+  height: 0;
+  border: 0;
+  background: transparent;
+}
+
+.transport-card-details p::-webkit-scrollbar-track {
+  border: 0;
+  background: transparent;
+}
+
+.transport-card-details p::-webkit-scrollbar-thumb {
+  border: 0;
+  border-radius: 999px;
+  background: var(--board-scrollbar-thumb);
 }
 
 .transport-card-details .transport-note-detail {
@@ -4141,7 +4168,7 @@ textarea {
 
 .form-grid.wide.transport-editor-route-row {
   display: grid;
-  grid-template-columns: minmax(0, 0.96fr) minmax(0, 0.84fr) 42px;
+  grid-template-columns: minmax(0, 0.96fr) minmax(0, 0.84fr) 36px;
   align-items: end;
   column-gap: 10px;
   margin-top: 8px;
@@ -4174,14 +4201,24 @@ textarea {
 
 .visit-note-field textarea,
 .transport-editor-note-field textarea {
+  display: block;
   width: 100%;
-  height: 60px;
-  min-height: 60px;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
   padding: 8px 12px;
   line-height: 1.45;
   resize: none;
   scrollbar-width: thin;
   scrollbar-color: var(--board-scrollbar-thumb) transparent;
+}
+
+.timeline .item-form .visit-note-field textarea,
+.timeline .item-form .transport-editor-note-field textarea,
+.timeline-add-editor-anchor .item-form .visit-note-field textarea,
+.timeline-add-editor-anchor .item-form .transport-editor-note-field textarea {
+  padding: 8px 12px 8px 4px;
 }
 
 .visit-note-field textarea::-webkit-scrollbar,
@@ -4231,10 +4268,10 @@ textarea {
 .transport-editor-navigation-button {
   align-self: end;
   justify-self: end;
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
-  min-height: 42px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
   margin-bottom: 0;
   flex: 0 0 auto;
 }
@@ -4286,6 +4323,10 @@ textarea {
   display: grid;
   gap: 12px;
   min-height: 0;
+}
+
+.transport-editor-name-field {
+  height: 36px;
 }
 
 .transport-editor-edit-mode {
@@ -6819,7 +6860,7 @@ textarea {
   }
 
   .form-grid.wide.transport-editor-route-row {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.78fr) 42px;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.78fr) 36px;
     column-gap: 8px;
   }
 

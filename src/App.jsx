@@ -825,10 +825,10 @@ function OutlinedMenuField({ className = "", label, listboxLabel, name, onValueC
     const closeMenuWithKeyboard = (event) => {
       if (event.key === "Escape") setIsMenuOpen(false);
     };
-    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("pointerdown", closeMenu, true);
     document.addEventListener("keydown", closeMenuWithKeyboard);
     return () => {
-      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("pointerdown", closeMenu, true);
       document.removeEventListener("keydown", closeMenuWithKeyboard);
     };
   }, [isMenuOpen]);
@@ -838,6 +838,9 @@ function OutlinedMenuField({ className = "", label, listboxLabel, name, onValueC
       className={`outlined-menu-field${className ? ` ${className}` : ""}${isMenuOpen ? " menu-open" : ""}`}
       fieldRef={rootRef}
       label={label}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setIsMenuOpen(false);
+      }}
     >
       <input name={name} required={required} type="hidden" value={value} />
       <button
