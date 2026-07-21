@@ -781,6 +781,19 @@ function buildTimeOptions(stepMinutes = 5) {
 
 const timelineTimeOptions = buildTimeOptions(5);
 
+function OutlinedField({ children, className = "", fieldRef = null, invalid = false, label, ...fieldsetProps }) {
+  return (
+    <fieldset
+      {...fieldsetProps}
+      className={`outlined-field${className ? ` ${className}` : ""}${invalid ? " invalid" : ""}`}
+      ref={fieldRef}
+    >
+      <legend>{label}</legend>
+      <div className="outlined-field-control">{children}</div>
+    </fieldset>
+  );
+}
+
 function TimelineSegmentedTimeField({ disabled = false, label, name, onValueChange, value }) {
   const initialSegments = String(value || "").split(":");
   const rootRef = useRef(null);
@@ -864,9 +877,12 @@ function TimelineSegmentedTimeField({ disabled = false, label, name, onValueChan
   });
 
   return (
-    <div className="visit-time-field">
-      <span className="visit-time-label">{label}</span>
-      <div className={`timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`} data-name={name} ref={rootRef}>
+    <OutlinedField
+      className={`visit-time-field timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`}
+      data-name={name}
+      fieldRef={rootRef}
+      label={label}
+    >
         <input name={name} type="hidden" value={value || ""} />
         <div className="timeline-time-segments" role="group" aria-label={`${label}時間`}>
           <input
@@ -936,8 +952,7 @@ function TimelineSegmentedTimeField({ disabled = false, label, name, onValueChan
             ))}
           </div>
         ) : null}
-      </div>
-    </div>
+    </OutlinedField>
   );
 }
 
@@ -12901,17 +12916,16 @@ function ItineraryTimeline({
           </div>
         ) : null}
         <div className="visit-editor-primary-row">
-          <label>
-            類型
-            <select name="type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
+          <OutlinedField label="類型">
+            <select aria-label="類型" name="type" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
               {Object.entries(typeLabels).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
-          </label>
-          <label className="destination-field">
-            目的地
+          </OutlinedField>
+          <OutlinedField className="destination-field" label="目的地">
             <input
+              aria-label="目的地"
               autoComplete="off"
               placeholder="請輸入目的地名稱"
               name="location_name"
@@ -12919,7 +12933,7 @@ function ItineraryTimeline({
               value={form.location_name || form.location}
               onChange={(event) => setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })}
             />
-          </label>
+          </OutlinedField>
         </div>
         <div className="visit-editor-time-row">
           <TimelineSegmentedTimeField
@@ -12936,9 +12950,9 @@ function ItineraryTimeline({
             onValueChange={(nextValue) => updateVisitTime("end_time", nextValue)}
           />
           <span className="visit-time-link" aria-hidden="true" />
-          <label className="visit-time-field duration">
-            停留時間
+          <OutlinedField className="visit-time-field duration" label="停留時間">
             <input
+              aria-label="停留時間"
               autoComplete="off"
               inputMode="numeric"
               name="duration_minutes"
@@ -12950,11 +12964,11 @@ function ItineraryTimeline({
               onFocus={(event) => event.currentTarget.select()}
               onBlur={(event) => commitDurationInput(event.target.value)}
             />
-          </label>
+          </OutlinedField>
         </div>
-        <label className="full-label visit-note-field">
-          備註
+        <OutlinedField className="full-label visit-note-field" label="備註">
           <textarea
+            aria-label="備註"
             autoComplete="off"
             name="description"
             ref={visitNoteRef}
@@ -12962,7 +12976,7 @@ function ItineraryTimeline({
             value={form.description || form.note}
             onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
           />
-        </label>
+        </OutlinedField>
         <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
           <div className="visit-map-point-header">
             <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>
@@ -13002,8 +13016,10 @@ function ItineraryTimeline({
                   <span>{isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"}</span>
                 </button>
               </div>
-              <div className="visit-map-url-editor">
+              <OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Map URL">
                 <input
+                  aria-invalid={Boolean(mapUrlError)}
+                  aria-label="Map URL"
                   autoComplete="off"
                   name="map_url"
                   placeholder="貼上 Google Maps 連結"
@@ -13016,7 +13032,7 @@ function ItineraryTimeline({
                     void applyMapUrlDraft();
                   }}
                 />
-              </div>
+              </OutlinedField>
             </div>
           ) : <input name="map_url" type="hidden" value={form.map_url} />}
           {mapUrlError ? <span className="field-inline-error visit-map-url-error" role="alert">{mapUrlError}</span> : null}

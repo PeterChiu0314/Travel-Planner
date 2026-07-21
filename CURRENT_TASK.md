@@ -75,6 +75,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - The point section is collapsed by default with `更改地點` on the left and an always-visible `Maps` external link on the right. Expanding reveals Adjust Point, Search/Replace, and the full-width Google Maps URL input; blur or Enter applies the URL without a separate Apply button.
 - New and existing visit cards now share the same visible mode heading: `新增行程` for new drafts and `編輯行程` for stored visits. Search/Replace and Maps controls use transparent backgrounds while retaining their borders and interaction behavior.
 - The standalone new-visit editor now also inherits the existing Timeline editor's transparent field/control surfaces and zero form bottom margin, removing the visual mismatch caused by its placement outside the `.timeline` wrapper.
+- Visit editor fields now use one shared semantic `fieldset` / `legend` outlined-label component for Type, Destination, Start, End, Duration, Note, and expanded Map URL. Labels are always fixed in the border gap with a 1 px upward optical adjustment, without movement animation or a hard-coded white backing; focus, disabled, native validation, and Map URL error states preserve field geometry.
 - Visit-editor inputs, selects, and textareas use a consistent 14 px input font size.
 - Existing Map point picking and Places search/preview flows are reused; point changes update only the active editor draft until Save.
 - New visits still require a valid point. Existing legacy visits may edit unrelated fields when their unchanged point data is missing or invalid.
@@ -161,7 +162,8 @@ Latest Phase 5.9 verification:
 
 - `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
 - `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 40/40.
-- `npm.cmd run test:e2e -- tests/phase-1-7f-smoke.spec.js` passed 30/30.
+- `npm.cmd run test:e2e -- tests/phase-1-7f-smoke.spec.js` passed 31/31, including outlined-label rendering, Map URL error geometry, segmented-time behavior, disabled duration state, and narrow-card overflow coverage.
+- Browser QA confirmed the native legend border gaps, fixed label geometry through focus, zero horizontal overflow at the 360 px Dayboard card width, and zero console errors.
 - The 1280 x 720 Phase 5.9 rendered smoke check confirmed compact same-row geometry, independent hour/minute input, minute `+5`, a multi-option custom time menu, `90 -> 1小時30分鐘`, linked end-time updates, collapsed URL input, and zero console errors.
 - In-app Browser Demo QA at 624 x 800 confirmed the collapsed `更改地點` / `Maps` header and the expanded point-action row with a 36 px full-width URL input. The 486 px editor had no horizontal overflow, save actions remained visible, and console errors were zero.
 - Authenticated Formal Google Maps visual comparison remains pending for the Search/Replace overlay and Places flow.

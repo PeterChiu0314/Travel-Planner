@@ -563,6 +563,13 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
 
   expect(appSource).toContain("visit-editor-primary-row");
   expect(appSource).toContain("visit-editor-time-row");
+  expect(appSource).toContain("function OutlinedField");
+  expect(appSource).toContain('<OutlinedField label="類型">');
+  expect(appSource).toContain('<OutlinedField className="destination-field" label="目的地">');
+  expect(appSource).toContain('className={`visit-time-field timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`}');
+  expect(appSource).toContain('<OutlinedField className="visit-time-field duration" label="停留時間">');
+  expect(appSource).toContain('<OutlinedField className="full-label visit-note-field" label="備註">');
+  expect(appSource).toContain('<OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Map URL">');
   expect(appSource).toContain('<div className="form-mode-label">{editingId ? "編輯行程" : "新增行程"}</div>');
   expect(appSource).toContain("normalizeTimelineTimeInput");
   expect(appSource).toContain("TimelineSegmentedTimeField");
@@ -581,6 +588,11 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(googleProviderSource).toContain("map-search-replace-overlay");
   expect(stylesSource).toContain(".visit-editor-primary-row");
   expect(stylesSource).toContain(".visit-editor-time-row");
+  expect(stylesSource).toContain(".outlined-field legend");
+  expect(stylesSource).toContain(".outlined-field:focus-within");
+  expect(stylesSource).toContain(".outlined-field.invalid");
+  expect(stylesSource).not.toMatch(/\.outlined-field legend \{[^}]*background:\s*(?:#fff|white)/s);
+  expect(stylesSource).not.toMatch(/\.outlined-field legend \{[^}]*transform:/s);
   expect(stylesSource).toMatch(/\.timeline \.item-form,\s*\.timeline-add-editor-anchor \.item-form \{\s*margin-bottom: 0;/);
   expect(stylesSource).toContain('.timeline-add-editor-anchor .item-form input:not([type="hidden"])');
   expect(stylesSource).toContain(".timeline-add-editor-anchor .item-form .item-form-cancel-button");

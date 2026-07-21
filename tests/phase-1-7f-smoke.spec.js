@@ -398,25 +398,29 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await expect(form.locator(".form-mode-label")).toHaveText("編輯行程");
 
-  const primaryLabels = form.locator(".visit-editor-primary-row > label");
-  const typeBox = await primaryLabels.nth(0).boundingBox();
-  const destinationBox = await primaryLabels.nth(1).boundingBox();
-  const typeControlBox = await primaryLabels.nth(0).locator("select").boundingBox();
-  const destinationControlBox = await primaryLabels.nth(1).locator("input").boundingBox();
+  await expect(form.locator(".outlined-field > legend")).toHaveText(["類型", "目的地", "開始", "結束", "停留時間", "備註"]);
+  const primaryFields = form.locator(".visit-editor-primary-row > .outlined-field");
+  const typeBox = await primaryFields.nth(0).boundingBox();
+  const destinationBox = await primaryFields.nth(1).boundingBox();
+  const typeControlBox = await primaryFields.nth(0).locator("select").boundingBox();
+  const destinationControlBox = await primaryFields.nth(1).locator("input").boundingBox();
   expect(Math.abs(typeBox.y - destinationBox.y)).toBeLessThan(2);
   expect(destinationBox.width).toBeGreaterThan(typeBox.width * 2);
-  expect(typeControlBox.height).toBeCloseTo(36, 0);
-  expect(destinationControlBox.height).toBeCloseTo(36, 0);
+  expect(typeBox.height).toBeCloseTo(42, 0);
+  expect(destinationBox.height).toBeCloseTo(42, 0);
+  expect(typeControlBox.height).toBeGreaterThan(20);
+  expect(destinationControlBox.height).toBeGreaterThan(20);
 
   const startField = form.locator('.timeline-segmented-time-field[data-name="start_time"]');
   const endField = form.locator('.timeline-segmented-time-field[data-name="end_time"]');
+  const durationField = form.locator(".visit-time-field.duration");
   const startBox = await startField.boundingBox();
   const endBox = await endField.boundingBox();
-  const durationBox = await form.locator('input[name="duration_minutes"]').boundingBox();
+  const durationBox = await durationField.boundingBox();
   expect(Math.max(startBox.y, endBox.y, durationBox.y) - Math.min(startBox.y, endBox.y, durationBox.y)).toBeLessThanOrEqual(2);
-  expect(startBox.height).toBeCloseTo(36, 0);
-  expect(endBox.height).toBeCloseTo(36, 0);
-  expect(durationBox.height).toBeCloseTo(36, 0);
+  expect(startBox.height).toBeCloseTo(42, 0);
+  expect(endBox.height).toBeCloseTo(42, 0);
+  expect(durationBox.height).toBeCloseTo(42, 0);
 
   const startInput = form.locator('input[name="start_time"]');
   await setTimelineTime(form, "start_time", "09:45");
@@ -451,21 +455,33 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(form.locator(".visit-map-point-actions .lucide-map-pin")).toHaveCount(1);
   await expect(form.locator(".visit-map-point-actions .lucide-search")).toHaveCount(1);
   const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
+  const mapUrlField = form.locator(".visit-map-url-editor");
   await expect(mapUrlInput).toBeVisible();
+  await expect(mapUrlField.locator("legend")).toHaveText("Map URL");
   await expect(mapUrlInput).toHaveAttribute("placeholder", "貼上 Google Maps 連結");
-  expect((await mapUrlInput.boundingBox()).height).toBeCloseTo(36, 0);
+  const mapUrlBox = await mapUrlField.boundingBox();
+  expect(mapUrlBox.height).toBeCloseTo(42, 0);
+  await mapUrlInput.fill("https://www.google.com/maps/place/not-a-coordinate");
+  await mapUrlInput.blur();
+  await expect(mapUrlField).toHaveClass(/invalid/);
+  await expect(form.locator(".visit-map-url-error")).toBeVisible();
+  const invalidMapUrlBox = await mapUrlField.boundingBox();
+  expect(invalidMapUrlBox).toEqual(mapUrlBox);
   await expect(form.getByRole("button", { name: "套用" })).toHaveCount(0);
+  expect(await form.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(failures).toEqual([]);
 });
 
 test("Phase 5.9 new visit editor uses the same transparent card controls as the existing editor", async ({ page }) => {
   const failures = collectConsoleFailures(page);
-  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/demo/timeline");
 
   await page.locator(".timeline-add-button").click();
   const form = page.locator(".timeline-day-column.active .timeline-add-editor-anchor .item-form");
   await expect(form.locator(".form-mode-label")).toHaveText("新增行程");
+  await expect(form.locator(".outlined-field > legend")).toHaveText(["類型", "目的地", "開始", "結束", "停留時間", "備註"]);
+  await expect(form.locator(".visit-time-field.duration input")).toBeDisabled();
 
   const visualStyles = await form.evaluate((element) => ({
     marginBottom: getComputedStyle(element).marginBottom,
@@ -482,6 +498,7 @@ test("Phase 5.9 new visit editor uses the same transparent card controls as the 
     noteBackground: "rgba(0, 0, 0, 0)",
     cancelBackground: "rgba(0, 0, 0, 0)",
   });
+  expect(await form.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(failures).toEqual([]);
 });
 
