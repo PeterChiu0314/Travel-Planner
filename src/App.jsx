@@ -780,6 +780,14 @@ function buildTimeOptions(stepMinutes = 5) {
 }
 
 const timelineTimeOptions = buildTimeOptions(5);
+const defaultVisitDurationMinutes = 60;
+
+function buildDurationOptions(maxMinutes = 24 * 60 - 5, stepMinutes = 5) {
+  const safeMaximum = Math.floor(Number(maxMinutes) / stepMinutes) * stepMinutes;
+  const options = [];
+  for (let minutes = stepMinutes; minutes <= safeMaximum; minutes += stepMinutes) options.push(minutes);
+  return options;
+}
 
 function OutlinedField({ children, className = "", fieldRef = null, invalid = false, label, ...fieldsetProps }) {
   return (
@@ -904,7 +912,7 @@ function TimelineSegmentedTimeField({ disabled = false, label, name, onValueChan
             onKeyDown={(event) => handleSegmentKeyDown(event, "hour")}
             onPaste={handleWholeTimePaste}
           />
-          <span aria-hidden="true">:</span>
+          <span className="timeline-time-separator" aria-hidden="true">:</span>
           <input
             aria-label={`${label}分鐘`}
             className="timeline-time-segment minute"
@@ -956,6 +964,76 @@ function TimelineSegmentedTimeField({ disabled = false, label, name, onValueChan
   );
 }
 
+function TimelineDurationField({ disabled = false, inputRef, maxMinutes, onCommit, onInputChange, value }) {
+  const rootRef = useRef(null);
+  const menuRef = useRef(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const options = useMemo(() => buildDurationOptions(maxMinutes), [maxMinutes]);
+  const selectedMinutes = parseDurationMinutes(value);
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    window.requestAnimationFrame(() => menuRef.current?.querySelector(".selected")?.scrollIntoView({ block: "center" }));
+    const closeMenu = (event) => {
+      if (!rootRef.current?.contains(event.target)) setIsMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    return () => document.removeEventListener("pointerdown", closeMenu);
+  }, [isMenuOpen]);
+
+  return (
+    <OutlinedField
+      className={`visit-time-field duration${isMenuOpen ? " menu-open" : ""}`}
+      fieldRef={rootRef}
+      label="停留時間"
+    >
+      <input
+        aria-label="停留時間"
+        autoComplete="off"
+        disabled={disabled}
+        inputMode="numeric"
+        name="duration_minutes"
+        placeholder="分鐘"
+        ref={inputRef}
+        value={value}
+        onBlur={(event) => onCommit(event.target.value)}
+        onChange={(event) => onInputChange(event.target.value)}
+        onFocus={(event) => event.currentTarget.select()}
+      />
+      <button
+        aria-label="開啟停留時間選單"
+        aria-expanded={isMenuOpen}
+        className="timeline-time-menu-toggle"
+        disabled={disabled}
+        type="button"
+        onClick={() => setIsMenuOpen((current) => !current)}
+      >
+        <ChevronDown aria-hidden="true" />
+      </button>
+      {isMenuOpen ? (
+        <div className="timeline-time-menu duration-menu" ref={menuRef} role="listbox" aria-label="停留時間選項">
+          {options.map((minutes) => {
+            const label = formatDurationMinutes(minutes);
+            return (
+              <button
+                aria-selected={minutes === selectedMinutes || label === value}
+                className={minutes === selectedMinutes || label === value ? "selected" : ""}
+                key={minutes}
+                role="option"
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => { onCommit(label); setIsMenuOpen(false); }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </OutlinedField>
+  );
+}
+
 function minutesToTimeValue(totalMinutes) {
   if (!Number.isFinite(totalMinutes) || totalMinutes < 0 || totalMinutes >= 24 * 60) return "";
   const hours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
@@ -991,6 +1069,15 @@ function formatDurationMinutes(value) {
   if (!hours) return `${remainingMinutes}分鐘`;
   if (!remainingMinutes) return `${hours}小時`;
   return `${hours}小時${remainingMinutes}分鐘`;
+}
+
+function parseDurationMinutes(value) {
+  const text = String(value || "").trim();
+  const hourMatch = text.match(/(\d+)\s*小時/);
+  const minuteMatch = text.match(/(\d+)\s*分鐘/);
+  return /^\d+$/.test(text)
+    ? Number(text)
+    : Number(hourMatch?.[1] || 0) * 60 + Number(minuteMatch?.[1] || 0);
 }
 
 function transportCardTitle(item) {
@@ -11550,6 +11637,10 @@ function ItineraryTimeline({
     const lastItem = sortedVisitItems(dayItems).at(-1);
     const tailSuggestedStartTime = suggestedStartTimeFromTailTransport(dayItems);
     const defaultStartTime = tailSuggestedStartTime || (lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "");
+    const defaultStartMinutes = timeToMinutes(defaultStartTime);
+    const defaultEndTime = defaultStartMinutes === null
+      ? ""
+      : minutesToTimeValue(defaultStartMinutes + defaultVisitDurationMinutes);
     const latitude = Number(initialPoint?.latitude);
     const longitude = Number(initialPoint?.longitude);
     const hasPoint = Number.isFinite(latitude) && Number.isFinite(longitude);
@@ -11557,6 +11648,7 @@ function ItineraryTimeline({
     return {
       ...emptyItemForm,
       start_time: defaultStartTime,
+      end_time: defaultEndTime,
       title: placeName,
       location: placeName,
       location_name: placeName,
@@ -12101,9 +12193,9 @@ function ItineraryTimeline({
     if (!isOpen || isTransportEditor) return;
     const duration = getDurationMinutes(form.start_time, form.end_time);
     if (document.activeElement?.name !== "duration_minutes") {
-      setDurationInput(duration ? formatDurationMinutes(duration) : "");
+      setDurationInput(duration ? formatDurationMinutes(duration) : editingId ? "" : formatDurationMinutes(defaultVisitDurationMinutes));
     }
-  }, [form.end_time, form.start_time, isOpen, isTransportEditor]);
+  }, [editingId, form.end_time, form.start_time, isOpen, isTransportEditor]);
 
   useEffect(() => {
     const textarea = visitNoteRef.current;
@@ -12821,7 +12913,11 @@ function ItineraryTimeline({
         setForm({ ...form, start_time: "", end_time: "" });
         return;
       }
-      const duration = Number(preservedDuration || getDurationMinutes(form.start_time, form.end_time));
+      const duration = Number(
+        preservedDuration
+        || getDurationMinutes(form.start_time, form.end_time)
+        || (!editingId ? defaultVisitDurationMinutes : 0),
+      );
       const startMinutes = timeToMinutes(nextValue);
       const nextEnd =
         startMinutes !== null && Number.isFinite(duration) && duration > 0
@@ -12835,11 +12931,7 @@ function ItineraryTimeline({
 
   function commitDurationInput(rawValue) {
     const text = String(rawValue || "").trim();
-    const hourMatch = text.match(/(\d+)\s*小時/);
-    const minuteMatch = text.match(/(\d+)\s*分鐘/);
-    const numeric = /^\d+$/.test(text)
-      ? Number(text)
-      : Number(hourMatch?.[1] || 0) * 60 + Number(minuteMatch?.[1] || 0);
+    const numeric = parseDurationMinutes(text);
     if (!Number.isFinite(numeric) || numeric <= 0) {
       setTimeError("停留時間請輸入大於 0 的分鐘數。");
       return false;
@@ -12950,21 +13042,14 @@ function ItineraryTimeline({
             onValueChange={(nextValue) => updateVisitTime("end_time", nextValue)}
           />
           <span className="visit-time-link" aria-hidden="true" />
-          <OutlinedField className="visit-time-field duration" label="停留時間">
-            <input
-              aria-label="停留時間"
-              autoComplete="off"
-              inputMode="numeric"
-              name="duration_minutes"
-              ref={visitDurationRef}
-              disabled={!form.start_time}
-              placeholder="分鐘"
-              value={durationInput}
-              onChange={(event) => setDurationInput(event.target.value)}
-              onFocus={(event) => event.currentTarget.select()}
-              onBlur={(event) => commitDurationInput(event.target.value)}
-            />
-          </OutlinedField>
+          <TimelineDurationField
+            disabled={!form.start_time}
+            inputRef={visitDurationRef}
+            maxMinutes={Math.max(0, 24 * 60 - 5 - (timeToMinutes(form.start_time) || 0))}
+            value={durationInput}
+            onCommit={commitDurationInput}
+            onInputChange={setDurationInput}
+          />
         </div>
         <OutlinedField className="full-label visit-note-field" label="備註">
           <textarea
@@ -13016,10 +13101,10 @@ function ItineraryTimeline({
                   <span>{isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"}</span>
                 </button>
               </div>
-              <OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Map URL">
+              <OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Google Maps URL">
                 <input
                   aria-invalid={Boolean(mapUrlError)}
-                  aria-label="Map URL"
+                  aria-label="Google Maps URL"
                   autoComplete="off"
                   name="map_url"
                   placeholder="貼上 Google Maps 連結"

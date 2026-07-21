@@ -3053,7 +3053,7 @@ textarea {
   padding: 0 4px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3215,16 +3215,25 @@ textarea {
   color: var(--mint-dark);
 }
 
+.timeline-time-separator {
+  display: grid;
+  align-self: stretch;
+  place-items: center;
+  min-width: 4px;
+  font-weight: 500;
+  line-height: 1;
+}
+
 .timeline-time-menu-toggle {
   display: grid;
-  place-items: center;
+  place-items: center end;
   align-self: stretch;
   width: 32px;
   border: 0;
   border-left: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   background: transparent;
   color: var(--muted);
-  padding: 0;
+  padding: 0 2px 0 0;
 }
 
 .timeline-time-menu-toggle svg {
@@ -3279,6 +3288,12 @@ textarea {
   height: 1px;
   margin: 0;
   background: var(--line);
+  transform: translateY(1px);
+}
+
+.visit-time-field.duration .outlined-field-control > input {
+  flex: 1;
+  padding-left: 4px;
 }
 
 .visit-note-field {
@@ -4309,7 +4324,7 @@ textarea {
 .form-mode-label {
   color: var(--mint-dark);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .alternative-row {

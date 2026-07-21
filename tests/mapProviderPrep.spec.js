@@ -567,9 +567,9 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(appSource).toContain('<OutlinedField label="類型">');
   expect(appSource).toContain('<OutlinedField className="destination-field" label="目的地">');
   expect(appSource).toContain('className={`visit-time-field timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`}');
-  expect(appSource).toContain('<OutlinedField className="visit-time-field duration" label="停留時間">');
+  expect(appSource).toContain("<TimelineDurationField");
   expect(appSource).toContain('<OutlinedField className="full-label visit-note-field" label="備註">');
-  expect(appSource).toContain('<OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Map URL">');
+  expect(appSource).toContain('<OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Google Maps URL">');
   expect(appSource).toContain('<div className="form-mode-label">{editingId ? "編輯行程" : "新增行程"}</div>');
   expect(appSource).toContain("normalizeTimelineTimeInput");
   expect(appSource).toContain("TimelineSegmentedTimeField");

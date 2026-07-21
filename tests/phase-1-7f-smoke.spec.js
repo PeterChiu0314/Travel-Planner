@@ -397,8 +397,10 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await expect(form.locator(".form-mode-label")).toHaveText("編輯行程");
+  await expect(form.locator(".form-mode-label")).toHaveCSS("font-weight", "600");
 
   await expect(form.locator(".outlined-field > legend")).toHaveText(["類型", "目的地", "開始", "結束", "停留時間", "備註"]);
+  expect(await form.locator(".outlined-field > legend").first().evaluate((legend) => getComputedStyle(legend).fontWeight)).toBe("400");
   const primaryFields = form.locator(".visit-editor-primary-row > .outlined-field");
   const typeBox = await primaryFields.nth(0).boundingBox();
   const destinationBox = await primaryFields.nth(1).boundingBox();
@@ -421,6 +423,13 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   expect(startBox.height).toBeCloseTo(42, 0);
   expect(endBox.height).toBeCloseTo(42, 0);
   expect(durationBox.height).toBeCloseTo(42, 0);
+  await expect(startField.locator(".timeline-time-separator")).toHaveCSS("font-weight", "500");
+  const timeAlignment = await form.locator(".visit-editor-time-row").evaluate((row) => {
+    const start = row.querySelector('.timeline-segmented-time-field[data-name="start_time"]')?.getBoundingClientRect();
+    const link = row.querySelector(".visit-time-link")?.getBoundingClientRect();
+    return { fieldCenter: start ? start.top + start.height / 2 : null, linkCenter: link ? link.top + link.height / 2 : null };
+  });
+  expect(Math.abs(timeAlignment.linkCenter - timeAlignment.fieldCenter)).toBeLessThanOrEqual(1.5);
 
   const startInput = form.locator('input[name="start_time"]');
   await setTimelineTime(form, "start_time", "09:45");
@@ -439,6 +448,11 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await durationInput.blur();
   await expect(durationInput).toHaveValue("1小時30分鐘");
   await expect(form.locator('input[name="end_time"]')).toHaveValue("11:30");
+  await form.locator(".visit-time-field.duration .timeline-time-menu-toggle").click();
+  await expect(form.locator(".visit-time-field.duration .timeline-time-menu")).toBeVisible();
+  await form.getByRole("option", { name: "1小時", exact: true }).click();
+  await expect(durationInput).toHaveValue("1小時");
+  await expect(form.locator('input[name="end_time"]')).toHaveValue("11:00");
 
   await expect(form.getByRole("button", { name: "更改地點" })).toBeVisible();
   await expect(form.getByRole("button", { name: "調整點位" })).toHaveCount(0);
@@ -457,7 +471,7 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
   const mapUrlField = form.locator(".visit-map-url-editor");
   await expect(mapUrlInput).toBeVisible();
-  await expect(mapUrlField.locator("legend")).toHaveText("Map URL");
+  await expect(mapUrlField.locator("legend")).toHaveText("Google Maps URL");
   await expect(mapUrlInput).toHaveAttribute("placeholder", "貼上 Google Maps 連結");
   const mapUrlBox = await mapUrlField.boundingBox();
   expect(mapUrlBox.height).toBeCloseTo(42, 0);
@@ -482,6 +496,7 @@ test("Phase 5.9 new visit editor uses the same transparent card controls as the 
   await expect(form.locator(".form-mode-label")).toHaveText("新增行程");
   await expect(form.locator(".outlined-field > legend")).toHaveText(["類型", "目的地", "開始", "結束", "停留時間", "備註"]);
   await expect(form.locator(".visit-time-field.duration input")).toBeDisabled();
+  await expect(form.locator(".visit-time-field.duration input")).toHaveValue("1小時");
 
   const visualStyles = await form.evaluate((element) => ({
     marginBottom: getComputedStyle(element).marginBottom,
