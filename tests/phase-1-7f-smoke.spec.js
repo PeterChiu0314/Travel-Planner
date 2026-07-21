@@ -543,20 +543,34 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(form.locator(".visit-note-field")).toHaveCSS("height", "62px");
   const noteBox = await visitNote.boundingBox();
   expect(noteBox.height).toBeLessThanOrEqual(60);
-  await visitNote.fill("第一行\n第二行\n第三行\n第四行\n第五行");
+  await visitNote.fill("第一行\n第二行\n第三行");
+  const threeLineVisitNote = await visitNote.evaluate((textarea) => ({
+    height: textarea.getBoundingClientRect().height,
+    overflowY: getComputedStyle(textarea).overflowY,
+  }));
+  expect(threeLineVisitNote.height).toBeGreaterThan(60);
+  expect(threeLineVisitNote.height).toBeLessThan(118);
+  expect(threeLineVisitNote.overflowY).toBe("hidden");
+  await visitNote.fill("第一行\n第二行\n第三行\n第四行\n第五行\n第六行");
   const visitNoteContainment = await form.locator(".visit-note-field").evaluate((field) => {
     const fieldBox = field.getBoundingClientRect();
     const textarea = field.querySelector("textarea");
     const textareaBox = textarea.getBoundingClientRect();
     return {
       bottomDelta: textareaBox.bottom - fieldBox.bottom,
+      fieldHeight: fieldBox.height,
       hasOverflow: textarea.scrollHeight > textarea.clientHeight,
       labelTop: field.querySelector(".floating-outlined-label").getBoundingClientRect().top - fieldBox.top,
+      overflowY: getComputedStyle(textarea).overflowY,
+      textareaHeight: textareaBox.height,
     };
   });
   expect(visitNoteContainment.bottomDelta).toBeLessThanOrEqual(0);
+  expect(visitNoteContainment.fieldHeight).toBeLessThanOrEqual(120);
   expect(visitNoteContainment.hasOverflow).toBe(true);
   expect(visitNoteContainment.labelTop).toBeLessThan(0);
+  expect(visitNoteContainment.overflowY).toBe("auto");
+  expect(visitNoteContainment.textareaHeight).toBe(118);
   await expect(visitNote).toHaveCSS("padding-left", "4px");
   const visitNoteLabel = form.locator(".visit-note-field .floating-outlined-label");
   await expect(visitNote).not.toHaveValue("");
@@ -770,6 +784,24 @@ test("transport editor uses compact floating fields and preserves exact minute i
   expect(noteScrollbar.buttonDisplay).toBe("none");
   expect(noteScrollbar.thumbBackground).not.toBe("rgba(0, 0, 0, 0)");
   await expect(note).toHaveCSS("padding-left", "4px");
+  await note.fill("第一行\n第二行\n第三行");
+  const threeLineTransportNote = await note.evaluate((textarea) => ({
+    height: textarea.getBoundingClientRect().height,
+    overflowY: getComputedStyle(textarea).overflowY,
+  }));
+  expect(threeLineTransportNote.height).toBeGreaterThan(60);
+  expect(threeLineTransportNote.height).toBeLessThan(118);
+  expect(threeLineTransportNote.overflowY).toBe("hidden");
+  await note.fill("第一行\n第二行\n第三行\n第四行\n第五行\n第六行");
+  const overflowingTransportNote = await note.evaluate((textarea) => ({
+    height: textarea.getBoundingClientRect().height,
+    hasOverflow: textarea.scrollHeight > textarea.clientHeight,
+    overflowY: getComputedStyle(textarea).overflowY,
+  }));
+  expect(overflowingTransportNote.height).toBe(118);
+  expect(overflowingTransportNote.hasOverflow).toBe(true);
+  expect(overflowingTransportNote.overflowY).toBe("auto");
+  await note.fill("");
 
   const nameFloatingLabel = form.locator(".transport-editor-name-field .floating-outlined-label");
   await expect(form.locator(".transport-editor-name-field")).toHaveCSS("height", "36px");

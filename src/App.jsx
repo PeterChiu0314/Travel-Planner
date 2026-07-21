@@ -811,6 +811,23 @@ function FloatingOutlinedField({ children, className = "", label }) {
   );
 }
 
+function AutoGrowingTextarea({ value, ...textareaProps }) {
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const textareaStyle = window.getComputedStyle(textarea);
+    const minimumHeight = Number.parseFloat(textareaStyle.minHeight) || 60;
+    const maximumHeight = Number.parseFloat(textareaStyle.maxHeight) || 118;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, minimumHeight), maximumHeight)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maximumHeight ? "auto" : "hidden";
+  }, [value]);
+
+  return <textarea {...textareaProps} ref={textareaRef} value={value} />;
+}
+
 function OutlinedMenuField({ className = "", label, listboxLabel, name, onValueChange, options, required = false, value }) {
   const rootRef = useRef(null);
   const menuRef = useRef(null);
@@ -11388,7 +11405,6 @@ function ItineraryTimeline({
   const activeDayColumnRef = useRef(null);
   const activeTimelineListRef = useRef(null);
   const newVisitEditorRef = useRef(null);
-  const visitNoteRef = useRef(null);
   const visitDurationRef = useRef(null);
   const mapUrlApplyRef = useRef(false);
   const lastAppliedMapPointPickRef = useRef(null);
@@ -12393,14 +12409,6 @@ function ItineraryTimeline({
   }, [editingId, form.end_time, form.start_time, isOpen, isTransportEditor]);
 
   useEffect(() => {
-    const textarea = visitNoteRef.current;
-    if (!textarea || !isOpen || isTransportEditor) return;
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 112)}px`;
-    textarea.style.overflowY = textarea.scrollHeight > 112 ? "auto" : "hidden";
-  }, [form.description, form.note, isOpen, isTransportEditor]);
-
-  useEffect(() => {
     if (!isOpen || isTransportEditor) return undefined;
     const bindings = [[visitDurationRef.current, handleDurationWheel]].filter(([element]) => Boolean(element));
     bindings.forEach(([element, handler]) => element.addEventListener("wheel", handler, { passive: false }));
@@ -12818,7 +12826,7 @@ function ItineraryTimeline({
             />
           </FloatingOutlinedField>
           <FloatingOutlinedField className="transport-editor-note-field" label="備註">
-            <textarea
+            <AutoGrowingTextarea
               aria-label="備註"
               autoComplete="off"
               name="transport_note"
@@ -13223,12 +13231,11 @@ function ItineraryTimeline({
           />
         </div>
         <FloatingOutlinedField className="full-label visit-note-field" label="備註">
-          <textarea
+          <AutoGrowingTextarea
             aria-label="備註"
             autoComplete="off"
             name="description"
             placeholder="備註"
-            ref={visitNoteRef}
             rows="2"
             value={form.description || form.note}
             onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}

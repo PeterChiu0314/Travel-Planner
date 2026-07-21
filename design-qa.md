@@ -12,11 +12,11 @@
 
 ## Full-view comparison evidence
 
-The source screenshots are focused defect captures rather than full-page target comps, so the Chrome captures include more surrounding desktop canvas. The compared editor regions show that the visit note remains inside its 62 px frame, the transportation name field is 36 px high, and the 36 px navigation control is bottom-aligned with transportation duration. No surrounding layout or typography was intentionally redesigned.
+The source screenshots are focused defect captures rather than full-page target comps, so the Chrome captures include more surrounding desktop canvas. The compared editor regions show that note text remains inside its floating-label frame, the transportation name field is 36 px high, and the 36 px navigation control is bottom-aligned with transportation duration. No surrounding layout or typography was intentionally redesigned.
 
 ## Focused-region comparison evidence
 
-- Visit note: Chrome measured a 62 px field, 60 px textarea, `-1px` bottom overflow delta, internal scrolling, visible floating label, and 4 px left padding matching the adjusted name/duration controls.
+- Visit note: Chrome verified the two-line 62 px starting frame, contained scrolling, visible floating label, and 4 px left padding matching the adjusted name/duration controls. The later shared auto-growth behavior through five lines is covered by the focused component tests.
 - Transportation editor: Chrome measured a 36 px name field, a 36 × 36 px navigation control, and zero bottom-alignment delta against duration.
 - Transportation category: Chrome observed the listbox open, then observed zero listboxes and `aria-expanded="false"` after clicking transportation name.
 - Expanded transportation note: Chrome measured a 4 px scrollbar, no WebKit scrollbar buttons, a non-transparent rounded thumb, and `overflow: auto`.
