@@ -13266,13 +13266,21 @@ function ItineraryTimeline({
 
   function renderEditorMapSettings({ includeAlternative = false } = {}) {
     const pendingAlternative = form.alternative_deleted ? null : form.alternative_draft;
+    const isMapPointBodyVisible = isAlternativeEditor || isMapPointExpanded;
     return (
-      <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
+      <div className={`visit-map-point-section${isMapPointBodyVisible ? " expanded" : ""}${isAlternativeEditor ? " always-expanded" : ""}`}>
         <div className="visit-map-point-header">
-          <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>
-            <ChevronRight aria-hidden="true" />
-            <span>{includeAlternative ? "更多設定" : "更改地點"}</span>
-          </button>
+          {isAlternativeEditor ? (
+            <div className="visit-settings-heading visit-map-point-static-title">
+              <MapPin aria-hidden="true" />
+              <span>地圖點位</span>
+            </div>
+          ) : (
+            <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>
+              <ChevronRight aria-hidden="true" />
+              <span>{includeAlternative ? "更多設定" : "更改地點"}</span>
+            </button>
+          )}
           <a
             aria-disabled={!editorMapsUrl}
             className={`ghost-button compact visit-maps-link${editorMapsUrl ? "" : " disabled"}`}
@@ -13285,12 +13293,14 @@ function ItineraryTimeline({
             <ExternalLink aria-hidden="true" />
           </a>
         </div>
-        {isMapPointExpanded ? (
+        {isMapPointBodyVisible ? (
           <div className="visit-map-point-body">
-            <div className="visit-settings-heading">
-              <MapPin aria-hidden="true" />
-              <span>地圖點位</span>
-            </div>
+            {!isAlternativeEditor ? (
+              <div className="visit-settings-heading">
+                <MapPin aria-hidden="true" />
+                <span>地圖點位</span>
+              </div>
+            ) : null}
             <div className="visit-map-point-actions">
               <button className={`ghost-button compact map-point-picker-button${isPickingMapPoint ? " active" : ""}`} disabled={!canPickMapPoint} type="button" onClick={toggleMapPointPick}>
                 <MapPinPen aria-hidden="true" />

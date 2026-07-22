@@ -742,9 +742,10 @@ test("visit editor stages alternative changes and saves them with the main itine
   await expect(form.locator(".alternative-editor-return-button .lucide-chevron-left")).toHaveCount(1);
   await expect(form.locator(".alternative-editor-return-button")).toHaveCSS("min-height", "34px");
   await expect(form.locator(".alternative-editor-return-button")).toHaveCSS("font-weight", "500");
+  await expect(form.locator(".alternative-editor-return-button")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await form.getByRole("textbox", { name: "備案目的地" }).fill("備案 F");
   await form.getByRole("textbox", { name: "備註" }).fill("備案草稿備註");
-  await form.getByRole("button", { name: "更改地點" }).click();
+  await expect(form.getByRole("button", { name: "更改地點" })).toHaveCount(0);
   await expect(form.getByText("地圖點位", { exact: true })).toBeVisible();
   await expect(form.getByRole("button", { name: "調整點位" })).toBeVisible();
   await expect(form.getByRole("button", { name: "搜尋替換" })).toBeVisible();
@@ -762,7 +763,6 @@ test("visit editor stages alternative changes and saves them with the main itine
   await form.locator(".visit-alternative-summary").click();
   await expect(form.locator(".form-mode-label")).toHaveText("新增備案");
   await expect(form.getByRole("textbox", { name: "備案目的地" })).toHaveValue("備案 F");
-  await form.getByRole("button", { name: "更改地點" }).click();
   await form.getByRole("textbox", { name: "Google Maps URL" }).fill("https://www.google.com/maps/place/not-a-coordinate");
   await form.getByRole("button", { name: "返回主行程" }).click();
   await expect(form.locator(".form-mode-label")).toHaveText("編輯行程");
@@ -787,6 +787,8 @@ test("visit editor stages alternative changes and saves them with the main itine
   const editorReturnButton = form.getByRole("button", { name: "返回主行程" });
   await expect(editorDeleteButton).toHaveClass(/danger/);
   await expect(editorDeleteButton).toHaveCSS("min-height", "34px");
+  await expect(editorDeleteButton).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(editorReturnButton).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   expect((await editorDeleteButton.boundingBox()).x).toBeLessThan((await editorReturnButton.boundingBox()).x);
   await form.getByRole("button", { name: "刪除備案" }).click();
   const alternativeDeleteDialog = page.getByRole("dialog", { name: "確認刪除備案？" });

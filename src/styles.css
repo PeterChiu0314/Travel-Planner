@@ -3609,6 +3609,7 @@ textarea {
   justify-content: center;
   gap: 5px;
   min-height: 34px;
+  background: transparent;
   padding: 5px 8px;
   font-size: 12px;
   font-weight: 500;
@@ -3623,6 +3624,10 @@ textarea {
 
 .alternative-editor-delete-button {
   margin-right: auto;
+}
+
+.visit-map-point-section.always-expanded .visit-map-point-body {
+  padding-top: 0;
 }
 
 .visit-map-point-actions {
