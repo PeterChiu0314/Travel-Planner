@@ -132,7 +132,7 @@ Do:
 - Keep selected Day Boards slightly inset after automatic horizontal positioning so edge controls do not cover card content.
 - Keep Map-expanded and Map-collapsed visit cards on the same typography, spacing, and action-control system.
 - Let expanded visit details use the card width below the divider without changing the compact information layout above it.
-- In expanded visit details, use compact unframed metadata rows. Linked budget uses `Wallet` + heading, a thin divider, and a content-width pale-green tag that stays on the same row when space permits and wraps as one content group when constrained. Existing alternatives use `Files` + heading, a thin divider, and a plain read-only summary while reserving the lower-right flip-control area.
+- In expanded visit details, use compact unframed metadata rows. Linked budget uses `Wallet` + heading, a thin divider, and a content-width pale-green tag that stays on the same row when space permits and wraps as one content group when constrained. Existing alternatives use a 400-weight `Files` + heading followed by a divider and 400-weight plain read-only summary that wrap together when constrained, while reserving the lower-right flip-control area. Keep expanded note copy at regular weight.
 - Use familiar Lucide icons for lock, edit, delete, add, map, route, and directional actions, with accessible labels or tooltips.
 - Treat the future map area as a full workspace surface, not as a decorative nested card.
 - Use Timeline-specific selectors for layout overrides instead of changing global `.panel` or `.content-grid` behavior.

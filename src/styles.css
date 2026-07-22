@@ -3689,7 +3689,7 @@ textarea {
   border-radius: 6px;
   background: transparent;
   box-shadow: none;
-  padding: 2px 4px;
+  padding: 2px 6px;
   color: var(--muted);
   font-size: 11px;
   font-weight: 500;
@@ -4636,6 +4636,7 @@ textarea {
 }
 
 .item-details .item-detail-note {
+  font-weight: 400;
   white-space: pre-line;
 }
 
@@ -4651,7 +4652,7 @@ textarea {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 8px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .item-expanded-budget-heading {
@@ -4726,15 +4727,17 @@ textarea {
 }
 
 .item-expanded-alternative {
-  display: grid;
-  grid-template-columns: auto 1px minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px 8px;
+  margin-top: 8px;
 }
 
 .item-expanded-alternative-heading {
+  flex: 0 0 auto;
   font-size: 14px;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -4744,8 +4747,19 @@ textarea {
   flex: 0 0 16px;
 }
 
-.item-expanded-alternative-summary {
+.item-expanded-alternative-content {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
+  max-width: 100%;
+}
+
+.item-expanded-alternative-summary {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   cursor: default;
   height: 24px;
@@ -4753,7 +4767,7 @@ textarea {
   padding: 3px 0;
   color: var(--ink);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4767,6 +4781,7 @@ textarea {
 
 .item-expanded-map-link {
   justify-self: start;
+  margin-left: -6px;
   margin-top: 12px;
 }
 

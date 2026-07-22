@@ -23,7 +23,7 @@ Phase 5.9 updates the Timeline visit editor UI without changing itinerary persis
 - Search/Replace uses the existing page-overlay geometry while leaving the Map, Places suggestions, and preview confirmation interactive.
 - New visits still require a valid point. Existing legacy visits without a point may edit unrelated fields when their point data is unchanged.
 - All point changes remain draft-only until the visit form is saved.
-- Expanded visit details keep their note presentation and use unframed metadata rows with thin separators. Linked budget uses a 14 px / 500 `Wallet` heading plus a content-width pale-green tag that wraps below only when needed; an existing alternative uses a 16 px `Files` icon, 14 px `備案`, and a plain 24 px summary. The compact Google Map link remains lower-left and the flip control remains lower-right.
+- Expanded visit details use 400-weight note copy and unframed metadata rows with thin separators. Linked budget uses a 14 px / 500 `Wallet` heading plus a content-width pale-green tag that wraps below only when needed; an existing alternative uses a 16 px `Files` icon, 14 px / 400 `備案`, and a 400-weight plain 24 px summary whose divider/content group wraps when constrained. The alternative and budget rows use 8 px top margins. The compact Google Map link remains lower-left with `2px 6px` padding and a `-6px` left margin, while the flip control remains lower-right.
 
 ## Verification
 

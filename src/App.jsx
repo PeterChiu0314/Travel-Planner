@@ -13491,9 +13491,11 @@ function ItineraryTimeline({
               <Files aria-hidden="true" />
               <span>{relatedHeading}</span>
             </div>
-            <span className="item-expanded-section-divider" aria-hidden="true" />
-            <div className="item-expanded-alternative-summary">
-              <span>{`${relatedType}・${relatedDestination}`}</span>
+            <div className="item-expanded-alternative-content">
+              <span className="item-expanded-section-divider" aria-hidden="true" />
+              <div className="item-expanded-alternative-summary">
+                <span>{`${relatedType}・${relatedDestination}`}</span>
+              </div>
             </div>
           </div>
         ) : null}
