@@ -3525,23 +3525,13 @@ textarea {
   gap: 7px;
 }
 
-.visit-alternative-create {
-  justify-self: start;
-}
-
-.visit-alternative-create svg {
-  width: 14px;
-  height: 14px;
-}
-
-.visit-alternative-summary-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .visit-alternative-summary {
+  display: flex;
   flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
   min-width: 0;
   height: 28px;
   min-height: 28px;
@@ -3559,20 +3549,29 @@ textarea {
   white-space: nowrap;
 }
 
-.visit-alternative-delete-button {
-  flex: 0 0 28px;
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  min-height: 28px;
-  background: transparent;
-  padding: 0;
+.visit-alternative-summary > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.visit-alternative-delete-button svg {
+.visit-alternative-summary > svg {
   width: 14px;
   height: 14px;
+  flex: 0 0 14px;
   stroke-width: 1.5;
+}
+
+.visit-alternative-create-summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.visit-alternative-create-summary > span svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
 }
 
 .visit-alternative-summary:hover,
@@ -3598,6 +3597,32 @@ textarea {
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.alternative-editor-actions {
+  align-items: center;
+}
+
+.alternative-editor-actions .ghost-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.alternative-editor-actions .ghost-button svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  stroke-width: 1.8;
+}
+
+.alternative-editor-delete-button {
+  margin-right: auto;
 }
 
 .visit-map-point-actions {

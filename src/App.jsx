@@ -11335,6 +11335,7 @@ function ItineraryTimeline({
   const [expandedId, setExpandedId] = useState(null);
   const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
   const [isAlternativeEditorOpen, setIsAlternativeEditorOpen] = useState(false);
+  const [isAlternativeDeleteConfirmOpen, setIsAlternativeDeleteConfirmOpen] = useState(false);
   const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
@@ -11900,6 +11901,7 @@ function ItineraryTimeline({
     setTimeError("");
     setMapUrlError("");
     setIsMapPointExpanded(false);
+    setIsAlternativeDeleteConfirmOpen(false);
     setIsAlternativeEditorOpen(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
@@ -12052,6 +12054,7 @@ function ItineraryTimeline({
     setTimeError("");
     setMapUrlError("");
     setIsMapPointExpanded(false);
+    setIsAlternativeDeleteConfirmOpen(false);
     setIsAlternativeEditorOpen(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
@@ -13238,6 +13241,7 @@ function ItineraryTimeline({
     setIsMapPointExpanded(false);
     onCancelMapPointPick?.();
     onCancelMapSearchReplace?.();
+    setIsAlternativeDeleteConfirmOpen(false);
     setIsAlternativeEditorOpen(true);
   }
 
@@ -13246,12 +13250,17 @@ function ItineraryTimeline({
     setIsMapPointExpanded(false);
     onCancelMapPointPick?.();
     onCancelMapSearchReplace?.();
+    setIsAlternativeDeleteConfirmOpen(false);
     setIsAlternativeEditorOpen(false);
   }
 
   function stageAlternativeDeletion() {
     setForm({ ...form, alternative_draft: null, alternative_deleted: Boolean(form.alternative_id) });
     setMapUrlError("");
+    setIsMapPointExpanded(false);
+    onCancelMapPointPick?.();
+    onCancelMapSearchReplace?.();
+    setIsAlternativeDeleteConfirmOpen(false);
     setIsAlternativeEditorOpen(false);
   }
 
@@ -13328,18 +13337,16 @@ function ItineraryTimeline({
                   <span>備案</span>
                 </div>
                 {pendingAlternative ? (
-                  <div className="visit-alternative-summary-row">
-                    <button className="visit-alternative-summary" type="button" onClick={openAlternativeEditor}>
+                  <button className="visit-alternative-summary" type="button" onClick={openAlternativeEditor}>
+                    <span>
                       {`${typeLabels[pendingAlternative.type] || typeLabels.attraction} ・ ${alternativeDestination(pendingAlternative)}`}
-                    </button>
-                    <button className="mini-button visit-alternative-delete-button" aria-label="刪除備案" title="刪除備案" type="button" onClick={stageAlternativeDeletion}>
-                      <Trash2 aria-hidden="true" />
-                    </button>
-                  </div>
+                    </span>
+                    <ChevronRight aria-hidden="true" />
+                  </button>
                 ) : (
-                  <button className="ghost-button compact visit-alternative-create" type="button" onClick={openAlternativeEditor}>
-                    <Plus aria-hidden="true" />
-                    <span>建立備案</span>
+                  <button className="visit-alternative-summary visit-alternative-create-summary" type="button" onClick={openAlternativeEditor}>
+                    <span><Plus aria-hidden="true" />建立備案</span>
+                    <ChevronRight aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -13390,7 +13397,16 @@ function ItineraryTimeline({
             </FloatingOutlinedField>
             {renderEditorMapSettings()}
             <div className="form-actions alternative-editor-actions">
-              <button className="ghost-button compact" type="button" onClick={returnToMainEditor}>返回主行程</button>
+              {form.alternative_id ? (
+                <button className="ghost-button danger compact alternative-editor-delete-button" type="button" onClick={() => setIsAlternativeDeleteConfirmOpen(true)}>
+                  <Trash2 aria-hidden="true" />
+                  <span>刪除備案</span>
+                </button>
+              ) : null}
+              <button className="ghost-button compact alternative-editor-return-button" type="button" onClick={returnToMainEditor}>
+                <ChevronLeft aria-hidden="true" />
+                <span>返回主行程</span>
+              </button>
             </div>
           </>
         ) : (
@@ -13497,6 +13513,18 @@ function ItineraryTimeline({
   return (
     <>
     <BodyPortal>
+    {isAlternativeDeleteConfirmOpen ? (
+      <div className="modal-backdrop">
+        <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="alternative-delete-confirm-title">
+          <h2 id="alternative-delete-confirm-title">確認刪除備案？</h2>
+          <p>刪除狀態會在儲存主行程時一併套用。</p>
+          <div className="form-actions">
+            <button className="ghost-button" type="button" onClick={() => setIsAlternativeDeleteConfirmOpen(false)}>取消</button>
+            <button className="ghost-button danger" type="button" onClick={stageAlternativeDeletion}>刪除備案</button>
+          </div>
+        </div>
+      </div>
+    ) : null}
     {deleteTarget ? (
       <div className="modal-backdrop">
         <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">

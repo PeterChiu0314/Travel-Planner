@@ -110,7 +110,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - The original itinerary Save action persists the main item and then the staged alternative mutation. A failed main or alternative save keeps both drafts open; successful completion clears the shared draft through the existing itinerary-editor flow.
 - Existing Formal/Demo isolation, fixed-item restrictions, alternative apply/swap behavior, point selection, Places replacement, URL parsing, and persisted data shape remain in place. Alternative latitude/longitude now travel with its existing map fields during save and main/alternative swaps.
 - The card-corner flip control remains available for an existing alternative. Without an alternative it is disabled and no longer creates one; the former flip-to-create hint has been removed.
-- The expanded settings retain icons on Adjust Point and Search/Replace, using Lucide `MapPinPen` for point adjustment and `Files` for the alternative heading. Alternative summaries are compact 28 px / 13 px controls, and their delete action matches the existing 28 px Timeline card delete button treatment.
+- The expanded settings retain icons on Adjust Point and Search/Replace, using Lucide `MapPinPen` for point adjustment and `Files` for the alternative heading. Existing and create-alternative entries both use the compact 28 px / 13 px full-width summary control with a right chevron. Alternative deletion now lives only in the existing-alternative editor, uses a small secondary-danger action with the shared confirmation dialog treatment, and keeps Return to Main as a compact secondary action aligned at the lower right.
 
 ## Phase 5.8 Current UI State
 
