@@ -579,7 +579,10 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(appSource).toContain("visit-map-point-toggle");
   expect(appSource).toContain('{includeAlternative ? "更多設定" : "更改地點"}');
   expect(appSource).toContain("visit-settings-heading");
+  expect(appSource).toContain("<MapPinPen aria-hidden=\"true\" />");
+  expect(appSource).toContain("<Search aria-hidden=\"true\" />");
   expect(appSource).toContain("<span>地圖點位</span>");
+  expect(appSource).toContain("<Files aria-hidden=\"true\" />");
   expect(appSource).toContain("<span>備案</span>");
   expect(appSource).toContain("<span>建立備案</span>");
   expect(appSource).toContain("返回主行程");

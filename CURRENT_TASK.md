@@ -110,6 +110,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - The original itinerary Save action persists the main item and then the staged alternative mutation. A failed main or alternative save keeps both drafts open; successful completion clears the shared draft through the existing itinerary-editor flow.
 - Existing Formal/Demo isolation, fixed-item restrictions, alternative apply/swap behavior, point selection, Places replacement, URL parsing, and persisted data shape remain in place. Alternative latitude/longitude now travel with its existing map fields during save and main/alternative swaps.
 - The card-corner flip control remains available for an existing alternative. Without an alternative it is disabled and no longer creates one; the former flip-to-create hint has been removed.
+- The expanded settings retain icons on Adjust Point and Search/Replace, using Lucide `MapPinPen` for point adjustment and `Files` for the alternative heading. Alternative summaries are compact 28 px / 13 px controls, and their delete action matches the existing 28 px Timeline card delete button treatment.
 
 ## Phase 5.8 Current UI State
 
@@ -215,6 +216,7 @@ Latest Phase 5.9 verification:
 Latest alternative editor UI verification:
 
 - `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js tests/phase-1-7f-smoke.spec.js --reporter=line --output=.tmp-phase-alternative-results` passed 73/73 after updating the existing source guards and adding the staged alternative workflow coverage.
+- The focused alternative/visit editor checks passed after restoring the requested action icons and compacting the alternative summary/delete row.
 - The new Demo workflow check covers disabled empty flip behavior, create/edit navigation without a prompt, shared main/alternative draft retention, no standalone alternative Save, invalid alternative URL failure without input loss, combined main/alternative save, and staged deletion.
 - `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
 - `git diff --check` passed; Windows LF/CRLF notices remain informational.

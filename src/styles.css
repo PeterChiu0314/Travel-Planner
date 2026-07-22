@@ -3543,18 +3543,36 @@ textarea {
 .visit-alternative-summary {
   flex: 1;
   min-width: 0;
-  min-height: 36px;
+  height: 28px;
+  min-height: 28px;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   color: var(--ink);
-  padding: 7px 12px;
+  padding: 3px 10px;
   text-align: left;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.visit-alternative-delete-button {
+  flex: 0 0 28px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  background: transparent;
+  padding: 0;
+}
+
+.visit-alternative-delete-button svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.5;
 }
 
 .visit-alternative-summary:hover,

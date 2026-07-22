@@ -30,6 +30,7 @@ import {
   ClipboardCheck,
   CircleEllipsis,
   ExternalLink,
+  Files,
   Footprints,
   HandCoins,
   LayoutDashboard,
@@ -41,6 +42,7 @@ import {
   Luggage,
   Map as MapIcon,
   MapPin,
+  MapPinPen,
   MessageCircleWarning,
   Navigation,
   PanelLeftClose,
@@ -13282,6 +13284,7 @@ function ItineraryTimeline({
             </div>
             <div className="visit-map-point-actions">
               <button className={`ghost-button compact map-point-picker-button${isPickingMapPoint ? " active" : ""}`} disabled={!canPickMapPoint} type="button" onClick={toggleMapPointPick}>
+                <MapPinPen aria-hidden="true" />
                 <span>{isPickingMapPoint ? "取消選點" : "調整點位"}</span>
               </button>
               <button
@@ -13294,6 +13297,7 @@ function ItineraryTimeline({
                   else onStartMapSearchReplace?.();
                 }}
               >
+                <Search aria-hidden="true" />
                 <span>{isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"}</span>
               </button>
             </div>
@@ -13320,7 +13324,7 @@ function ItineraryTimeline({
               <div className="visit-alternative-settings">
                 <div className="visit-settings-divider" />
                 <div className="visit-settings-heading">
-                  <Repeat2 aria-hidden="true" />
+                  <Files aria-hidden="true" />
                   <span>備案</span>
                 </div>
                 {pendingAlternative ? (
@@ -13328,7 +13332,7 @@ function ItineraryTimeline({
                     <button className="visit-alternative-summary" type="button" onClick={openAlternativeEditor}>
                       {`${typeLabels[pendingAlternative.type] || typeLabels.attraction} ・ ${alternativeDestination(pendingAlternative)}`}
                     </button>
-                    <button className="mini-button" aria-label="刪除備案" title="刪除備案" type="button" onClick={stageAlternativeDeletion}>
+                    <button className="mini-button visit-alternative-delete-button" aria-label="刪除備案" title="刪除備案" type="button" onClick={stageAlternativeDeletion}>
                       <Trash2 aria-hidden="true" />
                     </button>
                   </div>

@@ -582,7 +582,8 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(form.getByRole("button", { name: "調整點位" })).toHaveCSS("font-weight", "500");
   await expect(form.getByRole("button", { name: "搜尋替換" })).toHaveCSS("font-weight", "500");
   await expect(form.locator(".visit-settings-heading .lucide-map-pin")).toHaveCount(1);
-  await expect(form.locator(".visit-map-point-actions svg")).toHaveCount(0);
+  await expect(form.locator(".visit-map-point-actions .lucide-map-pin-pen")).toHaveCount(1);
+  await expect(form.locator(".visit-map-point-actions .lucide-search")).toHaveCount(1);
   const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
   const mapUrlField = form.locator(".visit-map-url-editor");
   await expect(mapUrlInput).toBeVisible();
@@ -747,6 +748,14 @@ test("visit editor stages alternative changes and saves them with the main itine
   await expect(form.locator('input[name="location_name"]')).toHaveValue("主行程 E");
   await form.getByRole("button", { name: "更多設定" }).click();
   await expect(form.locator(".visit-alternative-summary")).toContainText(/・ 備案 F$/);
+  await expect(form.locator(".visit-alternative-settings .lucide-files")).toHaveCount(1);
+  await expect(form.locator(".visit-alternative-summary")).toHaveCSS("height", "28px");
+  await expect(form.locator(".visit-alternative-summary")).toHaveCSS("font-size", "13px");
+  const stagedDeleteButton = form.getByRole("button", { name: "刪除備案" });
+  await expect(stagedDeleteButton).toHaveCSS("width", "28px");
+  await expect(stagedDeleteButton).toHaveCSS("height", "28px");
+  await expect(stagedDeleteButton).toHaveCSS("padding", "0px");
+  await expect(stagedDeleteButton).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await form.locator(".visit-alternative-summary").click();
   await expect(form.locator(".form-mode-label")).toHaveText("新增備案");
   await expect(form.getByRole("textbox", { name: "備案目的地" })).toHaveValue("備案 F");
