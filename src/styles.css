@@ -4641,33 +4641,74 @@ textarea {
 
 .linked-budget-list,
 .item-expanded-alternative {
-  display: grid;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
 
 .linked-budget-list {
-  align-items: start;
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
   margin-top: 6px;
 }
 
-.linked-budget-list > strong {
+.item-expanded-budget-heading {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
   color: var(--ink);
   font-size: 14px;
-  font-weight: 600;
-  padding-left: 8px;
+  font-weight: 500;
 }
 
-.linked-budget-list > .pill,
-.linked-budget-list > .muted-text {
-  justify-self: stretch;
-  width: 100%;
+.item-expanded-budget-heading strong {
+  font-weight: 500;
+}
+
+.item-expanded-budget-heading svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  stroke-width: 1.8;
+}
+
+.item-expanded-budget-content {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.item-expanded-budget-tags {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.item-expanded-budget-tags > .pill,
+.item-expanded-budget-tags > .muted-text {
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
   font-size: 12px;
   font-weight: 500;
+}
+
+.item-expanded-section-divider {
+  width: 1px;
+  height: 14px;
+  flex: 0 0 1px;
+  background: var(--line);
 }
 
 .muted-text {
@@ -4685,26 +4726,43 @@ textarea {
 }
 
 .item-expanded-alternative {
-  grid-template-columns: auto minmax(0, 1fr);
+  display: grid;
+  grid-template-columns: auto 1px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-top: 12px;
 }
 
 .item-expanded-alternative-heading {
-  padding-left: 8px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
+.item-expanded-alternative-heading svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
 .item-expanded-alternative-summary {
+  min-width: 0;
+  overflow: hidden;
   cursor: default;
   height: 24px;
   min-height: 24px;
+  padding: 3px 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.item-expanded-alternative-summary:hover {
-  border-color: var(--line);
-  color: var(--ink);
+.item-expanded-alternative-summary > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-expanded-map-link {

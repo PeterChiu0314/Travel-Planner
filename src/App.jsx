@@ -13491,7 +13491,8 @@ function ItineraryTimeline({
               <Files aria-hidden="true" />
               <span>{relatedHeading}</span>
             </div>
-            <div className="visit-alternative-summary item-expanded-alternative-summary">
+            <span className="item-expanded-section-divider" aria-hidden="true" />
+            <div className="item-expanded-alternative-summary">
               <span>{`${relatedType}・${relatedDestination}`}</span>
             </div>
           </div>
@@ -13918,16 +13919,24 @@ function ItineraryTimeline({
                     {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
                     {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
                     <div className="linked-budget-list">
-                      <strong>連動預算</strong>
-                      {(budgetsByItem[item.id] || []).length ? (
-                        (budgetsByItem[item.id] || []).map((budget) => (
-                          <span className="pill" key={budget.id}>
-                            {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="pill muted-text">尚未連動預算</span>
-                      )}
+                      <div className="item-expanded-budget-heading">
+                        <Wallet aria-hidden="true" />
+                        <strong>連動預算</strong>
+                      </div>
+                      <div className="item-expanded-budget-content">
+                        <span className="item-expanded-section-divider" aria-hidden="true" />
+                        <div className="item-expanded-budget-tags">
+                          {(budgetsByItem[item.id] || []).length ? (
+                            (budgetsByItem[item.id] || []).map((budget) => (
+                              <span className="pill" key={budget.id}>
+                                {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="pill muted-text">尚未連動預算</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                   {renderAlternativeSummary(item, alternative, isAlternativeFace)}
