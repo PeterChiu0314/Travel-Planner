@@ -3498,6 +3498,90 @@ textarea {
   padding-top: 6px;
 }
 
+.visit-settings-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.visit-settings-heading svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  stroke-width: 1.8;
+}
+
+.visit-settings-divider {
+  height: 1px;
+  margin: 3px 0 0;
+  background: var(--line);
+}
+
+.visit-alternative-settings {
+  display: grid;
+  gap: 7px;
+}
+
+.visit-alternative-create {
+  justify-self: start;
+}
+
+.visit-alternative-create svg {
+  width: 14px;
+  height: 14px;
+}
+
+.visit-alternative-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.visit-alternative-summary {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  padding: 7px 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visit-alternative-summary:hover,
+.visit-alternative-summary:focus-visible {
+  border-color: var(--mint-dark);
+  color: var(--mint-dark);
+  outline: 0;
+}
+
+.alternative-editor-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alternative-origin-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .visit-map-point-actions {
   display: flex;
   min-width: 0;

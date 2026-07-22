@@ -565,20 +565,26 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(appSource).toContain("visit-editor-time-row");
   expect(appSource).toContain("function OutlinedField");
   expect(appSource).toContain("function TimelineTypeField");
-  expect(appSource).toContain('<OutlinedField className={`visit-type-field${isMenuOpen ? " menu-open" : ""}`}');
+  expect(appSource).toContain('<OutlinedMenuField\n      className="visit-type-field"');
   expect(appSource).toContain('<TimelineTypeField value={form.type}');
   expect(appSource).toContain('<OutlinedField className="destination-field" label="目的地">');
   expect(appSource).toContain('className={`visit-time-field timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`}');
   expect(appSource).toContain("<TimelineDurationField");
-  expect(appSource).toContain('<OutlinedField className="full-label visit-note-field" label="備註">');
+  expect(appSource).toContain('<FloatingOutlinedField className="full-label visit-note-field" label="備註">');
   expect(appSource).toContain('<OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Google Maps URL">');
   expect(appSource).toContain('<div className="form-mode-label">{editingId ? "編輯行程" : "新增行程"}</div>');
   expect(appSource).toContain("normalizeTimelineTimeInput");
   expect(appSource).toContain("TimelineSegmentedTimeField");
   expect(appSource).toContain("timeline-time-menu");
-  expect(appSource).toContain("<Search aria-hidden=\"true\" />");
   expect(appSource).toContain("visit-map-point-toggle");
-  expect(appSource).toContain("<span>更改地點</span>");
+  expect(appSource).toContain('{includeAlternative ? "更多設定" : "更改地點"}');
+  expect(appSource).toContain("visit-settings-heading");
+  expect(appSource).toContain("<span>地圖點位</span>");
+  expect(appSource).toContain("<span>備案</span>");
+  expect(appSource).toContain("<span>建立備案</span>");
+  expect(appSource).toContain("返回主行程");
+  expect(appSource).not.toContain("儲存備案");
+  expect(appSource).not.toContain("點擊右下角翻卡建立備案");
   expect(appSource).toContain("<span>Google Map</span>");
   expect(appSource).toContain("<ExternalLink aria-hidden=\"true\" />");
   expect(appSource).not.toContain("visit-map-point-title");
@@ -640,8 +646,8 @@ test("Phase 5.3 destination editor save keeps validated hidden map coordinates i
 
   expect(appSource).toContain("submittedForm.latitude = mapUrlValidation.point.latitude");
   expect(appSource).toContain("submittedForm.longitude = mapUrlValidation.point.longitude");
-  expect(appSource).toContain("latitude: submittedForm.latitude ?? null");
-  expect(appSource).toContain("longitude: submittedForm.longitude ?? null");
+  expect(appSource).toContain("latitude: itemSubmittedForm.latitude ?? null");
+  expect(appSource).toContain("longitude: itemSubmittedForm.longitude ?? null");
 });
 
 test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker styling", () => {

@@ -73,11 +73,11 @@ async function openDemoNewVisitForm(page, title, startTime, endTime) {
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await expect(form.locator(".form-mode-label")).toHaveText("新增行程");
   await form.locator('input[name="location_name"]').fill(title);
-  await form.getByRole("button", { name: "更改地點" }).click();
+  await form.getByRole("button", { name: "更多設定" }).click();
   const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
   await mapUrlInput.fill("https://www.google.com/maps?q=25.033,121.5654");
   await mapUrlInput.blur();
-  await form.getByRole("button", { name: "更改地點" }).click();
+  await form.getByRole("button", { name: "更多設定" }).click();
   await expect(form.locator(".visit-map-url-editor")).toHaveCount(0);
   if (startTime !== null) await setTimelineTime(form, "start_time", startTime);
   if (endTime !== null) await setTimelineTime(form, "end_time", endTime);
@@ -530,7 +530,7 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(durationInput).toHaveValue("1小時");
   await expect(form.locator('input[name="end_time"]')).toHaveValue("11:00");
 
-  await expect(form.getByRole("button", { name: "更改地點" })).toBeVisible();
+  await expect(form.getByRole("button", { name: "更多設定" })).toBeVisible();
   await expect(form.getByRole("button", { name: "調整點位" })).toHaveCount(0);
   await expect(form.getByRole("button", { name: "搜尋替換" })).toHaveCount(0);
   await expect(form.locator(".visit-maps-link")).toContainText("Google Map");
@@ -576,13 +576,13 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(visitNote).not.toHaveValue("");
   await expect(visitNoteLabel).toHaveCSS("font-size", "11px");
   await expect(form.locator('.visit-map-url-editor input[name="map_url"]')).toHaveCount(0);
-  await form.getByRole("button", { name: "更改地點" }).click();
+  await form.getByRole("button", { name: "更多設定" }).click();
   await expect(form.getByRole("button", { name: "調整點位" })).toBeVisible();
   await expect(form.getByRole("button", { name: "搜尋替換" })).toBeVisible();
   await expect(form.getByRole("button", { name: "調整點位" })).toHaveCSS("font-weight", "500");
   await expect(form.getByRole("button", { name: "搜尋替換" })).toHaveCSS("font-weight", "500");
-  await expect(form.locator(".visit-map-point-actions .lucide-map-pin")).toHaveCount(1);
-  await expect(form.locator(".visit-map-point-actions .lucide-search")).toHaveCount(1);
+  await expect(form.locator(".visit-settings-heading .lucide-map-pin")).toHaveCount(1);
+  await expect(form.locator(".visit-map-point-actions svg")).toHaveCount(0);
   const mapUrlInput = form.locator('.visit-map-url-editor input[name="map_url"]');
   const mapUrlField = form.locator(".visit-map-url-editor");
   await expect(mapUrlInput).toBeVisible();
@@ -706,6 +706,76 @@ test("Phase 5.8 Timeline cards stage focus before expansion and reset across mar
   await expect(page.locator('.timeline-day-column.active[data-day-index="0"]')).toHaveCount(1);
   await expect(page.locator(".timeline-day-column.active .focused")).toHaveCount(0);
   await expect(page.locator(".timeline-day-column.active .expanded")).toHaveCount(0);
+  expect(supabaseRequests).toEqual([]);
+  expect(failures).toEqual([]);
+});
+
+test("visit editor stages alternative changes and saves them with the main itinerary", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/demo/timeline");
+
+  let visit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
+  await visit.click();
+  await visit.click();
+  const unavailableFlip = visit.getByRole("button", { name: "尚未建立備案" });
+  await expect(unavailableFlip).toBeDisabled();
+  await expect(visit).not.toContainText("點擊右下角翻卡建立備案");
+
+  await visit.getByTitle("編輯").click();
+  let form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+  await form.locator('input[name="location_name"]').fill("主行程 E");
+  await form.getByRole("button", { name: "更多設定" }).click();
+  await expect(form.locator(".visit-settings-heading")).toHaveText(["地圖點位", "備案"]);
+  await form.getByRole("button", { name: "建立備案" }).click();
+
+  await expect(form.locator(".form-mode-label")).toHaveText("新增備案");
+  await expect(form.locator(".alternative-origin-label")).toHaveText("原行程：主行程 E");
+  await expect(form.locator(".visit-editor-time-row")).toHaveCount(0);
+  await expect(form.getByRole("button", { name: "儲存備案" })).toHaveCount(0);
+  await expect(form.locator(".alternative-editor-actions button")).toHaveText(["返回主行程"]);
+  await form.getByRole("textbox", { name: "備案目的地" }).fill("備案 F");
+  await form.getByRole("textbox", { name: "備註" }).fill("備案草稿備註");
+  await form.getByRole("button", { name: "更改地點" }).click();
+  await expect(form.getByText("地圖點位", { exact: true })).toBeVisible();
+  await expect(form.getByRole("button", { name: "調整點位" })).toBeVisible();
+  await expect(form.getByRole("button", { name: "搜尋替換" })).toBeVisible();
+  await form.getByRole("button", { name: "返回主行程" }).click();
+
+  await expect(form.locator(".form-mode-label")).toHaveText("編輯行程");
+  await expect(form.locator('input[name="location_name"]')).toHaveValue("主行程 E");
+  await form.getByRole("button", { name: "更多設定" }).click();
+  await expect(form.locator(".visit-alternative-summary")).toContainText(/・ 備案 F$/);
+  await form.locator(".visit-alternative-summary").click();
+  await expect(form.locator(".form-mode-label")).toHaveText("新增備案");
+  await expect(form.getByRole("textbox", { name: "備案目的地" })).toHaveValue("備案 F");
+  await form.getByRole("button", { name: "更改地點" }).click();
+  await form.getByRole("textbox", { name: "Google Maps URL" }).fill("https://www.google.com/maps/place/not-a-coordinate");
+  await form.getByRole("button", { name: "返回主行程" }).click();
+  await expect(form.locator(".form-mode-label")).toHaveText("編輯行程");
+  await form.getByRole("button", { name: "儲存", exact: true }).click();
+  await expect(form.locator(".form-mode-label")).toHaveText("新增備案");
+  await expect(form.getByRole("textbox", { name: "備案目的地" })).toHaveValue("備案 F");
+  await expect(form.locator(".visit-map-url-error")).toBeVisible();
+  await form.getByRole("textbox", { name: "Google Maps URL" }).fill("https://www.google.com/maps?q=25.033,121.5654");
+  await form.getByRole("button", { name: "返回主行程" }).click();
+  await expect(form.locator('input[name="location_name"]')).toHaveValue("主行程 E");
+  await form.getByRole("button", { name: "儲存", exact: true }).click();
+  await expect(form).toHaveCount(0);
+
+  visit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "主行程 E" }) });
+  await expect(visit.locator(".item-meta .pill", { hasText: "備案" })).toBeVisible();
+  await visit.getByTitle("編輯").click();
+  form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+  await form.getByRole("button", { name: "更多設定" }).click();
+  await form.getByRole("button", { name: "刪除備案" }).click();
+  await expect(form.getByRole("button", { name: "建立備案" })).toBeVisible();
+  await form.getByRole("button", { name: "儲存", exact: true }).click();
+  await expect(form).toHaveCount(0);
+
+  visit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "主行程 E" }) });
+  await expect(visit.locator(".item-meta .pill", { hasText: "備案" })).toHaveCount(0);
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });

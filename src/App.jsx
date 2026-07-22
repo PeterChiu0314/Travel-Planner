@@ -444,6 +444,10 @@ const emptyItemForm = {
   fixed_at: null,
   fixed_by: null,
   cost: 0,
+  alternative_id: null,
+  alternative_draft: null,
+  alternative_deleted: false,
+  alternative_map_url_baseline: "",
 };
 
 const emptyBudgetForm = {
@@ -5569,6 +5573,8 @@ export default function App() {
       location_name: payload.location_name.trim() || null,
       address: payload.address.trim() || null,
       map_url: payload.map_url.trim() || null,
+      latitude: payload.latitude ?? null,
+      longitude: payload.longitude ?? null,
       description: payload.description.trim() || null,
       transportation_note: payload.transportation_note.trim() || null,
     };
@@ -5624,6 +5630,8 @@ export default function App() {
       location_name: item.location_name || item.location || null,
       address: item.address || null,
       map_url: item.map_url || null,
+      latitude: item.latitude ?? null,
+      longitude: item.longitude ?? null,
       description: item.description || item.note || null,
       transportation_note: item.transportation_note || null,
     };
@@ -5637,6 +5645,8 @@ export default function App() {
       location_name: alternative.location_name || "",
       address: alternative.address || "",
       map_url: alternative.map_url || "",
+      latitude: alternative.latitude ?? null,
+      longitude: alternative.longitude ?? null,
       note: alternative.description || "",
       description: alternative.description || "",
       transportation_note: alternative.transportation_note || "",
@@ -9174,6 +9184,8 @@ function DemoApp({ initialSection }) {
       location_name: payload.location_name.trim() || null,
       address: payload.address.trim() || null,
       map_url: payload.map_url.trim() || null,
+      latitude: payload.latitude ?? null,
+      longitude: payload.longitude ?? null,
       description: payload.description.trim() || null,
       transportation_note: payload.transportation_note.trim() || null,
       updated_at: new Date().toISOString(),
@@ -9245,6 +9257,8 @@ function DemoApp({ initialSection }) {
       location_name: item.location_name || item.location || null,
       address: item.address || null,
       map_url: item.map_url || null,
+      latitude: item.latitude ?? null,
+      longitude: item.longitude ?? null,
       description: item.description || item.note || null,
       transportation_note: item.transportation_note || null,
       updated_at: new Date().toISOString(),
@@ -9259,6 +9273,8 @@ function DemoApp({ initialSection }) {
       location_name: alternative.location_name || "",
       address: alternative.address || "",
       map_url: alternative.map_url || "",
+      latitude: alternative.latitude ?? null,
+      longitude: alternative.longitude ?? null,
       note: alternative.description || "",
       description: alternative.description || "",
       transportation_note: alternative.transportation_note || "",
@@ -11316,8 +11332,7 @@ function ItineraryTimeline({
   const [durationInput, setDurationInput] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
-  const [alternativeFormsByItem, setAlternativeFormsByItem] = useState({});
-  const [editingAlternativeByItem, setEditingAlternativeByItem] = useState({});
+  const [isAlternativeEditorOpen, setIsAlternativeEditorOpen] = useState(false);
   const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
@@ -11788,6 +11803,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
+    setIsAlternativeEditorOpen(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -11820,6 +11836,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
+    setIsAlternativeEditorOpen(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
@@ -11881,6 +11898,7 @@ function ItineraryTimeline({
     setTimeError("");
     setMapUrlError("");
     setIsMapPointExpanded(false);
+    setIsAlternativeEditorOpen(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -11927,6 +11945,7 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
+    setIsAlternativeEditorOpen(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -11937,7 +11956,7 @@ function ItineraryTimeline({
     onFocusItem(nextItem?.id || previousItem?.id);
   }
 
-  async function openEditItem(item) {
+  async function openEditItem(item, { openAlternative = false } = {}) {
     if (foreignSameDayDragActive) {
       setFixedNotice(foreignDragReadOnlyMessage);
       return;
@@ -11965,6 +11984,7 @@ function ItineraryTimeline({
       lockedItem = lockResult.data || item;
     }
     const suggestedUntimedStartTime = suggestedStartTimeForUntimedAfterTailTransport(dayItems, item);
+    const existingAlternative = (alternativesByItem[item.id] || [])[0] || null;
     const nextForm = {
       item_type: item.item_type || "visit",
       type: item.type,
@@ -11996,6 +12016,10 @@ function ItineraryTimeline({
       fixed_at: item.fixed_at || null,
       fixed_by: item.fixed_by || null,
       cost: item.cost || 0,
+      alternative_id: existingAlternative?.id || null,
+      alternative_draft: existingAlternative ? alternativeToForm(existingAlternative) : null,
+      alternative_deleted: false,
+      alternative_map_url_baseline: existingAlternative?.map_url || "",
     };
     flushDraft();
     replaceForm(nextForm);
@@ -12005,6 +12029,7 @@ function ItineraryTimeline({
     setTimeError("");
     setMapUrlError("");
     setIsMapPointExpanded(false);
+    setIsAlternativeEditorOpen(Boolean(openAlternative));
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(item.id);
@@ -12025,6 +12050,7 @@ function ItineraryTimeline({
     setTimeError("");
     setMapUrlError("");
     setIsMapPointExpanded(false);
+    setIsAlternativeEditorOpen(false);
     setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
@@ -12212,31 +12238,86 @@ function ItineraryTimeline({
         return false;
       }
     }
+    let pendingAlternative = submittedForm.alternative_deleted ? null : submittedForm.alternative_draft;
+    if (submittedForm.item_type !== "transport" && pendingAlternative) {
+      const alternativeDestinationName = String(pendingAlternative.location_name || "").trim();
+      if (!alternativeDestinationName) {
+        setTimeError("");
+        setAlternativeErrorByItem((current) => ({
+          ...current,
+          [editingId || "new"]: "請輸入備案目的地。",
+        }));
+        setForm(submittedForm);
+        setIsAlternativeEditorOpen(true);
+        return false;
+      }
+      const alternativeMapUrl = String(pendingAlternative.map_url || "").trim();
+      const alternativeMapUrlChanged = alternativeMapUrl !== String(submittedForm.alternative_map_url_baseline || "").trim();
+      if (alternativeMapUrl && alternativeMapUrlChanged) {
+        if (isResolvingMapUrl) return false;
+        setIsResolvingMapUrl(true);
+        let alternativeMapValidation;
+        try {
+          alternativeMapValidation = await resolveDestinationMapUrlPoint(alternativeMapUrl, {
+            resolveShortUrl: resolveGoogleMapsShortUrl,
+          });
+        } finally {
+          setIsResolvingMapUrl(false);
+        }
+        if (!alternativeMapValidation.ok) {
+          setTimeError("");
+          setMapUrlError(alternativeMapValidation.errorMessage);
+          setForm(submittedForm);
+          setIsAlternativeEditorOpen(true);
+          setIsMapPointExpanded(true);
+          return false;
+        }
+        pendingAlternative = {
+          ...pendingAlternative,
+          map_url: alternativeMapValidation.expandedUrl || alternativeMapUrl,
+          ...(alternativeMapValidation.point
+            ? {
+                latitude: alternativeMapValidation.point.latitude,
+                longitude: alternativeMapValidation.point.longitude,
+              }
+            : {}),
+        };
+        submittedForm.alternative_draft = pendingAlternative;
+      }
+    }
     setTimeError("");
+    resetAlternativeError(editingId || "new");
+    const {
+      alternative_deleted: pendingAlternativeDeleted,
+      alternative_draft: ignoredAlternativeDraft,
+      alternative_id: pendingAlternativeId,
+      alternative_map_url_baseline: ignoredAlternativeMapUrlBaseline,
+      ...itemSubmittedForm
+    } = submittedForm;
     const result = await onSaveItem(
       {
-        ...submittedForm,
+        ...itemSubmittedForm,
         title:
-          submittedForm.item_type === "transport"
-            ? submittedForm.transport_name.trim()
-            : (submittedForm.location_name || submittedForm.location || submittedForm.title).trim(),
-        location: (submittedForm.location_name || submittedForm.location).trim(),
-        location_name: (submittedForm.location_name || submittedForm.location).trim(),
-        address: submittedForm.address.trim(),
-        map_url: submittedForm.map_url.trim(),
-        latitude: submittedForm.latitude ?? null,
-        longitude: submittedForm.longitude ?? null,
-        note: (submittedForm.description || submittedForm.note).trim(),
-        description: (submittedForm.description || submittedForm.note).trim(),
-        transportation_note: submittedForm.transportation_note.trim(),
-        transport_category: submittedForm.transport_category || defaultTransportCategory,
-        transport_name: submittedForm.transport_name.trim(),
-        transport_duration_minutes: Number(submittedForm.transport_duration_minutes || 0),
-        transport_note: submittedForm.transport_note.trim(),
-        from_item_id: submittedForm.from_item_id,
-        to_item_id: submittedForm.to_item_id,
+          itemSubmittedForm.item_type === "transport"
+            ? itemSubmittedForm.transport_name.trim()
+            : (itemSubmittedForm.location_name || itemSubmittedForm.location || itemSubmittedForm.title).trim(),
+        location: (itemSubmittedForm.location_name || itemSubmittedForm.location).trim(),
+        location_name: (itemSubmittedForm.location_name || itemSubmittedForm.location).trim(),
+        address: itemSubmittedForm.address.trim(),
+        map_url: itemSubmittedForm.map_url.trim(),
+        latitude: itemSubmittedForm.latitude ?? null,
+        longitude: itemSubmittedForm.longitude ?? null,
+        note: (itemSubmittedForm.description || itemSubmittedForm.note).trim(),
+        description: (itemSubmittedForm.description || itemSubmittedForm.note).trim(),
+        transportation_note: itemSubmittedForm.transportation_note.trim(),
+        transport_category: itemSubmittedForm.transport_category || defaultTransportCategory,
+        transport_name: itemSubmittedForm.transport_name.trim(),
+        transport_duration_minutes: Number(itemSubmittedForm.transport_duration_minutes || 0),
+        transport_note: itemSubmittedForm.transport_note.trim(),
+        from_item_id: itemSubmittedForm.from_item_id,
+        to_item_id: itemSubmittedForm.to_item_id,
         ...currentPairSnapshot,
-        cost: Number(submittedForm.cost || 0),
+        cost: Number(itemSubmittedForm.cost || 0),
       },
       editingId,
       {
@@ -12263,6 +12344,41 @@ function ItineraryTimeline({
       if (result?.baseUpdatedAt) setBaseUpdatedAt(result.baseUpdatedAt);
       if (result?.errorMessage) setTimeError(result.errorMessage);
       if (result?.conflict) setConflict(true);
+      return false;
+    }
+    const savedItemId = editingId || result.data?.id;
+    let alternativeResult = { ok: true };
+    if (itemSubmittedForm.item_type !== "transport" && savedItemId) {
+      if (pendingAlternativeDeleted && pendingAlternativeId) {
+        alternativeResult = await onDeleteAlternative(pendingAlternativeId);
+      } else if (pendingAlternative) {
+        alternativeResult = await onSaveAlternative(
+          savedItemId,
+          {
+            title: String(pendingAlternative.location_name || "").trim(),
+            type: pendingAlternative.type || "attraction",
+            start_time: itemSubmittedForm.start_time || "",
+            end_time: itemSubmittedForm.end_time || "",
+            cost: 0,
+            location_name: String(pendingAlternative.location_name || "").trim(),
+            description: String(pendingAlternative.description || "").trim(),
+            address: String(pendingAlternative.address || "").trim(),
+            map_url: String(pendingAlternative.map_url || "").trim(),
+            latitude: pendingAlternative.latitude ?? null,
+            longitude: pendingAlternative.longitude ?? null,
+            transportation_note: "",
+          },
+          pendingAlternativeId || null,
+        );
+      }
+    }
+    if (!alternativeResult?.ok) {
+      setForm(submittedForm);
+      setBaseUpdatedAt(result.data?.updated_at || baseUpdatedAt);
+      setAlternativeErrorByItem((current) => ({
+        ...current,
+        [editingId || "new"]: alternativeResult.error?.message || "備案儲存失敗，請稍後再試。",
+      }));
       return false;
     }
     if (!disableDraftAutosave) clearDraft(draftKey);
@@ -12328,10 +12444,22 @@ function ItineraryTimeline({
 
   async function submit(event) {
     event.preventDefault();
+    if (isAlternativeEditorOpen) return;
     await saveCurrentEditor(new FormData(event.currentTarget), { skipAutoContinuation: true });
   }
 
   const isTransportEditor = form.item_type === "transport";
+  const isAlternativeEditor = Boolean(isOpen && !isTransportEditor && isAlternativeEditorOpen);
+  const activeVisitForm = isAlternativeEditor ? form.alternative_draft || {} : form;
+
+  function updateActiveVisitForm(patch) {
+    setForm((current) =>
+      isAlternativeEditor
+        ? { ...current, alternative_draft: { ...(current.alternative_draft || {}), ...patch }, alternative_deleted: false }
+        : { ...current, ...patch },
+    );
+  }
+
   useEffect(() => {
     onMapPointEditorActiveChange?.({ canPick: Boolean(isOpen && !isTransportEditor), isOpen });
     return () => onMapPointEditorActiveChange?.({ canPick: false, isOpen: false });
@@ -12339,28 +12467,28 @@ function ItineraryTimeline({
 
   useEffect(() => {
     if (!isOpen || isTransportEditor) return;
-    const latitude = Number(form.latitude);
-    const longitude = Number(form.longitude);
+    const latitude = Number(activeVisitForm.latitude);
+    const longitude = Number(activeVisitForm.longitude);
     const previewMapPoint = Number.isFinite(latitude) && Number.isFinite(longitude)
       ? {
           itemId: editingId,
           latitude,
-          locationName: form.location_name || form.location || form.title || "新增地點",
+          locationName: activeVisitForm.location_name || activeVisitForm.location || activeVisitForm.title || "新增地點",
           longitude,
-          mapUrl: form.map_url || googleMapsPointUrl(latitude, longitude),
-          type: form.type,
+          mapUrl: activeVisitForm.map_url || googleMapsPointUrl(latitude, longitude),
+          type: activeVisitForm.type,
         }
       : null;
     onMapPointEditorActiveChange?.({ canPick: true, isOpen: true, previewMapPoint });
   }, [
     editingId,
-    form.latitude,
-    form.location,
-    form.location_name,
-    form.longitude,
-    form.map_url,
-    form.title,
-    form.type,
+    activeVisitForm.latitude,
+    activeVisitForm.location,
+    activeVisitForm.location_name,
+    activeVisitForm.longitude,
+    activeVisitForm.map_url,
+    activeVisitForm.title,
+    activeVisitForm.type,
     isOpen,
     isTransportEditor,
     onMapPointEditorActiveChange,
@@ -12384,13 +12512,12 @@ function ItineraryTimeline({
     const longitude = Number(pickedMapPoint.longitude);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
     setMapUrlError("");
-    setForm({
-      ...form,
+    updateActiveVisitForm({
       ...(pickedMapPoint.source === "places-replace"
         ? {
-            title: pickedMapPoint.displayName || form.title,
-            location: pickedMapPoint.displayName || form.location,
-            location_name: pickedMapPoint.displayName || form.location_name,
+            title: pickedMapPoint.displayName || activeVisitForm.title,
+            location: pickedMapPoint.displayName || activeVisitForm.location,
+            location_name: pickedMapPoint.displayName || activeVisitForm.location_name,
           }
         : {}),
       latitude,
@@ -12398,7 +12525,7 @@ function ItineraryTimeline({
       map_url: googleMapsPointUrl(latitude, longitude),
     });
     if (pickedMapPoint.source === "places-replace") onCancelMapSearchReplace?.();
-  }, [form, isMapSearchReplaceActive, isOpen, isTransportEditor, onCancelMapSearchReplace, pickedMapPoint, setForm]);
+  }, [activeVisitForm, isAlternativeEditor, isMapSearchReplaceActive, isOpen, isTransportEditor, onCancelMapSearchReplace, pickedMapPoint, setForm]);
 
   useEffect(() => {
     if (!isOpen || isTransportEditor) return;
@@ -12545,6 +12672,8 @@ function ItineraryTimeline({
       description: alternative.description || "",
       address: alternative.address || "",
       map_url: alternative.map_url || "",
+      latitude: alternative.latitude ?? null,
+      longitude: alternative.longitude ?? null,
       transportation_note: alternative.transportation_note || "",
     };
   }
@@ -12557,18 +12686,10 @@ function ItineraryTimeline({
       description: "",
       address: item.address || "",
       map_url: item.map_url || "",
+      latitude: item.latitude ?? null,
+      longitude: item.longitude ?? null,
       transportation_note: item.transportation_note || "",
     };
-  }
-
-  function setAlternativeForm(itemId, patch) {
-    setAlternativeFormsByItem((current) => ({
-      ...current,
-      [itemId]: {
-        ...(current[itemId] || {}),
-        ...patch,
-      },
-    }));
   }
 
   function resetAlternativeError(itemId) {
@@ -12578,19 +12699,6 @@ function ItineraryTimeline({
       delete next[itemId];
       return next;
     });
-  }
-
-  function cancelAlternativeFace(itemId, hasAlternative) {
-    setEditingAlternativeByItem((current) => ({ ...current, [itemId]: false }));
-    resetAlternativeError(itemId);
-    if (!hasAlternative) {
-      setAlternativeFaceByItem((current) => ({ ...current, [itemId]: false }));
-      setAlternativeFormsByItem((current) => {
-        const next = { ...current };
-        delete next[itemId];
-        return next;
-      });
-    }
   }
 
   async function flipAlternativeFace(item, alternative) {
@@ -12606,12 +12714,7 @@ function ItineraryTimeline({
       return;
     }
     resetAlternativeError(item.id);
-    if (!alternative) {
-      setAlternativeFaceByItem((current) => ({ ...current, [item.id]: true }));
-      setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
-      setAlternativeFormsByItem((current) => ({ ...current, [item.id]: current[item.id] || emptyAlternativeForm(item) }));
-      return;
-    }
+    if (!alternative) return;
     if (typeof onApplyAlternative !== "function") return;
     const result = await onApplyAlternative(item, alternative);
     if (result?.ok === false) {
@@ -12622,58 +12725,6 @@ function ItineraryTimeline({
       return;
     }
     setAlternativeFaceByItem((current) => ({ ...current, [item.id]: false }));
-    setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
-    setAlternativeFormsByItem((current) => ({ ...current, [item.id]: alternativeToForm(item) }));
-  }
-
-  async function saveAlternativeForm(item, alternative) {
-    if (foreignSameDayDragActive) {
-      setAlternativeErrorByItem((current) => ({
-        ...current,
-        [item.id]: foreignDragSaveBlockedMessage,
-      }));
-      return;
-    }
-    if (isEffectiveFixedVisit(item)) {
-      setAlternativeErrorByItem((current) => ({
-        ...current,
-        [item.id]: "此行程已固定，請先解鎖後再修改。",
-      }));
-      return;
-    }
-    const formValue = alternativeFormsByItem[item.id] || alternativeToForm(alternative);
-    resetAlternativeError(item.id);
-    if (isInvalidTimeRange(item.start_time, item.end_time)) {
-      setTimeError("結束時間必須晚於開始時間。");
-      return;
-    }
-    setTimeError("");
-    const result = await onSaveAlternative(
-      item.id,
-      {
-        title: formValue.location_name,
-        type: item.type || "attraction",
-        start_time: item.start_time || "",
-        end_time: item.end_time || "",
-        cost: 0,
-        location_name: formValue.location_name,
-        description: formValue.description,
-        address: "",
-        map_url: formValue.map_url,
-        transportation_note: "",
-      },
-      alternative?.id || null,
-    );
-    if (result?.ok === false) {
-      setAlternativeErrorByItem((current) => ({
-        ...current,
-        [item.id]: result.error?.message || "Alternative save failed. Please try again.",
-      }));
-      return;
-    }
-    setAlternativeFaceByItem((current) => ({ ...current, [item.id]: false }));
-    setEditingAlternativeByItem((current) => ({ ...current, [item.id]: false }));
-    resetAlternativeError(item.id);
   }
 
   async function deleteAlternative(itemId, alternativeId) {
@@ -12702,12 +12753,6 @@ function ItineraryTimeline({
       return;
     }
     setAlternativeFaceByItem((current) => ({ ...current, [itemId]: false }));
-    setEditingAlternativeByItem((current) => ({ ...current, [itemId]: false }));
-    setAlternativeFormsByItem((current) => {
-      const next = { ...current };
-      delete next[itemId];
-      return next;
-    });
   }
 
   function relatedTransportItemsFor(item) {
@@ -13150,12 +13195,12 @@ function ItineraryTimeline({
   }
 
   async function applyMapUrlDraft() {
-    if (mapUrlApplyRef.current || !String(form.map_url || "").trim()) return;
+    if (mapUrlApplyRef.current || !String(activeVisitForm.map_url || "").trim()) return;
     mapUrlApplyRef.current = true;
     setIsResolvingMapUrl(true);
     let result;
     try {
-      result = await resolveDestinationMapUrlPoint(form.map_url, { resolveShortUrl: resolveGoogleMapsShortUrl });
+      result = await resolveDestinationMapUrlPoint(activeVisitForm.map_url, { resolveShortUrl: resolveGoogleMapsShortUrl });
     } finally {
       mapUrlApplyRef.current = false;
       setIsResolvingMapUrl(false);
@@ -13164,227 +13209,219 @@ function ItineraryTimeline({
       setMapUrlError(result.errorMessage);
       return;
     }
-    const nextUrl = result.expandedUrl || form.map_url;
+    const nextUrl = result.expandedUrl || activeVisitForm.map_url;
     setMapUrlError("");
-    setForm({ ...form, latitude: result.point.latitude, longitude: result.point.longitude, map_url: nextUrl });
+    setIsAlternativeEditorOpen(false);
+    updateActiveVisitForm({ latitude: result.point.latitude, longitude: result.point.longitude, map_url: nextUrl });
   }
 
-  const hasEditorMapPoint = hasValidMapPoint(form);
+  const hasEditorMapPoint = hasValidMapPoint(activeVisitForm);
   const editorMapsUrl = hasEditorMapPoint
-    ? form.map_url || googleMapsPointUrl(form.latitude, form.longitude)
+    ? activeVisitForm.map_url || googleMapsPointUrl(activeVisitForm.latitude, activeVisitForm.longitude)
     : "";
 
-  function renderVisitEditorForm() {
+  function openAlternativeEditor() {
+    const parentItem = editingId ? dayItems.find((item) => item.id === editingId) : form;
+    if (!form.alternative_draft) {
+      const nextAlternative = emptyAlternativeForm(parentItem || form);
+      setForm({
+        ...form,
+        alternative_draft: nextAlternative,
+        alternative_deleted: false,
+        alternative_map_url_baseline: nextAlternative.map_url || "",
+      });
+    }
+    resetAlternativeError(editingId || "new");
+    setMapUrlError("");
+    setIsMapPointExpanded(false);
+    onCancelMapPointPick?.();
+    onCancelMapSearchReplace?.();
+    setIsAlternativeEditorOpen(true);
+  }
+
+  function returnToMainEditor() {
+    setMapUrlError("");
+    setIsMapPointExpanded(false);
+    onCancelMapPointPick?.();
+    onCancelMapSearchReplace?.();
+    setIsAlternativeEditorOpen(false);
+  }
+
+  function stageAlternativeDeletion() {
+    setForm({ ...form, alternative_draft: null, alternative_deleted: Boolean(form.alternative_id) });
+    setMapUrlError("");
+    setIsAlternativeEditorOpen(false);
+  }
+
+  function renderEditorMapSettings({ includeAlternative = false } = {}) {
+    const pendingAlternative = form.alternative_deleted ? null : form.alternative_draft;
     return (
-      <form autoComplete="off" className="item-form" onSubmit={submit}>
-        <input name="item_type" type="hidden" value="visit" />
-        <div className="form-mode-label">{editingId ? "編輯行程" : "新增行程"}</div>
-        {conflict ? (
-          <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} />
-        ) : null}
-        {timeError ? (
-          <div className="notice inline-error" role="alert">
-            <span>{timeError}</span>
-          </div>
-        ) : null}
-        {foreignSameDayDragActive ? (
-          <div className="notice inline-error" role="alert">
-            <span>{foreignDragSaveBlockedMessage}</span>
-          </div>
-        ) : null}
-        <div className="visit-editor-primary-row">
-          <TimelineTypeField value={form.type} onValueChange={(type) => setForm({ ...form, type })} />
-          <OutlinedField className="destination-field" label="目的地">
-            <input
-              aria-label="目的地"
-              autoComplete="off"
-              placeholder="請輸入目的地名稱"
-              name="location_name"
-              required
-              value={form.location_name || form.location}
-              onChange={(event) => setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })}
-            />
-          </OutlinedField>
+      <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
+        <div className="visit-map-point-header">
+          <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>
+            <ChevronRight aria-hidden="true" />
+            <span>{includeAlternative ? "更多設定" : "更改地點"}</span>
+          </button>
+          <a
+            aria-disabled={!editorMapsUrl}
+            className={`ghost-button compact visit-maps-link${editorMapsUrl ? "" : " disabled"}`}
+            href={editorMapsUrl || undefined}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(event) => { if (!editorMapsUrl) event.preventDefault(); }}
+          >
+            <span>Google Map</span>
+            <ExternalLink aria-hidden="true" />
+          </a>
         </div>
-        <div className="visit-editor-time-row">
-          <TimelineSegmentedTimeField
-            label="開始"
-            name="start_time"
-            value={form.start_time}
-            onValueChange={(nextValue) => updateVisitTime("start_time", nextValue, getDurationMinutes(form.start_time, form.end_time))}
-          />
-          <span className="visit-time-link" aria-hidden="true" />
-          <TimelineSegmentedTimeField
-            label="結束"
-            name="end_time"
-            value={form.end_time}
-            onValueChange={(nextValue) => updateVisitTime("end_time", nextValue)}
-          />
-          <span className="visit-time-link" aria-hidden="true" />
-          <TimelineDurationField
-            disabled={!form.start_time}
-            inputRef={visitDurationRef}
-            maxMinutes={Math.max(0, 24 * 60 - 5 - (timeToMinutes(form.start_time) || 0))}
-            value={durationInput}
-            onCommit={commitDurationInput}
-            onInputChange={setDurationInput}
-          />
-        </div>
-        <FloatingOutlinedField className="full-label visit-note-field" label="備註">
-          <AutoGrowingTextarea
-            aria-label="備註"
-            autoComplete="off"
-            name="description"
-            placeholder="備註"
-            rows="2"
-            value={form.description || form.note}
-            onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })}
-          />
-        </FloatingOutlinedField>
-        <div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>
-          <div className="visit-map-point-header">
-            <button className="visit-map-point-toggle" type="button" aria-expanded={isMapPointExpanded} onClick={() => setIsMapPointExpanded((current) => !current)}>
-              <ChevronRight aria-hidden="true" />
-              <span>更改地點</span>
-            </button>
-            <a
-              aria-disabled={!editorMapsUrl}
-              className={`ghost-button compact visit-maps-link${editorMapsUrl ? "" : " disabled"}`}
-              href={editorMapsUrl || undefined}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => { if (!editorMapsUrl) event.preventDefault(); }}
-            >
-              <span>Google Map</span>
-              <ExternalLink aria-hidden="true" />
-            </a>
-          </div>
-          {isMapPointExpanded ? (
-            <div className="visit-map-point-body">
-              <div className="visit-map-point-actions">
-                <button className={`ghost-button compact map-point-picker-button${isPickingMapPoint ? " active" : ""}`} disabled={!canPickMapPoint} type="button" onClick={toggleMapPointPick}>
-                  <MapPin aria-hidden="true" />
-                  <span>{isPickingMapPoint ? "取消選點" : "調整點位"}</span>
-                </button>
-                <button
-                  className={`ghost-button compact visit-map-search-replace-button${isMapSearchReplaceActive ? " active" : ""}`}
-                  disabled={!canPickMapPoint}
-                  type="button"
-                  onClick={() => {
-                    onCancelMapPointPick?.();
-                    if (isMapSearchReplaceActive) onCancelMapSearchReplace?.();
-                    else onStartMapSearchReplace?.();
-                  }}
-                >
-                  <Search aria-hidden="true" />
-                  <span>{isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"}</span>
-                </button>
-              </div>
-              <OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Google Maps URL">
-                <input
-                  aria-invalid={Boolean(mapUrlError)}
-                  aria-label="Google Maps URL"
-                  autoComplete="off"
-                  name="map_url"
-                  placeholder="貼上 Google Maps 連結"
-                  value={form.map_url}
-                  onChange={(event) => { setMapUrlError(""); setForm({ ...form, map_url: event.target.value }); }}
-                  onBlur={() => { void applyMapUrlDraft(); }}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") return;
-                    event.preventDefault();
-                    void applyMapUrlDraft();
-                  }}
-                />
-              </OutlinedField>
+        {isMapPointExpanded ? (
+          <div className="visit-map-point-body">
+            <div className="visit-settings-heading">
+              <MapPin aria-hidden="true" />
+              <span>地圖點位</span>
             </div>
-          ) : <input name="map_url" type="hidden" value={form.map_url} />}
-          {mapUrlError ? <span className="field-inline-error visit-map-url-error" role="alert">{mapUrlError}</span> : null}
-        </div>
-        <div className="form-actions">
-          <button className="ghost-button item-form-cancel-button" type="button" onClick={() => closeEditor()}>
-            取消
-          </button>
-          {editingId && !isTransportEditor ? (
-            <button
-              className="ghost-button compact"
-              disabled={!canMutateThisDay || !canRequestAutoContinuation}
-              title={crossesFixedVisitForContinuation ? "跨越固定行程時無法接續。" : undefined}
-              type="button"
-              onClick={requestAutoContinuation}
-            >
-              接續
-            </button>
-          ) : null}
-          <button className="primary-button compact" disabled={!canMutateThisDay || isResolvingMapUrl} type="submit">
-            儲存
-          </button>
-        </div>
-      </form>
+            <div className="visit-map-point-actions">
+              <button className={`ghost-button compact map-point-picker-button${isPickingMapPoint ? " active" : ""}`} disabled={!canPickMapPoint} type="button" onClick={toggleMapPointPick}>
+                <span>{isPickingMapPoint ? "取消選點" : "調整點位"}</span>
+              </button>
+              <button
+                className={`ghost-button compact visit-map-search-replace-button${isMapSearchReplaceActive ? " active" : ""}`}
+                disabled={!canPickMapPoint}
+                type="button"
+                onClick={() => {
+                  onCancelMapPointPick?.();
+                  if (isMapSearchReplaceActive) onCancelMapSearchReplace?.();
+                  else onStartMapSearchReplace?.();
+                }}
+              >
+                <span>{isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"}</span>
+              </button>
+            </div>
+            <OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Google Maps URL">
+              <input
+                aria-invalid={Boolean(mapUrlError)}
+                aria-label="Google Maps URL"
+                autoComplete="off"
+                name={includeAlternative ? "map_url" : undefined}
+                placeholder="貼上 Google Maps 連結"
+                value={activeVisitForm.map_url || ""}
+                onChange={(event) => { setMapUrlError(""); updateActiveVisitForm({ map_url: event.target.value }); }}
+                onBlur={() => { if (!isAlternativeEditor) void applyMapUrlDraft(); }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void applyMapUrlDraft();
+                }}
+              />
+            </OutlinedField>
+            {mapUrlError ? <span className="field-inline-error visit-map-url-error" role="alert">{mapUrlError}</span> : null}
+            {includeAlternative ? (
+              <div className="visit-alternative-settings">
+                <div className="visit-settings-divider" />
+                <div className="visit-settings-heading">
+                  <Repeat2 aria-hidden="true" />
+                  <span>備案</span>
+                </div>
+                {pendingAlternative ? (
+                  <div className="visit-alternative-summary-row">
+                    <button className="visit-alternative-summary" type="button" onClick={openAlternativeEditor}>
+                      {`${typeLabels[pendingAlternative.type] || typeLabels.attraction} ・ ${alternativeDestination(pendingAlternative)}`}
+                    </button>
+                    <button className="mini-button" aria-label="刪除備案" title="刪除備案" type="button" onClick={stageAlternativeDeletion}>
+                      <Trash2 aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : (
+                  <button className="ghost-button compact visit-alternative-create" type="button" onClick={openAlternativeEditor}>
+                    <Plus aria-hidden="true" />
+                    <span>建立備案</span>
+                  </button>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : includeAlternative ? <input name="map_url" type="hidden" value={form.map_url} /> : null}
+      </div>
     );
   }
 
-  function renderAlternativeForm(item, alternative) {
-    const formValue = alternativeFormsByItem[item.id] || alternativeToForm(alternative);
-    const alternativeError = alternativeErrorByItem[item.id];
+  function renderVisitEditorForm() {
+    const alternativeError = alternativeErrorByItem[editingId || "new"];
+    const originalDestination = form.location_name || form.location || form.title || "未命名行程";
     return (
-      <form
-        autoComplete="off"
-        className="alternative-card-form"
-        onClick={(event) => event.stopPropagation()}
-        onSubmit={(event) => {
-          event.preventDefault();
-          saveAlternativeForm(item, alternative);
-        }}
-      >
-        {timeError ? (
-          <div className="notice inline-error" role="alert">
-            <span>{timeError}</span>
-          </div>
-        ) : null}
-        {alternativeError ? (
-          <div className="notice inline-error" role="alert">
-            <span>{alternativeError}</span>
-          </div>
-        ) : null}
-        <label className="full-label">
-          目的地
-          <input
-            autoComplete="off"
-            placeholder="備案目的地或店名"
-            required
-            value={formValue.location_name}
-            onChange={(event) => setAlternativeForm(item.id, { location_name: event.target.value })}
-          />
-        </label>
-        <label className="full-label">
-          備註
-          <textarea
-            autoComplete="off"
-            rows="3"
-            value={formValue.description}
-            onChange={(event) => setAlternativeForm(item.id, { description: event.target.value })}
-          />
-        </label>
-        <div className="field-group form-grid wide single">
-          <label>
-            Map URL
-            <input
-              autoComplete="off"
-              placeholder="https://maps.google.com/..."
-              value={formValue.map_url}
-              onChange={(event) => setAlternativeForm(item.id, { map_url: event.target.value })}
-            />
-          </label>
-        </div>
-        <div className="form-actions">
-          <button className="ghost-button compact" type="button" onClick={() => cancelAlternativeFace(item.id, Boolean(alternative))}>
-            取消
-          </button>
-          <button className="primary-button compact" disabled={!canMutateThisDay || !formValue.location_name.trim()} type="submit">
-            儲存備案
-          </button>
-        </div>
+      <form autoComplete="off" className="item-form" onSubmit={submit}>
+        <input name="item_type" type="hidden" value="visit" />
+        {isAlternativeEditor ? (
+          <>
+            <div className="alternative-editor-heading">
+              <span className="form-mode-label">{form.alternative_id ? "編輯備案" : "新增備案"}</span>
+              <span className="alternative-origin-label">{`原行程：${originalDestination}`}</span>
+            </div>
+            {alternativeError ? (
+              <div className="notice inline-error" role="alert"><span>{alternativeError}</span></div>
+            ) : null}
+            <div className="visit-editor-primary-row">
+              <TimelineTypeField value={activeVisitForm.type || "attraction"} onValueChange={(type) => updateActiveVisitForm({ type })} />
+              <OutlinedField className="destination-field" label="備案目的地">
+                <input
+                  aria-label="備案目的地"
+                  autoComplete="off"
+                  placeholder="請輸入備案目的地"
+                  required
+                  value={activeVisitForm.location_name || ""}
+                  onChange={(event) => updateActiveVisitForm({ title: event.target.value, location_name: event.target.value })}
+                />
+              </OutlinedField>
+            </div>
+            <FloatingOutlinedField className="full-label visit-note-field" label="備註">
+              <AutoGrowingTextarea
+                aria-label="備註"
+                autoComplete="off"
+                placeholder="備註"
+                rows="2"
+                value={activeVisitForm.description || ""}
+                onChange={(event) => updateActiveVisitForm({ description: event.target.value })}
+              />
+            </FloatingOutlinedField>
+            {renderEditorMapSettings()}
+            <div className="form-actions alternative-editor-actions">
+              <button className="ghost-button compact" type="button" onClick={returnToMainEditor}>返回主行程</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="form-mode-label">{editingId ? "編輯行程" : "新增行程"}</div>
+            {conflict ? <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeEditor(true)} /> : null}
+            {timeError ? <div className="notice inline-error" role="alert"><span>{timeError}</span></div> : null}
+            {alternativeError ? <div className="notice inline-error" role="alert"><span>{alternativeError}</span></div> : null}
+            {foreignSameDayDragActive ? <div className="notice inline-error" role="alert"><span>{foreignDragSaveBlockedMessage}</span></div> : null}
+            <div className="visit-editor-primary-row">
+              <TimelineTypeField value={form.type} onValueChange={(type) => setForm({ ...form, type })} />
+              <OutlinedField className="destination-field" label="目的地">
+                <input aria-label="目的地" autoComplete="off" placeholder="請輸入目的地名稱" name="location_name" required value={form.location_name || form.location} onChange={(event) => setForm({ ...form, title: event.target.value, location: event.target.value, location_name: event.target.value })} />
+              </OutlinedField>
+            </div>
+            <div className="visit-editor-time-row">
+              <TimelineSegmentedTimeField label="開始" name="start_time" value={form.start_time} onValueChange={(nextValue) => updateVisitTime("start_time", nextValue, getDurationMinutes(form.start_time, form.end_time))} />
+              <span className="visit-time-link" aria-hidden="true" />
+              <TimelineSegmentedTimeField label="結束" name="end_time" value={form.end_time} onValueChange={(nextValue) => updateVisitTime("end_time", nextValue)} />
+              <span className="visit-time-link" aria-hidden="true" />
+              <TimelineDurationField disabled={!form.start_time} inputRef={visitDurationRef} maxMinutes={Math.max(0, 24 * 60 - 5 - (timeToMinutes(form.start_time) || 0))} value={durationInput} onCommit={commitDurationInput} onInputChange={setDurationInput} />
+            </div>
+            <FloatingOutlinedField className="full-label visit-note-field" label="備註">
+              <AutoGrowingTextarea aria-label="備註" autoComplete="off" name="description" placeholder="備註" rows="2" value={form.description || form.note} onChange={(event) => setForm({ ...form, note: event.target.value, description: event.target.value })} />
+            </FloatingOutlinedField>
+            {renderEditorMapSettings({ includeAlternative: true })}
+            <div className="form-actions">
+              <button className="ghost-button item-form-cancel-button" type="button" onClick={() => closeEditor()}>取消</button>
+              {editingId ? (
+                <button className="ghost-button compact" disabled={!canMutateThisDay || !canRequestAutoContinuation} title={crossesFixedVisitForContinuation ? "跨越固定行程時無法接續。" : undefined} type="button" onClick={requestAutoContinuation}>接續</button>
+              ) : null}
+              <button className="primary-button compact" disabled={!canMutateThisDay || isResolvingMapUrl} type="submit">儲存</button>
+            </div>
+          </>
+        )}
       </form>
     );
   }
@@ -13394,10 +13431,10 @@ function ItineraryTimeline({
     const alternativeFlipButton = !isEffectiveFixedVisit(item) ? (
       <button
         className="alternative-flip-button"
-        disabled={!canMutateThisDay}
+        disabled={!alternative || !canMutateThisDay}
         type="button"
-        title={alternative ? "Toggle primary / alternative" : "Create alternative"}
-        aria-label={alternative ? "切換原行程與備案" : "建立備案"}
+        title={alternative ? "切換原行程與備案" : "尚未建立備案"}
+        aria-label={alternative ? "切換原行程與備案" : "尚未建立備案"}
         onClick={(event) => {
           event.stopPropagation();
           flipAlternativeFace(item, alternative);
@@ -13418,13 +13455,11 @@ function ItineraryTimeline({
             <span>{`原行程：${visitDestination(item)}`}</span>
             {alternativeFlipButton}
           </div>
-        ) : (
+        ) : alternative ? (
           <div className="alternative-relation-row">
-            <span className={!alternative ? "alternative-empty-hint" : undefined}>
-              {alternative ? `備案：${alternativeDestination(alternative)}` : "點擊右下角翻卡建立備案"}
-            </span>
+            <span>{`備案：${alternativeDestination(alternative)}`}</span>
             <div className="alternative-relation-actions">
-              {alternative && !isEffectiveFixedVisit(item) ? (
+              {!isEffectiveFixedVisit(item) ? (
                 <button
                   className="mini-button"
                   disabled={!canMutateThisDay}
@@ -13442,7 +13477,7 @@ function ItineraryTimeline({
               {alternativeFlipButton}
             </div>
           </div>
-        )}
+        ) : alternativeFlipButton}
       </div>
     );
   }
@@ -13658,11 +13693,9 @@ function ItineraryTimeline({
             const alternative = (alternativesByItem[item.id] || [])[0] || null;
             const isExpanded = expandedId === item.id;
             const isItemFixed = isEffectiveFixedVisit(item);
-            const isAlternativeFace = isExpanded && Boolean(alternativeFaceByItem[item.id]);
-            const isEditingAlternative = Boolean(editingAlternativeByItem[item.id]);
-            const isAlternativeFormFace = isAlternativeFace && (!alternative || isEditingAlternative);
+            const isAlternativeFace = isExpanded && Boolean(alternative) && Boolean(alternativeFaceByItem[item.id]);
             const displayItem =
-              isAlternativeFace && alternative && !isEditingAlternative
+              isAlternativeFace && alternative
                 ? {
                     ...item,
                     ...alternative,
@@ -13675,16 +13708,10 @@ function ItineraryTimeline({
                     note: alternative.description || "",
                     description: alternative.description || "",
                     transportation_note: alternative.transportation_note || "",
-                  }
+                }
                 : item;
-            const destination = isAlternativeFormFace
-              ? alternative
-                ? "編輯備案"
-                : "建立備案"
-              : visitDestination(displayItem);
-            const secondaryText = isAlternativeFormFace
-              ? `原行程：${visitDestination(item)}`
-              : displayItem.note || displayItem.description || displayItem.transportation_note;
+            const destination = visitDestination(displayItem);
+            const secondaryText = displayItem.note || displayItem.description || displayItem.transportation_note;
             const linkedBudgetTotal = (budgetsByItem[item.id] || []).reduce(
               (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
               0,
@@ -13768,13 +13795,6 @@ function ItineraryTimeline({
               </TimelineDragHandle>
               <div className="item-main">
                 <h4>{destination}</h4>
-                {isAlternativeFormFace ? (
-                  <>
-                    {secondaryText ? <p className="item-summary">{secondaryText}</p> : null}
-                    {renderAlternativeForm(item, alternative)}
-                  </>
-                ) : (
-                  <>
                 {secondaryText ? (
                   <p className="item-summary">{secondaryText}</p>
                 ) : (
@@ -13795,8 +13815,6 @@ function ItineraryTimeline({
                   ) : null}
                 </div>
                 {lockedByOther ? <div className="lock-note">{memberName(locker)} 正在編輯這筆資料</div> : null}
-                  </>
-                )}
               </div>
               <div className="item-actions">
                 {isTimedVisit(item) && (!isAlternativeFace || isItemFixed) ? (
@@ -13827,17 +13845,15 @@ function ItineraryTimeline({
                     <Pencil aria-hidden="true" />
                   </button>
                 ) : null}
-                {isAlternativeFace && alternative && !isAlternativeFormFace && !isItemFixed ? (
+                {isAlternativeFace && alternative && !isItemFixed ? (
                   <button
                     className="mini-button"
                     disabled={!canMutateThisDay || lockedByOther}
                     type="button"
-                    title="Edit alternative"
+                    title="編輯備案"
                     onClick={(event) => {
                       event.stopPropagation();
-                      setEditingAlternativeByItem((current) => ({ ...current, [item.id]: true }));
-                      setAlternativeFormsByItem((current) => ({ ...current, [item.id]: alternativeToForm(alternative) }));
-                      resetAlternativeError(item.id);
+                      openEditItem(item, { openAlternative: true });
                     }}
                   >
                     <Pencil aria-hidden="true" />
@@ -13851,14 +13867,8 @@ function ItineraryTimeline({
                     title="刪除"
                     onClick={(event) => {
                       event.stopPropagation();
-                      if (isAlternativeFormFace) {
-                        cancelAlternativeFace(item.id, Boolean(alternative));
-                      } else if (isAlternativeFace) {
-                        if (alternative) {
-                          deleteAlternative(item.id, alternative.id);
-                        } else {
-                          cancelAlternativeFace(item.id, false);
-                        }
+                      if (isAlternativeFace && alternative) {
+                        deleteAlternative(item.id, alternative.id);
                       } else {
                         requestDeleteItem(item);
                       }
@@ -13868,7 +13878,7 @@ function ItineraryTimeline({
                   </button>
                 ) : null}
               </div>
-              {isExpanded && !isAlternativeFormFace ? (
+              {isExpanded ? (
                 <div className="item-expanded-content">
                   <div className="item-details">
                     {displayItem.description || displayItem.note ? (

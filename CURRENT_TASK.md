@@ -37,8 +37,8 @@ Archive rules:
 ## Current Status
 
 ```text
-Current phase: Transportation card add/edit UI refresh
-Status: Completed and user-accepted on 2026-07-21
+Current phase: Alternative editor UI refresh
+Status: Implemented; automated verification and production build passed
 Branch: codex/timeline-phase-5-9
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
@@ -100,6 +100,16 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Visit and transportation note content uses shared `8px 8px 8px 12px` textarea padding.
 - The existing next-itinerary suggestion still computes from the unchanged transportation duration and rounds the suggested start upward with `roundMinutesUpToStep(..., 5)`; it does not write the rounded value back into transportation duration.
 - The existing Google Maps navigation control remains immediately to the right of transportation duration and keeps its existing directions URL behavior.
+
+## Alternative Editor UI State
+
+- The visit editor's former `更改地點` section is now `更多設定`, with the existing Google Map link in the header and an expanded body that groups map-point controls above a separate alternative section.
+- An empty alternative is created from `建立備案`; an existing or staged alternative is represented by a clickable `類型 ・ 目的地` summary. Alternative deletion is staged in the same editor flow.
+- The alternative editor reuses the visit editor's type, destination, note, map-point, search/replace, Google Maps URL, and external-link treatments without rendering time controls. Its only bottom action is `返回主行程`.
+- Main/alternative switching keeps one shared itinerary draft and does not invoke the unsaved-change prompt. Alternative create/edit/delete state participates in the itinerary editor's existing dirty guard and draft autosave.
+- The original itinerary Save action persists the main item and then the staged alternative mutation. A failed main or alternative save keeps both drafts open; successful completion clears the shared draft through the existing itinerary-editor flow.
+- Existing Formal/Demo isolation, fixed-item restrictions, alternative apply/swap behavior, point selection, Places replacement, URL parsing, and persisted data shape remain in place. Alternative latitude/longitude now travel with its existing map fields during save and main/alternative swaps.
+- The card-corner flip control remains available for an existing alternative. Without an alternative it is disabled and no longer creates one; the former flip-to-create hint has been removed.
 
 ## Phase 5.8 Current UI State
 
@@ -201,6 +211,13 @@ Latest Phase 5.9 verification:
 - The 1280 x 720 Phase 5.9 rendered smoke check confirmed compact same-row geometry, independent hour/minute input, minute `+5`, a multi-option custom time menu, `90 -> 1小時30分鐘`, linked end-time updates, collapsed URL input, and zero console errors.
 - In-app Browser Demo QA at 624 x 800 confirmed the collapsed `更改地點` / `Maps` header and the expanded point-action row with a 36 px full-width URL input. The 486 px editor had no horizontal overflow, save actions remained visible, and console errors were zero.
 - Authenticated Formal Google Maps visual comparison remains pending for the Search/Replace overlay and Places flow.
+
+Latest alternative editor UI verification:
+
+- `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js tests/phase-1-7f-smoke.spec.js --reporter=line --output=.tmp-phase-alternative-results` passed 73/73 after updating the existing source guards and adding the staged alternative workflow coverage.
+- The new Demo workflow check covers disabled empty flip behavior, create/edit navigation without a prompt, shared main/alternative draft retention, no standalone alternative Save, invalid alternative URL failure without input loss, combined main/alternative save, and staged deletion.
+- `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
+- `git diff --check` passed; Windows LF/CRLF notices remain informational.
 
 Latest Phase 5.8 verification:
 
@@ -327,4 +344,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Transportation card add/edit UI refresh is completed, verified, and user-accepted. Await the next requested phase while preserving the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, completed Phase 5.9 itinerary/transportation editor behavior, and existing transportation pairing/navigation behavior.
+Alternative editor UI refresh is implemented and verified. Await user acceptance or the next requested adjustment while preserving the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, completed Phase 5.9 itinerary/transportation editor behavior, and existing transportation pairing/navigation behavior.
