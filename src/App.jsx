@@ -13488,24 +13488,7 @@ function ItineraryTimeline({
         ) : alternative ? (
           <div className="alternative-relation-row">
             <span>{`備案：${alternativeDestination(alternative)}`}</span>
-            <div className="alternative-relation-actions">
-              {!isEffectiveFixedVisit(item) ? (
-                <button
-                  className="mini-button"
-                  disabled={!canMutateThisDay}
-                  aria-label="刪除備案"
-                  title="刪除備案"
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    deleteAlternative(item.id, alternative.id);
-                  }}
-                >
-                  <Trash2 aria-hidden="true" />
-                </button>
-              ) : null}
-              {alternativeFlipButton}
-            </div>
+            {alternativeFlipButton}
           </div>
         ) : alternativeFlipButton}
       </div>
@@ -13928,11 +13911,6 @@ function ItineraryTimeline({
                     ) : null}
                     {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
                     {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
-                    {displayItem.map_url ? (
-                      <a href={displayItem.map_url} rel="noreferrer" target="_blank">
-                        開啟地圖
-                      </a>
-                    ) : null}
                     <div className="linked-budget-list">
                       <strong>連動預算</strong>
                       {(budgetsByItem[item.id] || []).length ? (
@@ -13947,6 +13925,12 @@ function ItineraryTimeline({
                     </div>
                   </div>
                   {renderAlternativeSummary(item, alternative, isAlternativeFace)}
+                  {displayItem.map_url ? (
+                    <a className="ghost-button compact visit-maps-link item-expanded-map-link" href={displayItem.map_url} rel="noreferrer" target="_blank">
+                      <span>Google Map</span>
+                      <ExternalLink aria-hidden="true" />
+                    </a>
+                  ) : null}
                 </div>
               ) : null}
             </article>

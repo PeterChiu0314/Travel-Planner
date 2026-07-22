@@ -3674,14 +3674,16 @@ textarea {
   stroke-width: 1.8;
 }
 
-.visit-map-point-header .visit-maps-link svg {
+.visit-map-point-header .visit-maps-link svg,
+.item-expanded-map-link svg {
   width: 13px;
   height: 13px;
   flex: 0 0 13px;
   stroke-width: 1.8;
 }
 
-.visit-map-point-header .visit-maps-link {
+.visit-map-point-header .visit-maps-link,
+.item-expanded-map-link {
   min-height: 24px;
   border: 0;
   border-radius: 6px;
@@ -3694,7 +3696,9 @@ textarea {
 }
 
 .visit-map-point-header .visit-maps-link:hover,
-.visit-map-point-header .visit-maps-link:focus-visible {
+.visit-map-point-header .visit-maps-link:focus-visible,
+.item-expanded-map-link:hover,
+.item-expanded-map-link:focus-visible {
   background: color-mix(in srgb, var(--mint) 16%, transparent);
   color: var(--mint-dark);
 }
@@ -4635,11 +4639,6 @@ textarea {
   white-space: pre-line;
 }
 
-.item-details a {
-  color: var(--mint-dark);
-  font-weight: 900;
-}
-
 .linked-budget-list,
 .alternative-list {
   display: grid;
@@ -4649,6 +4648,19 @@ textarea {
 
 .linked-budget-list {
   align-items: start;
+}
+
+.linked-budget-list > strong {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.linked-budget-list > .pill,
+.linked-budget-list > .muted-text {
+  justify-self: start;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .muted-text {
@@ -4666,32 +4678,34 @@ textarea {
 }
 
 .alternative-list.compact {
+  width: fit-content;
+  max-width: calc(100% - 50px);
   margin-top: 8px;
 }
 
 .alternative-relation-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  max-width: 100%;
   border-radius: 8px;
   background: #f4f4f4;
   color: var(--ink);
   font-size: 14px;
   font-weight: 500;
   margin-top: 6px;
-  padding: 4px 4px 4px 12px;
+  padding: 6px 12px;
 }
 
 .alternative-relation-row > span {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.alternative-relation-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
+.item-expanded-map-link {
+  justify-self: start;
+  margin-top: 8px;
 }
 
 .alternative-empty-hint {

@@ -722,6 +722,7 @@ test("visit editor stages alternative changes and saves them with the main itine
   await visit.click();
   const unavailableFlip = visit.getByRole("button", { name: "尚未建立備案" });
   await expect(unavailableFlip).toBeDisabled();
+  await expect(visit.locator(".alternative-relation-row")).toHaveCount(0);
   await expect(visit).not.toContainText("點擊右下角翻卡建立備案");
 
   await visit.getByTitle("編輯").click();
@@ -778,6 +779,34 @@ test("visit editor stages alternative changes and saves them with the main itine
 
   visit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "主行程 E" }) });
   await expect(visit.locator(".item-meta .pill", { hasText: "備案" })).toBeVisible();
+  await expect(visit).toHaveClass(/expanded/);
+  const expandedDetails = visit.locator(".item-expanded-content");
+  const budgetTitle = expandedDetails.locator(".linked-budget-list > strong");
+  const emptyBudgetTag = expandedDetails.locator(".linked-budget-list > .muted-text");
+  const alternativeSummary = expandedDetails.locator(".alternative-relation-row");
+  const expandedMapLink = expandedDetails.getByRole("link", { name: "Google Map" });
+  await expect(budgetTitle).toHaveText("連動預算");
+  await expect(budgetTitle).toHaveCSS("font-size", "12px");
+  await expect(budgetTitle).toHaveCSS("font-weight", "500");
+  await expect(emptyBudgetTag).toHaveText("尚未連動預算");
+  await expect(emptyBudgetTag).toHaveCSS("font-size", "12px");
+  await expect(emptyBudgetTag).toHaveCSS("font-weight", "500");
+  await expect(alternativeSummary).toContainText("備案：備案 F");
+  await expect(alternativeSummary.getByRole("button", { name: "刪除備案" })).toHaveCount(0);
+  await expect(expandedMapLink).toHaveClass(/ghost-button.*visit-maps-link/);
+  await expect(expandedMapLink).toHaveCSS("min-height", "24px");
+  await expect(expandedMapLink).toHaveCSS("border-top-width", "0px");
+  await expect(expandedMapLink).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(expandedMapLink).toHaveCSS("font-size", "11px");
+  await expect(expandedMapLink).toHaveCSS("font-weight", "500");
+  await expect(expandedMapLink.locator(".lucide-external-link")).toHaveCount(1);
+  const expandedBox = await expandedDetails.boundingBox();
+  const itemDetailsBox = await expandedDetails.locator(".item-details").boundingBox();
+  const alternativeBox = await alternativeSummary.boundingBox();
+  const mapLinkBox = await expandedMapLink.boundingBox();
+  expect(alternativeBox.width).toBeLessThan(expandedBox.width - 50);
+  expect(mapLinkBox.y).toBeGreaterThan(alternativeBox.y + alternativeBox.height);
+  expect(Math.abs(mapLinkBox.x - itemDetailsBox.x)).toBeLessThanOrEqual(1);
   await visit.getByTitle("編輯").click();
   form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await form.getByRole("button", { name: "更多設定" }).click();
