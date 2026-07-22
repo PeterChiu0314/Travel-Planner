@@ -111,7 +111,8 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - The original itinerary Save action persists the main item and then the staged alternative mutation. A failed main or alternative save keeps both drafts open; successful completion clears the shared draft through the existing itinerary-editor flow.
 - Existing Formal/Demo isolation, fixed-item restrictions, alternative apply/swap behavior, point selection, Places replacement, URL parsing, and persisted data shape remain in place. Alternative latitude/longitude now travel with its existing map fields during save and main/alternative swaps.
 - The card-corner flip control remains available for an existing alternative. Without an alternative it is disabled and no longer creates one; the former flip-to-create hint has been removed.
-- Expanded visit cards keep notes unchanged, show lighter two-line linked-budget metadata, render any alternative as a compact read-only summary, and place the compact Google Map ghost link at the lower left while preserving the reserved lower-right flip control.
+- Expanded visit cards keep notes unchanged. `連動預算` is a 14 px / 600 independent heading with 8 px left padding, a 16 px note gap, and a 6 px gap to the full-width pale-green budget information bar. The budget bar aligns with the details divider.
+- Existing alternatives render as one non-interactive row: Lucide `Files` + `備案` (or `原行程` on the alternative face) followed by a 24 px read-only `類型・目的地` information bar. The row aligns with the details divider, has no chevron or delete action, and keeps the lower-right flip control unchanged. The alternative row and the compact lower-left Google Map link each use 12 px top spacing.
 - The expanded settings retain icons on Adjust Point and Search/Replace, using Lucide `MapPinPen` for point adjustment and `Files` for the alternative heading. Existing and create-alternative entries both use the compact 28 px / 13 px full-width summary control with a right chevron. Alternative deletion now lives only in the existing-alternative editor, uses a small secondary-danger action with the shared confirmation dialog treatment, and keeps Return to Main as a compact secondary action aligned at the lower right.
 
 ## Phase 5.8 Current UI State
@@ -222,6 +223,7 @@ Latest alternative editor UI verification:
 - The new Demo workflow check covers disabled empty flip behavior, create/edit navigation without a prompt, shared main/alternative draft retention, no standalone alternative Save, invalid alternative URL failure without input loss, combined main/alternative save, and staged deletion.
 - `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
 - `git diff --check` passed; Windows LF/CRLF notices remain informational.
+- The expanded-card proportion refinement passed the full `mapProviderPrep` + `phase-1-7f-smoke` regression set 73/73 and the production build. In-app Browser QA at 1280 × 800 confirmed a 16 px note-to-budget gap, 6 px budget heading gap, 12 px budget-to-alternative and alternative-to-Map gaps, divider-aligned information widths, a 24 px non-interactive alternative bar, a 6.99 px flip-button safety gap, and zero console errors.
 
 Latest Phase 5.8 verification:
 

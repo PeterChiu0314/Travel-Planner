@@ -584,7 +584,7 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(appSource).toContain("<span>地圖點位</span>");
   expect(appSource).toContain("<Files aria-hidden=\"true\" />");
   expect(appSource).toContain("<span>備案</span>");
-  expect(appSource).toContain("<span>建立備案</span>");
+  expect(appSource).toContain("<Plus aria-hidden=\"true\" />建立備案");
   expect(appSource).toContain("返回主行程");
   expect(appSource).not.toContain("儲存備案");
   expect(appSource).not.toContain("點擊右下角翻卡建立備案");

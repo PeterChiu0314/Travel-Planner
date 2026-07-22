@@ -132,6 +132,7 @@ Do:
 - Keep selected Day Boards slightly inset after automatic horizontal positioning so edge controls do not cover card content.
 - Keep Map-expanded and Map-collapsed visit cards on the same typography, spacing, and action-control system.
 - Let expanded visit details use the card width below the divider without changing the compact information layout above it.
+- In expanded visit details, align budget and alternative information rows to the details divider. Keep linked budget as a clear heading plus full-width pale-green information bar; render an existing alternative as a read-only same-row `Files` heading plus summary bar, while reserving the lower-right flip-control area.
 - Use familiar Lucide icons for lock, edit, delete, add, map, route, and directional actions, with accessible labels or tooltips.
 - Treat the future map area as a full workspace surface, not as a decorative nested card.
 - Use Timeline-specific selectors for layout overrides instead of changing global `.panel` or `.content-grid` behavior.

@@ -13458,6 +13458,11 @@ function ItineraryTimeline({
 
   function renderAlternativeSummary(item, alternative, isAlternativeFace) {
     const alternativeError = alternativeErrorByItem[item.id];
+    const relatedHeading = isAlternativeFace ? "原行程" : "備案";
+    const relatedType = isAlternativeFace
+      ? typeLabels[item.type] || typeLabels.attraction
+      : typeLabels[alternative?.type] || typeLabels.attraction;
+    const relatedDestination = isAlternativeFace ? visitDestination(item) : alternativeDestination(alternative);
     const alternativeFlipButton = !isEffectiveFixedVisit(item) ? (
       <button
         className="alternative-flip-button"
@@ -13474,24 +13479,25 @@ function ItineraryTimeline({
       </button>
     ) : null;
     return (
-      <div className="alternative-list compact">
+      <>
         {alternativeError ? (
           <div className="notice inline-error" role="alert">
             <span>{alternativeError}</span>
           </div>
         ) : null}
-        {isAlternativeFace && alternative ? (
-          <div className="alternative-relation-row">
-            <span>{`原行程：${visitDestination(item)}`}</span>
-            {alternativeFlipButton}
+        {alternative ? (
+          <div className="item-expanded-alternative">
+            <div className="visit-settings-heading item-expanded-alternative-heading">
+              <Files aria-hidden="true" />
+              <span>{relatedHeading}</span>
+            </div>
+            <div className="visit-alternative-summary item-expanded-alternative-summary">
+              <span>{`${relatedType}・${relatedDestination}`}</span>
+            </div>
           </div>
-        ) : alternative ? (
-          <div className="alternative-relation-row">
-            <span>{`備案：${alternativeDestination(alternative)}`}</span>
-            {alternativeFlipButton}
-          </div>
-        ) : alternativeFlipButton}
-      </div>
+        ) : null}
+        {alternativeFlipButton}
+      </>
     );
   }
 
@@ -13920,7 +13926,7 @@ function ItineraryTimeline({
                           </span>
                         ))
                       ) : (
-                        <span className="muted-text">尚未連動預算</span>
+                        <span className="pill muted-text">尚未連動預算</span>
                       )}
                     </div>
                   </div>
