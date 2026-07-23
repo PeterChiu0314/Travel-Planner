@@ -4229,11 +4229,12 @@ textarea {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
+  gap: 4px;
   align-items: start;
   border-top: 1px solid var(--line);
   margin: 0 28px;
   padding-top: 10px;
+  padding-bottom: 8px;
 }
 
 .transport-card-details p {
