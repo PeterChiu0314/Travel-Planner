@@ -20,6 +20,7 @@ Read these current sources before implementation:
 
 Relevant latest closeouts and plans:
 
+- `docs/timeline-card-ui-spec.md`
 - `docs/2026-07-19-phase-5-9-itinerary-editor-ui-handoff.md`
 - `docs/2026-07-12-phase-5-7d-remote-route-node-visual-plan.md`
 - `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`
@@ -37,15 +38,17 @@ Archive rules:
 ## Current Status
 
 ```text
-Current phase: Alternative editor UI refresh
-Status: Implemented; automated verification and production build passed
+Current phase: Phase 5.9 itinerary, transportation, expanded-card, and alternative UI refresh
+Status: Implemented, verified, and user-accepted on 2026-07-23
 Branch: codex/timeline-phase-5-9
 Phase 5.7c closeout commit: 23247de Close Timeline Phase 5.7c
 Phase 5.7d implementation commit: 5f71256 Unify remote collaborator colors
-Latest Phase 5.9 implementation: current branch HEAD
+Latest Phase 5.9 implementation: bc76e81 Align transport name input
 ```
 
 Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Phase 5.8 UI baseline remain protected. Phase 5.9 continues UI-only itinerary-editor work and must not change their collaboration or persistence behavior.
+
+The accepted visit-card, transportation-card, expanded-detail, and alternative-editor design contract is centralized in `docs/timeline-card-ui-spec.md`. Treat it as the current UI source of truth; the Phase 5.9 handoff remains implementation history.
 
 ## Current Map Search URL State
 
@@ -95,6 +98,7 @@ Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, and the published Ph
 - Transportation editors no longer reserve a fixed minimum height, and the note field now reserves two rows to match the itinerary editor.
 - Transportation category now reuses the itinerary type menu structure, including its custom chevron, selected state, and menu styling. The note field is 62 px high and uses the time-menu scrollbar treatment; the adjacent navigation button remains bottom-aligned with the outlined fields.
 - Transportation category menus close on captured outside pointer events and focus leaving the field. Transportation names are 36 px high, editor navigation controls are 36 px square, and expanded transportation notes reuse the thin time-menu scrollbar without native arrow buttons.
+- Transportation-name input content uses a field-specific 12 px left inset, aligned with its floating label and neighboring field content without changing shared itinerary or transportation field CSS.
 - Visit and transportation editor notes share one auto-growing textarea: two visible lines initially, growth through five visible lines, then internal scrolling for additional content.
 - Visit-note textareas start at two visible lines, grow with content through five visible lines, and then switch to internal scrolling. Their floating-label frame grows with the textarea and remains unclipped so the label stays fully visible.
 - Visit and transportation note content uses shared `8px 8px 8px 12px` textarea padding.
@@ -199,6 +203,7 @@ Latest Dayboard add-location verification:
 
 Latest Phase 5.9 verification:
 
+- User acceptance completed on 2026-07-23 for the visit-card and transportation-card expanded interfaces, transportation add/edit interface, and alternative editor interface. The final transportation-name alignment computes to the same 12 px left inset as its floating label; its focused regression test, production build, `git diff --check`, in-app Browser comparison, overflow check, and console check passed.
 - User acceptance completed on 2026-07-21 for the transportation card add/edit UI refresh and the shared visit/transportation note-field behavior.
 - `npm.cmd run build` passed; the existing Vite large-chunk warning remains informational.
 - `npm.cmd run test:e2e -- tests/mapProviderPrep.spec.js` passed 40/40.
@@ -352,4 +357,4 @@ See `docs/BUGS.md` and the archived ledger for older phase-specific risks.
 
 ## Next Step
 
-Alternative editor UI refresh is implemented and verified. Await user acceptance or the next requested adjustment while preserving the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, completed Phase 5.9 itinerary/transportation editor behavior, and existing transportation pairing/navigation behavior.
+Phase 5.9 itinerary, transportation, expanded-card, and alternative UI work is implemented, verified, and user-accepted. Await the next requested phase while preserving the closed Phase 5.7c synchronization, Phase 5.7d visual-feedback behavior, Phase 5.8 UI baseline, completed Phase 5.9 editor/expanded-card behavior, and existing transportation pairing/navigation behavior.
