@@ -4461,6 +4461,11 @@ textarea {
   height: 36px;
 }
 
+.timeline .item-form .transport-editor-name-field input,
+.timeline-add-editor-anchor .item-form .transport-editor-name-field input {
+  padding-left: 12px;
+}
+
 .transport-editor-edit-mode {
   align-content: start;
 }

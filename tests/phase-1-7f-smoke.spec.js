@@ -999,6 +999,7 @@ test("transport editor uses compact floating fields and preserves exact minute i
 
   const nameFloatingLabel = form.locator(".transport-editor-name-field .floating-outlined-label");
   await expect(form.locator(".transport-editor-name-field")).toHaveCSS("height", "36px");
+  await expect(name).toHaveCSS("padding-left", "12px");
   await expect(nameFloatingLabel).toHaveCSS("font-size", "14px");
   await name.focus();
   await expect(nameFloatingLabel).toHaveCSS("font-size", "11px");

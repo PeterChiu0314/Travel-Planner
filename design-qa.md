@@ -168,3 +168,55 @@ No actionable P0, P1, or P2 mismatch remains in the requested expanded-detail sc
 No P3 follow-up remains for this scope.
 
 final result: passed
+
+---
+
+# Design QA — Transportation name input alignment
+
+- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-fa60fb2b-0625-44cf-bd12-7726bbc36e62.png`.
+- Browser-rendered implementation: `docs/qa/2026-07-23-transport-name-padding-full.png`.
+- Focused implementation capture: `docs/qa/2026-07-23-transport-name-padding.png`.
+- Combined comparison: `docs/qa/2026-07-23-transport-name-padding-comparison.png`.
+- Browser and viewport: Codex in-app Browser, 1280 × 720 CSS px at device pixel ratio 1.
+- Pixel dimensions: source 404 × 314; implementation viewport 1280 × 720; focused implementation 380 × 305; comparison board 814 × 334. No density normalization was required.
+- State: Demo Timeline Day 1 with the existing transportation card editor open.
+
+## Full-view comparison evidence
+
+- The transportation editor retains its existing category, duration, navigation, note, and action layout.
+- Only the transportation-name input receives the alignment override; shared floating-field and itinerary-field styles remain unchanged.
+
+## Focused-region comparison evidence
+
+- The transportation-name input computes to 12 px left padding.
+- The input content and floated `交通名稱` label both begin at x = 298 px, for a measured difference of 0 px.
+- The editor reports zero horizontal overflow and the browser console reports zero errors.
+
+## Required fidelity surfaces
+
+- Fonts and typography: existing font size, weight, line height, and floating-label treatment are unchanged.
+- Spacing and layout rhythm: the name value now aligns with its label and the 12 px inset used by the note content.
+- Colors and visual tokens: unchanged.
+- Image quality and asset fidelity: no image or icon assets changed.
+- Copy and content: unchanged.
+
+## Comparison history
+
+1. The first rendered comparison found no remaining actionable P0, P1, or P2 mismatch after the scoped padding correction.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains in the requested field.
+
+## Implementation checklist
+
+- [x] Scope the override to transportation-name inputs only.
+- [x] Align input content and floating-label starts at 12 px.
+- [x] Preserve all surrounding editor fields and layout.
+- [x] Verify the focused regression test, production build, layout measurement, and console.
+
+## Follow-up polish
+
+No P3 follow-up identified for this scope.
+
+final result: passed
