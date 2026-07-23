@@ -55,6 +55,40 @@ final result: passed
 
 ---
 
+# Design QA — Version information dialog
+
+- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-3681bb53-1055-4733-835f-481013a06cc1.png`.
+- Browser-rendered implementation: `docs/qa/2026-07-23-version-dialog-full.png`.
+- Focused implementation capture: `docs/qa/2026-07-23-version-dialog.png`.
+- Combined comparison: `docs/qa/2026-07-23-version-dialog-comparison.png`.
+- Browser and viewport: Chrome, 1202 × 638 CSS px.
+- State: authenticated version-dialog structure rendered with the production component classes and current stylesheet.
+
+## Comparison evidence
+
+- The two-line product name is consolidated into the requested single line: `旅程工房 | Travel Studio`.
+- The displayed application version is `v0.1.6`.
+- The dialog uses the existing liquid-glass surface treatment: 72% surface color, 18 px blur, 1.4 saturation, and the shared glass border token.
+- The information panel and close button both compute to fully transparent backgrounds.
+- The existing logo, preview badge, facts layout, dividers, and control placement remain visually consistent with the reference.
+- The title remains on one line at the measured 420 px dialog width, and the page reports no horizontal overflow.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains in the requested version-dialog scope.
+
+## Implementation checklist
+
+- [x] Consolidate the bilingual title onto one line.
+- [x] Update the visible and package versions to 0.1.6.
+- [x] Apply the existing liquid-glass dialog surface.
+- [x] Remove background fills from the information panel and close button.
+- [x] Verify the focused source guard, production build, computed styles, and overflow.
+
+final result: passed
+
+---
+
 # Design QA — Expanded visit and transportation budget rows
 
 - Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-5733eef9-2c5c-4dcb-aa60-addf96c6918f.png` and `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-6ffe7d37-d61d-4e53-ad96-d9c61fe6c55b.png`, with the user's responsive placement instructions authoritative.

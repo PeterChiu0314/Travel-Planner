@@ -107,7 +107,7 @@ import {
 import kyotoDemoTrip from "./demo-kyoto-trip.json";
 
 const attachmentBucket = "trip-attachments";
-const appVersion = "0.1.0";
+const appVersion = "0.1.6";
 const TimelineDragHandleContext = createContext(null);
 const timelineDragPresenceHeartbeatMs = 3000;
 const timelineDragPresenceStaleMs = 12000;
@@ -11190,8 +11190,7 @@ function VersionInfoDialog({ onClose }) {
         <div className="version-dialog-logo" aria-hidden="true">TP</div>
         <div className="version-dialog-heading">
           <span className="version-dialog-stage">Development Preview</span>
-          <h2 id="version-dialog-title">旅程工房</h2>
-          <p>Travel Studio</p>
+          <h2 id="version-dialog-title">旅程工房 | Travel Studio</h2>
         </div>
         <dl className="version-dialog-facts">
           <div>

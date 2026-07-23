@@ -107,8 +107,15 @@ test("phase 2.3 app shell owns desktop scroll and demo sidebar uses local parity
 test("development version dialog stays in the formal account menu", () => {
   expect(appSource).toContain("VersionInfoDialog");
   expect(appSource).toContain("Development Preview");
+  expect(appSource).toContain('const appVersion = "0.1.6";');
+  expect(appSource).toContain('<h2 id="version-dialog-title">旅程工房 | Travel Studio</h2>');
   expect(appSource).toContain("Collaborative Travel Web App");
   expect(appSource).toContain("onVersion={() => setIsVersionDialogOpen(true)}");
+  expect(styleSource).toContain(".version-dialog {");
+  expect(styleSource).toContain("background: color-mix(in srgb, var(--color-surface) 72%, transparent);");
+  expect(styleSource).toContain("backdrop-filter: blur(18px) saturate(var(--map-glass-saturation));");
+  expect(styleSource).toMatch(/\.version-dialog-facts\s*{[^}]*background:\s*transparent;/s);
+  expect(styleSource).toMatch(/\.version-dialog-close\s*{[^}]*background:\s*transparent;/s);
 });
 
 test("phase 2.6 collapsed sidebar trip flyout stays local to formal and demo sidebars", () => {

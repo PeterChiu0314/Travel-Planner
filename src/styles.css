@@ -6202,6 +6202,10 @@ textarea {
 .version-dialog {
   justify-items: center;
   width: min(420px, 100%);
+  border-color: var(--map-glass-border);
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(var(--map-glass-saturation));
+  backdrop-filter: blur(18px) saturate(var(--map-glass-saturation));
   text-align: center;
 }
 
@@ -6221,11 +6225,13 @@ textarea {
 .version-dialog-heading {
   display: grid;
   justify-items: center;
-  gap: 3px;
+  gap: 7px;
 }
 
 .version-dialog-heading h2 {
-  margin-top: 4px;
+  margin: 0;
+  font-size: clamp(18px, 5.5vw, 24px);
+  white-space: nowrap;
 }
 
 .version-dialog-stage {
@@ -6245,7 +6251,7 @@ textarea {
   margin: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfcfa;
+  background: transparent;
   padding: 4px 14px;
   text-align: left;
 }
@@ -6276,6 +6282,7 @@ textarea {
 
 .version-dialog-close {
   min-width: 104px;
+  background: transparent;
 }
 
 .members-dialog {
