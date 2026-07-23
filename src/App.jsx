@@ -11274,6 +11274,31 @@ function TimelineFlowAttachment({ children }) {
   );
 }
 
+function ExpandedBudgetRow({ budgets = [], emptyLabel = "尚未連動預算" }) {
+  return (
+    <div className="linked-budget-list">
+      <div className="item-expanded-budget-heading">
+        <Wallet aria-hidden="true" />
+        <strong>預算</strong>
+      </div>
+      <div className="item-expanded-budget-content">
+        <span className="item-expanded-section-divider" aria-hidden="true" />
+        <div className="item-expanded-budget-tags">
+          {budgets.length ? (
+            budgets.map((budget) => (
+              <span className="pill" key={budget.id}>
+                {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
+              </span>
+            ))
+          ) : (
+            <span className="pill muted-text">{emptyLabel}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ItineraryTimeline({
   activeDay = 0,
   activeTrip,
@@ -13027,17 +13052,7 @@ function ItineraryTimeline({
             ) : null}
             <div className="transport-card-details">
               <p className="transport-note-detail">{note || "尚未填寫"}</p>
-              <div className="transport-budget-links">
-                {budgets.length ? (
-                  budgets.map((budget) => (
-                    <span className="pill" key={budget.id}>
-                      {budget.title} {formatMoney(budget.twd_amount || budget.amount)}
-                    </span>
-                  ))
-                ) : (
-                  <span className="muted-text">尚未連結預算</span>
-                )}
-              </div>
+              <ExpandedBudgetRow budgets={budgets} emptyLabel="尚未連結預算" />
             </div>
             <div className="transport-card-actions">
               {isGeneralWarning ? (
@@ -13920,26 +13935,7 @@ function ItineraryTimeline({
                     ) : null}
                     {displayItem.address ? <p>地址：{displayItem.address}</p> : null}
                     {displayItem.transportation_note ? <p>交通：{displayItem.transportation_note}</p> : null}
-                    <div className="linked-budget-list">
-                      <div className="item-expanded-budget-heading">
-                        <Wallet aria-hidden="true" />
-                        <strong>連動預算</strong>
-                      </div>
-                      <div className="item-expanded-budget-content">
-                        <span className="item-expanded-section-divider" aria-hidden="true" />
-                        <div className="item-expanded-budget-tags">
-                          {(budgetsByItem[item.id] || []).length ? (
-                            (budgetsByItem[item.id] || []).map((budget) => (
-                              <span className="pill" key={budget.id}>
-                                {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="pill muted-text">尚未連動預算</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <ExpandedBudgetRow budgets={budgetsByItem[item.id] || []} />
                   </div>
                   {renderAlternativeSummary(item, alternative, isAlternativeFace)}
                   {displayItem.map_url ? (

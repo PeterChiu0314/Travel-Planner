@@ -4228,8 +4228,8 @@ textarea {
 .transport-card-details {
   display: grid;
   grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
   border-top: 1px solid var(--line);
   margin: 0 28px;
@@ -4276,14 +4276,8 @@ textarea {
   white-space: pre-line;
 }
 
-.transport-budget-links {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  grid-column: 2;
-  justify-self: end;
-  flex-wrap: wrap;
+.transport-card-details .linked-budget-list {
+  grid-column: 1;
 }
 
 .transport-card-actions,
@@ -4628,7 +4622,7 @@ textarea {
 
 .item-details p {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   overflow: visible;
   text-overflow: clip;
@@ -4662,11 +4656,11 @@ textarea {
   gap: 6px;
   color: var(--ink);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .item-expanded-budget-heading strong {
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .item-expanded-budget-heading svg {

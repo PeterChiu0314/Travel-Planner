@@ -792,9 +792,9 @@ test("visit editor stages alternative changes and saves them with the main itine
   const alternativeSummary = alternativeBlock.locator(".item-expanded-alternative-summary");
   const detailNote = expandedDetails.locator(".item-detail-note");
   const expandedMapLink = expandedDetails.getByRole("link", { name: "Google Map" });
-  await expect(budgetTitle).toHaveText("連動預算");
+  await expect(budgetTitle).toHaveText("預算");
   await expect(budgetTitle).toHaveCSS("font-size", "14px");
-  await expect(budgetTitle).toHaveCSS("font-weight", "500");
+  await expect(budgetTitle).toHaveCSS("font-weight", "400");
   await expect(budgetTitle).toHaveCSS("padding-left", "0px");
   await expect(budgetHeading.locator(".lucide-wallet")).toHaveCount(1);
   await expect(budgetHeading.locator(".lucide-wallet")).toHaveCSS("width", "16px");
@@ -816,6 +816,7 @@ test("visit editor stages alternative changes and saves them with the main itine
   await expect(alternativeSummary).toHaveCSS("border-top-width", "0px");
   await expect(alternativeBlock).toHaveCSS("margin-top", "8px");
   await expect(detailNote).toHaveCSS("font-weight", "400");
+  await expect(detailNote).toHaveCSS("font-size", "13px");
   await expect(alternativeSummary.locator(".lucide-chevron-right")).toHaveCount(0);
   await expect(alternativeSummary.getByRole("button")).toHaveCount(0);
   await expect(alternativeSummary.getByRole("button", { name: "刪除備案" })).toHaveCount(0);
@@ -904,6 +905,20 @@ test("transport editor uses compact floating fields and preserves exact minute i
   await existingTransport.click();
   await existingTransport.click();
   const expandedNote = existingTransport.locator(".transport-card-details .transport-note-detail");
+  const transportBudgetList = existingTransport.locator(".transport-card-details .linked-budget-list");
+  const transportBudgetHeading = transportBudgetList.locator(".item-expanded-budget-heading");
+  const transportBudgetContent = transportBudgetList.locator(".item-expanded-budget-content");
+  await expect(transportBudgetHeading).toContainText("預算");
+  await expect(transportBudgetHeading.locator(".lucide-wallet")).toHaveCount(1);
+  await expect(transportBudgetHeading).toHaveCSS("font-weight", "400");
+  await expect(transportBudgetList).toHaveCSS("flex-wrap", "wrap");
+  await expect(transportBudgetList).toHaveCSS("margin-top", "8px");
+  const transportNoteBox = await expandedNote.boundingBox();
+  const transportBudgetBox = await transportBudgetList.boundingBox();
+  const transportBudgetHeadingBox = await transportBudgetHeading.boundingBox();
+  const transportBudgetContentBox = await transportBudgetContent.boundingBox();
+  expect(transportBudgetBox.y).toBeGreaterThan(transportNoteBox.y + transportNoteBox.height);
+  expect(transportBudgetContentBox.x).toBeGreaterThan(transportBudgetHeadingBox.x + transportBudgetHeadingBox.width);
   const expandedScrollbar = await expandedNote.evaluate((noteDetail) => ({
     buttonDisplay: getComputedStyle(noteDetail, "::-webkit-scrollbar-button").display,
     thumbBackground: getComputedStyle(noteDetail, "::-webkit-scrollbar-thumb").backgroundColor,

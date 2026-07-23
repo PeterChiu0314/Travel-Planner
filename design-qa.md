@@ -55,6 +55,63 @@ final result: passed
 
 ---
 
+# Design QA — Expanded visit and transportation budget rows
+
+- Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-5733eef9-2c5c-4dcb-aa60-addf96c6918f.png` and `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-6ffe7d37-d61d-4e53-ad96-d9c61fe6c55b.png`, with the user's responsive placement instructions authoritative.
+- Browser-rendered implementation: `docs/qa/2026-07-23-expanded-budget-wide-full.png` and `docs/qa/2026-07-23-expanded-budget-visit-full.png`.
+- Focused implementation captures: `docs/qa/2026-07-23-expanded-budget-transport.png` and `docs/qa/2026-07-23-expanded-budget-visit.png`.
+- Combined comparison: `docs/qa/2026-07-23-expanded-budget-comparison.png`.
+- Browser and viewport: Codex in-app Browser, 1280 × 800 CSS px at device pixel ratio 1; responsive behavior also measured at 320 × 800 CSS px.
+- Pixel dimensions: source visit 265 × 103; source transportation 512 × 131; implementation viewport 1280 × 800; focused visit 380 × 230; focused transportation 380 × 164; comparison board 940 × 500. No density normalization was required.
+- State: Demo Timeline Day 1 with one visit card and one transportation card expanded in turn.
+
+## Full-view comparison evidence
+
+- The expanded visit card preserves the existing card frame, note wrapping, lower-right alternative control space, and information hierarchy.
+- The expanded transportation card keeps its summary and actions unchanged while moving the budget row below the complete note.
+- Both expanded-card budget rows use the existing Wallet icon, divider, pale-green information tag, and responsive flex treatment.
+
+## Focused-region comparison evidence
+
+- Visit note text computes to 13 px / 400. Both budget labels read `預算` and compute to 14 px / 400.
+- At 1280 px viewport width, the budget label and divider/tag content are side by side in both card types.
+- At 320 px viewport width, the 140 px-wide transportation budget row wraps its content below the heading and reports zero horizontal overflow.
+- Transportation note-to-budget layout uses the same 10 px grid gap plus shared 8 px budget-row top spacing as the visit details.
+- Browser console inspection found zero error entries.
+
+## Required fidelity surfaces
+
+- Fonts and typography: the requested 13 px note copy and 400-weight `預算` labels are applied while retaining the existing application font and line-height behavior.
+- Spacing and layout rhythm: transportation now follows the visit-card vertical rhythm; the responsive row remains compact and only wraps when its available width is insufficient.
+- Colors and visual tokens: existing ink, muted, divider, border, and pale-green pill tokens remain unchanged.
+- Image quality and asset fidelity: no raster UI assets were introduced; the existing Lucide Wallet icon is reused.
+- Copy and content: the heading is `預算`; existing linked and unlinked budget content remains intact.
+
+## Comparison history
+
+1. The first rendered comparison found no actionable P0, P1, or P2 mismatch in the requested region. No visual correction iteration was required.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains in the requested expanded-card scope.
+
+## Implementation checklist
+
+- [x] Rename the expanded budget heading to `預算` and use weight 400.
+- [x] Render expanded visit-note copy at 13 px.
+- [x] Move transportation budget information below its note.
+- [x] Keep budget heading and information side by side when space permits.
+- [x] Wrap only when constrained, without horizontal overflow.
+- [x] Verify both expanded states and browser console output.
+
+## Follow-up polish
+
+No P3 follow-up identified for this scope.
+
+final result: passed
+
+---
+
 # Design QA — Expanded itinerary detail proportions
 
 - Source visual truth: `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-4905aa72-1057-4614-9991-279a079f1c7d.png` plus the user's explicit same-row placement and spacing corrections.
