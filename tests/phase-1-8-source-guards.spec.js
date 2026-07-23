@@ -109,11 +109,13 @@ test("development version dialog stays in the formal account menu", () => {
   expect(appSource).toContain("Development Preview");
   expect(appSource).toContain('const appVersion = "0.1.6";');
   expect(appSource).toContain('<h2 id="version-dialog-title">旅程工房 | Travel Studio</h2>');
+  expect(appSource).toContain('className="modal-backdrop version-dialog-backdrop"');
   expect(appSource).toContain("Collaborative Travel Web App");
   expect(appSource).toContain("onVersion={() => setIsVersionDialogOpen(true)}");
   expect(styleSource).toContain(".version-dialog {");
-  expect(styleSource).toContain("background: color-mix(in srgb, var(--color-surface) 72%, transparent);");
+  expect(styleSource).toContain("background: var(--map-glass-bg);");
   expect(styleSource).toContain("backdrop-filter: blur(18px) saturate(var(--map-glass-saturation));");
+  expect(styleSource).toMatch(/\.version-dialog-backdrop\s*{[^}]*background:\s*transparent;/s);
   expect(styleSource).toMatch(/\.version-dialog-facts\s*{[^}]*background:\s*transparent;/s);
   expect(styleSource).toMatch(/\.version-dialog-close\s*{[^}]*background:\s*transparent;/s);
 });

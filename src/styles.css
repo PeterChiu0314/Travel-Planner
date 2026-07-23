@@ -6203,10 +6203,14 @@ textarea {
   justify-items: center;
   width: min(420px, 100%);
   border-color: var(--map-glass-border);
-  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  background: var(--map-glass-bg);
   -webkit-backdrop-filter: blur(18px) saturate(var(--map-glass-saturation));
   backdrop-filter: blur(18px) saturate(var(--map-glass-saturation));
   text-align: center;
+}
+
+.version-dialog-backdrop {
+  background: transparent;
 }
 
 .version-dialog-logo {

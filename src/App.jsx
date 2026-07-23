@@ -11179,7 +11179,7 @@ function VersionInfoDialog({ onClose }) {
   }, [onClose]);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop version-dialog-backdrop" onClick={onClose}>
       <div
         className="dialog-card version-dialog"
         role="dialog"
