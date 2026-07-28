@@ -105,6 +105,57 @@ test("Phase 4.9a excludes transportation cards and keeps marker order", () => {
   expect(markers.map((marker) => marker.sequenceNumber)).toEqual([1, 2, 3]);
 });
 
+test("Phase 5.10 keeps two-digit marker labels aligned while transportation cards stay unnumbered", () => {
+  const destinations = Array.from({ length: 12 }, (_, index) => ({
+    id: `visit-${index + 1}`,
+    item_type: "visit",
+    location_name: `Destination ${index + 1}`,
+    latitude: 35 + index / 100,
+    longitude: 135 + index / 100,
+  }));
+  const markers = buildDayMapMarkers([
+    ...destinations.slice(0, 6),
+    { id: "transport-6-7", item_type: "transport", from_item_id: "visit-6", to_item_id: "visit-7" },
+    ...destinations.slice(6),
+  ]);
+
+  expect(markers.map((marker) => marker.sequenceNumber)).toEqual(Array.from({ length: 12 }, (_, index) => index + 1));
+  expect(markers).toHaveLength(12);
+
+  const twelfthMarkerSvg = buildDestinationMarkerSvg({ order: markers[11].sequenceNumber });
+  expect(twelfthMarkerSvg).toContain('font-size="11.5"');
+  expect(twelfthMarkerSvg).toContain(">12</text>");
+});
+
+test("Phase 5.10 reorder and type edits update marker semantics without changing identity or coordinates", () => {
+  const originalItems = [
+    { id: "visit-a", item_type: "visit", type: "attraction", location_name: "A", latitude: 35.01, longitude: 135.01 },
+    { id: "visit-b", item_type: "visit", type: "food", location_name: "B", latitude: 35.02, longitude: 135.02 },
+    { id: "visit-c", item_type: "visit", type: "hotel", location_name: "C", latitude: 35.03, longitude: 135.03 },
+  ];
+  const originalMarkers = buildDayMapMarkers(originalItems);
+  const updatedMarkers = buildDayMapMarkers([
+    originalItems[2],
+    { ...originalItems[0], type: "transport", title: "Airport" },
+    originalItems[1],
+  ]);
+
+  expect(updatedMarkers.map((marker) => marker.itemId)).toEqual(["visit-c", "visit-a", "visit-b"]);
+  expect(updatedMarkers.map((marker) => marker.sequenceNumber)).toEqual([1, 2, 3]);
+  expect(updatedMarkers.find((marker) => marker.itemId === "visit-a")).toMatchObject({
+    id: "map-marker:visit-a",
+    category: "transport",
+    latitude: 35.01,
+    longitude: 135.01,
+  });
+  expect(originalMarkers.find((marker) => marker.itemId === "visit-a")).toMatchObject({
+    id: "map-marker:visit-a",
+    category: "attraction",
+    latitude: 35.01,
+    longitude: 135.01,
+  });
+});
+
 test("Phase 5.4 hotfix keeps transport-category destinations as markers", () => {
   const markers = buildDayMapMarkers([
     {

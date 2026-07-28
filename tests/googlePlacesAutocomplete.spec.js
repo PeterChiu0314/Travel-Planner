@@ -57,7 +57,7 @@ test("custom Map points open a coordinate-backed new editor with an immediate dr
   expect(appSource).toContain('if (pickedMapPoint.source === "map-add")');
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
   expect(appSource).toContain('id: "itinerary-editor-preview"');
-  expect(appSource).toContain("locationName: form.location_name || form.location || form.title || \"新增地點\"");
+  expect(appSource).toContain("locationName: activeVisitForm.location_name || activeVisitForm.location || activeVisitForm.title || \"新增地點\"");
   expect(appSource).toContain("latitude: previewMapPoint.latitude");
   expect(appSource).toContain("longitude: previewMapPoint.longitude");
 });
@@ -65,7 +65,8 @@ test("custom Map points open a coordinate-backed new editor with an immediate dr
 test("new and existing visit editors share the same point editing section", () => {
   const appSource = readRepoFile("src/App.jsx");
 
-  expect(appSource).toContain('<div className={`visit-map-point-section${isMapPointExpanded ? " expanded" : ""}`}>');
+  expect(appSource).toContain('const isMapPointBodyVisible = isAlternativeEditor || isMapPointExpanded');
+  expect(appSource).toContain('<div className={`visit-map-point-section${isMapPointBodyVisible ? " expanded" : ""}${isAlternativeEditor ? " always-expanded" : ""}`}>');
   expect(appSource).not.toContain('editingId || !useEditLocks ? <div className={`visit-map-point-section');
   expect(appSource).toContain("更改地點");
   expect(appSource).toContain("搜尋替換");
