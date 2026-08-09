@@ -508,7 +508,6 @@ test("Phase 5.2 focused marker can scroll the active Timeline card without drag 
   expect(appSource).toContain("data-timeline-item-id={item.id}");
   expect(appSource).toContain("scrollIntoView({ block: \"nearest\", behavior: \"smooth\" })");
   expect(appSource).toContain("foreignSameDayDragActive");
-  expect(appSource).toContain("transportPairConflict");
   expect(appSource).toContain("autoContinuationPrompt");
   expect(appSource).not.toContain("onDragStart={(event) => onFocusItem");
 });
@@ -534,7 +533,6 @@ test("Phase 5.3 hotfix scrolls and spaces the bottom add editor", () => {
   expect(appSource).toContain("newVisitEditorRef.current?.scrollIntoView({ block: \"nearest\", behavior: \"smooth\" })");
   expect(appSource).toContain('querySelector(\'input[name="location_name"]\')');
   expect(appSource).toContain("primaryInput?.focus?.({ preventScroll: true })");
-  expect(appSource).toContain("transportPairConflict");
   expect(appSource).toContain("autoContinuationPrompt");
   expect(stylesSource).toContain(".timeline-add-editor-anchor");
   expect(stylesSource).toContain("margin-top: 4px");

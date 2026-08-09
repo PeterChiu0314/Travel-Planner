@@ -932,7 +932,7 @@ test("transport editor uses compact floating fields and preserves exact minute i
   await expect(page.locator(".transport-editor-form .floating-outlined-label")).toHaveText(["交通名稱", "備註"]);
   await page.locator(".transport-editor-form").getByRole("button", { name: "取消" }).click();
 
-  await page.getByRole("button", { name: "新增尾端交通" }).click({ force: true });
+  await page.getByRole("button", { name: "新增交通資訊" }).first().click();
   const form = page.locator(".transport-editor-form");
   const category = form.locator('input[type="hidden"][name="transport_category"]');
   const categoryField = form.locator(".transport-category-field");
@@ -1054,42 +1054,7 @@ test("transport editor uses compact floating fields and preserves exact minute i
   expect(failures).toEqual([]);
 });
 
-for (const scenario of [
-  { durationMinutes: "1", expectedStartTime: "21:35", label: "rounds one minute up to five minutes" },
-  { durationMinutes: "17", expectedStartTime: "21:50", label: "rounds up to the next five-minute step" },
-  { durationMinutes: "15", expectedStartTime: "21:45", label: "keeps an exact five-minute step" },
-  { durationMinutes: "23", expectedStartTime: "21:55", label: "rounds twenty-three minutes up to twenty-five" },
-]) {
-  test(`demo tail transportation ${scenario.label}`, async ({ page }) => {
-    const failures = collectConsoleFailures(page);
-    const supabaseRequests = collectSupabaseRequests(page);
-
-    await page.goto("/demo/timeline");
-
-    const lastVisit = page.locator(".timeline .timeline-item").last();
-    await lastVisit.click();
-    await lastVisit.getByTitle("編輯").click();
-    const editForm = page.locator(".item-form");
-    await setTimelineTime(editForm, "end_time", "21:30");
-    await editForm.getByRole("button", { name: "儲存" }).click();
-
-    await page.getByRole("button", { name: "新增尾端交通" }).click({ force: true });
-    await page.locator('input[name="transport_duration_minutes"]').fill(scenario.durationMinutes);
-    await page.locator('input[name="transport_name"]').fill("前往下一站");
-    await page.locator(".transport-editor-form").getByRole("button", { name: "保存" }).click();
-
-    await expect(page.getByText("下一目的地尚未設定", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "新增行程" }).click();
-    const startTimeInput = page.locator('input[name="start_time"]');
-    await expect(startTimeInput).toHaveValue(scenario.expectedStartTime);
-    await setTimelineTime(page.locator(".item-form"), "start_time", "22:00");
-    await expect(startTimeInput).toHaveValue("22:00");
-    expect(supabaseRequests).toEqual([]);
-    expect(failures).toEqual([]);
-  });
-}
-
-test("tail transportation rounding covers zero and exact five-minute boundaries", () => {
+test("timeline time rounding covers zero and exact five-minute boundaries", () => {
   const previousEnd = 10 * 60;
   expect([0, 1, 15, 17, 23].map((duration) => roundMinutesUpToStep(previousEnd + duration))).toEqual([
     10 * 60,
@@ -1154,37 +1119,25 @@ test("demo adjacent no-op drop does not open reorder confirmation", async ({ pag
   expect(failures).toEqual([]);
 });
 
-test("demo new timed visit pair conflict supports restore and delete", async ({ page }) => {
+test("demo new timed visit preserves legacy transport for review without the removed pair dialog", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
   await page.goto("/demo/timeline");
-  const initialTransportCount = await page.locator(".timeline .transport-card").count();
+  const initialTransportCount = await page.locator(".transport-card").count();
   const form = await openDemoNewVisitForm(page, "Phase 4.3 新行程", "10:55", "11:20");
   await form.locator('button[type="submit"]').click();
 
-  const dialog = page.getByTestId("transport-pair-conflict-dialog");
-  await expect(dialog.getByRole("heading", { name: "這個時間會插入既有交通卡中間" })).toBeVisible();
-  await expect(dialog).toContainText("桃園機場");
-  await expect(dialog).toContainText("關西機場");
-
-  await dialog.getByRole("button", { name: "恢復" }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(form).toBeVisible();
-  await expect(page.locator(".timeline-item").filter({ hasText: "Phase 4.3 新行程" })).toHaveCount(0);
-  await expect(page.locator(".timeline .transport-card")).toHaveCount(initialTransportCount);
-
-  await form.locator('button[type="submit"]').click();
-  await page.getByTestId("transport-pair-conflict-dialog").getByRole("button", { name: "刪除交通卡" }).click();
   await expect(page.getByTestId("transport-pair-conflict-dialog")).toHaveCount(0);
   await expect(form).toHaveCount(0);
   await expect(page.locator(".timeline-item").filter({ hasText: "Phase 4.3 新行程" })).toHaveCount(1);
-  await expect(page.locator(".timeline .transport-card")).toHaveCount(initialTransportCount - 1);
+  await expect(page.locator(".transport-card")).toHaveCount(initialTransportCount);
+  await expect(page.locator(".transport-warning-stack")).toBeVisible();
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });
 
-test("demo edited timed visit prompts when moved into a valid pair gap", async ({ page }) => {
+test("demo edited timed visit uses unified Planner without the removed pair dialog", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
@@ -1197,14 +1150,12 @@ test("demo edited timed visit prompts when moved into a valid pair gap", async (
   await setTimelineTime(form, "end_time", "11:20");
   await form.locator('button[type="submit"]').click();
 
-  await expect(page.getByTestId("transport-pair-conflict-dialog")).toBeVisible();
-  await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
-  await page.getByTestId("transport-pair-conflict-dialog").getByRole("button", { name: "恢復" }).click();
-  await expect(form).toBeVisible();
-  await expect(form.locator('input[name="start_time"]')).toHaveValue("10:55");
-  page.once("dialog", (dialog) => dialog.accept());
-  await form.getByRole("button", { name: "取消" }).click();
-  await expect(page.locator(".timeline-item").filter({ hasText: "02:20" }).locator(".time-block")).toContainText("02:20");
+  await expect(page.getByTestId("transport-pair-conflict-dialog")).toHaveCount(0);
+  const scheduleDialog = page.getByTestId("auto-continuation-dialog");
+  await expect(scheduleDialog).toContainText("將改為未設定時間");
+  await scheduleDialog.getByRole("button", { name: "確定套用" }).click();
+  await expect(form).toHaveCount(0);
+  await expect(page.locator(".timeline-item").filter({ hasText: "10:55" }).locator(".time-block")).toContainText("10:55");
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });
@@ -1249,7 +1200,7 @@ test("demo invalid and overlapping times stay in existing validation without pai
   expect(failures).toEqual([]);
 });
 
-test("demo time edit can save only the current visit", async ({ page }) => {
+test("demo time edit has one unified save action and repacks later visits", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
@@ -1258,24 +1209,23 @@ test("demo time edit can save only the current visit", async ({ page }) => {
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
-  await expect(form.locator(".form-actions").getByRole("button")).toHaveText(["取消", "接續", "儲存"]);
-  await expect(form.getByRole("button", { name: "接續", exact: true })).toBeDisabled();
+  await expect(form.locator(".form-actions").getByRole("button")).toHaveText(["取消", "儲存"]);
+  await expect(form.getByRole("button", { name: "接續", exact: true })).toHaveCount(0);
   await setTimelineTime(form, "start_time", "02:30");
-  await expect(form.getByRole("button", { name: "接續", exact: true })).toBeEnabled();
   await form.getByRole("button", { name: "儲存", exact: true }).click();
   await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
 
   const updatedFirst = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
-  const unchangedSecond = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
+  const shiftedSecond = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
   await expect(updatedFirst.locator(".time-block")).toContainText("02:30");
   await expect(updatedFirst.locator(".time-block")).toContainText("03:40");
-  await expect(unchangedSecond.locator(".time-block")).toContainText("06:40");
-  await expect(unchangedSecond.locator(".time-block")).toContainText("10:50");
+  await expect(shiftedSecond.locator(".time-block")).toContainText("03:40");
+  await expect(shiftedSecond.locator(".time-block")).toContainText("07:50");
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });
 
-test("demo auto continuation preserves downstream durations and gaps", async ({ page }) => {
+test("demo unified continuation preserves durations and removes affected gaps", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
@@ -1284,24 +1234,22 @@ test("demo auto continuation preserves downstream durations and gaps", async ({ 
   await firstVisit.click();
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
-  await setTimelineTime(form, "start_time", "02:30");
-  await form.getByRole("button", { name: "接續", exact: true }).click();
-  const dialog = page.getByTestId("auto-continuation-dialog");
-  await expect(dialog.getByRole("heading", { name: "自動接續後續行程？" })).toBeVisible();
-  await dialog.getByRole("button", { name: "確定接續" }).click();
+  await setTimelineTime(form, "end_time", "04:00");
+  await form.getByRole("button", { name: "儲存", exact: true }).click();
+  await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
 
   const shiftedSecond = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
   const shiftedThird = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "關西機場" }) });
-  await expect(shiftedSecond.locator(".time-block")).toContainText("06:50");
-  await expect(shiftedSecond.locator(".time-block")).toContainText("11:00");
-  await expect(shiftedThird.locator(".time-block")).toContainText("11:40");
-  await expect(shiftedThird.locator(".time-block")).toContainText("12:40");
+  await expect(shiftedSecond.locator(".time-block")).toContainText("04:00");
+  await expect(shiftedSecond.locator(".time-block")).toContainText("08:10");
+  await expect(shiftedThird.locator(".time-block")).toContainText("11:10");
+  await expect(shiftedThird.locator(".time-block")).toContainText("12:10");
   await expect(page.getByText("未排時間行程", { exact: true })).toHaveCount(0);
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
 });
 
-test("demo continuation can be cancelled without saving", async ({ page }) => {
+test("demo unified time edit can be cancelled without saving", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
 
@@ -1311,9 +1259,6 @@ test("demo continuation can be cancelled without saving", async ({ page }) => {
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await setTimelineTime(form, "start_time", "02:30");
-  await form.getByRole("button", { name: "接續", exact: true }).click();
-  await page.getByTestId("auto-continuation-dialog").getByRole("button", { name: "取消" }).click();
-
   await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
   await expect(form).toBeVisible();
   await expect(form.locator('input[name="start_time"]')).toHaveValue("02:30");
@@ -1338,11 +1283,11 @@ test("demo fixed anchor stays put and overflowing followers become untimed", asy
   await firstVisit.getByTitle("編輯").click();
   const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
   await setTimelineTime(form, "end_time", "06:40");
-  await form.getByRole("button", { name: "接續", exact: true }).click();
+  await form.getByRole("button", { name: "儲存", exact: true }).click();
 
   const dialog = page.getByTestId("auto-continuation-dialog");
-  await expect(dialog).toContainText("固定行程不會移動，放不下的行程會改為未設定時間");
-  await dialog.getByRole("button", { name: "確定接續" }).click();
+  await expect(dialog).toContainText("部分後續行程無法排入固定行程前或當日 24:00 前，將改為未設定時間");
+  await dialog.getByRole("button", { name: "確定套用" }).click();
 
   const overflowVisit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "桃園機場" }) });
   await expect(overflowVisit.locator(".time-block")).toContainText("--:--");

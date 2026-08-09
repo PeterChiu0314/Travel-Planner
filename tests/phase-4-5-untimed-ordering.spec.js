@@ -33,6 +33,7 @@ function transport(id, fromItemId, toItemId, extra = {}) {
     item_type: "transport",
     from_item_id: fromItemId,
     to_item_id: toItemId,
+    transport_role: "normal_pair",
     ...extra,
   };
 }
@@ -87,35 +88,16 @@ test("untimed may enter a timed gap and reports any transportation pair it break
   ).toMatchObject({ brokenTransportId: "transport-ab", brokenTransportIds: ["transport-ab"], ok: true });
 });
 
-test("transport roles distinguish legacy normal pairs from tail pending cards", () => {
-  expect(normalizeTransportRole(transport("legacy-normal", "a", "b"))).toBe(transportRoles.normalPair);
-  expect(normalizeTransportRole(transport("legacy-tail", "a", null))).toBe(transportRoles.tailPending);
-  expect(normalizeTransportRole(transport("promoted", "a", "b", { transport_role: "tail_promoted_pair" }))).toBe(
-    transportRoles.tailPromotedPair,
+test("Phase 6 recognizes only complete normal transport pairs", () => {
+  expect(normalizeTransportRole(transport("normal", "a", "b", { transport_role: "normal_pair" }))).toBe(
+    transportRoles.normalPair,
   );
-});
-
-test("tail promoted pairs protect their gap while tail pending cards do not", () => {
-  const visits = [visit("a", "09:00", 10), visit("b", "10:00", 20), visit("c", null, 30)];
+  expect(normalizeTransportRole(transport("missing-role", "a", "b", { transport_role: null }))).toBeNull();
+  expect(normalizeTransportRole(transport("legacy-tail", "a", null, { transport_role: "tail_pending" }))).toBeNull();
   expect(
-    planUntimedVisitReorder({
-      items: [...visits, transport("tail-ab", "a", "b", { transport_role: "tail_promoted_pair" })],
-      placement: "after",
-      sourceItemId: "c",
-      targetItemId: "a",
-    }),
-  ).toMatchObject({ brokenTransportId: "tail-ab", brokenTransportIds: ["tail-ab"], ok: true });
-
-  expect(
-    planUntimedVisitReorder({
-      items: [...visits, transport("tail-a", "a", null, { transport_role: "tail_pending" })],
-      placement: "after",
-      sourceItemId: "c",
-      targetItemId: "a",
-    }),
-  ).toMatchObject({ ok: true });
+    normalizeTransportRole(transport("legacy-promoted", "a", "b", { transport_role: "tail_promoted_pair" })),
+  ).toBeNull();
 });
-
 test("timed drag uses the mixed visual list and rebases untimed slots", () => {
   const items = [visit("a", "09:00", 10), visit("b", null, -1_998_500_000), visit("c", "11:00", 30)];
   const plan = planMixedTimedVisitReorder({
@@ -191,10 +173,11 @@ test("timed drag upward can land before an untimed target without transport conf
   expect(buildTimelineVisitDisplayOrder(beforeUntimedItems).map((item) => item.id)).toEqual(["a", "c", "d", "e", "u"]);
 });
 
-test("timed auto-continuation applies untimed-only rebase when timed manifest is unchanged", () => {
-  expect(appSource).toContain("const shouldApplyUntimedBeforeRpc = !timedAutoContinuation || !hasTimedReorder");
-  expect(appSource).toContain("if (!hasTimedReorder) {");
-  expect(appSource).toContain("updatedUntimedCount: untimedSortOrderUpdates.length");
+test("timed and untimed reorder delegate scheduling to the unified Planner", () => {
+  expect(appSource).toContain("planTimelineSchedule");
+  expect(appSource).toContain("timelineScheduleOperation");
+  expect(appSource).toContain("timelineSchedulePlan");
+  expect(appSource).toContain('supabase.rpc("apply_timeline_schedule_operation"');
 });
 
 test("timed drag upward can land around a timed card before an untimed slot", () => {
@@ -261,7 +244,7 @@ test("timed drag treats fixed untimed legacy data as movable untimed", () => {
   ]);
 });
 
-test("timed drag can cross fixed timed anchors but cannot drag the anchor itself", () => {
+test("timed drag cannot cross or move fixed timed anchors", () => {
   const items = [
     visit("a", "09:00", 10),
     visit("fixed", "10:00", 20, { is_fixed: true }),
@@ -276,12 +259,7 @@ test("timed drag can cross fixed timed anchors but cannot drag the anchor itself
       sourceItemId: "c",
       targetItemId: "fixed",
     }),
-  ).toMatchObject({
-    ok: true,
-    orderedTimedItemIds: ["a", "fixed", "c", "b"],
-    packageSourceItemIds: ["a", "c", "b"],
-    slotItemIds: ["a", "b", "c"],
-  });
+  ).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 
   expect(
     planMixedTimedVisitReorder({
@@ -325,27 +303,22 @@ test("a visit cleared by Phase 4.4 becomes a normal legacy untimed visit", () =>
   ).toMatchObject({ ok: true });
 });
 
-test("formal untimed persistence is baseline-guarded and does not call the destination reorder RPC", () => {
+test("formal untimed persistence is baseline-guarded by the unified Planner RPC", () => {
   expect(appSource).toContain("async function reorderUntimedVisit");
-  expect(appSource).toContain('.update({ sort_order: sortOrder })');
-  expect(appSource).toContain('.or("start_time.is.null,end_time.is.null")');
-  expect(appSource).toContain('.eq("updated_at", updatedAt)');
+  expect(appSource).toContain("applyTimelineScheduleOperation");
+  expect(appSource).toContain("timelineScheduleExpectedVisitIds");
   expect(appSource).toContain("onReorderUntimedVisit");
-  expect(appSource).toContain("!hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null");
-  expect(appSource).toContain("function suggestedStartTimeForUntimedAfterTailTransport");
-  expect(appSource).toContain("formatTimeDisplay(item.start_time) || suggestedUntimedStartTime");
-  expect(appSource).toContain("const brokenTransportIds = new Set(plan.brokenTransportIds || [])");
-  expect(appSource).toContain(".filter((item) => isTransportationCard(item) && brokenTransportIds.has(item.id))");
   expect(appSource).toContain("planMixedTimedVisitReorder");
-  expect(appSource).toContain("brokenTransportIds = []");
-  expect(appSource).toContain("transportBaselines: explicitTransportBaselines");
-  expect(appSource).toContain("previewPlan.deletedTransportIds.length || explicitTransportBaselines.length");
+  expect(appSource).toContain("transportBaselines");
+  expect(appSource).toContain("confirmedScheduleEffect");
+  expect(appSource).not.toContain("renderTailTransportInsert");
+  expect(appSource).not.toContain("suggestedStartTimeForUntimedAfterTailTransport");
   expect(appSource).toContain("function isEffectiveFixedVisit(item)");
   expect(appSource).toContain("if (!isTimedVisit(item))");
   expect(appSource).toContain("is_fixed: hasCompleteTime ? Boolean(payload.is_fixed) : false");
 });
 
-test("demo shows mixed untimed content and dragging it does not open continuation UI", async ({ page }) => {
+test("demo untimed drag uses unified continuation without confirmation-only effects", async ({ page }) => {
   await page.goto("/demo/timeline");
   await page.getByRole("button", { name: "DAY 6 4/10" }).click();
   const untimed = page.locator('.timeline-item[data-timing="untimed"]', { hasText: "哲學之道" });
@@ -353,18 +326,20 @@ test("demo shows mixed untimed content and dragging it does not open continuatio
   await expect(untimed).toBeVisible();
   await expect(untimed).toHaveClass(/drag-enabled/);
 
-  const originalTimedLabels = await timed.locator(".time-block").allTextContents();
-  const sourceBox = await untimed.locator(".time-block").boundingBox();
-  const targetBox = await timed.first().boundingBox();
-  expect(sourceBox).not.toBeNull();
-  expect(targetBox).not.toBeNull();
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2 - 12);
-  await page.mouse.move(targetBox.x + 20, targetBox.y + 2, { steps: 8 });
-  await page.mouse.up();
+  const dragHandle = untimed.locator(".time-block");
+  await dragHandle.focus();
+  await page.keyboard.press("Space");
+  await page.waitForTimeout(100);
+  await page.keyboard.press("ArrowUp");
+  await page.waitForTimeout(100);
+  await page.keyboard.press("Space");
   await expect(page.locator(".timeline .timeline-item").first()).toContainText("哲學之道");
-  await expect(timed.locator(".time-block")).toHaveText(originalTimedLabels);
+  await expect(timed.locator(".time-block")).toHaveText([
+    "09:3010:00",
+    "10:0011:30",
+    "11:3013:00",
+    "13:0015:00",
+  ]);
   await expect(page.getByRole("dialog", { name: "自動接續後續行程？" })).toHaveCount(0);
 });
 

@@ -63,8 +63,6 @@ import {
 } from "lucide-react";
 import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import {
-  hasTimedDragOrderChange,
-  isSamePackageOrder,
   planDestinationPackageReorder,
 } from "./lib/destinationPackages.js";
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
@@ -72,16 +70,16 @@ import { resolveGoogleMapsShortUrl } from "./lib/googleMapsShortLinkResolver.js"
 import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "./lib/googleMapsNavigation.js";
 import { countMissingMapPoints, hasValidMapPoint, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
-import { planTimelineAutoContinuation } from "./lib/timelineAutoContinuation.js";
-import { findBrokenTransportationPair } from "./lib/timelineTransportationConflicts.js";
+import {
+  applyTimelineSchedulePlanToItems,
+  attachTimelineScheduleSortOrders,
+  planTimelineSchedule,
+  remapTimelineSchedulePlanItemIds,
+  timelineScheduleOperationTypes,
+} from "./lib/timelineSchedulePlanner.js";
 import {
   isEstablishedTransportPair,
-  isTailPendingTransport,
-  isTailPromotedTransportPair,
   isTransportationCard,
-  normalizeTransportRole,
-  transportRoleForPayload,
-  transportRoles,
 } from "./lib/timelineTransportationRoles.js";
 import { buildRoutePanelStops, getFocusedMapState } from "./lib/timelineMapMarkers.js";
 import { timelineTypeColors } from "./lib/timelineTypeStyles.js";
@@ -93,14 +91,11 @@ import {
   validRouteSegmentKeysFromItems,
 } from "./lib/routeOverrides.js";
 import MapPanel from "./components/map/MapPanel.jsx";
-import { roundMinutesUpToStep } from "./lib/timelineTime.js";
 import {
   buildTimelineVisitDisplayOrder,
   isTimedVisit,
   isUntimedVisit,
   planMixedTimedVisitReorder,
-  planTailPendingPromotionUntimedBypass,
-  planTimelineTimingChangeSortOrders,
   planUntimedVisitReorder,
   untimedOrderingErrorMessage,
 } from "./lib/timelineUntimedOrdering.js";
@@ -1310,53 +1305,6 @@ function sortedVisitItems(items) {
   return buildTimelineVisitDisplayOrder(items);
 }
 
-function lastTimedVisit(items) {
-  return [...sortedVisitItems(items)].reverse().find(isTimedVisit) || null;
-}
-
-function tailTransportContext(items) {
-  const fromItem = lastTimedVisit(items);
-  if (!fromItem) return { fromItem: null, transportItem: null };
-  const transportItem =
-    items.find(
-      (item) =>
-        isTransportationCard(item) &&
-        isTailPendingTransport(item) &&
-        item.from_item_id === fromItem.id &&
-        !item.to_item_id,
-    ) || null;
-  return { fromItem, transportItem };
-}
-
-function suggestedStartTimeFromTailTransport(items) {
-  const { fromItem, transportItem } = tailTransportContext(items);
-  if (!fromItem?.end_time || !transportItem) return "";
-  const previousEnd = timeToMinutes(fromItem.end_time);
-  const durationMinutes = Number(transportItem.transport_duration_minutes || 0);
-  if (previousEnd === null || !Number.isFinite(durationMinutes) || durationMinutes < 0) return "";
-  return minutesToTimeValue(roundMinutesUpToStep(previousEnd + durationMinutes, 5));
-}
-
-function suggestedStartTimeForUntimedAfterTailTransport(items, targetItem) {
-  if (!targetItem || isTransportationCard(targetItem) || isTimedVisit(targetItem)) return "";
-  const visits = sortedVisitItems(items);
-  const targetIndex = visits.findIndex((item) => item.id === targetItem.id);
-  const previousVisit = targetIndex > 0 ? visits[targetIndex - 1] : null;
-  if (!isTimedVisit(previousVisit)) return "";
-  const tailTransport = items.find(
-    (item) =>
-      isTransportationCard(item) &&
-      isTailPendingTransport(item) &&
-      item.from_item_id === previousVisit.id &&
-      !item.to_item_id,
-  );
-  if (!previousVisit.end_time || !tailTransport) return "";
-  const previousEnd = timeToMinutes(previousVisit.end_time);
-  const durationMinutes = Number(tailTransport.transport_duration_minutes || 0);
-  if (previousEnd === null || !Number.isFinite(durationMinutes) || durationMinutes < 0) return "";
-  return minutesToTimeValue(roundMinutesUpToStep(previousEnd + durationMinutes, 5));
-}
-
 function destinationReorderErrorMessage(error) {
   const message = String(error?.message || "");
   if (message.includes("fixed_segment_no_space")) return "此區段沒有可插入的時間空間，請先調整固定行程，或改放到其他位置。";
@@ -1371,6 +1319,50 @@ function destinationReorderErrorMessage(error) {
   if (message.includes("transport_state_changed")) return "交通資訊已被其他成員更新，請重新整理後再試。";
   if (message.includes("stale_item") || message.includes("stale_manifest")) return "行程內容已變更，請重新整理後再試。";
   return message || "目的地內容重排失敗，請稍後再試。";
+}
+
+function timelineScheduleErrorMessage(plan) {
+  if (plan?.validationError === "earlier_conflict") {
+    return plan.earliestStart ? `此行程最早可從 ${plan.earliestStart} 開始。` : "此行程時間會侵犯前方行程。";
+  }
+  if (plan?.validationError === "partial_time") return "開始與結束時間必須同時設定，或同時清除。";
+  if (plan?.validationError === "invalid_range") return "結束時間必須晚於開始時間。";
+  if (plan?.validationError === "fixed_item") return "固定行程無法調整時間。";
+  if (plan?.validationError === "fixed_boundary_crossed") return "固定行程是排程邊界，無法跨越拖曳。";
+  if (plan?.validationError === "fixed_boundary_conflict") return "交通時間無法排入固定行程前。";
+  if (plan?.validationError === "invalid_transport") return "交通卡必須連接兩張相鄰行程，並設定有效交通時間。";
+  return "目前無法安全重新排程，請重新整理後再試。";
+}
+
+function timelineScheduleMajorEffect(plan) {
+  return {
+    automaticUntimedItemIds: [...(plan?.automaticUntimedItemIds || [])].sort(),
+    removedTransportIds: [...(plan?.removedTransportIds || [])].sort(),
+  };
+}
+
+function timelineScheduleEffectKey(plan) {
+  const stableUpdate = (item) => Object.fromEntries(Object.entries(item || {}).sort(([left], [right]) => left.localeCompare(right)));
+  return JSON.stringify({
+    automaticUntimedItemIds: [...(plan?.automaticUntimedItemIds || [])].sort(),
+    orderedVisitIds: [...(plan?.orderedVisitIds || [])],
+    overflowReason: plan?.overflowReason || null,
+    removedTransportIds: [...(plan?.removedTransportIds || [])].sort(),
+    stoppedAtFixedItemId: plan?.stoppedAtFixedItemId || null,
+    suspendedTransportIds: [...(plan?.suspendedTransportIds || [])].sort(),
+    updatedItems: [...(plan?.updatedItems || [])]
+      .map(stableUpdate)
+      .sort((left, right) => String(left.id || "").localeCompare(String(right.id || ""))),
+  });
+}
+
+function timelineScheduleUpdatedAtBaselines(items = [], overrides = {}) {
+  return Object.fromEntries(
+    items.map((item) => [
+      item.id,
+      Object.hasOwn(overrides, item.id) ? overrides[item.id] : item.updated_at || null,
+    ]),
+  );
 }
 
 function isEffectiveFixedVisit(item) {
@@ -1430,26 +1422,30 @@ function buildTransportPairState(items, visits) {
 
   const adjacentTransportByPair = {};
   const passiveUntimedTransportByFrom = {};
-  const tailTransportByFrom = {};
   const invalidTransportItems = [];
   const visitById = new Map(visits.map((item) => [item.id, item]));
-  const finalTimedVisit = [...visits].reverse().find(isTimedVisit) || null;
   const visitIndexById = new Map(visits.map((item, index) => [item.id, index]));
   items
     .filter((item) => isTransportationCard(item))
     .forEach((item) => {
-      const role = normalizeTransportRole(item);
       const hasPair = isEstablishedTransportPair(item) && item.from_item_id && item.to_item_id;
-      const isTail = role === transportRoles.tailPending && item.from_item_id && !item.to_item_id;
       const pairKey = hasPair ? transportPairKey(item.from_item_id, item.to_item_id) : "";
       const pairExists = hasPair && visitIds.has(item.from_item_id) && visitIds.has(item.to_item_id);
       const pairIsAdjacent = pairExists && adjacentKeys.has(pairKey);
       const fromVisit = visitById.get(item.from_item_id) || null;
       const toVisit = visitById.get(item.to_item_id) || null;
+      const fromIndex = visitIndexById.get(item.from_item_id);
+      const toIndex = visitIndexById.get(item.to_item_id);
+      const blockedByUntimed =
+        Number.isInteger(fromIndex) &&
+        Number.isInteger(toIndex) &&
+        toIndex > fromIndex + 1 &&
+        visits.slice(fromIndex + 1, toIndex).some(isUntimedVisit);
       const hasPassiveUntimedEndpoint =
         Boolean(fromVisit) &&
-        ((hasPair && Boolean(toVisit) && (!isTimedVisit(fromVisit) || !isTimedVisit(toVisit))) ||
-          (isTail && !isTimedVisit(fromVisit)));
+        hasPair &&
+        Boolean(toVisit) &&
+        (!isTimedVisit(fromVisit) || !isTimedVisit(toVisit) || blockedByUntimed);
 
       if (hasPassiveUntimedEndpoint) {
         passiveUntimedTransportByFrom[item.from_item_id] = [
@@ -1457,24 +1453,6 @@ function buildTransportPairState(items, visits) {
           item,
         ];
         return;
-      }
-
-      if (isTail && isTimedVisit(fromVisit)) {
-        const nextVisit = visits[visitIndexById.get(item.from_item_id) + 1] || null;
-        if (isUntimedVisit(nextVisit)) {
-          passiveUntimedTransportByFrom[item.from_item_id] = [
-            ...(passiveUntimedTransportByFrom[item.from_item_id] || []),
-            item,
-          ];
-          return;
-        }
-      }
-
-      if (isTail && isTimedVisit(fromVisit) && item.from_item_id === finalTimedVisit?.id) {
-        if (!tailTransportByFrom[item.from_item_id]) {
-          tailTransportByFrom[item.from_item_id] = item;
-          return;
-        }
       }
 
       if (pairIsAdjacent) {
@@ -1485,121 +1463,11 @@ function buildTransportPairState(items, visits) {
       invalidTransportItems.push(item);
     });
 
-  return { adjacentTransportByPair, invalidTransportItems, passiveUntimedTransportByFrom, tailTransportByFrom };
+  return { adjacentTransportByPair, invalidTransportItems, passiveUntimedTransportByFrom };
 }
 
 function transportPairNeedsReview(transportItem, fromItem, toItem) {
   return !transportSnapshotMatchesVisit(transportItem, "from", fromItem) || !transportSnapshotMatchesVisit(transportItem, "to", toItem);
-}
-
-function transportTimeShortageMinutes(transportItem, fromItem, toItem) {
-  if (!isTransportationCard(transportItem) || !fromItem || !toItem) return 0;
-  if (!fromItem.start_time || !fromItem.end_time || !toItem.start_time || !toItem.end_time) return 0;
-  const transportMinutes = Number(transportItem.transport_duration_minutes || 0);
-  if (!Number.isFinite(transportMinutes) || transportMinutes <= 0) return 0;
-  const previousEnd = timeToMinutes(fromItem.end_time);
-  const nextStart = timeToMinutes(toItem.start_time);
-  if (previousEnd === null || nextStart === null) return 0;
-  const gapMinutes = nextStart - previousEnd;
-  return Math.max(0, transportMinutes - gapMinutes);
-}
-
-function planTransportationRoleUpdatesForTimingChange({ dayIndex, editingId, items = [], normalizedPayload }) {
-  if (!editingId || isTransportationCard(normalizedPayload)) return [];
-  const editingItem = items.find((item) => item.id === editingId);
-  if (!editingItem) return [];
-  const dayVisits = items
-    .filter((item) => Number(item.day_index) === Number(dayIndex) && !isTransportationCard(item))
-    .map((item) => (item.id === editingId ? { ...item, ...normalizedPayload, id: editingId } : item));
-  const timedVisits = dayVisits.filter(isTimedVisit).sort((a, b) => {
-    const timeSort = String(a.start_time || "").localeCompare(String(b.start_time || ""));
-    const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
-    return timeSort || orderSort || String(a.id || "").localeCompare(String(b.id || ""));
-  });
-  const timedIndexById = new Map(timedVisits.map((item, index) => [item.id, index]));
-  const currentById = new Map(items.map((item) => [item.id, item]));
-  const updates = [];
-
-  items
-    .filter(
-      (item) =>
-        isTransportationCard(item) &&
-        Number(item.day_index) === Number(dayIndex) &&
-        (item.from_item_id === editingId ||
-          item.to_item_id === editingId ||
-          (isTailPendingTransport(item) && !item.to_item_id)),
-    )
-    .forEach((transportItem) => {
-      if (isTailPromotedTransportPair(transportItem) && transportItem.to_item_id === editingId) {
-        const fromIndex = timedIndexById.get(transportItem.from_item_id);
-        const toIndex = timedIndexById.get(transportItem.to_item_id);
-        const fromVisit = timedVisits[fromIndex];
-        const toVisit = timedVisits[toIndex];
-        const remainsPromoted =
-          Number.isInteger(fromIndex) &&
-          Number.isInteger(toIndex) &&
-          toIndex === fromIndex + 1 &&
-          timeToMinutes(toVisit?.start_time) !== null &&
-          (timeToMinutes(fromVisit?.end_time) === null || timeToMinutes(toVisit.start_time) >= timeToMinutes(fromVisit.end_time));
-        if (!remainsPromoted) {
-          updates.push({
-            id: transportItem.id,
-            original: {
-              to_item_id: transportItem.to_item_id || null,
-              to_snapshot_start_time: transportItem.to_snapshot_start_time || null,
-              to_snapshot_end_time: transportItem.to_snapshot_end_time || null,
-              to_snapshot_destination: transportItem.to_snapshot_destination || null,
-              transport_role: normalizeTransportRole(transportItem),
-              updated_at: transportItem.updated_at || null,
-            },
-            payload: {
-              to_item_id: null,
-              to_snapshot_start_time: null,
-              to_snapshot_end_time: null,
-              to_snapshot_destination: null,
-              transport_role: transportRoles.tailPending,
-              updated_at: new Date().toISOString(),
-            },
-            updated_at: transportItem.updated_at || null,
-          });
-        }
-      }
-
-      if (isTailPendingTransport(transportItem) && !transportItem.to_item_id && isTimedVisit(normalizedPayload)) {
-        const fromIndex = timedIndexById.get(transportItem.from_item_id);
-        const toIndex = timedIndexById.get(editingId);
-        const fromVisit = timedVisits[fromIndex];
-        const toVisit = timedVisits[toIndex];
-        const shouldPromote =
-          Number.isInteger(fromIndex) &&
-          Number.isInteger(toIndex) &&
-          toIndex === fromIndex + 1 &&
-          timeToMinutes(toVisit?.start_time) !== null &&
-          (timeToMinutes(fromVisit?.end_time) === null || timeToMinutes(toVisit.start_time) >= timeToMinutes(fromVisit.end_time));
-        if (shouldPromote) {
-          updates.push({
-            id: transportItem.id,
-            original: {
-              to_item_id: transportItem.to_item_id || null,
-              to_snapshot_start_time: transportItem.to_snapshot_start_time || null,
-              to_snapshot_end_time: transportItem.to_snapshot_end_time || null,
-              to_snapshot_destination: transportItem.to_snapshot_destination || null,
-              transport_role: normalizeTransportRole(transportItem),
-              updated_at: transportItem.updated_at || null,
-            },
-            payload: {
-              to_item_id: editingId,
-              transport_role: transportRoles.tailPromotedPair,
-              ...buildTransportPairSnapshot(currentById.get(transportItem.from_item_id), toVisit),
-              updated_at: new Date().toISOString(),
-            },
-            updated_at: transportItem.updated_at || null,
-          });
-        }
-      }
-    });
-
-  return updates;
 }
 
 function memberName(member) {
@@ -2226,6 +2094,13 @@ function normalizeDemoTime(value) {
   return value ? String(value).slice(0, 5) : "";
 }
 
+function normalizeDemoTimePair(startTime, endTime) {
+  const normalizedStartTime = normalizeDemoTime(startTime);
+  const normalizedEndTime = normalizeDemoTime(endTime);
+  if (!normalizedStartTime || !normalizedEndTime) return { start_time: "", end_time: "" };
+  return { start_time: normalizedStartTime, end_time: normalizedEndTime };
+}
+
 const demoFixedVisitIds = new Set([
   "1afc6297-cf0d-453f-ae3f-2b4e049508f4",
   "926fe5ee-1973-44bb-ab63-634892943aa6",
@@ -2236,9 +2111,8 @@ function createDemoTransportFixture(items, {
   durationMinutes = 20,
   fromId,
   id,
-  role = transportRoles.normalPair,
   title,
-  toId = null,
+  toId,
 }) {
   const fromItem = items.find((item) => item.id === fromId);
   const toItem = toId ? items.find((item) => item.id === toId) : null;
@@ -2273,7 +2147,7 @@ function createDemoTransportFixture(items, {
     transport_note: null,
     from_item_id: fromId,
     to_item_id: toId,
-    transport_role: role,
+    transport_role: "normal_pair",
     ...buildTransportPairSnapshot(fromItem, toItem),
     is_fixed: false,
     fixed_at: null,
@@ -2288,33 +2162,14 @@ function createDemoTransportFixtures(items) {
       durationMinutes: 20,
       fromId: "92b182ce-302c-469f-907b-14acda01aa1e",
       id: "demo-transport-day3-napoli-kasahara",
-      role: transportRoles.normalPair,
       title: "F・20分鐘",
       toId: "8e3cd404-f6fe-4116-829d-5f218613b96d",
-    }),
-    createDemoTransportFixture(items, {
-      category: "car",
-      durationMinutes: 25,
-      fromId: "1ceb3a41-4633-4dee-9035-7085d0d7b4d2",
-      id: "demo-transport-day3-hachiman-tail",
-      role: transportRoles.tailPending,
-      title: "尾端交通・25分鐘",
-    }),
-    createDemoTransportFixture(items, {
-      category: "train",
-      durationMinutes: 15,
-      fromId: "a633aa05-d1e7-4027-a046-5674108c6040",
-      id: "demo-transport-day2-tail-promoted-yamashina-rest",
-      role: transportRoles.tailPromotedPair,
-      title: "尾端延伸・15分鐘",
-      toId: "3e62a2fc-244b-4774-8b9d-f0f45cf32ac5",
     }),
     createDemoTransportFixture(items, {
       category: "walk",
       durationMinutes: 12,
       fromId: "f3973db2-8a80-444f-8108-7fe00c5c3f2a",
       id: "demo-transport-day4-lunch-school",
-      role: transportRoles.normalPair,
       title: "步行・12分鐘",
       toId: "4b9e4e09-b699-45af-9545-79f13f0d522d",
     }),
@@ -2365,8 +2220,7 @@ function createDemoTimelineItems() {
       trip_id: "demo-trip-kyoto",
       sort_order: Number.isFinite(Number(item.sort_order)) ? Number(item.sort_order) : index,
       item_type: item.item_type || "visit",
-      start_time: normalizeDemoTime(item.start_time),
-      end_time: normalizeDemoTime(item.end_time),
+      ...normalizeDemoTimePair(item.start_time, item.end_time),
       from_snapshot_start_time: normalizeDemoTime(item.from_snapshot_start_time),
       from_snapshot_end_time: normalizeDemoTime(item.from_snapshot_end_time),
       to_snapshot_start_time: normalizeDemoTime(item.to_snapshot_start_time),
@@ -2386,7 +2240,7 @@ function createDemoTimelineItems() {
       transport_note: item.item_type === "transport" ? item.transport_note || item.transportation_note || item.description || item.note || "" : item.transport_note || null,
       from_item_id: item.item_type === "transport" ? item.from_item_id || null : item.from_item_id || null,
       to_item_id: item.item_type === "transport" ? item.to_item_id || null : item.to_item_id || null,
-      transport_role: item.item_type === "transport" ? normalizeTransportRole({ ...item, item_type: "transport" }) : item.transport_role || null,
+      transport_role: item.item_type === "transport" ? "normal_pair" : null,
       fixed_at: demoFixedVisitIds.has(item.id) ? item.fixed_at || "2026-06-30T00:00:00.000Z" : item.fixed_at || null,
       fixed_by: demoFixedVisitIds.has(item.id) ? item.fixed_by || "demo-peter" : item.fixed_by || null,
       is_fixed: demoFixedVisitIds.has(item.id) || Boolean(item.is_fixed),
@@ -5118,147 +4972,46 @@ export default function App() {
     return { ok: true, data: result.data };
   }
 
-  async function deleteBrokenTransportationPair(transportConflict) {
-    if (!transportConflict?.id || !transportConflict?.updated_at) {
-      return { ok: false, error: { message: "交通卡資料不完整，請重新整理後再試。" } };
+  async function applyTimelineScheduleOperation({
+    confirmedMajorEffect = null,
+    dayIndex = activeDay,
+    expectedVisitIds = null,
+    itemUpdatedAtBaselines = null,
+    operation,
+    packageSourceItemIds = null,
+    plan,
+    slotItemIds = null,
+    targetItemId = null,
+    targetPayload = null,
+  }) {
+    if (!activeTrip || !plan?.ok || !operation || !itemUpdatedAtBaselines) return { ok: false };
+    const sourceItems = items.filter((item) => Number(item.day_index) === Number(dayIndex));
+    const result = await supabase.rpc("apply_timeline_schedule_operation", {
+      confirmed_major_effect: confirmedMajorEffect,
+      expected_visit_ids: expectedVisitIds || sortedVisitItems(sourceItems).map((item) => item.id),
+      item_updated_at_baselines: itemUpdatedAtBaselines,
+      operation_intent: operation,
+      package_source_item_ids: packageSourceItemIds,
+      preview_result: plan,
+      slot_item_ids: slotItemIds,
+      target_day_index: dayIndex,
+      target_item_id: targetItemId,
+      target_payload: targetPayload,
+      target_trip_id: activeTrip.id,
+    });
+    const responseStatus = result.data?.status || null;
+    if (result.error || responseStatus === "repreview_required") {
+      const message = String(result.error?.message || responseStatus || "");
+      const conflict = /stale_|repreview_required|transport_state_changed/.test(message);
+      const errorMessage = conflict
+        ? "此日行程已由其他成員更新，請重新載入最新資料後再試。"
+        : destinationReorderErrorMessage(result.error || { message });
+      setNotice(errorMessage);
+      if (conflict) await loadTripData(activeTrip.id);
+      return { conflict, error: result.error, errorMessage, ok: false, preview: result.data?.preview || null };
     }
-    const deleteResult = await supabase
-      .from("itinerary_items")
-      .delete()
-      .eq("id", transportConflict.id)
-      .eq("trip_id", activeTrip.id)
-      .eq("item_type", "transport")
-      .eq("updated_at", transportConflict.updated_at)
-      .select("id")
-      .maybeSingle();
-    if (deleteResult.error) return { ok: false, error: deleteResult.error };
-    if (deleteResult.data) return { ok: true };
-
-    const currentTransport = await supabase
-      .from("itinerary_items")
-      .select("id")
-      .eq("id", transportConflict.id)
-      .eq("trip_id", activeTrip.id)
-      .eq("item_type", "transport")
-      .maybeSingle();
-    if (currentTransport.error) return { ok: false, error: currentTransport.error };
-    if (!currentTransport.data) return { ok: true };
-    return { ok: false, error: { message: "這張交通卡已由其他成員更新，請重新整理後再試。" } };
-  }
-
-  async function applyItineraryTimeContinuation(updates = []) {
-    const applied = [];
-    for (const update of updates) {
-      const updatePayload = {};
-      if (Object.hasOwn(update, "start_time")) updatePayload.start_time = update.start_time;
-      if (Object.hasOwn(update, "end_time")) updatePayload.end_time = update.end_time;
-      if (Number.isInteger(update.sort_order)) updatePayload.sort_order = update.sort_order;
-      const result = await supabase
-        .from("itinerary_items")
-        .update(updatePayload)
-        .eq("id", update.id)
-        .eq("trip_id", activeTrip.id)
-        .eq("day_index", activeDay)
-        .neq("item_type", "transport")
-        .eq("is_fixed", false)
-        .eq("updated_at", update.updated_at)
-        .select("id, updated_at")
-        .maybeSingle();
-      if (result.error || !result.data) {
-        return {
-          ok: false,
-          applied,
-          error: result.error || { message: "後續行程已由其他成員更新，請重新整理後再試。" },
-        };
-      }
-      applied.push({ ...update, applied_updated_at: result.data.updated_at });
-    }
-    return { ok: true, applied };
-  }
-
-  async function rollbackItineraryTimeContinuation(applied = []) {
-    let rollbackFailed = false;
-    let latestUpdatedAt = null;
-    for (const update of [...applied].reverse()) {
-      const rollbackPayload = {};
-      if (Object.hasOwn(update, "original_start_time")) rollbackPayload.start_time = update.original_start_time;
-      if (Object.hasOwn(update, "original_end_time")) rollbackPayload.end_time = update.original_end_time;
-      if (Number.isInteger(update.original_sort_order)) rollbackPayload.sort_order = update.original_sort_order;
-      const result = await supabase
-        .from("itinerary_items")
-        .update(rollbackPayload)
-        .eq("id", update.id)
-        .eq("trip_id", activeTrip.id)
-        .eq("day_index", activeDay)
-        .eq("updated_at", update.applied_updated_at)
-        .select("id, updated_at")
-        .maybeSingle();
-      if (result.error || !result.data) rollbackFailed = true;
-      else latestUpdatedAt = result.data.updated_at;
-    }
-    return { ok: !rollbackFailed, latestUpdatedAt };
-  }
-
-  async function applyTransportationRoleUpdates(updates = []) {
-    const applied = [];
-    for (const update of updates) {
-      const result = await supabase
-        .from("itinerary_items")
-        .update(update.payload)
-        .eq("id", update.id)
-        .eq("trip_id", activeTrip.id)
-        .eq("day_index", activeDay)
-        .eq("item_type", "transport")
-        .eq("updated_at", update.updated_at)
-        .select("id, updated_at")
-        .maybeSingle();
-      if (result.error || !result.data) {
-        return {
-          applied,
-          error: result.error || { message: "transport_role_update_conflict" },
-          ok: false,
-        };
-      }
-      applied.push({ ...update, applied_updated_at: result.data.updated_at });
-    }
-    return { applied, ok: true };
-  }
-
-  async function rollbackTransportationRoleUpdates(applied = []) {
-    let rollbackFailed = false;
-    for (const update of [...applied].reverse()) {
-      const result = await supabase
-        .from("itinerary_items")
-        .update({
-          to_item_id: update.original.to_item_id,
-          to_snapshot_start_time: update.original.to_snapshot_start_time,
-          to_snapshot_end_time: update.original.to_snapshot_end_time,
-          to_snapshot_destination: update.original.to_snapshot_destination,
-          transport_role: update.original.transport_role,
-        })
-        .eq("id", update.id)
-        .eq("trip_id", activeTrip.id)
-        .eq("updated_at", update.applied_updated_at)
-        .select("id")
-        .maybeSingle();
-      if (result.error || !result.data) rollbackFailed = true;
-    }
-    return { ok: !rollbackFailed };
-  }
-
-  async function rollbackEditedItineraryItem({ editingId, editingItem, normalizedPayload, updatedAt }) {
-    const rollbackPayload = Object.fromEntries(
-      Object.keys(normalizedPayload).map((field) => [field, editingItem?.[field] ?? null]),
-    );
-    const rollback = await supabase
-      .from("itinerary_items")
-      .update(rollbackPayload)
-      .eq("id", editingId)
-      .eq("trip_id", activeTrip.id)
-      .eq("updated_at", updatedAt)
-      .select("id, updated_at")
-      .maybeSingle();
-    return { ok: !rollback.error && Boolean(rollback.data), data: rollback.data, error: rollback.error };
+    await loadTripData(activeTrip.id);
+    return { data: result.data, ok: true };
   }
 
   async function saveItem(payload, editingId, meta = {}) {
@@ -5270,43 +5023,18 @@ export default function App() {
       return { ok: false, fixed: true };
     }
     if (editingId && !(await ensureItineraryItemEditable(editingId))) return { ok: false, fixed: true };
-    const normalizedPayload = normalizeItemPayload(payload);
-    let passiveUntimedPositionUpdates = [];
-    if (editingItem && isTimedVisit(editingItem) !== isTimedVisit(normalizedPayload)) {
-      const conversionPlan = planTimelineTimingChangeSortOrders({
-        items: dayItems,
-        replacements: [{ id: editingItem.id, start_time: normalizedPayload.start_time, end_time: normalizedPayload.end_time }],
-      });
-      if (!conversionPlan.ok) {
-        const errorMessage = "目前無法保留這張未設定時間行程的位置，請重新整理後再試。";
-        setNotice(errorMessage);
-        return { ok: false, errorMessage };
-      }
-      if (Number.isInteger(conversionPlan.sortOrders[editingItem.id])) {
-        normalizedPayload.sort_order = conversionPlan.sortOrders[editingItem.id];
-      }
-      passiveUntimedPositionUpdates = Object.entries(conversionPlan.sortOrders)
-        .filter(([itemId, sortOrder]) => itemId !== editingItem.id && items.find((item) => item.id === itemId)?.sort_order !== sortOrder)
-        .map(([itemId, sortOrder]) => {
-          const item = items.find((candidate) => candidate.id === itemId);
-          return {
-            id: itemId,
-            original_sort_order: item?.sort_order,
-            sort_order: sortOrder,
-            updated_at: item?.updated_at || null,
-          };
-        });
+    if (payload?.item_type !== "transport" && Boolean(payload?.start_time) !== Boolean(payload?.end_time)) {
+      const errorMessage = "開始與結束時間必須同時設定，或同時清除。";
+      setNotice(errorMessage);
+      return { ok: false, errorMessage };
     }
-    if (!editingId && isTransportationCard(normalizedPayload) && normalizedPayload.from_item_id && !normalizedPayload.to_item_id) {
-      const { fromItem, transportItem } = tailTransportContext(dayItems);
-      if (!fromItem || normalizedPayload.from_item_id !== fromItem.id) {
-        setNotice("尾端交通只能新增在最後一個有時間行程之後。");
-        return { ok: false };
-      }
-      if (transportItem) {
-        setNotice("最後一個行程後方已經有尾端交通資訊。");
-        return { ok: false };
-      }
+    const normalizedPayload = normalizeItemPayload(payload);
+    if (
+      isTransportationCard(normalizedPayload) &&
+      (!normalizedPayload.from_item_id || !normalizedPayload.to_item_id)
+    ) {
+      setNotice("交通卡必須連接兩張相鄰行程。");
+      return { ok: false };
     }
     const invalidTimeRange = !isTransportationCard(normalizedPayload) && isInvalidTimeRange(normalizedPayload.start_time, normalizedPayload.end_time);
     if (invalidTimeRange) {
@@ -5319,124 +5047,40 @@ export default function App() {
       items,
       payload: normalizedPayload,
     });
-    if (overlapItem) {
+    if (overlapItem && !editingId) {
       const overlapError = formatTimelineOverlapError(overlapItem);
       return { ok: false, overlapError };
     }
-    const transportConflict = meta.transportConflict || null;
-    const autoContinuationUpdates = Array.isArray(meta.autoContinuationUpdates) ? meta.autoContinuationUpdates : [];
-    const followUpUpdates = [...autoContinuationUpdates, ...passiveUntimedPositionUpdates];
-    const transportationRoleUpdates = planTransportationRoleUpdatesForTimingChange({
-      dayIndex: activeDay,
-      editingId,
-      items,
-      normalizedPayload,
-    });
+    const timelineSchedulePlan = meta.timelineSchedulePlan?.ok ? meta.timelineSchedulePlan : null;
+    const timelineScheduleOperation = meta.timelineScheduleOperation || null;
+    const timelineScheduleTargetId = meta.timelineScheduleTargetId || editingId;
+    if (timelineScheduleTargetId && timelineSchedulePlan && timelineScheduleOperation) {
+      const result = await applyTimelineScheduleOperation({
+        confirmedMajorEffect: meta.confirmedScheduleEffect || null,
+        expectedVisitIds: meta.timelineScheduleExpectedVisitIds,
+        itemUpdatedAtBaselines: meta.timelineScheduleItemBaselines,
+        operation: timelineScheduleOperation,
+        plan: timelineSchedulePlan,
+        targetItemId: timelineScheduleTargetId,
+        targetPayload: normalizedPayload,
+      });
+      if (!result.ok) return result;
+      await releaseEditLock({
+        recordId: timelineScheduleTargetId,
+        supabase,
+        table: "itinerary_items",
+        userId: session?.user?.id,
+      });
+      return {
+        data: (result.data?.items || []).find((item) => item.id === timelineScheduleTargetId) || result.data,
+        ok: true,
+      };
+    }
     if (editingId) {
-      const invalidContinuationItem = followUpUpdates.find((update) => {
-        const item = items.find((candidate) => candidate.id === update.id);
-        return (
-          !item ||
-          item.trip_id !== activeTrip.id ||
-          Number(item.day_index) !== Number(activeDay) ||
-          isTransportationCard(item) ||
-          isEffectiveFixedVisit(item) ||
-          isLockedByAnotherUser(item, session?.user?.id) ||
-          !update.updated_at
-        );
-      });
-      if (invalidContinuationItem) {
-        const errorMessage = "後續行程包含固定、鎖定或已變更的資料，無法自動接續時間。";
-        setNotice(errorMessage);
-        return { ok: false, errorMessage };
-      }
-      const requiresDeferredCompletion = Boolean(transportConflict) || followUpUpdates.length > 0 || transportationRoleUpdates.length > 0;
-      const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, {
-        ...meta,
-        deferEditLockRelease: requiresDeferredCompletion,
-      });
+      const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, meta);
       if (result.error) setNotice(result.error.message);
       else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
-      else if (requiresDeferredCompletion) {
-        const continuationResult = await applyItineraryTimeContinuation(followUpUpdates);
-        if (!continuationResult.ok) {
-          const continuationRollback = await rollbackItineraryTimeContinuation(continuationResult.applied);
-          const editedRollback = await rollbackEditedItineraryItem({
-            editingId,
-            editingItem,
-            normalizedPayload,
-            updatedAt: result.data?.updated_at,
-          });
-          const rollbackSucceeded = continuationRollback.ok && editedRollback.ok;
-          const failureLabel = passiveUntimedPositionUpdates.length ? "未設定時間行程位置更新" : "後續行程自動接續";
-          const errorMessage = rollbackSucceeded
-            ? `${failureLabel}失敗，本次時間變更未儲存：${continuationResult.error.message}`
-            : `${failureLabel}失敗，且部分資料無法自動回復：${continuationResult.error.message}`;
-          setNotice(errorMessage);
-          return {
-            ok: false,
-            error: continuationResult.error,
-            errorMessage,
-            baseUpdatedAt: editedRollback.data?.updated_at || result.data?.updated_at || null,
-            rollbackFailed: !rollbackSucceeded,
-          };
-        }
-        const roleUpdateResult = await applyTransportationRoleUpdates(transportationRoleUpdates);
-        if (!roleUpdateResult.ok) {
-          const continuationRollback = await rollbackItineraryTimeContinuation(continuationResult.applied);
-          const roleRollback = await rollbackTransportationRoleUpdates(roleUpdateResult.applied);
-          const editedRollback = await rollbackEditedItineraryItem({
-            editingId,
-            editingItem,
-            normalizedPayload,
-            updatedAt: result.data?.updated_at,
-          });
-          const rollbackSucceeded = continuationRollback.ok && roleRollback.ok && editedRollback.ok;
-          const errorMessage = rollbackSucceeded
-            ? `transport role update failed and itinerary change was rolled back: ${roleUpdateResult.error.message}`
-            : `transport role update failed and rollback needs review: ${roleUpdateResult.error.message}`;
-          setNotice(errorMessage);
-          return {
-            ok: false,
-            error: roleUpdateResult.error,
-            errorMessage,
-            baseUpdatedAt: editedRollback.data?.updated_at || result.data?.updated_at || null,
-            rollbackFailed: !rollbackSucceeded,
-          };
-        }
-        if (transportConflict) {
-          const transportDelete = await deleteBrokenTransportationPair(transportConflict);
-          if (!transportDelete.ok) {
-            const continuationRollback = await rollbackItineraryTimeContinuation(continuationResult.applied);
-            const roleRollback = await rollbackTransportationRoleUpdates(roleUpdateResult.applied);
-            const editedRollback = await rollbackEditedItineraryItem({
-              editingId,
-              editingItem,
-              normalizedPayload,
-              updatedAt: result.data?.updated_at,
-            });
-            const rollbackSucceeded = continuationRollback.ok && roleRollback.ok && editedRollback.ok;
-            const errorMessage = rollbackSucceeded
-              ? `交通卡刪除失敗，行程變更未儲存：${transportDelete.error.message}`
-              : `交通卡刪除失敗，且部分行程時間無法自動回復：${transportDelete.error.message}`;
-            setNotice(errorMessage);
-            return {
-              ok: false,
-              error: transportDelete.error,
-              errorMessage,
-              baseUpdatedAt: editedRollback.data?.updated_at || result.data?.updated_at || null,
-              rollbackFailed: !rollbackSucceeded,
-            };
-          }
-        }
-        await releaseEditLock({
-          recordId: editingId,
-          supabase,
-          table: "itinerary_items",
-          userId: session?.user?.id,
-        });
-        await loadTripData(activeTrip.id);
-      } else await loadTripData(activeTrip.id);
+      else await loadTripData(activeTrip.id);
       return result;
     }
 
@@ -5456,106 +5100,9 @@ export default function App() {
       setNotice(insertResult.error.message);
       return { ok: false, error: insertResult.error };
     }
-
-    if (transportConflict) {
-      const transportDelete = await deleteBrokenTransportationPair(transportConflict);
-      if (!transportDelete.ok) {
-        const rollback = await supabase
-          .from("itinerary_items")
-          .delete()
-          .eq("id", insertResult.data.id)
-          .eq("trip_id", activeTrip.id);
-        const errorMessage = rollback.error
-          ? `交通卡刪除失敗，且新增行程無法回復：${transportDelete.error.message}`
-          : `交通卡刪除失敗，新增行程未儲存：${transportDelete.error.message}`;
-        setNotice(errorMessage);
-        await loadTripData(activeTrip.id);
-        return { ok: false, error: transportDelete.error, errorMessage, rollbackFailed: Boolean(rollback.error) };
-      }
-    }
-
-    const { fromItem: tailFromItem, transportItem: tailTransportItem } = tailTransportContext(dayItems);
-    const newVisitStart = timeToMinutes(insertResult.data?.start_time);
-    const tailFromEnd = timeToMinutes(tailFromItem?.end_time);
-    const shouldCompleteTailPair =
-      !isTransportationCard(insertResult.data) &&
-      tailTransportItem &&
-      newVisitStart !== null &&
-      (tailFromEnd === null || newVisitStart >= tailFromEnd);
-    const tailBypassPlan = shouldCompleteTailPair
-      ? planTailPendingPromotionUntimedBypass({
-          items: [...dayItems, insertResult.data],
-          promotedFromItemId: tailFromItem.id,
-          promotedToItemId: insertResult.data.id,
-          tailTransportItem,
-        })
-      : { ok: true, untimedSortOrderUpdates: [] };
-    if (!tailBypassPlan.ok) {
-      const rollback = await supabase
-        .from("itinerary_items")
-        .delete()
-        .eq("id", insertResult.data.id)
-        .eq("trip_id", activeTrip.id);
-      const errorMessage = rollback.error
-        ? `tail pending untimed bypass failed and inserted item rollback failed: ${tailBypassPlan.errorCode || "order_space_exhausted"}`
-        : `tail pending untimed bypass failed: ${tailBypassPlan.errorCode || "order_space_exhausted"}`;
-      setNotice(errorMessage);
-      await loadTripData(activeTrip.id);
-      return { ok: false, errorMessage, rollbackFailed: Boolean(rollback.error) };
-    }
-    const tailBypassUpdates = tailBypassPlan.untimedSortOrderUpdates || [];
-    const tailBypassResult = tailBypassUpdates.length
-      ? await applyItineraryTimeContinuation(tailBypassUpdates)
-      : { ok: true, applied: [] };
-    if (!tailBypassResult.ok) {
-      const bypassRollback = await rollbackItineraryTimeContinuation(tailBypassResult.applied);
-      const insertRollback = await supabase
-        .from("itinerary_items")
-        .delete()
-        .eq("id", insertResult.data.id)
-        .eq("trip_id", activeTrip.id);
-      const rollbackFailed = !bypassRollback.ok || Boolean(insertRollback.error);
-      const errorMessage = rollbackFailed
-        ? `tail pending untimed bypass failed and rollback needs review: ${tailBypassResult.error.message}`
-        : `tail pending untimed bypass failed and inserted item was rolled back: ${tailBypassResult.error.message}`;
-      setNotice(errorMessage);
-      await loadTripData(activeTrip.id);
-      return { ok: false, error: tailBypassResult.error, errorMessage, rollbackFailed };
-    }
-
-    if (shouldCompleteTailPair) {
-      const tailUpdate = await supabase
-        .from("itinerary_items")
-        .update({
-          to_item_id: insertResult.data.id,
-          transport_role: transportRoles.tailPromotedPair,
-          ...buildTransportPairSnapshot(tailFromItem, insertResult.data),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", tailTransportItem.id)
-        .eq("trip_id", activeTrip.id);
-      if (tailUpdate.error) {
-        const rollback = await supabase
-          .from("itinerary_items")
-          .delete()
-          .eq("id", insertResult.data.id)
-          .eq("trip_id", activeTrip.id);
-        const bypassRollback = await rollbackItineraryTimeContinuation(tailBypassResult.applied);
-        const rollbackFailed = !bypassRollback.ok || Boolean(rollback.error);
-        setNotice(
-          rollbackFailed
-            ? `新增行程後無法完成尾端交通配對，且復原失敗：${tailUpdate.error.message}`
-            : `無法完成尾端交通配對：${tailUpdate.error.message}`,
-        );
-        await loadTripData(activeTrip.id);
-        return { ok: false, error: tailUpdate.error, rollbackFailed };
-      }
-    }
-
     await loadTripData(activeTrip.id);
     return { ok: true, data: insertResult.data };
   }
-
   async function saveAlternative(itemId, payload, editingId) {
     if (!activeTrip || !canEditActiveTripContent) return { ok: false };
     const item = items.find((currentItem) => currentItem.id === itemId);
@@ -6066,6 +5613,26 @@ export default function App() {
       return;
     }
     if (item && !isTransportationCard(item) && !(await ensureItineraryItemEditable(itemId))) return;
+    if (item && isTransportationCard(item)) {
+      const expectedVisitIds = sortedVisitItems(dayItems).map((visit) => visit.id);
+      const operation = { transportId: item.id, type: timelineScheduleOperationTypes.deleteTransport };
+      const plan = attachTimelineScheduleSortOrders({
+        items: dayItems,
+        plan: planTimelineSchedule({ items: dayItems, operation, orderedVisitIds: expectedVisitIds }),
+      });
+      if (!plan.ok) {
+        setNotice(timelineScheduleErrorMessage(plan));
+        return;
+      }
+      await applyTimelineScheduleOperation({
+        expectedVisitIds,
+        itemUpdatedAtBaselines: timelineScheduleUpdatedAtBaselines(dayItems),
+        operation,
+        plan,
+        targetItemId: item.id,
+      });
+      return;
+    }
     if (item && !isTransportationCard(item)) {
       const relatedDeleteResults = await Promise.all([
         supabase
@@ -6301,265 +5868,52 @@ export default function App() {
   }
 
   async function reorderDestinationPackages({
+    confirmedScheduleEffect = null,
     dayIndex,
-    orderedTimedItemIds = null,
-    orderedVisitItemIds = null,
+    itemUpdatedAtBaselines = null,
     packageSourceItemIds,
     slotItemIds,
-    timedAutoContinuation = false,
-    transportBaselines = [],
-    untimedSortOrderUpdates = [],
+    timelineScheduleExpectedVisitIds = null,
+    timelineScheduleOperation = null,
+    timelineSchedulePlan = null,
   }) {
     if (!activeTrip || !canEditActiveTripContent || dayIndex !== activeDay) return { ok: false };
-    const timedVisits = sortedVisitItems(
-      items.filter(
-        (item) => item.day_index === dayIndex && isTimedVisit(item),
-      ),
-    );
-    const hasTimedReorder = hasTimedDragOrderChange({
-      currentTimedItemIds: timedVisits.map((item) => item.id),
-      orderedTimedItemIds,
+    if (!timelineSchedulePlan?.ok || !timelineScheduleOperation) {
+      return { ok: false, errorMessage: "目前無法安全重新排程，請重新整理後再試。" };
+    }
+    return applyTimelineScheduleOperation({
+      confirmedMajorEffect: confirmedScheduleEffect,
+      dayIndex,
+      expectedVisitIds: timelineScheduleExpectedVisitIds,
+      itemUpdatedAtBaselines,
+      operation: timelineScheduleOperation,
       packageSourceItemIds,
+      plan: timelineSchedulePlan,
       slotItemIds,
     });
-    if (!hasTimedReorder && !untimedSortOrderUpdates.length && !transportBaselines.length) return { ok: true, noOp: true };
-    const movableTimedVisitIds = timedVisits.filter((item) => !isEffectiveFixedVisit(item)).map((item) => item.id);
-    if (!isSamePackageOrder(movableTimedVisitIds, slotItemIds)) {
-      const errorMessage = "行程順序已變更，請重新整理後再試。";
-      setNotice(errorMessage);
-      return { ok: false, errorMessage };
-    }
-    if (timedVisits.some((item) => !isEffectiveFixedVisit(item) && isLockedByAnotherUser(item, session?.user?.id))) {
-      const errorMessage = "當天其中一個行程目前正由其他成員編輯。";
-      setNotice(errorMessage);
-      return { ok: false, errorMessage };
-    }
-    const invalidUntimedUpdate = untimedSortOrderUpdates.find((update) => {
-      const item = items.find((candidate) => candidate.id === update.id);
-      return (
-        !item ||
-        item.trip_id !== activeTrip.id ||
-        Number(item.day_index) !== Number(dayIndex) ||
-        !isUntimedVisit(item) ||
-        isLockedByAnotherUser(item, session?.user?.id) ||
-        item.updated_at !== update.updated_at
-      );
-    });
-    if (invalidUntimedUpdate) {
-      const errorMessage = "未設定時間行程已被更新，請重新整理後再試。";
-      setNotice(errorMessage);
-      await loadTripData(activeTrip.id);
-      return { ok: false, errorMessage };
-    }
-    const explicitTransportIds = transportBaselines.map((transport) => transport.id);
-    const explicitTransports = explicitTransportIds.length
-      ? items.filter(
-          (item) =>
-            item.trip_id === activeTrip.id &&
-            Number(item.day_index) === Number(dayIndex) &&
-            isTransportationCard(item) &&
-            explicitTransportIds.includes(item.id),
-        )
-      : [];
-    const expectedExplicitTransportById = new Map(
-      transportBaselines.map((transport) => [transport.id, transport.updatedAt]),
-    );
-    const explicitTransportManifestMatches =
-      explicitTransports.length === expectedExplicitTransportById.size &&
-      explicitTransports.every(
-        (transport) => expectedExplicitTransportById.get(transport.id) === transport.updated_at,
-      );
-    if (!explicitTransportManifestMatches) {
-      const errorMessage = "transport_state_changed";
-      setNotice(errorMessage);
-      await loadTripData(activeTrip.id);
-      return { ok: false, errorMessage };
-    }
-
-    const shouldApplyUntimedBeforeRpc = !timedAutoContinuation || !hasTimedReorder;
-    const untimedUpdateResult = shouldApplyUntimedBeforeRpc
-      ? await applyItineraryTimeContinuation(untimedSortOrderUpdates)
-      : { ok: true, applied: [] };
-    if (!untimedUpdateResult.ok) {
-      const errorMessage = untimedUpdateResult.error?.message || "untimed_sort_order_update_failed";
-      setNotice(errorMessage);
-      await loadTripData(activeTrip.id);
-      return { ok: false, error: untimedUpdateResult.error, errorMessage };
-    }
-    if (!hasTimedReorder) {
-      if (explicitTransportIds.length) {
-        const deleteResult = await supabase
-          .from("itinerary_items")
-          .delete()
-          .eq("trip_id", activeTrip.id)
-          .eq("day_index", dayIndex)
-          .eq("item_type", "transport")
-          .in("id", explicitTransportIds)
-          .select("id");
-        if (deleteResult.error || deleteResult.data?.length !== explicitTransportIds.length) {
-          const rollback = await rollbackItineraryTimeContinuation(untimedUpdateResult.applied);
-          const errorMessage = deleteResult.error?.message || "transport_delete_failed";
-          setNotice(rollback.ok ? errorMessage : `${errorMessage} / untimed_rollback_failed`);
-          await loadTripData(activeTrip.id);
-          return { ok: false, error: deleteResult.error, errorMessage, rollbackFailed: !rollback.ok };
-        }
-      }
-      await loadTripData(activeTrip.id);
-      return { ok: true, data: { updatedUntimedCount: untimedSortOrderUpdates.length } };
-    }
-
-    const baselineRows = items.filter(
-      (item) =>
-        item.day_index === dayIndex &&
-        (isTransportationCard(item) ||
-          isTimedVisit(item) ||
-          untimedSortOrderUpdates.some((update) => update.id === item.id)),
-    );
-    const itemUpdatedAtBaselines = Object.fromEntries(
-      baselineRows.map((item) => [item.id, item.updated_at]),
-    );
-    const reorderRpc = timedAutoContinuation
-      ? "reorder_itinerary_fixed_anchor_continuation"
-      : "reorder_itinerary_destination_packages";
-    const reorderArgs = {
-      target_trip_id: activeTrip.id,
-      target_day_index: dayIndex,
-      slot_item_ids: slotItemIds,
-      package_source_item_ids: packageSourceItemIds,
-      item_updated_at_baselines: itemUpdatedAtBaselines,
-    };
-    if (timedAutoContinuation) {
-      reorderArgs.ordered_timed_item_ids = orderedTimedItemIds;
-      reorderArgs.ordered_visit_item_ids = orderedVisitItemIds;
-      reorderArgs.untimed_sort_order_updates = untimedSortOrderUpdates;
-    }
-    const { data, error } = await supabase.rpc(reorderRpc, reorderArgs);
-    if (error) {
-      const rollback = await rollbackItineraryTimeContinuation(untimedUpdateResult.applied);
-      const errorMessage = destinationReorderErrorMessage(error);
-      setNotice(rollback.ok ? errorMessage : `${errorMessage} / untimed_rollback_failed`);
-      if (/stale_|transport_state_changed/.test(error.message || "")) await loadTripData(activeTrip.id);
-      return { ok: false, error, errorMessage, rollbackFailed: !rollback.ok };
-    }
-    if (!timedAutoContinuation && explicitTransportIds.length) {
-      const deleteResult = await supabase
-        .from("itinerary_items")
-        .delete()
-        .eq("trip_id", activeTrip.id)
-        .eq("day_index", dayIndex)
-        .eq("item_type", "transport")
-        .in("id", explicitTransportIds)
-        .select("id");
-      if (deleteResult.error || deleteResult.data?.length !== explicitTransportIds.length) {
-        const errorMessage = deleteResult.error?.message || "transport_delete_failed";
-        setNotice(errorMessage);
-        await loadTripData(activeTrip.id);
-        return { ok: false, error: deleteResult.error, errorMessage };
-      }
-    }
-    await loadTripData(activeTrip.id);
-    return { ok: true, data };
   }
 
-  async function reorderUntimedVisit({ dayIndex, itemId, sortOrder, transportBaselines = [], updatedAt }) {
+  async function reorderUntimedVisit({
+    confirmedScheduleEffect = null,
+    dayIndex,
+    itemUpdatedAtBaselines = null,
+    timelineScheduleExpectedVisitIds = null,
+    timelineScheduleOperation = null,
+    timelineSchedulePlan = null,
+  }) {
     if (!activeTrip || !canEditActiveTripContent || dayIndex !== activeDay) return { ok: false };
-    const item = items.find((candidate) => candidate.id === itemId);
-    if (!item || !isUntimedVisit(item) || isLockedByAnotherUser(item, session?.user?.id)) {
-      const errorMessage = "這張未設定時間行程目前無法移動。";
-      setNotice(errorMessage);
-      return { ok: false, errorMessage };
+    if (!timelineSchedulePlan?.ok || !timelineScheduleOperation) {
+      return { ok: false, errorMessage: "目前無法安全重新排程，請重新整理後再試。" };
     }
-    const expectedTransportById = new Map(
-      transportBaselines.map((transport) => [transport.id, transport.updatedAt]),
-    );
-    const requestedTransportIds = transportBaselines.map((transport) => transport.id);
-    const requestedTransports = requestedTransportIds.length
-      ? items.filter(
-          (candidate) =>
-            candidate.trip_id === activeTrip.id &&
-            Number(candidate.day_index) === Number(dayIndex) &&
-            isTransportationCard(candidate) &&
-            requestedTransportIds.includes(candidate.id),
-        )
-      : [];
-    const transportManifestMatches =
-      requestedTransports.length === expectedTransportById.size &&
-      requestedTransports.every(
-        (transport) => expectedTransportById.get(transport.id) === transport.updated_at,
-      );
-    if (!transportManifestMatches) {
-      const errorMessage = "交通資訊已由其他成員更新，請重新整理後再試。";
-      setNotice(errorMessage);
-      await loadTripData(activeTrip.id);
-      return { conflict: true, errorMessage, ok: false };
-    }
-    if (transportBaselines.length) {
-      const baselineResult = await supabase
-        .from("itinerary_items")
-        .select("id, updated_at")
-        .eq("trip_id", activeTrip.id)
-        .eq("day_index", dayIndex)
-        .eq("item_type", "transport")
-        .in("id", requestedTransportIds);
-      const baselineById = new Map((baselineResult.data || []).map((transport) => [transport.id, transport.updated_at]));
-      const baselineMatches =
-        !baselineResult.error &&
-        baselineById.size === expectedTransportById.size &&
-        transportBaselines.every((transport) => baselineById.get(transport.id) === transport.updatedAt);
-      if (!baselineMatches) {
-        const errorMessage = baselineResult.error?.message || "交通資訊已由其他成員更新，請重新整理後再試。";
-        setNotice(errorMessage);
-        await loadTripData(activeTrip.id);
-        return { conflict: !baselineResult.error, error: baselineResult.error, errorMessage, ok: false };
-      }
-    }
-    const result = await supabase
-      .from("itinerary_items")
-      .update({ sort_order: sortOrder })
-      .eq("id", itemId)
-      .eq("trip_id", activeTrip.id)
-      .eq("day_index", dayIndex)
-      .neq("item_type", "transport")
-      .or("start_time.is.null,end_time.is.null")
-      .eq("is_fixed", false)
-      .eq("updated_at", updatedAt)
-      .select("id, sort_order, updated_at")
-      .maybeSingle();
-    if (result.error || !result.data) {
-      const errorMessage = result.error?.message || "行程位置已由其他成員更新，請重新整理後再試。";
-      setNotice(errorMessage);
-      await loadTripData(activeTrip.id);
-      return { conflict: !result.error, error: result.error, errorMessage, ok: false };
-    }
-    if (transportBaselines.length) {
-      const deleteResult = await supabase
-        .from("itinerary_items")
-        .delete()
-        .eq("trip_id", activeTrip.id)
-        .eq("day_index", dayIndex)
-        .eq("item_type", "transport")
-        .in("id", transportBaselines.map((transport) => transport.id))
-        .select("id");
-      if (deleteResult.error || deleteResult.data?.length !== transportBaselines.length) {
-        const compensationResult = await supabase
-          .from("itinerary_items")
-          .update({ sort_order: item.sort_order })
-          .eq("id", itemId)
-          .eq("trip_id", activeTrip.id)
-          .eq("updated_at", result.data.updated_at);
-        const errorMessage =
-          deleteResult.error?.message ||
-          compensationResult.error?.message ||
-          "交通卡未能完整移除，已重新載入最新行程。";
-        setNotice(errorMessage);
-        await loadTripData(activeTrip.id);
-        return { error: deleteResult.error || compensationResult.error, errorMessage, ok: false };
-      }
-    }
-    await loadTripData(activeTrip.id);
-    return { data: result.data, ok: true };
+    return applyTimelineScheduleOperation({
+      confirmedMajorEffect: confirmedScheduleEffect,
+      dayIndex,
+      expectedVisitIds: timelineScheduleExpectedVisitIds,
+      itemUpdatedAtBaselines,
+      operation: timelineScheduleOperation,
+      plan: timelineSchedulePlan,
+    });
   }
-
   async function addPackItem(title) {
     if (!activeTrip || !canEditActiveTripContent || !title.trim()) return;
     const { error } = await supabase
@@ -7027,7 +6381,7 @@ function normalizeItemPayload(payload) {
       transport_note: transportNote || null,
       from_item_id: payload.from_item_id || null,
       to_item_id: payload.to_item_id || null,
-      transport_role: transportRoleForPayload(payload),
+      transport_role: "normal_pair",
       from_snapshot_start_time: payload.from_snapshot_start_time || null,
       from_snapshot_end_time: payload.from_snapshot_end_time || null,
       from_snapshot_destination: payload.from_snapshot_destination || null,
@@ -8922,242 +8276,129 @@ function DemoApp({ initialSection }) {
 
   function saveTimelineItem(payload, editingId, meta = {}) {
     const nextPayload = normalizeItemPayload(payload);
-    let passiveUntimedSortOrders = {};
-    const brokenTransportId = meta.transportConflict?.id || null;
-    const continuationById = new Map(
-      (meta.autoContinuationUpdates || []).map((update) => [update.id, update]),
-    );
-    if (!nextPayload.title.trim()) return;
+    if (!nextPayload.title.trim()) return { ok: false };
+    if (nextPayload.item_type !== "transport" && Boolean(nextPayload.start_time) !== Boolean(nextPayload.end_time)) {
+      return { ok: false, errorMessage: "開始與結束時間必須同時設定，或同時清除。" };
+    }
     const editingItem = editingId ? timelineItems.find((item) => item.id === editingId) : null;
-    if (isEffectiveFixedVisit(editingItem)) {
-      return { ok: false, fixed: true };
+    if (isEffectiveFixedVisit(editingItem)) return { ok: false, fixed: true };
+
+    const timelineScheduleTargetId = meta.timelineScheduleTargetId || editingId;
+    if (timelineScheduleTargetId && meta.timelineSchedulePlan?.ok) {
+      const schedulePlan = meta.timelineSchedulePlan.upsertedTransport
+        ? {
+            ...meta.timelineSchedulePlan,
+            upsertedTransport: {
+              ...meta.timelineSchedulePlan.upsertedTransport,
+              day_index: activeDay,
+              sort_order: meta.timelineSchedulePlan.upsertedTransport.sort_order ?? 0,
+              trip_id: demoActiveTrip.id,
+            },
+          }
+        : meta.timelineSchedulePlan;
+      const updatedAt = new Date().toISOString();
+      setTimelineItems((current) =>
+        applyTimelineSchedulePlanToItems({
+          items: current,
+          plan: schedulePlan,
+          targetItemId: timelineScheduleTargetId,
+          targetPayload: nextPayload,
+          updatedAt,
+        }),
+      );
+      return {
+        data: { ...(editingItem || {}), ...nextPayload, id: timelineScheduleTargetId, updated_at: updatedAt },
+        ok: true,
+      };
     }
-    if (editingItem && isTimedVisit(editingItem) !== isTimedVisit(nextPayload)) {
-      const conversionPlan = planTimelineTimingChangeSortOrders({
-        items: dayItems,
-        replacements: [{ id: editingItem.id, start_time: nextPayload.start_time, end_time: nextPayload.end_time }],
-      });
-      if (!conversionPlan.ok) return { ok: false, errorMessage: "目前無法保留這張未設定時間行程的位置，請重新整理後再試。" };
-      if (Number.isInteger(conversionPlan.sortOrders[editingItem.id])) {
-        nextPayload.sort_order = conversionPlan.sortOrders[editingItem.id];
-      }
-      passiveUntimedSortOrders = conversionPlan.sortOrders;
+
+    if (nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time)) {
+      return { ok: false };
     }
-    const invalidTimeRange = nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time);
-    if (invalidTimeRange) return { ok: false };
     const overlapItem = findOverlappingVisitItem({
       dayIndex: activeDay,
       editingId,
       items: timelineItems,
       payload: nextPayload,
     });
-    if (overlapItem) return { ok: false, overlapError: formatTimelineOverlapError(overlapItem) };
-    const transportationRoleUpdates = planTransportationRoleUpdatesForTimingChange({
-      dayIndex: activeDay,
-      editingId,
-      items: timelineItems,
-      normalizedPayload: nextPayload,
-    });
-    if (!editingId && isTransportationCard(nextPayload) && nextPayload.from_item_id && !nextPayload.to_item_id) {
-      const { fromItem, transportItem } = tailTransportContext(dayItems);
-      if (!fromItem || nextPayload.from_item_id !== fromItem.id || transportItem) return { ok: false };
+    if (overlapItem && !editingId) {
+      return { ok: false, overlapError: formatTimelineOverlapError(overlapItem) };
+    }
+    if (isTransportationCard(nextPayload) && (!nextPayload.from_item_id || !nextPayload.to_item_id)) {
+      return { ok: false };
     }
     if (editingId) {
-      const transportationRoleUpdateById = new Map(
-        transportationRoleUpdates.map((update) => [update.id, update.payload]),
-      );
       setTimelineItems((current) =>
-        current.filter((item) => item.id !== brokenTransportId).map((item) => {
-          const continuation = continuationById.get(item.id);
-          const transportationRoleUpdate = transportationRoleUpdateById.get(item.id);
-          if (item.id === editingId) {
-            return {
-              ...item,
-              ...nextPayload,
-              updated_at: new Date().toISOString(),
-            };
-          }
-          if (transportationRoleUpdate) {
-            return {
-              ...item,
-              ...transportationRoleUpdate,
-              updated_at: new Date().toISOString(),
-            };
-          }
-          if (continuation) {
-            return {
-              ...item,
-              start_time: continuation.start_time,
-              end_time: continuation.end_time,
-              ...(Number.isInteger(continuation.sort_order)
-                ? { sort_order: continuation.sort_order }
-                : Number.isInteger(passiveUntimedSortOrders[item.id])
-                  ? { sort_order: passiveUntimedSortOrders[item.id] }
-                  : {}),
-              updated_at: new Date().toISOString(),
-            };
-          }
-          if (Number.isInteger(passiveUntimedSortOrders[item.id]) && item.sort_order !== passiveUntimedSortOrders[item.id]) {
-            return {
-              ...item,
-              sort_order: passiveUntimedSortOrders[item.id],
-              updated_at: new Date().toISOString(),
-            };
-          }
-          return item;
-        }),
+        current.map((item) =>
+          item.id === editingId ? { ...item, ...nextPayload, updated_at: new Date().toISOString() } : item,
+        ),
       );
       return { ok: true };
     }
+
     const newItemId = demoId(nextPayload.item_type === "transport" ? "demo-transport" : "demo-itinerary");
     setTimelineItems((current) => {
-      const currentWithoutBrokenTransport = current.filter((item) => item.id !== brokenTransportId);
-      const currentDayVisits = sortedVisitItems(currentWithoutBrokenTransport.filter((item) => item.day_index === activeDay));
+      const currentDayVisits = sortedVisitItems(current.filter((item) => item.day_index === activeDay));
       const sortOrder = demoSortOrderForNewTimelineItem({ currentDayVisits, item: nextPayload });
-      const newItem = {
-        ...emptyItemForm,
-        ...nextPayload,
-        id: newItemId,
-        trip_id: demoActiveTrip.id,
-        day_index: activeDay,
-        sort_order: sortOrder,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      const currentDayItems = currentWithoutBrokenTransport.filter((item) => item.day_index === activeDay);
-      const { fromItem: tailFromItem, transportItem: tailTransportItem } = tailTransportContext(currentDayItems);
-      const newVisitStart = timeToMinutes(newItem.start_time);
-      const tailFromEnd = timeToMinutes(tailFromItem?.end_time);
-      const shouldCompleteTailPair =
-        !isTransportationCard(newItem) &&
-        tailTransportItem &&
-        newVisitStart !== null &&
-        (tailFromEnd === null || newVisitStart >= tailFromEnd);
-      const tailBypassPlan = shouldCompleteTailPair
-        ? planTailPendingPromotionUntimedBypass({
-            items: [...currentWithoutBrokenTransport, newItem],
-            promotedFromItemId: tailFromItem.id,
-            promotedToItemId: newItem.id,
-            tailTransportItem,
-          })
-        : { ok: true, untimedSortOrderUpdates: [] };
-      if (!tailBypassPlan.ok) return current;
-      const tailBypassSortOrderById = new Map(
-        (tailBypassPlan.untimedSortOrderUpdates || []).map((update) => [update.id, update.sort_order]),
-      );
-      const nextItems = shouldCompleteTailPair
-        ? currentWithoutBrokenTransport.map((item) =>
-            item.id === tailTransportItem.id
-              ? {
-                  ...item,
-                  to_item_id: newItem.id,
-                  transport_role: transportRoles.tailPromotedPair,
-                  ...buildTransportPairSnapshot(tailFromItem, newItem),
-                  updated_at: new Date().toISOString(),
-                }
-              : tailBypassSortOrderById.has(item.id)
-                ? {
-                    ...item,
-                    sort_order: tailBypassSortOrderById.get(item.id),
-                    updated_at: new Date().toISOString(),
-                  }
-              : item,
-          )
-        : currentWithoutBrokenTransport;
       return [
-        ...nextItems,
-        newItem,
+        ...current,
+        {
+          ...emptyItemForm,
+          ...nextPayload,
+          id: newItemId,
+          trip_id: demoActiveTrip.id,
+          day_index: activeDay,
+          sort_order: sortOrder,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
       ];
     });
     return { ok: true, data: { id: newItemId } };
   }
-
   function reorderTimelineDestinationPackages({
     dayIndex,
-    orderedTimedItemIds = null,
-    orderedVisitItemIds = null,
+    orderedTimedItemIds,
+    orderedVisitItemIds,
     packageSourceItemIds,
     slotItemIds,
-    timedAutoContinuation = false,
-    transportBaselines = [],
-    untimedSortOrderUpdates = [],
+    timelineSchedulePlan = null,
   }) {
-    if (dayIndex !== activeDay) return { ok: false };
-    const currentTimedItemIds = sortedVisitItems(
-      timelineItems.filter((item) => item.day_index === dayIndex && isTimedVisit(item)),
-    ).map((item) => item.id);
-    const hasTimedReorder = hasTimedDragOrderChange({
-      currentTimedItemIds,
+    if (dayIndex !== activeDay || !timelineSchedulePlan?.ok) return { ok: false };
+    const packagePlan = planDestinationPackageReorder({
+      alternatives: timelineAlternatives,
+      itineraryBudgetLinks,
+      items: timelineItems,
       orderedTimedItemIds,
+      orderedVisitItemIds,
       packageSourceItemIds,
       slotItemIds,
     });
-    if (!hasTimedReorder && !untimedSortOrderUpdates.length && !transportBaselines.length) {
-      return { ok: true, noOp: true };
+    if (!packagePlan.ok) {
+      return { ok: false, errorMessage: destinationReorderErrorMessage({ message: packagePlan.errorCode }) };
     }
-    const plan = hasTimedReorder
-      ? planDestinationPackageReorder({
-          items: timelineItems,
-          alternatives: timelineAlternatives,
-          itineraryBudgetLinks,
-          orderedTimedItemIds,
-          orderedVisitItemIds,
-          slotItemIds,
-          packageSourceItemIds,
-          timedAutoContinuation,
-        })
-      : { ok: true, alternatives: timelineAlternatives, itineraryBudgetLinks, items: timelineItems };
-    if (!plan.ok) return { ok: false, errorMessage: destinationReorderErrorMessage({ message: plan.errorCode }) };
-    const untimedSortOrderById = new Map(untimedSortOrderUpdates.map((update) => [update.id, update.sort_order]));
-    const deletedTransportIds = new Set(transportBaselines.map((transport) => transport.id));
+    const sourceToSlotIds = new Map(packageSourceItemIds.map((sourceId, index) => [sourceId, slotItemIds[index]]));
+    const mappedSchedulePlan = remapTimelineSchedulePlanItemIds({ plan: timelineSchedulePlan, sourceToSlotIds });
+    const updatedAt = new Date().toISOString();
     setTimelineItems(
-      plan.items
-        .filter((item) => !deletedTransportIds.has(item.id))
-        .map((item) =>
-          untimedSortOrderById.has(item.id)
-            ? { ...item, sort_order: untimedSortOrderById.get(item.id), updated_at: new Date().toISOString() }
-            : item,
-        ),
+      applyTimelineSchedulePlanToItems({ items: packagePlan.items, plan: mappedSchedulePlan, updatedAt }),
     );
-    setTimelineAlternatives(plan.alternatives);
-    setItineraryBudgetLinks(plan.itineraryBudgetLinks);
-    return { ok: true, data: plan };
+    setTimelineAlternatives(packagePlan.alternatives);
+    setItineraryBudgetLinks(packagePlan.itineraryBudgetLinks);
+    return { ok: true, data: { packagePlan, schedulePlan: mappedSchedulePlan } };
   }
 
-  function reorderTimelineUntimedVisit({ dayIndex, itemId, sortOrder, transportBaselines = [], updatedAt }) {
-    if (dayIndex !== activeDay) return { ok: false };
-    const item = timelineItems.find((candidate) => candidate.id === itemId);
-    if (!item || !isUntimedVisit(item) || item.updated_at !== updatedAt) return { ok: false, conflict: true };
-    const requestedTransportIds = transportBaselines.map((transport) => transport.id);
-    const currentTransportById = new Map(
-      timelineItems
-        .filter(
-          (candidate) =>
-            isTransportationCard(candidate) &&
-            candidate.day_index === dayIndex &&
-            requestedTransportIds.includes(candidate.id),
-        )
-        .map((transport) => [transport.id, transport]),
-    );
-    if (
-      currentTransportById.size !== requestedTransportIds.length ||
-      transportBaselines.some((transport) => currentTransportById.get(transport.id)?.updated_at !== transport.updatedAt)
-    ) {
-      return { ok: false, conflict: true };
-    }
-    const deletedTransportIds = new Set(requestedTransportIds);
+  function reorderTimelineUntimedVisit({ dayIndex, timelineSchedulePlan = null }) {
+    if (dayIndex !== activeDay || !timelineSchedulePlan?.ok) return { ok: false };
     setTimelineItems((current) =>
-      current
-        .filter((candidate) => !deletedTransportIds.has(candidate.id))
-        .map((candidate) =>
-          candidate.id === itemId
-            ? { ...candidate, sort_order: sortOrder, updated_at: new Date().toISOString() }
-            : candidate,
-        ),
+      applyTimelineSchedulePlanToItems({
+        items: current,
+        plan: timelineSchedulePlan,
+        updatedAt: new Date().toISOString(),
+      }),
     );
     return { ok: true };
   }
-
   function confirmTimelineTransportWarning(itemId) {
     setTimelineItems((current) =>
       current.map((item) => {
@@ -9218,6 +8459,23 @@ function DemoApp({ initialSection }) {
     const deletedIds = new Set([itemId]);
     const deletedItem = timelineItems.find((item) => item.id === itemId);
     if (isEffectiveFixedVisit(deletedItem)) return;
+    if (deletedItem && isTransportationCard(deletedItem)) {
+      const currentDayItems = timelineItems.filter((item) => Number(item.day_index) === Number(activeDay));
+      const expectedVisitIds = sortedVisitItems(currentDayItems).map((visit) => visit.id);
+      const plan = attachTimelineScheduleSortOrders({
+        items: currentDayItems,
+        plan: planTimelineSchedule({
+          items: currentDayItems,
+          operation: { transportId: deletedItem.id, type: timelineScheduleOperationTypes.deleteTransport },
+          orderedVisitIds: expectedVisitIds,
+        }),
+      });
+      if (!plan.ok) return;
+      setTimelineItems((current) =>
+        applyTimelineSchedulePlanToItems({ items: current, plan, updatedAt: new Date().toISOString() }),
+      );
+      return;
+    }
     if (deletedItem && !isTransportationCard(deletedItem)) {
       timelineItems.forEach((item) => {
         if (isTransportationCard(item) && (item.from_item_id === itemId || item.to_item_id === itemId)) {
@@ -11370,8 +10628,6 @@ function ItineraryTimeline({
   const [isReorderingDestination, setIsReorderingDestination] = useState(false);
   const [isReorderingUntimed, setIsReorderingUntimed] = useState(false);
   const [untimedDropNotice, setUntimedDropNotice] = useState("");
-  const [transportPairConflict, setTransportPairConflict] = useState(null);
-  const [isResolvingTransportPairConflict, setIsResolvingTransportPairConflict] = useState(false);
   const [autoContinuationPrompt, setAutoContinuationPrompt] = useState(null);
   const [isSavingAutoContinuation, setIsSavingAutoContinuation] = useState(false);
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
@@ -11698,19 +10954,39 @@ function ItineraryTimeline({
         setUntimedDropNotice("未設定時間行程移動失敗，請稍後再試。");
         return;
       }
-      const brokenTransportIds = new Set(plan.brokenTransportIds || []);
+      const timelineScheduleOperation = {
+        orderedVisitIds: plan.nextVisitIds,
+        type: timelineScheduleOperationTypes.reorder,
+      };
+      const timelineScheduleExpectedVisitIds = visitItems.map((visit) => visit.id);
+      const timelineSchedulePlan = attachTimelineScheduleSortOrders({
+        items: dayItems,
+        plan: planTimelineSchedule({
+          items: dayItems,
+          operation: timelineScheduleOperation,
+          orderedVisitIds: timelineScheduleExpectedVisitIds,
+        }),
+      });
+      if (!timelineSchedulePlan.ok) {
+        setUntimedDropNotice(timelineScheduleErrorMessage(timelineSchedulePlan));
+        return;
+      }
+      const removedTransportIds = new Set(timelineSchedulePlan.removedTransportIds || []);
       const transportBaselines = dayItems
-        .filter((item) => isTransportationCard(item) && brokenTransportIds.has(item.id))
+        .filter((item) => isTransportationCard(item) && removedTransportIds.has(item.id))
         .map((transport) => ({ id: transport.id, updatedAt: transport.updated_at }));
       const untimedReorder = {
         dayIndex: activeDay,
         itemId: sourceItem.id,
+        itemUpdatedAtBaselines: timelineScheduleUpdatedAtBaselines(dayItems),
         kind: "untimed",
-        sortOrder: plan.sortOrder,
+        timelineScheduleExpectedVisitIds,
+        timelineScheduleOperation,
+        timelineSchedulePlan,
         transportBaselines,
         updatedAt: sourceItem.updated_at,
       };
-      if (transportBaselines.length) {
+      if (timelineSchedulePlan.requiresConfirmation) {
         timelineDragPresenceDebug("drag end branch name", { branch: "untimed-confirmation", transportCount: transportBaselines.length });
         setReorderPreview(untimedReorder);
         return;
@@ -11740,27 +11016,49 @@ function ItineraryTimeline({
       clearVisitDrag("commit-timed-mixed-blocked");
       return;
     }
-    const { brokenTransportIds = [], packageSourceItemIds, slotItemIds, untimedSortOrderUpdates } = mixedPlan;
-    const previewPlan = planDestinationPackageReorder({
+    const { packageSourceItemIds, slotItemIds } = mixedPlan;
+    const packagePreview = planDestinationPackageReorder({
       items: dayItems,
       orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
       orderedVisitItemIds: mixedPlan.orderedVisitItemIds,
       slotItemIds,
       packageSourceItemIds,
-      timedAutoContinuation: true,
     });
-    if (!previewPlan.ok) {
-      setFixedNotice(destinationReorderErrorMessage({ message: previewPlan.errorCode }));
-      timelineDragPresenceDebug("drag end branch name", { branch: "timed-preview-blocked", errorCode: previewPlan.errorCode });
+    if (!packagePreview.ok) {
+      setFixedNotice(destinationReorderErrorMessage({ message: packagePreview.errorCode }));
+      timelineDragPresenceDebug("drag end branch name", { branch: "timed-preview-blocked", errorCode: packagePreview.errorCode });
       clearVisitDrag("commit-timed-preview-blocked");
       return;
     }
-    const finalUntimedSortOrderUpdates = previewPlan.convertedSlotIds?.length
-      ? previewPlan.untimedSortOrderUpdates || []
-      : untimedSortOrderUpdates;
-    const previewDeletedTransportIds = new Set(previewPlan.deletedTransportIds);
-    const explicitTransportBaselines = [...new Set(brokenTransportIds)]
-      .filter((transportId) => !previewDeletedTransportIds.has(transportId))
+    const timelineScheduleOperation = {
+      orderedVisitIds: mixedPlan.orderedVisitItemIds,
+      type: timelineScheduleOperationTypes.reorder,
+    };
+    const timelineScheduleExpectedVisitIds = visitItems.map((visit) => visit.id);
+    const baseSchedulePlan = attachTimelineScheduleSortOrders({
+      items: dayItems,
+      plan: planTimelineSchedule({
+        items: dayItems,
+        operation: timelineScheduleOperation,
+        orderedVisitIds: timelineScheduleExpectedVisitIds,
+      }),
+    });
+    if (!baseSchedulePlan.ok) {
+      setFixedNotice(timelineScheduleErrorMessage(baseSchedulePlan));
+      clearVisitDrag("commit-timed-schedule-blocked");
+      return;
+    }
+    const removedTransportIds = [...new Set([
+      ...(baseSchedulePlan.removedTransportIds || []),
+      ...(packagePreview.deletedTransportIds || []),
+    ])].sort();
+    const timelineSchedulePlan = {
+      ...baseSchedulePlan,
+      affectedItemIds: [...new Set([...(baseSchedulePlan.affectedItemIds || []), ...removedTransportIds])],
+      removedTransportIds,
+      requiresConfirmation: baseSchedulePlan.automaticUntimedItemIds.length > 0 || removedTransportIds.length > 0,
+    };
+    const explicitTransportBaselines = removedTransportIds
       .map((transportId) => {
         const transport = dayItems.find((item) => item.id === transportId);
         return transport ? { id: transport.id, updatedAt: transport.updated_at } : null;
@@ -11768,19 +11066,21 @@ function ItineraryTimeline({
       .filter(Boolean);
     const timedReorder = {
       dayIndex: activeDay,
+      itemUpdatedAtBaselines: timelineScheduleUpdatedAtBaselines(dayItems),
       kind: "timed",
       orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
       orderedVisitItemIds: mixedPlan.orderedVisitItemIds,
       packageSourceItemIds,
       slotItemIds,
-      timedAutoContinuation: true,
+      timelineScheduleExpectedVisitIds,
+      timelineScheduleOperation,
+      timelineSchedulePlan,
       transportBaselines: explicitTransportBaselines,
-      untimedSortOrderUpdates: finalUntimedSortOrderUpdates,
     };
-    if (previewPlan.deletedTransportIds.length || explicitTransportBaselines.length) {
+    if (timelineSchedulePlan.requiresConfirmation) {
       timelineDragPresenceDebug("drag end branch name", {
         branch: "timed-confirmation",
-        deletedTransportCount: previewPlan.deletedTransportIds.length,
+        deletedTransportCount: removedTransportIds.length,
         transportCount: explicitTransportBaselines.length,
       });
       setReorderPreview(timedReorder);
@@ -11802,7 +11102,10 @@ function ItineraryTimeline({
     if (reorderPreview.kind === "untimed") {
       if (typeof onReorderUntimedVisit !== "function") return;
       setIsReorderingUntimed(true);
-      const result = await onReorderUntimedVisit(reorderPreview);
+      const result = await onReorderUntimedVisit({
+        ...reorderPreview,
+        confirmedScheduleEffect: timelineScheduleMajorEffect(reorderPreview.timelineSchedulePlan),
+      });
       if (!result?.ok) setUntimedDropNotice(result?.errorMessage || "未設定時間行程移動失敗，請稍後再試。");
       else {
         setUntimedDropNotice("");
@@ -11813,7 +11116,10 @@ function ItineraryTimeline({
     }
     if (typeof onReorderDestinationPackages !== "function") return;
     setIsReorderingDestination(true);
-    const result = await onReorderDestinationPackages(reorderPreview);
+    const result = await onReorderDestinationPackages({
+      ...reorderPreview,
+      confirmedScheduleEffect: timelineScheduleMajorEffect(reorderPreview.timelineSchedulePlan),
+    });
     if (!result?.ok) setFixedNotice(result?.errorMessage || "目的地內容重排失敗，請稍後再試。");
     if (result?.ok) setReorderPreview(null);
     setIsReorderingDestination(false);
@@ -11831,7 +11137,6 @@ function ItineraryTimeline({
     setTimeError("");
     setMapUrlError("");
     setIsAlternativeEditorOpen(false);
-    setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(null);
@@ -11864,7 +11169,6 @@ function ItineraryTimeline({
     setTimeError("");
     setMapUrlError("");
     setIsAlternativeEditorOpen(false);
-    setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(latest.entityId === "new" ? null : latest.entityId);
     setEditorTripId(activeTrip.id);
@@ -11875,8 +11179,7 @@ function ItineraryTimeline({
 
   function buildNewVisitForm(initialPoint = null) {
     const lastItem = sortedVisitItems(dayItems).at(-1);
-    const tailSuggestedStartTime = suggestedStartTimeFromTailTransport(dayItems);
-    const defaultStartTime = tailSuggestedStartTime || (lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "");
+    const defaultStartTime = lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "";
     const defaultStartMinutes = timeToMinutes(defaultStartTime);
     const defaultEndTime = defaultStartMinutes === null
       ? ""
@@ -11927,7 +11230,6 @@ function ItineraryTimeline({
     setIsMapPointExpanded(false);
     setIsAlternativeDeleteConfirmOpen(false);
     setIsAlternativeEditorOpen(false);
-    setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
@@ -11974,7 +11276,6 @@ function ItineraryTimeline({
     setTimeError("");
     setMapUrlError("");
     setIsAlternativeEditorOpen(false);
-    setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(activeTrip?.id || null);
@@ -12011,12 +11312,11 @@ function ItineraryTimeline({
       if (lockResult.lockedByAnotherUser) return;
       lockedItem = lockResult.data || item;
     }
-    const suggestedUntimedStartTime = suggestedStartTimeForUntimedAfterTailTransport(dayItems, item);
     const existingAlternative = (alternativesByItem[item.id] || [])[0] || null;
     const nextForm = {
       item_type: item.item_type || "visit",
       type: item.type,
-      start_time: formatTimeDisplay(item.start_time) || suggestedUntimedStartTime,
+      start_time: formatTimeDisplay(item.start_time),
       end_time: formatTimeDisplay(item.end_time),
       title: item.title,
       location: item.location_name || item.location || "",
@@ -12058,7 +11358,6 @@ function ItineraryTimeline({
     setMapUrlError("");
     setIsMapPointExpanded(false);
     setIsAlternativeEditorOpen(Boolean(openAlternative));
-    setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(item.id);
     setEditorTripId(activeTrip?.id || null);
@@ -12080,7 +11379,6 @@ function ItineraryTimeline({
     setIsMapPointExpanded(false);
     setIsAlternativeDeleteConfirmOpen(false);
     setIsAlternativeEditorOpen(false);
-    setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(null);
@@ -12161,9 +11459,10 @@ function ItineraryTimeline({
       }
       submittedForm.start_time = normalizedStart.value;
       submittedForm.end_time = normalizedEnd.value;
-      if (!submittedForm.start_time || !submittedForm.end_time) {
-        submittedForm.start_time = "";
-        submittedForm.end_time = "";
+      if (Boolean(submittedForm.start_time) !== Boolean(submittedForm.end_time)) {
+        setTimeError("開始與結束時間必須同時設定，或同時清除。");
+        setForm(submittedForm);
+        return false;
       }
       submittedForm.address = "";
       submittedForm.transportation_note = "";
@@ -12182,7 +11481,7 @@ function ItineraryTimeline({
       items: dayItems,
       payload: submittedForm,
     });
-    if (overlapItem) {
+    if (overlapItem && !editingId) {
       setTimeError(formatTimelineOverlapError(overlapItem));
       setForm(submittedForm);
       return false;
@@ -12225,44 +11524,82 @@ function ItineraryTimeline({
             dayItems.find((item) => item.id === submittedForm.to_item_id),
           )
         : {};
-    if (submittedForm.item_type !== "transport" && !options.transportConflict) {
-      const brokenPair = findBrokenTransportationPair({
-        candidate: submittedForm,
-        dayIndex: activeDay,
-        editingId,
+    let timelineScheduleOperation = null;
+    let timelineSchedulePlan = null;
+    let timelineScheduleExpectedVisitIds = null;
+    let timelineScheduleItemBaselines = null;
+    let timelineScheduleTargetId = editingId;
+    if (editingId && submittedForm.item_type !== "transport") {
+      const original = dayItems.find((item) => item.id === editingId);
+      const originalTimed = isTimedVisit(original);
+      const candidateTimed = Boolean(submittedForm.start_time && submittedForm.end_time);
+      const timeChanged =
+        (original?.start_time ? formatTimeDisplay(original.start_time) : null) !== (submittedForm.start_time || null) ||
+        (original?.end_time ? formatTimeDisplay(original.end_time) : null) !== (submittedForm.end_time || null);
+      if (timeChanged) {
+        timelineScheduleOperation = {
+          end_time: submittedForm.end_time || null,
+          start_time: submittedForm.start_time || null,
+          targetItemId: editingId,
+          type: originalTimed && !candidateTimed
+            ? timelineScheduleOperationTypes.clearTime
+            : !originalTimed && candidateTimed
+              ? timelineScheduleOperationTypes.restoreTime
+              : timelineScheduleOperationTypes.editTime,
+        };
+      }
+    } else if (submittedForm.item_type === "transport") {
+      timelineScheduleTargetId = options.timelineScheduleTargetId || editingId || crypto.randomUUID();
+      timelineScheduleOperation = {
+        transport: {
+          ...submittedForm,
+          ...currentPairSnapshot,
+          id: timelineScheduleTargetId,
+          item_type: "transport",
+          transport_role: "normal_pair",
+        },
+        type: timelineScheduleOperationTypes.upsertTransport,
+      };
+    }
+    if (timelineScheduleOperation) {
+      timelineScheduleExpectedVisitIds = visitItems.map((item) => item.id);
+      timelineScheduleItemBaselines = timelineScheduleUpdatedAtBaselines(
+        dayItems,
+        editingId && baseUpdatedAt ? { [editingId]: baseUpdatedAt } : {},
+      );
+      timelineSchedulePlan = attachTimelineScheduleSortOrders({
         items: dayItems,
+        plan: planTimelineSchedule({
+          items: dayItems,
+          operation: timelineScheduleOperation,
+          orderedVisitIds: timelineScheduleExpectedVisitIds,
+        }),
       });
-      if (brokenPair) {
-        setTimeError("");
+      if (!timelineSchedulePlan.ok) {
+        setTimeError(timelineScheduleErrorMessage(timelineSchedulePlan));
         setForm(submittedForm);
-        setTransportPairConflict({
-          ...brokenPair,
-          continuationRequested: Boolean(options.requestAutoContinuation),
-        });
         return false;
       }
-    }
-    if (editingId && submittedForm.item_type !== "transport" && options.requestAutoContinuation) {
-      const continuationPlan = planTimelineAutoContinuation({
-        candidate: submittedForm,
-        dayIndex: activeDay,
-        editedItemId: editingId,
-        items: dayItems,
+      const hasForeignLock = (timelineSchedulePlan.affectedItemIds || []).some((itemId) => {
+        const item = dayItems.find((candidate) => candidate.id === itemId);
+        return useEditLocks && item?.id !== editingId && isLockedByAnotherUser(item, currentUserId);
       });
-      if (continuationPlan.shouldPrompt) {
-        const hasForeignLock = (continuationPlan.followingVisitIds || []).some((itemId) => {
-          const item = dayItems.find((candidate) => candidate.id === itemId);
-          return useEditLocks && isLockedByAnotherUser(item, currentUserId);
-        });
+      if (hasForeignLock) {
+        setTimeError("後續行程目前由其他成員編輯，無法重新排程。");
+        setForm(submittedForm);
+        return false;
+      }
+      const effectKey = timelineScheduleEffectKey(timelineSchedulePlan);
+      if (timelineSchedulePlan.requiresConfirmation && options.confirmedScheduleEffectKey !== effectKey) {
         setTimeError("");
         setForm(submittedForm);
-        setTransportPairConflict(null);
         setAutoContinuationPrompt({
-          plan: hasForeignLock
-            ? { ...continuationPlan, canAutoContinue: false, blockReason: "locked_visit", updates: [] }
-            : continuationPlan,
-          title: submittedForm.location_name || submittedForm.location || submittedForm.title,
-          transportConflict: options.transportConflict || null,
+          effectKey,
+          plan: timelineSchedulePlan,
+          timelineScheduleTargetId,
+          title: submittedForm.item_type === "transport"
+            ? submittedForm.transport_name || submittedForm.title
+            : submittedForm.location_name || submittedForm.location || submittedForm.title,
         });
         return false;
       }
@@ -12352,13 +11689,14 @@ function ItineraryTimeline({
       {
         baseUpdatedAt,
         tripId: editorTripId,
-        transportConflict: options.transportConflict
-          ? {
-              id: options.transportConflict.id,
-              updated_at: options.transportConflict.updated_at,
-            }
+        confirmedScheduleEffect: options.confirmedScheduleEffectKey
+          ? timelineScheduleMajorEffect(timelineSchedulePlan)
           : null,
-        autoContinuationUpdates: options.autoContinuationUpdates || [],
+        timelineScheduleExpectedVisitIds,
+        timelineScheduleItemBaselines,
+        timelineScheduleOperation,
+        timelineSchedulePlan,
+        timelineScheduleTargetId,
       },
     );
     if (!result?.ok) {
@@ -12417,7 +11755,6 @@ function ItineraryTimeline({
     setConflict(false);
     setTimeError("");
     setMapUrlError("");
-    setTransportPairConflict(null);
     setAutoContinuationPrompt(null);
     setEditingId(null);
     setEditorTripId(null);
@@ -12428,20 +11765,6 @@ function ItineraryTimeline({
     return true;
   }
 
-  async function confirmBrokenTransportationPairDeletion() {
-    if (!transportPairConflict?.transportItem || isResolvingTransportPairConflict) return;
-    if (foreignSameDayDragActive) {
-      setTimeError(foreignDragSaveBlockedMessage);
-      return;
-    }
-    setIsResolvingTransportPairConflict(true);
-    await saveCurrentEditor(new FormData(), {
-      requestAutoContinuation: Boolean(transportPairConflict.continuationRequested),
-      transportConflict: transportPairConflict.transportItem,
-    });
-    setIsResolvingTransportPairConflict(false);
-  }
-
   function cancelAutoContinuation() {
     if (isSavingAutoContinuation) return;
     setTimeError("");
@@ -12449,32 +11772,23 @@ function ItineraryTimeline({
   }
 
   async function saveWithAutoContinuation() {
-    if (!autoContinuationPrompt?.plan?.canAutoContinue || isSavingAutoContinuation) return;
+    if (!autoContinuationPrompt?.plan?.ok || isSavingAutoContinuation) return;
     if (foreignSameDayDragActive) {
       setTimeError(foreignDragSaveBlockedMessage);
       return;
     }
     setIsSavingAutoContinuation(true);
     await saveCurrentEditor(new FormData(), {
-      skipAutoContinuation: true,
-      transportConflict: autoContinuationPrompt.transportConflict,
-      autoContinuationUpdates: autoContinuationPrompt.plan.updates,
+      confirmedScheduleEffectKey: autoContinuationPrompt.effectKey,
+      timelineScheduleTargetId: autoContinuationPrompt.timelineScheduleTargetId,
     });
     setIsSavingAutoContinuation(false);
-  }
-
-  async function requestAutoContinuation(event) {
-    if (foreignSameDayDragActive) {
-      setTimeError(foreignDragSaveBlockedMessage);
-      return;
-    }
-    await saveCurrentEditor(new FormData(event.currentTarget.form), { requestAutoContinuation: true });
   }
 
   async function submit(event) {
     event.preventDefault();
     if (isAlternativeEditorOpen) return;
-    await saveCurrentEditor(new FormData(event.currentTarget), { skipAutoContinuation: true });
+    await saveCurrentEditor(new FormData(event.currentTarget));
   }
 
   const isTransportEditor = form.item_type === "transport";
@@ -12578,9 +11892,7 @@ function ItineraryTimeline({
       draggedVisitId ||
       foreignSameDayDragActive ||
       reorderPreview ||
-      transportPairConflict ||
       autoContinuationPrompt ||
-      isResolvingTransportPairConflict ||
       isSavingAutoContinuation ||
       isReorderingDestination ||
       isReorderingUntimed
@@ -12605,11 +11917,9 @@ function ItineraryTimeline({
     isOpen,
     isReorderingDestination,
     isReorderingUntimed,
-    isResolvingTransportPairConflict,
     isSavingAutoContinuation,
     isTransportEditor,
     reorderPreview,
-    transportPairConflict,
   ]);
   useEffect(() => {
     if (!focusedItemId || !activeTimelineListRef.current) return;
@@ -12619,9 +11929,7 @@ function ItineraryTimeline({
       draggedVisitId ||
       foreignSameDayDragActive ||
       reorderPreview ||
-      transportPairConflict ||
       autoContinuationPrompt ||
-      isResolvingTransportPairConflict ||
       isSavingAutoContinuation ||
       isReorderingDestination ||
       isReorderingUntimed
@@ -12639,48 +11947,13 @@ function ItineraryTimeline({
     isOpen,
     isReorderingDestination,
     isReorderingUntimed,
-    isResolvingTransportPairConflict,
     isSavingAutoContinuation,
     reorderPreview,
-    transportPairConflict,
     visitItemIds,
   ]);
   const activeDragItem = draggedVisitId ? visitItems.find((item) => item.id === draggedVisitId) || null : null;
   const timedVisitItems = useMemo(() => visitItems.filter(isTimedVisit), [visitItems]);
-  const editedTimedVisitIndex = timedVisitItems.findIndex((item) => item.id === editingId);
-  const editedTimedVisit = editedTimedVisitIndex >= 0 ? timedVisitItems[editedTimedVisitIndex] : null;
-  const editedVisitTimeChanged =
-    Boolean(editedTimedVisit) &&
-    (formatTimeDisplay(editedTimedVisit.start_time) !== form.start_time ||
-      formatTimeDisplay(editedTimedVisit.end_time) !== form.end_time);
-  const crossesFixedVisitForContinuation = Boolean(editedTimedVisit) && timedVisitItems.some((fixedVisit) => {
-    if (!isEffectiveFixedVisit(fixedVisit) || fixedVisit.id === editedTimedVisit.id) return false;
-    const originalStart = timeToMinutes(editedTimedVisit.start_time);
-    const originalEnd = timeToMinutes(editedTimedVisit.end_time);
-    const candidateStart = timeToMinutes(form.start_time);
-    const candidateEnd = timeToMinutes(form.end_time);
-    const fixedStart = timeToMinutes(fixedVisit.start_time);
-    const fixedEnd = timeToMinutes(fixedVisit.end_time);
-    if ([originalStart, originalEnd, candidateStart, candidateEnd, fixedStart, fixedEnd].some((value) => value === null)) {
-      return false;
-    }
-    const movedFromBeforeToAfter = originalEnd <= fixedStart && candidateStart >= fixedEnd;
-    const movedFromAfterToBefore = originalStart >= fixedEnd && candidateEnd <= fixedStart;
-    return movedFromBeforeToAfter || movedFromAfterToBefore;
-  });
-  const canRequestAutoContinuation =
-    editingId &&
-    !isTransportEditor &&
-    editedTimedVisitIndex >= 0 &&
-    editedTimedVisitIndex < timedVisitItems.length - 1 &&
-    editedVisitTimeChanged &&
-    Boolean(editedTimedVisit.start_time) &&
-    Boolean(editedTimedVisit.end_time) &&
-    Boolean(form.start_time) &&
-    Boolean(form.end_time) &&
-    !crossesFixedVisitForContinuation;
-  const lastTimedVisitItem = useMemo(() => lastTimedVisit(dayItems), [dayItems]);
-  const { adjacentTransportByPair, invalidTransportItems, passiveUntimedTransportByFrom, tailTransportByFrom } = useMemo(
+  const { adjacentTransportByPair, invalidTransportItems, passiveUntimedTransportByFrom } = useMemo(
     () => buildTransportPairState(dayItems, visitItems),
     [dayItems, visitItems],
   );
@@ -12980,13 +12253,12 @@ function ItineraryTimeline({
   }
 
   function renderTransportCard(item, lockedByOther, options = {}) {
-    const { hasTimeShortage = false, isTail = false, warningType = "" } = options;
+    const { warningType = "" } = options;
     const isInvalidWarning = warningType === "invalid";
     const isGeneralWarning = warningType === "general";
     const isUntimedWarning = warningType === "untimed";
-    const isShortageWarning = hasTimeShortage && !isInvalidWarning;
-    const hasWarning = Boolean(warningType) || isShortageWarning;
-    const warningClass = isInvalidWarning ? "invalid" : isGeneralWarning ? "general" : isShortageWarning ? "shortage" : warningType;
+    const hasWarning = Boolean(warningType);
+    const warningClass = isInvalidWarning ? "invalid" : isGeneralWarning ? "general" : warningType;
     const expanded = expandedId === item.id;
     const budgets = budgetsByItem[item.id] || [];
     const category = item.transport_category || defaultTransportCategory;
@@ -13019,7 +12291,6 @@ function ItineraryTimeline({
         </span>
         <div className="transport-card-main">
           <strong>{transportCardTitle(item)}</strong>
-          {isTail ? <span className="muted-text">下一目的地尚未設定</span> : null}
           {hasWarning ? (
             <span className="transport-warning-badge" aria-label="交通資訊需確認">
               <MessageCircleWarning aria-hidden="true" />
@@ -13036,14 +12307,9 @@ function ItineraryTimeline({
                 {transportPairLabel(item)} 的交通資訊已不符合目前行程順序
               </p>
             ) : null}
-            {isShortageWarning ? (
-              <p className="transport-warning-detail">交通時間不足，請注意交通時間或行程時間。</p>
-            ) : null}
             {isGeneralWarning ? (
               <p className="transport-warning-detail">
-                {isShortageWarning
-                  ? "行程時間或目的地已變更，請確認交通資訊。"
-                  : `${transportPairLabel(item)} 的行程時間或目的地已變更，請確認交通資訊。`}
+                {`${transportPairLabel(item)} 的行程時間或目的地已變更，請確認交通資訊。`}
               </p>
             ) : null}
             {isUntimedWarning ? (
@@ -13122,26 +12388,6 @@ function ItineraryTimeline({
           <Plus />
         </span>
         <span className="transport-insert-label">新增交通資訊</span>
-        <span className="transport-insert-line" aria-hidden="true" />
-      </button>
-    );
-  }
-
-  function renderTailTransportInsert(previousItem) {
-    if (!canMutateThisDay || isOpen || !previousItem || isTransportationCard(previousItem)) return null;
-    if (tailTransportByFrom[previousItem.id]) return null;
-    return (
-      <button
-        className="transport-insert-zone tail"
-        type="button"
-        onClick={() => openNewTransport(previousItem, null)}
-        onKeyDown={(event) => event.stopPropagation()}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <span className="transport-insert-icon" aria-hidden="true">
-          <Plus />
-        </span>
-        <span className="transport-insert-label">新增尾端交通</span>
         <span className="transport-insert-line" aria-hidden="true" />
       </button>
     );
@@ -13459,9 +12705,6 @@ function ItineraryTimeline({
             {renderEditorMapSettings({ includeAlternative: true })}
             <div className="form-actions">
               <button className="ghost-button item-form-cancel-button" type="button" onClick={() => closeEditor()}>取消</button>
-              {editingId ? (
-                <button className="ghost-button compact" disabled={!canMutateThisDay || !canRequestAutoContinuation} title={crossesFixedVisitForContinuation ? "跨越固定行程時無法接續。" : undefined} type="button" onClick={requestAutoContinuation}>接續</button>
-              ) : null}
               <button className="primary-button compact" disabled={!canMutateThisDay || isResolvingMapUrl} type="submit">儲存</button>
             </div>
           </>
@@ -13566,15 +12809,14 @@ function ItineraryTimeline({
           aria-modal="true"
           aria-labelledby="auto-continuation-title"
         >
-          <h2 id="auto-continuation-title">自動接續後續行程？</h2>
-          <p>後續有時間的行程會依原本停留時間與間隔自動調整。</p>
-          <p>固定行程不會移動，放不下的行程會改為未設定時間。</p>
-          {autoContinuationPrompt.plan.blockReason === "locked_visit" ? (
-            <p className="notice inline-error">後續行程目前由其他成員編輯，無法自動接續時間。</p>
+          <h2 id="auto-continuation-title">套用重大排程變更？</h2>
+          {autoContinuationPrompt.plan.automaticUntimedItemIds?.length ? (
+            <p>部分後續行程無法排入固定行程前或當日 24:00 前，將改為未設定時間。</p>
           ) : null}
-          {["incomplete_time", "invalid_result"].includes(autoContinuationPrompt.plan.blockReason) ? (
-            <p className="notice inline-error">後續行程的時間資料無法安全接續，請手動調整。</p>
+          {autoContinuationPrompt.plan.removedTransportIds?.length ? (
+            <p>這次變更會移除不再連接相鄰行程的交通卡。</p>
           ) : null}
+          <p>固定行程與不受影響的前後區段不會移動。</p>
           {timeError ? <p className="notice inline-error">{timeError}</p> : null}
           <div className="form-actions">
             <button
@@ -13587,48 +12829,11 @@ function ItineraryTimeline({
             </button>
             <button
               className="primary-button compact"
-              disabled={!canMutateThisDay || isSavingAutoContinuation || !autoContinuationPrompt.plan.canAutoContinue}
+              disabled={!canMutateThisDay || isSavingAutoContinuation || !autoContinuationPrompt.plan.ok}
               type="button"
               onClick={saveWithAutoContinuation}
             >
-              確定接續
-            </button>
-          </div>
-        </div>
-      </div>
-    ) : null}
-    {transportPairConflict ? (
-      <div className="modal-backdrop">
-        <div
-          className="dialog-card"
-          data-testid="transport-pair-conflict-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="transport-pair-conflict-title"
-        >
-          <h2 id="transport-pair-conflict-title">這個時間會插入既有交通卡中間</h2>
-          <p>
-            原本「{visitDestination(transportPairConflict.fromItem)}」到「
-            {visitDestination(transportPairConflict.toItem)}」之間已有交通卡。
-            如果保留這個時間，該交通卡將不再相鄰。
-          </p>
-          <p>請選擇要恢復原本時間，或刪除這張交通卡。</p>
-          <div className="form-actions">
-            <button
-              className="ghost-button"
-              disabled={isResolvingTransportPairConflict}
-              type="button"
-              onClick={() => setTransportPairConflict(null)}
-            >
-              恢復
-            </button>
-            <button
-              className="primary-button compact"
-              disabled={!canMutateThisDay || isResolvingTransportPairConflict}
-              type="button"
-              onClick={confirmBrokenTransportationPairDeletion}
-            >
-              刪除交通卡
+              確定套用
             </button>
           </div>
         </div>
@@ -13769,12 +12974,9 @@ function ItineraryTimeline({
             const isTimedPair = isTimedVisit(item) && isTimedVisit(nextItem);
             const pairKey = isTimedPair ? transportPairKey(item.id, nextItem.id) : "";
             const transportItem = pairKey ? adjacentTransportByPair[pairKey] : null;
-            const hasTransportTimeShortage = transportItem ? transportTimeShortageMinutes(transportItem, item, nextItem) > 0 : false;
             const transportNeedsReview = transportItem && transportPairNeedsReview(transportItem, item, nextItem);
-            const transportWarningType = transportNeedsReview ? "general" : hasTransportTimeShortage ? "shortage" : "";
-            const tailTransportItem = tailTransportByFrom[item.id] || null;
+            const transportWarningType = transportNeedsReview ? "general" : "";
             const passiveUntimedTransportItems = passiveUntimedTransportByFrom[item.id] || [];
-            const hasPassiveTransportAfterItem = passiveUntimedTransportItems.length > 0;
             const isAddingTransportHere =
               isTimedPair &&
               isOpen &&
@@ -13782,15 +12984,6 @@ function ItineraryTimeline({
               !editingId &&
               insertionPair?.fromId === item.id &&
               insertionPair?.toId === nextItem.id;
-            const isTailPosition = lastTimedVisitItem?.id === item.id;
-            const isAddingTailHere =
-              isTailPosition &&
-              !hasPassiveTransportAfterItem &&
-              isOpen &&
-              isTransportEditor &&
-              !editingId &&
-              insertionPair?.fromId === item.id &&
-              insertionPair?.toId === null;
             const isEditingVisitHere = isOpen && !isTransportEditor && editingId === item.id;
             const isDragEnabled = canDragVisit(item);
             const isDisabledDragTarget = dragTarget?.itemId === item.id && dragTarget.disabled;
@@ -13805,8 +12998,7 @@ function ItineraryTimeline({
               : undefined;
             const hasAttachedTransportFlow =
               (!isAddingTransportHere && Boolean(transportItem)) ||
-              passiveUntimedTransportItems.length > 0 ||
-              (!isAddingTailHere && isTailPosition && Boolean(tailTransportItem));
+              passiveUntimedTransportItems.length > 0;
             return (
             <Fragment key={item.id}>
             <SortableTimelineEntry disabled={!isDragEnabled} hasFlowAttachments={hasAttachedTransportFlow} id={item.id}>
@@ -13948,13 +13140,11 @@ function ItineraryTimeline({
             </article>
             )}
             {!isAddingTransportHere && isTimedPair && !transportItem ? renderTransportInsert(item, nextItem) : null}
-            {!isAddingTailHere && isTailPosition && !tailTransportItem && !hasPassiveTransportAfterItem ? renderTailTransportInsert(item) : null}
             {!isAddingTransportHere && transportItem ? (
               <TimelineFlowAttachment>
                 {isOpen && isTransportEditor && editingId === transportItem.id
                   ? renderTransportEditorForm()
                   : renderTransportCard(transportItem, useEditLocks && isLockedByAnotherUser(transportItem, currentUserId), {
-                      hasTimeShortage: hasTransportTimeShortage,
                       warningType: transportWarningType,
                     })}
               </TimelineFlowAttachment>
@@ -13970,23 +13160,11 @@ function ItineraryTimeline({
                     )}
               </TimelineFlowAttachment>
             ))}
-            {!isAddingTailHere && isTailPosition && tailTransportItem ? (
-              <TimelineFlowAttachment>
-                {isOpen && isTransportEditor && editingId === tailTransportItem.id
-                  ? renderTransportEditorForm()
-                  : renderTransportCard(
-                      tailTransportItem,
-                      useEditLocks && isLockedByAnotherUser(tailTransportItem, currentUserId),
-                      { isTail: true },
-                    )}
-              </TimelineFlowAttachment>
-            ) : null}
             {foreignDragOverItemId === item.id && foreignDragPlacement === "after" ? (
               <div className="timeline-remote-insertion-line" aria-hidden="true" style={foreignDragStyle} />
             ) : null}
             </SortableTimelineEntry>
             {isAddingTransportHere ? renderTransportEditorForm() : null}
-            {isAddingTailHere ? renderTransportEditorForm() : null}
             </Fragment>
             );
           })

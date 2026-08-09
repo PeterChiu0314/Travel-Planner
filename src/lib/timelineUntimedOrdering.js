@@ -1,4 +1,4 @@
-import { isEstablishedTransportPair, isTailPendingTransport, isTransportationCard } from "./timelineTransportationRoles.js";
+import { isEstablishedTransportPair, isTransportationCard } from "./timelineTransportationRoles.js";
 
 const untimedSortBase = -2_000_000_000;
 const untimedSortStride = 1_000_000;
@@ -177,56 +177,6 @@ export function planUntimedSortOrdersForVisualOrder({ items = [], nextVisitIds =
   return { ok: true, sortOrders };
 }
 
-export function planTailPendingPromotionUntimedBypass({
-  items = [],
-  promotedFromItemId,
-  promotedToItemId,
-  tailTransportItem,
-}) {
-  if (!isTailPendingTransport(tailTransportItem)) return { ok: true, untimedSortOrderUpdates: [] };
-  if (!promotedFromItemId || !promotedToItemId || tailTransportItem.from_item_id !== promotedFromItemId) {
-    return { ok: true, untimedSortOrderUpdates: [] };
-  }
-
-  const currentVisits = buildTimelineVisitDisplayOrder(items);
-  const fromIndex = currentVisits.findIndex((item) => item.id === promotedFromItemId);
-  const targetIndex = currentVisits.findIndex((item) => item.id === promotedToItemId);
-  if (fromIndex < 0 || targetIndex < 0 || targetIndex <= fromIndex) return { ok: true, untimedSortOrderUpdates: [] };
-
-  const fromItem = currentVisits[fromIndex];
-  const targetItem = currentVisits[targetIndex];
-  if (!isTimedVisit(fromItem) || !isTimedVisit(targetItem)) return { ok: true, untimedSortOrderUpdates: [] };
-
-  const fromEnd = timeToMinutes(fromItem.end_time);
-  const targetStart = timeToMinutes(targetItem.start_time);
-  if (fromEnd !== null && targetStart !== null && targetStart < fromEnd) return { ok: true, untimedSortOrderUpdates: [] };
-
-  const blockingUntimedItems = currentVisits.slice(fromIndex + 1, targetIndex).filter(isUntimedVisit);
-  if (!blockingUntimedItems.length) return { ok: true, untimedSortOrderUpdates: [] };
-
-  const blockingUntimedIds = new Set(blockingUntimedItems.map((item) => item.id));
-  const nextVisitIds = currentVisits.map((item) => item.id).filter((itemId) => !blockingUntimedIds.has(itemId));
-  const nextTargetIndex = nextVisitIds.indexOf(promotedToItemId);
-  nextVisitIds.splice(nextTargetIndex + 1, 0, ...blockingUntimedItems.map((item) => item.id));
-
-  const sortPlan = planUntimedSortOrdersForVisualOrder({ items, nextVisitIds });
-  if (!sortPlan.ok) return sortPlan;
-  return {
-    ok: true,
-    untimedSortOrderUpdates: Object.entries(sortPlan.sortOrders)
-      .filter(([itemId]) => blockingUntimedIds.has(itemId))
-      .map(([itemId, sortOrder]) => {
-        const item = items.find((candidate) => candidate.id === itemId);
-        return {
-          id: itemId,
-          original_sort_order: item?.sort_order,
-          sort_order: sortOrder,
-          updated_at: item?.updated_at || null,
-        };
-      }),
-  };
-}
-
 export function planUntimedConversionSortOrders({ items = [], sourceItemIds = [] }) {
   const sourceIds = new Set(sourceItemIds);
   const currentVisits = buildTimelineVisitDisplayOrder(items);
@@ -322,14 +272,29 @@ export function planMixedTimedVisitReorder({ items = [], placement = "after", so
   if (!source || !isTimedVisit(source)) return { errorCode: "timed_source_required", ok: false };
   if (!target || target.id === source.id || isTransportationCard(target)) return { errorCode: "invalid_target", ok: false };
   if (source.is_fixed) return { errorCode: "fixed_item", ok: false };
+  if (target.is_fixed && isTimedVisit(target)) return { errorCode: "fixed_boundary_crossed", ok: false };
 
   const nextVisits = currentVisits.filter((item) => item.id !== source.id);
   const targetIndex = nextVisits.findIndex((item) => item.id === target.id);
   const insertIndex = targetIndex + (placement === "before" ? 0 : 1);
   nextVisits.splice(insertIndex, 0, source);
 
-  const currentVisitIds = currentVisits.map((item) => item.id);
-  const nextVisitIds = nextVisits.map((item) => item.id);
+  const currentIds = currentVisits.map((item) => item.id);
+  const nextIds = nextVisits.map((item) => item.id);
+  for (const fixed of currentVisits.filter((item) => item.is_fixed && isTimedVisit(item))) {
+    const currentFixedIndex = currentIds.indexOf(fixed.id);
+    const nextFixedIndex = nextIds.indexOf(fixed.id);
+    if (
+      currentFixedIndex !== nextFixedIndex ||
+      currentIds.slice(0, currentFixedIndex).some((id) => nextIds.indexOf(id) > nextFixedIndex) ||
+      currentIds.slice(currentFixedIndex + 1).some((id) => nextIds.indexOf(id) < nextFixedIndex)
+    ) {
+      return { errorCode: "fixed_boundary_crossed", ok: false };
+    }
+  }
+
+  const currentVisitIds = currentIds;
+  const nextVisitIds = nextIds;
   const isMovableTimedVisit = (item) => isTimedVisit(item) && !item.is_fixed;
   const slotItemIds = currentVisits.filter(isMovableTimedVisit).map((item) => item.id);
   const packageSourceItemIds = nextVisits.filter(isMovableTimedVisit).map((item) => item.id);

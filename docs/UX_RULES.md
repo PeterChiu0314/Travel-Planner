@@ -102,7 +102,11 @@ Do:
 - Keep the visit editor compact: type and destination share one row; start, end, and duration share one linked row; notes start at two lines and grow only as needed.
 - Keep visit time input on a 24-hour, five-minute system. Hours and minutes must be independently focusable and adjustable by typing, arrow keys, and wheel; provide a custom scrollable menu with multiple visible time options rather than relying on browser-native `datalist` UI, and do not add plus/minus controls.
 - Keep the first two visit-editor control rows at the compact 36 px height, and let notes start at two lines with restrained padding before auto-growing.
-- Preserve the existing start/end/duration linkage and existing overlap, transportation-pair, and auto-continuation rules when changing the editor UI.
+- Preserve the existing start/end/duration linkage and overlap validation when changing the editor UI.
+- Keep one ordinary Save action for time edits. The unified Planner automatically repacks the affected downstream segment; do not restore a separate manual "接續" action.
+- Use complete Timed or complete Untimed states only. Affected segments remove historical gaps while preserving visit duration; fixed/24:00 overflow are the only automatic Untimed reasons.
+- Confirm only major scheduling effects: automatic Untimed conversion or implicit transport removal. Pure time shifts save without an extra dialog.
+- Keep Untimed cards in their chosen visual position. Transport cannot cross an Untimed card and tail transport is not a supported user-facing state.
 
 Do not:
 
@@ -114,6 +118,8 @@ Do not:
 - Let a whole visit card become a drag handle if that interferes with expand, edit, delete, lock, or link interactions.
 - Render remote drag overlays, ghost cards, or remote preview reordering from presence/broadcast data.
 - Let collaborative drag presence replace reorder RPC validation or merge multiple users' local previews.
+- Let Phase 6 preview batches become authoritative writes; formal apply must recalculate against a current full-Day revision.
+- Restore the removed tail-transport insertion/promotion UI, transportation-pair conflict dialog, or manual continuation button.
 
 ## Timeline Workspace UX Rules
 

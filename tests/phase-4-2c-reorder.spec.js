@@ -7,8 +7,7 @@ import {
   planDestinationPackageReorder,
   planTimedDragAutoContinuation,
 } from "../src/lib/destinationPackages.js";
-import { buildTimelineVisitDisplayOrder, planMixedTimedVisitReorder } from "../src/lib/timelineUntimedOrdering.js";
-import { planTailPendingPromotionUntimedBypass } from "../src/lib/timelineUntimedOrdering.js";
+import { planMixedTimedVisitReorder } from "../src/lib/timelineUntimedOrdering.js";
 
 const migration = readFileSync("supabase/migrations/020_reorder_itinerary_destination_packages.sql", "utf8");
 const baselineCountFixMigration = readFileSync("supabase/migrations/021_fix_reorder_baseline_count.sql", "utf8");
@@ -49,6 +48,7 @@ function transport(id, fromItemId, toItemId, extra = {}) {
     day_index: 0,
     item_type: "transport",
     title: id,
+    transport_role: "normal_pair",
     from_item_id: fromItemId,
     to_item_id: toItemId,
     transport_duration_minutes: 20,
@@ -73,7 +73,7 @@ function fixture() {
       transport("transport-ab", "slot-a", "slot-b"),
       transport("transport-bc", "slot-b", "slot-c"),
       transport("transport-cd", "slot-c", "slot-d"),
-      transport("transport-tail-d", "slot-d", null),
+      transport("transport-tail-d", "slot-d", null, { transport_role: "tail_pending" }),
     ],
     alternatives: visits.map((item) => ({ id: `alt-${item.title}`, itinerary_item_id: item.id, title: item.title })),
     links: visits.map((item) => ({
@@ -136,7 +136,7 @@ test("ABCD to BCAD keeps slots and moves destination packages and children", () 
   ]);
 });
 
-test("Phase 4.6 timed drag preserves each package duration instead of swapping time slots", () => {
+test("Phase 6 compatibility adapter preserves durations and removes affected gaps", () => {
   const items = [
     visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
     visit("slot-b", "B", "10:30", 20, { end_time: "11:00" }),
@@ -150,7 +150,7 @@ test("Phase 4.6 timed drag preserves each package duration instead of swapping t
   expect(Object.values(timingPlan.updatesBySlotId).map((update) => [update.source_item_id, update.start_time, update.end_time])).toEqual([
     ["slot-c", "09:00", "10:30"],
     ["slot-a", "10:30", "11:30"],
-    ["slot-b", "12:00", "12:30"],
+    ["slot-b", "11:30", "12:00"],
   ]);
 
   const reorderPlan = planDestinationPackageReorder({
@@ -165,11 +165,11 @@ test("Phase 4.6 timed drag preserves each package duration instead of swapping t
   })).toEqual([
     ["C", "09:00", "10:30"],
     ["A", "10:30", "11:30"],
-    ["B", "12:00", "12:30"],
+    ["B", "11:30", "12:00"],
   ]);
 });
 
-test("Phase 4.6 preserves same-direction gaps and directly continues reversed pairs", () => {
+test("Phase 6 compatibility adapter removes historical gaps for every affected reorder", () => {
   const items = [
     visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
     visit("slot-b", "B", "10:30", 20, { end_time: "11:00" }),
@@ -187,8 +187,8 @@ test("Phase 4.6 preserves same-direction gaps and directly continues reversed pa
     ).map((update) => [update.source_item_id, update.start_time, update.end_time]),
   ).toEqual([
     ["slot-b", "09:00", "09:30"],
-    ["slot-c", "10:30", "12:00"],
-    ["slot-a", "12:00", "13:00"],
+    ["slot-c", "09:30", "11:00"],
+    ["slot-a", "11:00", "12:00"],
   ]);
 
   expect(
@@ -206,7 +206,7 @@ test("Phase 4.6 preserves same-direction gaps and directly continues reversed pa
   ]);
 });
 
-test("Phase 4.6 rejects partial-time rows before duration-based continuation", () => {
+test("Phase 6 compatibility adapter rejects partial-time rows", () => {
   const items = [
     visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
     visit("slot-b", "B", "10:30", 20, { end_time: null }),
@@ -218,10 +218,10 @@ test("Phase 4.6 rejects partial-time rows before duration-based continuation", (
       slotItemIds: ["slot-a", "slot-b"],
       packageSourceItemIds: ["slot-b", "slot-a"],
     }),
-  ).toMatchObject({ errorCode: "timed_visit_required", ok: false });
+  ).toMatchObject({ errorCode: "partial_time", ok: false });
 });
 
-test("Phase 4.7 fixed anchors split timed drag into continuation segments", () => {
+test("Phase 6 compatibility adapter rejects destination movement across fixed anchors", () => {
   const items = [
     visit("slot-a", "A", "09:00", 10, { end_time: "09:30" }),
     visit("fixed-1", "F1", "10:00", 20, { end_time: "10:15", is_fixed: true }),
@@ -241,21 +241,10 @@ test("Phase 4.7 fixed anchors split timed drag into continuation segments", () =
     timedAutoContinuation: true,
   });
 
-  expect(plan.ok).toBe(true);
-  expect(slots.map((slotId) => {
-    const item = plan.items.find((candidate) => candidate.id === slotId);
-    return [item.title, item.start_time, item.end_time];
-  })).toEqual([
-    ["A", "09:00", "09:30"],
-    ["D", "10:15", "10:35"],
-    ["B", "10:35", "11:05"],
-    ["C", "11:20", "12:05"],
-  ]);
-  expect(plan.items.find((item) => item.id === "fixed-1")).toMatchObject({ start_time: "10:00", end_time: "10:15", title: "F1" });
-  expect(plan.items.find((item) => item.id === "fixed-2")).toMatchObject({ start_time: "13:00", end_time: "13:15", title: "F2" });
+  expect(plan).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 });
 
-test("Phase 4.7 overflow converts the first non-fitting visit and the segment tail to untimed", () => {
+test("Phase 6 compatibility adapter does not use overflow as a cross-fixed drag fallback", () => {
   const items = [
     visit("fixed-1", "F1", "10:00", 10, { end_time: "10:15", is_fixed: true }),
     visit("slot-b", "B", "10:30", 20, { end_time: "11:00" }),
@@ -272,20 +261,10 @@ test("Phase 4.7 overflow converts the first non-fitting visit and the segment ta
     timedAutoContinuation: true,
   });
 
-  expect(plan.ok).toBe(true);
-  expect(["slot-b", "slot-c", "slot-d"].map((slotId) => {
-    const item = plan.items.find((candidate) => candidate.id === slotId);
-    return [item.title, item.start_time, item.end_time];
-  })).toEqual([
-    ["D", "10:15", "10:35"],
-    ["B", "10:35", "11:05"],
-    ["C", null, null],
-  ]);
-  expect(Number.isInteger(plan.items.find((item) => item.id === "slot-d").sort_order)).toBe(true);
-  expect(plan.timedAutoContinuationUpdates["slot-d"]).toMatchObject({ start_time: null, end_time: null, source_item_id: "slot-c" });
+  expect(plan).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 });
 
-test("Phase 4.7 rejects inserting timed visits between fixed anchors with no space", () => {
+test("Phase 6 rejects inserting timed visits across fixed anchors before evaluating space", () => {
   const items = [
     visit("fixed-1", "F1", "10:00", 10, { end_time: "10:15", is_fixed: true }),
     visit("fixed-2", "F2", "10:15", 20, { end_time: "10:30", is_fixed: true }),
@@ -300,12 +279,12 @@ test("Phase 4.7 rejects inserting timed visits between fixed anchors with no spa
       packageSourceItemIds: ["slot-a"],
       timedAutoContinuation: true,
     }),
-  ).toMatchObject({ ok: false, errorCode: "fixed_segment_no_space" });
+  ).toMatchObject({ ok: false, errorCode: "fixed_boundary_crossed" });
 });
 
 function planFixedAdjacentDrag(items, sourceItemId, targetItemId, placement) {
   const mixedPlan = planMixedTimedVisitReorder({ items, placement, sourceItemId, targetItemId });
-  expect(mixedPlan.ok).toBe(true);
+  if (!mixedPlan.ok) return mixedPlan;
   expect(
     hasTimedDragOrderChange({
       currentTimedItemIds: items.filter((item) => item.start_time && item.end_time).map((item) => item.id),
@@ -326,7 +305,7 @@ function planFixedAdjacentDrag(items, sourceItemId, targetItemId, placement) {
 
 function planAppTimedDrag(items, sourceItemId, targetItemId, placement) {
   const mixedPlan = planMixedTimedVisitReorder({ items, placement, sourceItemId, targetItemId });
-  expect(mixedPlan.ok).toBe(true);
+  if (!mixedPlan.ok) return mixedPlan;
   const plan = planDestinationPackageReorder({
     items,
     orderedTimedItemIds: mixedPlan.orderedTimedItemIds,
@@ -347,7 +326,7 @@ function planAppTimedDrag(items, sourceItemId, targetItemId, placement) {
   };
 }
 
-test("Phase 4.7a fixed-adjacent timed drop gaps are valid reorder targets", () => {
+test("Phase 6 fixed-adjacent targets do not permit crossing the anchor", () => {
   const fixedBoundedItems = [
     visit("slot-a", "A", "09:00", 10, { end_time: "09:30" }),
     visit("fixed-1", "F", "10:00", 20, { end_time: "10:15", is_fixed: true }),
@@ -358,28 +337,13 @@ test("Phase 4.7a fixed-adjacent timed drop gaps are valid reorder targets", () =
   ];
 
   const beforeRightAnchor = planFixedAdjacentDrag(fixedBoundedItems, "slot-d", "fixed-2", "before");
-  expect(beforeRightAnchor.ok).toBe(true);
-  expect(beforeRightAnchor.items.find((item) => item.id === "slot-d")).toMatchObject({
-    start_time: "11:45",
-    end_time: "12:05",
-    title: "D",
-  });
+  expect(beforeRightAnchor).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 
   const afterRightAnchor = planFixedAdjacentDrag(fixedBoundedItems, "slot-c", "fixed-2", "after");
-  expect(afterRightAnchor.ok).toBe(true);
-  expect(afterRightAnchor.items.find((item) => item.id === "slot-c")).toMatchObject({
-    start_time: "13:15",
-    end_time: "14:00",
-    title: "C",
-  });
+  expect(afterRightAnchor).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 
   const afterLeftAnchor = planFixedAdjacentDrag(fixedBoundedItems, "slot-a", "fixed-1", "after");
-  expect(afterLeftAnchor.ok).toBe(true);
-  expect(afterLeftAnchor.items.find((item) => item.id === "slot-a")).toMatchObject({
-    start_time: "10:15",
-    end_time: "10:45",
-    title: "A",
-  });
+  expect(afterLeftAnchor).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 
   const tailItems = [
     visit("slot-a", "A", "09:00", 10, { end_time: "09:30" }),
@@ -388,15 +352,10 @@ test("Phase 4.7a fixed-adjacent timed drop gaps are valid reorder targets", () =
     visit("slot-c", "C", "12:00", 40, { end_time: "12:30" }),
   ];
   const beforeFixed = planFixedAdjacentDrag(tailItems, "slot-c", "fixed-1", "before");
-  expect(beforeFixed.ok).toBe(true);
-  expect(beforeFixed.items.find((item) => item.id === "slot-c")).toMatchObject({
-    start_time: "10:30",
-    end_time: "11:00",
-    title: "C",
-  });
+  expect(beforeFixed).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 });
 
-test("Phase 4.7a no-space fixed-fixed gap still rejects only the closed fixed segment", () => {
+test("Phase 6 rejects fixed-crossing drag regardless of destination gap size", () => {
   const items = [
     visit("slot-a", "A", "09:00", 10, { end_time: "09:30" }),
     visit("slot-b", "B", "10:00", 20, { end_time: "10:30" }),
@@ -405,10 +364,13 @@ test("Phase 4.7a no-space fixed-fixed gap still rejects only the closed fixed se
     visit("slot-c", "C", "12:00", 50, { end_time: "12:30" }),
   ];
 
-  expect(planFixedAdjacentDrag(items, "slot-c", "fixed-1", "before")).toMatchObject({ ok: true });
+  expect(planFixedAdjacentDrag(items, "slot-c", "fixed-1", "before")).toMatchObject({
+    ok: false,
+    errorCode: "fixed_boundary_crossed",
+  });
   expect(planFixedAdjacentDrag(items, "slot-c", "fixed-2", "before")).toMatchObject({
     ok: false,
-    errorCode: "fixed_segment_no_space",
+    errorCode: "fixed_boundary_crossed",
   });
 });
 
@@ -427,141 +389,22 @@ function planOverflowBeforeFixed({ cEndTime, fixedStartTime }) {
   return planAppTimedDrag(items, "slot-c", "slot-a", "before");
 }
 
-test("Phase 4.7b fixed segment overflow converts timed visits to untimed and preserves mixed visual order", () => {
+test("Phase 6 compatibility adapter leaves fixed overflow to within-segment operations only", () => {
   const cFitsAOverflows = planOverflowBeforeFixed({ cEndTime: "02:10", fixedStartTime: "01:45" });
-  expect(cFitsAOverflows.ok).toBe(true);
-  expect(buildTimelineVisitDisplayOrder(cFitsAOverflows.items).map((item) => [item.title, item.start_time, item.end_time])).toEqual([
-    ["C", "01:00", "01:20"],
-    ["A", null, null],
-    ["B", null, null],
-    ["F", "01:45", "02:10"],
-    ["F2", "09:00", "10:00"],
-  ]);
-  expect(cFitsAOverflows.untimedSortOrderUpdates).toEqual([
-    expect.objectContaining({ id: "slot-b", sort_order: untimedSortOrderForSlot(1, 666_666) }),
-  ]);
+  expect(cFitsAOverflows).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 
   const cAlsoOverflows = planOverflowBeforeFixed({ cEndTime: "02:50", fixedStartTime: "01:40" });
-  expect(cAlsoOverflows.ok).toBe(true);
-  expect(buildTimelineVisitDisplayOrder(cAlsoOverflows.items).map((item) => [item.title, item.start_time, item.end_time])).toEqual([
-    ["C", null, null],
-    ["A", null, null],
-    ["B", null, null],
-    ["F", "01:40", "02:10"],
-    ["F2", "09:00", "10:00"],
-  ]);
-  expect(cAlsoOverflows.errorCode).not.toBe("invalid_timing_change");
+  expect(cAlsoOverflows).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
 
   const enoughSpace = planOverflowBeforeFixed({ cEndTime: "02:10", fixedStartTime: "02:00" });
-  expect(enoughSpace.ok).toBe(true);
-  expect(buildTimelineVisitDisplayOrder(enoughSpace.items).map((item) => [item.title, item.start_time, item.end_time])).toEqual([
-    ["C", "01:00", "01:20"],
-    ["A", "01:20", "01:50"],
-    ["B", null, null],
-    ["F", "02:00", "02:10"],
-    ["F2", "09:00", "10:00"],
-  ]);
+  expect(enoughSpace).toMatchObject({ ok: true });
 });
 
-test("Phase 4.7b Formal and Demo use the overflow rebase payload instead of the pre-conversion untimed slot", () => {
+test("Phase 6 Formal and Demo reject the same cross-fixed compatibility operation", () => {
   const plan = planOverflowBeforeFixed({ cEndTime: "02:10", fixedStartTime: "01:45" });
-  expect(plan.ok).toBe(true);
-  expect(plan.convertedSlotIds).toEqual(["slot-c"]);
-  expect(plan.untimedSortOrderUpdates).toEqual([
-    expect.objectContaining({
-      id: "slot-b",
-      original_sort_order: untimedSortOrderForSlot(1),
-      sort_order: untimedSortOrderForSlot(1, 666_666),
-    }),
-  ]);
-  expect(appSource).toContain("finalUntimedSortOrderUpdates");
-  expect(appSource).toContain("previewPlan.convertedSlotIds");
-});
-
-test("Phase 4.8b tail_pending promotion bypasses only blocking untimed visits", () => {
-  const items = [
-    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
-    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
-    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
-    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
-  ];
-  const plan = planTailPendingPromotionUntimedBypass({
-    items,
-    promotedFromItemId: "slot-a",
-    promotedToItemId: "slot-c",
-    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
-  });
-
-  expect(plan.ok).toBe(true);
-  expect(plan.untimedSortOrderUpdates).toEqual([
-    expect.objectContaining({ id: "untimed-b", sort_order: untimedSortOrderForSlot(2) }),
-  ]);
-  const nextItems = items.map((item) =>
-    item.id === "untimed-b"
-      ? { ...item, sort_order: plan.untimedSortOrderUpdates[0].sort_order }
-      : item.id === "transport-tail-a"
-        ? { ...item, to_item_id: "slot-c", transport_role: "tail_promoted_pair" }
-        : item,
-  );
-  expect(buildTimelineVisitDisplayOrder(nextItems).map((item) => item.id)).toEqual(["slot-a", "slot-c", "untimed-b"]);
-});
-
-test("Phase 4.8b tail_pending promotion does not rebase unrelated untimed visits", () => {
-  const items = [
-    visit("untimed-d", "D", null, untimedSortOrderForSlot(0), { end_time: null }),
-    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
-    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
-    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
-    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
-  ];
-  const plan = planTailPendingPromotionUntimedBypass({
-    items,
-    promotedFromItemId: "slot-a",
-    promotedToItemId: "slot-c",
-    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
-  });
-
-  expect(plan.ok).toBe(true);
-  expect(plan.untimedSortOrderUpdates.map((update) => update.id)).toEqual(["untimed-b"]);
-  expect(plan.untimedSortOrderUpdates.some((update) => update.id === "untimed-d")).toBe(false);
-});
-
-test("Phase 4.8b normal_pair transport does not use tail_pending untimed bypass", () => {
-  const items = [
-    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
-    visit("untimed-b", "B", null, untimedSortOrderForSlot(1), { end_time: null }),
-    visit("slot-c", "C", "10:15", 20, { end_time: "11:00" }),
-    transport("transport-ac", "slot-a", "slot-c", { transport_role: "normal_pair" }),
-  ];
-  const plan = planTailPendingPromotionUntimedBypass({
-    items,
-    promotedFromItemId: "slot-a",
-    promotedToItemId: "slot-c",
-    tailTransportItem: items.find((item) => item.id === "transport-ac"),
-  });
-
-  expect(plan.ok).toBe(true);
-  expect(plan.untimedSortOrderUpdates).toEqual([]);
-  expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["slot-a", "untimed-b", "slot-c"]);
-});
-
-test("Phase 4.8b tail_pending bypass is skipped when the promoted timed visit is before the tail source", () => {
-  const items = [
-    visit("slot-c", "C", "08:30", 20, { end_time: "09:00" }),
-    visit("slot-a", "A", "09:00", 10, { end_time: "10:00" }),
-    visit("untimed-b", "B", null, untimedSortOrderForSlot(2), { end_time: null }),
-    transport("transport-tail-a", "slot-a", null, { transport_role: "tail_pending" }),
-  ];
-  const plan = planTailPendingPromotionUntimedBypass({
-    items,
-    promotedFromItemId: "slot-a",
-    promotedToItemId: "slot-c",
-    tailTransportItem: items.find((item) => item.id === "transport-tail-a"),
-  });
-
-  expect(plan.ok).toBe(true);
-  expect(plan.untimedSortOrderUpdates).toEqual([]);
-  expect(buildTimelineVisitDisplayOrder(items).map((item) => item.id)).toEqual(["slot-c", "slot-a", "untimed-b"]);
+  expect(plan).toMatchObject({ errorCode: "fixed_boundary_crossed", ok: false });
+  expect(appSource).toContain("attachTimelineScheduleSortOrders");
+  expect(appSource).toContain("timelineSchedulePlan");
 });
 
 test("reorder preserves only original directed adjacent transports and remaps anchors", () => {
@@ -575,18 +418,15 @@ test("reorder preserves only original directed adjacent transports and remaps an
   });
 
   expect(plan.ok).toBe(true);
-  expect(plan.preservedTransportIds).toEqual(["transport-bc", "transport-tail-d"]);
-  expect(plan.deletedTransportIds).toEqual(["transport-ab", "transport-cd"]);
+  expect(plan.preservedTransportIds).toEqual(["transport-bc"]);
+  expect(plan.deletedTransportIds).toEqual(["transport-ab", "transport-cd", "transport-tail-d"]);
   expect(plan.items.find((item) => item.id === "transport-bc")).toMatchObject({
     from_item_id: "slot-a",
     to_item_id: "slot-b",
     from_snapshot_title: "snapshot-slot-b",
     to_snapshot_title: "snapshot-slot-c",
   });
-  expect(plan.items.find((item) => item.id === "transport-tail-d")).toMatchObject({
-    from_item_id: "slot-d",
-    to_item_id: null,
-  });
+  expect(plan.items.find((item) => item.id === "transport-tail-d")).toBeUndefined();
   expect(plan.items.some((item) => item.from_item_id === "slot-b" && item.to_item_id === "slot-c")).toBe(false);
 });
 
@@ -734,7 +574,8 @@ test("023 RPC performs Phase 4.6 timed auto-continuation transactionally", () =>
   expect(timedAutoContinuationMigration).toContain("source_position = previous_source_position + 1");
   expect(timedAutoContinuationMigration).toContain("start_time = time '00:00' + make_interval(mins => next_start_minutes)");
   expect(timedAutoContinuationMigration).toContain("grant execute on function public.reorder_itinerary_timed_auto_continuation");
-  expect(appSource).toContain("timedAutoContinuation: true");
+  expect(appSource).not.toContain('supabase.rpc("reorder_itinerary_timed_auto_continuation"');
+  expect(appSource).toContain('supabase.rpc("apply_timeline_schedule_operation"');
 });
 
 test("024 RPC performs Phase 4.7 fixed-anchor continuation transactionally", () => {
@@ -746,10 +587,12 @@ test("024 RPC performs Phase 4.7 fixed-anchor continuation transactionally", () 
   expect(fixedAnchorContinuationMigration).toContain("converted_slot_ids");
   expect(fixedAnchorContinuationMigration).toContain("start_time = null");
   expect(fixedAnchorContinuationMigration).toContain("grant execute on function public.reorder_itinerary_fixed_anchor_continuation");
-  expect(appSource).toContain("reorder_itinerary_fixed_anchor_continuation");
+  expect(appSource).not.toContain('supabase.rpc("reorder_itinerary_fixed_anchor_continuation"');
+  expect(appSource).toContain('supabase.rpc("apply_timeline_schedule_operation"');
   expect(appSource).toContain("orderedTimedItemIds");
   expect(appSource).toContain("orderedVisitItemIds");
-  expect(appSource).toContain("reorderArgs.untimed_sort_order_updates");
+  expect(appSource).toContain("timelineScheduleOperation");
+  expect(appSource).toContain("timelineSchedulePlan");
 });
 
 test("Phase 4.8a dnd-kit local sortable ghost preview stays UI-only", () => {
@@ -788,9 +631,8 @@ test("Phase 4.8c foreign drag presence makes only the active formal day read-onl
   expect(appSource).toContain("setTimeError(foreignDragSaveBlockedMessage);");
   expect(appSource).toContain("disabled={!canMutateThisDay}");
   expect(appSource).toContain("disabled={!canMutateThisDay || lockedByOther}");
-  expect(appSource).toContain("disabled={!canMutateThisDay || !canRequestAutoContinuation}");
+  expect(appSource).toContain("disabled={!canMutateThisDay || isSavingAutoContinuation || !autoContinuationPrompt.plan.ok}");
   expect(appSource).toContain("if (!canMutateThisDay || isOpen || !nextItem");
-  expect(appSource).toContain("if (!canMutateThisDay || isOpen || !previousItem");
   expect(appSource).toContain("foreignSameDayDragActive={foreignSameDayDragActive}");
   expect(appSource).toContain("foreignSameDayDragActive={Boolean(foreignDragPresence)}");
   expect(appSource).not.toContain("foreignSameDayDragActive={true}");
@@ -941,12 +783,9 @@ test("Phase 4.8b demo timeline fixtures model formal transportation roles", () =
   expect(appSource).toContain("demoSortOrderForNewTimelineItem");
   expect(appSource).toContain("trip_id: demoActiveTrip.id");
   expect(appSource).toContain("demo-transport-day3-napoli-kasahara");
-  expect(appSource).toContain("demo-transport-day3-hachiman-tail");
-  expect(appSource).toContain("demo-transport-day2-tail-promoted-yamashina-rest");
-  expect(appSource).toContain("transportRoles.normalPair");
-  expect(appSource).toContain("transportRoles.tailPending");
-  expect(appSource).toContain("transportRoles.tailPromotedPair");
-  expect(appSource).toContain("normalizeTransportRole({ ...item, item_type: \"transport\" })");
+  expect(appSource).toContain('transport_role: "normal_pair"');
+  expect(appSource).not.toContain("tail_pending");
+  expect(appSource).not.toContain("tail_promoted_pair");
   expect(appSource).toContain("TimelineFlowAttachment");
   expect(appSource).toContain("<SortableContext items={visitItemIds}");
 });

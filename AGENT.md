@@ -720,7 +720,25 @@ UI:
 - Do not bury core travel actions behind complex menus.
 - Avoid text overflow and cramped mobile controls.
 
-## 18. Regression Testing Checklist
+## 18. Timeline Scheduling Planner
+
+Timeline time-affecting operations use the unified scheduling contract:
+
+- A destination is valid only when both `start_time` and `end_time` exist (Timed), or neither exists (Untimed). Partial time is invalid and cleanup migrations must normalize legacy partial rows before enforcing the constraint.
+- Existing-card time edit, Timed/Untimed restore or clear, normal transport add/edit/delete, and destination reorder must call the same Planner semantics. Do not add independent continuation algorithms to UI handlers.
+- The affected segment removes historical gaps, preserves destination durations, leaves earlier content unchanged, and stops at the next fixed destination.
+- Fixed-boundary fit includes a valid incoming transport duration. Fixed or 24:00 overflow converts only the non-fitting suffix to Untimed; no other operation may automatically create Untimed destinations.
+- Untimed destinations keep visual order and are transparent to time continuation. A transport may not bridge across Untimed content; preserve such a row as suspended unless the operation explicitly removes it.
+- Only complete `normal_pair` transport rows are active. Do not restore `tail_pending`, `tail_promoted_pair`, tail transport UI, or tail-promotion helpers.
+- Pure time shifts do not require confirmation. Automatic Untimed conversion or implicit transport removal does.
+- Demo may apply the JavaScript Planner result to local React state. Formal writes must call `apply_timeline_schedule_operation`, validate a full-Day manifest and timestamp revision, lock deterministically, recalculate server-side, and apply atomically.
+- `preview_result` is advisory only. Never use a frontend batch as write authority, and do not restore client-side compensation/rollback as the transaction model.
+- Adding a new destination remains outside the unified Planner trigger list unless a later phase explicitly changes that boundary.
+- Do not call the legacy Phase 4 reorder RPCs or recreate `timelineAutoContinuation.js` / `timelineTransportationConflicts.js`.
+
+The normative product rules are in `docs/2026-08-09-phase-6-1-time-model-and-auto-scheduling-rules.md`; the implementation state and migration status belong in `CURRENT_TASK.md` and the active Phase 6 closeout.
+
+## 19. Regression Testing Checklist
 
 Always run:
 
@@ -804,7 +822,7 @@ For mobile:
 - Budget cards remain readable.
 - Luggage tabs/controls work with one-hand use.
 
-## 19. Project Workflow
+## 20. Project Workflow
 
 Feature flow:
 
@@ -853,7 +871,7 @@ Mobile testing flow:
 4. Confirm card text wraps cleanly.
 5. Confirm touch targets are usable.
 
-## 20. Current Direction for Future Agents
+## 21. Current Direction for Future Agents
 
 The project should keep moving toward a stable MVP architecture:
 
