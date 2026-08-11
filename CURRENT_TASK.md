@@ -38,10 +38,10 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 6 unified scheduling closeout
-Status: Phase 6 transport-remap Production regression hotfix validated on Staging; Production rollout pending
+Status: Phase 6 transport-remap hotfix migrated and transaction-tested on Production; main merge/deploy pending
 Branch: codex/timeline-phase-6-hotfix-transport-remap
 Production data: Cleanup completed; 8 approved test visits converted to Untimed and 1 approved invalid test transport deleted
-Production migration: Applied through 20260809091000 on lqvuqamzmchepgxkftcw
+Production migration: Applied through 20260811124500 on lqvuqamzmchepgxkftcw
 Staging migration: Applied through 20260811124500 on uyqdopksfysbobhjcepk
 ```
 
@@ -92,6 +92,7 @@ The normative rules are in `docs/2026-08-09-phase-6-1-time-model-and-auto-schedu
 - Production regression found after closeout: dragging a timed destination such as A to the bottom while preserving multiple adjacent transport pairs could fail atomically with `itinerary_items_transport_pair_unique_idx` because preserved endpoints were remapped row-by-row under an immediate unique index.
 - Hotfix migration `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql` replaces that immediate index with a `DEFERRABLE INITIALLY DEFERRED` unique constraint, so temporary in-transaction endpoint collisions are allowed while duplicate final pairs still fail.
 - Staging exact-fixture QA passed with A/B/C/E plus B-to-C and C-to-E: authoritative reorder produced B/C/E/A, preserved both unique pairs, produced expected continuation times, rejected a deliberately duplicated final pair, and rolled back with 0 fixture rows retained.
+- Production exact-fixture QA passed with the same result after applying `20260811124500`: B/C/E/A, expected continuation times, two unique preserved pairs, duplicate-final-pair rejection, and 0 retained fixture rows after rollback. Production migration history aligns through the hotfix and linked `public/app_private` error-level lint passes.
 - Hotfix static RPC tests: 11/11 passed. The two rendered Demo drag/editor regressions that previously lacked a running server passed 2/2. Production build and `git diff --check` passed; the existing chunk-size and Windows line-ending notices remain informational.
 
 - Phase 6 Planner/RPC regression: 45/45 passed.
@@ -159,9 +160,9 @@ Applied immutable Timeline migrations:
 - Applied Phase 6 migrations:
   - `20260809090000_timeline_phase_6_unified_schedule_operation.sql`
   - `20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql`
-- Local and Production migration history were verified aligned through `20260809091000`.
+- Local and Production migration history are verified aligned through `20260811124500`.
 - The original two Phase 6 migrations remain aligned on isolated Staging project `uyqdopksfysbobhjcepk`.
-- Staging also has the pending Production hotfix `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql`; Production remains aligned only through `20260809091000` until the hotfix rollout is completed.
+- Staging and Production both have `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql`.
 - Never edit an applied migration in place; use a new timestamped migration for future schema, RLS, RPC, permission, replica-identity, or publication changes.
 
 ## Known Residual Risks
@@ -185,4 +186,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Timeline Phase 6 is fully closed on Production. Migrations, cleanup, frontend deployment, authenticated smoke QA, reload persistence, and test-data restoration all passed. Do not start another phase until the user explicitly selects it.
+Timeline Phase 6 transport-remap hotfix is applied and transaction-tested on Production. Fast-forward the validated hotfix branch to `main`, verify deployment, and then close the regression without starting another phase.

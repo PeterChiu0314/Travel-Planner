@@ -1,9 +1,9 @@
 # Timeline Phase 6 | Unified Scheduling Closeout and Handoff
 
-Status: Original closeout completed; transport-remap hotfix validated on Staging and pending Production rollout
+Status: Original closeout completed; transport-remap hotfix migrated and transaction-tested on Production, pending main deploy
 Branch: `codex/timeline-phase-6-hotfix-transport-remap`
-Publish state: Original Phase 6 closeout is on `main` through `23b67b5`; the transport-remap hotfix is not yet pushed or merged
-Production migration state: Applied through `20260809091000` on `lqvuqamzmchepgxkftcw`
+Publish state: Hotfix commit `4faa3e6` is pushed on its branch and ready to fast-forward into `main`
+Production migration state: Applied through `20260811124500` on `lqvuqamzmchepgxkftcw`
 Staging migration state: Applied through `20260811124500` on `uyqdopksfysbobhjcepk`
 
 ## Outcome
@@ -20,7 +20,7 @@ After Production closeout, a real reorder exposed one atomic-apply regression: m
 
 The scoped hotfix adds `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql`. It replaces the immediate partial unique index with a `DEFERRABLE INITIALLY DEFERRED` unique constraint over trip, Day, endpoints, and item type. Intermediate endpoint collisions are therefore checked at transaction completion, while duplicate final transport pairs remain invalid.
 
-Staging exact-fixture QA passed through the authoritative RPC with A/B/C/E and preserved B-to-C plus C-to-E transports. The final order was B/C/E/A, both transport pairs remained unique, continuation times were correct, an intentional duplicate final pair was rejected, and the entire fixture transaction rolled back with 0 rows retained. Production rollout is pending from `codex/timeline-phase-6-hotfix-transport-remap`.
+Staging and Production exact-fixture QA both passed through the authoritative RPC with A/B/C/E and preserved B-to-C plus C-to-E transports. The final order was B/C/E/A, both transport pairs remained unique, continuation times were correct, an intentional duplicate final pair was rejected, and each fixture transaction rolled back with 0 rows retained. Production migration history aligns through `20260811124500`, and linked error-level schema lint passes; the frontend branch still needs to be fast-forwarded to `main` for deployment.
 
 ## User-Facing Rules Now Implemented
 
