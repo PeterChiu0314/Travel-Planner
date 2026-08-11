@@ -38,8 +38,8 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 6 unified scheduling closeout
-Status: Phase 6 transport-remap hotfix migrated and transaction-tested on Production; main merge/deploy pending
-Branch: codex/timeline-phase-6-hotfix-transport-remap
+Status: Phase 6 transport-remap hotfix migrated, deployed, and verified on Production
+Branch: main
 Production data: Cleanup completed; 8 approved test visits converted to Untimed and 1 approved invalid test transport deleted
 Production migration: Applied through 20260811124500 on lqvuqamzmchepgxkftcw
 Staging migration: Applied through 20260811124500 on uyqdopksfysbobhjcepk
@@ -93,6 +93,7 @@ The normative rules are in `docs/2026-08-09-phase-6-1-time-model-and-auto-schedu
 - Hotfix migration `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql` replaces that immediate index with a `DEFERRABLE INITIALLY DEFERRED` unique constraint, so temporary in-transaction endpoint collisions are allowed while duplicate final pairs still fail.
 - Staging exact-fixture QA passed with A/B/C/E plus B-to-C and C-to-E: authoritative reorder produced B/C/E/A, preserved both unique pairs, produced expected continuation times, rejected a deliberately duplicated final pair, and rolled back with 0 fixture rows retained.
 - Production exact-fixture QA passed with the same result after applying `20260811124500`: B/C/E/A, expected continuation times, two unique preserved pairs, duplicate-final-pair rejection, and 0 retained fixture rows after rollback. Production migration history aligns through the hotfix and linked `public/app_private` error-level lint passes.
+- `main` fast-forwarded and pushed through `f79559b`. Vercel Production served the authenticated Timeline with meaningful content, no framework overlay or relevant app console error, and the deployed JavaScript bundle contains the localized transport-remap failure message. The only warning remains Google Maps' existing `google.maps.Marker` deprecation notice.
 - Hotfix static RPC tests: 11/11 passed. The two rendered Demo drag/editor regressions that previously lacked a running server passed 2/2. Production build and `git diff --check` passed; the existing chunk-size and Windows line-ending notices remain informational.
 
 - Phase 6 Planner/RPC regression: 45/45 passed.
@@ -186,4 +187,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Timeline Phase 6 transport-remap hotfix is applied and transaction-tested on Production. Fast-forward the validated hotfix branch to `main`, verify deployment, and then close the regression without starting another phase.
+Timeline Phase 6 and its transport-remap hotfix are fully closed on Production. Migration, exact RPC fixture, duplicate-final-pair guard, rollback cleanup, main deployment, and rendered app health all passed. Do not start another phase until the user explicitly selects it.

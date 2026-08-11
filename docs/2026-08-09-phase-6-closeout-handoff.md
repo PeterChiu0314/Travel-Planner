@@ -1,8 +1,8 @@
 # Timeline Phase 6 | Unified Scheduling Closeout and Handoff
 
-Status: Original closeout completed; transport-remap hotfix migrated and transaction-tested on Production, pending main deploy
-Branch: `codex/timeline-phase-6-hotfix-transport-remap`
-Publish state: Hotfix commit `4faa3e6` is pushed on its branch and ready to fast-forward into `main`
+Status: Completed, including the Production transport-remap hotfix
+Branch: `main`
+Publish state: Hotfix code and Production verification are pushed to `main` through `f79559b`; this final closeout update is included in the closing publish
 Production migration state: Applied through `20260811124500` on `lqvuqamzmchepgxkftcw`
 Staging migration state: Applied through `20260811124500` on `uyqdopksfysbobhjcepk`
 
@@ -20,7 +20,7 @@ After Production closeout, a real reorder exposed one atomic-apply regression: m
 
 The scoped hotfix adds `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql`. It replaces the immediate partial unique index with a `DEFERRABLE INITIALLY DEFERRED` unique constraint over trip, Day, endpoints, and item type. Intermediate endpoint collisions are therefore checked at transaction completion, while duplicate final transport pairs remain invalid.
 
-Staging and Production exact-fixture QA both passed through the authoritative RPC with A/B/C/E and preserved B-to-C plus C-to-E transports. The final order was B/C/E/A, both transport pairs remained unique, continuation times were correct, an intentional duplicate final pair was rejected, and each fixture transaction rolled back with 0 rows retained. Production migration history aligns through `20260811124500`, and linked error-level schema lint passes; the frontend branch still needs to be fast-forwarded to `main` for deployment.
+Staging and Production exact-fixture QA both passed through the authoritative RPC with A/B/C/E and preserved B-to-C plus C-to-E transports. The final order was B/C/E/A, both transport pairs remained unique, continuation times were correct, an intentional duplicate final pair was rejected, and each fixture transaction rolled back with 0 rows retained. Production migration history aligns through `20260811124500`, linked error-level schema lint passes, and `main` was fast-forwarded and deployed through `f79559b`. The authenticated Production Timeline rendered meaningful content without a framework overlay or relevant app console error, and its deployed bundle contains the localized fallback message.
 
 ## User-Facing Rules Now Implemented
 

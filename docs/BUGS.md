@@ -16,7 +16,7 @@ This document now separates:
 ## BUG-026 | Timeline reorder transport remap can hit a temporary unique-pair collision
 
 Priority: P0
-Status: Fixed in Production database / frontend deploy pending
+Status: Fixed / Production verified
 Discovered: 2026-08-11
 
 Description:
