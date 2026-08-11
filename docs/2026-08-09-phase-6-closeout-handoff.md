@@ -1,8 +1,8 @@
 # Timeline Phase 6 | Unified Scheduling Closeout and Handoff
 
-Status: Implementation/automated QA published; isolated Supabase Staging verification passed on 2026-08-10
+Status: Implementation/automated QA published; final QA passed and Production rollout explicitly approved on 2026-08-11, with migrations not yet applied
 Branch: `codex/timeline-phase-6-1`
-Publish state: Base commit `3f924b9` plus authenticated Staging QA fixes and this evidence are published on `origin/codex/timeline-phase-6-1`
+Publish state: Base commit `3f924b9` plus authenticated Staging QA fixes are published on `origin/codex/timeline-phase-6-1`; the 2026-08-11 final-QA evidence update remains local and uncommitted
 Production migration state: New Phase 6 migrations are not applied
 Staging migration state: Applied through `20260809091000` on `uyqdopksfysbobhjcepk`
 
@@ -123,6 +123,18 @@ Authenticated Formal Staging Timeline QA on 2026-08-10:
 - Formal QA also found cross-Fixed rejection displayed raw code `fixed_boundary_crossed`; `destinationReorderErrorMessage` now maps it to `固定行程是排程邊界，無法跨越拖曳。`.
 - Post-fix focused Planner/RPC/reorder/transport regression passed 63/63. Production build and `git diff --check` passed.
 
+Final pre-Production verification on 2026-08-11:
+
+- Staging insert-after-preview invalidation passed with `stale_manifest`; the inserted fixture was contained in a transaction and rolled back.
+- Staging delete-after-preview invalidation passed with `stale_manifest`; the deleted fixture was contained in a transaction and rolled back.
+- A true two-connection contention test passed. Client 1 applied D `23:00-23:25` and held the per-Day transaction lock for eight seconds. Client 2 captured the old baseline while client 1 was active, waited on the same Day lock, and then rejected with `stale_item` instead of overwriting client 1.
+- D was restored through `apply_timeline_schedule_operation` and a follow-up query confirmed `23:00-23:30`.
+- Production project `lqvuqamzmchepgxkftcw` was queried with read-only `SELECT` statements only. Across 127 Timeline rows, the Phase 6 cleanup would normalize 8 partial-time visits to Untimed and delete 1 structurally invalid transport row.
+- Production counts were 0 for tail roles requiring promotion, remaining role normalization, complete visit ranges with `end_time <= start_time`, and normal-pair transports with missing/non-positive duration.
+- No Production row, schema, setting, migration, Auth, Storage, or Realtime state was changed.
+- The affected rows were reviewed by trip/name: 7 partial-time visits and invalid `JR東西線` transport belong to `京都琵琶湖之旅-TEST`; 1 partial-time visit belongs to `野人沒有日記`. All partial rows have a start time and no end time.
+- The user confirmed all 9 affected rows are test data, approved converting the 8 visits to Untimed and deleting the invalid transport, waived a separate backup for these rows, and explicitly approved Production rollout.
+
 ## Completion Evidence Matrix
 
 | Phase 6 contract | Authoritative implementation and verification evidence |
@@ -165,13 +177,12 @@ Applied migrations 019 through 024 and the existing route migrations were not ed
 
 Before production rollout:
 
-1. Optionally run the two remaining high-contention cases on Supabase-managed Staging: inserted/deleted Day-revision invalidation and a true simultaneous multi-client re-preview. Existing-card mutations, major effects, transport CRUD, reorder, stale rejection, permission denial, and owner RLS visibility are covered.
-2. Keep the two Staging QA fixes covered by the focused transport/reorder regression when preparing Production rollout.
-3. Inspect the legacy partial-time and tail-transport cleanup counts before applying to production.
-4. Apply the migrations in timestamp order only after review.
-5. Run authenticated Formal smoke tests for time edit, clear/restore, transport CRUD, timed/untimed reorder, fixed overflow, and concurrent re-preview.
-6. Commit and push only the intentional Phase 6 files; keep `.tmp-*`, `test-results/`, and `supabase/.temp/` untracked.
+1. Apply the two approved Production migrations in timestamp order.
+2. Verify migration history, constraints/RPC, and the approved cleanup result of 8 Untimed visits plus 1 deleted invalid transport.
+3. Merge/deploy the matching frontend in coordination with the new Production RPC.
+4. Run authenticated Formal smoke tests for time edit, clear/restore, transport CRUD, timed/untimed reorder, fixed overflow, and concurrent re-preview.
+5. Commit and push only the intentional Phase 6 files; keep `.tmp-*`, `test-results/`, and `supabase/.temp/` untracked.
 
 ## Next Handoff
 
-The Phase 6 code and authenticated Formal Staging QA fixes are published. The isolated Staging database is healthy, fully migrated, connected through dedicated Google OAuth, and verified through the primary mutation matrix. The next optional checks are inserted/deleted Day-revision invalidation and a true simultaneous multi-client re-preview; Production remains unchanged and requires separate rollout approval.
+The Phase 6 code and authenticated Formal Staging QA fixes are published. Staging passes the primary mutation and contention matrix, the Production cleanup effect has been reviewed, and rollout is explicitly approved. The next scoped step is the coordinated Production migration, frontend deployment, and smoke QA.

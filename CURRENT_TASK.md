@@ -38,7 +38,7 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 6 unified scheduling closeout
-Status: Phases 6.1-6.5 base committed at 3f924b9; authenticated Staging QA passed on 2026-08-10 and its two QA fixes are included in the latest branch publish
+Status: Phase 6 implementation and QA fixes are published; final QA passed and Production rollout was explicitly approved on 2026-08-11, with migrations not yet applied
 Branch: codex/timeline-phase-6-1
 Production data: Unaffected
 Production migration: Phase 6 migrations remain unapplied
@@ -105,6 +105,10 @@ The normative rules are in `docs/2026-08-09-phase-6-1-time-model-and-auto-schedu
 - Authenticated Formal Staging QA passed on trip `855d507e-daa3-4752-9d42-a91f05d06d7c`: existing-card continuation, Timed/Untimed transitions, transport add/change/delete, Fixed and 24:00 overflow, Timed reorder, cross-Fixed rejection, Untimed visual reorder, reload persistence, and read-only SQL state verification all behaved as designed.
 - Formal QA found and locally fixed PostgreSQL `HH:MM:SS` versus client `HH:MM` transport-snapshot comparison drift, which had falsely shown `交通資訊需確認`; transport controls and CRUD then passed. It also found and locally fixed the raw `fixed_boundary_crossed` alert so the user receives a localized Fixed-boundary explanation.
 - Focused Planner/RPC/reorder/transport regression after the QA fixes: 63/63 passed. Production build and `git diff --check` passed; the existing large-chunk and Windows line-ending notices remain informational.
+- Final Staging revision QA passed: inserting or deleting a Day item after preview caused the original operation to reject with `stale_manifest`; both tests ran inside transactions and rolled back.
+- A real two-connection contention test passed: client 1 applied and held the per-Day transaction lock, client 2 submitted from the old baseline while client 1 was active, then rejected with `stale_item` after the lock released. The temporary D change was restored through the authoritative RPC and verified at `23:00-23:30`.
+- Production read-only cleanup counts on 2026-08-11 found 127 Timeline rows: 8 partial-time visits would become Untimed and 1 structurally invalid transport would be deleted. Tail-role promotion, remaining role normalization, invalid complete visit ranges, and invalid transport durations all counted 0. No Production write or migration occurred.
+- The 8 partial-time visits and invalid `JR東西線` transport were reviewed by trip/name. The user confirmed they are test data, approved converting the visits to Untimed and deleting the transport, waived a separate backup for these 9 rows, and explicitly approved Production rollout.
 
 ## Protected Current Behavior
 
@@ -155,7 +159,7 @@ Applied immutable Timeline migrations:
 - `BUG-025` remains Low Priority: foreign Timeline drag presence can occasionally clear by its 12-second stale timeout instead of the immediate clear event.
 - Active forms must continue to resist Realtime/refetch replacement.
 - Production may still contain partial-time or legacy tail-transport rows until the pending cleanup migration is reviewed and applied.
-- Supabase-managed Staging now covers the primary authenticated Formal mutation matrix. Insert/delete Day-revision invalidation and a true simultaneous multi-client re-preview remain targeted pre-Production checks.
+- Supabase-managed Staging now covers the authenticated Formal mutation matrix, inserted/deleted Day-revision invalidation, and true simultaneous two-connection stale-preview protection.
 - The Staging Google Maps key does not allow `http://127.0.0.1:5174/`, so the map shows `RefererNotAllowedMapError`; Timeline scheduling QA is unaffected, and Production key restrictions were intentionally not changed.
 - Existing native HTML drag accessibility limitations remain outside the completed route-collaboration scope.
 - Timeline drag animation remains browser/timing-sensitive; future polish should use dnd-kit configuration rather than delaying authoritative writes.
@@ -170,4 +174,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Phase 6 and its authenticated Formal Staging QA fixes are published on the current branch. Next, optionally run the remaining insert/delete and simultaneous-client checks, then review Production cleanup counts and rollout separately. Production remains unchanged and requires explicit approval.
+Phase 6 and its authenticated Formal Staging QA fixes are published, final contention checks pass, and the 9 affected test rows plus cleanup behavior were explicitly approved. Next, apply the two Production migrations in order, verify cleanup/schema, merge and deploy the matching frontend, then run Production smoke QA.
