@@ -38,15 +38,16 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 6 unified scheduling closeout
-Status: Phases 6.1-6.5 implementation and automated QA completed locally on 2026-08-09; not committed or pushed
+Status: Phases 6.1-6.5 base committed at 3f924b9; authenticated Staging QA passed on 2026-08-10 and its two QA fixes are included in the latest branch publish
 Branch: codex/timeline-phase-6-1
 Production data: Unaffected
-Production migration: Phase 6 migrations PostgreSQL-executed in disposable PGlite; not applied to Supabase
+Production migration: Phase 6 migrations remain unapplied
+Staging migration: Applied through 20260809091000 on uyqdopksfysbobhjcepk
 ```
 
 Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, Phase 5.8 UI baseline, and Phase 5.9 editor/card behavior are protected completed baselines.
 
-Phase 6 runtime integration is present in the local working tree. Existing-card time edit, Timed/Untimed transitions, transport mutations, and destination reorder now share the unified Planner; Formal writes use one authoritative RPC and Demo applies the same plan locally.
+Phase 6 runtime integration is present on the pushed branch. Existing-card time edit, Timed/Untimed transitions, transport mutations, and destination reorder now share the unified Planner; Formal writes use one authoritative RPC and Demo applies the same plan locally.
 
 The accepted visit-card, transportation-card, expanded-detail, and alternative-editor contract is centralized in `docs/timeline-card-ui-spec.md`. The Phase 5.9 handoff records implementation detail; do not duplicate it here.
 
@@ -97,6 +98,13 @@ The normative rules are in `docs/2026-08-09-phase-6-1-time-model-and-auto-schedu
 - Read-only Formal-route QA passed at local `/`: the current branch loaded the Google-login boundary and Demo link with meaningful DOM, no framework overlay, and no console warning/error; no login or data mutation was performed.
 - Disposable PGlite PostgreSQL validation passed: the full migration chain from `001` through both Phase 6 migrations executed in order, then a real `edit_time` RPC apply repacked the following card and reuse of the stale baseline rejected with `stale_item`. PGlite does not bundle Supabase's `pgcrypto` extension, so only that preinstalled-extension declaration was skipped; both Phase 6 migration bodies ran unchanged.
 - Linked Supabase checks confirm Production migration history still ends at `20260712033758`, `db push --dry-run` would apply only the two Phase 6 migrations in timestamp order, and the current `public/app_private` schema passes linked error-level lint. Dry-run does not compile the pending migration bodies.
+- Isolated Supabase Staging `uyqdopksfysbobhjcepk` is `ACTIVE_HEALTHY`; all 29 local/remote migrations align through `20260809091000`, and `public/app_private` error-level lint passes.
+- Staging authoritative RPC smoke passed for `edit_time` continuation (`09:00-10:15`, then `10:15-11:15`), stale-baseline rejection (`stale_item`), non-member rejection (`permission_denied`), and authenticated RLS visibility (2 items). The smoke transaction rolled back, leaving no fixture rows.
+- Staging Auth uses `http://127.0.0.1:5174` as the Site URL with `http://127.0.0.1:5174/**` allowed for redirects. Google sign-in is enabled with a dedicated `Travel Planner Staging` OAuth client whose callback targets only `uyqdopksfysbobhjcepk`.
+- Authenticated browser smoke passed: Google OAuth returned to the local Staging app, the signed-in account rendered successfully, and the independent Staging database showed 0 trips.
+- Authenticated Formal Staging QA passed on trip `855d507e-daa3-4752-9d42-a91f05d06d7c`: existing-card continuation, Timed/Untimed transitions, transport add/change/delete, Fixed and 24:00 overflow, Timed reorder, cross-Fixed rejection, Untimed visual reorder, reload persistence, and read-only SQL state verification all behaved as designed.
+- Formal QA found and locally fixed PostgreSQL `HH:MM:SS` versus client `HH:MM` transport-snapshot comparison drift, which had falsely shown `交通資訊需確認`; transport controls and CRUD then passed. It also found and locally fixed the raw `fixed_boundary_crossed` alert so the user receives a localized Fixed-boundary explanation.
+- Focused Planner/RPC/reorder/transport regression after the QA fixes: 63/63 passed. Production build and `git diff --check` passed; the existing large-chunk and Windows line-ending notices remain informational.
 
 ## Protected Current Behavior
 
@@ -138,6 +146,7 @@ Applied immutable Timeline migrations:
   - `20260809090000_timeline_phase_6_unified_schedule_operation.sql`
   - `20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql`
 - Local and remote migration history were verified aligned through `20260712033758`.
+- The two Phase 6 migrations are applied only to isolated Staging project `uyqdopksfysbobhjcepk`; Production remains at the pre-Phase-6 migration state.
 - Never edit an applied migration in place; use a new timestamped migration for future schema, RLS, RPC, permission, replica-identity, or publication changes.
 
 ## Known Residual Risks
@@ -146,7 +155,8 @@ Applied immutable Timeline migrations:
 - `BUG-025` remains Low Priority: foreign Timeline drag presence can occasionally clear by its 12-second stale timeout instead of the immediate clear event.
 - Active forms must continue to resist Realtime/refetch replacement.
 - Production may still contain partial-time or legacy tail-transport rows until the pending cleanup migration is reviewed and applied.
-- The SQL Planner is PostgreSQL-executed in disposable PGlite, but full Supabase-managed staging RPC coverage and authenticated Formal mutation QA remain pending rollout approval.
+- Supabase-managed Staging now covers the primary authenticated Formal mutation matrix. Insert/delete Day-revision invalidation and a true simultaneous multi-client re-preview remain targeted pre-Production checks.
+- The Staging Google Maps key does not allow `http://127.0.0.1:5174/`, so the map shows `RefererNotAllowedMapError`; Timeline scheduling QA is unaffected, and Production key restrictions were intentionally not changed.
 - Existing native HTML drag accessibility limitations remain outside the completed route-collaboration scope.
 - Timeline drag animation remains browser/timing-sensitive; future polish should use dnd-kit configuration rather than delaying authoritative writes.
 
@@ -160,4 +170,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Phase 6 code, automated QA, disposable PostgreSQL migration execution, and a minimal authoritative RPC apply/stale-baseline smoke are complete locally. Next, review cleanup counts and run the remaining Supabase-managed staging RPC matrix, then apply and run authenticated Formal smoke tests only when rollout is explicitly approved. Commit/push remains a separate requested action.
+Phase 6 and its authenticated Formal Staging QA fixes are published on the current branch. Next, optionally run the remaining insert/delete and simultaneous-client checks, then review Production cleanup counts and rollout separately. Production remains unchanged and requires explicit approval.

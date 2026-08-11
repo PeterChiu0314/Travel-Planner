@@ -316,6 +316,7 @@ test("formal untimed persistence is baseline-guarded by the unified Planner RPC"
   expect(appSource).toContain("function isEffectiveFixedVisit(item)");
   expect(appSource).toContain("if (!isTimedVisit(item))");
   expect(appSource).toContain("is_fixed: hasCompleteTime ? Boolean(payload.is_fixed) : false");
+  expect(appSource).toContain('if (message.includes("fixed_boundary_crossed")) return "固定行程是排程邊界，無法跨越拖曳。";');
 });
 
 test("demo untimed drag uses unified continuation without confirmation-only effects", async ({ page }) => {

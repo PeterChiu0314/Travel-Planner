@@ -1,9 +1,10 @@
 # Timeline Phase 6 | Unified Scheduling Closeout and Handoff
 
-Status: Implementation and automated QA completed locally on 2026-08-09
+Status: Implementation/automated QA published; isolated Supabase Staging verification passed on 2026-08-10
 Branch: `codex/timeline-phase-6-1`
-Publish state: Local working tree only; not committed or pushed
+Publish state: Base commit `3f924b9` plus authenticated Staging QA fixes and this evidence are published on `origin/codex/timeline-phase-6-1`
 Production migration state: New Phase 6 migrations are not applied
+Staging migration state: Applied through `20260809091000` on `uyqdopksfysbobhjcepk`
 
 ## Outcome
 
@@ -65,7 +66,7 @@ Transport/order cleanup:
 
 ## Database Migrations
 
-New, unapplied migrations:
+New migrations, unapplied to Production and applied only to isolated Staging:
 
 1. `supabase/migrations/20260809090000_timeline_phase_6_unified_schedule_operation.sql`
    - private server-side Planner and snapshot helpers;
@@ -91,6 +92,37 @@ Read-only linked Supabase verification on 2026-08-09:
 - `supabase db lint --linked --schema public,app_private --level error --fail-on error` passes for the currently deployed schema.
 - These linked checks prove migration discovery/order and the clean pre-Phase-6 database baseline. Compilation/execution evidence comes from the isolated PGlite run above; Production remains unchanged.
 
+Supabase-managed Staging verification on 2026-08-10:
+
+- The unusable empty Staging project was deleted and replaced with free project `Travel-Planner-Staging` (`uyqdopksfysbobhjcepk`, `ap-northeast-1`). The replacement reports `ACTIVE_HEALTHY`.
+- A dedicated CLI workdir links only to Staging, keeping Production project `lqvuqamzmchepgxkftcw` isolated.
+- All 29 migrations applied in order through `20260809091000`; local and Staging migration history match exactly.
+- `db lint --schema public,app_private --level error --fail-on error` passed after migration.
+- Catalog checks confirmed the Phase 6 RPC, complete-time constraint, transport constraint, and transport scope trigger.
+- A transactional authoritative smoke changed A from `09:00-10:00` to `09:00-10:15`, repacked B from `10:30-11:30` to `10:15-11:15`, rejected a stale baseline with `stale_item`, rejected a non-member with `permission_denied`, and exposed exactly 2 itinerary rows through authenticated RLS for the owner.
+- The smoke transaction rolled back; a follow-up query confirmed the fixture trip/items were not retained.
+- Staging Auth Site URL is `http://127.0.0.1:5174`, with `http://127.0.0.1:5174/**` in the redirect allow list.
+- Google Cloud project `Travel Planner` contains a separate `Travel Planner Staging` web OAuth client. Its only configured callback is `https://uyqdopksfysbobhjcepk.supabase.co/auth/v1/callback`; its client secret was entered directly into Staging Supabase and was not written to the repository or chat.
+- Real browser Auth smoke passed against the local `staging` Vite mode: Google OAuth returned to `127.0.0.1:5174`, the signed-in account rendered, and the isolated Staging account showed 0 trips.
+- No migration, fixture, Auth, Storage, Realtime, URL, or API-key setting was changed in Production.
+
+Authenticated Formal Staging Timeline QA on 2026-08-10:
+
+- A Staging-only trip `Phase 6 Staging QA` (`855d507e-daa3-4752-9d42-a91f05d06d7c`) was created through the real UI with six isolated Day 1 fixtures.
+- Existing-card time continuation passed: extending A to `09:00-10:15` repacked B to `10:15-11:15` while Fixed C stayed `13:00-14:00`.
+- Timed-to-Untimed and Untimed-to-Timed transitions passed.
+- Transport add (`15` minutes), change (`20` minutes), and delete passed and repacked B as expected without moving Fixed C.
+- Day overflow passed: setting D to `23:00-23:30` produced the major-effect confirmation and converted E to Untimed.
+- Fixed-boundary overflow passed: editing B to `12:30-13:30` produced the major-effect confirmation and converted B to Untimed while preserving A and Fixed C.
+- Timed reorder passed: moving B before A yielded B `09:00-10:00` and A `10:00-11:15`. Dragging A across Fixed C was rejected with no ordering or time mutation.
+- Untimed visual reorder passed: U moved before E without changing Timed times. Reload preserved the final visual state.
+- A read-only SQL query in the Staging dashboard confirmed the final six rows, complete Timed/Untimed pairs, Fixed C, and no remaining transport row.
+- Browser page identity, meaningful DOM, and framework-overlay checks passed. Non-map console health passed earlier in the run; the known Staging-only Google Maps `RefererNotAllowedMapError` remains because the Production Maps referrer configuration was intentionally not changed.
+- Final screenshot capture was not completed because the Browser security review later blocked localhost access; final-state evidence remains the post-reload DOM snapshot and read-only SQL result.
+- Formal QA found PostgreSQL `HH:MM:SS` transport snapshots were compared against client `HH:MM`, causing a false `交通資訊需確認` warning. Times are now normalized to minute precision in `src/lib/timelineTransportationRoles.js` and `src/App.jsx`, with focused regression coverage.
+- Formal QA also found cross-Fixed rejection displayed raw code `fixed_boundary_crossed`; `destinationReorderErrorMessage` now maps it to `固定行程是排程邊界，無法跨越拖曳。`.
+- Post-fix focused Planner/RPC/reorder/transport regression passed 63/63. Production build and `git diff --check` passed.
+
 ## Completion Evidence Matrix
 
 | Phase 6 contract | Authoritative implementation and verification evidence |
@@ -102,10 +134,10 @@ Read-only linked Supabase verification on 2026-08-09:
 | Fixed and 24:00 overflow | Fixed containment/incoming-transport/suffix tests and exact-day-boundary tests |
 | Reorder start, gap removal, broken transport, Fixed boundary | Planner reorder tests, Phase 4.2 compatibility regressions, Formal/Demo parity assertions |
 | Confirmation classification | `timelineScheduleMajorEffect`, material effect key, Planner major-effect fixtures |
-| Collaboration, stale preview protection, atomic apply | full-Day ID/timestamp baselines, advisory/row locks, authoritative server replan, re-preview tests, disposable PostgreSQL RPC apply plus stale-baseline rejection |
+| Collaboration, stale preview protection, atomic apply | full-Day ID/timestamp baselines, advisory/row locks, authoritative server replan, re-preview tests, disposable PostgreSQL RPC apply, plus managed-Staging apply/stale/permission/RLS smoke |
 | Realtime/reload convergence | applied-authority convergence fixture plus existing presence/realtime regression suite |
 | Single Planner and legacy cleanup | App RPC caller assertions, compatibility adapter delegation, removed legacy modules/UI/RPC callers |
-| Demo/Formal parity and rendered behavior | 260-test full suite, Browser Demo interaction, read-only Formal login-boundary QA |
+| Demo/Formal parity and rendered behavior | 260-test full suite, Browser Demo interaction, authenticated Formal Staging mutation/reload QA, read-only SQL final-state verification |
 
 ## Verification
 
@@ -119,6 +151,8 @@ Read-only linked Supabase verification on 2026-08-09:
 - Read-only Formal-route QA: local `/` loaded the current branch's Google-login boundary and Demo link with meaningful DOM, no framework overlay, and no console warning/error. No authentication or data mutation was performed.
 - Disposable PostgreSQL execution: all migrations from `001` through `20260809091000` passed in order under PGlite after skipping only unavailable `pgcrypto` extension declarations; both Phase 6 migration bodies ran unchanged.
 - Disposable authoritative RPC smoke: `edit_time` applied and repacked its downstream destination, then the same request with its stale original baseline rejected with `stale_item`.
+- Supabase-managed Staging smoke: full migration history and lint passed; authoritative `edit_time`, continuation, stale guard, permission guard, and authenticated RLS visibility passed in a rolled-back fixture transaction.
+- Staging browser Auth smoke: dedicated Google OAuth client/provider returned to the local Staging app and rendered the authenticated zero-trip state.
 - Vite's existing large-chunk warning remains informational.
 
 ## Protected Scope
@@ -131,8 +165,8 @@ Applied migrations 019 through 024 and the existing route migrations were not ed
 
 Before production rollout:
 
-1. Run the remaining RPC contract cases on Supabase-managed staging: inserted/deleted Day item, changed order, changed major effects, permission denial, transport CRUD, and reorder. Disposable PostgreSQL already covers migration execution, a valid apply, downstream continuation, and stale timestamp rejection.
-2. Confirm staging Auth/RLS behavior and compare the authoritative SQL results with JavaScript golden fixtures.
+1. Optionally run the two remaining high-contention cases on Supabase-managed Staging: inserted/deleted Day-revision invalidation and a true simultaneous multi-client re-preview. Existing-card mutations, major effects, transport CRUD, reorder, stale rejection, permission denial, and owner RLS visibility are covered.
+2. Keep the two Staging QA fixes covered by the focused transport/reorder regression when preparing Production rollout.
 3. Inspect the legacy partial-time and tail-transport cleanup counts before applying to production.
 4. Apply the migrations in timestamp order only after review.
 5. Run authenticated Formal smoke tests for time edit, clear/restore, transport CRUD, timed/untimed reorder, fixed overflow, and concurrent re-preview.
@@ -140,4 +174,4 @@ Before production rollout:
 
 ## Next Handoff
 
-The code phase and disposable PostgreSQL smoke are closed locally. The next scoped task is Supabase-managed staging/rollout verification, followed by commit/push when explicitly requested. If staging validation finds semantic drift, update both the SQL Planner and JavaScript golden fixtures together.
+The Phase 6 code and authenticated Formal Staging QA fixes are published. The isolated Staging database is healthy, fully migrated, connected through dedicated Google OAuth, and verified through the primary mutation matrix. The next optional checks are inserted/deleted Day-revision invalidation and a true simultaneous multi-client re-preview; Production remains unchanged and requires separate rollout approval.

@@ -80,6 +80,7 @@ import {
 import {
   isEstablishedTransportPair,
   isTransportationCard,
+  normalizeTransportSnapshotTime,
 } from "./lib/timelineTransportationRoles.js";
 import { buildRoutePanelStops, getFocusedMapState } from "./lib/timelineMapMarkers.js";
 import { timelineTypeColors } from "./lib/timelineTypeStyles.js";
@@ -1307,6 +1308,7 @@ function sortedVisitItems(items) {
 
 function destinationReorderErrorMessage(error) {
   const message = String(error?.message || "");
+  if (message.includes("fixed_boundary_crossed")) return "固定行程是排程邊界，無法跨越拖曳。";
   if (message.includes("fixed_segment_no_space")) return "此區段沒有可插入的時間空間，請先調整固定行程，或改放到其他位置。";
   if (message.includes("permission_denied")) return "你沒有重排行程的權限。";
   if (message.includes("invalid_day") || message.includes("different_trip_or_day")) return "只能重排同一天的有時間行程。";
@@ -1379,19 +1381,21 @@ function visitSnapshotDestination(item) {
 
 function buildTransportPairSnapshot(fromItem, toItem) {
   return {
-    from_snapshot_start_time: fromItem?.start_time || null,
-    from_snapshot_end_time: fromItem?.end_time || null,
+    from_snapshot_start_time: normalizeTransportSnapshotTime(fromItem?.start_time),
+    from_snapshot_end_time: normalizeTransportSnapshotTime(fromItem?.end_time),
     from_snapshot_destination: visitSnapshotDestination(fromItem) || null,
-    to_snapshot_start_time: toItem?.start_time || null,
-    to_snapshot_end_time: toItem?.end_time || null,
+    to_snapshot_start_time: normalizeTransportSnapshotTime(toItem?.start_time),
+    to_snapshot_end_time: normalizeTransportSnapshotTime(toItem?.end_time),
     to_snapshot_destination: visitSnapshotDestination(toItem) || null,
   };
 }
 
 function transportSnapshotMatchesVisit(transportItem, prefix, visitItem) {
   return (
-    (transportItem?.[`${prefix}_snapshot_start_time`] || null) === (visitItem?.start_time || null) &&
-    (transportItem?.[`${prefix}_snapshot_end_time`] || null) === (visitItem?.end_time || null) &&
+    normalizeTransportSnapshotTime(transportItem?.[`${prefix}_snapshot_start_time`]) ===
+      normalizeTransportSnapshotTime(visitItem?.start_time) &&
+    normalizeTransportSnapshotTime(transportItem?.[`${prefix}_snapshot_end_time`]) ===
+      normalizeTransportSnapshotTime(visitItem?.end_time) &&
     (transportItem?.[`${prefix}_snapshot_destination`] || null) === (visitSnapshotDestination(visitItem) || null)
   );
 }
