@@ -1,10 +1,10 @@
 # Timeline Phase 6 | Unified Scheduling Closeout and Handoff
 
-Status: Completed, migrated, deployed, and Production smoke-tested on 2026-08-11
-Branch: `main`
-Publish state: Phase 6 implementation, QA fixes, and rollout approval were fast-forwarded and pushed to `main` through `3f21f3a`; this final closeout record is included in the closing publish
+Status: Original closeout completed; transport-remap hotfix validated on Staging and pending Production rollout
+Branch: `codex/timeline-phase-6-hotfix-transport-remap`
+Publish state: Original Phase 6 closeout is on `main` through `23b67b5`; the transport-remap hotfix is not yet pushed or merged
 Production migration state: Applied through `20260809091000` on `lqvuqamzmchepgxkftcw`
-Staging migration state: Applied through `20260809091000` on `uyqdopksfysbobhjcepk`
+Staging migration state: Applied through `20260811124500` on `uyqdopksfysbobhjcepk`
 
 ## Outcome
 
@@ -13,6 +13,14 @@ Timeline time processing now uses one unified scheduling model for existing-card
 The JavaScript Planner is the deterministic reference used for preview, Demo behavior, and contract tests. Formal writes use the new `apply_timeline_schedule_operation` RPC, which rebuilds the authoritative Day snapshot, validates the full-Day revision, locks rows deterministically, reruns server-side Planner semantics, and applies the result atomically.
 
 The frontend no longer treats a preview batch as write authority and no longer uses best-effort compensation as the scheduling transaction model.
+
+## 2026-08-11 Transport Remap Hotfix
+
+After Production closeout, a real reorder exposed one atomic-apply regression: moving A to the bottom of a Day that preserved both B-to-C and C-to-E transports could temporarily remap one transport onto the pair still occupied by the other. The immediate `itinerary_items_transport_pair_unique_idx` rejected that intermediate state and rolled back the whole reorder; no partial data corruption occurred.
+
+The scoped hotfix adds `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql`. It replaces the immediate partial unique index with a `DEFERRABLE INITIALLY DEFERRED` unique constraint over trip, Day, endpoints, and item type. Intermediate endpoint collisions are therefore checked at transaction completion, while duplicate final transport pairs remain invalid.
+
+Staging exact-fixture QA passed through the authoritative RPC with A/B/C/E and preserved B-to-C plus C-to-E transports. The final order was B/C/E/A, both transport pairs remained unique, continuation times were correct, an intentional duplicate final pair was rejected, and the entire fixture transaction rolled back with 0 rows retained. Production rollout is pending from `codex/timeline-phase-6-hotfix-transport-remap`.
 
 ## User-Facing Rules Now Implemented
 

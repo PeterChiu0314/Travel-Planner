@@ -13,6 +13,26 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-026 | Timeline reorder transport remap can hit a temporary unique-pair collision
+
+Priority: P0
+Status: Fixed on Staging / Production rollout pending
+Discovered: 2026-08-11
+
+Description:
+Moving a timed destination to the bottom of a Day with multiple preserved adjacent transport pairs could make the Phase 6 RPC update one transport endpoint pair onto a pair still temporarily occupied by another row. The immediate unique index rejected the intermediate state and rolled back the complete reorder.
+
+Expected:
+The atomic reorder may pass through temporary endpoint collisions, but its final transport pairs must remain unique. Failure must never leave a partially applied Day.
+
+Fix note:
+Migration `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql` replaces the immediate transport-pair index with a deferred unique constraint. The existing Day advisory lock, deterministic row locks, authoritative server replan, and atomic transaction remain unchanged.
+
+Verification:
+Staging authoritative RPC fixture A/B/C/E with B-to-C and C-to-E passed when A moved to the bottom. Both final pairs were unique, a deliberately duplicated final pair was rejected, and the fixture transaction rolled back with 0 retained rows. Static RPC tests passed 11/11, rendered Demo drag/editor regressions passed 2/2, and the Production build passed.
+
+---
+
 ## BUG-023 | Timeline same-day item times can overlap
 
 Priority: P1

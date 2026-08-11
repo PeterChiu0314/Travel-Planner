@@ -9,6 +9,10 @@ const cleanupMigration = readFileSync(
   "supabase/migrations/20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
   "utf8",
 );
+const transportRemapHotfixMigration = readFileSync(
+  "supabase/migrations/20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+  "utf8",
+);
 const appSource = readFileSync("src/App.jsx", "utf8");
 
 test("Phase 6 RPC recalculates from a locked full-Day revision instead of trusting preview output", () => {
@@ -16,14 +20,14 @@ test("Phase 6 RPC recalculates from a locked full-Day revision instead of trusti
   expect(plannerMigration).toContain("app_private.apply_timeline_schedule_operation");
   expect(plannerMigration).toContain("public.apply_timeline_schedule_operation");
   expect(plannerMigration).toContain("pg_advisory_xact_lock");
-  expect(plannerMigration).toContain("order by item.id\n  for update");
+  expect(plannerMigration).toMatch(/order by item\.id\s+for update/);
   expect(plannerMigration).toContain("jsonb_object_keys(item_updated_at_baselines)");
   expect(plannerMigration).toContain("current_visit_ids is distinct from expected_visit_ids");
   expect(plannerMigration).toContain("preview_result is intentionally not used as mutation authority");
   expect(plannerMigration).toContain("repreview_required");
   expect(plannerMigration).toContain("next_end + fixed_boundary_transport_minutes > boundary_minutes");
   expect(plannerMigration).toContain("anchor_start := app_private.timeline_schedule_minutes(original_visits");
-  expect(plannerMigration).toContain("schedule_start := target_index;\n      anchor_start := start_minutes;");
+  expect(plannerMigration).toMatch(/schedule_start := target_index;\s+anchor_start := start_minutes;/);
   expect(plannerMigration).toContain("delete from public.itinerary_budget_items");
   expect(plannerMigration).toContain("update public.itinerary_alternatives");
 });
@@ -83,6 +87,18 @@ test("Phase 6 cleanup removes partial and tail states and validates endpoint sco
   expect(cleanupMigration).toContain("itinerary_items_phase_6_transport_pair_check");
   expect(cleanupMigration).toContain("enforce_timeline_transport_pair_scope");
   expect(cleanupMigration).toContain("raise exception 'invalid_transport_scope'");
+});
+
+test("Phase 6 transport remap uniqueness is deferred until the reorder transaction commits", () => {
+  expect(transportRemapHotfixMigration).toContain(
+    "drop index if exists public.itinerary_items_transport_pair_unique_idx",
+  );
+  expect(transportRemapHotfixMigration).toContain(
+    "unique (trip_id, day_index, from_item_id, to_item_id, item_type)",
+  );
+  expect(transportRemapHotfixMigration).toContain("deferrable initially deferred");
+  expect(appSource).toContain('message.includes("itinerary_items_transport_pair_unique_idx")');
+  expect(appSource).toContain("交通資訊重新連接時發生衝突，行程未移動，請重新整理後再試。");
 });
 
 test("App callers use the unified RPC and no longer call legacy continuation or reorder RPCs", () => {

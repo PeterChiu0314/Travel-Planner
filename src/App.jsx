@@ -1308,6 +1308,9 @@ function sortedVisitItems(items) {
 
 function destinationReorderErrorMessage(error) {
   const message = String(error?.message || "");
+  if (message.includes("itinerary_items_transport_pair_unique_idx")) {
+    return "交通資訊重新連接時發生衝突，行程未移動，請重新整理後再試。";
+  }
   if (message.includes("fixed_boundary_crossed")) return "固定行程是排程邊界，無法跨越拖曳。";
   if (message.includes("fixed_segment_no_space")) return "此區段沒有可插入的時間空間，請先調整固定行程，或改放到其他位置。";
   if (message.includes("permission_denied")) return "你沒有重排行程的權限。";
