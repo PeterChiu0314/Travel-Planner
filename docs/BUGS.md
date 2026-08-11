@@ -16,7 +16,7 @@ This document now separates:
 ## BUG-027 | Transport-aware continuation bypasses the five-minute Timeline ceiling
 
 Priority: P0
-Status: Fixed / Staging verified / Production rollout pending
+Status: Fixed / Production verified / branch unmerged
 Discovered: 2026-08-11
 
 Description:
@@ -29,7 +29,7 @@ Fix note:
 The JavaScript Planner and authoritative SQL Planner now use the same five-minute ceiling for automatic continuation and earlier-conflict guidance. Migration `20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql` adds a private immutable helper without changing any applied migration or stored transportation duration.
 
 Verification:
-Staging authoritative RPC produced A `15:10-16:10`, B `16:20-17:20`, and C `17:30-18:00` across 8- and 7-minute transports while retaining `[8,7]`; the fixture transaction rolled back. Focused Planner/RPC tests passed 50/50, the broader Phase 6/reorder/Untimed/transport regression passed 100/100, and Staging `public/app_private` error-level schema lint passed. Production remains unchanged pending explicit rollout approval.
+Staging and Production authoritative RPC fixtures produced A `15:10-16:10`, B `16:20-17:20`, and C `17:30-18:00` across 8- and 7-minute transports while retaining `[8,7]`. Both fixture transactions rolled back; the Production follow-up query confirmed 0 retained rows. Focused Planner/RPC tests passed 50/50, the broader Phase 6/reorder/Untimed/transport regression passed 100/100, and Production `public/app_private` error-level schema lint passed. Migration history aligns through `20260811133000`; the hotfix branch intentionally remains unmerged to `main`.
 
 ---
 

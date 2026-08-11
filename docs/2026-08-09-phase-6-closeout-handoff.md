@@ -1,9 +1,9 @@
 # Timeline Phase 6 | Unified Scheduling Closeout and Handoff
 
-Status: Five-minute auto-scheduling ceiling hotfix verified on Staging; Production rollout pending approval
+Status: Five-minute auto-scheduling ceiling hotfix migrated and verified on Production; branch remains unmerged
 Branch: `codex/timeline-phase-6-hotfix-five-minute-ceiling`
-Publish state: Hotfix code and verification are on the dedicated branch; Production remains on the prior `main` state through the transport-remap closeout
-Production migration state: Applied through `20260811124500` on `lqvuqamzmchepgxkftcw`
+Publish state: Hotfix code and verification remain on the dedicated branch; `main` has not been merged or redeployed
+Production migration state: Applied through `20260811133000` on `lqvuqamzmchepgxkftcw`
 Staging migration state: Applied through `20260811133000` on `uyqdopksfysbobhjcepk`
 
 ## Outcome
@@ -32,7 +32,9 @@ JavaScript preview/Demo behavior and the authoritative SQL Planner were changed 
 
 Staging verification passed through the authoritative RPC: A stayed `15:10-16:10`; an 8-minute A-to-B transport produced B `16:20-17:20`; a 7-minute B-to-C transport produced C `17:30-18:00`; stored transport durations remained `[8,7]`. The fixture ran inside a transaction ending in `ROLLBACK`. Error-level schema lint passed for `public` and `app_private`. The focused Planner/RPC contract passed 50/50 and the broader Planner/RPC/reorder/Untimed/transport regression passed 100/100.
 
-Production remains unchanged at migration `20260811124500`. Applying `20260811133000` requires exact Production project verification, a dry run showing only this migration, and a new explicit user approval.
+The user explicitly approved the Production migration. The CLI project ref was reverified as `lqvuqamzmchepgxkftcw`, the dry run listed only `20260811133000`, and the migration applied successfully. Local and remote history now align through `20260811133000`, and linked error-level lint passes for `public` and `app_private`.
+
+Production authoritative RPC verification produced A `15:10-16:10`, B `16:20-17:20`, and C `17:30-18:00` with exact stored transport durations `[8,7]`. The fixture transaction ended in `ROLLBACK`; a separate follow-up query returned `remaining_fixture_rows = 0`. The branch remains intentionally unmerged to `main` while additional Phase 6 bug fixes continue.
 
 ## User-Facing Rules Now Implemented
 
