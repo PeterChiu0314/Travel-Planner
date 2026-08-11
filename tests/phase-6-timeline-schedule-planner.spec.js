@@ -102,6 +102,47 @@ test("a valid transport duration participates in continuation", () => {
   });
 });
 
+test("transport continuation rounds the next visit upward to the five-minute timeline step", () => {
+  const items = [
+    visit("a", "15:10", "16:10"),
+    transport("t-ab", "a", "b", 8),
+    visit("b", "16:30", "17:30"),
+  ];
+  const result = plan(items, { type: "edit_time", targetItemId: "a", start_time: "15:10", end_time: "16:10" });
+
+  expect(result.ok).toBe(true);
+  expect(result.updatedItems).toContainEqual({ id: "b", start_time: "16:20", end_time: "17:20" });
+  expect(items.find((item) => item.id === "t-ab").transport_duration_minutes).toBe(8);
+});
+
+test("five-minute continuation keeps exact boundaries and rounds each transport leg independently", () => {
+  const items = [
+    visit("a", "15:10", "16:10"),
+    transport("t-ab", "a", "b", 10),
+    visit("b", "16:30", "17:30"),
+    transport("t-bc", "b", "c", 7),
+    visit("c", "18:00", "18:30"),
+  ];
+  const result = plan(items, { type: "edit_time", targetItemId: "a", start_time: "15:10", end_time: "16:10" });
+
+  expect(result.ok).toBe(true);
+  expect(result.updatedItems).toEqual(expect.arrayContaining([
+    { id: "b", start_time: "16:20", end_time: "17:20" },
+    { id: "c", start_time: "17:30", end_time: "18:00" },
+  ]));
+});
+
+test("earlier-conflict guidance uses the five-minute transport ceiling", () => {
+  const items = [
+    visit("a", "15:10", "16:10"),
+    transport("t-ab", "a", "b", 8),
+    visit("b", "16:30", "17:30"),
+  ];
+  const result = plan(items, { type: "edit_time", targetItemId: "b", start_time: "16:18", end_time: "17:18" });
+
+  expect(result).toMatchObject({ earliestStart: "16:20", ok: false, validationError: "earlier_conflict" });
+});
+
 test("increasing transport duration shifts from to_item", () => {
   const items = [visit("a", "09:00", "10:00"), visit("b", "10:20", "11:20"), visit("c", "11:30", "12:00"), transport("t", "a", "b", 20)];
   const result = plan(items, {

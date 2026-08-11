@@ -1,5 +1,6 @@
 import { planUntimedSortOrdersForVisualOrder } from "./timelineUntimedOrdering.js";
 import { isTransportationCard } from "./timelineTransportationRoles.js";
+import { roundMinutesUpToStep } from "./timelineTime.js";
 
 export const timelineScheduleOperationTypes = Object.freeze({
   clearTime: "clear_time",
@@ -158,7 +159,7 @@ function scheduleSegment(context, startIndex, { anchorStart = null } = {}) {
       nextStart = anchorStart;
     } else if (previousEnd !== null) {
       const transport = transportByPair(transports, removedIds, visits[previousIndex], item, previousIndex, index);
-      nextStart = previousEnd + (transport ? transportDuration(transport) : 0);
+      nextStart = roundMinutesUpToStep(previousEnd + (transport ? transportDuration(transport) : 0));
     } else {
       nextStart = state.start;
     }
@@ -306,7 +307,9 @@ export function planTimelineSchedule({ items = [], operation, orderedVisitIds } 
     if (previousIndex >= 0) {
       const previous = visits[previousIndex];
       const pairTransport = transportByPair(transports, context.removedIds, previous, target, previousIndex, targetIndex);
-      const earliestStart = visitTimeState(previous).end + (pairTransport ? transportDuration(pairTransport) : 0);
+      const earliestStart = roundMinutesUpToStep(
+        visitTimeState(previous).end + (pairTransport ? transportDuration(pairTransport) : 0),
+      );
       if (start < earliestStart) return resultError("earlier_conflict", { earliestStart: timelineMinutesToTime(earliestStart) });
     }
     updateVisitTime(context, target, timelineMinutesToTime(start), timelineMinutesToTime(end));

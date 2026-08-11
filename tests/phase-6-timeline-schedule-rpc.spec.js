@@ -13,6 +13,10 @@ const transportRemapHotfixMigration = readFileSync(
   "supabase/migrations/20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
   "utf8",
 );
+const fiveMinuteCeilingHotfixMigration = readFileSync(
+  "supabase/migrations/20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+  "utf8",
+);
 const appSource = readFileSync("src/App.jsx", "utf8");
 
 test("Phase 6 RPC recalculates from a locked full-Day revision instead of trusting preview output", () => {
@@ -99,6 +103,17 @@ test("Phase 6 transport remap uniqueness is deferred until the reorder transacti
   expect(transportRemapHotfixMigration).toContain("deferrable initially deferred");
   expect(appSource).toContain('message.includes("itinerary_items_transport_pair_unique_idx")');
   expect(appSource).toContain("交通資訊重新連接時發生衝突，行程未移動，請重新整理後再試。");
+});
+
+test("Phase 6 authoritative Planner restores the five-minute ceiling for automatic continuation", () => {
+  expect(fiveMinuteCeilingHotfixMigration).toContain("app_private.timeline_schedule_round_up");
+  expect(fiveMinuteCeilingHotfixMigration).toContain(
+    "next_start := app_private.timeline_schedule_round_up(previous_end + transport_minutes)",
+  );
+  expect(fiveMinuteCeilingHotfixMigration).toContain(
+    "'earliestStart', app_private.timeline_schedule_time_text(app_private.timeline_schedule_round_up(previous_end + transport_minutes))",
+  );
+  expect(fiveMinuteCeilingHotfixMigration).not.toContain("next_start := previous_end + transport_minutes;");
 });
 
 test("App callers use the unified RPC and no longer call legacy continuation or reorder RPCs", () => {

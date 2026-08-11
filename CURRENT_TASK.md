@@ -38,11 +38,11 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 6 unified scheduling closeout
-Status: Phase 6 transport-remap hotfix migrated, deployed, and verified on Production
-Branch: main
+Status: Five-minute auto-scheduling ceiling regression fixed and verified on Staging; Production rollout pending approval
+Branch: codex/timeline-phase-6-hotfix-five-minute-ceiling
 Production data: Cleanup completed; 8 approved test visits converted to Untimed and 1 approved invalid test transport deleted
 Production migration: Applied through 20260811124500 on lqvuqamzmchepgxkftcw
-Staging migration: Applied through 20260811124500 on uyqdopksfysbobhjcepk
+Staging migration: Applied through 20260811133000 on uyqdopksfysbobhjcepk
 ```
 
 Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, Phase 5.8 UI baseline, and Phase 5.9 editor/card behavior are protected completed baselines.
@@ -89,6 +89,12 @@ The normative rules are in `docs/2026-08-09-phase-6-1-time-model-and-auto-schedu
 
 ## Phase 6 Verification
 
+- Regression found after transport-aware scheduling: an automatic destination start used the exact preceding end plus transport duration (`16:10 + 8 = 16:18`) instead of the established five-minute Timeline ceiling (`16:20`).
+- Hotfix migration `20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql` and the JavaScript Planner now round only each automatically calculated next-visit start upward to the next five-minute boundary. Visit duration is preserved, exact five-minute boundaries remain unchanged, and stored transport duration is never rounded or mutated.
+- Earlier-conflict guidance uses the same rounded earliest start, keeping Demo preview and authoritative SQL behavior identical.
+- Staging authoritative RPC fixture passed with A `15:10-16:10`, 8-minute transport, B `16:20-17:20`, 7-minute transport, and C `17:30-18:00`; transport durations remained `[8,7]`. The transaction ended with `ROLLBACK`.
+- Five-minute hotfix Planner/RPC static tests passed 50/50. Broader Planner/RPC/reorder/Untimed/transport regression passed 100/100 after starting the required local Vite server. Staging `public/app_private` error-level lint passed.
+- Production remains unchanged at `20260811124500`; applying `20260811133000` requires a separate explicit approval after exact Production project and dry-run verification.
 - Production regression found after closeout: dragging a timed destination such as A to the bottom while preserving multiple adjacent transport pairs could fail atomically with `itinerary_items_transport_pair_unique_idx` because preserved endpoints were remapped row-by-row under an immediate unique index.
 - Hotfix migration `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql` replaces that immediate index with a `DEFERRABLE INITIALLY DEFERRED` unique constraint, so temporary in-transaction endpoint collisions are allowed while duplicate final pairs still fail.
 - Staging exact-fixture QA passed with A/B/C/E plus B-to-C and C-to-E: authoritative reorder produced B/C/E/A, preserved both unique pairs, produced expected continuation times, rejected a deliberately duplicated final pair, and rolled back with 0 fixture rows retained.
@@ -164,6 +170,7 @@ Applied immutable Timeline migrations:
 - Local and Production migration history are verified aligned through `20260811124500`.
 - The original two Phase 6 migrations remain aligned on isolated Staging project `uyqdopksfysbobhjcepk`.
 - Staging and Production both have `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql`.
+- Staging also has `20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql`; Production does not yet have this migration.
 - Never edit an applied migration in place; use a new timestamped migration for future schema, RLS, RPC, permission, replica-identity, or publication changes.
 
 ## Known Residual Risks
@@ -187,4 +194,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Timeline Phase 6 and its transport-remap hotfix are fully closed on Production. Migration, exact RPC fixture, duplicate-final-pair guard, rollback cleanup, main deployment, and rendered app health all passed. Do not start another phase until the user explicitly selects it.
+Before Production, relink the CLI to `lqvuqamzmchepgxkftcw`, verify the exact project and migration dry run, then request explicit approval to apply only `20260811133000`. Production is unchanged until that approval is given.

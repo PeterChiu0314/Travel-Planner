@@ -1,10 +1,10 @@
 # Timeline Phase 6 | Unified Scheduling Closeout and Handoff
 
-Status: Completed, including the Production transport-remap hotfix
-Branch: `main`
-Publish state: Hotfix code and Production verification are pushed to `main` through `f79559b`; this final closeout update is included in the closing publish
+Status: Five-minute auto-scheduling ceiling hotfix verified on Staging; Production rollout pending approval
+Branch: `codex/timeline-phase-6-hotfix-five-minute-ceiling`
+Publish state: Hotfix code and verification are on the dedicated branch; Production remains on the prior `main` state through the transport-remap closeout
 Production migration state: Applied through `20260811124500` on `lqvuqamzmchepgxkftcw`
-Staging migration state: Applied through `20260811124500` on `uyqdopksfysbobhjcepk`
+Staging migration state: Applied through `20260811133000` on `uyqdopksfysbobhjcepk`
 
 ## Outcome
 
@@ -21,6 +21,18 @@ After Production closeout, a real reorder exposed one atomic-apply regression: m
 The scoped hotfix adds `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql`. It replaces the immediate partial unique index with a `DEFERRABLE INITIALLY DEFERRED` unique constraint over trip, Day, endpoints, and item type. Intermediate endpoint collisions are therefore checked at transaction completion, while duplicate final transport pairs remain invalid.
 
 Staging and Production exact-fixture QA both passed through the authoritative RPC with A/B/C/E and preserved B-to-C plus C-to-E transports. The final order was B/C/E/A, both transport pairs remained unique, continuation times were correct, an intentional duplicate final pair was rejected, and each fixture transaction rolled back with 0 rows retained. Production migration history aligns through `20260811124500`, linked error-level schema lint passes, and `main` was fast-forwarded and deployed through `f79559b`. The authenticated Production Timeline rendered meaningful content without a framework overlay or relevant app console error, and its deployed bundle contains the localized fallback message.
+
+## 2026-08-11 Five-Minute Auto-Scheduling Ceiling Hotfix
+
+Transport-aware continuation exposed a second scoped regression: the unified Planner used the exact sum of the previous visit end and transport duration. For example, `16:10 + 8` produced `16:18`, breaking the established Timeline rule that automatically calculated times sit on five-minute boundaries.
+
+The hotfix rounds only the automatically calculated next-visit start upward to the next five-minute boundary. It does not round or mutate the stored transport duration, it preserves the destination visit duration after shifting, and a sum already on a five-minute boundary remains unchanged. Explicit user-entered anchor times remain exact. Earlier-conflict guidance uses the same rounded earliest start.
+
+JavaScript preview/Demo behavior and the authoritative SQL Planner were changed together. Migration `20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql` adds a private immutable rounding helper and replaces the authoritative Planner without editing any applied migration in place.
+
+Staging verification passed through the authoritative RPC: A stayed `15:10-16:10`; an 8-minute A-to-B transport produced B `16:20-17:20`; a 7-minute B-to-C transport produced C `17:30-18:00`; stored transport durations remained `[8,7]`. The fixture ran inside a transaction ending in `ROLLBACK`. Error-level schema lint passed for `public` and `app_private`. The focused Planner/RPC contract passed 50/50 and the broader Planner/RPC/reorder/Untimed/transport regression passed 100/100.
+
+Production remains unchanged at migration `20260811124500`. Applying `20260811133000` requires exact Production project verification, a dry run showing only this migration, and a new explicit user approval.
 
 ## User-Facing Rules Now Implemented
 
