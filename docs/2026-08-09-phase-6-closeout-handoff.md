@@ -1,9 +1,9 @@
 # Timeline Phase 6 | Unified Scheduling Closeout and Handoff
 
-Status: Implementation/automated QA published; final QA passed and Production rollout explicitly approved on 2026-08-11, with migrations not yet applied
-Branch: `codex/timeline-phase-6-1`
-Publish state: Base commit `3f924b9` plus authenticated Staging QA fixes are published on `origin/codex/timeline-phase-6-1`; the 2026-08-11 final-QA evidence update remains local and uncommitted
-Production migration state: New Phase 6 migrations are not applied
+Status: Completed, migrated, deployed, and Production smoke-tested on 2026-08-11
+Branch: `main`
+Publish state: Phase 6 implementation, QA fixes, and rollout approval were fast-forwarded and pushed to `main` through `3f21f3a`; this final closeout record is included in the closing publish
+Production migration state: Applied through `20260809091000` on `lqvuqamzmchepgxkftcw`
 Staging migration state: Applied through `20260809091000` on `uyqdopksfysbobhjcepk`
 
 ## Outcome
@@ -135,6 +135,18 @@ Final pre-Production verification on 2026-08-11:
 - The affected rows were reviewed by trip/name: 7 partial-time visits and invalid `JR東西線` transport belong to `京都琵琶湖之旅-TEST`; 1 partial-time visit belongs to `野人沒有日記`. All partial rows have a start time and no end time.
 - The user confirmed all 9 affected rows are test data, approved converting the 8 visits to Untimed and deleting the invalid transport, waived a separate backup for these rows, and explicitly approved Production rollout.
 
+Production rollout and smoke verification on 2026-08-11:
+
+- A linked dry-run confirmed the Production project was `lqvuqamzmchepgxkftcw` and only `20260809090000` plus `20260809091000` were pending. Both migrations then applied successfully in timestamp order.
+- Local and remote migration history aligned through `20260809091000` after apply.
+- Post-migration SQL verification found 126 Timeline rows, 0 partial-time visits, and 0 structurally invalid transport rows. The public authoritative RPC, all three Phase 6 constraints, and `enforce_timeline_transport_pair_scope` trigger exist.
+- All 8 approved partial-time visits were verified as complete Untimed. The invalid `JR東西線` row whose source was `八坂神社` is gone. A separate valid same-name row with complete endpoints remains intentionally.
+- `main` fast-forwarded from `b9e3f77` through `3f21f3a` and pushed successfully. Vercel served the matching authenticated app at `https://peter-travel-planner.vercel.app/` with meaningful content and no framework overlay.
+- Authenticated Production smoke used the existing `系統測試專用` trip. Existing-card time continuation, Timed-to-Untimed and restore, transport create/update/delete, Timed keyboard reorder, Untimed keyboard reorder, Fixed-boundary overflow confirmation/conversion, and reload persistence all passed.
+- The temporary transport `Phase 6 Production QA` was deleted. Day 2 returned to `AA 08:30-09:30`, `RE 09:30-10:00`, `7-11 京都七条大宮店 10:00-10:20`, and `銀閣寺 11:20-11:45`.
+- Day 4 returned to its original order and times. Untimed reorder correctly removed the old gap before `F2_1h30min`; the test cleanup explicitly restored `F2_1h30min` to `08:30-10:00`, and a final reload confirmed persistence.
+- No app console error appeared. The only warning was Google Maps' existing `google.maps.Marker` deprecation notice, outside Phase 6 scope. Browser screenshot capture timed out, so final rendered evidence is the live DOM/state checks plus reload verification.
+
 ## Completion Evidence Matrix
 
 | Phase 6 contract | Authoritative implementation and verification evidence |
@@ -149,7 +161,7 @@ Final pre-Production verification on 2026-08-11:
 | Collaboration, stale preview protection, atomic apply | full-Day ID/timestamp baselines, advisory/row locks, authoritative server replan, re-preview tests, disposable PostgreSQL RPC apply, plus managed-Staging apply/stale/permission/RLS smoke |
 | Realtime/reload convergence | applied-authority convergence fixture plus existing presence/realtime regression suite |
 | Single Planner and legacy cleanup | App RPC caller assertions, compatibility adapter delegation, removed legacy modules/UI/RPC callers |
-| Demo/Formal parity and rendered behavior | 260-test full suite, Browser Demo interaction, authenticated Formal Staging mutation/reload QA, read-only SQL final-state verification |
+| Demo/Formal parity and rendered behavior | 260-test full suite, Browser Demo interaction, authenticated Formal Staging mutation/reload QA, authenticated Production mutation/restore/reload QA, read-only SQL final-state verification |
 
 ## Verification
 
@@ -175,14 +187,14 @@ Applied migrations 019 through 024 and the existing route migrations were not ed
 
 ## Rollout Checklist
 
-Before production rollout:
+Production rollout completed:
 
-1. Apply the two approved Production migrations in timestamp order.
-2. Verify migration history, constraints/RPC, and the approved cleanup result of 8 Untimed visits plus 1 deleted invalid transport.
-3. Merge/deploy the matching frontend in coordination with the new Production RPC.
-4. Run authenticated Formal smoke tests for time edit, clear/restore, transport CRUD, timed/untimed reorder, fixed overflow, and concurrent re-preview.
-5. Commit and push only the intentional Phase 6 files; keep `.tmp-*`, `test-results/`, and `supabase/.temp/` untracked.
+1. Applied the two approved Production migrations in timestamp order.
+2. Verified migration history, constraints/RPC/trigger, and the approved cleanup result of 8 Untimed visits plus 1 deleted invalid transport.
+3. Fast-forwarded and deployed the matching frontend with the Production RPC.
+4. Passed authenticated Formal smoke for time edit, clear/restore, transport CRUD, Timed/Untimed reorder, Fixed overflow, and reload persistence.
+5. Restored all temporary QA mutations and kept `.tmp-*`, `test-results/`, and `supabase/.temp/` untracked.
 
 ## Next Handoff
 
-The Phase 6 code and authenticated Formal Staging QA fixes are published. Staging passes the primary mutation and contention matrix, the Production cleanup effect has been reviewed, and rollout is explicitly approved. The next scoped step is the coordinated Production migration, frontend deployment, and smoke QA.
+Timeline Phase 6 is closed on Production. The database, cleanup, frontend deployment, authenticated mutation matrix, reload persistence, and QA restoration all passed. Preserve this state and do not start another phase until the user explicitly selects it.

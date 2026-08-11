@@ -38,10 +38,10 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 6 unified scheduling closeout
-Status: Phase 6 implementation and QA fixes are published; final QA passed and Production rollout was explicitly approved on 2026-08-11, with migrations not yet applied
-Branch: codex/timeline-phase-6-1
-Production data: Unaffected
-Production migration: Phase 6 migrations remain unapplied
+Status: Timeline Phase 6 is implemented, migrated, deployed, Production smoke-tested, and closed on 2026-08-11
+Branch: main
+Production data: Cleanup completed; 8 approved test visits converted to Untimed and 1 approved invalid test transport deleted
+Production migration: Applied through 20260809091000 on lqvuqamzmchepgxkftcw
 Staging migration: Applied through 20260809091000 on uyqdopksfysbobhjcepk
 ```
 
@@ -109,6 +109,11 @@ The normative rules are in `docs/2026-08-09-phase-6-1-time-model-and-auto-schedu
 - A real two-connection contention test passed: client 1 applied and held the per-Day transaction lock, client 2 submitted from the old baseline while client 1 was active, then rejected with `stale_item` after the lock released. The temporary D change was restored through the authoritative RPC and verified at `23:00-23:30`.
 - Production read-only cleanup counts on 2026-08-11 found 127 Timeline rows: 8 partial-time visits would become Untimed and 1 structurally invalid transport would be deleted. Tail-role promotion, remaining role normalization, invalid complete visit ranges, and invalid transport durations all counted 0. No Production write or migration occurred.
 - The 8 partial-time visits and invalid `JR東西線` transport were reviewed by trip/name. The user confirmed they are test data, approved converting the visits to Untimed and deleting the transport, waived a separate backup for these 9 rows, and explicitly approved Production rollout.
+- Production migration history now aligns through `20260809091000`. Post-migration SQL verification found 126 Timeline rows, 0 partial-time visits, 0 structurally invalid transports, the public Phase 6 RPC, all 3 Phase 6 constraints, and the transport-scope trigger.
+- The 8 approved visits were verified with both times null. The invalid `JR東西線` row from `八坂神社` was removed; a separate valid same-name row with complete endpoints remains intentionally.
+- `main` was fast-forwarded and pushed through `3f21f3a`, and Vercel served the matching authenticated Production app at `https://peter-travel-planner.vercel.app/`.
+- Authenticated Production smoke passed on the existing `系統測試專用` trip: time edit/continuation, Timed-to-Untimed and restore, transport create/update/delete, Timed and Untimed keyboard reorder, Fixed overflow confirmation/conversion, and reload persistence.
+- All temporary Production QA mutations were removed or restored. Day 2 returned to its original order/times with no temporary transport; Day 4 returned to its original order/times, including `F2_1h30min` at `08:30-10:00` after its expected gap-removal side effect was explicitly restored.
 
 ## Protected Current Behavior
 
@@ -146,11 +151,11 @@ Applied immutable Timeline migrations:
 20260712033758 / add_route_tables_to_realtime
 ```
 
-- Pending, unapplied Phase 6 migrations:
+- Applied Phase 6 migrations:
   - `20260809090000_timeline_phase_6_unified_schedule_operation.sql`
   - `20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql`
-- Local and remote migration history were verified aligned through `20260712033758`.
-- The two Phase 6 migrations are applied only to isolated Staging project `uyqdopksfysbobhjcepk`; Production remains at the pre-Phase-6 migration state.
+- Local and Production migration history were verified aligned through `20260809091000`.
+- The same two migrations remain aligned on isolated Staging project `uyqdopksfysbobhjcepk`.
 - Never edit an applied migration in place; use a new timestamped migration for future schema, RLS, RPC, permission, replica-identity, or publication changes.
 
 ## Known Residual Risks
@@ -158,7 +163,7 @@ Applied immutable Timeline migrations:
 - Realtime Broadcast is best effort during active drag; authoritative database reload is the convergence fallback after drag-end.
 - `BUG-025` remains Low Priority: foreign Timeline drag presence can occasionally clear by its 12-second stale timeout instead of the immediate clear event.
 - Active forms must continue to resist Realtime/refetch replacement.
-- Production may still contain partial-time or legacy tail-transport rows until the pending cleanup migration is reviewed and applied.
+- Production cleanup is complete: partial-time and structurally invalid transport counts are both 0.
 - Supabase-managed Staging now covers the authenticated Formal mutation matrix, inserted/deleted Day-revision invalidation, and true simultaneous two-connection stale-preview protection.
 - The Staging Google Maps key does not allow `http://127.0.0.1:5174/`, so the map shows `RefererNotAllowedMapError`; Timeline scheduling QA is unaffected, and Production key restrictions were intentionally not changed.
 - Existing native HTML drag accessibility limitations remain outside the completed route-collaboration scope.
@@ -174,4 +179,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Phase 6 and its authenticated Formal Staging QA fixes are published, final contention checks pass, and the 9 affected test rows plus cleanup behavior were explicitly approved. Next, apply the two Production migrations in order, verify cleanup/schema, merge and deploy the matching frontend, then run Production smoke QA.
+Timeline Phase 6 is fully closed on Production. Migrations, cleanup, frontend deployment, authenticated smoke QA, reload persistence, and test-data restoration all passed. Do not start another phase until the user explicitly selects it.
