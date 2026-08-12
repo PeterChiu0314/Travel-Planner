@@ -20,6 +20,7 @@ Read these sources before implementation:
 
 Current source-of-truth documents:
 
+- `docs/2026-08-11-timeline-sorting-editing-automated-qa.md`
 - `docs/2026-08-09-phase-6-closeout-handoff.md`
 - `docs/2026-08-09-phase-6-1-time-model-and-auto-scheduling-rules.md`
 - `docs/todo/2026-08-09-phase-6-2-unified-planner-implementation-plan.md`
@@ -38,11 +39,12 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 6 unified scheduling closeout
-Status: Five-minute auto-scheduling ceiling regression migrated and verified on Production; branch remains unmerged
+Status: Atomic alternative RPC is on Production; frontend integration is pushed and verified on the Vercel branch preview; branch remains unmerged
 Branch: codex/timeline-phase-6-hotfix-five-minute-ceiling
 Production data: Cleanup completed; 8 approved test visits converted to Untimed and 1 approved invalid test transport deleted
-Production migration: Applied through 20260811133000 on lqvuqamzmchepgxkftcw
+Production migration: Applied through 20260811150000 on lqvuqamzmchepgxkftcw
 Staging migration: Applied through 20260811133000 on uyqdopksfysbobhjcepk
+Pending rollout: Staging does not have 20260811150000; Production website frontend still uses the previous deployed build
 ```
 
 Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, Phase 5.8 UI baseline, and Phase 5.9 editor/card behavior are protected completed baselines.
@@ -89,6 +91,13 @@ The normative rules are in `docs/2026-08-09-phase-6-1-time-model-and-auto-schedu
 
 ## Phase 6 Verification
 
+- Alternative switching is now implemented locally as one `apply_itinerary_alternative` RPC transaction instead of two independent frontend updates. It locks the destination before its selected alternative, validates trip edit permission, Fixed state, the seven-minute edit lock, both `updated_at` baselines, and the parent/alternative relationship before writing either row.
+- The destination keeps its stable ID, Day/date, order, time, Fixed state, transport endpoints, and budget links; only destination content is exchanged, and the previous main content becomes the selected alternative. Any validation or write failure rolls back both changes.
+- Focused atomic-alternative checks passed 5/5, full Playwright regression passed 271/271, and Production build passed with only the existing large-chunk notice. Browser QA on local `/demo/timeline` verified switch, switch-back, unchanged sequence/time/transport display, Fixed protection, Demo isolation, and no console warning/error.
+- The user explicitly approved direct Production application. The final linked dry-run listed only `20260811150000_atomic_apply_itinerary_alternative.sql`; it then applied successfully to Production `lqvuqamzmchepgxkftcw`. Local/remote migration history aligns through `20260811150000`, and linked error-level lint passes for both `public` and `app_private`.
+- Frontend integration commit `8b7c97b` was pushed to `codex/timeline-phase-6-hotfix-five-minute-ceiling`, and Vercel marked its immutable Preview deployment ready. The deployed JavaScript bundle contains `apply_itinerary_alternative`, `stale_alternative`, and the localized stale-data message.
+- Authenticated Production-data QA on the Vercel branch preview passed: A switched to AA and back through one POST RPC per action; sequence `1`, time `03:30-03:50`, both transport cards, and the `$30,000` budget link stayed unchanged. Fixed hid the switch action, unlock restored it, and a deliberately stale second-tab action was rejected with the localized message before reloading the new AA state.
+- Final reload confirmed the `系統測試專用` trip was restored to A, sequence `1`, `03:30-03:50`, both original transports, `$30,000`, and unlocked state. No app console error occurred; the existing Google Maps legacy Marker warning remains informational.
 - Regression found after transport-aware scheduling: an automatic destination start used the exact preceding end plus transport duration (`16:10 + 8 = 16:18`) instead of the established five-minute Timeline ceiling (`16:20`).
 - Hotfix migration `20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql` and the JavaScript Planner now round only each automatically calculated next-visit start upward to the next five-minute boundary. Visit duration is preserved, exact five-minute boundaries remain unchanged, and stored transport duration is never rounded or mutated.
 - Earlier-conflict guidance uses the same rounded earliest start, keeping Demo preview and authoritative SQL behavior identical.
@@ -168,10 +177,11 @@ Applied immutable Timeline migrations:
 - Applied Phase 6 migrations:
   - `20260809090000_timeline_phase_6_unified_schedule_operation.sql`
   - `20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql`
-- Local and Production migration history are verified aligned through `20260811124500`.
+- Local and Production migration history are verified aligned through `20260811150000`.
 - The original two Phase 6 migrations remain aligned on isolated Staging project `uyqdopksfysbobhjcepk`.
 - Staging and Production both have `20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql`.
 - Staging and Production both have `20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql`.
+- Production has `20260811150000_atomic_apply_itinerary_alternative.sql`; Staging remains at `20260811133000`.
 - Never edit an applied migration in place; use a new timestamped migration for future schema, RLS, RPC, permission, replica-identity, or publication changes.
 
 ## Known Residual Risks
@@ -195,4 +205,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Continue Phase 6 bug fixing on `codex/timeline-phase-6-hotfix-five-minute-ceiling`. Do not merge this branch to `main` until the user explicitly requests it.
+Production database support and the Vercel branch-preview frontend have passed authenticated QA. The Production website still uses its previously deployed switching path until the user explicitly requests frontend Production deployment. Continue on `codex/timeline-phase-6-hotfix-five-minute-ceiling`; do not merge to `main` until explicitly requested.
