@@ -1326,6 +1326,21 @@ function destinationReorderErrorMessage(error) {
   return message || "目的地內容重排失敗，請稍後再試。";
 }
 
+function alternativeApplyErrorMessage(error) {
+  const message = String(error?.message || "");
+  if (message.includes("stale_item") || message.includes("stale_alternative")) {
+    return "行程或備案已由其他成員更新，已重新載入最新資料，請再試一次。";
+  }
+  if (message.includes("fixed_item")) return "此行程已固定，請先解鎖後再切換備案。";
+  if (message.includes("item_locked")) return "此行程目前正由其他成員編輯，請稍後再切換備案。";
+  if (message.includes("permission_denied")) return "你沒有切換此行程備案的權限。";
+  if (message.includes("item_not_found") || message.includes("alternative_not_found")) {
+    return "找不到這筆行程或備案，已重新載入最新資料。";
+  }
+  if (message.includes("visit_required")) return "交通卡不能套用景點備案。";
+  return message || "備案切換失敗，行程未變更，請稍後再試。";
+}
+
 function timelineScheduleErrorMessage(plan) {
   if (plan?.validationError === "earlier_conflict") {
     return plan.earliestStart ? `此行程最早可從 ${plan.earliestStart} 開始。` : "此行程時間會侵犯前方行程。";
@@ -5174,60 +5189,22 @@ export default function App() {
       setNotice("此行程已固定，請先解鎖後再修改。");
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     }
-    if (!(await ensureItineraryItemEditable(item.id))) {
-      return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
-    }
-    const oldMainPayload = {
-      title: item.title,
-      type: item.type || "attraction",
-      start_time: item.start_time || null,
-      end_time: item.end_time || null,
-      cost: Number(item.cost || 0),
-      location_name: item.location_name || item.location || null,
-      address: item.address || null,
-      map_url: item.map_url || null,
-      latitude: item.latitude ?? null,
-      longitude: item.longitude ?? null,
-      description: item.description || item.note || null,
-      transportation_note: item.transportation_note || null,
-    };
-    const nextPayload = normalizeItemPayload({
-      ...item,
-      title: alternative.title,
-      type: alternative.type || item.type,
-      start_time: item.start_time || "",
-      end_time: item.end_time || "",
-      location: alternative.location_name || "",
-      location_name: alternative.location_name || "",
-      address: alternative.address || "",
-      map_url: alternative.map_url || "",
-      latitude: alternative.latitude ?? null,
-      longitude: alternative.longitude ?? null,
-      note: alternative.description || "",
-      description: alternative.description || "",
-      transportation_note: alternative.transportation_note || "",
-      cost: alternative.cost || 0,
+    const result = await supabase.rpc("apply_itinerary_alternative", {
+      alternative_updated_at_baseline: alternative.updated_at,
+      item_updated_at_baseline: item.updated_at,
+      target_alternative_id: alternative.id,
+      target_item_id: item.id,
     });
-    const invalidTimeRange = isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time);
-    if (invalidTimeRange) {
-      setNotice("結束時間必須晚於開始時間。");
-      return { ok: false };
+    if (result.error || !result.data?.ok) {
+      const error = result.error || { message: "invalid_result" };
+      const conflict = /stale_|item_not_found|alternative_not_found/.test(String(error.message || ""));
+      const errorMessage = alternativeApplyErrorMessage(error);
+      setNotice(errorMessage);
+      if (conflict) await loadTripData(activeTrip.id);
+      return { conflict, error, errorMessage, ok: false };
     }
-    const { error: itemError } = await supabase
-      .from("itinerary_items")
-      .update(nextPayload)
-      .eq("id", item.id);
-    if (itemError) {
-      setNotice(itemError.message);
-      return { ok: false, error: itemError };
-    }
-    const { error: alternativeError } = await supabase
-      .from("itinerary_alternatives")
-      .update(oldMainPayload)
-      .eq("id", alternative.id);
-    if (alternativeError) setNotice(alternativeError.message);
-    else await loadTripData(activeTrip.id);
-    return { ok: !alternativeError, error: alternativeError };
+    await loadTripData(activeTrip.id);
+    return { data: result.data, ok: true };
   }
 
   async function saveBudget(payload, editingId, meta = {}) {

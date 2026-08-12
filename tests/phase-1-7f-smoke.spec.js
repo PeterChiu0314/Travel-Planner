@@ -890,6 +890,53 @@ test("visit editor stages alternative changes and saves them with the main itine
   expect(failures).toEqual([]);
 });
 
+test("alternative switch preserves slot order, time, transports, and Fixed protection", async ({ page }) => {
+  const failures = collectConsoleFailures(page);
+  const supabaseRequests = collectSupabaseRequests(page);
+  await page.goto("/demo/timeline");
+
+  let visit = page.locator(".timeline-item").filter({ has: page.getByRole("heading", { name: "平安出國停車場" }) });
+  const itemId = await visit.getAttribute("data-timeline-item-id");
+  const slot = page.locator(`.timeline-item[data-timeline-item-id="${itemId}"]`);
+  const originalSequence = await slot.locator(".destination-sequence-badge").innerText();
+  const originalTime = await slot.locator(".time-block").innerText();
+  const originalTransports = await page.locator(".timeline-day-column.active .transport-card").allTextContents();
+
+  await visit.click();
+  await visit.getByTitle("編輯").click();
+  let form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+  await form.getByRole("button", { name: "更多設定" }).click();
+  await form.getByRole("button", { name: "建立備案" }).click();
+  await form.getByRole("textbox", { name: "備案目的地" }).fill("備案停車場");
+  await form.getByRole("textbox", { name: "備註" }).fill("原子交換測試");
+  await form.getByRole("button", { name: "返回主行程" }).click();
+  await form.getByRole("button", { name: "儲存", exact: true }).click();
+  await expect(form).toHaveCount(0);
+
+  await slot.click();
+  await expect(slot.getByRole("button", { name: "切換原行程與備案" })).toBeVisible();
+  await slot.getByRole("button", { name: "切換原行程與備案" }).click();
+  await expect(slot.getByRole("heading", { name: "備案停車場" })).toBeVisible();
+  await expect(slot.locator(".destination-sequence-badge")).toHaveText(originalSequence);
+  expect(await slot.locator(".time-block").innerText()).toBe(originalTime);
+  await expect(page.locator(".timeline-day-column.active .transport-card")).toHaveText(originalTransports);
+
+  await slot.getByRole("button", { name: "切換原行程與備案" }).click();
+  await expect(slot.getByRole("heading", { name: "平安出國停車場" })).toBeVisible();
+  await expect(slot.locator(".destination-sequence-badge")).toHaveText(originalSequence);
+  expect(await slot.locator(".time-block").innerText()).toBe(originalTime);
+
+  await slot.getByTitle("鎖定").click();
+  await expect(slot).toHaveClass(/fixed/);
+  await expect(slot.getByRole("button", { name: "切換原行程與備案" })).toHaveCount(0);
+  await slot.getByTitle("解鎖").click();
+  await expect(slot).not.toHaveClass(/fixed/);
+  await expect(slot.getByRole("button", { name: "切換原行程與備案" })).toBeVisible();
+
+  expect(supabaseRequests).toEqual([]);
+  expect(failures).toEqual([]);
+});
+
 test("transport editor uses compact floating fields and preserves exact minute input", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
