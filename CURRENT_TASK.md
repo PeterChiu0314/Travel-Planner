@@ -39,12 +39,12 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 6 unified scheduling closeout
-Status: Atomic alternative RPC is on Production; frontend integration is pushed and verified on the Vercel branch preview; branch remains unmerged
-Branch: codex/timeline-phase-6-hotfix-five-minute-ceiling
+Status: Phase 6 hotfixes and atomic alternative switching are fast-forwarded into main; Production frontend deployment verification follows the main push
+Branch: main (fast-forwarded through 34c41d9)
 Production data: Cleanup completed; 8 approved test visits converted to Untimed and 1 approved invalid test transport deleted
 Production migration: Applied through 20260811150000 on lqvuqamzmchepgxkftcw
 Staging migration: Applied through 20260811133000 on uyqdopksfysbobhjcepk
-Pending rollout: Staging does not have 20260811150000; Production website frontend still uses the previous deployed build
+Pending rollout: Staging does not have 20260811150000; Production frontend deployment verification is pending
 ```
 
 Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, Phase 5.8 UI baseline, and Phase 5.9 editor/card behavior are protected completed baselines.
@@ -205,4 +205,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Production database support and the Vercel branch-preview frontend have passed authenticated QA. The Production website still uses its previously deployed switching path until the user explicitly requests frontend Production deployment. Continue on `codex/timeline-phase-6-hotfix-five-minute-ceiling`; do not merge to `main` until explicitly requested.
+Push the fast-forwarded `main`, then verify the Production Vercel deployment contains the atomic alternative frontend and passes a read-only page-health check. Staging may receive `20260811150000` later if the user wants environment parity.
