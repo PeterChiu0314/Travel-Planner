@@ -943,12 +943,12 @@ test("transport editor uses compact floating fields and preserves exact minute i
 
   await page.goto("/demo/timeline");
 
-  const navigationLinks = page.locator(".timeline-day-column.active .transport-card a.transport-navigation-button");
-  expect(await navigationLinks.count()).toBeGreaterThan(0);
-  await expect(navigationLinks.first()).toHaveAttribute("href", /google\.com\/maps\/dir/);
-  await expect(navigationLinks.first()).toHaveAttribute("target", "_blank");
+  const navigationActions = page.locator(".timeline-day-column.active .transport-card .transport-navigation-button");
+  expect(await navigationActions.count()).toBeGreaterThan(0);
+  await expect(navigationActions.first()).toBeDisabled();
+  await expect(navigationActions.first()).not.toHaveAttribute("href", /google\.com\/maps\/dir/);
 
-  const existingTransport = page.locator(".timeline-day-column.active .transport-card:has(a.transport-navigation-button)").first();
+  const existingTransport = page.locator(".timeline-day-column.active .transport-card").first();
   await existingTransport.click();
   await existingTransport.click();
   const expandedNote = existingTransport.locator(".transport-card-details .transport-note-detail");

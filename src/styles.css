@@ -6179,6 +6179,126 @@ textarea {
   overflow: auto;
 }
 
+.trip-json-file-button {
+  position: relative;
+  margin-right: auto;
+  cursor: pointer;
+}
+
+.trip-json-file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.trip-json-file-button:focus-within {
+  outline: 2px solid var(--mint-dark);
+  outline-offset: 2px;
+}
+
+.trip-import-preview-dialog {
+  align-content: start;
+  width: min(680px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+.trip-import-preview-heading h2,
+.trip-import-preview-heading p,
+.trip-import-summary strong,
+.trip-import-summary span {
+  margin: 0;
+}
+
+.trip-import-preview-heading p {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.trip-import-summary {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--color-surface-subtle);
+  padding: 14px;
+}
+
+.trip-import-summary span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.trip-import-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.trip-import-counts div {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+
+.trip-import-counts dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.trip-import-counts dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.trip-import-issues,
+.trip-import-commit-error {
+  border: 1px solid color-mix(in srgb, currentColor 32%, transparent);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.trip-import-issues.error,
+.trip-import-commit-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.trip-import-issues.warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.trip-import-issues ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.trip-import-issues code {
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+.trip-import-atomic-note {
+  margin: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .trip-import-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .create-trip-destination-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

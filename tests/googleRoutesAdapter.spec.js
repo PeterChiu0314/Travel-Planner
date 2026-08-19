@@ -43,6 +43,13 @@ test("Phase 5.7a builds Google Maps navigation URL from endpoint coordinates", (
 
 test("Phase 5.7a disables navigation and Routes requests without endpoint coordinates", () => {
   expect(buildGoogleMapsDirectionsUrl({ fromItem, toItem: { id: "missing" }, transportCategory: "jr" })).toBe("");
+  expect(
+    buildGoogleMapsDirectionsUrl({
+      fromItem,
+      toItem: { id: "database-null", latitude: null, longitude: null },
+      transportCategory: "jr",
+    }),
+  ).toBe("");
   expect(buildGoogleRoutesDurationRequest({ fromItem, toItem: { id: "missing" }, mode: "transit" })).toEqual({
     ok: false,
     errorCode: "missing_coordinates",

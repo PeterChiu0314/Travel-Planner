@@ -91,6 +91,8 @@ import {
   routeOverridesToSegmentMap,
   validRouteSegmentKeysFromItems,
 } from "./lib/routeOverrides.js";
+import { buildTripImportPersistencePayload, serializeTripToJson } from "./lib/tripJsonAdapters.js";
+import { buildTripJsonPreview, parseTripJsonText } from "./lib/tripJsonContract.js";
 import MapPanel from "./components/map/MapPanel.jsx";
 import {
   buildTimelineVisitDisplayOrder,
@@ -2506,6 +2508,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
   const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
+  const [tripImportState, setTripImportState] = useState(null);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareLinks, setShareLinks] = useState([]);
@@ -4834,6 +4837,53 @@ export default function App() {
     await loadTrips(tripId);
   }
 
+  async function previewTripImport(file) {
+    if (!file) return;
+    let text;
+    try {
+      text = await file.text();
+    } catch {
+      setNotice("無法讀取這個 JSON 檔案，請確認檔案後再試一次。");
+      return;
+    }
+    const parsed = parseTripJsonText(text);
+    const preview = buildTripJsonPreview(parsed.document, {
+      errors: parsed.errors || [],
+      fileName: file.name,
+      migrations: parsed.migrations || [],
+      warnings: parsed.warnings || [],
+    });
+    setIsTripDialogOpen(false);
+    setTripImportState({ busy: false, document: parsed.document || null, error: "", preview });
+  }
+
+  async function confirmTripImport() {
+    if (!tripImportState?.document || tripImportState.preview?.errors?.length || tripImportState.busy) return;
+    const persistence = buildTripImportPersistencePayload(tripImportState.document);
+    if (!persistence.ok || !persistence.payload) {
+      setTripImportState((current) => ({
+        ...current,
+        error: persistence.errors?.[0]?.message || "無法建立匯入資料，請重新檢查 JSON 檔案。",
+      }));
+      return;
+    }
+    setTripImportState((current) => ({ ...current, busy: true, error: "" }));
+    const { data, error } = await supabase.rpc("import_trip_timeline_v1", { payload: persistence.payload });
+    if (error || !data?.trip_id) {
+      setTripImportState((current) => ({
+        ...current,
+        busy: false,
+        error: error?.message || "匯入沒有回傳新旅程 ID，資料未建立。",
+      }));
+      return;
+    }
+    const importedTitle = tripImportState.document.trip.title;
+    setTripImportState(null);
+    setActiveDay(0);
+    setNotice(`已匯入「${importedTitle}」。`);
+    await loadTrips(data.trip_id);
+  }
+
   async function updateTrip(patch) {
     if (!activeTrip || !canRenameActiveTrip) return { ok: false };
     const nextPatch = { ...patch };
@@ -6010,20 +6060,19 @@ export default function App() {
     return { ok: true };
   }
 
-function exportTrip() {
+  function exportTrip() {
     if (!activeTrip) return;
     const exportedItems = timelineItemsInTripRange(items, activeTrip);
-    const payload = {
-      ...activeTrip,
-      itinerary_items: exportedItems,
-      pack_items: packItems,
-      members,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const result = serializeTripToJson({ alternatives, items: exportedItems, trip: activeTrip });
+    if (!result.ok) {
+      setNotice(result.errors?.[0]?.message || "旅程資料不符合 JSON 匯出契約，未建立檔案。");
+      return;
+    }
+    const blob = new Blob([result.json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${activeTrip.title || "trip"}.json`;
+    link.download = result.fileName;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -6309,7 +6358,18 @@ function exportTrip() {
           form={tripForm}
           onChange={setTripForm}
           onClose={() => setIsTripDialogOpen(false)}
+          onImportFile={previewTripImport}
           onSubmit={createTrip}
+        />
+      ) : null}
+
+      {tripImportState ? (
+        <TripImportPreviewDialog
+          busy={tripImportState.busy}
+          error={tripImportState.error}
+          onClose={() => setTripImportState(null)}
+          onConfirm={confirmTripImport}
+          preview={tripImportState.preview}
         />
       ) : null}
 
@@ -16126,7 +16186,7 @@ function MembersPanel({ className = "", isOwner, members, onApprove, onReject })
   );
 }
 
-function TripDialog({ form, onChange, onClose, onSubmit }) {
+function TripDialog({ form, onChange, onClose, onImportFile, onSubmit }) {
   const [dateSelectionStep, setDateSelectionStep] = useState(() => initialDateSelectionStep(form.start_date, form.end_date));
   const [startDateInput, setStartDateInput] = useState(() => formatHeaderDate(form.start_date) || "");
   const [endDateInput, setEndDateInput] = useState(() => formatHeaderDate(form.end_date) || "");
@@ -16315,6 +16375,19 @@ function TripDialog({ form, onChange, onClose, onSubmit }) {
           </div>
         </div>
         <div className="form-actions">
+          <label className="ghost-button trip-json-file-button">
+            匯入 JSON
+            <input
+              accept="application/json,.json"
+              aria-label="選擇旅程 JSON 檔案"
+              type="file"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                onImportFile(file);
+              }}
+            />
+          </label>
           <button className="ghost-button" type="button" onClick={onClose}>
             取消
           </button>
@@ -16323,6 +16396,68 @@ function TripDialog({ form, onChange, onClose, onSubmit }) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function TripImportPreviewDialog({ busy, error, onClose, onConfirm, preview }) {
+  const errors = preview?.errors || [];
+  const warnings = preview?.warnings || [];
+  const trip = preview?.trip;
+  const counts = preview?.counts || {};
+  const canConfirm = Boolean(trip && errors.length === 0 && !busy);
+
+  return (
+    <div className="modal-backdrop">
+      <section aria-labelledby="trip-import-preview-title" className="dialog-card trip-import-preview-dialog">
+        <div className="trip-import-preview-heading">
+          <div>
+            <h2 id="trip-import-preview-title">匯入旅程預覽</h2>
+            <p>{preview?.fileName || "JSON 檔案"} · Schema {preview?.schemaVersion || "—"}</p>
+          </div>
+        </div>
+
+        {trip ? (
+          <div className="trip-import-summary">
+            <strong>{trip.title}</strong>
+            <span>{trip.destination?.display_name}</span>
+            <span>{trip.start_date} ～ {trip.end_date}</span>
+          </div>
+        ) : null}
+
+        <dl className="trip-import-counts">
+          <div><dt>Day</dt><dd>{counts.days || 0}</dd></div>
+          <div><dt>行程</dt><dd>{counts.visits || 0}</dd></div>
+          <div><dt>交通</dt><dd>{counts.transports || 0}</dd></div>
+          <div><dt>備案</dt><dd>{counts.alternatives || 0}</dd></div>
+          <div><dt>Timed</dt><dd>{counts.timed || 0}</dd></div>
+          <div><dt>Untimed</dt><dd>{counts.untimed || 0}</dd></div>
+          <div><dt>固定</dt><dd>{counts.fixed || 0}</dd></div>
+        </dl>
+
+        {errors.length ? (
+          <div className="trip-import-issues error" role="alert">
+            <strong>需要修正 {errors.length} 個問題</strong>
+            <ul>{errors.slice(0, 20).map((issue, index) => <li key={`${issue.path}-${issue.code}-${index}`}><code>{issue.path}</code> {issue.message}</li>)}</ul>
+          </div>
+        ) : null}
+        {warnings.length ? (
+          <div className="trip-import-issues warning">
+            <strong>匯入提醒</strong>
+            <ul>{warnings.slice(0, 20).map((issue, index) => <li key={`${issue.path}-${issue.code}-${index}`}><code>{issue.path}</code> {issue.message}</li>)}</ul>
+            {warnings.length > 20 ? <p>另有 {warnings.length - 20} 項提醒未展開。</p> : null}
+          </div>
+        ) : null}
+        {error ? <div className="trip-import-commit-error" role="alert">{error}</div> : null}
+
+        <p className="trip-import-atomic-note">確認前不會寫入資料。確認後會以單一交易建立新旅程與 Timeline。</p>
+        <div className="form-actions">
+          <button className="ghost-button" type="button" disabled={busy} onClick={onClose}>取消</button>
+          <button className="primary-button compact" type="button" disabled={!canConfirm} onClick={onConfirm}>
+            {busy ? "匯入中…" : "確認匯入"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

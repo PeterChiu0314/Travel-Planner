@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-studio.local/contracts/trip-timeline.v1.schema.json",
+  "title": "Travel Studio Trip and Timeline Exchange v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "trip", "days"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "document_type": { "const": "travel_studio_trip" },
+    "trip": { "$ref": "#/$defs/trip" },
+    "days": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 366,
+      "items": { "$ref": "#/$defs/day" }
+    }
+  },
+  "$defs": {
+    "nullableText": {
+      "type": ["string", "null"],
+      "maxLength": 4000
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "time": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "properties": {
+            "start": {
+              "type": "string",
+              "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+            },
+            "end": {
+              "type": "string",
+              "pattern": "^(?:(?:[01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+            }
+          }
+        }
+      ]
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "address", "map_url", "latitude", "longitude"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nullableText" },
+        "address": { "$ref": "#/$defs/nullableText" },
+        "map_url": { "$ref": "#/$defs/nullableText" },
+        "latitude": {
+          "type": ["number", "null"],
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": ["number", "null"],
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "title", "location", "notes", "estimated_cost", "time"],
+      "properties": {
+        "category": { "$ref": "#/$defs/visitCategory" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "location": { "$ref": "#/$defs/location" },
+        "notes": { "$ref": "#/$defs/nullableText" },
+        "estimated_cost": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+        "time": { "$ref": "#/$defs/time" }
+      }
+    },
+    "visitCategory": {
+      "enum": ["attraction", "food", "hotel", "transport", "note"]
+    },
+    "visit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref",
+        "category",
+        "title",
+        "location",
+        "notes",
+        "estimated_cost",
+        "time",
+        "fixed",
+        "alternatives"
+      ],
+      "properties": {
+        "ref": { "$ref": "#/$defs/ref" },
+        "category": { "$ref": "#/$defs/visitCategory" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "location": { "$ref": "#/$defs/location" },
+        "notes": { "$ref": "#/$defs/nullableText" },
+        "estimated_cost": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+        "time": { "$ref": "#/$defs/time" },
+        "fixed": { "type": "boolean" },
+        "alternatives": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/alternative" }
+        }
+      }
+    },
+    "ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref",
+        "from_visit_ref",
+        "to_visit_ref",
+        "category",
+        "name",
+        "duration_minutes",
+        "notes"
+      ],
+      "properties": {
+        "ref": { "$ref": "#/$defs/ref" },
+        "from_visit_ref": { "$ref": "#/$defs/ref" },
+        "to_visit_ref": { "$ref": "#/$defs/ref" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "duration_minutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+        "notes": { "$ref": "#/$defs/nullableText" }
+      }
+    },
+    "day": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["day_index", "date", "visits", "transports"],
+      "properties": {
+        "day_index": { "type": "integer", "minimum": 0, "maximum": 365 },
+        "date": { "$ref": "#/$defs/date" },
+        "visits": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": { "$ref": "#/$defs/visit" }
+        },
+        "transports": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": { "$ref": "#/$defs/transport" }
+        }
+      }
+    },
+    "trip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "destination", "start_date", "end_date", "status"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "destination": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["display_name", "country", "city"],
+          "properties": {
+            "display_name": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "country": { "type": ["string", "null"], "maxLength": 250 },
+            "city": { "type": ["string", "null"], "maxLength": 250 }
+          }
+        },
+        "start_date": { "$ref": "#/$defs/date" },
+        "end_date": { "$ref": "#/$defs/date" },
+        "status": { "enum": ["planning", "traveling", "settled"] }
+      }
+    }
+  }
+}
