@@ -1,8 +1,8 @@
 # Timeline Phase 7.1-7.4 | JSON Exchange Closeout and Handoff
 
-Status: Implemented and verified on `codex/timeline-phase-7`; Production rollout pending
+Status: Implemented on `codex/timeline-phase-7`; Production RPC applied, feature-branch Preview QA and main integration pending
 Date: 2026-08-19
-Production: Unchanged
+Production frontend/data: Unchanged; Phase 7 RPC migration applied
 
 ## Scope Completed
 
@@ -89,12 +89,14 @@ Authenticated rendered Staging QA:
 - Both temporary imported QA Trips were deleted by exact verified IDs. Final SQL found 1 total original Staging Trip and 0 retained Phase 7 QA Trips, items, or memberships.
 - The only browser console error was the documented Staging Google Maps `RefererNotAllowedMapError`; Phase 7 and Timeline behavior were unaffected.
 
-Production Supabase `lqvuqamzmchepgxkftcw` remains unchanged and aligned through `20260811150000`. Phase 7 has not been applied to Production.
+Production Supabase `lqvuqamzmchepgxkftcw` now records `20260819134935_phase_7_import_trip_timeline_v1`, applied after the user's explicit approval while Git `main` and Vercel Production remained unchanged. Catalog checks confirmed `security invoker`, fixed `search_path=pg_catalog, public, auth`, anonymous execute denied, authenticated execute allowed, and a `jsonb` result. The post-apply security advisor reported no Phase 7 function warning; its warnings concern earlier intentional RPCs and Auth configuration.
+
+An existing Production trip exposed a compatibility gap after migration rollout: Timeline intentionally allows a blank transportation name and displays its category label, but the initial JSON adapter rejected that row. The adapter now exports the same category-label fallback (`train` -> `電車`, etc.) without changing the database row. The regression passed contract tests 14/14, the focused Phase 7 plus navigation suite 39/39, Production build, and `git diff --check`.
 
 ## Branch Closeout
 
 The final focused/full tests, Production build, diff check, requirement audit, authenticated Staging round-trip, and QA cleanup are complete. Only intentional Phase 7 source, migration, test, and documentation files belong in the branch commit; local `.tmp-*`, `supabase/.temp/`, and `test-results/` artifacts remain excluded.
 
-## Production Rollout Gate
+## Remaining Frontend Rollout Gate
 
-Do not apply the migration to Production merely because Staging and local tests pass. Production rollout requires a separate explicit decision, migration-history verification, dry run, authenticated Preview QA, and post-apply permission/function checks.
+Do not merge to `main` or update Vercel Production until feature-branch Preview QA is accepted. The Production RPC migration is already applied and verified; the remaining gate is authenticated Preview behavior, cleanup of any deliberately imported Production QA Trip, and explicit approval for frontend integration.

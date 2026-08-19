@@ -394,6 +394,67 @@ test("export adapter emits only stable Trip + Timeline semantics", () => {
   expect(result.json).not.toContain("sort_order");
 });
 
+test("export uses the transport category label when the optional transport name is blank", () => {
+  const trip = {
+    id: "trip-id",
+    title: "舊資料交通名稱相容性",
+    destination: "日本 · 京都",
+    destination_country: "日本",
+    destination_city: "京都",
+    start_date: "2026-08-19",
+    end_date: "2026-08-19",
+    status: "planning",
+  };
+  const items = [
+    {
+      id: "visit-a",
+      trip_id: trip.id,
+      day_index: 0,
+      sort_order: 10,
+      item_type: "visit",
+      type: "attraction",
+      title: "A",
+      start_time: "09:00:00",
+      end_time: "10:00:00",
+      cost: 0,
+      is_fixed: false,
+    },
+    {
+      id: "visit-b",
+      trip_id: trip.id,
+      day_index: 0,
+      sort_order: 30,
+      item_type: "visit",
+      type: "attraction",
+      title: "B",
+      start_time: "10:15:00",
+      end_time: "11:00:00",
+      cost: 0,
+      is_fixed: false,
+    },
+    {
+      id: "transport-a-b",
+      trip_id: trip.id,
+      day_index: 0,
+      sort_order: 20,
+      item_type: "transport",
+      type: "transport",
+      title: "",
+      transport_category: "train",
+      transport_name: "",
+      transport_duration_minutes: 15,
+      transport_role: "normal_pair",
+      from_item_id: "visit-a",
+      to_item_id: "visit-b",
+    },
+  ];
+
+  const result = serializeTripToJson({ alternatives: [], items, trip });
+
+  expect(result.ok).toBeTruthy();
+  expect(result.document.days[0].transports[0].name).toBe("電車");
+});
+
 test("persistence adapter reconstructs internal ordering without exposing it in JSON", () => {
   const result = buildTripImportPersistencePayload(validDocument());
   expect(result.ok).toBeTruthy();

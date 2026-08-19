@@ -12,6 +12,24 @@ import {
   validateTripJsonDocument,
 } from "./tripJsonContract.js";
 
+const transportCategoryNames = Object.freeze({
+  jr: "JR",
+  train: "電車",
+  bus: "公車",
+  walk: "步行",
+  drive: "自駕",
+  taxi: "計程車",
+  ferry: "渡輪",
+  flight: "飛機",
+  other: "其他",
+});
+
+function transportJsonName(transport) {
+  const explicitName = String(transport?.transport_name || transport?.title || "").trim();
+  if (explicitName) return explicitName;
+  return transportCategoryNames[String(transport?.transport_category || "").trim()] || "其他";
+}
+
 function optionalText(value) {
   const text = String(value ?? "").trim();
   return text || null;
@@ -137,7 +155,7 @@ export function buildTripJsonDocument({ alternatives = [], items = [], trip }) {
         from_visit_ref: visitRefById.get(transport.from_item_id) || null,
         to_visit_ref: visitRefById.get(transport.to_item_id) || null,
         category: String(transport.transport_category || "").trim(),
-        name: String(transport.transport_name || transport.title || "").trim(),
+        name: transportJsonName(transport),
         duration_minutes: Number(transport.transport_duration_minutes),
         notes: optionalText(transport.transport_note || transport.description || transport.note),
       })),
