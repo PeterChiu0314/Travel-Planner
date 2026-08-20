@@ -94,6 +94,7 @@ import {
 import { buildTripImportPersistencePayload, serializeTripToJson } from "./lib/tripJsonAdapters.js";
 import { buildTripJsonPreview, parseTripJsonText } from "./lib/tripJsonContract.js";
 import MapPanel from "./components/map/MapPanel.jsx";
+import TripImportPreviewBoard from "./components/trip-import/TripImportPreviewBoard.jsx";
 import {
   buildTimelineVisitDisplayOrder,
   isTimedVisit,
@@ -16417,22 +16418,12 @@ function TripImportPreviewDialog({ busy, error, onClose, onConfirm, preview }) {
           </div>
         </div>
 
-        {trip ? (
-          <div className="trip-import-summary">
-            <strong>{trip.title}</strong>
-            <span>{trip.destination?.display_name}</span>
-            <span>{trip.start_date} ～ {trip.end_date}</span>
-          </div>
-        ) : null}
+        {trip ? <TripImportPreviewBoard days={preview?.days} trip={trip} /> : null}
 
         <dl className="trip-import-counts">
-          <div><dt>Day</dt><dd>{counts.days || 0}</dd></div>
           <div><dt>行程</dt><dd>{counts.visits || 0}</dd></div>
           <div><dt>交通</dt><dd>{counts.transports || 0}</dd></div>
           <div><dt>備案</dt><dd>{counts.alternatives || 0}</dd></div>
-          <div><dt>Timed</dt><dd>{counts.timed || 0}</dd></div>
-          <div><dt>Untimed</dt><dd>{counts.untimed || 0}</dd></div>
-          <div><dt>固定</dt><dd>{counts.fixed || 0}</dd></div>
         </dl>
 
         {errors.length ? (
@@ -16450,7 +16441,7 @@ function TripImportPreviewDialog({ busy, error, onClose, onConfirm, preview }) {
         ) : null}
         {error ? <div className="trip-import-commit-error" role="alert">{error}</div> : null}
 
-        <p className="trip-import-atomic-note">確認前不會寫入資料。確認後會以單一交易建立新旅程與 Timeline。</p>
+        <p className="trip-import-atomic-note">尚未寫入資料，確認後才會建立新旅程與 Timeline</p>
         <div className="form-actions">
           <button className="ghost-button" type="button" disabled={busy} onClick={onClose}>取消</button>
           <button className="primary-button compact" type="button" disabled={!canConfirm} onClick={onConfirm}>

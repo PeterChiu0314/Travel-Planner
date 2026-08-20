@@ -519,6 +519,7 @@ export function buildTripJsonPreview(document, { errors = [], fileName = "", mig
   );
   return {
     counts: { ...counts, days: days.length },
+    days,
     errors,
     fileName,
     migrations,

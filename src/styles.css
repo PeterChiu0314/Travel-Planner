@@ -6201,9 +6201,15 @@ textarea {
 
 .trip-import-preview-dialog {
   align-content: start;
-  width: min(680px, 100%);
+  width: min(800px, 50vw);
+  max-width: 100%;
   max-height: calc(100vh - 32px);
   overflow: auto;
+  gap: 12px;
+  border-color: #d8d2c5;
+  border-radius: 14px;
+  background: #fffdf9;
+  padding: 20px 24px;
 }
 
 .trip-import-preview-heading h2,
@@ -6215,36 +6221,188 @@ textarea {
 
 .trip-import-preview-heading p {
   margin-top: 4px;
+  color: #6d726f;
   font-size: 13px;
 }
 
-.trip-import-summary {
-  display: grid;
-  gap: 4px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--color-surface-subtle);
-  padding: 14px;
+.trip-import-preview-board {
+  position: relative;
+  width: 100%;
+  max-height: min(490px, 56vh);
+  aspect-ratio: 1.4 / 1;
+  overflow: hidden;
+  border: 1px solid #cfd3ca;
+  border-radius: 11px;
+  background: #edf1e9;
+  isolation: isolate;
 }
 
-.trip-import-summary span {
-  color: var(--muted);
+.trip-import-google-map-wrap {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  height: 65%;
+  overflow: hidden;
+  background: #edf1e9;
+}
+
+.trip-import-google-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.trip-import-google-map-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(90deg, rgba(71, 107, 88, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(71, 107, 88, 0.08) 1px, transparent 1px),
+    #edf1e9;
+  background-size: 28px 28px;
+  color: #607069;
+  font-size: 13px;
+}
+
+.trip-import-google-point {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  width: 124px;
+  color: #153f32;
+  text-align: center;
+  transform: translate(-50%, -21px);
+  pointer-events: none;
+}
+
+.trip-import-google-point span {
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  height: 42px;
+  border: 3px solid rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
+  background: #174e3c;
+  box-shadow: 0 3px 12px rgba(17, 47, 38, 0.22);
+  color: #fff;
   font-size: 14px;
+  font-weight: 800;
+}
+
+.trip-import-google-point strong {
+  overflow: hidden;
+  max-width: 124px;
+  margin-top: 2px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255, 253, 249, 0.84);
+  box-shadow: 0 1px 5px rgba(25, 42, 34, 0.08);
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-import-cover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  height: 35%;
+  gap: 18px;
+  color: #fff;
+  padding: 18px 24px;
+}
+
+.trip-import-cover::before {
+  position: absolute;
+  inset: 0 0 -48px;
+  z-index: -1;
+  background-image: var(
+    --trip-import-cover-image,
+    linear-gradient(90deg, rgba(15, 39, 31, 0.94), rgba(27, 56, 45, 0.42)),
+    linear-gradient(135deg, #415c4b, #8f9c78 58%, #cbb98f)
+  );
+  background-position: center;
+  background-size: cover;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 48px), rgba(0, 0, 0, 0.68) calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 48px), rgba(0, 0, 0, 0.68) calc(100% - 28px), transparent 100%);
+  content: "";
+  pointer-events: none;
+}
+
+.trip-import-cover-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 3px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.trip-import-cover-copy strong {
+  margin-bottom: 2px;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.trip-import-cover-copy span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.trip-import-cover-credit {
+  position: relative;
+  z-index: 1;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: right;
+  text-decoration: none;
+}
+
+.trip-import-cover-credit:hover {
+  text-decoration: underline;
 }
 
 .trip-import-counts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(3, max-content);
+  align-items: center;
+  gap: 0;
   margin: 0;
+  border: 1px solid #ddd8ce;
+  border-radius: 9px;
+  background: #f5f2ec;
+  padding: 10px 14px;
 }
 
 .trip-import-counts div {
-  display: grid;
-  gap: 2px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 9px 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  border: 0;
+  padding: 0 15px;
+}
+
+.trip-import-counts div:first-child {
+  padding-left: 0;
+}
+
+.trip-import-counts div + div {
+  border-left: 1px solid #d2cdc3;
 }
 
 .trip-import-counts dt {
@@ -6254,7 +6412,7 @@ textarea {
 
 .trip-import-counts dd {
   margin: 0;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -6289,13 +6447,75 @@ textarea {
 }
 
 .trip-import-atomic-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
+  color: #51645c;
   font-size: 13px;
 }
 
-@media (max-width: 560px) {
+.trip-import-atomic-note::before {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border: 1px solid #a8c8ba;
+  border-radius: 999px;
+  background: #e9f3ee;
+  color: #174e3c;
+  content: "✓";
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.trip-import-preview-dialog .form-actions {
+  margin-top: -42px;
+}
+
+@media (max-width: 720px) {
+  .trip-import-preview-dialog {
+    width: 100%;
+    padding: 18px;
+  }
+
+  .trip-import-preview-board {
+    max-height: none;
+    aspect-ratio: 0.78 / 1;
+  }
+
+  .trip-import-cover {
+    height: 35%;
+    padding: 18px;
+  }
+
+  .trip-import-cover-credit {
+    max-width: 42%;
+  }
+
   .trip-import-counts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .trip-import-counts div {
+    justify-content: center;
+    padding: 0 6px;
+  }
+
+  .trip-import-preview-dialog .form-actions {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .trip-import-cover {
+    display: grid;
+  }
+
+  .trip-import-cover-credit {
+    max-width: none;
+    text-align: left;
   }
 }
 

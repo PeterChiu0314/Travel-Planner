@@ -55,6 +55,62 @@ final result: passed
 
 ---
 
+# Design QA — Phase 7 compact dialog and 35% image refinement
+
+- Source visual truth: `docs/qa/2026-08-20-phase-7-import-preview-image-top.png`, with the user's later instructions authoritative: narrower and taller dialog, shorter image/map gradient, larger map-point framing, and image reduced to 35%.
+- Browser-rendered implementation: `docs/qa/2026-08-20-phase-7-import-preview-image-35.png`.
+- Combined comparison: `docs/qa/2026-08-20-phase-7-import-preview-image-35-comparison.png`.
+- Browser and viewport: Codex in-app Browser, 1440 × 899 CSS px at device pixel ratio 1.
+- State: authenticated local Staging, valid JSON import preview before confirmation.
+
+## Full-view comparison evidence
+
+- Dialog changed from approximately 778 × 657 px to 720 × 694 px.
+- Preview board changed from approximately 728 × 441 px to 670 × 479 px.
+- Image measures 166.90 px, or 34.87% of the board; map measures 309.97 px, or 64.75%.
+- The image/map transition was shortened from 76 px to 48 px.
+
+## Focused-region comparison evidence
+
+- Route framing padding is now 56 px top, 44 px bottom, and 42 px on each side, enlarging D1–D4 while keeping them clear of the image fade and Google attribution.
+- Title, destination, dates, day count, Wikimedia credit, Google logo, map data, counts, safety note, and actions remain visible.
+- No horizontal overflow or dialog scrolling was introduced at the verified desktop viewport.
+
+## Required fidelity surfaces
+
+- Fonts and typography: unchanged; image text remains aligned to the top.
+- Spacing and layout rhythm: narrower 50vw dialog and taller 1.4:1 board create the requested portrait-leaning desktop proportion.
+- Colors and visual tokens: unchanged; only the blend length was reduced.
+- Image quality and asset fidelity: Wikimedia landscape crop and attribution are preserved.
+- Copy and content: unchanged.
+
+## Comparison history
+
+1. P2: dialog remained wider and flatter than requested. Fixed with a 50vw/800 px width cap and 1.4:1 board.
+2. P2: 76 px transition occupied too much of the map/photo boundary. Fixed by shortening the fade to 48 px.
+3. P2: route points appeared too compressed. Fixed by reducing Google `fitBounds` padding while preserving attribution clearance.
+4. User refinement: image share changed from 40% to 35%; map now receives 65%.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains in this refinement scope.
+
+## Implementation checklist
+
+- [x] Narrow and heighten the dialog.
+- [x] Shorten the image/map gradient.
+- [x] Enlarge the route-point framing.
+- [x] Set image/map to 35%/65%.
+- [x] Verify browser measurements, focused tests, production build, and `git diff --check`.
+
+## Follow-up polish
+
+No P3 follow-up identified for this scope.
+
+final result: passed
+
+---
+
 # Design QA — Version information dialog
 
 - Source visual truth: `C:/Users/ADMINI~1/AppData/Local/Temp/codex-clipboard-3681bb53-1055-4733-835f-481013a06cc1.png`.
@@ -248,6 +304,125 @@ No actionable P0, P1, or P2 mismatch remains in the requested field.
 - [x] Align input content and floating-label starts at 12 px.
 - [x] Preserve all surrounding editor fields and layout.
 - [x] Verify the focused regression test, production build, layout measurement, and console.
+
+## Follow-up polish
+
+No P3 follow-up identified for this scope.
+
+final result: passed
+
+# Design QA — Phase 7 graphical import preview
+
+- Source visual truth: `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-c0e32209-9790-47fb-85ec-940fe3a3cace.png` (1584 × 990 px).
+- Browser-rendered implementation: `docs/qa/2026-08-20-phase-7-import-preview-taller.png` from local Staging preview at `http://127.0.0.1:5174/` (1440 × 899 px at device pixel ratio 1).
+- Combined comparison: `docs/qa/2026-08-20-phase-7-import-preview-comparison.png`; both captures were normalized to 900 px height and inspected together.
+- Browser and viewport: Codex in-app Browser; desktop 1440 × 900 CSS px and narrow 390 × 844 CSS px.
+- State: valid local JSON preview before confirmation; a separate invalid JSON preview verified the guarded state.
+
+## Full-view comparison evidence
+
+- The revised dialog measured 778 × 657 CSS px at desktop size and required no internal scrolling.
+- The preview board measured 728 × 441 CSS px, making the dialog narrower and slightly taller than the previous 835 × 638 pass.
+- The selected hierarchy is preserved: compact title/file header, one wide map-and-photo board, embedded trip identity, one compact counts row, safety note, and right-aligned actions.
+- The live implementation uses the existing Google Maps JavaScript API and a Wikimedia image while preserving the mock's composition.
+
+## Focused-region comparison evidence
+
+- Exactly one eligible representative point appeared for each D1–D4.
+- Airport/station labels, notes, transportation-category cards, and missing coordinates were excluded from representative selection.
+- Normal segments use a single forest-green route color; no per-Day color legend is rendered.
+- Google Maps attribution and Wikimedia author/license attribution were visible.
+- The board measured approximately 60% map and 40% photo, with a soft 76 px blend across the seam instead of a hard cut.
+- Wikimedia search now inspects up to five candidates and prefers original images between 1.6:1 and 2.4:1 at 1000 × 500 px or larger before falling back to the closest available ratio.
+- At 390 × 844, the dialog had no horizontal overflow and retained readable content and actions.
+- Invalid JSON displayed both validation messages and disabled `確認匯入`.
+- `確認匯入` was never clicked during QA, so no persistence was triggered.
+
+## Required fidelity surfaces
+
+- Typography and spacing follow the existing warm application language while matching the approved compact wide-screen proportion.
+- The photo is integrated as the lower background band rather than rendered as a detached thumbnail.
+- Counts are limited to visits, transports, and alternatives.
+- The exact pre-persistence safety copy is retained.
+- Route spacing remains data-driven because it is calculated from real geographic bounds.
+
+## Findings
+
+No remaining P0, P1, or P2 mismatch was found in the requested import-preview scope.
+
+## Comparison history
+
+1. P2: the prior 58vw, 1.86:1 implementation remained visibly wider and flatter than the user's latest reference. Fixed by reducing the desktop dialog to 54vw/860px maximum and increasing the board to a 1.65:1 ratio. The normalized comparison confirms the revised dialog is narrower while retaining the 6:4 map/photo hierarchy.
+2. P2: the prior image lookup accepted the first usable page image, allowing portrait or extreme panorama sources to depend on aggressive CSS cropping. Fixed by evaluating up to five candidates using Commons original dimensions and preferring sufficiently large 1.6:1–2.4:1 landscape images.
+
+## Implementation checklist
+
+- [x] Responsive 54vw desktop dialog and taller 1.65:1 preview board with continuous 6:4 Google-map/photo content.
+- [x] One eligible middle representative point per Day.
+- [x] Normal, flight, and long-distance-break segment handling.
+- [x] Keyless Wikimedia multi-candidate lookup, original-dimension filtering, attribution, and quiet fallback.
+- [x] Existing validation and atomic confirmation behavior preserved.
+- [x] Desktop and narrow browser verification.
+- [x] Focused tests, full test suite, production build, and diff check.
+
+## Follow-up polish
+
+No P3 follow-up identified for this scope.
+
+final result: passed
+
+---
+
+# Design QA — Phase 7 preview image/map order
+
+- Source visual truth: `C:/Users/PETERC~1/AppData/Local/Temp/codex-clipboard-c0e32209-9790-47fb-85ec-940fe3a3cace.png`, with the user's later instruction authoritative: image above the map, image/map ratio 4:6, and image text aligned to the top.
+- Browser-rendered implementation: `docs/qa/2026-08-20-phase-7-import-preview-image-top.png`.
+- Combined comparison: `docs/qa/2026-08-20-phase-7-import-preview-image-top-comparison.png`.
+- Browser and viewport: Codex in-app Browser, 1440 × 899 CSS px at device pixel ratio 1.
+- Pixel dimensions: source 1584 × 992; implementation 1440 × 899; combined comparison 3168 × 1036. Both full-page captures were padded to equal comparison widths without changing their aspect ratios.
+- State: authenticated local Staging, valid JSON import preview before confirmation.
+
+## Full-view comparison evidence
+
+- The dialog remains approximately 778 × 657 CSS px and keeps the approved narrower, taller desktop proportion.
+- The 728 × 441 preview board now places the Wikimedia image on top and Google Map below.
+- Measured image area is 175.70 px (39.8%) and map area is 263.55 px (59.8%).
+- The trip copy starts 18.91 px from the board top and remains legible over the image.
+- The photo extends into a soft 76 px downward fade at the seam without covering the bottom Google logo, map-data attribution, or terms.
+
+## Focused-region comparison evidence
+
+- Google route bounds now reserve 108 px at the top of the map so D1–D4 markers remain in the unobscured map region below the image transition.
+- Trip title, destination, dates, and day count are grouped at the upper-left of the image; Wikimedia credit remains at the upper-right.
+- The Google logo and map-data attribution remain visible at the map bottom.
+- A fresh local app tab loaded with zero browser console errors. The existing Google Maps legacy Marker warning remains informational in the authenticated workspace.
+
+## Required fidelity surfaces
+
+- Fonts and typography: existing 24 px title and 14 px supporting hierarchy remain unchanged; only vertical placement moved to the image top.
+- Spacing and layout rhythm: the board keeps the accepted 1.65:1 ratio and exact 4:6 region split, with no added dialog height or internal scroll.
+- Colors and visual tokens: existing forest-green route, warm dialog surface, dark photo scrim, and seam opacity are preserved.
+- Image quality and asset fidelity: the selected Wikimedia landscape image keeps its cover crop and attribution; no substitute asset or placeholder was introduced.
+- Copy and content: trip identity, counts, safety note, and import actions remain unchanged.
+
+## Comparison history
+
+1. P1: the previous implementation placed Google Map above the photo, conflicting with the user's requested swap. Fixed by anchoring the 40% photo region at the top and the 60% Google Map region at the bottom.
+2. P2: after moving the map below the photo, route points could have occupied the faded seam. Fixed by increasing Google `fitBounds` top padding to 108 px while retaining bottom attribution space.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains in the requested preview-board scope.
+
+## Implementation checklist
+
+- [x] Place the image above the Google Map.
+- [x] Keep the image/map ratio at 4:6.
+- [x] Align image text to the upper edge.
+- [x] Preserve the soft image-to-map transition.
+- [x] Keep all Google branding and map-data attribution visible.
+- [x] Keep route markers inside the unobscured map region.
+- [x] Verify browser rendering, production build, focused Phase 7 tests, and `git diff --check`.
 
 ## Follow-up polish
 
