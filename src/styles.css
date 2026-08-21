@@ -6201,7 +6201,10 @@ textarea {
 
 .trip-import-preview-dialog {
   align-content: start;
-  width: min(800px, 50vw);
+  display: flex;
+  height: min(706px, calc(100vh - 32px));
+  flex-direction: column;
+  width: min(640px, 100%);
   max-width: 100%;
   max-height: calc(100vh - 32px);
   overflow: auto;
@@ -6213,23 +6216,27 @@ textarea {
 }
 
 .trip-import-preview-heading h2,
-.trip-import-preview-heading p,
 .trip-import-summary strong,
 .trip-import-summary span {
   margin: 0;
 }
 
-.trip-import-preview-heading p {
-  margin-top: 4px;
-  color: #6d726f;
-  font-size: 13px;
+.trip-import-preview-heading {
+  padding-left: 8px;
+}
+
+.trip-import-preview-dialog .trip-import-preview-heading h2 {
+  font-size: 18px;
+  line-height: 1.25;
 }
 
 .trip-import-preview-board {
   position: relative;
   width: 100%;
-  max-height: min(490px, 56vh);
-  aspect-ratio: 1.4 / 1;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  flex: 1 1 auto;
   overflow: hidden;
   border: 1px solid #cfd3ca;
   border-radius: 11px;
@@ -6244,7 +6251,7 @@ textarea {
   left: 0;
   z-index: 1;
   width: 100%;
-  height: 65%;
+  height: 75%;
   overflow: hidden;
   background: #edf1e9;
 }
@@ -6318,7 +6325,7 @@ textarea {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  height: 35%;
+  height: 25%;
   gap: 18px;
   color: #fff;
   padding: 18px 24px;
@@ -6378,42 +6385,34 @@ textarea {
 }
 
 .trip-import-counts {
-  display: grid;
-  grid-template-columns: repeat(3, max-content);
+  display: flex;
   align-items: center;
-  gap: 0;
+  flex-wrap: nowrap;
   margin: 0;
-  border: 1px solid #ddd8ce;
-  border-radius: 9px;
-  background: #f5f2ec;
-  padding: 10px 14px;
+  color: #657068;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
-.trip-import-counts div {
+.trip-import-counts span {
   display: flex;
   align-items: baseline;
   gap: 5px;
-  border: 0;
-  padding: 0 15px;
+  padding: 0 10px;
 }
 
-.trip-import-counts div:first-child {
+.trip-import-counts span:first-child {
   padding-left: 0;
 }
 
-.trip-import-counts div + div {
+.trip-import-counts span + span {
   border-left: 1px solid #d2cdc3;
 }
 
-.trip-import-counts dt {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.trip-import-counts dd {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 800;
+.trip-import-counts strong {
+  color: #2f3934;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .trip-import-issues,
@@ -6446,47 +6445,44 @@ textarea {
   overflow-wrap: anywhere;
 }
 
-.trip-import-atomic-note {
+.trip-import-preview-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: #51645c;
-  font-size: 13px;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.trip-import-atomic-note::before {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
+.trip-import-preview-footer .form-actions {
   flex: 0 0 auto;
-  border: 1px solid #a8c8ba;
-  border-radius: 999px;
-  background: #e9f3ee;
-  color: #174e3c;
-  content: "✓";
-  font-size: 12px;
-  font-weight: 900;
+  margin: 0;
 }
 
-.trip-import-preview-dialog .form-actions {
-  margin-top: -42px;
+.trip-import-preview-footer .form-actions button {
+  min-height: 42px;
+  padding-right: 16px;
+  padding-left: 16px;
+  font-size: 14px;
 }
 
 @media (max-width: 720px) {
   .trip-import-preview-dialog {
+    height: auto;
     width: 100%;
     padding: 18px;
   }
 
+  .trip-import-preview-heading {
+    padding-left: 8px;
+  }
+
   .trip-import-preview-board {
+    height: auto;
     max-height: none;
     aspect-ratio: 0.78 / 1;
   }
 
   .trip-import-cover {
-    height: 35%;
+    height: 25%;
     padding: 18px;
   }
 
@@ -6495,16 +6491,16 @@ textarea {
   }
 
   .trip-import-counts {
-    grid-template-columns: repeat(3, 1fr);
+    flex-wrap: wrap;
   }
 
-  .trip-import-counts div {
-    justify-content: center;
-    padding: 0 6px;
+  .trip-import-preview-footer {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .trip-import-preview-dialog .form-actions {
-    margin-top: 0;
+  .trip-import-preview-footer .form-actions {
+    justify-content: flex-end;
   }
 }
 

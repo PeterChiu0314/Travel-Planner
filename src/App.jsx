@@ -16414,17 +16414,10 @@ function TripImportPreviewDialog({ busy, error, onClose, onConfirm, preview }) {
         <div className="trip-import-preview-heading">
           <div>
             <h2 id="trip-import-preview-title">匯入旅程預覽</h2>
-            <p>{preview?.fileName || "JSON 檔案"} · Schema {preview?.schemaVersion || "—"}</p>
           </div>
         </div>
 
         {trip ? <TripImportPreviewBoard days={preview?.days} trip={trip} /> : null}
-
-        <dl className="trip-import-counts">
-          <div><dt>行程</dt><dd>{counts.visits || 0}</dd></div>
-          <div><dt>交通</dt><dd>{counts.transports || 0}</dd></div>
-          <div><dt>備案</dt><dd>{counts.alternatives || 0}</dd></div>
-        </dl>
 
         {errors.length ? (
           <div className="trip-import-issues error" role="alert">
@@ -16441,12 +16434,22 @@ function TripImportPreviewDialog({ busy, error, onClose, onConfirm, preview }) {
         ) : null}
         {error ? <div className="trip-import-commit-error" role="alert">{error}</div> : null}
 
-        <p className="trip-import-atomic-note">尚未寫入資料，確認後才會建立新旅程與 Timeline</p>
-        <div className="form-actions">
-          <button className="ghost-button" type="button" disabled={busy} onClick={onClose}>取消</button>
-          <button className="primary-button compact" type="button" disabled={!canConfirm} onClick={onConfirm}>
-            {busy ? "匯入中…" : "確認匯入"}
-          </button>
+        <div className="trip-import-preview-footer">
+          <div
+            aria-label={`${preview?.days?.length || 0} 天，行程 ${counts.visits || 0}，交通 ${counts.transports || 0}，備案 ${counts.alternatives || 0}`}
+            className="trip-import-counts"
+          >
+            <span><strong>{preview?.days?.length || 0}</strong> 天</span>
+            <span>行程 <strong>{counts.visits || 0}</strong></span>
+            <span>交通 <strong>{counts.transports || 0}</strong></span>
+            <span>備案 <strong>{counts.alternatives || 0}</strong></span>
+          </div>
+          <div className="form-actions">
+            <button className="ghost-button" type="button" disabled={busy} onClick={onClose}>取消</button>
+            <button className="primary-button compact" type="button" disabled={!canConfirm} onClick={onConfirm}>
+              {busy ? "匯入中…" : "確認匯入"}
+            </button>
+          </div>
         </div>
       </section>
     </div>

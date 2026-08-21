@@ -41,12 +41,12 @@ Current source-of-truth documents:
 
 ```text
 Current phase: Timeline Phase 7.1-7.4 versioned JSON exchange
-Status: Phase 7.1-7.4 implementation is complete; Production RPC is applied while feature-branch Preview QA and main integration remain pending
+Status: Phase 7.1-7.4 implementation and graphical import-preview QA are complete; Production RPC is applied while main integration remains pending
 Branch: codex/timeline-phase-7
 Production data: Cleanup completed; 8 approved test visits converted to Untimed and 1 approved invalid test transport deleted
 Production migration: Phase 7 import RPC applied as 20260819134935 on lqvuqamzmchepgxkftcw
 Staging migration: Phase 7 import RPC applied as 20260819125851 on uyqdopksfysbobhjcepk; Staging still does not have 20260811150000
-Pending rollout: Vercel Production and main remain on Phase 6; test Phase 7 from codex/timeline-phase-7 before integration
+Pending rollout: Vercel Production and main remain on Phase 6; keep testing Phase 7 from codex/timeline-phase-7 before integration
 ```
 
 ## Phase 7.1-7.4 JSON Exchange
@@ -60,6 +60,9 @@ Pending rollout: Vercel Production and main remain on Phase 6; test Phase 7 from
 - The Phase 7 migration compiled on isolated Staging. Its authenticated rollback fixture passed with Fixed, `24:00`, transport, and alternative coverage, and retained zero fixture Trips.
 - Browser QA also fixed a shared navigation guard: database `null` coordinates no longer become a misleading `0,0` Google Maps route. The imported QA Trips and their dependent rows were removed; Staging returned to its original one-Trip state.
 - Existing Timeline rules allow transportation names to remain blank and display the category label. The JSON export adapter now applies the same fallback (`train` -> `電車`, etc.) instead of rejecting legacy rows; no Production travel data cleanup is required.
+- The authenticated import preview is now a compact graphical board: a 640px desktop dialog keeps a stable 706px height, uses a Wikimedia destination cover over the upper 25% and a Google Map over the lower 75%, shows one representative non-transport location per Day, and renders normal movement, flight, and intentionally broken long-distance segments with the approved route semantics.
+- The preview header and footer were simplified: file/schema metadata and the pre-write note were removed, Day/visit/transport/alternative totals now share the action row, and the board grows into the released space. Google Maps now observes container resizing, triggers map resize, and re-fits all representative points whenever the dialog or cover/map ratio changes.
+- Authenticated local Staging browser QA verified the final 640x706 desktop layout, 25/75 cover/map ratio, all four representative points remaining inside the visible map after viewport changes, no database write before confirmation, and no relevant console error. The existing Google Maps legacy Marker deprecation warning remains informational. Phase 7 contract tests passed 14/14; Production build and `git diff --check` passed.
 - The user explicitly approved applying only the Phase 7 RPC migration to Production while keeping Git `main` and Vercel Production unchanged. Post-apply checks confirmed `security invoker`, a fixed search path, anonymous execute denied, authenticated execute allowed, and no new Phase 7 advisor warning. See `docs/2026-08-19-phase-7-json-exchange-closeout-handoff.md`.
 
 Phase 5.7c synchronization, Phase 5.7d remote-drag visuals, Phase 5.8 UI baseline, and Phase 5.9 editor/card behavior are protected completed baselines.

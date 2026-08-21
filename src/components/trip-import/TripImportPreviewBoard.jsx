@@ -47,6 +47,8 @@ function GoogleTripPreviewMap({ route }) {
     let map = null;
     let overlays = [];
     let polylines = [];
+    let resizeFrame = null;
+    let resizeObserver = null;
 
     if (!apiKey || !route.points.length || !mapElementRef.current) {
       setStatus("failed");
@@ -108,14 +110,30 @@ function GoogleTripPreviewMap({ route }) {
           }));
         });
 
-        if (route.points.length === 1) {
-          map.setCenter({ lat: route.points[0].latitude, lng: route.points[0].longitude });
-          map.setZoom(13);
-        } else {
+        const fitRouteToVisibleMap = () => {
+          if (!map || disposed) return;
+          mapsNamespace.event.trigger(map, "resize");
+          if (route.points.length === 1) {
+            map.setCenter({ lat: route.points[0].latitude, lng: route.points[0].longitude });
+            map.setZoom(13);
+            return;
+          }
           map.fitBounds(bounds, { bottom: 44, left: 42, right: 42, top: 56 });
           mapsNamespace.event.addListenerOnce(map, "idle", () => {
             if (map?.getZoom() > 12) map.setZoom(12);
           });
+        };
+
+        fitRouteToVisibleMap();
+        if (typeof ResizeObserver === "function") {
+          resizeObserver = new ResizeObserver(() => {
+            if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
+            resizeFrame = window.requestAnimationFrame(() => {
+              resizeFrame = null;
+              fitRouteToVisibleMap();
+            });
+          });
+          resizeObserver.observe(mapElementRef.current);
         }
         setStatus("ready");
       })
@@ -125,6 +143,8 @@ function GoogleTripPreviewMap({ route }) {
 
     return () => {
       disposed = true;
+      resizeObserver?.disconnect();
+      if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
       overlays.forEach((overlay) => overlay.setMap(null));
       polylines.forEach((polyline) => polyline.setMap(null));
       overlays = [];
@@ -186,7 +206,6 @@ export default function TripImportPreviewBoard({ days = [], trip }) {
           <strong>{trip?.title || "未命名旅程"}</strong>
           <span><MapPin aria-hidden="true" size={14} />{trip?.destination?.display_name || "目的地未設定"}</span>
           <span>{dateText}</span>
-          <span>{days.length} 天</span>
         </div>
         {cover ? (
           <a className="trip-import-cover-credit" href={cover.filePageUrl} rel="noreferrer" target="_blank">
