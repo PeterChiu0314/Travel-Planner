@@ -26,12 +26,7 @@ Current source-of-truth documents:
 - `docs/2026-08-09-phase-6-closeout-handoff.md`
 - `docs/2026-08-09-phase-6-1-time-model-and-auto-scheduling-rules.md`
 - `docs/todo/2026-08-09-phase-6-2-unified-planner-implementation-plan.md`
-- `docs/2026-07-28-phase-5-10-automated-qa.md`
 - `docs/timeline-card-ui-spec.md`
-- `docs/2026-07-19-phase-5-9-itinerary-editor-ui-handoff.md`
-- `docs/2026-07-12-phase-5-7d-remote-route-node-visual-plan.md`
-- `docs/2026-07-11-phase-5-7c-node-collaboration-handoff.md`
-- `docs/2026-07-05-phase-5-6-places-closeout-handoff.md`
 - `docs/todo/phase-5-map-route-workspace-integration-handoff.md`
 - `docs/timeline-phase-4-drag-reorder-rules-draft-v14.md`
 
@@ -86,7 +81,7 @@ The accepted visit-card, transportation-card, expanded-detail, and alternative-e
 - Playwright now accepts `PLAYWRIGHT_BASE_URL`; this allowed QA on port 5174 while another project remained untouched on port 5173.
 - Two stale Phase 5.9 source assertions were updated, and marker coverage was added for two-digit labels plus reorder/type-change identity stability.
 
-Full evidence and the remaining historical manual-QA checklist are in `docs/2026-07-28-phase-5-10-automated-qa.md`.
+Full evidence and the remaining historical manual-QA checklist are archived in `docs/archive/Timeline_Phase5/2026-07-28-phase-5-10-automated-qa.md`.
 
 ## Phase 6 Unified Scheduling
 

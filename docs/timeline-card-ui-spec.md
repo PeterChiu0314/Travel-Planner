@@ -29,7 +29,7 @@ If sources disagree, use this priority:
 4. Current implementation.
 5. Historical Phase 5.9 handoff documents.
 
-The historical `docs/2026-07-19-phase-5-9-itinerary-editor-ui-handoff.md` remains useful implementation context, but this specification supersedes its UI values where they differ.
+The historical `docs/archive/Timeline_Phase5/2026-07-19-phase-5-9-itinerary-editor-ui-handoff.md` remains useful implementation context, but this specification supersedes its UI values where they differ.
 
 ## 2. Scope boundaries
 
