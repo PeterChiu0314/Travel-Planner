@@ -70,6 +70,16 @@ test("preview board uses the existing Google Maps loader without route or photo 
   expect(source).not.toContain("Places");
 });
 
+test("blocking import errors use a compact details-only dialog", () => {
+  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  expect(source).toContain("無法匯入這份旅程");
+  expect(source).toContain("查看細節（{blockingIssues.length}）");
+  expect(source).toContain('!hasBlockingError && trip ? <TripImportPreviewBoard');
+  expect(source).toContain('!hasBlockingError ? (');
+  expect(source).toContain('code: "file_read_failed"');
+  expect(source).not.toContain("需要修正 {errors.length} 個問題");
+});
+
 test("Wikimedia helpers build keyless queries and normalize image attribution", () => {
   const searchUrl = new URL(buildWikimediaTripImageSearchUrl({ name: "清水寺" }, { city: "京都", country: "日本" }));
   expect(searchUrl.hostname).toBe("zh.wikipedia.org");

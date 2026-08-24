@@ -1,0 +1,59 @@
+{
+  "schema_version": "1",
+  "document_type": "travel_studio_trip",
+  "trip": {
+    "title": "紅色錯誤畫面測試",
+    "destination": {
+      "display_name": "日本 · 京都",
+      "country": "日本",
+      "city": "京都"
+    },
+    "start_date": "2026-08-24",
+    "end_date": "2026-08-24",
+    "status": "planning"
+  },
+  "days": [
+    {
+      "day_index": 0,
+      "date": "2026-08-24",
+      "visits": [
+        {
+          "ref": "day-1-visit-1",
+          "category": "unknown-category",
+          "title": "錯誤資料測試景點",
+          "location": {
+            "name": "錯誤資料測試景點",
+            "address": null,
+            "map_url": null,
+            "latitude": 35.0116,
+            "longitude": null
+          },
+          "notes": null,
+          "estimated_cost": -1,
+          "time": {
+            "start": "10:00",
+            "end": "09:00"
+          },
+          "fixed": true,
+          "alternatives": [
+            {
+              "category": "unknown-alternative",
+              "title": "錯誤備案",
+              "location": {
+                "name": "錯誤備案",
+                "address": null,
+                "map_url": null,
+                "latitude": null,
+                "longitude": null
+              },
+              "notes": null,
+              "estimated_cost": -1,
+              "time": null
+            }
+          ]
+        }
+      ],
+      "transports": []
+    }
+  ]
+}

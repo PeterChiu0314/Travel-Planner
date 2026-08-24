@@ -4844,7 +4844,16 @@ export default function App() {
     try {
       text = await file.text();
     } catch {
-      setNotice("無法讀取這個 JSON 檔案，請確認檔案後再試一次。");
+      const preview = buildTripJsonPreview(null, {
+        errors: [{
+          code: "file_read_failed",
+          message: "無法讀取這個 JSON 檔案，請確認檔案後再試一次。",
+          path: "$",
+        }],
+        fileName: file.name,
+      });
+      setIsTripDialogOpen(false);
+      setTripImportState({ busy: false, document: null, error: "", preview });
       return;
     }
     const parsed = parseTripJsonText(text);
@@ -16406,49 +16415,70 @@ function TripImportPreviewDialog({ busy, error, onClose, onConfirm, preview }) {
   const warnings = preview?.warnings || [];
   const trip = preview?.trip;
   const counts = preview?.counts || {};
-  const canConfirm = Boolean(trip && errors.length === 0 && !busy);
+  const blockingIssues = error
+    ? [...errors, { code: "import_failed", message: error, path: "$" }]
+    : errors;
+  const hasBlockingError = blockingIssues.length > 0;
+  const canConfirm = Boolean(trip && !hasBlockingError && !busy);
 
   return (
     <div className="modal-backdrop">
-      <section aria-labelledby="trip-import-preview-title" className="dialog-card trip-import-preview-dialog">
+      <section
+        aria-labelledby="trip-import-preview-title"
+        className={`dialog-card trip-import-preview-dialog${hasBlockingError ? " has-blocking-error" : ""}`}
+      >
         <div className="trip-import-preview-heading">
           <div>
             <h2 id="trip-import-preview-title">匯入旅程預覽</h2>
           </div>
         </div>
 
-        {trip ? <TripImportPreviewBoard days={preview?.days} trip={trip} /> : null}
+        {!hasBlockingError && trip ? <TripImportPreviewBoard days={preview?.days} trip={trip} /> : null}
 
-        {errors.length ? (
-          <div className="trip-import-issues error" role="alert">
-            <strong>需要修正 {errors.length} 個問題</strong>
-            <ul>{errors.slice(0, 20).map((issue, index) => <li key={`${issue.path}-${issue.code}-${index}`}><code>{issue.path}</code> {issue.message}</li>)}</ul>
+        {hasBlockingError ? (
+          <div className="trip-import-blocking-error" role="alert">
+            <strong>無法匯入這份旅程</strong>
+            <details>
+              <summary>查看細節（{blockingIssues.length}）</summary>
+              <ul>
+                {blockingIssues.slice(0, 20).map((issue, index) => (
+                  <li key={`${issue.path}-${issue.code}-${index}`}>
+                    <span>{issue.message}</span>
+                    <code>{issue.path}</code>
+                  </li>
+                ))}
+              </ul>
+              {blockingIssues.length > 20 ? <p>另有 {blockingIssues.length - 20} 項細節未展開。</p> : null}
+            </details>
           </div>
         ) : null}
-        {warnings.length ? (
+        {!hasBlockingError && warnings.length ? (
           <div className="trip-import-issues warning">
             <strong>匯入提醒</strong>
-            <ul>{warnings.slice(0, 20).map((issue, index) => <li key={`${issue.path}-${issue.code}-${index}`}><code>{issue.path}</code> {issue.message}</li>)}</ul>
+            <ul>{warnings.slice(0, 20).map((issue, index) => <li key={`${issue.path}-${issue.code}-${index}`}>{issue.message}</li>)}</ul>
             {warnings.length > 20 ? <p>另有 {warnings.length - 20} 項提醒未展開。</p> : null}
           </div>
         ) : null}
-        {error ? <div className="trip-import-commit-error" role="alert">{error}</div> : null}
 
         <div className="trip-import-preview-footer">
-          <div
-            aria-label={`${preview?.days?.length || 0} 天，行程 ${counts.visits || 0}，交通 ${counts.transports || 0}，備案 ${counts.alternatives || 0}`}
-            className="trip-import-counts"
-          >
-            <span><strong>{preview?.days?.length || 0}</strong> 天</span>
-            <span>行程 <strong>{counts.visits || 0}</strong></span>
-            <span>交通 <strong>{counts.transports || 0}</strong></span>
-            <span>備案 <strong>{counts.alternatives || 0}</strong></span>
-          </div>
+          {!hasBlockingError ? (
+            <div
+              aria-label={`${preview?.days?.length || 0} 天，行程 ${counts.visits || 0}，交通 ${counts.transports || 0}，備案 ${counts.alternatives || 0}`}
+              className="trip-import-counts"
+            >
+              <span><strong>{preview?.days?.length || 0}</strong> 天</span>
+              <span>行程 <strong>{counts.visits || 0}</strong></span>
+              <span>交通 <strong>{counts.transports || 0}</strong></span>
+              <span>備案 <strong>{counts.alternatives || 0}</strong></span>
+            </div>
+          ) : null}
           <div className="form-actions">
             <button className="ghost-button" type="button" disabled={busy} onClick={onClose}>取消</button>
-            <button className="primary-button compact" type="button" disabled={!canConfirm} onClick={onConfirm}>
-              {busy ? "匯入中…" : "確認匯入"}
-            </button>
+            {!hasBlockingError ? (
+              <button className="primary-button compact" type="button" disabled={!canConfirm} onClick={onConfirm}>
+                {busy ? "匯入中…" : "確認匯入"}
+              </button>
+            ) : null}
           </div>
         </div>
       </section>

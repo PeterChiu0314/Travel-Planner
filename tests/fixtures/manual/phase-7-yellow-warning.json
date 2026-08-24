@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "document_type": "travel_studio_trip",
+  "trip": {
+    "title": "黃色提醒畫面測試",
+    "destination": {
+      "display_name": "日本 · 京都",
+      "country": "日本",
+      "city": "京都"
+    },
+    "start_date": "2026-08-24",
+    "end_date": "2026-08-24",
+    "status": "planning"
+  },
+  "days": [
+    {
+      "day_index": 0,
+      "date": "2026-08-24",
+      "visits": [],
+      "transports": []
+    }
+  ]
+}

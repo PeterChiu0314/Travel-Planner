@@ -6215,6 +6215,11 @@ textarea {
   padding: 20px 24px;
 }
 
+.trip-import-preview-dialog.has-blocking-error {
+  height: auto;
+  min-height: 0;
+}
+
 .trip-import-preview-heading h2,
 .trip-import-summary strong,
 .trip-import-summary span {
@@ -6416,16 +6421,51 @@ textarea {
 }
 
 .trip-import-issues,
-.trip-import-commit-error {
+.trip-import-blocking-error {
   border: 1px solid color-mix(in srgb, currentColor 32%, transparent);
   border-radius: 8px;
   padding: 12px 14px;
 }
 
-.trip-import-issues.error,
-.trip-import-commit-error {
+.trip-import-blocking-error {
   background: var(--color-error-bg);
   color: var(--color-error);
+}
+
+.trip-import-blocking-error > strong {
+  display: block;
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.trip-import-blocking-error details {
+  margin-top: 12px;
+}
+
+.trip-import-blocking-error summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.trip-import-blocking-error ul {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+
+.trip-import-blocking-error li span,
+.trip-import-blocking-error li code {
+  display: block;
+}
+
+.trip-import-blocking-error li code {
+  margin-top: 2px;
+  color: inherit;
+  font-size: 12px;
+  opacity: 0.76;
+  overflow-wrap: anywhere;
 }
 
 .trip-import-issues.warning {
@@ -6450,6 +6490,10 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.trip-import-preview-dialog.has-blocking-error .trip-import-preview-footer {
+  justify-content: flex-end;
 }
 
 .trip-import-preview-footer .form-actions {
