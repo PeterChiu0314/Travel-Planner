@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://travel-studio.example/contracts/ai-itinerary.v1.schema.json",
+  "title": "Travel Studio AI Itinerary v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_type", "trip", "days"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "document_type": { "const": "travel_studio_ai_itinerary" },
+    "trip": { "$ref": "#/$defs/trip" },
+    "days": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 366,
+      "items": { "$ref": "#/$defs/day" }
+    }
+  },
+  "$defs": {
+    "nullableText": { "type": ["string", "null"] },
+    "destination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name", "country", "city"],
+      "properties": {
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "country": { "type": ["string", "null"], "maxLength": 250 },
+        "city": { "type": ["string", "null"], "maxLength": 250 }
+      }
+    },
+    "trip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "destination", "start_date", "end_date"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "destination": { "$ref": "#/$defs/destination" },
+        "start_date": { "type": "string", "format": "date" },
+        "end_date": { "type": "string", "format": "date" }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "map_url", "latitude", "longitude"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nullableText" },
+        "map_url": { "$ref": "#/$defs/nullableText" },
+        "latitude": {
+          "type": ["number", "null"],
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": ["number", "null"],
+          "minimum": -180,
+          "maximum": 180
+        }
+      }
+    },
+    "schedule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "start", "end"],
+          "properties": {
+            "kind": { "const": "timed" },
+            "start": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+            "end": { "type": "string", "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "start", "duration_minutes"],
+          "properties": {
+            "kind": { "const": "start_duration" },
+            "start": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+            "duration_minutes": { "type": "integer", "minimum": 1, "maximum": 1440 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "duration_minutes"],
+          "properties": {
+            "kind": { "const": "duration" },
+            "duration_minutes": { "type": "integer", "minimum": 1, "maximum": 1440 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "untimed" } }
+        }
+      ]
+    },
+    "alternativeSchedule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "start", "end"],
+          "properties": {
+            "kind": { "const": "timed" },
+            "start": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+            "end": { "type": "string", "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "start", "duration_minutes"],
+          "properties": {
+            "kind": { "const": "start_duration" },
+            "start": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+            "duration_minutes": { "type": "integer", "minimum": 1, "maximum": 1440 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "untimed" } }
+        }
+      ]
+    },
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "title", "location", "schedule", "notes"],
+      "properties": {
+        "category": { "enum": ["attraction", "food", "hotel", "transport", "note"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "location": { "$ref": "#/$defs/location" },
+        "schedule": { "$ref": "#/$defs/alternativeSchedule" },
+        "notes": { "$ref": "#/$defs/nullableText" }
+      }
+    },
+    "visit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "title", "location", "schedule", "fixed", "notes", "alternatives"],
+      "properties": {
+        "category": { "enum": ["attraction", "food", "hotel", "transport", "note"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "location": { "$ref": "#/$defs/location" },
+        "schedule": { "$ref": "#/$defs/schedule" },
+        "fixed": { "type": "boolean" },
+        "notes": { "$ref": "#/$defs/nullableText" },
+        "alternatives": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/alternative" } }
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_visit_number", "to_visit_number", "category", "name", "duration_minutes", "notes"],
+      "properties": {
+        "from_visit_number": { "type": "integer", "minimum": 1 },
+        "to_visit_number": { "type": "integer", "minimum": 1 },
+        "category": { "enum": ["jr", "train", "bus", "walk", "drive", "taxi", "ferry", "flight", "other"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "duration_minutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+        "notes": { "$ref": "#/$defs/nullableText" }
+      }
+    },
+    "day": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["day_index", "date", "visits", "transports"],
+      "properties": {
+        "day_index": { "type": "integer", "minimum": 0 },
+        "date": { "type": "string", "format": "date" },
+        "visits": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/visit" } },
+        "transports": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/transport" } }
+      }
+    }
+  }
+}

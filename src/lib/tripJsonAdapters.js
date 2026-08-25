@@ -57,7 +57,6 @@ function rowTime(row) {
 function rowLocation(row) {
   return {
     name: optionalText(row?.location_name || row?.location),
-    address: optionalText(row?.address),
     map_url: optionalText(row?.map_url),
     latitude: finiteNumberOrNull(row?.latitude),
     longitude: finiteNumberOrNull(row?.longitude),
@@ -190,7 +189,7 @@ export function serializeTripToJson(input) {
 function persistenceLocation(location) {
   return {
     location_name: location?.name || null,
-    address: location?.address || null,
+    address: null,
     map_url: location?.map_url || null,
     latitude: location?.latitude ?? null,
     longitude: location?.longitude ?? null,

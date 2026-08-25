@@ -1,0 +1,107 @@
+{
+  "schema_version": "1",
+  "document_type": "travel_studio_ai_itinerary",
+  "trip": {
+    "title": "京都 AI 交換測試",
+    "destination": {
+      "display_name": "日本 · 京都",
+      "country": "日本",
+      "city": "京都"
+    },
+    "start_date": "2026-11-03",
+    "end_date": "2026-11-04"
+  },
+  "days": [
+    {
+      "day_index": 0,
+      "date": "2026-11-03",
+      "visits": [
+        {
+          "category": "attraction",
+          "title": "清水寺",
+          "location": {
+            "name": "清水寺",
+            "map_url": "https://www.google.com/maps?q=34.9948561,135.7850463",
+            "latitude": 34.9948561,
+            "longitude": 135.7850463
+          },
+          "schedule": {
+            "kind": "timed",
+            "start": "09:00",
+            "end": "10:30"
+          },
+          "fixed": true,
+          "notes": "開門後先參觀本堂。",
+          "alternatives": []
+        },
+        {
+          "category": "food",
+          "title": "錦市場午餐",
+          "location": {
+            "name": "錦市場",
+            "map_url": "https://www.google.com/maps?q=35.0050,135.7649",
+            "latitude": 35.005,
+            "longitude": 135.7649
+          },
+          "schedule": {
+            "kind": "duration",
+            "duration_minutes": 75
+          },
+          "fixed": false,
+          "notes": null,
+          "alternatives": [
+            {
+              "category": "food",
+              "title": "湯豆腐午餐",
+              "location": {
+                "name": "南禪寺順正",
+                "map_url": "https://www.google.com/maps?q=35.0111,135.7920",
+                "latitude": 35.0111,
+                "longitude": 135.792
+              },
+              "schedule": {
+                "kind": "untimed"
+              },
+              "notes": null
+            }
+          ]
+        }
+      ],
+      "transports": [
+        {
+          "from_visit_number": 1,
+          "to_visit_number": 2,
+          "category": "bus",
+          "name": "市公車",
+          "duration_minutes": 25,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "day_index": 1,
+      "date": "2026-11-04",
+      "visits": [
+        {
+          "category": "attraction",
+          "title": "伏見稻荷大社",
+          "location": {
+            "name": "伏見稻荷大社",
+            "map_url": "https://www.google.com/maps?q=34.9671402,135.7726717",
+            "latitude": 34.9671402,
+            "longitude": 135.7726717
+          },
+          "schedule": {
+            "kind": "start_duration",
+            "start": "08:30",
+            "duration_minutes": 120
+          },
+          "fixed": false,
+          "notes": null,
+          "alternatives": []
+        }
+      ],
+      "transports": []
+    }
+  ]
+}

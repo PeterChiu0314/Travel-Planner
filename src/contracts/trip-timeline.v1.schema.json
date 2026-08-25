@@ -49,10 +49,9 @@
     "location": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "address", "map_url", "latitude", "longitude"],
+      "required": ["name", "map_url", "latitude", "longitude"],
       "properties": {
         "name": { "$ref": "#/$defs/nullableText" },
-        "address": { "$ref": "#/$defs/nullableText" },
         "map_url": { "$ref": "#/$defs/nullableText" },
         "latitude": {
           "type": ["number", "null"],

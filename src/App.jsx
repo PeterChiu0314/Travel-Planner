@@ -93,8 +93,16 @@ import {
 } from "./lib/routeOverrides.js";
 import { buildTripImportPersistencePayload, serializeTripToJson } from "./lib/tripJsonAdapters.js";
 import { buildTripJsonPreview, parseTripJsonText } from "./lib/tripJsonContract.js";
+import {
+  aiItineraryBlankTemplateFileName,
+  aiItineraryExchangeModes,
+  buildBlankAiItineraryTemplate,
+  serializeTripToAiItinerary,
+} from "./lib/aiItineraryAdapters.js";
 import MapPanel from "./components/map/MapPanel.jsx";
 import TripImportPreviewBoard from "./components/trip-import/TripImportPreviewBoard.jsx";
+import AiTripExchangeDialog from "./components/trip-import/AiTripExchangeDialog.jsx";
+import AiTripImportDialog from "./components/trip-import/AiTripImportDialog.jsx";
 import {
   buildTimelineVisitDisplayOrder,
   isTimedVisit,
@@ -2510,6 +2518,8 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
   const [tripImportState, setTripImportState] = useState(null);
+  const [aiExchangeState, setAiExchangeState] = useState(null);
+  const [aiTripImportMode, setAiTripImportMode] = useState(null);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareLinks, setShareLinks] = useState([]);
@@ -6087,6 +6097,51 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
 
+  function openAiTripRevisionExchange() {
+    if (!activeTrip) return;
+    const exportedItems = timelineItemsInTripRange(items, activeTrip);
+    const result = serializeTripToAiItinerary({ alternatives, items: exportedItems, trip: activeTrip });
+    if (!result.ok) {
+      setNotice(result.errors?.[0]?.message || "旅程資料不符合 AI 交換契約，無法建立交換資料。");
+      return;
+    }
+    setAiExchangeState({ document: result.document, fileName: result.fileName, mode: aiItineraryExchangeModes.reviseCopy });
+  }
+
+  function openAiTripCreateExchange() {
+    setIsTripDialogOpen(false);
+    setAiExchangeState({
+      document: buildBlankAiItineraryTemplate(),
+      fileName: aiItineraryBlankTemplateFileName,
+      mode: aiItineraryExchangeModes.create,
+    });
+  }
+
+  function openAiTripImport(mode = aiItineraryExchangeModes.create) {
+    setIsTripDialogOpen(false);
+    setAiExchangeState(null);
+    setAiTripImportMode(mode);
+  }
+
+  async function importAiTripDocument(document, mode = aiItineraryExchangeModes.create) {
+    const persistence = buildTripImportPersistencePayload(document);
+    if (!persistence.ok || !persistence.payload) {
+      return { ok: false, error: persistence.errors?.[0]?.message || "無法建立正式匯入資料。" };
+    }
+    const { data, error } = await supabase.rpc("import_trip_timeline_v1", { payload: persistence.payload });
+    if (error || !data?.trip_id) {
+      return { ok: false, error: error || "匯入沒有回傳新旅程 ID，資料未建立。" };
+    }
+    setActiveDay(0);
+    setNotice(
+      mode === aiItineraryExchangeModes.reviseCopy
+        ? `已建立 AI 調整旅程「${document.trip.title}」，原旅程未變更。`
+        : `已建立 AI 規劃旅程「${document.trip.title}」。`,
+    );
+    await loadTrips(data.trip_id);
+    return { ok: true, tripId: data.trip_id };
+  }
+
   async function selectTrip(nextTripId) {
     if (nextTripId === activeTripId) return;
     const canContinue = await requestActiveEditorGuardResolution();
@@ -6233,6 +6288,7 @@ export default function App() {
           canViewDatePopover={isOwner}
           pendingMemberCount={pendingMemberCount}
           onDelete={deleteTrip}
+          onAiExchange={openAiTripRevisionExchange}
           onExport={exportTrip}
           onInvite={() => {
             if (canOpenMembersDialog) setIsMembersDialogOpen(true);
@@ -6368,6 +6424,7 @@ export default function App() {
           form={tripForm}
           onChange={setTripForm}
           onClose={() => setIsTripDialogOpen(false)}
+          onImportAi={openAiTripCreateExchange}
           onImportFile={previewTripImport}
           onSubmit={createTrip}
         />
@@ -6380,6 +6437,24 @@ export default function App() {
           onClose={() => setTripImportState(null)}
           onConfirm={confirmTripImport}
           preview={tripImportState.preview}
+        />
+      ) : null}
+
+      {aiExchangeState ? (
+        <AiTripExchangeDialog
+          document={aiExchangeState.document}
+          fileName={aiExchangeState.fileName}
+          mode={aiExchangeState.mode}
+          onClose={() => setAiExchangeState(null)}
+          onOpenImport={() => openAiTripImport(aiExchangeState.mode)}
+        />
+      ) : null}
+
+      {aiTripImportMode ? (
+        <AiTripImportDialog
+          mode={aiTripImportMode}
+          onClose={() => setAiTripImportMode(null)}
+          onImport={(document) => importAiTripDocument(document, aiTripImportMode)}
         />
       ) : null}
 
@@ -7095,6 +7170,7 @@ function TripHeader({
   canViewDatePopover = canChangeTripDates,
   pendingMemberCount = 0,
   onDelete,
+  onAiExchange,
   onExport,
   onInvite,
   onOpenMembers,
@@ -8124,6 +8200,11 @@ function TripHeader({
           </button>
           {isMoreOpen ? (
             <div className="trip-header-more-menu" role="menu">
+              {onAiExchange ? (
+                <button type="button" role="menuitem" onClick={() => chooseMenuAction(onAiExchange)}>
+                  給 AI 調整
+                </button>
+              ) : null}
               <button type="button" role="menuitem" onClick={() => chooseMenuAction(onExport)}>
                 匯出 JSON
               </button>
@@ -16196,7 +16277,7 @@ function MembersPanel({ className = "", isOwner, members, onApprove, onReject })
   );
 }
 
-function TripDialog({ form, onChange, onClose, onImportFile, onSubmit }) {
+function TripDialog({ form, onChange, onClose, onImportAi, onImportFile, onSubmit }) {
   const [dateSelectionStep, setDateSelectionStep] = useState(() => initialDateSelectionStep(form.start_date, form.end_date));
   const [startDateInput, setStartDateInput] = useState(() => formatHeaderDate(form.start_date) || "");
   const [endDateInput, setEndDateInput] = useState(() => formatHeaderDate(form.end_date) || "");
@@ -16385,6 +16466,9 @@ function TripDialog({ form, onChange, onClose, onImportFile, onSubmit }) {
           </div>
         </div>
         <div className="form-actions">
+          <button className="ghost-button" type="button" onClick={onImportAi}>
+            AI 規劃
+          </button>
           <label className="ghost-button trip-json-file-button">
             匯入 JSON
             <input

@@ -18,7 +18,6 @@ import {
 function location(overrides = {}) {
   return {
     name: null,
-    address: null,
     map_url: null,
     latitude: null,
     longitude: null,
@@ -163,12 +162,27 @@ test("v1 schema is a portable contract rather than a Supabase row dump", () => {
   const source = JSON.stringify(schema);
   expect(schema.properties.schema_version.const).toBe("1");
   expect(schema.properties.document_type.const).toBe("travel_studio_trip");
+  expect(schema.$defs.location.required).toEqual(["name", "map_url", "latitude", "longitude"]);
+  expect(Object.keys(schema.$defs.location.properties)).toEqual(["name", "map_url", "latitude", "longitude"]);
   expect(source).toContain("from_visit_ref");
   expect(source).not.toContain("owner_id");
   expect(source).not.toContain("locked_by");
   expect(source).not.toContain("updated_at");
   expect(source).not.toContain("from_snapshot_start_time");
   expect(source).not.toContain("sort_order");
+});
+
+test("legacy Formal location address is accepted and removed while new JSON stays canonical", () => {
+  const legacy = validDocument();
+  legacy.days[0].visits[0].location.address = "京都市東山區";
+  legacy.days[0].visits[0].alternatives[0].location.address = "京都市左京區";
+
+  const result = parseTripJsonText(JSON.stringify(legacy));
+  expect(result.ok).toBeTruthy();
+  expect(result.migrations).toContain("legacy_location_address_removed");
+  expect(result.document.days[0].visits[0].location).not.toHaveProperty("address");
+  expect(result.document.days[0].visits[0].alternatives[0].location).not.toHaveProperty("address");
+  expect(stringifyTripJsonDocument(result.document)).not.toContain('"address"');
 });
 
 test("valid v1 JSON normalizes, validates, and creates a complete preview", () => {
@@ -307,6 +321,7 @@ test("export adapter emits only stable Trip + Timeline semantics", () => {
       type: "attraction",
       title: "清水寺",
       location_name: "清水寺",
+      address: "京都市東山區",
       start_time: "09:00:00",
       end_time: "10:00:00",
       cost: 100,
@@ -392,6 +407,8 @@ test("export adapter emits only stable Trip + Timeline semantics", () => {
   expect(result.json).not.toContain("updated_at");
   expect(result.json).not.toContain("from_snapshot_start_time");
   expect(result.json).not.toContain("sort_order");
+  expect(result.document.days[0].visits[0].location).not.toHaveProperty("address");
+  expect(result.json).not.toContain('"address"');
 });
 
 test("export uses the transport category label when the optional transport name is blank", () => {
@@ -459,6 +476,8 @@ test("persistence adapter reconstructs internal ordering without exposing it in 
   const result = buildTripImportPersistencePayload(validDocument());
   expect(result.ok).toBeTruthy();
   const visits = result.payload.days[0].visits;
+  expect(visits[0].address).toBeNull();
+  expect(visits[0].alternatives[0].address).toBeNull();
   expect(visits[0].sort_order).toBe(10);
   expect(visits[1].sort_order).toBeLessThan(-100000000);
   expect(visits[2].sort_order).toBe(30);

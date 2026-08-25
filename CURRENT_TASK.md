@@ -23,6 +23,8 @@ Current source-of-truth documents:
 - `docs/2026-08-11-timeline-sorting-editing-automated-qa.md`
 - `docs/2026-08-19-phase-7-json-exchange-plan.md`
 - `docs/2026-08-19-phase-7-json-exchange-closeout-handoff.md`
+- `docs/2026-08-24-phase-7-ai-exchange-import-plan.md`
+- `docs/2026-08-24-phase-7-ai-exchange-import-closeout-handoff.md`
 - `docs/2026-08-09-phase-6-closeout-handoff.md`
 - `docs/2026-08-09-phase-6-1-time-model-and-auto-scheduling-rules.md`
 - `docs/todo/2026-08-09-phase-6-2-unified-planner-implementation-plan.md`
@@ -35,14 +37,39 @@ Current source-of-truth documents:
 ## Current Status
 
 ```text
-Current phase: Timeline Phase 7.1-7.4 versioned JSON exchange
-Status: Phase 7.1-7.4 implementation, graphical import-preview QA, and two-category import error/warning UX are complete locally; Production RPC is applied while main integration remains pending
-Branch: codex/timeline-phase-7
+Current phase: Timeline Phase 7.5-7.9 AI itinerary exchange, planning, and import
+Status: Phase 7.5-7.9 implementation, full regression, and browser QA are complete; feature branch is published, merge and deployment remain pending
+Branch: codex/timeline-phase-7-ai-exchange-import (tracking origin/codex/timeline-phase-7-ai-exchange-import, based on 0bb623e)
 Production data: Cleanup completed; 8 approved test visits converted to Untimed and 1 approved invalid test transport deleted
 Production migration: Phase 7 import RPC applied as 20260819134935 on lqvuqamzmchepgxkftcw
 Staging migration: Phase 7 import RPC applied as 20260819125851 on uyqdopksfysbobhjcepk; Staging still does not have 20260811150000
-Pending rollout: Vercel Production and main remain on Phase 6; keep testing Phase 7 from codex/timeline-phase-7 before integration
+Pending rollout: Phase 7.5-7.9 is committed and pushed on its feature branch but is not merged or deployed; Production received one explicitly approved read-only Formal Trip snapshot query for Staging recovery, with no Production write or configuration change
 ```
+
+## Phase 7.5-7.9 AI Itinerary Exchange, Planning, and Import
+
+- AI exchange uses its own strict `travel_studio_ai_itinerary` v1 identity. It is intentionally separate from Formal `travel_studio_trip` v1, and each parser rejects the other document type.
+- The AI contract contains portable planning semantics: Trip/destination/date range, complete Days, visit order/category/title, Formal-compatible location data, four schedule forms, Fixed, notes, alternatives, and Day-level transport visit numbers. It excludes UUIDs, ownership, timestamps, locks, Realtime/provider objects, and Place IDs. Every location uses the same four required fields as Formal v1: `name`, `map_url`, `latitude`, and `longitude`; unavailable values are `null`. New AI/Formal templates and exports never write `address`; older JSON containing `address` remains readable and the field is ignored. The existing database/RPC `address` slot remains unchanged and receives `null`.
+- Existing Trip More Actions opens `給 AI 調整`: users can copy or download that Trip's AI exchange JSON, then paste the AI response back to create a new Trip while leaving the source Trip unchanged.
+- New Trip exposes `AI 規劃`: it shows the concise instruction `下載模板，交給 AI 規劃後貼回。`, provides only `下載模板 JSON` and `複製給 AI 的提示詞`, and then opens the existing paste-import flow. It does not render or copy the blank JSON body in the UI. The downloaded blank template contains no internal/provider data and intentionally remains invalid until the AI fills all required fields.
+- The create prompt is vendor-neutral, tells the AI to ask the user for missing trip requirements, and requires one complete `travel_studio_ai_itinerary` JSON object once planning information is sufficient. Demo receives neither AI callback and remains isolated.
+- The create prompt now requires a downloadable `.json` file rather than a Google/online document or message-only JSON, preserves the template's exact English keys, enumerates every visit/transport category, spells out `start`/`end` and all required transport fields, and requires explicit schedules to leave room for transport duration.
+- A narrow pre-validation compatibility pass accepts common external-AI aliases without weakening the remaining strict contract: `start_time/end_time` become `start/end`, `dining/accommodation` become `food/hotel`, `mode` becomes transport `category`, a missing transport name uses the category label, an omitted duration may be read only from an explicit `N 分鐘`/`N minutes` note, and an entire Day of unambiguously 0-based transport refs shifts to 1-based. Mixed or out-of-range numbering still blocks. All other unknown fields still block import.
+- Paste import accepts strict JSON, one fenced JSON block, or one clearly extractable JSON object with small text wrappers. It does not repair JSON5, comments, trailing commas, single quotes, multiple objects, or ambiguous data.
+- Valid AI input converts through a dedicated adapter to Formal v1. Duration-only visits use the Phase 6 five-minute continuation rule only when a safe immediate Timed anchor exists; unsafe duration segments become Untimed warnings, while explicit overlaps remain blocking errors. Exact `24:00`, Fixed, alternatives, multiple Days, non-adjacent suspended transport, and blank transport-name fallback are preserved.
+- AI import performs no pre-import Places lookup, Google Map preview, Wikimedia request, candidate selection, retry, or manual place confirmation. It converts validated AI location fields directly to Formal v1. Missing coordinates do not block confirmation and use the existing yellow copy `尚有 X 個目的地缺少可用座標`.
+- Blocking Contract or persistence errors use the compact red state with no Map, counts, or confirm action. Valid/warning AI input uses a local summary with no graphical map board. The final action converts the draft directly to Formal v1, builds the existing persistence payload, and calls only `import_trip_timeline_v1`.
+- No AI provider, model API, key, chat, streaming, agent, token/cost system, RPC, migration, or database column was added.
+- New manual fixtures: `tests/fixtures/manual/phase-7-ai-valid-complete.json` and `tests/fixtures/manual/phase-7-ai-blocking-error.json`.
+- Phase 7.9 coordinate-unification verification on 2026-08-24: blank-template/prompt/alias/location contract plus Create/Revise/import UI tests passed 20/20, full Playwright passed 319/319 after removing the obsolete AI Places coordinator suite, Production build passed with the existing large-chunk warning, and `git diff --check` passed with informational Windows line-ending notices.
+- Phase 7.9 four-field location follow-up on 2026-08-24: AI/Formal Schema, blank template, prompts, adapters, fixtures, and new exports now omit `address`; legacy AI/Formal files containing it remain compatible and strip it before validation. Focused tests passed 35/35, full Playwright passed 320/320, Production build and `git diff --check` passed. Authenticated 5174 browser QA verified a new export has exactly `name/map_url/latitude/longitude`, and a legacy-address copy reached the non-blocking import preview without Places or map confirmation. No import was confirmed.
+- Authenticated local Staging browser QA verified the desktop and 390x844 mobile `AI 規劃` and `給 AI 調整` flows, exact labels, no Create-mode JSON textarea/copy action, successful template-download and prompt-copy states, no horizontal overflow, and no app console error or warning. No import was confirmed and Staging remained at two Trips.
+- Authenticated browser re-test with a real seven-Day external-AI file verified that 191 derivative format errors collapse to zero format errors after the bounded alias pass. Preview then showed only two genuine five-minute schedule/transport conflicts, with exact paths and actionable earliest starts (`18:35` and `12:05`) but no confirm action; they remain blocking rather than being silently rescheduled. Console stayed clean, no import was confirmed, and Staging remained at two Trips.
+- A second real Gemini file confirmed the hardened prompt produced correct keys, categories, schedules, and complete transport fields, but still numbered each Day's transport refs from 0. The bounded all-Day shift converted those refs safely; Contract and Formal conversion passed with zero errors. Authenticated browser preview rendered 5 Days, 15 visits, 10 transports, and 0 alternatives, auto-resolved 4/15 Places, and left 11 for the existing manual Places workflow. No import was confirmed.
+- Authenticated Staging browser QA passed the complete Formal flow: Header `AI 行程交換`, pasted AI fixture, real Google Places resolution 4/4, preview of 2 Days / 3 visits / 1 transport / 1 alternative, five-minute continuation `10:55-12:10`, one atomic import, reload, and semantic Formal re-export. The AI JSON contained no UUID, Place ID, coordinates, or Maps URL. The temporary `Phase 7.5 Browser QA 01a032da` Trip and all dependent rows were removed.
+- During browser cleanup, a native-confirm automation retry accidentally deleted the pre-existing Staging `系統測試專用` Trip. With explicit approval, Production was queried read-only for only the same-name Formal Trip/Timeline/alternatives graph; members, budget, luggage, and other excluded modules were not copied. The existing Formal payload and `import_trip_timeline_v1` restored it atomically to Staging as `0871e22c-be7b-43c5-b5ab-cf22f54c97d4`, with 4 Days, 16 visits, 3 transports, 3 alternatives, and one approved owner. Dry-run rollback, post-commit SQL audit, and authenticated browser reload all passed; Staging now contains exactly the restored Trip plus `Phase 6 Staging QA`.
+- Production project `lqvuqamzmchepgxkftcw` received no SQL write, migration, data mutation, Auth, setting, or deployment change during Phase 7.5-7.9. The recovery access was one read-only snapshot of the approved same-name Formal Trip graph. Phase 7.9 made no Supabase API, schema, RPC, migration, or data change.
+- Full evidence, exact boundaries, and rollout gates are in `docs/2026-08-24-phase-7-ai-exchange-import-closeout-handoff.md`.
 
 ## Phase 7.1-7.4 JSON Exchange
 

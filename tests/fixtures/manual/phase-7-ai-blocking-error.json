@@ -1,0 +1,34 @@
+{
+  "schema_version": "1",
+  "document_type": "travel_studio_ai_itinerary",
+  "trip": {
+    "title": "AI 阻擋錯誤測試",
+    "destination": {
+      "display_name": "日本 · 京都",
+      "country": "日本",
+      "city": "京都"
+    },
+    "start_date": "2026-11-03",
+    "end_date": "2026-11-03"
+  },
+  "days": [
+    {
+      "day_index": 0,
+      "date": "2026-11-03",
+      "visits": [
+        {
+          "category": "attraction",
+          "title": "固定但未排時間",
+          "location": null,
+          "schedule": {
+            "kind": "untimed"
+          },
+          "fixed": true,
+          "notes": null,
+          "alternatives": []
+        }
+      ],
+      "transports": []
+    }
+  ]
+}

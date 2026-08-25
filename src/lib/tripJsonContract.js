@@ -10,7 +10,7 @@ const destinationKeys = ["display_name", "country", "city"];
 const dayKeys = ["day_index", "date", "visits", "transports"];
 const visitKeys = ["ref", "category", "title", "location", "notes", "estimated_cost", "time", "fixed", "alternatives"];
 const alternativeKeys = ["category", "title", "location", "notes", "estimated_cost", "time"];
-const locationKeys = ["name", "address", "map_url", "latitude", "longitude"];
+const locationKeys = ["name", "map_url", "latitude", "longitude"];
 const timeKeys = ["start", "end"];
 const transportKeys = ["ref", "from_visit_ref", "to_visit_ref", "category", "name", "duration_minutes", "notes"];
 const visitCategories = new Set(["attraction", "food", "hotel", "transport", "note"]);
@@ -48,9 +48,43 @@ function normalizeLocation(location) {
   return {
     ...location,
     name: nullableString(location.name),
-    address: nullableString(location.address),
     map_url: nullableString(location.map_url),
   };
+}
+
+function removeLegacyLocationAddress(location, changes) {
+  if (!isPlainObject(location) || !Object.hasOwn(location, "address")) return location;
+  const result = { ...location };
+  delete result.address;
+  changes.add("location.address:removed");
+  return result;
+}
+
+function canonicalizeLegacyLocationFields(document) {
+  if (!isPlainObject(document) || !Array.isArray(document.days)) return { document, migrations: [] };
+  const changes = new Set();
+  const canonical = {
+    ...document,
+    days: document.days.map((day) => {
+      if (!isPlainObject(day) || !Array.isArray(day.visits)) return day;
+      return {
+        ...day,
+        visits: day.visits.map((visit) => {
+          if (!isPlainObject(visit)) return visit;
+          return {
+            ...visit,
+            location: removeLegacyLocationAddress(visit.location, changes),
+            alternatives: Array.isArray(visit.alternatives)
+              ? visit.alternatives.map((alternative) => isPlainObject(alternative)
+                ? { ...alternative, location: removeLegacyLocationAddress(alternative.location, changes) }
+                : alternative)
+              : visit.alternatives,
+          };
+        }),
+      };
+    }),
+  };
+  return { document: canonical, migrations: changes.size ? ["legacy_location_address_removed"] : [] };
 }
 
 function normalizeAlternative(alternative) {
@@ -240,7 +274,7 @@ function validateLocation(location, path, errors) {
   if (!requireObject(location, path, errors)) return;
   checkAllowedKeys(location, locationKeys, path, errors);
   checkRequiredKeys(location, locationKeys, path, errors);
-  ["name", "address", "map_url"].forEach((key) => requireString(location[key], `${path}.${key}`, errors, { nullable: true }));
+  ["name", "map_url"].forEach((key) => requireString(location[key], `${path}.${key}`, errors, { nullable: true }));
   if (location.latitude !== null) requireFiniteNumber(location.latitude, `${path}.latitude`, errors, { min: -90, max: 90 });
   if (location.longitude !== null) requireFiniteNumber(location.longitude, `${path}.longitude`, errors, { min: -180, max: 180 });
   if ((location.latitude === null) !== (location.longitude === null)) {
@@ -488,12 +522,13 @@ export function parseTripJsonText(text) {
   }
   const migrationResult = migrateTripJsonDocument(parsed);
   if (!migrationResult.ok) return { ...migrationResult, warnings: [] };
-  const document = normalizeTripJsonDocument(migrationResult.document);
+  const compatibility = canonicalizeLegacyLocationFields(migrationResult.document);
+  const document = normalizeTripJsonDocument(compatibility.document);
   const validation = validateTripJsonDocument(document);
   return {
     document,
     errors: validation.errors,
-    migrations: migrationResult.migrations,
+    migrations: [...migrationResult.migrations, ...compatibility.migrations],
     ok: validation.ok,
     warnings: validation.warnings,
   };
