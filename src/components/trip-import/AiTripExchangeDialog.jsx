@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Bot, Clipboard, Download, FileJson2 } from "lucide-react";
+import { Bot, Clipboard, Download } from "lucide-react";
 import {
   aiItineraryExchangeModes,
-  buildAiItineraryClipboardText,
   buildAiItineraryCreatePrompt,
   buildAiItineraryUsageInstructions,
 } from "../../lib/aiItineraryAdapters.js";
@@ -13,34 +12,38 @@ async function copyText(value) {
   await navigator.clipboard.writeText(value);
 }
 
-export default function AiTripExchangeDialog({ document, fileName, mode = aiItineraryExchangeModes.reviseCopy, onClose, onOpenImport }) {
+export default function AiTripExchangeDialog({ document, fileName, mode = aiItineraryExchangeModes.reviseCopy, onBack, onClose, onImportFile }) {
   const [status, setStatus] = useState("");
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
   const isCreateMode = mode === aiItineraryExchangeModes.create;
   const instructions = isCreateMode ? buildAiItineraryCreatePrompt() : buildAiItineraryUsageInstructions(document);
   const json = stringifyAiItineraryDocument(document);
   const title = isCreateMode ? "AI 規劃" : "給 AI 調整";
   const description = isCreateMode
-    ? "下載模板，交給 AI 規劃後貼回。"
-    : "把目前旅程交給 AI 調整；貼回後建立新旅程，原旅程不變。";
+    ? "下載模板，交給 AI 規劃後匯入。"
+    : "把目前旅程交給 AI 調整；匯入後建立新旅程，原旅程不變。";
 
   async function handleCopy(value, successMessage) {
     try {
       await copyText(value);
       setStatus(successMessage);
     } catch {
+      setInstructionsOpen(true);
       setStatus("瀏覽器無法存取剪貼簿，請手動選取內容複製。");
     }
   }
 
   function downloadJson() {
-    const blob = new Blob([json], { type: "application/json" });
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = window.document.createElement("a");
     link.href = url;
     link.download = fileName;
+    window.document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
-    setStatus(isCreateMode ? "模板 JSON 已下載。" : "AI JSON 已下載。");
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus(isCreateMode ? "模板 JSON 已準備下載。" : "旅程 JSON 已準備下載。");
   }
 
   return (
@@ -55,55 +58,48 @@ export default function AiTripExchangeDialog({ document, fileName, mode = aiItin
         </div>
 
         <div className="ai-exchange-flow" aria-label="AI 行程交換流程">
-          <span>{isCreateMode ? "下載模板" : "複製資料"}</span><i aria-hidden="true">→</i><span>交給外部 AI</span><i aria-hidden="true">→</i><span>貼回匯入</span>
+          <span>{isCreateMode ? "下載模板" : "下載旅程"}</span><i aria-hidden="true">→</i><span>檔案＋提示詞交給 AI</span><i aria-hidden="true">→</i><span>匯入 JSON</span>
         </div>
 
-        <label className="ai-exchange-field">
-          <span>給 AI 的提示詞</span>
-          <textarea readOnly rows={8} value={instructions} onFocus={(event) => event.currentTarget.select()} />
-        </label>
-        {!isCreateMode ? (
-          <details className="ai-exchange-json-details">
-            <summary>查看 AI JSON</summary>
-            <textarea aria-label="AI 行程 JSON" readOnly rows={10} value={json} onFocus={(event) => event.currentTarget.select()} />
-          </details>
-        ) : null}
+        <div className="ai-exchange-primary-actions">
+          <button className="primary-button compact" type="button" onClick={downloadJson}>
+            <Download size={16} aria-hidden="true" />
+            {isCreateMode ? "下載模板 JSON" : "下載旅程 JSON"}
+          </button>
+          <button className="ghost-button compact" type="button" onClick={() => void handleCopy(instructions, "給 AI 的提示詞已複製。") }>
+            <Clipboard size={16} aria-hidden="true" />
+            複製給 AI 的提示詞
+          </button>
+        </div>
+
+        <details className="ai-exchange-prompt-details" open={instructionsOpen} onToggle={(event) => setInstructionsOpen(event.currentTarget.open)}>
+          <summary>查看給 AI 的提示詞</summary>
+          <label className="ai-exchange-field">
+            <textarea aria-label="給 AI 的提示詞" readOnly rows={8} value={instructions} onFocus={(event) => event.currentTarget.select()} />
+          </label>
+        </details>
 
         {status ? <div className="ai-exchange-status" role="status">{status}</div> : null}
 
-        <div className="ai-exchange-primary-actions">
-          {isCreateMode ? (
-            <>
-              <button className="primary-button compact" type="button" onClick={downloadJson}>
-                <Download size={16} aria-hidden="true" />
-                下載模板 JSON
-              </button>
-              <button className="ghost-button compact" type="button" onClick={() => void handleCopy(instructions, "給 AI 的提示詞已複製。") }>
-                <Clipboard size={16} aria-hidden="true" />
-                複製給 AI 的提示詞
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="primary-button compact" type="button" onClick={() => void handleCopy(buildAiItineraryClipboardText(document), "給 AI 的提示詞與目前旅程 JSON 已複製。") }>
-                <Clipboard size={16} aria-hidden="true" />
-                複製給 AI
-              </button>
-              <button className="ghost-button compact" type="button" onClick={() => void handleCopy(json, "AI JSON 已複製。") }>
-                <FileJson2 size={16} aria-hidden="true" />
-                只複製 JSON
-              </button>
-              <button className="ghost-button compact" type="button" onClick={downloadJson}>
-                <Download size={16} aria-hidden="true" />
-                下載 JSON
-              </button>
-            </>
-          )}
-        </div>
-
         <div className="form-actions">
           <button className="ghost-button" type="button" onClick={onClose}>關閉</button>
-          <button className="primary-button compact" type="button" onClick={onOpenImport}>貼上 AI 回覆</button>
+          {isCreateMode ? (
+            <button className="primary-button compact" type="button" onClick={onBack || onClose}>返回</button>
+          ) : (
+            <label className="primary-button compact trip-json-file-button">
+              匯入 JSON
+              <input
+                accept="application/json,.json"
+                aria-label="選擇行程 JSON 檔案"
+                type="file"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  void onImportFile(file);
+                }}
+              />
+            </label>
+          )}
         </div>
       </section>
     </div>

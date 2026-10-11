@@ -1,6 +1,6 @@
 # Timeline Phase 7.5-7.9 | AI Itinerary Exchange, Planning, and Import Closeout
 
-Status: Implemented, verified, committed, and pushed on `codex/timeline-phase-7-ai-exchange-import`; merge and deployment pending
+Status: Phase 7.5-7.9, unified import, and 2026-10-11 AI-flow follow-ups are complete on `codex/timeline-phase-7-ai-exchange-import`; publication commits are recorded in Git history; merge and Production deployment pending
 Date: 2026-08-24
 Baseline: `0bb623e` (`origin/main` was `0 0` at phase start)
 Production: No writes or configuration changes; one explicitly approved read-only Formal Trip snapshot was used to recover Staging
@@ -16,7 +16,7 @@ Formal App Domain
   -> AI export adapter
   -> travel_studio_ai_itinerary v1
   -> user-selected external AI
-  -> strict paste/file parser
+  -> shared JSON file parser
   -> normalized AI draft
   -> direct Formal-compatible location conversion
   -> travel_studio_trip v1
@@ -41,7 +41,7 @@ Schedule forms are `timed`, `start_duration`, `duration`, and `untimed`. Fixed a
 
 ## Location Conversion
 
-AI import is local and direct. It does not call Google Places, load Google Maps, request Wikimedia content, render a map preview, or ask the user to resolve candidates. Valid coordinates are preserved into Formal v1. Missing or unusable coordinates remain `null`, do not block confirmation, and display the existing yellow warning `尚有 X 個目的地缺少可用座標`.
+AI conversion is local and direct; valid coordinates are preserved into Formal v1. AI and website-exported JSON share the existing cover/Google Map preview, drawing only coordinates already in the file and retaining the existing Wikimedia cover lookup. There is no Places lookup, candidate resolution, or manual location confirmation. Missing or unusable coordinates remain `null`, do not block confirmation, and display the existing yellow warning `尚有 X 個目的地缺少可用座標`.
 
 The compatibility pass still accepts earlier AI v1 locations by removing legacy `address`, `area`, and `search_hint`, then adding null `map_url/latitude/longitude` where needed. Earlier `location: null` becomes the same four-field empty object. Formal v1 import likewise accepts and ignores legacy `address`. Unknown fields remain blocking. The database/RPC `address` slot remains unchanged and receives `null`; no migration is required.
 
@@ -50,35 +50,43 @@ The compatibility pass still accepts earlier AI v1 locations by removing legacy 
 An existing Formal Trip's More Actions menu now includes `給 AI 調整`. This path provides:
 
 - vendor-neutral instructions for the external AI;
-- copy instructions plus JSON;
-- copy JSON only;
-- JSON download;
-- direct transition to paste import.
+- download the Trip JSON file;
+- copy the AI prompt only;
+- the shared `匯入 JSON` file action.
 
-New Trip now includes `AI 規劃`. Its Dialog uses the short instruction `下載模板，交給 AI 規劃後貼回。` and provides only:
+New Trip now includes `AI 規劃`. Its Dialog uses the short instruction `下載模板，交給 AI 規劃後匯入。` and provides:
 
 - `下載模板 JSON`, which downloads `travel-studio-ai-itinerary-template-v1.json`;
 - `複製給 AI 的提示詞`;
-- `貼上 AI 回覆`.
+- `返回`, which restores the preserved New Trip form.
 
-Create mode intentionally renders no JSON textarea, no blank-template JSON text, and no copy-JSON action. The blank file contains the contract skeleton but no UUID, ownership, Place ID, address, or other internal data. Its location skeleton contains the same four Formal fields with null values. It intentionally fails validation until an AI fills the required Trip, Day, and visit values. The vendor-neutral prompt tells the AI to ask for missing requirements and, once enough information exists, return exactly one complete JSON object, provide accurate location coordinates when available, and use null when unavailable.
+Both modes collapse the long prompt by default. Clipboard failure expands only the prompt in place; no new dialog or JSON-body copy action is shown. Download status reports that the file is prepared, not that the browser has finished saving it.
 
-The prompt also requires the final response as a directly downloadable `.json` file rather than a Google/online document or message-only JSON. It preserves the template's exact English keys, enumerates visit and transport categories, names the exact schedule/transport fields, and requires explicit schedules to include intervening transport duration.
+The New Trip form represents `AI 規劃` with a Bot icon and accessible label, and represents the shared JSON file action as upload icon plus `匯入`.
+
+Create mode intentionally renders no JSON textarea, no blank-template JSON text, and no copy-JSON action. The blank file contains the contract skeleton but no UUID, ownership, Place ID, address, or other internal data. Its location skeleton contains the same four Formal fields with null values. It intentionally fails validation until an AI fills the required Trip/date values and a valid continuous Day graph. The vendor-neutral prompt asks only for missing destination or required date information; the AI may propose a title. Undecided flights, accommodation, dining, transport, places, and detailed times remain optional draft content rather than invented requirements.
+
+The Create and Revise prompts require the final response as a directly downloadable `.json` file rather than a Google/online document or message-only JSON. They preserve the template's exact English keys and distinguish planning proposals from confirmed facts. AI should actively suggest geographically feasible visits, dining, accommodation areas, reasonable `start_duration` schedules, and transport, while never claiming that flights, bookings, reservations, or tickets were confirmed by the user. Slow travel may use fewer items without a fixed quota, but one generic Untimed item per Day and globally empty transport are not acceptable substitutes for planning. Truly unknown values may still use Untimed/null/omission. Every explicit value must use one of four complete schedule shapes, integer 1-1440-minute durations, no zero-minute transport, 1-based visit numbers, and transport-aware non-overlapping times.
+
+The 2026-10-11 optimization keeps the schemas/blank template unchanged and shares one sectioned Create/Revise specification with an executable full-shape example. New draft suggestions use a daily start anchor and duration continuation, while meal/opening/reservation windows use additional explicit anchors with gaps allowed. A scheduling anchor does not imply Fixed. The AI must expand the resulting times before delivery to avoid meals being pulled into implausible hours. Real explicit-time conflicts still block; successful duration continuation is normal and is omitted from user warnings.
 
 Before strict validation, one bounded compatibility pass handles common external-AI deviations:
 
 - `schedule.start_time/end_time` -> `schedule.start/end`;
 - visit `dining/accommodation` -> `food/hotel`;
 - transport `mode` -> `category`;
+- transport `subway/metro` -> `train` (AI files only);
 - missing transport name -> established transport-category label;
 - missing `duration_minutes` -> an explicit bounded `N 分鐘` or `N minutes` value in transport notes.
 - an entire Day whose transport refs are unambiguously within 0-based bounds and include `0` -> all refs shift to 1-based together.
 
 Conflicting canonical and alias fields are not overwritten, mixed or out-of-range transport numbering remains invalid, arbitrary fields are not removed, unknown fields still block, and explicit Timeline overlaps still block rather than being silently rescheduled. The prompt now says explicitly that the first visit-to-second visit pair is `1→2` and zero is forbidden.
 
-The paste step is primary and `.json` selection is secondary. Parsing accepts strict raw JSON, exactly one Markdown JSON fence, or one unambiguous balanced object with small text wrappers. It intentionally does not repair malformed JSON. Both modes import as a new Trip; the `給 AI 調整` path explicitly states that the source Trip remains unchanged.
+JSON file selection is the only import entry. The shared parser inspects `document_type` locally: Formal files remain on the strict Formal parser, while AI files use the bounded AI compatibility pass and convert to Formal before the same preview. The former `貼上 AI 回覆` Dialog and text-paste path were removed. Both AI modes import as a new Trip; the `給 AI 調整` path explicitly states that the source Trip remains unchanged.
 
-Blocking parser/contract/persistence errors render the compact red state with no Map, counts, or confirm action. Valid and warning states show a local count summary without the graphical map board. Missing coordinates remain a non-blocking yellow warning. Supabase error strings, normal error objects, and thrown errors are normalized before rendering.
+Blocking parser/contract/persistence errors render the compact red state with no Map, counts, or confirm action. Valid and warning AI/Formal states share the same graphical preview, counts, simplified notices, and confirmation path. When there are no eligible coordinate points, the cover uses its default background and the map area says `尚無可顯示的地圖位置`; it makes no map/cover lookup and does not report a map-load error. Missing coordinates remain a non-blocking yellow warning. Supabase error strings, normal error objects, and thrown errors are normalized before rendering.
+
+First-use import feedback distinguishes a normal draft state from issues requiring attention. Visits without explicit times and retained transport share one neutral note: `部分行程尚未設定時間，匯入後可再安排；行程與交通都會保留。` Untimed alternatives do not create reminders. Missing locations/coordinates collapse into one existing yellow reminder with a short next step; unsafe duration conflicts share one plain-language count. Important empty/settled reminders and unknown future warning types remain visible. The presentation helper does not mutate raw diagnostics, documents, schedules, validation results or confirmation eligibility, and does not globally prohibit technical vocabulary in other contexts.
 
 Demo receives no AI callbacks and continues to expose only its existing JSON export behavior.
 
@@ -101,6 +109,20 @@ This remains aligned with the current Supabase Database Functions guidance to pr
 
 ## Automated Verification
 
+AI-flow optimization follow-up on 2026-10-11 (feature branch; verified locally):
+
+- Shared-preview correction: focused 30/30 and full Playwright 341/341 passed; Production build and `git diff --check` passed. AI and Formal now use the same board; tests cover identical file-coordinate routes and desktop/390px coordinate-free preview with no map/cover lookup or map failure. Authenticated local desktop/390x844 QA restored the Hokkaido cover/map while preserving 7 Days / 36 visits / 28 transports / 2 alternatives and simplified notices. Fresh reload/file-picker checks verified AI cover/map, Formal empty-map fallback, and blocking Error without a board/counts/confirm action. No import was confirmed, four Trips remain unchanged, and there was no app error (only the existing underlying Google Marker deprecation warning). Screenshots are outside the repository. The user-facing tab remains on the Hokkaido preview; delivery is confined to the feature branch, without a merge or Production deployment.
+- Latest first-use feedback follow-up: focused tests 23/23 and full Playwright 338/338 passed; Production build and `git diff --check` passed. The Hokkaido preview retained 7 Days / 36 visits / 28 transports / 2 alternatives while replacing 9 warning rows with one neutral note and one coordinate reminder. Desktop and 390px rendered tests cover grouping, routine-only/no-yellow state, plain copy and no horizontal overflow. Authenticated reload/file-selection QA reconfirmed valid non-blocking preview and compact blocking Error with no confirm action; no import was confirmed, four existing Trips remained unchanged, and the only reload warning was the existing Google Marker deprecation notice. Evidence is outside the repository.
+- Before the first-use feedback follow-up, full Playwright regression: 330/330 passed.
+- Production build: passed; only the existing Vite large-chunk warning remains.
+- `git diff --check`: passed; Windows LF/CRLF notices remain informational.
+- Desktop and 390x844 rendered checks cover both exchange modes, actual generated download contents, prompt-only copying, collapsed prompt/manual clipboard fallback, shared import and overflow. This is browser-responsive coverage, not real-phone certification.
+- Authenticated 5174 browser QA verified the draft fixture with an unknown restaurant/coordinates, no flight/hotel and an intentionally empty Day. Preview showed 2 Days / 2 visits / 1 transport and the existing yellow missing-coordinate message without an AI map/cover or blocking error. Confirmation was not pressed; app console stayed clean.
+- Nine independent external trials used synthetic inputs and a fresh temporary chat for every first response, with no same-chat repair request. Baseline Gemini missed 15 minutes of transport. Subsequent trials exposed invented Fixed anchors and an afternoon dinner; the prompt was refined for both before the final creation trials.
+- Final GPT creation: 3 Days / 16 visits / 13 transports, zero blocking errors and a valid persistence payload; final Gemini creation: 3 Days / 13 visits / 10 transports, valid persistence payload after bounded `subway -> train` compatibility. Gemini still had one unsafe duration segment, preserved as Untimed with visible warnings rather than silently changing explicit times. These limited tests do not establish universal reliability or verified coordinates.
+- GPT and Gemini revision trials preserved the entire original first Day, Trip metadata and Fixed anchor exactly while adding the requested second-Day suggestions and rain alternative. Both tabs were returned to empty temporary chats after testing.
+- Browser download completion remains unverified: Edge retained `.crdownload` files after the real website download controls were clicked. Their inert JSON bytes were validated locally, but were not renamed, executed or confirmed for import. Browser-internal download/security controls were not bypassed. No Trip import, database write, push, merge or deployment was performed.
+
 Phase 7.5-7.8 verification at `http://127.0.0.1:5174/`:
 
 - AI rendered/UI boundary suite: 6/6 passed.
@@ -116,25 +138,42 @@ Phase 7.9 verification:
 - Production build: passed; only the existing Vite large-chunk warning remains.
 - `git diff --check`: passed; existing Windows LF/CRLF notices remain informational.
 
+Unified JSON import follow-up verification on 2026-08-25:
+
+- Formal and AI document dispatch plus direct file-import UI: 42/42 focused tests passed.
+- Full Playwright regression: 320/320 passed.
+- Production build: passed; only the existing Vite large-chunk warning remains.
+- `git diff --check`: passed; existing Windows LF/CRLF notices remain informational.
+- Local 5174 browser QA selected a real AI JSON file from the New Trip shared import action and reached the Formal preview with 6 Days, 24 visits, 18 transports, and 0 alternatives. No application error appeared, confirmation was not pressed, and no data was written.
+
 Coverage includes strict/fenced/wrapped parsing, malformed/ambiguous JSON, type/version separation, unknown and required fields, Day/date/time/Fixed invariants, duration scheduling, exact `24:00`, alternatives, transports, multiple Days, Formal conversion, semantic round trip, unique/multiple/not-found/error Place states, re-search/candidate selection, partial batch failure, `0,0` rejection, explicit text-only handling, compact Error UI, unresolved gating, RPC object-error rendering, exchange copy/download, Demo isolation, and mobile overflow.
 
 Manual fixtures:
 
 - `tests/fixtures/manual/phase-7-ai-valid-complete.json`
 - `tests/fixtures/manual/phase-7-ai-blocking-error.json`
+- `tests/fixtures/manual/phase-7-ai-draft-duration.json`
 
-Rendered evidence in the untracked `test-results/` directory covers desktop exchange, compact desktop Error, missing-coordinate warning, coordinate-ready import, RPC Error, and 390x844 mobile preview. The AI import checks assert no Places request, map preview, or candidate panel. These artifacts must remain untracked.
+Historical rendered evidence in the untracked `test-results/` directory covers desktop exchange, compact desktop Error, missing-coordinate warning, coordinate-ready import, RPC Error, and 390x844 mobile preview. The earlier no-map-preview expectation is superseded by the 2026-10-11 shared-preview correction. Current checks preserve the no-Places/no-candidate boundary while allowing the existing map/cover board. These artifacts must remain untracked.
 
 ## Phase 7.9 Browser Verification
 
 Authenticated local Staging browser QA verified:
 
-- New Trip shows `AI 規劃` and the exact short instruction;
-- Create mode has `下載模板 JSON`, `複製給 AI 的提示詞`, and `貼上 AI 回覆`, with no JSON textarea or copy-JSON control;
+- New Trip shows the accessible `AI 規劃` Bot icon and the exact short instruction;
+- Create mode has `下載模板 JSON`, `複製給 AI 的提示詞`, and `返回`, with no JSON textarea, copy-JSON control, or second import picker;
 - the download and copy actions report successful states;
 - an existing Trip's More Actions menu shows `給 AI 調整` and explains that import creates a new Trip while the source Trip stays unchanged;
 - desktop and 390x844 mobile layouts have no horizontal overflow;
 - browser console contains no application errors or warnings.
+
+The 2026-08-25 unified-entry follow-up additionally verified that the `貼上 AI 回覆` button and Dialog are gone. AI planning returns to the preserved New Trip form, whose upload-icon `匯入` action owns new-Trip file selection; `給 AI 調整` retains its direct file action. Both feed the same shared parser, preview, and confirmation path.
+
+Authenticated 5174 browser QA exercised New Trip -> Bot-icon `AI 規劃` -> `返回` -> New Trip. The AI Dialog contained no file picker, and the returned form preserved its title, country, city, and date range. The upload-icon `匯入` action remained available. Targeted unified-import/UI/RPC tests passed 14/14 and the Production build passed with only the existing large-chunk warning. No import was attempted.
+
+The 2026-08-25 prompt draft-balance follow-up updated both Create and Revise instructions after real GPT and Gemini files exposed a missing `timed.end`, zero-minute transports, and explicit Timeline conflicts. An immediate Gemini re-test then showed the initial flexibility wording was over-corrected: 6 Days became exactly 6 Untimed visits and 0 transports. The balanced prompt now requires concrete usable suggestions, reasonable timing and transport estimates, no fixed item quota, and no fabricated confirmed booking facts. Revise preserves useful existing density unless the user asks to simplify. No import or data write was performed.
+
+A second Gemini re-test produced useful density (25 visits and 19 transports across 6 Days) but still failed three schedule checks by 5, 5, and 1 minute. It also created a fake 1-minute `車廂內移動` transport and left all 25 coordinate pairs null. The prompts now spell out per-Day minute arithmetic for `timed` and `start_duration`, compute `earliest_next_start` with adjacent transport, shift downstream non-Fixed items on conflict, preserve Fixed anchors, omit transport within the same place/facility/vehicle, and request searchable Maps URLs plus best-known coordinates for recognizable public places without treating them as bookings. Generic accommodation areas, onboard activities, and ambiguous locations may remain null. Focused contract/UI/unified-import/RPC tests passed 27/27 and Production build passed. The external test file was not modified or imported.
 
 A follow-up authenticated browser test used a real seven-Day external-AI response with 24 visits and 17 transports. Before the compatibility fix it produced 191 derivative errors: 49 unknown fields, 49 missing fields, 32 invalid times, 10 unsupported visit categories, 17 unsupported transport categories, and 34 invalid types. After the fix, format validation passed with zero errors and the preview exposed only two genuine five-minute Timeline conflicts caused by explicit visit times not leaving room for the preceding transport. Each error now reports the actionable earliest start (`18:35` and `12:05`). Both exact paths remained blocking, no confirm action was shown, browser console stayed clean, and no import was attempted.
 

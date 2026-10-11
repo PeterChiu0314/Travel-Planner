@@ -50,7 +50,8 @@ function GoogleTripPreviewMap({ route }) {
     let resizeFrame = null;
     let resizeObserver = null;
 
-    if (!apiKey || !route.points.length || !mapElementRef.current) {
+    if (!route.points.length) return undefined;
+    if (!apiKey || !mapElementRef.current) {
       setStatus("failed");
       return undefined;
     }
@@ -156,9 +157,9 @@ function GoogleTripPreviewMap({ route }) {
   return (
     <div aria-label="每天一個代表景點的 Google 地圖路線預覽" className="trip-import-google-map-wrap">
       <div className="trip-import-google-map" ref={mapElementRef} />
-      {status !== "ready" ? (
+      {!route.points.length || status !== "ready" ? (
         <div className="trip-import-google-map-status">
-          {status === "failed" ? "Google 地圖無法載入" : "Google 地圖載入中…"}
+          {!route.points.length ? "尚無可顯示的地圖位置" : status === "failed" ? "Google 地圖無法載入" : "Google 地圖載入中…"}
         </div>
       ) : null}
     </div>

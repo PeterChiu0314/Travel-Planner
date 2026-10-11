@@ -6180,9 +6180,26 @@ textarea {
 }
 
 .trip-json-file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   position: relative;
   margin-right: auto;
   cursor: pointer;
+}
+
+.create-trip-ai-button {
+  display: inline-grid;
+  width: 42px;
+  min-width: 42px;
+  padding: 0;
+  place-items: center;
+}
+
+.create-trip-ai-button svg,
+.trip-json-file-button svg {
+  flex: 0 0 auto;
 }
 
 .trip-json-file-button input {
@@ -6220,9 +6237,7 @@ textarea {
   min-height: 0;
 }
 
-.trip-import-preview-heading h2,
-.trip-import-summary strong,
-.trip-import-summary span {
+.trip-import-preview-heading h2 {
   margin: 0;
 }
 
@@ -6473,6 +6488,13 @@ textarea {
   color: var(--color-warning);
 }
 
+.trip-import-draft-note {
+  margin: 0;
+  color: #68716c;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .trip-import-issues ul {
   display: grid;
   gap: 6px;
@@ -6559,8 +6581,7 @@ textarea {
   }
 }
 
-.ai-exchange-dialog,
-.ai-import-dialog {
+.ai-exchange-dialog {
   align-content: start;
   width: min(700px, 100%);
   max-height: calc(100vh - 32px);
@@ -6570,34 +6591,25 @@ textarea {
   background: #fffdf9;
 }
 
-.ai-exchange-heading,
-.ai-import-heading,
-.ai-import-preview-heading {
+.ai-exchange-heading {
   display: flex;
   align-items: flex-start;
   gap: 12px;
 }
 
 .ai-exchange-heading h2,
-.ai-import-heading h2,
-.ai-import-preview-heading h2,
-.ai-exchange-heading p,
-.ai-import-heading p,
-.ai-import-preview-heading p {
+.ai-exchange-heading p {
   margin: 0;
 }
 
-.ai-exchange-heading p,
-.ai-import-heading p,
-.ai-import-preview-heading p {
+.ai-exchange-heading p {
   margin-top: 3px;
   color: #68716c;
   font-size: 13px;
   line-height: 1.5;
 }
 
-.ai-exchange-icon,
-.ai-import-heading > span {
+.ai-exchange-icon {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -6628,8 +6640,7 @@ textarea {
   font-style: normal;
 }
 
-.ai-exchange-field,
-.ai-import-text-field {
+.ai-exchange-field {
   display: grid;
   gap: 7px;
   color: #38423d;
@@ -6637,9 +6648,7 @@ textarea {
   font-weight: 650;
 }
 
-.ai-exchange-field textarea,
-.ai-exchange-json-details textarea,
-.ai-import-text-field textarea {
+.ai-exchange-field textarea {
   width: 100%;
   border-color: #cfd6cf;
   border-radius: 9px;
@@ -6651,12 +6660,12 @@ textarea {
   resize: vertical;
 }
 
-.ai-exchange-json-details {
+.ai-exchange-prompt-details {
   border-top: 1px solid #e2ded5;
   padding-top: 10px;
 }
 
-.ai-exchange-json-details summary {
+.ai-exchange-prompt-details summary {
   width: fit-content;
   cursor: pointer;
   color: #4d5b54;
@@ -6664,12 +6673,11 @@ textarea {
   font-weight: 650;
 }
 
-.ai-exchange-json-details textarea {
+.ai-exchange-prompt-details textarea {
   margin-top: 10px;
 }
 
-.ai-exchange-status,
-.ai-import-input-note {
+.ai-exchange-status {
   border-radius: 8px;
   background: #eef4ef;
   padding: 9px 12px;
@@ -6691,79 +6699,16 @@ textarea {
   gap: 6px;
 }
 
-.ai-import-input-step {
-  width: min(720px, 100%);
-}
-
-.ai-import-input-step .form-actions,
 .ai-exchange-dialog .form-actions {
   border-top: 1px solid #e2ded5;
   padding-top: 14px;
 }
 
-.ai-import-preview-step {
-  display: flex;
-  width: min(640px, 100%);
-  height: auto;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px 24px;
-}
-
-.ai-import-preview-step.has-blocking-error {
-  width: min(640px, 100%);
-  height: auto;
-}
-
-.ai-import-preview-heading {
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 0 6px;
-}
-
-.ai-import-preview-step > .trip-import-issues {
-  flex: 0 0 auto;
-  max-height: 150px;
-  overflow: auto;
-}
-
-.ai-import-preview-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: auto;
-  border-top: 1px solid #e2ded5;
-  padding-top: 12px;
-}
-
-.ai-import-preview-step.has-blocking-error .ai-import-preview-footer {
-  justify-content: flex-end;
-}
-
-.ai-import-preview-footer .form-actions {
-  flex: 0 0 auto;
-  margin: 0;
-}
-
 @media (max-width: 720px) {
-  .ai-exchange-dialog,
-  .ai-import-dialog,
-  .ai-import-preview-step {
+  .ai-exchange-dialog {
     width: 100%;
     height: auto;
     padding: 18px;
-  }
-
-  .ai-import-preview-heading,
-  .ai-import-preview-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .ai-import-preview-footer .form-actions {
-    justify-content: flex-end;
   }
 }
 

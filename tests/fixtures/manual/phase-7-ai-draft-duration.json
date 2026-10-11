@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "document_type": "travel_studio_ai_itinerary",
+  "trip": {
+    "title": "京都慢遊草案（未決定班機與住宿）",
+    "destination": { "display_name": "日本 · 京都", "country": "日本", "city": "京都" },
+    "start_date": "2027-04-12",
+    "end_date": "2027-04-13"
+  },
+  "days": [
+    {
+      "day_index": 0,
+      "date": "2027-04-12",
+      "visits": [
+        {
+          "category": "attraction",
+          "title": "清水寺",
+          "location": { "name": "清水寺", "map_url": "https://www.google.com/maps?q=34.9948561,135.7850463", "latitude": 34.9948561, "longitude": 135.7850463 },
+          "schedule": { "kind": "start_duration", "start": "09:00", "duration_minutes": 90 },
+          "fixed": false,
+          "notes": "建議時段，尚未預訂。",
+          "alternatives": []
+        },
+        {
+          "category": "food",
+          "title": "東山午餐（店家未定）",
+          "location": { "name": "京都東山周邊", "map_url": null, "latitude": null, "longitude": null },
+          "schedule": { "kind": "duration", "duration_minutes": 60 },
+          "fixed": false,
+          "notes": "現場選店，不代表已預約。",
+          "alternatives": []
+        }
+      ],
+      "transports": [
+        { "from_visit_number": 1, "to_visit_number": 2, "category": "walk", "name": "步行", "duration_minutes": 15, "notes": "區域估計時間" }
+      ]
+    },
+    { "day_index": 1, "date": "2027-04-13", "visits": [], "transports": [] }
+  ]
+}

@@ -20,6 +20,7 @@ import { CSS as DndCSS } from "@dnd-kit/utilities";
 import {
   BadgeInfo,
   Bed,
+  Bot,
   BusFront,
   CarFront,
   CarTaxiFront,
@@ -30,6 +31,7 @@ import {
   ClipboardCheck,
   CircleEllipsis,
   ExternalLink,
+  FileUp,
   Files,
   Footprints,
   HandCoins,
@@ -92,7 +94,8 @@ import {
   validRouteSegmentKeysFromItems,
 } from "./lib/routeOverrides.js";
 import { buildTripImportPersistencePayload, serializeTripToJson } from "./lib/tripJsonAdapters.js";
-import { buildTripJsonPreview, parseTripJsonText } from "./lib/tripJsonContract.js";
+import { buildTripJsonPreview } from "./lib/tripJsonContract.js";
+import { parseUnifiedTripJsonText } from "./lib/unifiedTripJsonImport.js";
 import {
   aiItineraryBlankTemplateFileName,
   aiItineraryExchangeModes,
@@ -101,8 +104,8 @@ import {
 } from "./lib/aiItineraryAdapters.js";
 import MapPanel from "./components/map/MapPanel.jsx";
 import TripImportPreviewBoard from "./components/trip-import/TripImportPreviewBoard.jsx";
+import TripImportNotices from "./components/trip-import/TripImportNotices.jsx";
 import AiTripExchangeDialog from "./components/trip-import/AiTripExchangeDialog.jsx";
-import AiTripImportDialog from "./components/trip-import/AiTripImportDialog.jsx";
 import {
   buildTimelineVisitDisplayOrder,
   isTimedVisit,
@@ -2519,7 +2522,6 @@ export default function App() {
   const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
   const [tripImportState, setTripImportState] = useState(null);
   const [aiExchangeState, setAiExchangeState] = useState(null);
-  const [aiTripImportMode, setAiTripImportMode] = useState(null);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareLinks, setShareLinks] = useState([]);
@@ -4863,17 +4865,22 @@ export default function App() {
         fileName: file.name,
       });
       setIsTripDialogOpen(false);
+      setAiExchangeState(null);
       setTripImportState({ busy: false, document: null, error: "", preview });
       return;
     }
-    const parsed = parseTripJsonText(text);
-    const preview = buildTripJsonPreview(parsed.document, {
-      errors: parsed.errors || [],
-      fileName: file.name,
-      migrations: parsed.migrations || [],
-      warnings: parsed.warnings || [],
-    });
+    const parsed = parseUnifiedTripJsonText(text);
+    const preview = {
+      ...buildTripJsonPreview(parsed.document, {
+        errors: parsed.errors || [],
+        fileName: file.name,
+        migrations: parsed.migrations || [],
+        warnings: parsed.warnings || [],
+      }),
+      sourceDocumentType: parsed.sourceDocumentType,
+    };
     setIsTripDialogOpen(false);
+    setAiExchangeState(null);
     setTripImportState({ busy: false, document: parsed.document || null, error: "", preview });
   }
 
@@ -6117,29 +6124,9 @@ export default function App() {
     });
   }
 
-  function openAiTripImport(mode = aiItineraryExchangeModes.create) {
-    setIsTripDialogOpen(false);
+  function returnFromAiTripCreateExchange() {
     setAiExchangeState(null);
-    setAiTripImportMode(mode);
-  }
-
-  async function importAiTripDocument(document, mode = aiItineraryExchangeModes.create) {
-    const persistence = buildTripImportPersistencePayload(document);
-    if (!persistence.ok || !persistence.payload) {
-      return { ok: false, error: persistence.errors?.[0]?.message || "無法建立正式匯入資料。" };
-    }
-    const { data, error } = await supabase.rpc("import_trip_timeline_v1", { payload: persistence.payload });
-    if (error || !data?.trip_id) {
-      return { ok: false, error: error || "匯入沒有回傳新旅程 ID，資料未建立。" };
-    }
-    setActiveDay(0);
-    setNotice(
-      mode === aiItineraryExchangeModes.reviseCopy
-        ? `已建立 AI 調整旅程「${document.trip.title}」，原旅程未變更。`
-        : `已建立 AI 規劃旅程「${document.trip.title}」。`,
-    );
-    await loadTrips(data.trip_id);
-    return { ok: true, tripId: data.trip_id };
+    setIsTripDialogOpen(true);
   }
 
   async function selectTrip(nextTripId) {
@@ -6445,16 +6432,9 @@ export default function App() {
           document={aiExchangeState.document}
           fileName={aiExchangeState.fileName}
           mode={aiExchangeState.mode}
+          onBack={aiExchangeState.mode === aiItineraryExchangeModes.create ? returnFromAiTripCreateExchange : undefined}
           onClose={() => setAiExchangeState(null)}
-          onOpenImport={() => openAiTripImport(aiExchangeState.mode)}
-        />
-      ) : null}
-
-      {aiTripImportMode ? (
-        <AiTripImportDialog
-          mode={aiTripImportMode}
-          onClose={() => setAiTripImportMode(null)}
-          onImport={(document) => importAiTripDocument(document, aiTripImportMode)}
+          onImportFile={previewTripImport}
         />
       ) : null}
 
@@ -16466,11 +16446,18 @@ function TripDialog({ form, onChange, onClose, onImportAi, onImportFile, onSubmi
           </div>
         </div>
         <div className="form-actions">
-          <button className="ghost-button" type="button" onClick={onImportAi}>
-            AI 規劃
+          <button
+            aria-label="AI 規劃"
+            className="ghost-button create-trip-ai-button"
+            title="AI 規劃"
+            type="button"
+            onClick={onImportAi}
+          >
+            <Bot aria-hidden="true" size={18} />
           </button>
           <label className="ghost-button trip-json-file-button">
-            匯入 JSON
+            <FileUp aria-hidden="true" size={17} />
+            匯入
             <input
               accept="application/json,.json"
               aria-label="選擇旅程 JSON 檔案"
@@ -16517,7 +16504,9 @@ function TripImportPreviewDialog({ busy, error, onClose, onConfirm, preview }) {
           </div>
         </div>
 
-        {!hasBlockingError && trip ? <TripImportPreviewBoard days={preview?.days} trip={trip} /> : null}
+        {!hasBlockingError && trip ? (
+          <TripImportPreviewBoard days={preview?.days} trip={trip} />
+        ) : null}
 
         {hasBlockingError ? (
           <div className="trip-import-blocking-error" role="alert">
@@ -16536,13 +16525,7 @@ function TripImportPreviewDialog({ busy, error, onClose, onConfirm, preview }) {
             </details>
           </div>
         ) : null}
-        {!hasBlockingError && warnings.length ? (
-          <div className="trip-import-issues warning">
-            <strong>匯入提醒</strong>
-            <ul>{warnings.slice(0, 20).map((issue, index) => <li key={`${issue.path}-${issue.code}-${index}`}>{issue.message}</li>)}</ul>
-            {warnings.length > 20 ? <p>另有 {warnings.length - 20} 項提醒未展開。</p> : null}
-          </div>
-        ) : null}
+        {!hasBlockingError ? <TripImportNotices warnings={warnings} /> : null}
 
         <div className="trip-import-preview-footer">
           {!hasBlockingError ? (

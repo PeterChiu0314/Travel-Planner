@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { parseUnifiedTripJsonText } from "../src/lib/unifiedTripJsonImport.js";
 import {
   buildTripPreviewRoute,
   isTripPreviewTransitNode,
@@ -74,11 +75,71 @@ test("blocking import errors use a compact details-only dialog", () => {
   const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   expect(source).toContain("無法匯入這份旅程");
   expect(source).toContain("查看細節（{blockingIssues.length}）");
-  expect(source).toContain('!hasBlockingError && trip ? <TripImportPreviewBoard');
+  expect(source).toContain('!hasBlockingError && trip ? (');
+  expect(source).toContain('<TripImportPreviewBoard days={preview?.days} trip={trip} />');
+  expect(source).not.toContain('isAiImport ? (');
   expect(source).toContain('!hasBlockingError ? (');
   expect(source).toContain('code: "file_read_failed"');
   expect(source).not.toContain("需要修正 {errors.length} 個問題");
 });
+
+test("AI and exported JSON feed identical coordinate routes to the shared board", () => {
+  const ai = parseUnifiedTripJsonText(readFileSync("tests/fixtures/manual/phase-7-ai-valid-complete.json", "utf8"));
+  const formal = parseUnifiedTripJsonText(JSON.stringify(ai.document));
+  expect(ai.ok).toBe(true);
+  expect(formal.ok).toBe(true);
+  expect(ai.sourceDocumentType).not.toBe(formal.sourceDocumentType);
+  const route = buildTripPreviewRoute(ai.document.days);
+  expect(route.points.map((point) => [point.dayLabel, point.latitude, point.longitude])).toEqual([
+    ["D1", 34.9948561, 135.7850463], ["D2", 34.9671402, 135.7726717],
+  ]);
+  expect(buildTripPreviewRoute(formal.document.days)).toEqual(route);
+});
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+  test(`coordinate-free AI preview keeps its cover without map errors or lookups at ${viewport.width}px`, async ({ page }, testInfo) => {
+    const draft = JSON.parse(readFileSync("tests/fixtures/manual/phase-7-ai-valid-complete.json", "utf8"));
+    for (const item of draft.days.flatMap((day) => day.visits.flatMap((visit) => [visit, ...visit.alternatives]))) {
+      item.location.latitude = null;
+      item.location.longitude = null;
+      item.location.map_url = null;
+    }
+    const parsed = parseUnifiedTripJsonText(JSON.stringify(draft));
+    expect(parsed.ok).toBe(true);
+    expect(buildTripPreviewRoute(parsed.document.days).points).toEqual([]);
+    const requests = [];
+    page.on("request", (request) => requests.push(request.url()));
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await page.evaluate(async ({ document: tripDocument, warnings }) => {
+      const [React, ReactDom, Board, Notices] = await Promise.all([
+        import("/@id/react"), import("/@id/react-dom/client"),
+        import("/src/components/trip-import/TripImportPreviewBoard.jsx"),
+        import("/src/components/trip-import/TripImportNotices.jsx"),
+      ]);
+      document.querySelector("#root").hidden = true;
+      const host = document.body.appendChild(document.createElement("div"));
+      const element = (React.default || React).createElement;
+      (ReactDom.default || ReactDom).createRoot(host).render(element("div", { className: "modal-backdrop" },
+        element("section", { className: "dialog-card trip-import-preview-dialog", "aria-label": "匯入旅程預覽" },
+          element("h2", null, "匯入旅程預覽"),
+          element(Board.default, { days: tripDocument.days, trip: tripDocument.trip }),
+          element(Notices.default, { warnings }),
+        ),
+      ));
+    }, { document: parsed.document, warnings: parsed.warnings });
+    const preview = page.getByRole("region", { name: "匯入旅程預覽" });
+    await expect(preview.locator(".trip-import-cover")).toContainText(draft.trip.title);
+    await expect(preview.getByText("尚無可顯示的地圖位置", { exact: true })).toBeVisible();
+    await expect(preview).not.toContainText("Google 地圖無法載入");
+    await expect(preview.locator(".trip-import-issues.warning li")).toHaveCount(1);
+    await expect(preview.locator(".trip-import-issues.warning")).toContainText("尚有 4 個目的地缺少可用座標");
+    expect(requests.filter((url) => /maps\.googleapis|places\.googleapis|wikipedia\.org|wikimedia\.org|\/rpc\//.test(url))).toEqual([]);
+    const dimensions = await preview.evaluate((element) => ({ width: element.clientWidth, scrollWidth: element.scrollWidth }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width);
+    await page.screenshot({ path: testInfo.outputPath(`coordinate-free-preview-${viewport.width}.png`) });
+  });
+}
 
 test("Wikimedia helpers build keyless queries and normalize image attribution", () => {
   const searchUrl = new URL(buildWikimediaTripImageSearchUrl({ name: "清水寺" }, { city: "京都", country: "日本" }));

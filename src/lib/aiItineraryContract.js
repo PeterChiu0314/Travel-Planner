@@ -23,6 +23,7 @@ const scheduleKeysByKind = Object.freeze({
 const visitCategories = new Set(["attraction", "food", "hotel", "transport", "note"]);
 const transportCategories = new Set(["jr", "train", "bus", "walk", "drive", "taxi", "ferry", "flight", "other"]);
 const aiVisitCategoryAliases = Object.freeze({ accommodation: "hotel", dining: "food" });
+const aiTransportCategoryAliases = Object.freeze({ subway: "train", metro: "train" });
 const transportCategoryNames = Object.freeze({
   jr: "JR",
   train: "電車",
@@ -132,7 +133,12 @@ function canonicalizeTransportAliases(transport, changes) {
     delete result.mode;
     changes.add("transport.mode->category");
   }
-  const category = trimKnownString(result.category);
+  const rawCategory = trimKnownString(result.category);
+  const category = Object.hasOwn(aiTransportCategoryAliases, rawCategory) ? aiTransportCategoryAliases[rawCategory] : rawCategory;
+  if (category !== rawCategory) {
+    result.category = category;
+    changes.add(`transport.category.${rawCategory}->${category}`);
+  }
   if (typeof result.name !== "string" || !result.name.trim()) {
     const fallbackName = Object.hasOwn(transportCategoryNames, category) ? transportCategoryNames[category] : null;
     if (fallbackName) {

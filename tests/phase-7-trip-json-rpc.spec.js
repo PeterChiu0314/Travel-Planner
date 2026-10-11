@@ -54,13 +54,13 @@ test("portable refs are Day-scoped and SQL regexes stay PostgreSQL compatible", 
   expect(migration).not.toContain("(?:");
 });
 
-test("Formal import previews locally and performs no writes before confirmation", () => {
+test("unified Formal and AI JSON import previews locally and performs no writes before confirmation", () => {
   const previewBody = appSource.match(
     /async function previewTripImport\(file\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function confirmTripImport/,
   );
   expect(previewBody).not.toBeNull();
   expect(previewBody[1]).toContain("file.text()");
-  expect(previewBody[1]).toContain("parseTripJsonText(text)");
+  expect(previewBody[1]).toContain("parseUnifiedTripJsonText(text)");
   expect(previewBody[1]).toContain("buildTripJsonPreview");
   expect(previewBody[1]).not.toContain("supabase.");
 });

@@ -11,6 +11,8 @@ import {
   buildAiItineraryCreatePrompt,
   buildAiItineraryClipboardText,
   buildAiItineraryDocument,
+  buildAiItineraryPromptExample,
+  buildAiItineraryUsageInstructions,
   buildBlankAiItineraryTemplate,
   buildFormalTripJsonFromAiDraft,
 } from "../src/lib/aiItineraryAdapters.js";
@@ -104,23 +106,62 @@ test("blank AI planning template is downloadable field guidance without internal
   expect(json).not.toMatch(/uuid|owner|member|place_id/i);
   expect(validateAiItineraryDocument(template).ok).toBe(false);
 
-  const prompt = buildAiItineraryCreatePrompt();
-  expect(prompt).toContain("資訊完整後，建立");
-  expect(prompt).toContain("先向使用者提問");
-  expect(prompt).toContain("不可保留空白必要欄位");
-  expect(prompt).toContain("可下載的 .json 檔案");
-  expect(prompt).toContain("不要建立 Google 文件");
-  expect(prompt).toContain("start_time 或 end_time");
-  expect(prompt).toContain("不可使用 mode 欄位");
-  expect(prompt).toContain("必須是 1→2");
-  expect(prompt).toContain("絕對不可使用 0");
-  expect(prompt).toContain("transport.duration_minutes");
-  expect(prompt).toContain("不可重疊");
-  expect(prompt).toContain("name、map_url、latitude、longitude");
-  expect(prompt).toContain("正確地圖 URL、緯度與經度");
-  expect(prompt).toContain("不要輸出 address 或 Place ID");
-  expect(prompt).not.toContain("OpenAI");
-  expect(prompt).not.toContain("Gemini");
+});
+
+test("both prompts share file delivery, draft-safe planning and anchor-based timing guidance", () => {
+  for (const prompt of [buildAiItineraryCreatePrompt(), buildAiItineraryUsageInstructions(validAiDocument())]) {
+    for (const rule of [
+      'schema_version: "1"（字串）', 'document_type: "travel_studio_ai_itinerary"',
+      "尚未完成的行程草案", "主動提出具體、可執行的行程建議", "慢遊日可以少排，不設固定景點數",
+      "不得寫成已預訂或已確認", "不需要追問這些細節", "必要文字不可空白", "YYYY-MM-DD",
+      "第一筆用 start_duration", "後續可連續的非固定行程用 duration", "向上取到 5 分鐘",
+      "可保留空檔與休息", "不要因為前站提早結束就把晚餐接到下午", "先展開 duration 的實際時間",
+      "使用者提供的時間必須保留", "遇到 Fixed 時不可移動 Fixed", "備案不可用 duration",
+      "每日開始錨點不等於 Fixed", "所有 fixed 都必須 false",
+      "1→2", "1 到 1440 的整數", "name、map_url、latitude、longitude", "latitude/longitude 一起為 null",
+      "不輸出 address 或 Place ID", "earliest_next_start=previous_end+transport.duration_minutes",
+      "10:45，不是 10:30", "檢查 JSON 可解析", "實際解析並驗算", "不要請使用者再送回修檔",
+      "可下載的 .json 檔案", "內建下載 .json", "不要建立 Google 文件", "不要假造下載連結",
+    ]) expect(prompt).toContain(rule);
+    expect(prompt).toContain(JSON.stringify(buildAiItineraryPromptExample()));
+    expect(prompt).not.toMatch(/OpenAI|Gemini/);
+  }
+  expect(buildAiItineraryUsageInstructions(validAiDocument())).toContain("除非使用者明確要求簡化或刪除，應保留原有行程密度與有用內容");
+  expect(buildAiItineraryCreatePrompt()).toContain("名稱可依需求命名");
+});
+
+test("prompt example validates end-to-end and demonstrates transport-aware duration continuation", () => {
+  const example = buildAiItineraryPromptExample();
+  expect(parseAiItineraryText(JSON.stringify(example)).ok).toBe(true);
+  const formal = buildFormalTripJsonFromAiDraft(example);
+  expect(formal.ok).toBe(true);
+  expect(formal.document.days[0].visits[1].time).toEqual({ start: "10:45", end: "11:45" });
+  expect(formal.document.days[0].visits[0].alternatives[0]).not.toHaveProperty("fixed");
+  expect(buildBlankAiItineraryTemplate().trip.title).toBe("");
+});
+
+test("duration-based draft avoids the Gemini baseline overlap without loosening explicit conflict rules", () => {
+  const example = buildAiItineraryPromptExample();
+  example.days[0].visits[0].schedule = { kind: "start_duration", start: "09:00", duration_minutes: 150 };
+  example.days[0].visits[1].schedule = { kind: "start_duration", start: "11:30", duration_minutes: 90 };
+  const blocked = buildFormalTripJsonFromAiDraft(example);
+  expect(blocked.ok).toBe(false);
+  expect(blocked.errors).toEqual(expect.arrayContaining([expect.objectContaining({ code: "timeline_time_conflict" })]));
+  example.days[0].visits[1].schedule = { kind: "duration", duration_minutes: 90 };
+  const continued = buildFormalTripJsonFromAiDraft(example);
+  expect(continued.ok).toBe(true);
+  expect(continued.document.days[0].visits[1].time).toEqual({ start: "11:45", end: "13:15" });
+});
+
+test("a meal-time anchor preserves free time rather than pulling dinner into the afternoon", () => {
+  const example = buildAiItineraryPromptExample();
+  example.days[0].visits[1].category = "food";
+  example.days[0].visits[1].title = "晚餐建議";
+  example.days[0].visits[1].schedule = { kind: "start_duration", start: "17:30", duration_minutes: 60 };
+  const result = buildFormalTripJsonFromAiDraft(example);
+  expect(result.ok).toBe(true);
+  expect(result.document.days[0].visits[1].time).toEqual({ start: "17:30", end: "18:30" });
+  expect(result.document.days[0].visits.every((visit) => visit.fixed === false)).toBe(true);
 });
 
 test("common AI field aliases are canonically migrated without loosening unknown fields", () => {
@@ -195,6 +236,22 @@ test("valid AI JSON parses, normalizes, and reports non-blocking Untimed warning
   expect(result.document.trip.title).toBe("京都 AI 行程");
   expect(result.warnings.map((warning) => warning.code)).toContain("untimed_alternative");
   expect(result.sourceKind).toBe("json");
+});
+
+test("AI metro/subway synonyms map only to train and unknown categories still block", () => {
+  for (const alias of ["subway", "metro"]) {
+    const input = validAiDocument();
+    input.days[0].transports[0].category = alias;
+    input.days[0].transports[0].name = "";
+    const result = parseAiItineraryText(JSON.stringify(input));
+    expect(result.ok).toBe(true);
+    expect(result.migrations).toContain("ai_field_aliases_v1");
+    expect(result.document.days[0].transports[0]).toMatchObject({ category: "train", name: "電車", duration_minutes: 10 });
+    expect(input.days[0].transports[0].category).toBe(alias);
+  }
+  const unknown = validAiDocument();
+  unknown.days[0].transports[0].category = "teleport";
+  expect(parseAiItineraryText(JSON.stringify(unknown)).errors.map((issue) => issue.code)).toContain("invalid_transport_category");
 });
 
 test("manual AI QA fixtures stay parser-verified as one valid and one blocking document", () => {
@@ -323,7 +380,7 @@ test("Formal domain exports a minimal AI document and vendor-neutral clipboard i
   });
   const clipboard = buildAiItineraryClipboardText(result.document);
   expect(clipboard).toContain("name、map_url、latitude、longitude");
-  expect(clipboard).toContain("不要輸出 address 或 Place ID");
+  expect(clipboard).toContain("不輸出 address 或 Place ID");
   expect(clipboard).toContain('"document_type": "travel_studio_ai_itinerary"');
   expect(clipboard).not.toContain("OpenAI");
   expect(clipboard).not.toContain("Gemini");

@@ -319,38 +319,89 @@ export function buildFormalTripJsonFromAiDraft(document) {
   return { document: errors.length ? null : formal, errors, ok: errors.length === 0, warnings };
 }
 
-export function buildAiItineraryUsageInstructions(document) {
-  const version = document?.schema_version || aiItineraryCurrentSchemaVersion;
+// Keep the instructional example executable by the same contract as a real file.
+// It belongs in the AI prompt, never in the user's blank template or import data.
+export function buildAiItineraryPromptExample() {
+  const location = { name: null, map_url: null, latitude: null, longitude: null };
+  return {
+    schema_version: aiItineraryCurrentSchemaVersion,
+    document_type: aiItineraryDocumentType,
+    trip: {
+      title: "格式示例（請替換為實際旅程）",
+      destination: { display_name: "示例城市", country: null, city: null },
+      start_date: "2030-01-01",
+      end_date: "2030-01-01",
+    },
+    days: [{
+      day_index: 0,
+      date: "2030-01-01",
+      visits: [
+        {
+          category: "attraction", title: "景點 A", location: { ...location },
+          schedule: { kind: "start_duration", start: "09:00", duration_minutes: 90 },
+          fixed: false, notes: null,
+          alternatives: [{
+            category: "attraction", title: "雨天備案", location: { ...location },
+            schedule: { kind: "untimed" }, notes: null,
+          }],
+        },
+        {
+          category: "attraction", title: "景點 B", location: { ...location },
+          schedule: { kind: "duration", duration_minutes: 60 },
+          fixed: false, notes: null, alternatives: [],
+        },
+      ],
+      transports: [{
+        from_visit_number: 1, to_visit_number: 2, category: "walk", name: "步行",
+        duration_minutes: 15, notes: "估計時間",
+      }],
+    }],
+  };
+}
+
+function buildAiItineraryPrompt({ revise = false, version = aiItineraryCurrentSchemaVersion } = {}) {
   return [
-    "請協助調整以下旅程，並嚴格遵守這份交換格式。",
+    revise ? "請依我的需求調整附上的旅程 JSON，完成後交付可下載的 .json 檔案。" : "請依我們討論的需求填寫附上的旅程 JSON 模板，完成後交付可下載的 .json 檔案。",
     "",
-    `- 輸出必須是 document_type=${aiItineraryDocumentType}、schema_version=${version} 的單一 JSON 物件。`,
-    "- 只輸出 JSON，不要加入說明、Markdown code fence 或 Contract 外欄位。",
-    "- 可以調整旅程名稱、Day、行程順序、分類、時間、Fixed、備註、備案與交通。",
-    "- location 固定包含 name、map_url、latitude、longitude；請提供正確地點座標與地圖 URL，無法確認的欄位使用 null，不要輸出 address 或 Place ID。",
-    "- schedule.kind 只可為 timed、start_duration、duration、untimed。Fixed 不可使用 duration 或 untimed。",
-    "- transports 使用同一 Day 內 1-based from_visit_number / to_visit_number，不要使用資料庫 ID。",
-    "- 不要省略必要欄位；沒有資料時使用 null 或空陣列。",
+    "【規劃內容】",
+    "這可以是尚未完成的行程草案。主動提出具體、可執行的行程建議，依偏好、營業時間、地理順序與移動安排景點、餐飲、停留時間與交通。慢遊日可以少排，不設固定景點數；不要每天只放一個籠統景點、全部 Untimed 或刻意省略交通。",
+    "班機、飯店、預約或票券尚未決定也可規劃，不需要追問這些細節。提議不得寫成已預訂或已確認；未知資訊用 null、untimed 或省略不必要的行程，不要虛構航班與訂位。",
+    revise
+      ? "除非使用者明確要求簡化或刪除，應保留原有行程密度與有用內容。保留未要求變更的既有明確時間與 Fixed 行程；不要為了格式而改動。"
+      : "只有目的地、開始日期或結束日期不足以建立連續 Days 時才先提問；名稱可依需求命名。使用者刻意保留的空白日可以 visits: []、transports: []。",
+    "",
+    "【檔案與欄位】",
+    `根物件只含 schema_version: ${JSON.stringify(version)}（字串）、document_type: ${JSON.stringify(aiItineraryDocumentType)}、trip、days。沿用英文欄位，不加說明欄位、ID、status 或額外 metadata。`,
+    "trip 必須填 title、destination（display_name、country、city）、start_date、end_date；必要文字不可空白，country/city 不明可為 null。日期統一 YYYY-MM-DD，days 包含起訖日在內的每一天；day_index 從 0 連續遞增。",
+    "visit 必須含 category、title、location、schedule、fixed、notes、alternatives。category 只用 attraction、food、hotel、transport、note。沒有備案用 []；備案只有 category、title、location、schedule、notes，不含 fixed 或巢狀備案。",
+    "location 固定含 name、map_url、latitude、longitude。可辨識的公共地點提供可搜尋的 Google Maps URL 與可靠座標（數字）；不確定時 latitude/longitude 一起為 null，不猜造座標、CID，不輸出 address 或 Place ID。未選定飯店或泛稱區域不假裝是精確地點。",
+    "",
+    "【草案時間：先定錨點，再接續】",
+    "新提議的草案優先每天第一筆用 start_duration，後續可連續的非固定行程用 duration。網站會依前一行程結束＋相鄰交通分鐘接續，開始向上取到 5 分鐘；不必為每一站重算 start。這仍會得到完整時間行程，不是全部 Untimed。",
+    "用餐、開放時段、預約或固定行程需要時間窗口時，用 start_duration 或 timed 重新定錨，可保留空檔與休息；不要因為前站提早結束就把晚餐接到下午。依使用者習慣安排；未指定時午餐約 11:30–14:00、晚餐約 17:30–20:00，這是規劃參考而非必填行程或固定限制。",
+    "使用者提供的時間必須保留。duration 前一筆若 untimed，就無法接續，請從下一個可合理安排的 start_duration 重新定錨。每日開始錨點不等於 Fixed；單純建議時間與營業時間不應設為 Fixed。除保留原檔的 fixed:true 或使用者明確指定固定行程外，所有 fixed 都必須 false；true 只可搭配 timed/start_duration。",
+    'schedule 四選一，不混用欄位：{"kind":"start_duration","start":"09:00","duration_minutes":60}；{"kind":"duration","duration_minutes":60}；{"kind":"timed","start":"09:00","end":"10:00"}；{"kind":"untimed"}。備案不可用 duration。時間 HH:mm，end 可為 24:00，不可跨日；分鐘為 1 到 1440 的整數。',
+    "交通屬於兩站之間，不放在停留時間裡。不同地點且移動可估計時建立 transport；同一設施/車廂活動不需假交通，不要建立 0 或 1 分鐘佔位交通。每筆包含 from_visit_number、to_visit_number、category、name、duration_minutes、notes。",
+    "交通編號是同一天 visits 的位置，從 1 開始：第一站到第二站為 1→2（不是 day_index 的 0-based）。category 只用 jr、train、bus、walk、drive、taxi、ferry、flight、other；duration_minutes 為 1 到 1440 的整數。",
+    "明確時間逐日驗算：earliest_next_start=previous_end+transport.duration_minutes；duration 接續再向上取 5 分鐘，下一個明確 start 不得早於它。例：09:00＋90 分鐘＝10:30，再走 15 分鐘，下一站最早 10:45，不是 10:30。",
+    "衝突時調整新提議的非 Fixed 行程，遇到 Fixed 時不可移動 Fixed。保留停留長度並預留交通；無法安全接續就改為 untimed，不刪掉有用內容，不捏造時間。",
+    "",
+    "【完整形狀範例：只示範結構，不是要照抄的行程】",
+    JSON.stringify(buildAiItineraryPromptExample()),
+    "範例第二站會接續為 10:45–11:45。請換成實際需求的日期、地點、內容與密度，沒有備案就用 []。",
+    "",
+    "【交付前自檢】",
+    "先展開 duration 的實際時間，核對用餐時段、營業時間及移動可行性，再檢查 JSON 可解析、欄位完整、連續日期、分類、座標成對、交通編號及所有明確時間不衝突。有程式執行工具時請實際解析並驗算；在交付前自行修正，不要請使用者再送回修檔。",
+    "使用檔案產生工具提供 travel-studio-ai-itinerary.json；若使用程式碼產物，設定為 JSON 並提供內建下載 .json。原生「下載程式碼」可用，不要把「下載檔案」寫成一般文字假裝按鈕。不要建立 Google 文件或其他線上文件，不要只回覆 JSON 訊息。檔案內只有單一 JSON 物件，UTF-8，無 Markdown code fence、註解或尾逗號；不要假造下載連結。",
   ].join("\n");
 }
 
+export function buildAiItineraryUsageInstructions(document) {
+  return buildAiItineraryPrompt({ revise: true, version: document?.schema_version || aiItineraryCurrentSchemaVersion });
+}
+
 export function buildAiItineraryCreatePrompt() {
-  return [
-    "請使用附上的 JSON 模板規劃新旅程。",
-    "",
-    "- 如果目的地、日期或旅遊偏好不足，先向使用者提問，不要先輸出 JSON。",
-    `- 資訊完整後，建立 document_type=${aiItineraryDocumentType}、schema_version=${aiItineraryCurrentSchemaVersion} 的單一 JSON 物件。`,
-    "- 最終結果請直接提供可下載的 .json 檔案，檔名 travel-studio-ai-itinerary.json；不要建立 Google 文件或其他線上文件，也不要只把 JSON 顯示成訊息文字。",
-    "- 必須保留模板的英文欄位名稱，不可重新命名、翻譯、增加或刪除欄位。",
-    "- 必須填完旅程名稱、目的地、開始日期、結束日期，以及日期連續的完整 Days；不可保留空白必要欄位。",
-    "- day_index 從 0 開始並依序遞增。",
-    "- 每個 visit 必須包含 category、title、location、schedule、fixed、notes、alternatives；category 只可為 attraction、food、hotel、transport、note，不可使用 dining 或 accommodation。",
-    "- location 固定包含 name、map_url、latitude、longitude；每個地點都應提供正確地圖 URL、緯度與經度，無法確認的欄位使用 null，不要輸出 address 或 Place ID。",
-    "- schedule.kind 只可為 timed、start_duration、duration、untimed。時間欄位只能叫 start、end、duration_minutes，不可使用 start_time 或 end_time。Fixed 不可使用 duration 或 untimed。",
-    "- 每筆 transport 必須完整包含 from_visit_number、to_visit_number、category、name、duration_minutes、notes；visit 編號從 1 開始，例如第一個行程到第二個行程必須是 1→2，絕對不可使用 0；category 只可為 jr、train、bus、walk、drive、taxi、ferry、flight、other，不可使用 mode 欄位。",
-    "- 安排明確開始時間時，必須預留前一個行程的結束時間加上兩者之間的 transport.duration_minutes，不可重疊。",
-    "- 沒有地點時 location 的四個欄位都使用 null，沒有備案或交通時使用空陣列；不要加入說明、Markdown code fence、範例欄位或 Contract 外欄位。",
-  ].join("\n");
+  return buildAiItineraryPrompt();
 }
 
 export function buildAiItineraryClipboardText(document) {
