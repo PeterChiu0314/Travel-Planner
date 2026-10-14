@@ -22,6 +22,7 @@ async function mountExchangeDialog(page, { document = validFixture, fileName = "
     window.__copied = "";
     window.__importFiles = [];
     window.__backCount = 0;
+    window.__closeCount = 0;
     Object.defineProperty(window.navigator, "clipboard", {
       configurable: true,
       value: { writeText: async (value) => { window.__copied = value; } },
@@ -34,13 +35,13 @@ async function mountExchangeDialog(page, { document = validFixture, fileName = "
       fileName: downloadName,
       mode: exchangeMode,
       onBack: () => { window.__backCount += 1; },
-      onClose: () => {},
+      onClose: () => { window.__closeCount += 1; },
       onImportFile: async (file) => {
         window.__importFiles.push({ name: file.name, text: await file.text(), type: file.type });
       },
     }));
   }, { fileName, mode, payload: document });
-  await expect(page.getByRole("heading", { name: mode === "create" ? "AI 規劃" : "給 AI 調整" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: mode === "create" ? "AI 規劃" : "給 AI 調整", exact: true })).toBeVisible();
 }
 
 test("existing Trip exchange imports JSON directly without a paste dialog", async ({ page }, testInfo) => {
@@ -85,7 +86,7 @@ test("AI planning returns to New Trip instead of exposing a second import action
     mode: "create",
   });
 
-  await expect(page.getByText("下載模板，交給 AI 規劃後匯入。")).toBeVisible();
+  await expect(page.getByText("使用你慣用的 AI 規劃，再將行程帶回旅程工房。")).toBeVisible();
   await expect(page.getByRole("button", { name: "貼上 AI 回覆" })).toHaveCount(0);
   await expect(page.getByLabel("選擇行程 JSON 檔案")).toHaveCount(0);
   await expect(page.getByLabel("給 AI 的提示詞")).not.toBeVisible();
@@ -104,6 +105,58 @@ test("AI planning returns to New Trip instead of exposing a second import action
   }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
   await page.screenshot({ path: testInfo.outputPath("ai-planning-unified-import-mobile.png") });
+});
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 568 }]) {
+  test(`AI planning explains the three steps without overflow at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await prepareHarness(page);
+    await mountExchangeDialog(page, { document: buildBlankAiItineraryTemplate(), mode: "create" });
+
+    const dialog = page.getByRole("dialog", { name: "AI 規劃", exact: true });
+    const steps = dialog.getByRole("list", { name: "AI 規劃步驟" });
+    await expect(steps.getByRole("listitem")).toHaveCount(3);
+    await expect(steps.getByRole("heading", { level: 3 })).toHaveText([
+      "準備給 AI 的資料", "交給 AI 規劃", "把行程帶回來",
+    ]);
+    await expect(steps.getByRole("listitem").nth(0)).toContainText("兩項都要交給 AI");
+    await expect(steps.getByRole("listitem").nth(0).getByRole("button")).toHaveCount(2);
+    await expect(steps.getByRole("listitem").nth(1)).toContainText("上傳模板檔案、貼上提示詞");
+    await expect(steps.getByRole("listitem").nth(1)).toContainText("已經討論好的行程");
+    await expect(steps.getByRole("listitem").nth(2)).toContainText("在「新增旅程」選擇「匯入」");
+    await expect(dialog.getByRole("button", { name: "匯入 JSON", exact: true })).toHaveCount(0);
+    await expect(dialog.getByLabel("給 AI 的提示詞")).not.toBeVisible();
+
+    const bounds = await dialog.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: element.clientWidth, scrollWidth: element.scrollWidth };
+    });
+    expect(bounds.left).toBeGreaterThanOrEqual(0);
+    expect(bounds.top).toBeGreaterThanOrEqual(0);
+    expect(bounds.right).toBeLessThanOrEqual(viewport.width);
+    expect(bounds.bottom).toBeLessThanOrEqual(viewport.height);
+    expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.width);
+    await dialog.getByRole("button", { name: "返回", exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.__backCount)).toBe(1);
+    expect(await page.evaluate(() => window.__closeCount)).toBe(0);
+  });
+}
+
+test("expanded AI prompt remains keyboard accessible and the footer stays reachable on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 667 });
+  await prepareHarness(page);
+  await mountExchangeDialog(page, { document: buildBlankAiItineraryTemplate(), mode: "create" });
+  const dialog = page.getByRole("dialog", { name: "AI 規劃", exact: true });
+  const disclosure = dialog.locator("summary");
+  await disclosure.press("Enter");
+  await expect(dialog.getByLabel("給 AI 的提示詞")).toBeVisible();
+  await expect(dialog.getByLabel("給 AI 的提示詞")).toHaveValue(buildAiItineraryCreatePrompt());
+  await expect(dialog.getByLabel("給 AI 的提示詞")).toHaveAttribute("readonly", "");
+  const bounds = await dialog.evaluate((element) => ({ width: element.clientWidth, scrollWidth: element.scrollWidth }));
+  expect(bounds.scrollWidth).toBeLessThanOrEqual(bounds.width);
+  await dialog.getByRole("button", { name: "關閉", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__closeCount)).toBe(1);
+  expect(await page.evaluate(() => window.__backCount)).toBe(0);
 });
 
 test("clipboard failure exposes only the prompt for manual copying, without another dialog", async ({ page }) => {
@@ -132,6 +185,10 @@ test("App auto-detects both JSON contracts before one atomic confirmation path",
   expect(source).not.toContain("AiTripImportDialog");
   expect(source).not.toContain("aiTripImportMode");
   expect(source).toContain('aria-label="AI 規劃"');
+  const planningButton = source.match(/<button\s+aria-label="AI 規劃"[\s\S]*?<\/button>/)?.[0] || "";
+  expect(planningButton).toContain('<Bot aria-hidden="true" size={18} />');
+  expect(planningButton).toContain("<span>AI規劃</span>");
+  expect(planningButton).toContain("onClick={onImportAi}");
   expect(source).toContain("<FileUp");
   expect(source).toContain("returnFromAiTripCreateExchange");
   expect(source).toContain('<TripImportPreviewBoard days={preview?.days} trip={trip} />');

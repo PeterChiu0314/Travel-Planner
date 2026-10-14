@@ -16454,6 +16454,7 @@ function TripDialog({ form, onChange, onClose, onImportAi, onImportFile, onSubmi
             onClick={onImportAi}
           >
             <Bot aria-hidden="true" size={18} />
+            <span>AI規劃</span>
           </button>
           <label className="ghost-button trip-json-file-button">
             <FileUp aria-hidden="true" size={17} />

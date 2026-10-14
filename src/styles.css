@@ -6189,12 +6189,19 @@ textarea {
   cursor: pointer;
 }
 
+.create-trip-dialog > .form-actions > .trip-json-file-button {
+  font-size: inherit;
+}
+
 .create-trip-ai-button {
-  display: inline-grid;
-  width: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: auto;
   min-width: 42px;
-  padding: 0;
-  place-items: center;
+  padding: 10px 12px;
+  white-space: nowrap;
 }
 
 .create-trip-ai-button svg,
@@ -6704,11 +6711,172 @@ textarea {
   padding-top: 14px;
 }
 
+.ai-planning-dialog {
+  width: min(768px, 100%);
+  gap: 0;
+  padding: 28px;
+}
+
+.ai-planning-dialog .ai-exchange-heading {
+  gap: 22px;
+  padding-bottom: 22px;
+}
+
+.ai-planning-dialog .ai-exchange-heading h2 {
+  font-size: 32px;
+}
+
+.ai-planning-dialog .ai-exchange-heading p {
+  margin-top: 6px;
+  font-size: 17px;
+}
+
+.ai-planning-dialog .ai-exchange-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+
+.ai-planning-dialog .ai-exchange-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.ai-planning-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-planning-step {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 30px;
+  border-top: 1px solid #e2ded5;
+  padding: 22px 0;
+}
+
+.ai-planning-step-number {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e4eee7;
+  color: #253e34;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.ai-planning-step-content {
+  min-width: 0;
+}
+
+.ai-planning-step-content h3 {
+  margin: 3px 0 8px;
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.ai-planning-dialog .ai-planning-step-content p {
+  margin: 0;
+  color: #5d6761;
+  font-size: 17px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.ai-planning-dialog .ai-exchange-primary-actions {
+  margin-top: 14px;
+}
+
+.ai-planning-dialog .ai-exchange-primary-actions button {
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.ai-planning-dialog .ai-exchange-prompt-details {
+  margin-top: 14px;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.ai-planning-dialog .ai-exchange-prompt-details summary {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.ai-planning-dialog .ai-exchange-status {
+  margin-top: 12px;
+}
+
+.ai-planning-dialog .ai-planning-example {
+  margin-top: 10px;
+  border-left: 4px solid #aebfae;
+  border-radius: 5px;
+  background: #f3f6f1;
+  padding: 9px 14px;
+}
+
+.ai-planning-dialog .form-actions {
+  justify-content: flex-end;
+  padding-top: 18px;
+}
+
+.ai-planning-dialog .form-actions button {
+  min-height: 44px;
+}
+
 @media (max-width: 720px) {
   .ai-exchange-dialog {
     width: 100%;
     height: auto;
     padding: 18px;
+  }
+
+  .ai-planning-dialog .ai-exchange-heading {
+    gap: 12px;
+    padding-bottom: 18px;
+  }
+
+  .ai-planning-dialog .ai-exchange-heading h2 {
+    font-size: 24px;
+  }
+
+  .ai-planning-dialog .ai-exchange-heading p,
+  .ai-planning-dialog .ai-planning-step-content p {
+    font-size: 15px;
+  }
+
+  .ai-planning-dialog .ai-exchange-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .ai-planning-step {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 12px;
+    padding: 18px 0;
+  }
+
+  .ai-planning-step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .ai-planning-step-content h3 {
+    font-size: 18px;
+  }
+
+  .ai-planning-dialog .ai-exchange-primary-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-planning-dialog .ai-exchange-primary-actions button {
+    justify-content: center;
+    font-size: 14px;
   }
 }
 

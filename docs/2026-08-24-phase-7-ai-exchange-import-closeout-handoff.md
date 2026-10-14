@@ -54,15 +54,17 @@ An existing Formal Trip's More Actions menu now includes `給 AI 調整`. This p
 - copy the AI prompt only;
 - the shared `匯入 JSON` file action.
 
-New Trip now includes `AI 規劃`. Its Dialog uses the short instruction `下載模板，交給 AI 規劃後匯入。` and provides:
+New Trip now includes `AI 規劃`. Its Dialog follows the approved three-step guide with the subtitle `使用你慣用的 AI 規劃，再將行程帶回旅程工房。`:
 
-- `下載模板 JSON`, which downloads `travel-studio-ai-itinerary-template-v1.json`;
-- `複製給 AI 的提示詞`;
-- `返回`, which restores the preserved New Trip form.
+1. `準備給 AI 的資料`: download `travel-studio-ai-itinerary-template-v1.json` using `下載模板 JSON`, and use `複製給 AI 的提示詞`. The copy explicitly says both items must be given to AI.
+2. `交給 AI 規劃`: upload the template, paste the prompt, and describe travel preferences in ChatGPT/Gemini or another AI conversation. Existing discussed itineraries can also be formatted. One short Hokkaido example shows the expected kind of request.
+3. `把行程帶回來`: download AI's completed JSON, press `返回`, then choose `匯入` in New Trip and review before confirmation. `返回` restores the preserved New Trip form; `關閉` remains separate.
+
+The Create-only numbered layout retains the current green/ivory tokens and Lucide icons, with stacked preparation buttons and internal scrolling on mobile. The existing `給 AI 調整` layout and direct file import remain unchanged. No schema, AI prompt, parser, persistence, database, route, or unrelated screen changes were made for this guidance follow-up. Focused UI tests passed 8/8, including 1440/390/320px bounds, exact download bytes/prompt copying, three-step content, keyboard disclosure, reachable mobile footer, and separate Back/Close callbacks. Final full Playwright passed 345/345; Production build and `git diff --check` passed with only the existing Vite chunk-size notice. Authenticated in-app desktop and 390px QA verified no app errors/overlay, prompt disclosure and footer access, and identical New Trip form values after a round trip; no create/import confirmation was pressed. Screenshots and visual comparison reports remain outside the repository. Publication commits are recorded in Git history; merge and Production deployment remain pending.
 
 Both modes collapse the long prompt by default. Clipboard failure expands only the prompt in place; no new dialog or JSON-body copy action is shown. Download status reports that the file is prepared, not that the browser has finished saving it.
 
-The New Trip form represents `AI 規劃` with a Bot icon and accessible label, and represents the shared JSON file action as upload icon plus `匯入`.
+The New Trip form represents `AI 規劃` with a Bot icon, visible `AI規劃` text, and accessible label, and represents the shared JSON file action as upload icon plus `匯入`. The 2026-10-14 label follow-up preserves both callbacks and adjusts only the AI button's horizontal layout/width. Focused UI tests passed 8/8, build and diff check passed, and authenticated in-app QA verified the visible label plus opening AI planning and returning to New Trip without a data write.
 
 Create mode intentionally renders no JSON textarea, no blank-template JSON text, and no copy-JSON action. The blank file contains the contract skeleton but no UUID, ownership, Place ID, address, or other internal data. Its location skeleton contains the same four Formal fields with null values. It intentionally fails validation until an AI fills the required Trip/date values and a valid continuous Day graph. The vendor-neutral prompt asks only for missing destination or required date information; the AI may propose a title. Undecided flights, accommodation, dining, transport, places, and detailed times remain optional draft content rather than invented requirements.
 
