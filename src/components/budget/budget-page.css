@@ -6,7 +6,7 @@
 .bw-tabs, .bw-side-tabs { display: flex; align-items: stretch; gap: 18px; }
 .bw-tabs button, .bw-side-tabs button { background: none; border: 0; border-radius: 0; border-bottom: 2px solid transparent; padding: 10px 0; color: var(--muted); cursor: pointer; font-size: 13px; white-space: nowrap; }
 .bw-tabs button[aria-selected=true], .bw-side-tabs button[aria-selected=true] { color: var(--color-primary); border-bottom-color: var(--color-primary); font-weight: 700; }
-.bw-add { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.bw-toolbar > .bw-add { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 14px; padding-inline: 10px; }
 .bw-filters { display: flex; flex: 1; min-width: 0; gap: 8px; align-items: center; margin: 0; font-size: 12px; }
 .bw-filters label { display: flex; flex: 1; min-width: 90px; height: 32px; align-items: center; gap: 8px; max-width: 250px; border: 1px solid var(--line); border-radius: 5px; padding: 0 10px; color: var(--muted); }
 .bw-filters label input { border: 0; background: transparent; min-width: 0; width: 100%; height: 28px; min-height: 28px; padding: 4px 0; outline-offset: 3px; }
@@ -28,7 +28,13 @@
 .bw-table .bw-number { text-align: right; font-variant-numeric: tabular-nums; }
 .bw-group { background: #eeece5; }
 .bw-group th, .bw-group td { padding: 7px 8px; font-weight: 600; color: var(--ink); border-top: 0; }
-.bw-group-label { display: inline-flex; align-items: center; gap: 7px; }
+.bw-group, .bw-table thead tr { cursor: pointer; }
+.bw-group-label { display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: inherit; font-weight: inherit; cursor: pointer; }
+.bw-group td:last-child { text-align: center; }
+.bw-group td:last-child svg { vertical-align: middle; color: var(--muted); }
+.bw-fold-all { padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.bw-group-label:focus-visible, .bw-fold-all:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.bw-detail-heading > .bw-edit-item { width: 32px; height: 32px; min-height: 32px; flex: 0 0 32px; border: 1px solid var(--line); border-radius: 5px; }
 .bw-group-label svg { color: var(--muted); flex-shrink: 0; }
 .bw-group small { margin-left: 0; }
 .bw-row td { border-bottom: 1px solid #e7e6de; padding: 0 8px; height: 36px; vertical-align: middle; }

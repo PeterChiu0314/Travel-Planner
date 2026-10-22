@@ -41,7 +41,7 @@ test("per-person pricing, custom split and actual conversion preserve the origin
   await amounts.nth(0).fill("1000"); await amounts.nth(1).fill("400");
   await form.getByRole("button", { name: "儲存", exact: true }).click();
   await expect(row).toContainText("依成員");
-  await row.getByRole("button", { name: "兩人門票", exact: true }).click();
+  await expect(page.locator('.bw-detail h3')).toHaveText('兩人門票');
   await page.getByRole("button", { name: "付款狀態", exact: true }).click();
   await expect(page.getByRole("form", { name: "實付編輯" })).toHaveCount(0);
   await page.getByRole("tab", { name: "實付", exact: true }).click();
@@ -132,7 +132,7 @@ test("paid toggle saves with the budget and detail changes preserve saved paymen
   await page.getByRole('button',{name:'付款狀態',exact:true}).click();
   await expect(page.getByRole('form',{name:'實付編輯'})).toHaveCount(0);
   await expect(row).toContainText('實付');
-  await row.getByRole("button",{name:"已購機票"}).click(); await page.getByRole("button",{name:"編輯項目"}).click();
+  await page.getByRole("button",{name:"編輯項目"}).click();
   await form.getByLabel("總額",{exact:true}).fill("13000"); await form.getByRole("button",{name:"儲存",exact:true}).click();
   await page.getByRole("tab",{name:"實付",exact:true}).click(); await expect(row).toHaveCount(1); await expect(row).toContainText("12,000");
   await page.getByRole('tab',{name:'預算',exact:true}).click();
@@ -172,7 +172,51 @@ test("compact payment pills share footer placement and keep room for save action
     expect(save.x+save.width).toBeLessThanOrEqual(bounds.x+bounds.width+1);
     await pill.press('Space');
     await editor(page).getByRole('button',{name:'取消',exact:true}).click();
+    await page.getByRole('button',{name:'關西機場 → 京都巴士',exact:true}).click();
   }
+});
+
+test("repeat selection clears details while double click still edits; category folds preserve totals",async({page})=>{
+  const title='去程機票・桃園 → 關西';
+  const item=page.getByRole('button',{name:title,exact:true});
+  await item.click(); await expect(page.locator('.bw-detail h3')).toHaveText(title);
+  const editButton=page.getByRole('button',{name:'編輯項目',exact:true});
+  const editBox=await editButton.boundingBox(), heading=await page.locator('.bw-detail-heading').boundingBox();
+  expect(editBox.width).toBe(32); expect(editBox.height).toBe(32);
+  expect(Math.abs(editBox.y+editBox.height/2-heading.y-heading.height/2)).toBeLessThan(1);
+  expect(await editButton.evaluate(el=>getComputedStyle(el).borderTopWidth)).toBe('1px');
+  await item.click(); await expect(page.locator('.bw-row.is-selected')).toHaveCount(0);
+  await expect(page.locator('.bw-detail')).toHaveCount(0);
+  await item.click(); await item.dblclick();
+  await expect(editor(page).getByLabel('項目',{exact:true})).toHaveValue(title);
+  await editor(page).getByRole('button',{name:'取消',exact:true}).click();
+  const before=await page.locator('.bw-group').allTextContents();
+  await page.getByRole('button',{name:'收合機票',exact:true}).click();
+  await expect(page.locator('.bw-row')).toHaveCount(30);
+  await expect(page.getByRole('button',{name:'展開機票',exact:true})).toHaveAttribute('aria-expanded','false');
+  await expect(page.locator('.bw-group')).toHaveText(before);
+  await page.locator('.bw-table thead .bw-title').click();
+  await expect(page.locator('.bw-row')).toHaveCount(0);
+  await expect(page.locator('.bw-group')).toHaveCount(7);
+  await page.getByRole('button',{name:'展開所有分類',exact:true}).press('Enter');
+  await expect(page.locator('.bw-row')).toHaveCount(32);
+  await expect(page.locator('.bw-group')).toHaveText(before);
+  const add=page.getByRole('button',{name:'新增預算',exact:true});
+  expect(await add.evaluate(el=>getComputedStyle(el).fontSize)).toBe('14px');
+  expect((await add.boundingBox()).width).toBeLessThan(110);
+});
+
+test("category collapse resolves a dirty editor before hiding its row",async({page})=>{
+  await page.getByRole('button',{name:'去程機票・桃園 → 關西',exact:true}).dblclick();
+  await editor(page).getByLabel('項目',{exact:true}).fill('尚未儲存的標題');
+  await page.getByRole('button',{name:'收合機票',exact:true}).click();
+  const guard=page.getByRole('dialog',{name:'您有未儲存的變更'});
+  await expect(guard).toBeVisible();
+  await expect(page.locator('.bw-row')).toHaveCount(32);
+  await guard.getByRole('button',{name:'不儲存',exact:true}).click();
+  await expect(page.locator('.bw-row')).toHaveCount(30);
+  await page.getByRole('button',{name:'展開機票',exact:true}).click();
+  await expect(page.getByRole('button',{name:'去程機票・桃園 → 關西',exact:true})).toBeVisible();
 });
 
 test("historical trip without a baseline never displays a fabricated zero budget",async({page})=>{

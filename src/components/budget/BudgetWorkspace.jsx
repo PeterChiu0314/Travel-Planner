@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { BedDouble, Car, Check, Circle, CircleCheck, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { BedDouble, Car, Check, ChevronDown, ChevronRight, Circle, CircleCheck, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
 import MenuSelect from "../MenuSelect.jsx";
 import { budgetDay, budgetStage, calculatePricing, comparisonRows, memberLabel, money, participantsFor, pricingLabels, recordAllocations, recordForm } from "../../lib/budgetFinance.js";
@@ -290,7 +290,7 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
 function RecordDetail({ record, actual, participants, members, links, items, payments, canEdit, paymentBusy, paymentError, onEdit, onDelete, onPaidChange, renderAttachments }) {
   const shares = recordAllocations(record, participants);
   const mode = record.pricing_mode || (record.split_type === "custom" ? "custom" : "split_total");
-  return <section className="bw-detail"><div className="bw-detail-heading"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><button className="bw-icon" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={16} /></button></div>
+  return <section className="bw-detail"><div className="bw-detail-heading"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><button className="bw-icon bw-edit-item" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={18} /></button></div>
     <h3>{record.title}</h3><PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />
     {paymentError ? <p className="bw-warning" role="alert">{paymentError}</p> : null}
     <dl><div><dt>計價方式</dt><dd>{pricingLabels[mode]}</dd></div>{mode === "per_person" ? <div><dt>每人單價</dt><dd>{record.currency} {money(record.unit_amount)}</dd></div> : null}<div><dt>參與成員</dt><dd>{participants.length} 人</dd></div>
@@ -314,6 +314,7 @@ export default function BudgetWorkspace(incoming) {
   const [panel, setPanel] = useState("stats");
   const [viewpoint, setViewpoint] = useState("average");
   const [selected, setSelected] = useState(null);
+  const [collapsedCategories, setCollapsedCategories] = useState([]);
   const [inline, setInline] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
@@ -353,7 +354,7 @@ export default function BudgetWorkspace(incoming) {
     return () => window.clearInterval(timer);
   }, [activeTrip?.id, activeTrip?.start_date, activeTrip?.end_date, activeTrip?.status, props.demoStage]);
   useEffect(() => { setView(stage === "planning" ? "budget" : "actual"); setInline(null); }, [stage, activeTrip?.id]);
-  useEffect(() => { setSelected(null); setPanel("stats"); setViewpoint("average"); setQuery(""); setCategory(""); }, [activeTrip?.id]);
+  useEffect(() => { setSelected(null); setPanel("stats"); setViewpoint("average"); setQuery(""); setCategory(""); setCollapsedCategories([]); }, [activeTrip?.id]);
   useEffect(() => { if (activeEditor) setPanel("detail"); if (!activeEditor) setInline(null); }, [Boolean(activeEditor)]);
 
   const actual = view === "actual";
@@ -370,9 +371,18 @@ export default function BudgetWorkspace(incoming) {
   const selectedRecord = rawSelectedRecord ? { ...rawSelectedRecord, category: rawSelectedRecord.category || budgetItems.find((row) => row.id === rawSelectedRecord.budget_item_id)?.category || "其他" } : null;
   useEffect(() => { if (budgetEditor.error || actualEditor.error) setPanel("detail"); }, [budgetEditor.error, actualEditor.error]);
 
-  async function select(row) {
+  async function select(row, event) {
+    if (event?.detail > 1) return;
     if (activeEditor?.context?.id !== row.id && !(await services.handoff({ tripId: activeTrip.id }))) return;
+    if (!activeEditor && selected?.id === row.id && panel === "detail") { setSelected(null); setPanel("stats"); setInline(null); return; }
     setSelected({ kind: actual ? "actual" : "budget", id: row.id }); setPanel("detail"); setInline(null);
+  }
+  const visibleCategories = categories.filter((value) => displayRows.some((row) => row.category === value));
+  const allCollapsed = visibleCategories.length > 0 && visibleCategories.every((value) => collapsedCategories.includes(value));
+  async function toggleCategories(values, collapse) {
+    if (collapse && !(await services.handoff({ tripId: activeTrip.id }))) return;
+    setCollapsedCategories((current) => collapse ? [...new Set([...current, ...values])] : current.filter((value) => !values.includes(value)));
+    if (collapse) setInline(null);
   }
   async function edit(row, field) {
     const editor = actual ? actualEditor : budgetEditor;
@@ -445,20 +455,22 @@ export default function BudgetWorkspace(incoming) {
       <div className="bw-filters"><label><Search size={15} /><input aria-label="搜尋項目" placeholder="搜尋項目" value={query} onChange={(event) => setQuery(event.target.value)} /></label><MenuSelect label="費用分類" value={category} onValueChange={setCategory} options={[{value:"",label:"全部分類"},...categories.map(value=>({value,label:value}))]} /><span>{displayRows.length} 筆</span></div>
       <button className="primary-button compact bw-add" disabled={!canEdit} type="button" onClick={() => void add()}><Plus size={15} />{actual || compare ? "新增實付" : "新增預算"}</button></div>
       {compare ? <div className="bw-comparison-summary">{baseline ? <><span>出發前預算<b>NT$ {money(baselineTotal)}</b></span><span>實際支出<b>NT$ {money(actualTotal)}</b></span><span>差額<b>{actualTotal - baselineTotal > 0 ? "+" : ""}{money(actualTotal - baselineTotal)}</b></span></> : <p>無出發前快照，無法還原當時預算。</p>}</div> : null}
-      <div className="bw-table-scroll"><table className="bw-table" aria-label={compare ? "出發前預算對照" : actual ? "實付明細" : "預算明細"}><thead><tr><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{compare ? "出發前預算" : actual ? "每人負擔" : "每人預算"}<small>TWD</small></th><th className="bw-number">{compare ? "實付" : "總額"}<small>TWD</small></th><th>{compare ? "差額" : "狀態"}</th></tr></thead>
-        <tbody>{categories.filter((value) => displayRows.some((row) => row.category === value)).map((value) => {
+      <div className="bw-table-scroll"><table className="bw-table" aria-label={compare ? "出發前預算對照" : actual ? "實付明細" : "預算明細"}><thead><tr title={allCollapsed ? "展開所有分類" : "收合所有分類"} onClick={() => void toggleCategories(visibleCategories, !allCollapsed)}><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{compare ? "出發前預算" : actual ? "每人負擔" : "每人預算"}<small>TWD</small></th><th className="bw-number">{compare ? "實付" : "總額"}<small>TWD</small></th><th><button className="bw-fold-all" type="button" aria-label={allCollapsed ? "展開所有分類" : "收合所有分類"} aria-expanded={!allCollapsed} onClick={(event) => { event.stopPropagation(); void toggleCategories(visibleCategories, !allCollapsed); }}>{compare ? "差額" : "狀態"}</button></th></tr></thead>
+        <tbody>{visibleCategories.map((value) => {
           const grouped = displayRows.filter((row) => row.category === value);
           const total = grouped.reduce((sum, row) => sum + Number(compare ? row.actual : row.twd_amount), 0);
           const person = members.some((member) => member.user_id === viewpoint) ? viewpoint : null;
           const allocations = !compare && person ? grouped.map((row) => recordAllocations(row, participantsFor(row, participantRows, joinKey, members))) : [];
           const perPerson = person ? allocations.some((allocation) => allocation === null) ? null : allocations.reduce((sum, allocation) => sum + (allocation[person] || 0), 0) : members.length ? total / members.length : null;
           const Icon = categoryIcons[value] || Package;
-          return <Fragment key={value}><tr className="bw-group"><th colSpan={2} scope="rowgroup"><span className="bw-group-label"><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span>{value}</span><small>{grouped.length} 筆</small></span></th><td className="bw-number bw-group-person" title={compare ? "出發前預算" : person ? `${memberLabel(members.find((member) => member.user_id === person))} 的分類負擔` : "分類人均：分類總額 ÷ 旅程成員數"}>{compare ? money(grouped.reduce((sum, row) => sum + row.planned, 0)) : perPerson === null ? "—" : `${Number.isInteger(perPerson) ? "" : "≈ "}${money(perPerson)}`}</td><td className="bw-number">{money(total)}</td><td /></tr>
-          {displayRows.filter((row) => row.category === value).map((row) => {
+          const collapsed = collapsedCategories.includes(value);
+          const FoldIcon = collapsed ? ChevronRight : ChevronDown;
+          return <Fragment key={value}><tr className="bw-group" onClick={() => void toggleCategories([value], !collapsed)}><th colSpan={2} scope="rowgroup"><button type="button" className="bw-group-label" aria-label={`${collapsed ? "展開" : "收合"}${value}`} aria-expanded={!collapsed} onClick={(event) => { event.stopPropagation(); void toggleCategories([value], !collapsed); }}><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span>{value}</span><small>{grouped.length} 筆</small></button></th><td className="bw-number bw-group-person" title={compare ? "出發前預算" : person ? `${memberLabel(members.find((member) => member.user_id === person))} 的分類負擔` : "分類人均：分類總額 ÷ 旅程成員數"}>{compare ? money(grouped.reduce((sum, row) => sum + row.planned, 0)) : perPerson === null ? "—" : `${Number.isInteger(perPerson) ? "" : "≈ "}${money(perPerson)}`}</td><td className="bw-number">{money(total)}</td><td><FoldIcon size={14} aria-hidden="true" /></td></tr>
+          {!collapsed && grouped.map((row) => {
             const people = participantsFor(row, participantRows, joinKey, members);
             const custom = row.pricing_mode === "custom" || row.split_type === "custom";
             const isSelected = selected?.id === row.id || activeEditor?.context?.id === row.id;
-            return <tr key={row.id} className={`bw-row${isSelected ? " is-selected" : ""}`} onClick={compare ? undefined : () => void select(row)}>
+            return <tr key={row.id} className={`bw-row${isSelected ? " is-selected" : ""}`} onClick={compare ? undefined : (event) => void select(row, event)}>
               <td className="bw-day">{budgetDay(row, compare ? baseline?.payload?.links || [] : links, compare ? baseline?.payload?.itinerary || [] : items)}</td><td>{compare ? <span>{row.title}{row.extra ? <small className="bw-muted"> · 預算外</small> : null}</span> : cell(row, "title", row.title)}</td>
               <td className="bw-number">{compare ? money(row.planned) : cell(row, "person", custom ? "依成員" : people.length ? `${Number(row.twd_amount) % people.length ? "≈ " : ""}${money(Number(row.twd_amount) / people.length)}` : "—")}</td>
               <td className="bw-number bw-total">{compare ? money(row.actual) : cell(row, "total", money(row.twd_amount))}</td>
