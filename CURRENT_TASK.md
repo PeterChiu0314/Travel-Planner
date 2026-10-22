@@ -4,6 +4,11 @@ This file is the concise live project ledger. Keep it aligned with the real bran
 
 ## Active Local Work — 2026-10-22
 
+- Latest follow-up: Demo Kyoto now has a complete illustrative **5-member / 32-budget** graph with 7 categories, 3 pricing modes, real Timeline links and differing personal burdens. Shared Formal Budget/Settlement/Attachment views are reused; the sidebar mirrors Formal navigation with unavailable non-Budget modules explicitly disabled.
+- Demo-only scenario control previews Planning (8 prepaid actuals), Traveling (20 actuals), Settlement (34 actuals, including split fuel payments, unplanned taxi/coffee and one unrecorded budget). Departure snapshot freezes on leaving Planning. Scenario loads are idempotent; edits/deletions are retained until reload/reset.
+- Demo finance state is isolated by trip, navigation resolves active editors, and receipt files use temporary browser object URLs only. No Supabase/Auth/Storage/Realtime/localStorage calls are introduced into Demo.
+- Demo follow-up verification: full Playwright **367/367 passed**, plus final focused Budget/Demo checks; build and `git diff --check` passed. See `docs/2026-10-22-budget-workspace-handoff.md` for cases and use instructions. No production write, migration, push or deployment.
+
 - Branch: `codex/budget-page-polish`, based on synchronized `main` / `origin/main` at `fdd332b`.
 - User approved implementation after selecting desktop previews. The initial large-card pass (`6d4317b`) is superseded by the current compact grouped table and right statistics/detail panel. Mobile gets minimum usability only.
 - Planning defaults to budget; Traveling defaults to quick actual entry without budget compliance indicators. Phase is readonly. `對照` exists only in Settlement and compares against the final predeparture snapshot, never mutable current budgets.

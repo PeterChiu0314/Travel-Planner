@@ -222,8 +222,8 @@ export default function BudgetWorkspace(incoming) {
   const props = { disableDraftAutosave: false, restoreDrafts: true, useEditLocks: true, ...incoming,
     members: incoming.members.filter((row) => row.status === "approved") };
   const { activeTrip, budgetItems, actualExpenses, budgetParticipants, actualParticipants, itineraryBudgetLinks: links, items, members, canEdit, services, baseline } = props;
-  const [stage, setStage] = useState(() => budgetStage(activeTrip));
-  const [view, setView] = useState(() => budgetStage(activeTrip) === "planning" ? "budget" : "actual");
+  const [stage, setStage] = useState(() => props.demoStage || budgetStage(activeTrip));
+  const [view, setView] = useState(() => (props.demoStage || budgetStage(activeTrip)) === "planning" ? "budget" : "actual");
   const [panel, setPanel] = useState("stats");
   const [viewpoint, setViewpoint] = useState("average");
   const [selected, setSelected] = useState(null);
@@ -235,11 +235,11 @@ export default function BudgetWorkspace(incoming) {
   const activeEditor = actualEditor.context ? actualEditor : budgetEditor.context ? budgetEditor : null;
   const editingActual = activeEditor === actualEditor;
   useEffect(() => {
-    const update = () => setStage(budgetStage(activeTrip));
+    const update = () => setStage(props.demoStage || budgetStage(activeTrip));
     update();
     const timer = window.setInterval(update, 30000);
     return () => window.clearInterval(timer);
-  }, [activeTrip?.id, activeTrip?.start_date, activeTrip?.end_date, activeTrip?.status]);
+  }, [activeTrip?.id, activeTrip?.start_date, activeTrip?.end_date, activeTrip?.status, props.demoStage]);
   useEffect(() => { setView(stage === "planning" ? "budget" : "actual"); setInline(null); }, [stage, activeTrip?.id]);
   useEffect(() => { setSelected(null); setPanel("stats"); setViewpoint("average"); setQuery(""); setCategory(""); }, [activeTrip?.id]);
   useEffect(() => { if (activeEditor) setPanel("detail"); if (!activeEditor) setInline(null); }, [Boolean(activeEditor)]);

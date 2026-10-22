@@ -965,7 +965,11 @@ test("transport editor uses compact floating fields and preserves exact minute i
   const transportBudgetHeadingBox = await transportBudgetHeading.boundingBox();
   const transportBudgetContentBox = await transportBudgetContent.boundingBox();
   expect(transportBudgetBox.y).toBeGreaterThan(transportNoteBox.y + transportNoteBox.height);
-  expect(transportBudgetContentBox.x).toBeGreaterThan(transportBudgetHeadingBox.x + transportBudgetHeadingBox.width);
+  // Populated Kyoto budget titles may wrap as one group in the narrow card;
+  // the old empty placeholder always fit beside the heading.
+  const inlineBudget = transportBudgetContentBox.x > transportBudgetHeadingBox.x + transportBudgetHeadingBox.width;
+  if (!inlineBudget) expect(transportBudgetContentBox.y).toBeGreaterThanOrEqual(transportBudgetHeadingBox.y + transportBudgetHeadingBox.height);
+  expect(transportBudgetContentBox.x + transportBudgetContentBox.width).toBeLessThanOrEqual(transportBudgetBox.x + transportBudgetBox.width + 1);
   const expandedScrollbar = await expandedNote.evaluate((noteDetail) => ({
     buttonDisplay: getComputedStyle(noteDetail, "::-webkit-scrollbar-button").display,
     thumbBackground: getComputedStyle(noteDetail, "::-webkit-scrollbar-thumb").backgroundColor,

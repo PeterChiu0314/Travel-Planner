@@ -2,6 +2,7 @@ import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutE
 import { createPortal } from "react-dom";
 import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
 import { budgetStage, calculatePricing, recordForm, settlementBalances } from "./lib/budgetFinance.js";
+import { createDemoBudgetState, demoBudgetMembers, hydrateDemoBudgetScenario } from "./demo/budgetFixtures.js";
 import {
   closestCenter,
   DndContext,
@@ -2027,6 +2028,7 @@ function demoSectionFromPath() {
   if (path === "/demo" || path === "/demo/") return "timeline";
   if (path === "/demo/timeline") return "timeline";
   if (path === "/demo/budget") return "budget";
+  if (path === "/demo/settlement") return "settlement";
   if (path === "/demo/luggage") return "luggage";
   return null;
 }
@@ -2040,6 +2042,7 @@ function demoSectionLabel(section) {
     timeline: "行程",
     budget: "預算",
     luggage: "行李",
+    settlement: "分帳結算",
   }[section] || section;
 }
 
@@ -2095,13 +2098,7 @@ const demoTrips = [
   },
 ];
 
-const demoMembers = [
-  { user_id: "demo-peter", display_name: "Peter", email: "peter@example.com", role: "owner", status: "approved" },
-  { user_id: "demo-a", display_name: "小安", email: "ariel@example.com", role: "editor", status: "approved" },
-  { user_id: "demo-b", display_name: "阿班", email: "ben@example.com", role: "viewer", status: "approved" },
-  { user_id: "demo-c", display_name: "Chloe", email: "chloe@example.com", role: "editor", status: "approved" },
-  { user_id: "demo-d", display_name: "Dora", email: "dora@example.com", role: "viewer", status: "approved" },
-];
+const demoMembers = demoBudgetMembers;
 
 function normalizeDemoTime(value) {
   return value ? String(value).slice(0, 5) : "";
@@ -2263,85 +2260,6 @@ function createDemoTimelineItems() {
     .sort((a, b) => a.day_index - b.day_index || a.sort_order - b.sort_order || (a.start_time || "").localeCompare(b.start_time || ""));
 }
 
-function createDemoBudgetItems() {
-  return [
-    {
-      id: "demo-budget-1",
-      trip_id: demoTrip.id,
-      category: "交通",
-      subcategory: "機場交通",
-      title: "成田特快",
-      amount: 9600,
-      currency: "JPY",
-      exchange_rate: 0.22,
-      twd_amount: 2112,
-      payer_id: "demo-peter",
-      is_fixed: true,
-      auto_created_actual_expense_id: "demo-actual-1",
-      note: "三人指定席，已預先估算。",
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-    {
-      id: "demo-budget-2",
-      trip_id: demoTrip.id,
-      category: "餐飲",
-      subcategory: "午餐",
-      title: "新宿午餐",
-      amount: 7200,
-      currency: "JPY",
-      exchange_rate: 0.22,
-      twd_amount: 1584,
-      payer_id: "demo-a",
-      is_fixed: false,
-      auto_created_actual_expense_id: null,
-      note: "先抓預算，現場點餐後可調整。",
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-  ];
-}
-
-function createDemoBudgetParticipants() {
-  return [
-    { id: "demo-budget-participant-1", budget_item_id: "demo-budget-1", user_id: "demo-peter" },
-    { id: "demo-budget-participant-2", budget_item_id: "demo-budget-1", user_id: "demo-a" },
-    { id: "demo-budget-participant-3", budget_item_id: "demo-budget-1", user_id: "demo-b" },
-    { id: "demo-budget-participant-4", budget_item_id: "demo-budget-2", user_id: "demo-peter" },
-    { id: "demo-budget-participant-5", budget_item_id: "demo-budget-2", user_id: "demo-a" },
-  ];
-}
-
-function createDemoActualExpenses() {
-  return [
-    {
-      id: "demo-actual-1",
-      trip_id: demoTrip.id,
-      budget_item_id: "demo-budget-1",
-      title: "成田特快",
-      amount: 9600,
-      currency: "JPY",
-      exchange_rate: 0.22,
-      twd_amount: 2112,
-      payer_id: "demo-peter",
-      paid_at: "2026-06-12T09:00:00.000Z",
-      note: "由 Demo 預算轉成實付。",
-      updated_at: "2026-05-20T08:00:00.000Z",
-    },
-  ];
-}
-
-function createDemoActualParticipants() {
-  return [
-    { id: "demo-actual-participant-1", actual_expense_id: "demo-actual-1", user_id: "demo-peter" },
-    { id: "demo-actual-participant-2", actual_expense_id: "demo-actual-1", user_id: "demo-a" },
-    { id: "demo-actual-participant-3", actual_expense_id: "demo-actual-1", user_id: "demo-b" },
-  ];
-}
-
-const demoItineraryBudgetLinks = [
-  { id: "demo-link-1", itinerary_item_id: "demo-itinerary-1", budget_item_id: "demo-budget-1" },
-  { id: "demo-link-transport-1", itinerary_item_id: "demo-transport-1", budget_item_id: "demo-budget-1" },
-  { id: "demo-link-2", itinerary_item_id: "demo-itinerary-2", budget_item_id: "demo-budget-2" },
-];
 
 function createDemoLuggageItems() {
   return [
@@ -7171,6 +7089,7 @@ function TripHeader({
   days = [],
   dateChangePreviewData = {},
   demoNotice = "",
+  demoStage,
   canEditTrip = false,
   canChangeTripDates = canEditTrip,
   canOpenMembers = canEditTrip,
@@ -7233,7 +7152,10 @@ function TripHeader({
   const titleSaveRef = useRef(false);
   const destinationSaveRef = useRef(false);
   const dateSaveRef = useRef(false);
-  const meta = useMemo(() => buildTripHeaderMeta(trip, members, days), [days, members, trip]);
+  const meta = useMemo(() => {
+    const value = buildTripHeaderMeta(trip, members, days);
+    return demoStage ? { ...value, stage: demoStage, statusLabel: tripStageLabel(demoStage) } : value;
+  }, [days, members, trip, demoStage]);
   const hasTrip = Boolean(trip);
   const canEditTitle = hasTrip && canRenameTrip && typeof onUpdateTrip === "function";
   const canOpenTripEditor = hasTrip && canEditTrip && typeof onUpdateTrip === "function";
@@ -8313,20 +8235,44 @@ function DemoApp({ initialSection }) {
   const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
-  const [budgetItems, setBudgetItems] = useState(() => createDemoBudgetItems());
-  const [budgetParticipants, setBudgetParticipants] = useState(() => createDemoBudgetParticipants());
-  const [actualExpenses, setActualExpenses] = useState(() => createDemoActualExpenses());
-  const [actualParticipants, setActualParticipants] = useState(() => createDemoActualParticipants());
-  const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState(() => demoItineraryBudgetLinks);
-  const [demoBudgetBaseline, setDemoBudgetBaseline] = useState(() => ({ trip_id: demoTrips[0].id,
-    departure_at: `${demoTrips[0].start_date}T00:00:00+08:00`, captured_at: new Date().toISOString(),
-    payload: { items: createDemoBudgetItems(), participants: createDemoBudgetParticipants(), links: demoItineraryBudgetLinks,
-      itinerary: createDemoTimelineItems(), members: demoMembers } }));
+  const [demoBudgetByTrip, setDemoBudgetByTrip] = useState(() => Object.fromEntries(
+    demoTrips.map((trip) => [trip.id, createDemoBudgetState(trip, createDemoTimelineItems())]),
+  ));
+  const [demoScenario, setDemoScenario] = useState("live");
+  const [demoClock, setDemoClock] = useState(Date.now);
+  const demoStage = demoScenario === "live" ? budgetStage(demoActiveTrip, new Date(demoClock)) : demoScenario;
+  const finance = demoBudgetByTrip[demoActiveTrip.id];
+  const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks, attachments: demoAttachments, baseline: demoBudgetBaseline } = finance;
+  const demoAttachmentUrls = useRef(new Set());
+  function setFinanceField(key, update) {
+    const tripId = demoActiveTrip.id;
+    setDemoBudgetByTrip((current) => ({ ...current, [tripId]: { ...current[tripId],
+      [key]: typeof update === "function" ? update(current[tripId][key]) : update } }));
+  }
+  const setBudgetItems = (update) => setFinanceField("budgetItems", update);
+  const setBudgetParticipants = (update) => setFinanceField("budgetParticipants", update);
+  const setActualExpenses = (update) => setFinanceField("actualExpenses", update);
+  const setActualParticipants = (update) => setFinanceField("actualParticipants", update);
+  const setItineraryBudgetLinks = (update) => setFinanceField("itineraryBudgetLinks", update);
   useEffect(() => {
-    if (budgetStage(demoActiveTrip) !== "planning" || (demoBudgetBaseline && new Date(demoBudgetBaseline.departure_at) <= new Date())) return;
-    setDemoBudgetBaseline({ trip_id: demoActiveTrip.id, departure_at: `${demoActiveTrip.start_date}T00:00:00+08:00`, captured_at: new Date().toISOString(),
-      payload: { items: budgetItems, participants: budgetParticipants, links: itineraryBudgetLinks, itinerary: timelineItems, members: demoMembers } });
-  }, [budgetItems, budgetParticipants, itineraryBudgetLinks, timelineItems, demoActiveTrip]);
+    const timer = window.setInterval(() => setDemoClock(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => () => { demoAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
+  useEffect(() => {
+    const tripId = demoActiveTrip.id;
+    setDemoBudgetByTrip((current) => {
+      const previous = current[tripId];
+      let next = hydrateDemoBudgetScenario(previous, demoStage);
+      if (demoStage === "planning" && !previous.baseline?.frozen) {
+        next = { ...next, baseline: { trip_id: tripId, departure_at: `${demoActiveTrip.start_date}T00:00:00+08:00`,
+          captured_at: new Date().toISOString(), frozen: false,
+          payload: structuredClone({ items: budgetItems, participants: budgetParticipants, links: itineraryBudgetLinks,
+            itinerary: timelineItems.filter((item) => item.trip_id === tripId), members: demoMembers }) } };
+      } else if (previous.baseline && !previous.baseline.frozen) next = { ...next, baseline: { ...previous.baseline, frozen: true } };
+      return next === previous ? current : { ...current, [tripId]: next };
+    });
+  }, [demoActiveTrip.id, demoActiveTrip.start_date, demoStage, budgetItems, budgetParticipants, itineraryBudgetLinks, timelineItems]);
   const [luggageItems, setLuggageItems] = useState(() => createDemoLuggageItems());
   const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
   const [focusedItemId, setFocusedItemId] = useState(null);
@@ -8381,12 +8327,52 @@ function DemoApp({ initialSection }) {
     [itineraryBudgetLinks, timelineAlternatives, timelineItems],
   );
 
-  function changeSection(section) {
+  async function changeSection(section) {
+    if (section === activeSection) return;
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
     setActiveSection(section);
     window.history.pushState({}, "", `/demo/${section}`);
   }
 
-  function returnToLogin() {
+  async function changeDemoTrip(tripId) {
+    const nextTrip = demoTrips.find((trip) => trip.id === tripId);
+    if (!nextTrip || tripId === demoActiveTrip.id || !(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
+    setActiveDay(tripTodayIndex(nextTrip));
+    setFocusedItemId(null);
+    setDemoScenario("live");
+    setDemoActiveTrip(nextTrip);
+  }
+
+  async function changeDemoScenario(scenario) {
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
+    setDemoScenario(scenario);
+  }
+
+  async function resetDemoBudget() {
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
+    if (!window.confirm("重設這個旅程的 Demo 預算、實付與附件？")) return;
+    demoAttachments.forEach((attachment) => { URL.revokeObjectURL(attachment.file_url); demoAttachmentUrls.current.delete(attachment.file_url); });
+    setDemoBudgetByTrip((current) => ({ ...current, [demoActiveTrip.id]: createDemoBudgetState(demoActiveTrip, timelineItems) }));
+    setDemoScenario("live");
+  }
+
+  function uploadDemoAttachment(targetType, targetId, file) {
+    if (!file || file.size > 10 * 1024 * 1024) { window.alert("附件大小需小於 10MB"); return; }
+    if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) { window.alert("請選擇 JPG、PNG、WebP 或 PDF。"); return; }
+    const url = URL.createObjectURL(file);
+    demoAttachmentUrls.current.add(url);
+    setFinanceField("attachments", (current) => [...current, { id: demoId("demo-attachment"), trip_id: demoActiveTrip.id,
+      target_type: targetType, target_id: targetId, file_name: file.name, file_url: url, file_type: file.type, file_size: file.size, uploaded_by: "demo-peter" }]);
+  }
+
+  function deleteDemoAttachment(attachment) {
+    URL.revokeObjectURL(attachment.file_url);
+    demoAttachmentUrls.current.delete(attachment.file_url);
+    setFinanceField("attachments", (current) => current.filter((row) => row.id !== attachment.id));
+  }
+
+  async function returnToLogin() {
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
     window.location.assign("/");
   }
 
@@ -8703,8 +8689,11 @@ function DemoApp({ initialSection }) {
     return { ok: true };
   }
 
-  function saveBudgetItem(payload, editingId) {
+  function saveBudgetItem(payload, editingId, meta = {}) {
     if (!payload.title.trim()) return;
+    if (meta.tripId && meta.tripId !== demoActiveTrip.id) return { ok: false, error: { message: "旅程已切換，請重新開啟編輯。" } };
+    const existing = budgetItems.find((item) => item.id === editingId);
+    if (editingId && (!existing || meta.baseUpdatedAt && meta.baseUpdatedAt !== existing.updated_at)) return { ok: false, conflict: true };
     const participantIds = payload.participantIds || [];
     let pricing;
     try { pricing = calculatePricing(payload); } catch (error) { return { ok: false, error }; }
@@ -8718,14 +8707,17 @@ function DemoApp({ initialSection }) {
       amount,
       currency: payload.currency || "TWD",
       exchange_rate: exchangeRate,
-      twd_amount: Math.round(amount * exchangeRate),
-      payer_id: payload.payer_id || demoMembers[0].user_id,
+      twd_amount: pricing.twd_amount,
+      payer_id: payload.payer_id || null,
       is_fixed: Boolean(payload.is_fixed),
       note: payload.note || "",
-      updated_at: new Date().toISOString(),
+      updated_at: new Date(Math.max(Date.now(), new Date(existing?.updated_at || 0).getTime() + 1)).toISOString(),
     };
     function saveFixedActual(budgetId) {
-      if (payload.is_fixed && !actualExpenses.some((expense) => expense.budget_item_id === budgetId)) saveActualExpense({ ...payload, budget_item_id: budgetId }, null);
+      if (payload.is_fixed && !actualExpenses.some((expense) => expense.budget_item_id === budgetId)) {
+        const result = saveActualExpense({ ...payload, budget_item_id: budgetId }, null);
+        if (result?.ok) setBudgetItems((current) => current.map((item) => item.id === budgetId ? { ...item, auto_created_actual_expense_id: result.data.id } : item));
+      }
     }
 
     if (editingId) {
@@ -8752,7 +8744,7 @@ function DemoApp({ initialSection }) {
     }
 
     const budgetId = demoId("demo-budget");
-    setBudgetItems((current) => [...current, { ...nextBudget, id: budgetId, trip_id: demoTrip.id }]);
+    setBudgetItems((current) => [...current, { ...nextBudget, id: budgetId, trip_id: demoActiveTrip.id }]);
     setBudgetParticipants((current) => [
       ...current,
       ...participantIds.map((userId) => ({
@@ -8790,8 +8782,11 @@ function DemoApp({ initialSection }) {
     ]);
   }
 
-  function saveActualExpense(payload, editingId) {
+  function saveActualExpense(payload, editingId, meta = {}) {
     if (!payload.title.trim()) return { ok: false };
+    if (meta.tripId && meta.tripId !== demoActiveTrip.id) return { ok: false, error: { message: "旅程已切換，請重新開啟編輯。" } };
+    const existing = actualExpenses.find((expense) => expense.id === editingId);
+    if (editingId && (!existing || meta.baseUpdatedAt && meta.baseUpdatedAt !== existing.updated_at)) return { ok: false, conflict: true };
     const participantIds = payload.participantIds || [];
     let pricing;
     try { pricing = calculatePricing(payload); } catch (error) { return { ok: false, error }; }
@@ -8800,17 +8795,18 @@ function DemoApp({ initialSection }) {
     const nextExpense = {
       category: payload.category || "其他", subcategory: payload.subcategory || "",
       pricing_mode: pricing.pricing_mode, unit_amount: pricing.unit_amount, split_type: pricing.split_type,
-      trip_id: demoTrip.id,
+      trip_id: demoActiveTrip.id,
       budget_item_id: payload.budget_item_id || null,
+      budget_origin_id: payload.budget_item_id || existing?.budget_origin_id || null,
       title: payload.title.trim(),
       amount,
       currency: payload.currency || "TWD",
       exchange_rate: exchangeRate,
-      twd_amount: Math.round(amount * exchangeRate),
-      payer_id: payload.payer_id || demoMembers[0].user_id,
+      twd_amount: pricing.twd_amount,
+      payer_id: payload.payer_id || null,
       paid_at: payload.paid_at ? new Date(payload.paid_at).toISOString() : new Date().toISOString(),
       note: payload.note || "",
-      updated_at: new Date().toISOString(),
+      updated_at: new Date(Math.max(Date.now(), new Date(existing?.updated_at || 0).getTime() + 1)).toISOString(),
     };
 
     if (editingId) {
@@ -8824,7 +8820,7 @@ function DemoApp({ initialSection }) {
           share_amount: pricing.shares[userId],
         })),
       ]);
-      return { ok: true };
+      return { ok: true, data: { id: editingId } };
     }
 
     const expenseId = demoId("demo-actual");
@@ -8838,42 +8834,12 @@ function DemoApp({ initialSection }) {
         share_amount: pricing.shares[userId],
       })),
     ]);
-    return { ok: true };
+    return { ok: true, data: { id: expenseId } };
   }
 
   function convertBudgetToActual(budget) {
-    const expenseId = demoId("demo-actual");
-    const participantIds = budgetParticipants
-      .filter((participant) => participant.budget_item_id === budget.id)
-      .map((participant) => participant.user_id);
-    setActualExpenses((current) => [
-      ...current,
-      {
-        id: expenseId,
-        trip_id: demoTrip.id,
-        budget_item_id: budget.id,
-        title: budget.title,
-        amount: budget.amount,
-        currency: budget.currency,
-        exchange_rate: budget.exchange_rate,
-        twd_amount: budget.twd_amount,
-        payer_id: budget.payer_id,
-        paid_at: new Date().toISOString(),
-        note: budget.note || "由 Demo 預算轉成實付。",
-        updated_at: new Date().toISOString(),
-      },
-    ]);
-    setActualParticipants((current) => [
-      ...current,
-      ...(participantIds.length ? participantIds : demoMembers.map((member) => member.user_id)).map((userId) => ({
-        id: demoId("demo-actual-participant"),
-        actual_expense_id: expenseId,
-        user_id: userId,
-      })),
-    ]);
-    setBudgetItems((current) =>
-      current.map((item) => (item.id === budget.id ? { ...item, auto_created_actual_expense_id: expenseId } : item)),
-    );
+    return saveActualExpense({ ...recordForm(budget, budgetParticipants, "budget_item_id", demoMembers),
+      budget_item_id: budget.id }, null);
   }
 
   function saveSharedLuggage(payload, editingId) {
@@ -8939,23 +8905,25 @@ function DemoApp({ initialSection }) {
           </button>
         </div>
         <nav className="section-nav" aria-label="Demo 導覽">
-          {["timeline", "budget", "luggage"].map((section) => {
-            const navItem = desktopNavItems.find((item) => item.id === section);
+          {desktopNavItems.map((navItem) => {
+            const section = navItem.id;
+            const available = ["timeline", "budget", "luggage", "settlement"].includes(section);
             const Icon = navItem ? desktopNavIcons[navItem.id] : null;
             return (
               <button
                 className={`section-nav-button${activeSection === section ? " active" : ""}`}
                 key={section}
                 type="button"
-                title={demoSectionLabel(section)}
-                aria-label={demoSectionLabel(section)}
+                title={available ? navItem.label : `${navItem.label}（此 Demo 尚未提供）`}
+                aria-label={navItem.label}
+                disabled={!available}
                 aria-current={activeSection === section ? "page" : undefined}
                 onClick={() => changeSection(section)}
               >
                 <span className="section-nav-icon" aria-hidden="true">
                   {Icon ? <Icon size={15} strokeWidth={2.2} /> : navItem?.shortLabel}
                 </span>
-                <span className="nav-label">{demoSectionLabel(section)}</span>
+                <span className="nav-label">{navItem.label}</span>
               </button>
             );
           })}
@@ -8970,14 +8938,7 @@ function DemoApp({ initialSection }) {
           isFlyoutOpen={isDemoSidebarTripMenuOpen}
           onCloseFlyout={() => setIsDemoSidebarTripMenuOpen(false)}
           onCreate={() => {}}
-          onSelect={(tripId) => {
-            const nextTrip = demoTrips.find((trip) => trip.id === tripId);
-            if (nextTrip) {
-              setActiveDay(tripTodayIndex(nextTrip));
-              setFocusedItemId(null);
-              setDemoActiveTrip(nextTrip);
-            }
-          }}
+          onSelect={changeDemoTrip}
           onToggleFlyout={() => setIsDemoSidebarTripMenuOpen((value) => !value)}
           trips={demoTrips.map((trip) => ({
             ...trip,
@@ -9010,6 +8971,8 @@ function DemoApp({ initialSection }) {
           days={days}
           dateChangePreviewData={tripDateChangePreviewData}
           demoNotice="Demo Mode 資料不會永久保存。"
+          demoStage={activeSection === "budget" || activeSection === "settlement" ? demoStage : undefined}
+          canShare={false}
           canEditTrip
           canOpenMembers
           onDelete={() => {}}
@@ -9023,6 +8986,13 @@ function DemoApp({ initialSection }) {
           }}
           onUpdateTripDateRange={updateDemoTripDateRange}
         />
+        {activeSection === "budget" || activeSection === "settlement" ? <div className="demo-budget-controls">
+          <label>Demo 情境<select aria-label="Demo 情境" value={demoScenario} onChange={(event) => void changeDemoScenario(event.target.value)}>
+            <option value="live">依目前日期</option><option value="planning">行前規劃</option><option value="traveling">行程中</option><option value="settled">旅程結算</option>
+          </select></label>
+          <span>{demoMembers.length} 位成員 · {budgetItems.length} 筆預算{demoBudgetBaseline?.frozen ? " · 出發前快照已凍結" : ""}</span>
+          <button className="ghost-button compact" type="button" onClick={() => void resetDemoBudget()}>重設預算案例</button>
+        </div> : null}
         {activeSection === "timeline" ? (
           <>
             <div className={`timeline-top-row${isRouteLayoutCollapsed ? " route-collapsed" : ""}`}>
@@ -9132,27 +9102,29 @@ function DemoApp({ initialSection }) {
         {activeSection === "budget" ? (
           <BudgetPanel
             activeTrip={demoActiveTrip}
+            demoStage={demoStage}
             budgetBaseline={demoBudgetBaseline?.trip_id === demoActiveTrip.id ? demoBudgetBaseline : null}
             actualExpenses={actualExpenses}
             actualParticipants={actualParticipants}
-            attachments={[]}
+            attachments={demoAttachments}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
             canEdit
             currentUserId="demo-peter"
             disableDraftAutosave
-            enableAttachments={false}
             headingEyebrow="預算"
             itineraryBudgetLinks={itineraryBudgetLinks}
-            items={timelineItems}
+            items={timelineItems.filter((item) => item.trip_id === demoActiveTrip.id)}
             members={demoMembers}
             onConvertToActual={convertBudgetToActual}
             onDelete={(budgetId) => {
               setBudgetItems((current) => current.filter((item) => item.id !== budgetId));
               setBudgetParticipants((current) => current.filter((participant) => participant.budget_item_id !== budgetId));
               setItineraryBudgetLinks((current) => current.filter((link) => link.budget_item_id !== budgetId));
+              setActualExpenses((current) => current.map((expense) => expense.budget_item_id === budgetId ? { ...expense, budget_item_id: null, budget_origin_id: expense.budget_origin_id || budgetId } : expense));
             }}
             onDeleteActual={(expenseId) => {
+              demoAttachments.filter((attachment) => attachment.target_id === expenseId && attachment.target_type === "actual_expense").forEach(deleteDemoAttachment);
               setActualExpenses((current) => current.filter((expense) => expense.id !== expenseId));
               setActualParticipants((current) => current.filter((participant) => participant.actual_expense_id !== expenseId));
               setBudgetItems((current) =>
@@ -9163,15 +9135,17 @@ function DemoApp({ initialSection }) {
                 ),
               );
             }}
-            onDeleteAttachment={() => {}}
-            onOpenAttachment={() => {}}
+            onDeleteAttachment={deleteDemoAttachment}
+            onOpenAttachment={(attachment) => window.open(attachment.file_url, "_blank", "noopener,noreferrer")}
             onSave={saveBudgetItem}
             onSaveActual={saveActualExpense}
-            onUploadAttachment={() => {}}
+            onUploadAttachment={uploadDemoAttachment}
             restoreDrafts={false}
             useEditLocks={false}
           />
         ) : null}
+        {activeSection === "settlement" ? <SettlementPanel activeTrip={demoActiveTrip} demoStage={demoStage} budgetBaseline={demoBudgetBaseline}
+          actualExpenses={actualExpenses} actualParticipants={actualParticipants} budgetItems={budgetItems} members={demoMembers} /> : null}
         {activeSection === "luggage" ? (
           <DemoLuggageView
             currentUserId="demo-peter"
@@ -9198,7 +9172,7 @@ function DemoApp({ initialSection }) {
         ) : null}
       </main>
       <nav className="bottom-nav" aria-label="Demo 手機導覽">
-        {["timeline", "budget", "luggage"].map((section) => (
+        {["timeline", "budget", "luggage", "settlement"].map((section) => (
           <button
             className={`bottom-nav-button${activeSection === section ? " active" : ""}`}
             key={section}
@@ -13697,7 +13671,7 @@ const budgetEditorServices = {
 };
 
 
-function SettlementPanel({ activeTrip, budgetBaseline, actualExpenses, actualParticipants, budgetItems, members }) {
+function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses, actualParticipants, budgetItems, members }) {
   const approvedMembers = members.filter((member) => member.status === "approved");
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const participantsByExpense = useMemo(
@@ -13706,7 +13680,7 @@ function SettlementPanel({ activeTrip, budgetBaseline, actualExpenses, actualPar
   );
   const actualBudgetIds = new Set(actualExpenses.map((expense) => expense.budget_item_id).filter(Boolean));
   const pendingBudgetItems = budgetItems.filter((budget) => !actualBudgetIds.has(budget.id));
-  const hasBaseline = budgetStage(activeTrip) === "settled" && budgetBaseline?.trip_id === activeTrip?.id;
+  const hasBaseline = (demoStage || budgetStage(activeTrip)) === "settled" && budgetBaseline?.trip_id === activeTrip?.id;
   const plannedTotal = hasBaseline ? budgetBaseline.payload.items.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0) : null;
   const actualTotal = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
   const { balances, incomplete } = settlementBalances(actualExpenses, actualParticipants, approvedMembers);

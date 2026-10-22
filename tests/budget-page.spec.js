@@ -8,13 +8,13 @@ const rowByTitle = (page, title) => page.locator(".bw-row").filter({ has: page.g
 const editor = (page) => page.getByRole("form", { name: "預算編輯" });
 test("dense groups, filter independence, single-click details and no early comparison", async ({ page }) => {
   await expect(page.getByRole("tab", { name: "對照", exact: true })).toHaveCount(0);
-  await expect(page.locator(".bw-row")).toHaveCount(2);
+  await expect(page.locator(".bw-row")).toHaveCount(32);
   const before = await page.getByLabel("旅程費用摘要").textContent();
   await page.getByLabel("費用分類", { exact: true }).selectOption("餐飲");
-  await expect(page.locator(".bw-row")).toHaveCount(1);
+  await expect(page.locator(".bw-row")).toHaveCount(13);
   await expect(page.getByLabel("旅程費用摘要")).toHaveText(before);
-  await page.getByRole("button", { name: "新宿午餐", exact: true }).click();
-  await expect(page.locator(".bw-detail h3")).toHaveText("新宿午餐");
+  await page.getByRole("button", { name: "Day 1・關西機場午餐", exact: true }).click();
+  await expect(page.locator(".bw-detail h3")).toHaveText("Day 1・關西機場午餐");
   await expect(editor(page)).toHaveCount(0);
   await page.getByLabel("搜尋項目").fill("不存在");
   await expect(page.getByText("找不到符合條件的項目")).toBeVisible();
@@ -64,7 +64,7 @@ test("double-click shares the right draft; blur does not save, Escape cancels, E
   const total=page.getByRole("spinbutton",{name:/快速修改總額/});
   await total.fill("1000"); await total.press("Enter");
   await expect(editor(page)).toHaveCount(0);
-  await expect(row.locator("td").nth(3)).toContainText("220"); // JPY 1,000 × 0.22, not TWD input.
+  await expect(row.locator("td").nth(3)).toContainText("1,000"); // First flight line uses TWD.
 });
 test("empty participants cannot save; view navigation uses the editor guard",async({page})=>{
   await page.getByRole("button",{name:"新增預算",exact:true}).click();
