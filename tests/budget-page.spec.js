@@ -264,6 +264,24 @@ test('shared menus support keyboard, dismissal, custom categories and source sel
   expect(await page.locator('.budget-workspace select, .budget-workspace datalist').count()).toBe(0);
 });
 
+test('sticky header keeps an opaque uninterrupted divider above scrolled category and item rows',async({page})=>{
+  await page.setViewportSize({width:1264,height:892});
+  const scroller=page.locator('.bw-table-scroll');
+  for(const offset of [0,18,30,40,90,250]) {
+    await scroller.evaluate((el,top)=>{el.scrollTop=top;},offset);
+    await expect.poll(()=>scroller.evaluate(el=>el.scrollTop)).toBe(offset);
+    const cells=await page.locator('.bw-table thead th').evaluateAll(elements=>elements.map(el=>{
+      const box=el.getBoundingClientRect(), style=getComputedStyle(el);
+      const x=box.x+box.width/2, y=box.bottom-1;
+      return {top:box.top,bottom:box.bottom,border:style.borderBottomWidth,background:style.backgroundColor,
+        covers:el.contains(document.elementFromPoint(x,y))};
+    }));
+    expect(cells.every(cell=>cell.covers && cell.border==='1px' && cell.background==='rgb(252, 251, 247)')).toBe(true);
+    expect(new Set(cells.map(cell=>cell.top)).size).toBe(1);
+    expect(new Set(cells.map(cell=>cell.bottom)).size).toBe(1);
+  }
+});
+
 test('list bottom leaves the same 12px inset as the side panel and the header is compact',async({page})=>{
   await page.setViewportSize({width:1264,height:892});
   await page.locator('.bw-row').last().scrollIntoViewIfNeeded();

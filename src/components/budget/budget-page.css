@@ -14,9 +14,9 @@
 .bw-toolbar > button, .bw-editor-actions > button, .bw-detail-actions > button { height: 32px; min-height: 32px; padding-block: 4px; }
 .bw-filters > span { margin-left: auto; color: var(--muted); }
 .bw-table-scroll { overflow-x: auto; padding-bottom: 12px; }
-.bw-table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 13px; }
+.bw-table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; font-size: 13px; }
 .bw-table th { text-align: left; font-weight: 500; color: var(--muted); }
-.bw-table thead { background: var(--color-bg); box-shadow: 0 1px 0 var(--line); }
+.bw-table thead { background: var(--color-bg); }
 .bw-table thead th { padding: 8px; height: 36px; border-bottom: 1px solid var(--line); font-size: 11px; }
 .bw-table th:first-child, .bw-table td:first-child { padding-left: 16px; }
 .bw-table th:last-child, .bw-table td:last-child { padding-right: 12px; }
@@ -173,7 +173,7 @@
   .bw-main { display: flex; flex-direction: column; min-height: 0; }
   .bw-toolbar, .bw-comparison-summary, .bw-inline-hint { flex-shrink: 0; }
   .bw-table-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
-  .bw-table thead { position: sticky; top: 0; z-index: 1; background: var(--color-bg); }
+  .bw-table thead th { position: sticky; top: 0; z-index: 1; background: var(--color-bg); }
   .bw-side { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: 68px; }
   .bw-side-tabs { position: sticky; top: 0; z-index: 2; background: var(--panel); }
   .bw-editor-actions { position: sticky; bottom: 0; z-index: 1; margin-top: 0; padding: 8px 0; border-top: 1px solid var(--line); background: var(--panel); }
