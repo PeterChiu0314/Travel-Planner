@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowRight, BedDouble, Car, Check, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
 import MenuSelect from "../MenuSelect.jsx";
 import { budgetDay, budgetStage, calculatePricing, comparisonRows, memberLabel, money, participantsFor, pricingLabels, recordAllocations, recordForm } from "../../lib/budgetFinance.js";
 
 const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
+const categoryIcons = { "機票": Plane, "交通": Car, "住宿": BedDouble, "門票": Ticket, "餐飲": UtensilsCrossed, "購物": ShoppingBag, "其他": Package };
 const palette = ["#52766a", "#a2b2a6", "#b6a28a", "#d3c6b2", "#829da0", "#aeb0a2", "#dcd8cd"];
 const empty = recordForm(null, [], "", []);
 
@@ -150,7 +151,7 @@ function Stats({ records, rows, members, actual, budgets, viewpoint, setViewpoin
 }
 
 function PricingSummary({ amount, twdAmount, currency, mode, count }) {
-  const perPerson = mode === "custom" ? "依成員" : count ? `${twdAmount % count ? "約 " : ""}NT$ ${money(twdAmount / count)}` : "—";
+  const perPerson = mode === "custom" ? "依成員" : count ? `${twdAmount % count ? "≈ " : ""}NT$ ${money(twdAmount / count)}` : "—";
   return <div className="bw-calculation"><div><span>每人</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>NT$ {money(twdAmount)}</strong>{currency !== "TWD" ? <small>{currency} {money(amount)}</small> : null}</div></div>;
 }
 
@@ -376,18 +377,25 @@ export default function BudgetWorkspace(incoming) {
       <button className="primary-button compact bw-add" disabled={!canEdit} type="button" onClick={() => void add()}><Plus size={15} />{actual || compare ? "新增實付" : "新增預算"}</button></div>
       {compare ? <div className="bw-comparison-summary">{baseline ? <><span>出發前預算<b>NT$ {money(baselineTotal)}</b></span><span>實際支出<b>NT$ {money(actualTotal)}</b></span><span>差額<b>{actualTotal - baselineTotal > 0 ? "+" : ""}{money(actualTotal - baselineTotal)}</b></span></> : <p>無出發前快照，無法還原當時預算。</p>}</div> : null}
       <div className="bw-table-scroll"><table className="bw-table" aria-label={compare ? "出發前預算對照" : actual ? "實付明細" : "預算明細"}><thead><tr><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{compare ? "出發前預算" : actual ? "每人負擔" : "每人預算"}<small>TWD</small></th><th className="bw-number">{compare ? "實付" : "總額"}<small>TWD</small></th><th>{compare ? "差額" : "狀態"}</th></tr></thead>
-        <tbody>{categories.filter((value) => displayRows.some((row) => row.category === value)).map((value) => <Fragment key={value}><tr className="bw-group"><th colSpan={compare ? 2 : 3}>{value}<small>{displayRows.filter((row) => row.category === value).length} 筆</small></th>{compare ? <td className="bw-number">{money(displayRows.filter((row) => row.category === value).reduce((sum, row) => sum + row.planned, 0))}</td> : null}<td className="bw-number">{money(displayRows.filter((row) => row.category === value).reduce((sum, row) => sum + Number(compare ? row.actual : row.twd_amount), 0))}</td><td /></tr>
+        <tbody>{categories.filter((value) => displayRows.some((row) => row.category === value)).map((value) => {
+          const grouped = displayRows.filter((row) => row.category === value);
+          const total = grouped.reduce((sum, row) => sum + Number(compare ? row.actual : row.twd_amount), 0);
+          const person = members.some((member) => member.user_id === viewpoint) ? viewpoint : null;
+          const allocations = !compare && person ? grouped.map((row) => recordAllocations(row, participantsFor(row, participantRows, joinKey, members))) : [];
+          const perPerson = person ? allocations.some((allocation) => allocation === null) ? null : allocations.reduce((sum, allocation) => sum + (allocation[person] || 0), 0) : members.length ? total / members.length : null;
+          const Icon = categoryIcons[value] || Package;
+          return <Fragment key={value}><tr className="bw-group"><th colSpan={2} scope="rowgroup"><span className="bw-group-label"><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span>{value}</span><small>{grouped.length} 筆</small></span></th><td className="bw-number bw-group-person" title={compare ? "出發前預算" : person ? `${memberLabel(members.find((member) => member.user_id === person))} 的分類負擔` : "分類人均：分類總額 ÷ 旅程成員數"}>{compare ? money(grouped.reduce((sum, row) => sum + row.planned, 0)) : perPerson === null ? "—" : `${Number.isInteger(perPerson) ? "" : "≈ "}${money(perPerson)}`}</td><td className="bw-number">{money(total)}</td><td /></tr>
           {displayRows.filter((row) => row.category === value).map((row) => {
             const people = participantsFor(row, participantRows, joinKey, members);
             const custom = row.pricing_mode === "custom" || row.split_type === "custom";
             const isSelected = selected?.id === row.id || activeEditor?.context?.id === row.id;
             return <tr key={row.id} className={`bw-row${isSelected ? " is-selected" : ""}`} onClick={compare ? undefined : () => void select(row)}>
               <td className="bw-day">{budgetDay(row, compare ? baseline?.payload?.links || [] : links, compare ? baseline?.payload?.itinerary || [] : items)}</td><td>{compare ? <span>{row.title}{row.extra ? <small className="bw-muted"> · 預算外</small> : null}</span> : cell(row, "title", row.title)}</td>
-              <td className="bw-number">{compare ? money(row.planned) : cell(row, "person", custom ? "依成員" : people.length ? `${Number(row.twd_amount) % people.length ? "約 " : ""}${money(Number(row.twd_amount) / people.length)}` : "—")}</td>
+              <td className="bw-number">{compare ? money(row.planned) : cell(row, "person", custom ? "依成員" : people.length ? `${Number(row.twd_amount) % people.length ? "≈ " : ""}${money(Number(row.twd_amount) / people.length)}` : "—")}</td>
               <td className="bw-number bw-total">{compare ? money(row.actual) : cell(row, "total", money(row.twd_amount))}</td>
               <td>{compare ? <span className={row.difference > 0 ? "bw-danger" : ""}>{row.difference > 0 ? "+" : ""}{money(row.difference)}{row.unrecorded ? <small className="bw-muted"> 未記錄</small> : null}</span> : <span className={`bw-status${actual || actualExpenses.some((expense) => expense.budget_item_id === row.id) ? " paid" : ""}`}>{actual || actualExpenses.some((expense) => expense.budget_item_id === row.id) ? "實付" : "預算"}</span>}</td>
             </tr>;
-          })}</Fragment>)}</tbody></table></div>
+          })}</Fragment>; })}</tbody></table></div>
       {!displayRows.length ? <div className="bw-empty">{query || category ? "找不到符合條件的項目" : compare ? "尚無可對照項目" : `尚未建立${actual ? "實付" : "預算"}`}</div> : null}
       {inline ? <div className="bw-inline-hint">{inline.field === "title" ? "修改項目" : `以 ${activeEditor?.form.currency} 原幣金額編輯`} · Enter 儲存 · Esc 取消<button className="bw-icon" aria-label="儲存快速修改" type="button" onClick={() => void activeEditor?.save()}><Check size={15} /></button></div> : null}
     </div>

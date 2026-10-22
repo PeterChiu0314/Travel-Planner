@@ -264,6 +264,29 @@ test('shared menus support keyboard, dismissal, custom categories and source sel
   expect(await page.locator('.budget-workspace select, .budget-workspace datalist').count()).toBe(0);
 });
 
+test('category person totals follow average and named allocations including partial and custom shares',async({page})=>{
+  const group=(name)=>page.locator('.bw-group').filter({has:page.locator('.bw-group-label > span').getByText(name,{exact:true})});
+  await expect(group('機票').locator('.bw-group-person')).toHaveText('11,566');
+  await expect(group('門票').locator('.bw-group-person')).toHaveText('≈ 480');
+  const view=page.getByRole('combobox',{name:'統計視角',exact:true});
+  await view.click(); await page.getByRole('option',{name:'Peter',exact:true}).click();
+  await expect(group('門票').locator('.bw-group-person')).toHaveText('792');
+  await expect(group('餐飲').locator('.bw-group-person')).toHaveText('6,402');
+  await view.click(); await page.getByRole('option',{name:'Dora',exact:true}).click();
+  await expect(group('門票').locator('.bw-group-person')).toHaveText('220');
+  await expect(group('機票').locator('.bw-number').last()).toHaveText('57,830');
+  await expect(page.locator('.bw-group-label svg')).toHaveCount(7);
+  await expect(rowByTitle(page,'名鐵・名古屋 → 中部機場').locator('.bw-person')).toHaveText('≈ 216');
+  await rowByTitle(page,'關西機場 → 京都巴士').getByRole('button',{name:'關西機場 → 京都巴士',exact:true}).click();
+  const colors=await page.locator('.bw-row.is-selected').evaluate(el=>({selected:getComputedStyle(el).backgroundColor,group:getComputedStyle(el.previousElementSibling).backgroundColor}));
+  expect(colors.selected).not.toBe(colors.group);
+  expect(await page.locator('.bw-table thead th').first().evaluate(el=>getComputedStyle(el).fontSize)).toBe('12px');
+  expect(await page.locator('.bw-table thead small').first().evaluate(el=>getComputedStyle(el).fontSize)).toBe('11px');
+  const gaps=await page.locator('.bw-group').evaluateAll(els=>els.map(el=>({border:getComputedStyle(el.querySelector('th')).borderTopWidth,
+    gap:el.previousElementSibling?el.getBoundingClientRect().top-el.previousElementSibling.getBoundingClientRect().bottom:0})));
+  expect(gaps.every(row=>row.border==='0px'&&Math.abs(row.gap)<1)).toBe(true);
+});
+
 test('sticky header keeps an opaque uninterrupted divider above scrolled category and item rows',async({page})=>{
   await page.setViewportSize({width:1264,height:892});
   const scroller=page.locator('.bw-table-scroll');
