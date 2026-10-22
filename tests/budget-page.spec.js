@@ -10,7 +10,7 @@ test("dense groups, filter independence, single-click details and no early compa
   await expect(page.getByRole("tab", { name: "對照", exact: true })).toHaveCount(0);
   await expect(page.locator(".bw-row")).toHaveCount(32);
   const before = await page.getByLabel("旅程費用摘要").textContent();
-  await page.getByLabel("費用分類", { exact: true }).selectOption("餐飲");
+  await page.getByRole("combobox", {name:"費用分類",exact:true}).click(); await page.getByRole("option",{name:"餐飲",exact:true}).click();
   await expect(page.locator(".bw-row")).toHaveCount(13);
   await expect(page.getByLabel("旅程費用摘要")).toHaveText(before);
   await page.getByRole("button", { name: "Day 1・關西機場午餐", exact: true }).click();
@@ -25,7 +25,7 @@ test("per-person pricing, custom split and actual conversion preserve the origin
   await form.getByLabel("項目", { exact: true }).fill("兩人門票");
   await form.getByRole("button", { name: "每人計價", exact: true }).click();
   await form.getByLabel("每人單價", { exact: true }).fill("700");
-  await form.getByLabel("幣別", { exact: true }).selectOption("JPY");
+  await form.getByRole("combobox",{name:"幣別",exact:true}).click(); await page.getByRole("option",{name:"JPY",exact:true}).click();
   await form.getByLabel(/匯率/).fill("0.22");
   await form.locator('.bw-member-options > summary').click();
   const people = form.locator('.bw-participants input[type=checkbox]');
@@ -144,7 +144,7 @@ test("compact editor defaults, personal calculation and searchable itinerary lin
   await expect(form.locator('.bw-calculation')).toContainText('每人NT$ 250');
   await form.locator('.bw-member-options > summary').click();
   await form.locator('.bw-link-options > summary').click();
-  await form.getByLabel('關聯行程日期',{exact:true}).selectOption('1');
+  await form.getByRole('combobox',{name:'關聯行程日期',exact:true}).click(); await page.getByRole('option',{name:'Day 2',exact:true}).click();
   await form.getByLabel('搜尋關聯行程',{exact:true}).fill('宇治');
   await form.locator('.bw-link-results').getByLabel('宇治吃午餐',{exact:true}).check();
   await form.locator('.bw-link-results').getByLabel('宇治市漫遊',{exact:true}).check();
@@ -227,6 +227,44 @@ test('itinerary suggestions follow category and always allow the full trip witho
   await expect(form.locator('.bw-linked-items')).toContainText('宇治吃午餐');
   await form.getByLabel('搜尋關聯行程',{exact:true}).fill('沒有結果');
   await expect(form.locator('.bw-link-results')).toContainText('沒有符合的行程');
+});
+
+test('shared menus support keyboard, dismissal, custom categories and source selection without submitting drafts',async({page})=>{
+  const filter=page.getByRole('combobox',{name:'費用分類',exact:true});
+  await filter.focus(); await filter.press('ArrowDown'); await filter.press('End'); await filter.press('Enter');
+  await expect(filter).toHaveText('其他');
+  await filter.click(); await filter.press('Escape'); await expect(page.getByRole('listbox')).toHaveCount(0);
+  await page.getByRole('button',{name:'新增預算',exact:true}).click();
+  const form=editor(page);
+  await form.getByRole('combobox',{name:'分類',exact:true}).fill('保險網路');
+  await form.getByLabel('項目',{exact:true}).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await expect(form.getByRole('combobox',{name:'分類',exact:true})).toHaveValue('保險網路');
+  await form.getByRole('combobox',{name:'付款人',exact:true}).click();
+  await page.getByRole('option',{name:'Dennis',exact:true}).click();
+  await expect(form.getByRole('combobox',{name:'付款人',exact:true})).toHaveText('Dennis');
+  await page.getByRole('tab',{name:'實付',exact:true}).click();
+  await page.getByRole('dialog',{name:'您有未儲存的變更'}).getByRole('button',{name:'不儲存',exact:true}).click();
+  await page.getByRole('button',{name:'新增實付',exact:true}).click();
+  const actual=page.getByRole('form',{name:'實付編輯'});
+  await actual.locator('.bw-secondary-fields > summary').click();
+  await actual.getByRole('combobox',{name:'來源預算',exact:true}).click();
+  const popup=page.getByRole('listbox',{name:'來源預算選項',exact:true});
+  await expect(popup).toBeVisible();
+  const rect=await popup.boundingBox(); expect(rect.y).toBeGreaterThanOrEqual(0); expect(rect.y+rect.height).toBeLessThanOrEqual(900);
+  await popup.getByRole('option',{name:'平等院門票',exact:true}).click();
+  await expect(actual.getByLabel('項目',{exact:true})).toHaveValue('平等院門票');
+  await expect(actual.getByRole('combobox',{name:'幣別',exact:true})).toHaveText('JPY');
+  expect(await page.locator('.budget-workspace select, .budget-workspace datalist').count()).toBe(0);
+});
+
+test('list bottom leaves the same 12px inset as the side panel and the header is compact',async({page})=>{
+  await page.setViewportSize({width:1264,height:892});
+  await page.locator('.bw-row').last().scrollIntoViewIfNeeded();
+  await page.locator('.bw-table-scroll').evaluate(el=>el.scrollTop=el.scrollHeight);
+  const last=await page.locator('.bw-row').last().boundingBox(), scroller=await page.locator('.bw-table-scroll').boundingBox();
+  expect(Math.abs(scroller.y+scroller.height-last.y-last.height-12)).toBeLessThanOrEqual(2); // Collapsed table borders and fractional device pixels.
+  expect((await page.locator('.bw-table thead').boundingBox()).height).toBeLessThanOrEqual(38);
 });
 
 for(const width of [390,1280,1440])test(`${width}px table and editor remain operable`,async({page})=>{

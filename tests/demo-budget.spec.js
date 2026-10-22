@@ -58,25 +58,25 @@ test.describe('shared Demo UI',()=>{
   test('member viewpoint changes burden and categories and remains selected after detail viewing',async({page})=>{
     const requests=[];page.on('request',request=>{if(/supabase|googleapis/.test(request.url()))requests.push(request.url());});
     const expected=fixture().budgetItems.reduce((sum,item)=>sum+(recordAllocations(item,fixture().budgetParticipants.filter(p=>p.budget_item_id===item.id))['demo-peter']||0),0);
-    await page.getByLabel('統計視角',{exact:true}).selectOption('demo-peter');
+    await page.getByRole('combobox',{name:'統計視角',exact:true}).click(); await page.getByRole('option',{name:'Peter',exact:true}).click();
     await expect(page.locator('.bw-hero')).toContainText(`NT$ ${expected.toLocaleString('zh-TW')}`);
     const before=await page.getByLabel('旅程費用摘要').textContent();
     await row(page,'Villa 火鍋食材').getByRole('button',{name:'Villa 火鍋食材',exact:true}).click();
     await expect(page.locator('.bw-detail')).toContainText('自訂分攤');
     await expect(page.locator('.bw-detail')).toContainText('440');
     await page.getByRole('tab',{name:'旅程統計',exact:true}).click();
-    await expect(page.getByLabel('統計視角',{exact:true})).toHaveValue('demo-peter');
+    await expect(page.getByRole('combobox',{name:'統計視角',exact:true})).toHaveText('Peter');
     await expect(page.getByLabel('旅程費用摘要')).toHaveText(before);
     expect(requests).toEqual([]);
   });
   test('scenario controls show readonly stages, unique expenses, frozen comparison and balances',async({page})=>{
     await page.goto('/demo/budget?budgetTools=1');
-    await page.getByLabel('Demo 情境',{exact:true}).selectOption('traveling');
+    await page.getByRole('combobox',{name:'Demo 情境',exact:true}).click(); await page.getByRole('option',{name:'行程中',exact:true}).click();
     await expect(page.locator('.budget-workspace')).toHaveAttribute('data-stage','traveling');
     await expect(page.locator('.trip-header-stage')).toContainText('旅行階段');
     await expect(page.locator('.bw-row')).toHaveCount(20);
     await expect(page.getByRole('tab',{name:'對照',exact:true})).toHaveCount(0);
-    await page.getByLabel('Demo 情境',{exact:true}).selectOption('settled');
+    await page.getByRole('combobox',{name:'Demo 情境',exact:true}).click(); await page.getByRole('option',{name:'旅程結算',exact:true}).click();
     await expect(page.locator('.bw-row')).toHaveCount(34);
     await page.getByRole('tab',{name:'對照',exact:true}).click();
     const before=await page.locator('.bw-comparison-summary').textContent();

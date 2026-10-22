@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
+import MenuSelect from "../MenuSelect.jsx";
 import { budgetDay, budgetStage, calculatePricing, comparisonRows, memberLabel, money, participantsFor, pricingLabels, recordAllocations, recordForm } from "../../lib/budgetFinance.js";
 
 const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
@@ -132,9 +133,7 @@ function Stats({ records, rows, members, actual, budgets, viewpoint, setViewpoin
   });
   const categoriesList = [...categories].sort((a, b) => b[1] - a[1]);
   return <section className="bw-stats" aria-label="旅程費用摘要">
-    <label className="bw-viewpoint">統計視角<select aria-label="統計視角" value={validView} onChange={(event) => setViewpoint(event.target.value)}>
-      <option value="average">人均旅費</option>{members.map((member) => <option key={member.user_id} value={member.user_id}>{memberLabel(member)}</option>)}<option value="all">全旅程</option>
-    </select></label>
+    <div className="bw-viewpoint"><span>統計視角</span><MenuSelect label="統計視角" value={validView} onValueChange={setViewpoint} options={[{value:"average",label:"人均旅費"}, ...members.map((member)=>({value:member.user_id,label:memberLabel(member)})), {value:"all",label:"全旅程"}]} /></div>
     <div className="bw-hero"><span>{validView === "average" ? `人均${actual ? "實際" : "預估"}旅費` : validView === "all" ? `全旅程${actual ? "實付" : "預算"}` : `${memberLabel(members.find((row) => row.user_id === validView))} 的${actual ? "實際" : "預估"}負擔`}</span>
       <strong><small>NT$</small> {unknown && validView !== "all" && validView !== "average" ? "—" : money(main)}</strong>
       <span className="bw-muted">{validView === "average" ? `全團平均 · ${members.length} 位成員` : "依參與項目計算"}</span>
@@ -184,7 +183,7 @@ function ItineraryPicker({ items, selectedIds, category, onChange }) {
     })}</ul> : null}
     <details className="bw-link-options"><summary>{selectedIds.length ? "變更關聯" : "選擇行程"}</summary>
       <div className="bw-link-scopes" role="group" aria-label="行程建議範圍"><button type="button" aria-pressed={useSuggestions} disabled={!suggested.length} onClick={() => setScope("suggested")}>建議 · {suggested.length}</button><button type="button" aria-pressed={!useSuggestions} onClick={() => setScope("all")}>全部行程</button></div>
-      <div className="bw-link-filters"><input aria-label="搜尋關聯行程" placeholder="搜尋行程" value={query} onChange={(event) => setQuery(event.target.value)} /><select aria-label="關聯行程日期" value={day} onChange={(event) => setDay(event.target.value)}><option value="">全部 Day</option>{days.map((value) => <option key={value} value={value}>Day {value + 1}</option>)}</select></div>
+      <div className="bw-link-filters"><input aria-label="搜尋關聯行程" placeholder="搜尋行程" value={query} onChange={(event) => setQuery(event.target.value)} /><MenuSelect label="關聯行程日期" value={day} onValueChange={setDay} options={[{value:"",label:"全部 Day"},...days.map(value=>({value:String(value),label:`Day ${value+1}`}))]} /></div>
       <div className="bw-link-results">{days.filter((value) => matches.some((item) => Number(item.day_index) === value)).map((value) => <fieldset key={value}><legend>Day {value + 1}</legend>{matches.filter((item) => Number(item.day_index) === value).map((item) => <label key={item.id}><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} /><span>{item.title}</span></label>)}</fieldset>)}{!matches.length ? <p className="bw-muted">沒有符合的行程</p> : null}</div>
     </details>
   </section>;
@@ -214,25 +213,24 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
     <div className="bw-detail-heading"><h3>{actual && !context.id && form.budget_item_id ? "登記付款" : `${context.id ? "編輯" : "新增"}${actual ? "實付" : "預算"}`}</h3><button aria-label="關閉編輯" className="bw-icon" type="button" disabled={saving} onClick={onCancel}><X size={17} /></button></div>
     {error ? <p role="alert" className="bw-warning">{error}</p> : null}
     <label>項目<input name="title" required value={form.title} onChange={(event) => update("title", event.target.value)} /></label>
-    {!actual ? <div className="bw-two-fields"><label>分類<input list="budget-categories" value={form.category} onChange={(event) => update("category", event.target.value)} /></label><label>細項<input value={form.subcategory} onChange={(event) => update("subcategory", event.target.value)} /></label></div> : null}
-    <datalist id="budget-categories">{categoryOrder.map((category) => <option key={category}>{category}</option>)}</datalist>
+    {!actual ? <div className="bw-two-fields"><div className="bw-field"><span>分類</span><MenuSelect editable label="分類" value={form.category} onValueChange={(value)=>update("category",value)} options={categoryOrder.map(value=>({value,label:value}))} /></div><label>細項<input value={form.subcategory} onChange={(event) => update("subcategory", event.target.value)} /></label></div> : null}
     {!actual ? <fieldset className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset> : null}
     <div className="bw-two-fields"><label>{form.pricing_mode === "per_person" ? "每人單價" : "總額"}<input name="amount" required min="0" step="0.01" type="number" disabled={form.pricing_mode === "custom"} value={form.pricing_mode === "custom" ? pricing?.amount ?? "" : form.pricing_mode === "per_person" ? form.unit_amount : form.amount} onChange={(event) => update(form.pricing_mode === "per_person" ? "unit_amount" : "amount", event.target.value)} /></label>
-      <label>幣別<select aria-label="幣別" value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value, exchange_rate: event.target.value === "TWD" ? 1 : form.exchange_rate === 1 ? "" : form.exchange_rate })}>{[...new Set(["TWD", "JPY", "USD", "EUR", "KRW", "HKD", form.currency])].filter(Boolean).map((currency) => <option key={currency}>{currency}</option>)}</select></label></div>
+      <div className="bw-field"><span>幣別</span><MenuSelect label="幣別" value={form.currency} onValueChange={(value)=>setForm({...form,currency:value,exchange_rate:value === "TWD" ? 1 : form.exchange_rate === 1 ? "" : form.exchange_rate})} options={[...new Set(["TWD","JPY","USD","EUR","KRW","HKD",form.currency])].filter(Boolean).map(value=>({value,label:value}))} /></div></div>
     {form.currency !== "TWD" ? <label>匯率（1 {form.currency} → TWD）<input min="0.000001" step="0.000001" required type="number" value={form.exchange_rate} onChange={(event) => update("exchange_rate", event.target.value)} /></label> : null}
     <details className="bw-member-options" open={membersOpen} onToggle={(event) => setMembersOpen(event.currentTarget.open)}><summary>參與成員 · {form.participantIds.length} 人</summary><fieldset className="bw-participants"><legend>各人負擔 · {form.pricing_mode === "custom" ? form.currency : "TWD"}</legend>{participantOptions.map((member) => <label key={member.user_id}><input type="checkbox" checked={form.participantIds.includes(member.user_id)} onChange={() => toggle("participantIds", member.user_id)} />{memberLabel(member)}{form.pricing_mode === "custom" && form.participantIds.includes(member.user_id) ? <input aria-label={`${memberLabel(member)} 分攤金額`} required min="0" step="0.01" type="number" value={form.shares[member.user_id] ?? ""} onChange={(event) => update("shares", { ...form.shares, [member.user_id]: event.target.value })} /> : <b>{pricing ? money(pricing.allocations[member.user_id] || 0) : "—"}</b>}</label>)}</fieldset></details>
     {pricing ? <PricingSummary amount={pricing.amount} twdAmount={pricing.twd_amount} currency={form.currency} mode={form.pricing_mode} count={form.participantIds.length} /> : null}
-    <label>付款人<select aria-label="付款人" value={form.payer_id} onChange={(event) => update("payer_id", event.target.value)}><option value="">未指定</option>{members.map((member) => <option key={member.user_id} value={member.user_id}>{memberLabel(member)}</option>)}</select></label>
+    <div className="bw-field"><span>付款人</span><MenuSelect label="付款人" value={form.payer_id} onValueChange={(value)=>update("payer_id",value)} options={[{value:"",label:"未指定"},...members.map(member=>({value:member.user_id,label:memberLabel(member)}))]} /></div>
     {actual ? <>
       <details className="bw-secondary-fields"><summary>更多設定</summary>
-        <div className="bw-two-fields"><label>分類<input list="budget-categories" value={form.category} onChange={(event) => update("category", event.target.value)} /></label><label>細項<input value={form.subcategory} onChange={(event) => update("subcategory", event.target.value)} /></label></div>
+        <div className="bw-two-fields"><div className="bw-field"><span>分類</span><MenuSelect editable label="分類" value={form.category} onValueChange={(value)=>update("category",value)} options={categoryOrder.map(value=>({value,label:value}))} /></div><label>細項<input value={form.subcategory} onChange={(event) => update("subcategory", event.target.value)} /></label></div>
         <label>付款時間<input type="datetime-local" value={form.paid_at} onChange={(event) => update("paid_at", event.target.value)} /></label>
-        <label>來源預算<select value={form.budget_item_id} onChange={(event) => {
-          const budget = budgets.find((row) => row.id === event.target.value);
+        <div className="bw-field"><span>來源預算</span><MenuSelect label="來源預算" value={form.budget_item_id} onValueChange={(value) => {
+          const budget = budgets.find((row) => row.id === value);
           if (!budget) { update("budget_item_id", ""); return; }
           const seed = recordForm(budget, budgetParticipants, "budget_item_id", members);
           setForm({ ...form, ...seed, budget_item_id: budget.id, paid_at: form.paid_at });
-        }}><option value="">直接新增</option>{budgets.map((row) => <option key={row.id} value={row.id}>{row.title}</option>)}</select></label>
+        }} options={[{value:"",label:"直接新增"},...budgets.map(row=>({value:row.id,label:row.title}))]} /></div>
         <fieldset className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset>
       </details>
     </> : <>
@@ -375,7 +373,7 @@ export default function BudgetWorkspace(incoming) {
     <div className="bw-main"><div className="bw-toolbar"><h3>預算</h3><div className="bw-tabs" role="tablist" aria-label="費用資料檢視">
       {[['budget', '預算'], ['actual', '實付'], ...(stage === "settled" ? [['compare', '對照']] : [])].map(([key, label]) => <button role="tab" key={key} type="button" aria-selected={view === key} onClick={() => void changeView(key)}>{label}</button>)}
     </div>
-      <div className="bw-filters"><label><Search size={15} /><input aria-label="搜尋項目" placeholder="搜尋項目" value={query} onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="費用分類" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">全部分類</option>{categories.map((value) => <option key={value}>{value}</option>)}</select><span>{displayRows.length} 筆</span></div>
+      <div className="bw-filters"><label><Search size={15} /><input aria-label="搜尋項目" placeholder="搜尋項目" value={query} onChange={(event) => setQuery(event.target.value)} /></label><MenuSelect label="費用分類" value={category} onValueChange={setCategory} options={[{value:"",label:"全部分類"},...categories.map(value=>({value,label:value}))]} /><span>{displayRows.length} 筆</span></div>
       <button className="primary-button compact bw-add" disabled={!canEdit} type="button" onClick={() => void add()}><Plus size={15} />{actual || compare ? "新增實付" : "新增預算"}</button></div>
       {compare ? <div className="bw-comparison-summary">{baseline ? <><span>出發前預算<b>NT$ {money(baselineTotal)}</b></span><span>實際支出<b>NT$ {money(actualTotal)}</b></span><span>差額<b>{actualTotal - baselineTotal > 0 ? "+" : ""}{money(actualTotal - baselineTotal)}</b></span></> : <p>無出發前快照，無法還原當時預算。</p>}</div> : null}
       <div className="bw-table-scroll"><table className="bw-table" aria-label={compare ? "出發前預算對照" : actual ? "實付明細" : "預算明細"}><thead><tr><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{compare ? "出發前預算" : actual ? "每人負擔" : "每人預算"}<small>TWD</small></th><th className="bw-number">{compare ? "實付" : "總額"}<small>TWD</small></th><th>{compare ? "差額" : "狀態"}</th></tr></thead>

@@ -1,6 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
+import MenuSelect from "./components/MenuSelect.jsx";
 import { budgetStage, calculatePricing, recordForm, settlementBalances } from "./lib/budgetFinance.js";
 import { createDemoBudgetState, demoBudgetMembers, hydrateDemoBudgetScenario } from "./demo/budgetFixtures.js";
 import {
@@ -8987,9 +8988,7 @@ function DemoApp({ initialSection }) {
           onUpdateTripDateRange={updateDemoTripDateRange}
         />
         {new URLSearchParams(window.location.search).get("budgetTools") === "1" && (activeSection === "budget" || activeSection === "settlement") ? <div className="demo-budget-controls">
-          <label>Demo 情境<select aria-label="Demo 情境" value={demoScenario} onChange={(event) => void changeDemoScenario(event.target.value)}>
-            <option value="live">依目前日期</option><option value="planning">行前規劃</option><option value="traveling">行程中</option><option value="settled">旅程結算</option>
-          </select></label>
+          <div className="demo-budget-scenario"><span>Demo 情境</span><MenuSelect label="Demo 情境" value={demoScenario} onValueChange={(value)=>void changeDemoScenario(value)} options={[{value:"live",label:"依目前日期"},{value:"planning",label:"行前規劃"},{value:"traveling",label:"行程中"},{value:"settled",label:"旅程結算"}]} /></div>
           <span>{demoMembers.length} 位成員 · {budgetItems.length} 筆預算{demoBudgetBaseline?.frozen ? " · 出發前快照已凍結" : ""}</span>
           <button className="ghost-button compact" type="button" onClick={() => void resetDemoBudget()}>重設預算案例</button>
         </div> : null}
