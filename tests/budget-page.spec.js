@@ -175,8 +175,13 @@ test("desktop panels stay below the header and reach save without scrolling the 
   await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toBeInViewport();
   const header=await page.locator('.trip-header').boundingBox();
   const side=await page.locator('.bw-side').boundingBox();
-  expect(side.y).toBeGreaterThan(header.y+header.height);
-  expect(side.y+side.height).toBeLessThanOrEqual(892);
+  expect(Math.abs(side.y-header.y-header.height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(side.y+side.height-892)).toBeLessThanOrEqual(1);
+  expect(Math.abs(side.x+side.width-1264)).toBeLessThanOrEqual(1);
+  const workspace=await page.locator('.workspace').boundingBox();
+  const table=await page.locator('.bw-table').boundingBox();
+  expect(Math.abs(table.x-workspace.x)).toBeLessThanOrEqual(1);
+  expect(await page.locator('.bw-side').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   const position=await page.locator('.workspace').evaluate(el=>({top:el.scrollTop,overflow:el.scrollHeight-el.clientHeight}));
   expect(position.top).toBe(0); expect(position.overflow).toBeLessThanOrEqual(1);
   await page.locator('.bw-row').last().scrollIntoViewIfNeeded();
