@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, BedDouble, Car, Check, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
-import { loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
+import { BedDouble, Car, Check, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
 import MenuSelect from "../MenuSelect.jsx";
 import { budgetDay, budgetStage, calculatePricing, comparisonRows, memberLabel, money, participantsFor, pricingLabels, recordAllocations, recordForm } from "../../lib/budgetFinance.js";
 
@@ -8,6 +8,41 @@ const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物
 const categoryIcons = { "機票": Plane, "交通": Car, "住宿": BedDouble, "門票": Ticket, "餐飲": UtensilsCrossed, "購物": ShoppingBag, "其他": Package };
 const palette = ["#52766a", "#a2b2a6", "#b6a28a", "#d3c6b2", "#829da0", "#aeb0a2", "#dcd8cd"];
 const empty = recordForm(null, [], "", []);
+
+function confirmClearPayment(props, budgetId) {
+  const payments = props.actualExpenses.filter((expense) => expense.budget_item_id === budgetId);
+  const hasReceipts = (props.attachments || []).some((attachment) => attachment.target_type === "actual_expense" && payments.some((expense) => expense.id === attachment.target_id));
+  return !payments.length || payments.length === 1 && !hasReceipts || window.confirm(`取消已付款會移除這筆預算的 ${payments.length} 筆實付${hasReceipts ? "及其附件" : ""}，確定取消？`);
+}
+
+async function applyPaymentStatus(props, budget, paid) {
+  let locked = false;
+  try {
+    let payments = props.actualExpenses.filter((expense) => expense.budget_item_id === budget.id);
+    if (props.useEditLocks) {
+      const latest = await props.services.read("budget_items", budget.id, props.activeTrip.id);
+      if (latest.error || !latest.data) return { ok: false, error: latest.error || new Error("找不到預算項目。") };
+      const lock = await props.services.acquire("budget_items", latest.data, props.currentUserId);
+      if (lock.error || lock.lockedByAnotherUser) return { ok: false, error: lock.error || new Error("其他成員正在編輯此項目。") };
+      locked = true;
+      const result = await props.services.readPayments(props.activeTrip.id, budget.id);
+      if (result.error) return { ok: false, error: result.error };
+      payments = result.data;
+    }
+    if (paid) {
+      if (payments.length) return { ok: true };
+      const seed = recordForm(budget, props.budgetParticipants, "budget_item_id", props.members);
+      return await props.onSaveActual({ ...seed, ...budget, ...calculatePricing(seed), budget_item_id: budget.id, is_fixed: false,
+        paid_at: seed.paid_at, participantIds: seed.participantIds, shares: seed.shares }, null, { tripId: props.activeTrip.id });
+    }
+    for (const expense of payments) {
+      const result = await props.onDeleteActual(expense.id, { tripId: props.activeTrip.id, baseUpdatedAt: expense.updated_at });
+      if (result?.ok === false) return result;
+    }
+    return { ok: true };
+  } catch (error) { return { ok: false, error }; }
+  finally { if (locked) await props.services.release("budget_items", budget.id, props.currentUserId); }
+}
 
 // Both editor controllers stay mounted. The right panel and inline cell share
 // this exact draft, lock, conflict baseline and explicit save operation.
@@ -29,6 +64,9 @@ function useWorkspaceEditor(kind, props) {
     serverUpdatedAt: context?.baseUpdatedAt, tripId: activeTrip?.id, userId: currentUserId });
   const { form, replaceForm, resetDraft } = draft;
   const hasUnsavedChanges = draft.hasUnsavedChanges || Boolean(disableDraftAutosave && context && JSON.stringify(form) !== JSON.stringify(context.seed));
+  useEffect(() => {
+    if (!disableDraftAutosave && context?.previousDraftKey) clearDraft(context.previousDraftKey);
+  }, [context?.previousDraftKey, disableDraftAutosave]);
 
   async function close(force = false) {
     if (savingRef.current) return false;
@@ -64,6 +102,8 @@ function useWorkspaceEditor(kind, props) {
       const result = await (isActual ? props.onSaveActual : props.onSave)({ ...form, ...pricing }, context.id,
         { baseUpdatedAt: saveBaseline, tripId: context.tripId });
       if (!result?.ok) {
+        if (result?.persisted) setContext((current) => ({ ...current, id: result.persisted.id, baseUpdatedAt: result.persisted.updated_at,
+          previousDraftKey: current.id ? current.previousDraftKey : draft.draftKey }));
         setError(result?.conflict ? "資料已由其他人更新。你的草稿仍保留，請取消後重新開啟最新資料。" : result?.error?.message || "儲存失敗，請重試。");
         return false;
       }
@@ -93,7 +133,8 @@ function useWorkspaceEditor(kind, props) {
     if (!latest || (latest.entityId !== "new" && !records.some((row) => row.id === latest.entityId))) return;
     // A restored draft keeps its original conflict baseline, not the latest
     // server timestamp. Locks are reacquired and checked before saving.
-    const seed = { ...empty, ...latest.draft.form };
+    const recorded = !isActual && props.actualExpenses.some((expense) => expense.budget_item_id === latest.entityId);
+    const seed = { ...empty, paid: recorded, paidAtOpen: recorded, ...latest.draft.form };
     replaceForm(seed, { dirty: true });
     setContext({ id: latest.entityId === "new" ? null : latest.entityId, tripId: activeTrip.id,
       seed, baseUpdatedAt: latest.draft.serverUpdatedAt || null, restored: true });
@@ -110,7 +151,8 @@ function useWorkspaceEditor(kind, props) {
       if (result.error || result.lockedByAnotherUser) { setError("其他成員正在編輯此項目。"); return false; }
       locked = result.data || record;
     }
-    const seed = { ...recordForm(record, participants, key, members, props.itineraryBudgetLinks), ...overrides };
+    const recorded = !isActual && Boolean(record && props.actualExpenses.some((expense) => expense.budget_item_id === record.id));
+    const seed = { ...recordForm(record, participants, key, members, props.itineraryBudgetLinks), paid: recorded, paidAtOpen: recorded, ...overrides };
     replaceForm(seed);
     setContext({ id: record?.id || null, seed, baseUpdatedAt: locked?.updated_at || null, tripId: activeTrip.id });
     setError("");
@@ -189,10 +231,13 @@ function ItineraryPicker({ items, selectedIds, category, onChange }) {
   </section>;
 }
 
-function RecordEditor({ editor, actual, members, items, budgets, budgetParticipants, actualExpenses, onCancel }) {
+function PaymentToggle({ checked, disabled, onChange }) {
+  return <label className={`bw-payment-toggle${checked ? " is-paid" : ""}`}><input type="checkbox" aria-label="已付款" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} /><span>已付款</span></label>;
+}
+
+function RecordEditor({ editor, actual, members, items, budgets, budgetParticipants, onCancel }) {
   const { form, setForm, context, error, saving } = editor;
   const [membersOpen, setMembersOpen] = useState(false);
-  const hasActual = !actual && context.id && actualExpenses.some((expense) => expense.budget_item_id === context.id);
   const participantOptions = [...members, ...form.participantIds.filter((id) => !members.some((member) => member.user_id === id))
     .map((id) => ({ user_id: id, display_name: `未列成員 · ${id.slice(0, 6)}` }))];
   let pricing;
@@ -210,7 +255,7 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
     if (mode === "custom") setMembersOpen(true);
   }
   return <form className="bw-editor" aria-label={actual ? "實付編輯" : "預算編輯"} autoComplete="off" onSubmit={(event) => { event.preventDefault(); void editor.save(); }}>
-    <div className="bw-detail-heading"><h3>{actual && !context.id && form.budget_item_id ? "登記付款" : `${context.id ? "編輯" : "新增"}${actual ? "實付" : "預算"}`}</h3><button aria-label="關閉編輯" className="bw-icon" type="button" disabled={saving} onClick={onCancel}><X size={17} /></button></div>
+    <div className="bw-detail-heading"><h3>{context.id ? "編輯" : "新增"}{actual ? "實付" : "預算"}</h3><button aria-label="關閉編輯" className="bw-icon" type="button" disabled={saving} onClick={onCancel}><X size={17} /></button></div>
     {error ? <p role="alert" className="bw-warning">{error}</p> : null}
     <label>項目<input name="title" required value={form.title} onChange={(event) => update("title", event.target.value)} /></label>
     {!actual ? <div className="bw-two-fields"><div className="bw-field"><span>分類</span><MenuSelect editable label="分類" value={form.category} onValueChange={(value)=>update("category",value)} options={categoryOrder.map(value=>({value,label:value}))} /></div><label>細項<input value={form.subcategory} onChange={(event) => update("subcategory", event.target.value)} /></label></div> : null}
@@ -234,19 +279,21 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
         <fieldset className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset>
       </details>
     </> : <>
-      {hasActual ? <div className="bw-payment-note"><span><Check size={14} />已付款</span><small>修改預算不會變更實付金額。</small></div> : null}
+      <PaymentToggle checked={Boolean(form.paid)} disabled={saving} onChange={(checked) => update("paid", checked)} />
       <ItineraryPicker items={items} category={form.category} selectedIds={form.linkedItemIds} onChange={(ids) => update("linkedItemIds", ids)} />
     </>}
     <label>備註<textarea rows={2} value={form.note} onChange={(event) => update("note", event.target.value)} /></label>
-    <div className="bw-editor-actions"><button className="ghost-button compact" type="button" disabled={saving} onClick={onCancel}>取消</button><button className="primary-button compact" type="submit" disabled={saving}>{saving ? "儲存中…" : actual && !context.id && form.budget_item_id ? "確認付款" : "儲存"}</button></div>
+    <div className="bw-editor-actions"><button className="ghost-button compact" type="button" disabled={saving} onClick={onCancel}>取消</button><button className="primary-button compact" type="submit" disabled={saving}>{saving ? "儲存中…" : "儲存"}</button></div>
   </form>;
 }
 
-function RecordDetail({ record, actual, participants, members, links, items, payments, canEdit, onEdit, onDelete, onConvert, onViewPayment, renderAttachments }) {
+function RecordDetail({ record, actual, participants, members, links, items, payments, canEdit, paymentBusy, paymentError, onEdit, onDelete, onPaidChange, renderAttachments }) {
   const shares = recordAllocations(record, participants);
   const mode = record.pricing_mode || (record.split_type === "custom" ? "custom" : "split_total");
   return <section className="bw-detail"><div className="bw-detail-heading"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><button className="bw-icon" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={16} /></button></div>
     <h3>{record.title}</h3><PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />
+    {!actual ? <PaymentToggle checked={payments.length > 0} disabled={!canEdit || paymentBusy} onChange={onPaidChange} /> : null}
+    {paymentError ? <p className="bw-warning" role="alert">{paymentError}</p> : null}
     <dl><div><dt>計價方式</dt><dd>{pricingLabels[mode]}</dd></div>{mode === "per_person" ? <div><dt>每人單價</dt><dd>{record.currency} {money(record.unit_amount)}</dd></div> : null}<div><dt>參與成員</dt><dd>{participants.length} 人</dd></div>
       <div><dt>付款人</dt><dd>{memberLabel(members.find((row) => row.user_id === record.payer_id))}</dd></div>
       {record.currency !== "TWD" ? <div><dt>換算匯率</dt><dd>1 {record.currency} = {record.exchange_rate} TWD</dd></div> : null}
@@ -255,8 +302,7 @@ function RecordDetail({ record, actual, participants, members, links, items, pay
     </dl><section><h4>各人負擔 <small>TWD</small></h4>{participants.map((participant) => <div className="bw-stat-line" key={participant.user_id}><span>{memberLabel(members.find((member) => member.user_id === participant.user_id))}</span><b>{shares ? money(shares[participant.user_id]) : "待確認"}</b></div>)}</section>
     {record.note ? <section><h4>備註</h4><p>{record.note}</p></section> : null}
     {renderAttachments?.(record)}
-    {!actual && payments.length ? <section className="bw-payment-list"><h4><Check size={14} />已付款 · {payments.length} 筆</h4>{payments.map((expense) => <button key={expense.id} type="button" onClick={() => onViewPayment(expense)}><span>{memberLabel(members.find((member) => member.user_id === expense.payer_id))}</span><b>NT$ {money(expense.twd_amount)}</b><ArrowRight size={13} /></button>)}</section> : null}
-    <div className="bw-detail-actions">{!actual ? <button className="ghost-button compact" disabled={!canEdit} type="button" onClick={onConvert}>{payments.length ? "再登記一筆付款" : "登記付款"} <ArrowRight size={14} /></button> : null}<button className="bw-icon bw-danger" aria-label="刪除項目" disabled={!canEdit} type="button" onClick={onDelete}><Trash2 size={16} /></button></div>
+    <div className="bw-detail-actions"><button className="bw-icon bw-danger" aria-label="刪除項目" disabled={!canEdit || paymentBusy} type="button" onClick={onDelete}><Trash2 size={16} /></button></div>
   </section>;
 }
 
@@ -272,11 +318,34 @@ export default function BudgetWorkspace(incoming) {
   const [inline, setInline] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
-  const budgetEditor = useWorkspaceEditor("budget", { ...props, restoreDrafts: props.restoreDrafts && view === "budget" });
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const paymentBusyRef = useRef(false);
+  const [paymentError, setPaymentError] = useState("");
+  async function saveBudgetWithPayment(payload, id, meta) {
+    const changed = Boolean(payload.paid) !== Boolean(payload.paidAtOpen);
+    if (changed && !payload.paid && !confirmClearPayment(props, id)) return { ok: false, error: new Error("已保留原付款紀錄。") };
+    const result = await props.onSave({ ...payload, is_fixed: false }, id, meta);
+    if (!result?.ok) return result;
+    if (!changed) return result;
+    const savedId = result.data?.id || id;
+    if (!savedId) return { ok: false, error: new Error("預算已儲存，請重新開啟後設定付款狀態。") };
+    const selectedParticipants = payload.participantIds.map((user_id) => ({ user_id, budget_item_id: savedId, share_amount: payload.shares?.[user_id] }));
+    const payment = await applyPaymentStatus({ ...props, budgetParticipants: selectedParticipants }, { ...payload, id: savedId }, Boolean(payload.paid));
+    if (!payment?.ok) {
+      const latest = props.useEditLocks ? await props.services.read("budget_items", savedId, props.activeTrip.id) : null;
+      return { ok: false, persisted: { id: savedId, updated_at: latest?.data?.updated_at || result.data?.updated_at },
+        error: new Error(`預算已儲存，付款狀態更新失敗：${payment?.error?.message || "請重試"}`) };
+    }
+    return result;
+  }
+  const budgetEditor = useWorkspaceEditor("budget", { ...props, onSave: saveBudgetWithPayment, restoreDrafts: props.restoreDrafts && view === "budget" });
   const actualEditor = useWorkspaceEditor("actual", { ...props, restoreDrafts: props.restoreDrafts && view === "actual" });
   const activeEditor = actualEditor.context ? actualEditor : budgetEditor.context ? budgetEditor : null;
   const editingActual = activeEditor === actualEditor;
   const sideRef = useRef(null);
+  services.useGuard(`budget-payment:${activeTrip.id}`, useMemo(() => ({ isActive: paymentBusy, isDirty: paymentBusy,
+    save: async () => false, discard: async () => false }), [paymentBusy]));
+  useEffect(() => { setPaymentError(""); }, [selected?.id, activeTrip.id]);
   useEffect(() => { if (sideRef.current) sideRef.current.scrollTop = 0; }, [panel, selected?.id, activeEditor?.context?.id, Boolean(activeEditor), activeTrip?.id]);
   useEffect(() => {
     const update = () => setStage(props.demoStage || budgetStage(activeTrip));
@@ -357,14 +426,15 @@ export default function BudgetWorkspace(incoming) {
     if (result?.ok === false) return;
     setSelected(null); setPanel("stats");
   }
-  async function convert() {
-    const seed = recordForm(selectedRecord, budgetParticipants, "budget_item_id", members);
-    if (await actualEditor.open(null, { ...seed, budget_item_id: selectedRecord.id })) { setView("actual"); setPanel("detail"); }
-  }
-  async function viewPayment(expense) {
-    if (!(await services.handoff({ tripId: activeTrip.id }))) return;
-    setView("actual"); setCategory(""); setQuery(""); setInline(null);
-    setSelected({ kind: "actual", id: expense.id }); setPanel("detail");
+  async function togglePayment(paid) {
+    if (paymentBusyRef.current || !canEdit || !selectedRecord || !(await services.handoff({ tripId: activeTrip.id }))) return;
+    if (paymentBusyRef.current) return;
+    if (!paid && !confirmClearPayment(props, selectedRecord.id)) return;
+    paymentBusyRef.current = true; setPaymentBusy(true); setPaymentError("");
+    try {
+      const result = await applyPaymentStatus(props, selectedRecord, paid);
+      if (!result?.ok) setPaymentError(result?.error?.message || "付款狀態更新失敗，請重試。");
+    } finally { paymentBusyRef.current = false; setPaymentBusy(false); }
   }
   const statsRecords = (actual || compare ? actualExpenses : budgetItems).map((row) => ({ ...row, hasActual: actualExpenses.some((expense) => expense.budget_item_id === row.id) }));
   const baselineTotal = baseline?.payload?.items?.reduce((sum, row) => sum + Number(row.twd_amount), 0) || 0;
@@ -400,7 +470,7 @@ export default function BudgetWorkspace(incoming) {
       {inline ? <div className="bw-inline-hint">{inline.field === "title" ? "修改項目" : `以 ${activeEditor?.form.currency} 原幣金額編輯`} · Enter 儲存 · Esc 取消<button className="bw-icon" aria-label="儲存快速修改" type="button" onClick={() => void activeEditor?.save()}><Check size={15} /></button></div> : null}
     </div>
     <aside className="bw-side" ref={sideRef}><div className="bw-side-tabs" role="tablist" aria-label="右側面板"><button role="tab" type="button" aria-selected={panel === "stats"} onClick={() => setPanel("stats")}>旅程統計</button><button role="tab" type="button" aria-selected={panel === "detail"} onClick={() => setPanel("detail")}>項目明細{activeEditor?.hasUnsavedChanges ? " ·" : ""}</button></div>
-      {panel === "stats" ? <Stats viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : activeEditor ? <RecordEditor key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} actualExpenses={actualExpenses} onCancel={() => void activeEditor.close()} /> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} payments={actualExpenses.filter((expense) => expense.budget_item_id === selectedRecord.id)} canEdit={canEdit && (!props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} onEdit={() => void (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord)} onDelete={() => void remove()} onConvert={() => void convert()} onViewPayment={(expense) => void viewPayment(expense)} renderAttachments={selected.kind === "actual" ? props.renderAttachments : null} /> : <div className="bw-empty">選取項目查看明細</div>}
+      {panel === "stats" ? <Stats viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : activeEditor ? <RecordEditor key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} onCancel={() => void activeEditor.close()} /> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} payments={actualExpenses.filter((expense) => expense.budget_item_id === selectedRecord.id)} canEdit={canEdit && !paymentBusy && (!props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} paymentBusy={paymentBusy} paymentError={paymentError} onEdit={() => void (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord)} onDelete={() => void remove()} onPaidChange={(paid) => void togglePayment(paid)} renderAttachments={selected.kind === "actual" ? props.renderAttachments : null} /> : <div className="bw-empty">選取項目查看明細</div>}
     </aside>
   </section>;
 }

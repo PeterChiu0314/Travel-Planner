@@ -42,9 +42,9 @@ test("per-person pricing, custom split and actual conversion preserve the origin
   await form.getByRole("button", { name: "儲存", exact: true }).click();
   await expect(row).toContainText("依成員");
   await row.getByRole("button", { name: "兩人門票", exact: true }).click();
-  await page.getByRole("button", { name: "登記付款", exact: true }).click();
-  const actualForm=page.getByRole("form", { name: "實付編輯" });
-  await actualForm.getByRole("button", { name: "確認付款", exact: true }).click();
+  await page.getByRole("checkbox", { name: "已付款", exact: true }).check();
+  await expect(page.getByRole("form", { name: "實付編輯" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "實付", exact: true }).click();
   await expect(page.getByRole("table", { name: "實付明細", exact: true })).toContainText("兩人門票");
   await page.getByRole("tab", { name: "預算", exact: true }).click();
   await expect(row).toContainText("308"); await expect(row).toContainText("實付");
@@ -102,26 +102,49 @@ test("traveling prioritizes actuals; only settlement exposes frozen comparison",
   await page.getByRole("tab",{name:"對照",exact:true}).click();
   await expect(page.locator(".bw-comparison-summary")).toHaveText(before);
 });
-test("one payment entry requires confirmation and budget editing never changes the saved payment",async({page})=>{
+test("cancelled payment checkbox drafts never create or remove actual expenses",async({page})=>{
   await page.getByRole("button",{name:"新增預算",exact:true}).click(); const form=editor(page);
   await form.getByLabel("項目",{exact:true}).fill("已購機票"); await form.getByLabel("總額",{exact:true}).fill("12000");
-  await expect(form.getByLabel("這筆已付款")).toHaveCount(0);
+  await form.getByRole('checkbox',{name:'已付款',exact:true}).check();
+  page.once('dialog',dialog=>dialog.accept());
+  await form.getByRole('button',{name:'取消',exact:true}).click();
+  await expect(rowByTitle(page,'已購機票')).toHaveCount(0);
+  await rowByTitle(page,'去程機票・桃園 → 關西').getByRole('button',{name:'去程機票・桃園 → 關西',exact:true}).click();
+  await page.getByRole('button',{name:'編輯項目',exact:true}).click();
+  await expect(form.getByRole('checkbox',{name:'已付款',exact:true})).toBeChecked();
+  await form.getByRole('checkbox',{name:'已付款',exact:true}).uncheck();
+  page.once('dialog',dialog=>dialog.accept());
+  await form.getByRole('button',{name:'取消',exact:true}).click();
+  await expect(page.getByRole('checkbox',{name:'已付款',exact:true})).toBeChecked();
+  await page.getByRole('tab',{name:'實付',exact:true}).click();
+  await expect(page.locator('.bw-row')).toHaveCount(8);
+});
+
+test("paid toggle saves with the budget and detail changes preserve saved payment amounts",async({page})=>{
+  await page.getByRole("button",{name:"新增預算",exact:true}).click(); const form=editor(page);
+  await form.getByLabel("項目",{exact:true}).fill("已購機票"); await form.getByLabel("總額",{exact:true}).fill("12000");
+  await form.getByRole('checkbox',{name:'已付款',exact:true}).check();
   await form.getByRole("button",{name:"儲存",exact:true}).click();
-  const row=rowByTitle(page,"已購機票"); await expect(row).toContainText("預算");
+  const row=rowByTitle(page,"已購機票"); await expect(row).toContainText("實付");
   await row.getByRole('button',{name:'已購機票',exact:true}).click();
-  await page.getByRole('button',{name:'登記付款',exact:true}).click();
-  await expect(page.getByRole('form',{name:'實付編輯'})).toContainText('登記付款');
-  await page.getByRole('form',{name:'實付編輯'}).getByRole('button',{name:'取消',exact:true}).click();
-  await page.getByRole('tab',{name:'預算',exact:true}).click();
+  await page.getByRole('checkbox',{name:'已付款',exact:true}).uncheck();
   await expect(row).toContainText('預算');
-  await row.getByRole('button',{name:'已購機票',exact:true}).click();
-  await page.getByRole('button',{name:'登記付款',exact:true}).click();
-  await page.getByRole('form',{name:'實付編輯'}).getByRole('button',{name:'確認付款',exact:true}).click();
-  await page.getByRole('tab',{name:'預算',exact:true}).click();
+  await page.getByRole('checkbox',{name:'已付款',exact:true}).check();
+  await expect(page.getByRole('form',{name:'實付編輯'})).toHaveCount(0);
   await expect(row).toContainText('實付');
   await row.getByRole("button",{name:"已購機票"}).click(); await page.getByRole("button",{name:"編輯項目"}).click();
   await form.getByLabel("總額",{exact:true}).fill("13000"); await form.getByRole("button",{name:"儲存",exact:true}).click();
   await page.getByRole("tab",{name:"實付",exact:true}).click(); await expect(row).toHaveCount(1); await expect(row).toContainText("12,000");
+  await page.getByRole('tab',{name:'預算',exact:true}).click();
+  await row.getByRole('button',{name:'已購機票',exact:true}).click();
+  await page.getByRole('button',{name:'編輯項目',exact:true}).click();
+  await expect(form.getByRole('checkbox',{name:'已付款',exact:true})).toBeChecked();
+  await form.getByRole('checkbox',{name:'已付款',exact:true}).uncheck();
+  await form.getByRole('button',{name:'儲存',exact:true}).click();
+  await expect(row).toContainText('預算');
+  await page.getByRole('tab',{name:'實付',exact:true}).click();
+  await expect(row).toHaveCount(0);
+  await expect(page.locator('.bw-row')).toHaveCount(8);
 });
 test("historical trip without a baseline never displays a fabricated zero budget",async({page})=>{
   await page.getByRole("button",{name:"系統測試專用",exact:true}).click();

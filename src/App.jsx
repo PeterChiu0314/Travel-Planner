@@ -5262,7 +5262,7 @@ export default function App() {
       return { ok: false, error };
     }
     await loadTripData(activeTrip.id);
-    return { ok: true };
+    return { ok: true, data: { id: budgetId } };
   }
 
   async function deleteBudget(budgetId, meta = {}) {
@@ -5377,6 +5377,7 @@ export default function App() {
     const { error } = await supabase.from("actual_expenses").delete().eq("id", expenseId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
+    return { ok: !error, error };
   }
 
   async function saveBudgetWorkspaceRecord(kind, payload, editingId, meta) {
@@ -8741,7 +8742,7 @@ function DemoApp({ initialSection }) {
         })),
       ]);
       saveFixedActual(editingId);
-      return { ok: true, data: { id: editingId } };
+      return { ok: true, data: { id: editingId, updated_at: nextBudget.updated_at } };
     }
 
     const budgetId = demoId("demo-budget");
@@ -8764,7 +8765,7 @@ function DemoApp({ initialSection }) {
       })),
     ]);
     saveFixedActual(budgetId);
-    return { ok: true, data: { id: budgetId } };
+    return { ok: true, data: { id: budgetId, updated_at: nextBudget.updated_at } };
   }
 
   function savePersonalLuggage(payload, editingId) {
@@ -13665,6 +13666,7 @@ const budgetEditorServices = {
   handoff: requestActiveEditorHandoff,
   acquire: (table, record, userId) => record ? acquireEditLock({ record, supabase, table, userId }) : Promise.resolve({ error: new Error("找不到項目") }),
   read: (table, id, tripId) => supabase.from(table).select("*").eq("id", id).eq("trip_id", tripId).maybeSingle(),
+  readPayments: (tripId, budgetId) => supabase.from("actual_expenses").select("*").eq("trip_id", tripId).eq("budget_item_id", budgetId),
   isLocked: isLockedByAnotherUser,
   release: (table, recordId, userId) => releaseEditLock({ recordId, supabase, table, userId }),
 };

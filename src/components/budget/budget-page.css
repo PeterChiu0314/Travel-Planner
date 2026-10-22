@@ -110,9 +110,10 @@
 .bw-calculation small { display: block; font-size: 10px; color: var(--muted); padding-top: 4px; }
 .bw-editor .bw-check { display: flex; align-items: center; gap: 7px; font-size: 11px; line-height: 1.5; }
 .bw-editor-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
-.bw-payment-note { display: grid; gap: 5px; }
-.bw-payment-note > span { display: flex; align-items: center; gap: 6px; color: var(--color-primary); }
-.bw-payment-note small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.bw-editor .bw-payment-toggle, .bw-detail .bw-payment-toggle { display: flex; align-items: center; gap: 8px; padding: 10px 0; color: var(--muted); font-size: 12px; cursor: pointer; }
+.bw-payment-toggle input[type=checkbox] { width: 14px; height: 14px; min-height: 14px; margin: 0; padding: 0; accent-color: var(--color-primary); }
+.bw-editor .bw-payment-toggle.is-paid, .bw-detail .bw-payment-toggle.is-paid { color: var(--color-primary); }
+.bw-payment-toggle:has(input:disabled) { cursor: default; opacity: .65; }
 .bw-link-picker { min-width: 0; }
 .bw-link-heading { display: flex; align-items: center; justify-content: space-between; color: var(--muted); margin-bottom: 7px; }
 .bw-link-heading small { font-size: 11px; }
@@ -145,9 +146,6 @@
 .bw-table-scroll::-webkit-scrollbar-button, .bw-side::-webkit-scrollbar-button, .bw-link-results::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 .bw-table-scroll::-webkit-scrollbar-track, .bw-side::-webkit-scrollbar-track, .bw-link-results::-webkit-scrollbar-track { background: transparent; }
 .bw-table-scroll::-webkit-scrollbar-thumb, .bw-side::-webkit-scrollbar-thumb, .bw-link-results::-webkit-scrollbar-thumb { background: var(--board-scrollbar-thumb); border-radius: 999px; }
-.bw-payment-list h4 { display: flex; align-items: center; gap: 5px; }
-.bw-payment-list button { display: flex; align-items: center; gap: 6px; width: 100%; border: 0; padding: 6px 0; background: transparent; cursor: pointer; text-align: left; font-size: 12px; }
-.bw-payment-list button b { margin-left: auto; }
 .bw-secondary-fields { border-block: 1px solid var(--line); padding: 10px 0; }
 .bw-secondary-fields summary { cursor: pointer; margin-bottom: 10px; color: var(--muted); }
 .bw-secondary-fields label, .bw-secondary-fields fieldset { margin: 10px 0; }
