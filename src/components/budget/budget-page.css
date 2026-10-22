@@ -39,7 +39,7 @@
 .bw-row input { width: 100%; min-width: 0; padding: 6px; border: 1px solid var(--color-primary); border-radius: 3px; background: white; font-variant-numeric: tabular-nums; }
 .bw-status { background: #eeece5; color: #6f7064; border-radius: 4px; padding: 3px 6px; white-space: nowrap; }
 .bw-status.paid { background: #e1ece5; color: #385b49; }
-.bw-side { position: sticky; top: 12px; align-self: start; max-height: calc(100vh - 24px); overflow-y: auto; border-left: 1px solid var(--line); min-width: 0; padding: 0 20px 20px; }
+.bw-side { border-left: 1px solid var(--line); min-width: 0; padding: 0 20px 20px; background: var(--panel); }
 .bw-side-tabs { border-bottom: 1px solid var(--line); margin-bottom: 18px; gap: 25px; }
 .bw-side-tabs button { padding: 19px 0 14px; }
 .bw-stats, .bw-detail, .bw-editor { font-size: 12px; }
@@ -85,14 +85,35 @@
 .bw-modes button { border: 1px solid var(--line); background: transparent; padding: 7px 6px; font-size: 11px; flex: 1; white-space: nowrap; cursor: pointer; }
 .bw-modes button[aria-pressed=true] { background: #e7eee6; border-color: #8da495; color: var(--color-primary); font-weight: 600; }
 .bw-participants legend { display: flex; width: 100%; justify-content: space-between; }
-.bw-editor .bw-participants label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 0; color: var(--ink); }
-.bw-participants input[type=checkbox], .bw-editor input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--color-primary); margin: 0; }
+.bw-editor .bw-participants label { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-height: 30px; padding: 3px 0; color: var(--ink); }
+.bw-participants input[type=checkbox], .bw-editor input[type=checkbox] { flex: 0 0 14px; width: 14px; height: 14px; min-height: 14px; padding: 0; accent-color: var(--color-primary); margin: 0; }
 .bw-participants b { margin-left: auto; font-weight: 500; font-variant-numeric: tabular-nums; }
-.bw-participants input[type=number] { width: 100px; margin-left: auto; text-align: right; }
-.bw-calculation { display: flex; justify-content: space-between; gap: 8px; padding: 12px 0; border-block: 1px solid var(--line); color: var(--color-primary); }
+.bw-participants input[type=number] { width: 90px; min-height: 28px; padding: 4px 6px; margin-left: auto; text-align: right; }
+.bw-calculation { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 0; border-block: 1px solid var(--line); color: var(--color-primary); font-variant-numeric: tabular-nums; }
+.bw-calculation > div { display: grid; align-content: start; gap: 6px; }
+.bw-calculation > div:last-child { text-align: right; }
+.bw-calculation > div > span { color: var(--muted); font-size: 11px; }
+.bw-calculation strong { font-size: 14px; }
 .bw-calculation small { display: block; font-size: 10px; color: var(--muted); padding-top: 4px; }
 .bw-editor .bw-check { display: flex; align-items: center; gap: 7px; font-size: 11px; line-height: 1.5; }
 .bw-editor-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
+.bw-payment-note { display: grid; gap: 5px; }
+.bw-payment-note > span { display: flex; align-items: center; gap: 6px; color: var(--color-primary); }
+.bw-payment-note small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.bw-link-picker { min-width: 0; }
+.bw-link-heading { display: flex; align-items: center; justify-content: space-between; color: var(--muted); margin-bottom: 7px; }
+.bw-link-heading small { font-size: 11px; }
+.bw-linked-items { list-style: none; margin: 0 0 6px; padding: 0; }
+.bw-linked-items li { display: flex; align-items: center; gap: 4px; padding: 3px 0; }
+.bw-linked-items li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.bw-link-options summary { color: var(--color-primary); cursor: pointer; padding: 4px 0; }
+.bw-link-filters { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 6px; margin: 6px 0 10px; }
+.bw-link-filters input, .bw-link-filters select { min-height: 32px; padding: 5px 6px; }
+.bw-link-results { max-height: 210px; overflow-y: auto; overscroll-behavior: contain; }
+.bw-link-results fieldset + fieldset { margin-top: 10px; }
+.bw-link-results legend { margin-bottom: 4px; font-size: 11px; }
+.bw-link-results label { display: flex; align-items: center; gap: 7px; padding: 5px 0; min-height: 30px; line-height: 1.5; color: var(--ink); }
+.bw-link-results label > span { min-width: 0; overflow-wrap: anywhere; }
 .bw-secondary-fields { border-block: 1px solid var(--line); padding: 10px 0; }
 .bw-secondary-fields summary { cursor: pointer; margin-bottom: 10px; color: var(--muted); }
 .bw-secondary-fields label, .bw-secondary-fields fieldset { margin: 10px 0; }
@@ -107,8 +128,20 @@
 .demo-budget-controls select { width: auto; padding: 6px 24px 6px 8px; font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 4px; }
 .demo-budget-controls button { margin-left: auto; font-size: 12px; white-space: nowrap; }
 .demo-sidebar .section-nav-button:disabled { opacity: .5; cursor: default; }
-@media (min-width: 761px) {
-  .demo-workspace .bw-side { max-height: calc(100vh - 200px); }
+@media (min-width: 1101px) {
+  .app-shell-workspace .workspace:has(> .budget-workspace),
+  .app-shell-workspace .workspace:has(> .trip-editor > div:not(.hidden-section) > .budget-workspace) { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
+  .trip-editor:has(> div:not(.hidden-section) > .budget-workspace),
+  .trip-editor > div:not(.hidden-section):has(> .budget-workspace) { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .budget-workspace { flex: 1; min-height: 0; overflow: hidden; }
+  .demo-budget-controls { flex-shrink: 0; }
+  .bw-main { display: flex; flex-direction: column; min-height: 0; }
+  .bw-toolbar, .bw-comparison-summary, .bw-inline-hint { flex-shrink: 0; }
+  .bw-table-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  .bw-table thead { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+  .bw-side { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: 68px; }
+  .bw-side-tabs { position: sticky; top: 0; z-index: 2; background: var(--panel); }
+  .bw-editor-actions { position: sticky; bottom: -20px; z-index: 1; margin-top: 0; padding: 10px 0; border-top: 1px solid var(--line); background: var(--panel); }
 }
 @media (max-width: 1190px) and (min-width: 761px) {
   .budget-workspace { grid-template-columns: minmax(0, 1fr) 280px; }

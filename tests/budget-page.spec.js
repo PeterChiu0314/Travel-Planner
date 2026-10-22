@@ -27,6 +27,7 @@ test("per-person pricing, custom split and actual conversion preserve the origin
   await form.getByLabel("每人單價", { exact: true }).fill("700");
   await form.getByLabel("幣別", { exact: true }).selectOption("JPY");
   await form.getByLabel(/匯率/).fill("0.22");
+  await form.locator('.bw-member-options > summary').click();
   const people = form.locator('.bw-participants input[type=checkbox]');
   for (let i=2; i<await people.count(); i++) await people.nth(i).uncheck();
   await form.getByRole("button", { name: "儲存", exact: true }).click();
@@ -69,6 +70,7 @@ test("double-click shares the right draft; blur does not save, Escape cancels, E
 test("empty participants cannot save; view navigation uses the editor guard",async({page})=>{
   await page.getByRole("button",{name:"新增預算",exact:true}).click();
   const form=editor(page); await form.getByLabel("項目",{exact:true}).fill("草稿");
+  await form.locator('.bw-member-options > summary').click();
   for(const checkbox of await form.locator('.bw-participants input[type=checkbox]').all()) await checkbox.uncheck();
   await form.getByRole("button",{name:"儲存",exact:true}).click();
   await expect(form.getByRole("alert")).toContainText("至少選擇一位");
@@ -100,7 +102,7 @@ test("traveling prioritizes actuals; only settlement exposes frozen comparison",
 test("fixed costs create editable actuals only once",async({page})=>{
   await page.getByRole("button",{name:"新增預算",exact:true}).click(); const form=editor(page);
   await form.getByLabel("項目",{exact:true}).fill("已購機票"); await form.getByLabel("總額",{exact:true}).fill("12000");
-  await form.getByLabel("同時建立可編輯的實付紀錄").check(); await form.getByRole("button",{name:"儲存",exact:true}).click();
+  await form.getByLabel("這筆已付款").check(); await form.getByRole("button",{name:"儲存",exact:true}).click();
   const row=rowByTitle(page,"已購機票"); await expect(row).toContainText("實付");
   await row.getByRole("button",{name:"已購機票"}).click(); await page.getByRole("button",{name:"編輯項目"}).click();
   await form.getByLabel("總額",{exact:true}).fill("13000"); await form.getByRole("button",{name:"儲存",exact:true}).click();
@@ -111,6 +113,60 @@ test("historical trip without a baseline never displays a fabricated zero budget
   await page.getByRole("tab",{name:"對照",exact:true}).click();
   await expect(page.getByText("無出發前快照，無法還原當時預算。")).toBeVisible();
   await expect(page.locator(".bw-row")).toHaveCount(0);
+});
+test("compact editor defaults, personal calculation and searchable itinerary links survive save",async({page})=>{
+  await page.getByRole('button',{name:'新增預算',exact:true}).click();
+  const form=editor(page);
+  await expect(form.locator('.bw-member-options')).not.toHaveAttribute('open');
+  await form.getByLabel('項目',{exact:true}).fill('關聯行程測試');
+  await form.getByLabel('總額',{exact:true}).fill('1000');
+  await expect(form.locator('.bw-calculation')).toContainText('每人NT$ 200');
+  await expect(form.locator('.bw-calculation')).toContainText('總額NT$ 1,000');
+  await expect(form.getByLabel('付款人',{exact:true})).toBeVisible();
+  await form.locator('.bw-member-options > summary').click();
+  expect((await form.locator('.bw-participants label').first().boundingBox()).height).toBeLessThanOrEqual(34);
+  await form.locator('.bw-participants input[type=checkbox]').last().uncheck();
+  await expect(form.locator('.bw-calculation')).toContainText('每人NT$ 250');
+  await form.locator('.bw-member-options > summary').click();
+  await form.locator('.bw-link-options > summary').click();
+  await form.getByLabel('關聯行程日期',{exact:true}).selectOption('1');
+  await form.getByLabel('搜尋關聯行程',{exact:true}).fill('宇治');
+  await form.locator('.bw-link-results').getByLabel('宇治吃午餐',{exact:true}).check();
+  await form.locator('.bw-link-results').getByLabel('宇治市漫遊',{exact:true}).check();
+  await expect(form.locator('.bw-linked-items li')).toHaveCount(2);
+  await form.getByRole('button',{name:'取消關聯 宇治吃午餐',exact:true}).click();
+  await form.getByRole('button',{name:'儲存',exact:true}).click();
+  const row=rowByTitle(page,'關聯行程測試');
+  await expect(row).toContainText('Day 2');
+  await row.getByRole('button',{name:'關聯行程測試',exact:true}).click();
+  await expect(page.locator('.bw-detail .bw-calculation')).toContainText('每人NT$ 250');
+  await expect(page.locator('.bw-detail .bw-calculation')).toContainText('總額NT$ 1,000');
+  await page.getByRole('button',{name:'編輯項目',exact:true}).click();
+  await expect(form.locator('.bw-linked-items')).toContainText('宇治市漫遊');
+  await expect(form.locator('.bw-linked-items li')).toHaveCount(1);
+  await expect(form.locator('.bw-member-options')).not.toHaveAttribute('open');
+});
+
+test("desktop panels stay below the header and reach save without scrolling the whole workspace",async({page})=>{
+  await page.setViewportSize({width:1264,height:892});
+  await page.locator('.bw-row').first().locator('td').nth(1).getByRole('button').dblclick();
+  const form=editor(page);
+  await expect(form.getByText('已記錄實付',{exact:true})).toBeVisible();
+  await expect(form.getByLabel('這筆已付款')).toHaveCount(0);
+  await form.locator('.bw-member-options > summary').click();
+  await form.locator('.bw-link-options > summary').click();
+  await form.getByLabel('備註',{exact:true}).scrollIntoViewIfNeeded();
+  await expect(form.getByRole('button',{name:'儲存',exact:true})).toBeInViewport();
+  await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toBeInViewport();
+  const header=await page.locator('.trip-header').boundingBox();
+  const side=await page.locator('.bw-side').boundingBox();
+  expect(side.y).toBeGreaterThan(header.y+header.height);
+  expect(side.y+side.height).toBeLessThanOrEqual(892);
+  const position=await page.locator('.workspace').evaluate(el=>({top:el.scrollTop,overflow:el.scrollHeight-el.clientHeight}));
+  expect(position.top).toBe(0); expect(position.overflow).toBeLessThanOrEqual(1);
+  await page.locator('.bw-row').last().scrollIntoViewIfNeeded();
+  await expect(page.getByRole('button',{name:'新增預算',exact:true})).toBeInViewport();
+  await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toBeInViewport();
 });
 for(const width of [390,1280,1440])test(`${width}px table and editor remain operable`,async({page})=>{
   const errors=[];page.on("pageerror",e=>errors.push(e.message)); await page.setViewportSize({width,height:900});
