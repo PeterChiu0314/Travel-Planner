@@ -125,6 +125,7 @@ Presentation follow-up: user selected the first capsule design and requested com
 
 ### Selection and category folding follow-up
 
+- Clarified edit alignment: detail category and title are grouped in `.bw-detail-title`, category line-height 16px and 2px gap to title (no title margin). The 32px edit button centers against both lines together, including wrapped titles. Focused Budget **22/22**, build/diff and in-app visual verification passed; screenshot `budget-detail-title-centered.png` saved outside repo. Previous category-only center assertion is replaced with a combined text-block center check.
 - Final full Playwright regression: **379/379 passed**.
 - Repeat click on a selected detail item clears selection and returns to statistics. The second click event of a native double-click is ignored by selection so the double-click edit path remains available. Active editing retains existing draft protections.
 - Every category starts expanded. Whole group row or its keyboard-accessible label button toggles it; chevrons show current expansion. Click anywhere on the header row to collapse all currently filtered categories, or expand all when all are collapsed. The status/difference header button also provides keyboard access. Folding only hides item rows: counts, subtotals and statistics are unchanged. State resets on trip change; collapse resolves the active-editor handoff before hiding rows.

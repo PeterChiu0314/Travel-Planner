@@ -184,6 +184,11 @@ test("repeat selection clears details while double click still edits; category f
   const editBox=await editButton.boundingBox(), heading=await page.locator('.bw-detail-heading').boundingBox();
   expect(editBox.width).toBe(32); expect(editBox.height).toBe(32);
   expect(Math.abs(editBox.y+editBox.height/2-heading.y-heading.height/2)).toBeLessThan(1);
+  const categoryBox=await page.locator('.bw-detail-title > span').boundingBox();
+  const titleBox=await page.locator('.bw-detail-title > h3').boundingBox();
+  expect(titleBox.y-categoryBox.y-categoryBox.height).toBe(2);
+  expect(categoryBox.height).toBe(16);
+  expect(Math.abs(editBox.y+editBox.height/2-(categoryBox.y+(titleBox.y+titleBox.height-categoryBox.y)/2))).toBeLessThan(1);
   expect(await editButton.evaluate(el=>getComputedStyle(el).borderTopWidth)).toBe('1px');
   await item.click(); await expect(page.locator('.bw-row.is-selected')).toHaveCount(0);
   await expect(page.locator('.bw-detail')).toHaveCount(0);

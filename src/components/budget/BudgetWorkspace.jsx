@@ -290,8 +290,8 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
 function RecordDetail({ record, actual, participants, members, links, items, payments, canEdit, paymentBusy, paymentError, onEdit, onDelete, onPaidChange, renderAttachments }) {
   const shares = recordAllocations(record, participants);
   const mode = record.pricing_mode || (record.split_type === "custom" ? "custom" : "split_total");
-  return <section className="bw-detail"><div className="bw-detail-heading"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><button className="bw-icon bw-edit-item" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={18} /></button></div>
-    <h3>{record.title}</h3><PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />
+  return <section className="bw-detail"><div className="bw-detail-heading"><div className="bw-detail-title"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><h3>{record.title}</h3></div><button className="bw-icon bw-edit-item" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={18} /></button></div>
+    <PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />
     {paymentError ? <p className="bw-warning" role="alert">{paymentError}</p> : null}
     <dl><div><dt>計價方式</dt><dd>{pricingLabels[mode]}</dd></div>{mode === "per_person" ? <div><dt>每人單價</dt><dd>{record.currency} {money(record.unit_amount)}</dd></div> : null}<div><dt>參與成員</dt><dd>{participants.length} 人</dd></div>
       <div><dt>付款人</dt><dd>{memberLabel(members.find((row) => row.user_id === record.payer_id))}</dd></div>
