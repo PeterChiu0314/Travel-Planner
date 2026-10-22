@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { roundMinutesUpToStep } from "../src/lib/timelineTime.js";
 
-const baseUrl = "http://127.0.0.1:5173";
+const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:5173";
 let viteServer = null;
 
 async function isServerReady() {
@@ -28,7 +28,7 @@ test.beforeAll(async () => {
   if (await isServerReady()) return;
   viteServer = spawn(
     process.execPath,
-    ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "5173"],
+    ["node_modules/vite/bin/vite.js", "--host", new URL(baseUrl).hostname, "--port", new URL(baseUrl).port || "5173"],
     {
       cwd: process.cwd(),
       stdio: "ignore",

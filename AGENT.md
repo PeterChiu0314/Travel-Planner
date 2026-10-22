@@ -8,6 +8,7 @@ Root Markdown files are entry points:
 
 - `AGENT.md`: agent operating guide.
 - `CURRENT_TASK.md`: current project status and active phase handoff.
+- `DESIGN.md`: current Formal desktop design rules. Desktop is the current development and acceptance priority; mobile/tablet design is deferred.
 - `README.md`: general project README.
 
 Current working documents live in `docs/`:
@@ -24,7 +25,7 @@ Historical documents live in `docs/archive/`, grouped by project area:
 - Consult archived files only when the current task requires historical context that is not available in `CURRENT_TASK.md` or the active `docs/` files.
 - The old `docs/gpt/` folder has been removed. Do not recreate it; place active documents in `docs/` and historical documents in `docs/archive/`.
 
-When starting a new phase, read `CURRENT_TASK.md` first, then only the relevant active files under `docs/`.
+When starting a new phase, read `CURRENT_TASK.md` first, then root `DESIGN.md` and only the relevant active files under `docs/`. For current UI scope and acceptance, follow `DESIGN.md`; older mobile-first direction below remains future context while mobile/tablet work is deferred.
 
 ## 1. Product Philosophy
 
@@ -87,7 +88,8 @@ Important correction for future agents:
 Key files:
 
 - `src/App.jsx`: main app container, route branching, most UI components, production data callbacks, demo containers.
-- `src/styles.css`: all current styling.
+- `src/styles.css`: shared baseline styles and legacy page styling.
+- `src/components/budget/` and `src/components/workspace/`: scoped desktop workspace UI and CSS; shared by Formal and local Demo.
 - `src/lib/supabase.js`: Supabase client creation.
 - `src/lib/draftAutosave.js`: local draft autosave utilities and hook.
 - `src/lib/editLocks.js`: edit lock utilities.
@@ -152,7 +154,7 @@ View-ish components inside `src/App.jsx` include:
 Demo-specific components/containers:
 
 - `DemoApp`
-- `DemoLuggageView`
+- Demo uses `LuggagePanel`, `AccommodationPanel`, `TodoGuidePanel` and `SettlementPanel` with local callbacks; disable draft autosave/edit locks and attachment infrastructure explicitly.
 - Demo mock data factories near the top of `src/App.jsx`.
 
 Direction:

@@ -1,5 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { WorkspaceActions, WorkspaceHeading, WorkspaceProgress, WorkspaceSearch, WorkspaceSummary, workspaceMoney } from "./components/workspace/TravelWorkspace.jsx";
+import { createDemoGuides, createDemoStays, createDemoTodos } from "./components/workspace/demoWorkspaceData.js";
 import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
 import MenuSelect from "./components/MenuSelect.jsx";
 import { budgetStage, calculatePricing, recordForm, settlementBalances } from "./lib/budgetFinance.js";
@@ -2030,6 +2032,8 @@ function demoSectionFromPath() {
   if (path === "/demo" || path === "/demo/") return "timeline";
   if (path === "/demo/timeline") return "timeline";
   if (path === "/demo/budget") return "budget";
+  if (path === "/demo/accommodation") return "accommodation";
+  if (path === "/demo/todo") return "todo";
   if (path === "/demo/settlement") return "settlement";
   if (path === "/demo/luggage") return "luggage";
   return null;
@@ -2043,6 +2047,8 @@ function demoSectionLabel(section) {
   return {
     timeline: "行程",
     budget: "預算",
+    accommodation: "住宿資訊",
+    todo: "待辦指南",
     luggage: "行李",
     settlement: "分帳結算",
   }[section] || section;
@@ -8287,8 +8293,26 @@ function DemoApp({ initialSection }) {
       return next === previous ? current : { ...current, [tripId]: next };
     });
   }, [demoActiveTrip.id, demoActiveTrip.start_date, demoStage, budgetItems, budgetParticipants, itineraryBudgetLinks, timelineItems]);
-  const [luggageItems, setLuggageItems] = useState(() => createDemoLuggageItems());
-  const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
+  const [demoSupportByTrip, setDemoSupportByTrip] = useState(() => Object.fromEntries(demoTrips.map((trip, index) => [trip.id, {
+    accommodations: index === 0 ? createDemoStays(trip) : [],
+    todoItems: index === 0 ? createDemoTodos(trip) : [],
+    guideItems: index === 0 ? createDemoGuides() : [],
+    luggageItems: index === 0 ? createDemoLuggageItems() : [],
+    sharedLuggageItems: index === 0 ? createDemoSharedLuggageItems() : [],
+  }])));
+  const support = demoSupportByTrip[demoActiveTrip.id];
+  const { accommodations, todoItems, guideItems, luggageItems, sharedLuggageItems } = support;
+  function setSupportField(key, update) {
+    const tripId = demoActiveTrip.id;
+    setDemoSupportByTrip((current) => ({ ...current, [tripId]: { ...current[tripId],
+      [key]: typeof update === "function" ? update(current[tripId][key]) : update } }));
+  }
+  const setAccommodations = (update) => setSupportField("accommodations", update);
+  const setTodoItems = (update) => setSupportField("todoItems", update);
+  const setGuideItems = (update) => setSupportField("guideItems", update);
+  const setLuggageItems = (update) => setSupportField("luggageItems", update);
+  const setSharedLuggageItems = (update) => setSupportField("sharedLuggageItems", update);
+  const [luggageTab, setLuggageTab] = useState("personal");
   const [focusedItemId, setFocusedItemId] = useState(null);
   const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, toggleRouteMap } = useTimelineMapTransition();
   const demoMapPointPicker = {
@@ -8781,19 +8805,20 @@ function DemoApp({ initialSection }) {
   }
 
   function savePersonalLuggage(payload, editingId) {
-    if (!payload.title.trim()) return;
+    if (!payload.title.trim()) return { ok: false };
     if (editingId) {
       setLuggageItems((current) =>
         current.map((item) =>
           item.id === editingId ? { ...item, title: payload.title.trim(), category: payload.category.trim() } : item,
         ),
       );
-      return;
+      return { ok: true };
     }
     setLuggageItems((current) => [
       ...current,
       { id: demoId("demo-luggage"), title: payload.title.trim(), category: payload.category.trim(), packed: false },
     ]);
+    return { ok: true };
   }
 
   function saveActualExpense(payload, editingId, meta = {}) {
@@ -8857,7 +8882,7 @@ function DemoApp({ initialSection }) {
   }
 
   function saveSharedLuggage(payload, editingId) {
-    if (!payload.title.trim()) return;
+    if (!payload.title.trim()) return { ok: false };
     if (editingId) {
       setSharedLuggageItems((current) =>
         current.map((item) =>
@@ -8866,7 +8891,7 @@ function DemoApp({ initialSection }) {
             : item,
         ),
       );
-      return;
+      return { ok: true };
     }
     setSharedLuggageItems((current) => [
       ...current,
@@ -8879,6 +8904,17 @@ function DemoApp({ initialSection }) {
         confirmed_by_owner: false,
       },
     ]);
+    return { ok: true };
+  }
+
+  function saveDemoRecord(key, form, editingId, meta = {}) {
+    if (!(form.title || form.name || "").trim() || (meta.tripId && meta.tripId !== demoActiveTrip.id)) return { ok: false };
+    if (editingId && !support[key].some((item) => item.id === editingId)) return { ok: false };
+    const record = { ...form, updated_at: new Date().toISOString() };
+    setSupportField(key, (current) => editingId
+      ? current.map((item) => item.id === editingId ? { ...item, ...record } : item)
+      : [...current, { ...record, id: demoId(`demo-${key}`), completed: false }]);
+    return { ok: true };
   }
 
   return (
@@ -8921,7 +8957,7 @@ function DemoApp({ initialSection }) {
         <nav className="section-nav" aria-label="Demo 導覽">
           {desktopNavItems.map((navItem) => {
             const section = navItem.id;
-            const available = ["timeline", "budget", "luggage", "settlement"].includes(section);
+            const available = ["timeline", "budget", "accommodation", "todo", "luggage", "settlement"].includes(section);
             const Icon = navItem ? desktopNavIcons[navItem.id] : null;
             return (
               <button
@@ -9164,10 +9200,27 @@ function DemoApp({ initialSection }) {
             useEditLocks={false}
           />
         ) : null}
+        {activeSection === "accommodation" ? <AccommodationPanel
+          activeTrip={demoActiveTrip} trip={demoActiveTrip} accommodations={accommodations} attachments={[]} budgetItems={budgetItems}
+          canEdit currentUserId="demo-peter" disableDraftAutosave useEditLocks={false} restoreDrafts={false} enableAttachments={false}
+          onSave={(form, id, meta) => saveDemoRecord("accommodations", form, id, meta)}
+          onDelete={(id) => setAccommodations((current) => current.filter((item) => item.id !== id))}
+        /> : null}
+        {activeSection === "todo" ? <TodoGuidePanel
+          activeTrip={demoActiveTrip} canEdit currentUserId="demo-peter" members={demoMembers} todoItems={todoItems} guideItems={guideItems}
+          disableDraftAutosave useEditLocks={false} restoreDrafts={false}
+          onSaveTodo={(form, id, meta) => saveDemoRecord("todoItems", form, id, meta)}
+          onSaveGuide={(form, id, meta) => saveDemoRecord("guideItems", form, id, meta)}
+          onDeleteTodo={(id) => setTodoItems((current) => current.filter((item) => item.id !== id))}
+          onDeleteGuide={(id) => { setGuideItems((current) => current.filter((item) => item.id !== id)); setTodoItems((current) => current.map((item) => item.guide_id === id ? { ...item, guide_id: "" } : item)); }}
+          onToggleTodo={(item) => setTodoItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, completed: !entry.completed } : entry))}
+        /> : null}
         {activeSection === "settlement" ? <SettlementPanel activeTrip={demoActiveTrip} demoStage={demoStage} budgetBaseline={demoBudgetBaseline}
           actualExpenses={actualExpenses} actualParticipants={actualParticipants} budgetItems={budgetItems} members={demoMembers} /> : null}
         {activeSection === "luggage" ? (
-          <DemoLuggageView
+          <LuggagePanel
+            activeTrip={demoActiveTrip} activeTab={luggageTab} onTabChange={setLuggageTab}
+            canEdit isOwner disableDraftAutosave useEditLocks={false} restoreDrafts={false}
             currentUserId="demo-peter"
             luggageItems={luggageItems}
             members={demoMembers}
@@ -9220,248 +9273,6 @@ function DemoApp({ initialSection }) {
         />
       ) : null}
     </Shell>
-  );
-}
-
-function DemoLuggageView({
-  currentUserId,
-  luggageItems,
-  members,
-  sharedLuggageItems,
-  onDeletePersonal,
-  onDeleteShared,
-  onSavePersonal,
-  onSaveShared,
-  onTogglePersonal,
-  onUpdateShared,
-}) {
-  const [activeTab, setActiveTab] = useState("personal");
-  const [editingPersonalId, setEditingPersonalId] = useState(null);
-  const [editingSharedId, setEditingSharedId] = useState(null);
-  const [personalForm, setPersonalForm] = useState(emptyLuggageForm);
-  const [sharedForm, setSharedForm] = useState(emptySharedLuggageForm);
-  const memberById = new Map(members.map((member) => [member.user_id, member]));
-  const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
-
-  function resetPersonal() {
-    setEditingPersonalId(null);
-    setPersonalForm(emptyLuggageForm);
-  }
-
-  function resetShared() {
-    setEditingSharedId(null);
-    setSharedForm(emptySharedLuggageForm);
-  }
-
-  function submitPersonal(event) {
-    event.preventDefault();
-    onSavePersonal(personalForm, editingPersonalId);
-    resetPersonal();
-  }
-
-  function submitShared(event) {
-    event.preventDefault();
-    onSaveShared(sharedForm, editingSharedId);
-    resetShared();
-  }
-
-  function updatePersonalForm(nextForm) {
-    setPersonalForm(nextForm);
-  }
-
-  function updateSharedForm(nextForm) {
-    setSharedForm(nextForm);
-  }
-
-  return (
-    <section className="panel luggage-panel demo-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">行李 Demo</p>
-          <h3>行李</h3>
-        </div>
-      </div>
-      <div className="mobile-tabs">
-        <button className={activeTab === "personal" ? "active" : ""} type="button" onClick={() => setActiveTab("personal")}>
-          個人行李
-        </button>
-        <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => setActiveTab("shared")}>
-          團隊公物
-        </button>
-      </div>
-      <div className="luggage-layout">
-        <section className={`luggage-column${activeTab === "personal" ? " active" : ""}`}>
-          <div className="panel-heading tight">
-            <div>
-              <p className="eyebrow">個人</p>
-              <h3>個人行李</h3>
-            </div>
-            <span className="pill">
-              {luggageItems.filter((item) => item.packed).length}/{luggageItems.length}
-            </span>
-          </div>
-          <form autoComplete="off" className="inline-form" onSubmit={submitPersonal}>
-            <input
-              autoComplete="off"
-              placeholder="新增個人行李"
-              value={personalForm.title}
-              onChange={(event) => void updatePersonalForm({ ...personalForm, title: event.target.value })}
-            />
-            <input
-              autoComplete="off"
-              placeholder="分類"
-              value={personalForm.category}
-              onChange={(event) => void updatePersonalForm({ ...personalForm, category: event.target.value })}
-            />
-            <button className="icon-button small" disabled={!personalForm.title.trim()} type="submit">
-              {editingPersonalId ? "S" : "+"}
-            </button>
-            {editingPersonalId ? (
-              <button className="mini-button" type="button" onClick={resetPersonal}>
-                取消
-              </button>
-            ) : null}
-          </form>
-          <div className="luggage-list">
-            {luggageItems.map((item) => (
-              <article className={`luggage-row${item.packed ? " packed" : ""}`} key={item.id}>
-                <input checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{item.category || "未分類"}</span>
-                </div>
-                <div className="member-actions">
-                  <button
-                    className="mini-button"
-                    type="button"
-                    onClick={() => {
-                      setEditingPersonalId(item.id);
-                      setPersonalForm({ title: item.title || "", category: item.category || "" });
-                    }}
-                  >
-                    E
-                  </button>
-                  <button className="mini-button" type="button" onClick={() => onDeletePersonal(item.id)}>
-                    X
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-          <div className="assigned-shared-list">
-            <div className="panel-heading tight">
-              <div>
-                <p className="eyebrow">指派</p>
-                <h3>指派給我的公物</h3>
-              </div>
-            </div>
-            {assignedSharedItems.map((item) => (
-              <article className="luggage-row shared-assigned" key={item.id}>
-                <input
-                  checked={item.packed_by_assignee}
-                  type="checkbox"
-                  onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
-                />
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{item.category || "未分類"}</span>
-                </div>
-                <span className="pill">{item.confirmed_by_owner ? "總召已確認" : "等待總召確認"}</span>
-              </article>
-            ))}
-          </div>
-        </section>
-        <section className={`luggage-column${activeTab === "shared" ? " active" : ""}`}>
-          <div className="panel-heading tight">
-            <div>
-              <p className="eyebrow">團隊</p>
-              <h3>團隊公物</h3>
-            </div>
-            <span className="pill">{sharedLuggageItems.length} 件</span>
-          </div>
-          <form autoComplete="off" className="shared-luggage-form" onSubmit={submitShared}>
-            <input
-              autoComplete="off"
-              placeholder="新增團隊公物"
-              value={sharedForm.title}
-              onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
-            />
-            <input
-              autoComplete="off"
-              placeholder="分類"
-              value={sharedForm.category}
-              onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
-            />
-            <select value={sharedForm.assigned_to} onChange={(event) => setSharedForm({ ...sharedForm, assigned_to: event.target.value })}>
-              <option value="">未指派</option>
-              {members.map((member) => (
-                <option key={member.user_id} value={member.user_id}>
-                  {memberName(member)}
-                </option>
-              ))}
-            </select>
-            <button className="icon-button small" disabled={!sharedForm.title.trim()} type="submit">
-              {editingSharedId ? "S" : "+"}
-            </button>
-            {editingSharedId ? (
-              <button className="mini-button" type="button" onClick={resetShared}>
-                取消
-              </button>
-            ) : null}
-          </form>
-          <div className="luggage-list">
-            {sharedLuggageItems.map((item) => {
-              const assignee = memberById.get(item.assigned_to);
-              return (
-                <article className="shared-luggage-row" key={item.id}>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span>
-                      {item.category || "未分類"} / {assignee ? memberName(assignee) : "未指派"}
-                    </span>
-                  </div>
-                  <label className="checkbox-label">
-                    <input
-                      checked={item.packed_by_assignee}
-                      type="checkbox"
-                      onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
-                    />
-                    已打包
-                  </label>
-                  <label className="checkbox-label">
-                    <input
-                      checked={item.confirmed_by_owner}
-                      type="checkbox"
-                      onChange={() => onUpdateShared(item.id, { confirmed_by_owner: !item.confirmed_by_owner })}
-                    />
-                    總召確認
-                  </label>
-                  <div className="member-actions">
-                    <button
-                      className="mini-button"
-                      type="button"
-                      onClick={() => {
-                        setEditingSharedId(item.id);
-                        setSharedForm({
-                          title: item.title || "",
-                          category: item.category || "",
-                          assigned_to: item.assigned_to || "",
-                        });
-                      }}
-                    >
-                      E
-                    </button>
-                    <button className="mini-button" type="button" onClick={() => onDeleteShared(item.id)}>
-                      X
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      </div>
-    </section>
   );
 }
 
@@ -13710,39 +13521,21 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
   const transfers = incomplete ? [] : simplifyTransfers(balances);
 
   return (
-    <section className="panel settlement-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Settlement</p>
-          <h3>結算</h3>
-        </div>
-      </div>
-
-      <div className="budget-overview">
-        {hasBaseline ? <div>
-          <span>出發前預算</span>
-          <strong>{formatMoney(plannedTotal)}</strong>
-        </div> : null}
-        <div>
-          <span>實際金額</span>
-          <strong>{formatMoney(actualTotal)}</strong>
-        </div>
-        <div>
-          <span>尚未轉實付</span>
-          <strong>{formatMoney(pendingBudgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0))}</strong>
-        </div>
-        {hasBaseline ? <div>
-          <span>差額</span>
-          <strong>{formatMoney(actualTotal - plannedTotal)}</strong>
-        </div> : null}
-      </div>
+    <section className="panel settlement-panel travel-workspace">
+      <WorkspaceHeading title="分帳結算" description="誰先付了、誰該分攤，一次看清楚。金額以實付紀錄計算。" />
+      <WorkspaceSummary items={[
+        ...(hasBaseline ? [{ label: "出發前預算", value: workspaceMoney(plannedTotal) }] : []),
+        { label: "實際金額", value: workspaceMoney(actualTotal) },
+        { label: "尚未轉實付", value: workspaceMoney(pendingBudgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0)) },
+        ...(hasBaseline ? [{ label: "實付與出發前預算差額", value: workspaceMoney(actualTotal - plannedTotal) }] : []),
+      ]} />
 
       <div className="settlement-grid">
         <section className="settlement-section">
           <div className="panel-heading tight">
             <div>
               <p className="eyebrow">People</p>
-              <h3>每人差額</h3>
+              <h3>每人分攤與代墊</h3>
             </div>
           </div>
           <div className="settlement-table">
@@ -13750,15 +13543,15 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
               <span>成員</span>
               <span>應付</span>
               <span>已付</span>
-              <span>差額</span>
+              <span>應收／應付</span>
             </div>
             {balances.map((entry) => (
               <div className="settlement-row" key={entry.user_id}>
                 <strong>{entry.name}</strong>
-                <span>{formatMoney(entry.shouldPay)}</span>
-                <span>{formatMoney(entry.paid)}</span>
+                <span>{workspaceMoney(entry.shouldPay)}</span>
+                <span>{workspaceMoney(entry.paid)}</span>
                 <span className={entry.balance >= 0 ? "positive-balance" : "negative-balance"}>
-                  {formatMoney(entry.balance)}
+                  {entry.balance > 0 ? "應收 " : entry.balance < 0 ? "應付 " : ""}{workspaceMoney(Math.abs(entry.balance))}
                 </span>
               </div>
             ))}
@@ -13769,9 +13562,10 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
           <div className="panel-heading tight">
             <div>
               <p className="eyebrow">Transfers</p>
-              <h3>付款路徑</h3>
+              <h3>建議付款路徑</h3>
             </div>
           </div>
+          <p className="muted">依目前差額整理；完成實際付款後請自行確認。</p>
           <div className="transfer-list">
             {transfers.length ? (
               transfers.map((transfer, index) => (
@@ -13779,7 +13573,7 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
                   <strong>{memberName(memberById.get(transfer.from))}</strong>
                   <span>付給</span>
                   <strong>{memberName(memberById.get(transfer.to))}</strong>
-                  <span>{formatMoney(transfer.amount)}</span>
+                  <span>{workspaceMoney(transfer.amount)}</span>
                 </div>
               ))
             ) : (
@@ -13807,7 +13601,7 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
                     <strong>{expense.title}</strong>
                     <span>{expense.paid_at ? new Date(expense.paid_at).toLocaleDateString("zh-TW") : "未設定日期"}</span>
                   </div>
-                  <span>{formatMoney(expense.twd_amount)}</span>
+                  <span>{workspaceMoney(expense.twd_amount)}</span>
                   <span>付款人：{memberName(payer)}</span>
                   <span>
                     分攤：
@@ -13842,7 +13636,7 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
                     {budget.subcategory ? `｜${budget.subcategory}` : ""}
                   </span>
                 </div>
-                <span>{formatMoney(budget.twd_amount)}</span>
+                <span>{workspaceMoney(budget.twd_amount)}</span>
                 <span>{budget.is_fixed ? "固定費用" : "預估費用"}</span>
               </article>
             ))
@@ -13910,7 +13704,12 @@ function AccommodationPanel({
   onSave,
   onUploadAttachment,
   restoreDrafts = true,
+  disableDraftAutosave = false,
+  useEditLocks = true,
+  enableAttachments = true,
 }) {
+  const [search, setSearch] = useState("");
+  const visibleAccommodations = accommodations.filter((item) => [item.name, item.address, item.booking_code].filter(Boolean).join(" ").toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [selectedId, setSelectedId] = useState(accommodations[0]?.id || null);
@@ -13919,7 +13718,8 @@ function AccommodationPanel({
   const [editorTripId, setEditorTripId] = useState(null);
   const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
-  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges: autosaveHasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
+    disabled: disableDraftAutosave,
     defaultForm: formSeed,
     editingId,
     entityType: "accommodation",
@@ -13930,6 +13730,7 @@ function AccommodationPanel({
     userId: currentUserId,
   });
   const selected = accommodations.find((item) => item.id === selectedId) || accommodations[0] || null;
+  const hasUnsavedChanges = disableDraftAutosave ? JSON.stringify(form) !== JSON.stringify(formSeed) : autosaveHasUnsavedChanges;
   const activeEditorGuardId = `accommodation:${activeTrip?.id || trip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
@@ -13946,7 +13747,7 @@ function AccommodationPanel({
   useEffect(() => {
     const currentTripId = activeTrip?.id || trip?.id || null;
     if (!isOpen || !editorTripId || !currentTripId || editorTripId === currentTripId) return;
-    if (editingId) {
+    if (useEditLocks && editingId) {
       void releaseEditLock({ recordId: editingId, supabase, table: "accommodations", userId: currentUserId });
     }
     replaceForm(emptyAccommodationForm);
@@ -13960,7 +13761,7 @@ function AccommodationPanel({
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, trip?.id]);
 
   useEffect(() => {
-    if (!restoreDrafts || isOpen || !(activeTrip?.id || trip?.id) || !currentUserId) return;
+    if (disableDraftAutosave || !restoreDrafts || isOpen || !(activeTrip?.id || trip?.id) || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "accommodation",
       tripId: activeTrip?.id || trip?.id,
@@ -14006,7 +13807,7 @@ function AccommodationPanel({
   }
 
   async function openEditAccommodation(item) {
-    if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id || trip?.id,
@@ -14017,7 +13818,7 @@ function AccommodationPanel({
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeAccommodationForm(true);
     }
-    const lockResult = await acquireEditLock({ record: item, supabase, table: "accommodations", userId: currentUserId });
+    const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "accommodations", userId: currentUserId }) : { data: item };
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const lockedItem = lockResult.data || item;
     const nextForm = {
@@ -14050,7 +13851,7 @@ function AccommodationPanel({
       if (result?.conflict) setConflict(true);
       return false;
     }
-    clearDraft(draftKey);
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyAccommodationForm);
     setFormSeed(emptyAccommodationForm);
     setBaseUpdatedAt(null);
@@ -14069,8 +13870,8 @@ function AccommodationPanel({
 
   async function closeAccommodationForm(force = false) {
     if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
-    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "accommodations", userId: currentUserId });
-    clearDraft(draftKey);
+    if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "accommodations", userId: currentUserId });
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyAccommodationForm);
     setFormSeed(emptyAccommodationForm);
     setBaseUpdatedAt(null);
@@ -14082,16 +13883,13 @@ function AccommodationPanel({
   }
 
   return (
-    <section className="panel accommodation-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Accommodation</p>
-          <h3>住宿</h3>
-        </div>
-        <button className="icon-button" disabled={!canEdit} type="button" title="新增住宿" onClick={openNewAccommodation}>
-          +
-        </button>
-      </div>
+    <section className="panel accommodation-panel travel-workspace">
+      <WorkspaceHeading title="住宿資訊" description="每一晚的落腳處，都安排妥當。" action={{ label: "新增住宿", disabled: !canEdit, onClick: openNewAccommodation }} />
+      <WorkspaceSummary items={[
+        { label: "住宿安排", value: `${accommodations.length} 間` },
+        { label: "已付款", value: `${accommodations.filter((item) => item.payment_status === "paid").length} 間` },
+        { label: "待確認付款", value: `${accommodations.filter((item) => item.payment_status !== "paid").length} 間` },
+      ]} />
 
       {isOpen ? (
         <form autoComplete="off" className="item-form accommodation-form" onSubmit={submit}>
@@ -14162,6 +13960,7 @@ function AccommodationPanel({
             <label>
               付款狀態
               <select
+                aria-label="付款狀態"
                 value={form.payment_status}
                 onChange={(event) => setForm({ ...form, payment_status: event.target.value })}
               >
@@ -14173,6 +13972,7 @@ function AccommodationPanel({
             <label>
               連動預算
               <select
+                aria-label="連動預算"
                 value={form.budget_item_id}
                 onChange={(event) => setForm({ ...form, budget_item_id: event.target.value })}
               >
@@ -14188,6 +13988,7 @@ function AccommodationPanel({
           <label className="full-label">
             自訂備註
             <textarea
+              aria-label="自訂備註"
               autoComplete="off"
               rows="3"
               value={form.custom_notes}
@@ -14207,12 +14008,15 @@ function AccommodationPanel({
 
       <div className="accommodation-layout">
         <div className="accommodation-list">
-          {accommodations.length ? (
-            accommodations.map((item) => (
+          <h4>住宿安排</h4>
+          <WorkspaceSearch label="搜尋住宿" placeholder="搜尋住宿、地址或預約代碼" value={search} onChange={setSearch} />
+          {visibleAccommodations.length ? (
+            visibleAccommodations.map((item) => (
               <button
                 className={`accommodation-list-item${selected?.id === item.id ? " active" : ""}`}
                 key={item.id}
                 type="button"
+                aria-pressed={selected?.id === item.id}
                 onClick={() => setSelectedId(item.id)}
               >
                 <strong>{item.name}</strong>
@@ -14223,7 +14027,7 @@ function AccommodationPanel({
               </button>
             ))
           ) : (
-            <div className="timeline-empty">尚未建立住宿</div>
+            <div className="timeline-empty">{search ? "沒有符合條件的住宿" : "尚未建立住宿"}</div>
           )}
         </div>
 
@@ -14235,14 +14039,7 @@ function AccommodationPanel({
                   <p className="eyebrow">Stay</p>
                   <h3>{selected.name}</h3>
                 </div>
-                <div className="member-actions">
-                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditAccommodation(selected)}>
-                    E
-                  </button>
-                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(selected.id)}>
-                    X
-                  </button>
-                </div>
+                <WorkspaceActions name={selected.name} disabled={!canEdit} onEdit={() => openEditAccommodation(selected)} onDelete={() => onDelete(selected.id)} />
               </div>
               <div className="accommodation-facts">
                 <div>
@@ -14285,7 +14082,7 @@ function AccommodationPanel({
                   <p>尚未連動預算</p>
                 )}
                 {selected.custom_notes ? <p>{selected.custom_notes}</p> : null}
-                <AttachmentList
+                {enableAttachments ? <AttachmentList
                   attachments={attachments.filter(
                     (attachment) => attachment.target_type === "accommodation" && attachment.target_id === selected.id,
                   )}
@@ -14295,7 +14092,7 @@ function AccommodationPanel({
                   onDelete={onDeleteAttachment}
                   onOpen={onOpenAttachment}
                   onUpload={onUploadAttachment}
-                />
+                /> : <div className="timeline-empty">附件與憑證可於正式旅程上傳；本地預覽不會儲存檔案。</div>}
               </div>
             </>
           ) : (
@@ -14320,17 +14117,15 @@ function TodoGuidePanel({
   onSaveTodo,
   onToggleTodo,
   restoreDrafts = true,
+  disableDraftAutosave = false,
+  useEditLocks = true,
 }) {
   const [activeTab, setActiveTab] = useState("todo");
   const approvedMembers = members.filter((member) => member.status === "approved");
   return (
-    <section className="panel todo-guide-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Todo / Guide</p>
-          <h3>待辦與指南</h3>
-        </div>
-      </div>
+    <section className="panel todo-guide-panel travel-workspace">
+      <WorkspaceHeading title="待辦指南" description="把出發前的準備，和旅途中的資訊放在一起。" />
+      <WorkspaceProgress label="準備進度" value={todoItems.filter((item) => item.completed).length} total={todoItems.length} />
       <div className="mobile-tabs">
         <button className={activeTab === "todo" ? "active" : ""} type="button" onClick={() => setActiveTab("todo")}>
           待辦
@@ -14351,6 +14146,8 @@ function TodoGuidePanel({
             onDelete={onDeleteTodo}
             onSave={onSaveTodo}
             onToggle={onToggleTodo}
+            disableDraftAutosave={disableDraftAutosave}
+            useEditLocks={useEditLocks}
             restoreDrafts={restoreDrafts}
           />
         </div>
@@ -14362,6 +14159,8 @@ function TodoGuidePanel({
             guideItems={guideItems}
             onDelete={onDeleteGuide}
             onSave={onSaveGuide}
+            disableDraftAutosave={disableDraftAutosave}
+            useEditLocks={useEditLocks}
             restoreDrafts={restoreDrafts}
           />
         </div>
@@ -14380,8 +14179,13 @@ function TodoPanel({
   onSave,
   onToggle,
   restoreDrafts = true,
+  disableDraftAutosave = false,
+  useEditLocks = true,
   todoItems,
 }) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
+  const visibleTodos = todoItems.filter((item) => (status === "all" || (status === "completed" ? item.completed : !item.completed)) && [item.title, item.description].filter(Boolean).join(" ").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formSeed, setFormSeed] = useState(emptyTodoForm);
@@ -14389,7 +14193,8 @@ function TodoPanel({
   const [editorTripId, setEditorTripId] = useState(null);
   const [restoredDraftKey, setRestoredDraftKey] = useState(null);
   const [conflict, setConflict] = useState(false);
-  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges: autosaveHasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
+    disabled: disableDraftAutosave,
     defaultForm: formSeed,
     editingId,
     entityType: "todo_item",
@@ -14402,6 +14207,7 @@ function TodoPanel({
   const memberById = new Map(members.map((member) => [member.user_id, member]));
   const guideById = new Map(guideItems.map((guide) => [guide.id, guide]));
   const pendingCount = todoItems.filter((item) => !item.completed).length;
+  const hasUnsavedChanges = disableDraftAutosave ? JSON.stringify(form) !== JSON.stringify(formSeed) : autosaveHasUnsavedChanges;
   const activeEditorGuardId = `todo:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
@@ -14417,7 +14223,7 @@ function TodoPanel({
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
-    if (editingId) {
+    if (useEditLocks && editingId) {
       void releaseEditLock({ recordId: editingId, supabase, table: "todo_items", userId: currentUserId });
     }
     replaceForm(emptyTodoForm);
@@ -14431,7 +14237,7 @@ function TodoPanel({
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm]);
 
   useEffect(() => {
-    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
+    if (disableDraftAutosave || !restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "todo_item",
       tripId: activeTrip.id,
@@ -14472,7 +14278,7 @@ function TodoPanel({
   }
 
   async function openEditTodo(item) {
-    if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
@@ -14483,7 +14289,7 @@ function TodoPanel({
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeTodoForm(true);
     }
-    const lockResult = await acquireEditLock({ record: item, supabase, table: "todo_items", userId: currentUserId });
+    const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "todo_items", userId: currentUserId }) : { data: item };
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const lockedItem = lockResult.data || item;
     const nextForm = {
@@ -14510,7 +14316,7 @@ function TodoPanel({
       if (result?.conflict) setConflict(true);
       return false;
     }
-    clearDraft(draftKey);
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyTodoForm);
     setFormSeed(emptyTodoForm);
     setBaseUpdatedAt(null);
@@ -14529,8 +14335,8 @@ function TodoPanel({
 
   async function closeTodoForm(force = false) {
     if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
-    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "todo_items", userId: currentUserId });
-    clearDraft(draftKey);
+    if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "todo_items", userId: currentUserId });
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyTodoForm);
     setFormSeed(emptyTodoForm);
     setBaseUpdatedAt(null);
@@ -14551,7 +14357,7 @@ function TodoPanel({
         <div className="member-actions">
           <span className="pill">{pendingCount} 未完成</span>
           <button className="icon-button small" disabled={!canEdit} type="button" title="新增待辦" onClick={openNewTodo}>
-            +
+            <Plus size={15} aria-hidden="true" /> 新增待辦
           </button>
         </div>
       </div>
@@ -14579,7 +14385,7 @@ function TodoPanel({
           <div className="field-group form-grid wide">
             <label>
               負責人
-              <select value={form.assignee_id} onChange={(event) => setForm({ ...form, assignee_id: event.target.value })}>
+              <select aria-label="負責人" value={form.assignee_id} onChange={(event) => setForm({ ...form, assignee_id: event.target.value })}>
                 <option value="">未指定</option>
                 {members.map((member) => (
                   <option key={member.user_id} value={member.user_id}>
@@ -14590,7 +14396,7 @@ function TodoPanel({
             </label>
             <label>
               連結指南
-              <select value={form.guide_id} onChange={(event) => setForm({ ...form, guide_id: event.target.value })}>
+              <select aria-label="連結指南" value={form.guide_id} onChange={(event) => setForm({ ...form, guide_id: event.target.value })}>
                 <option value="">未連結</option>
                 {guideItems.map((guide) => (
                   <option key={guide.id} value={guide.id}>
@@ -14603,6 +14409,7 @@ function TodoPanel({
           <label className="full-label">
             說明
             <textarea
+              aria-label="說明"
               autoComplete="off"
               rows="3"
               value={form.description}
@@ -14620,14 +14427,16 @@ function TodoPanel({
         </form>
       ) : null}
 
+      <WorkspaceSearch label="搜尋待辦" value={query} onChange={setQuery} />
+      <div className="todo-filters" aria-label="待辦狀態">{[["all", "全部"], ["pending", "未完成"], ["completed", "已完成"]].map(([value, label]) => <button key={value} type="button" aria-pressed={status === value} onClick={() => setStatus(value)}>{label}</button>)}</div>
       <div className="todo-list">
-        {todoItems.length ? (
-          todoItems.map((item) => {
+        {visibleTodos.length ? (
+          visibleTodos.map((item) => {
             const assignee = memberById.get(item.assignee_id);
             const guide = guideById.get(item.guide_id);
             return (
               <article className={`todo-row${item.completed ? " completed" : ""}`} key={item.id}>
-                <input checked={item.completed} disabled={!canEdit} type="checkbox" onChange={() => onToggle(item)} />
+                <input aria-label={`完成待辦：${item.title}`} checked={item.completed} disabled={!canEdit} type="checkbox" onChange={() => onToggle(item)} />
                 <div>
                   <strong>{item.title}</strong>
                   {item.description ? <p>{item.description}</p> : null}
@@ -14637,33 +14446,27 @@ function TodoPanel({
                     {guide ? <span className="pill">指南：{guide.title}</span> : null}
                   </div>
                 </div>
-                <div className="member-actions">
-                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditTodo(item)}>
-                    E
-                  </button>
-                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(item.id)}>
-                    X
-                  </button>
-                </div>
+                <WorkspaceActions name={item.title} disabled={!canEdit} onEdit={() => openEditTodo(item)} onDelete={() => onDelete(item.id)} />
               </article>
             );
           })
         ) : (
-          <div className="timeline-empty">尚未建立待辦</div>
+          <div className="timeline-empty">{todoItems.length ? "沒有符合條件的待辦" : "尚未建立待辦"}</div>
         )}
       </div>
     </section>
   );
 }
 
-function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, onSave, restoreDrafts = true }) {
+function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, onSave, restoreDrafts = true, disableDraftAutosave = false, useEditLocks = true }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formSeed, setFormSeed] = useState(emptyGuideForm);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
   const [editorTripId, setEditorTripId] = useState(null);
   const [conflict, setConflict] = useState(false);
-  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
+  const { draftKey, flushDraft, form, hasUnsavedChanges: autosaveHasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
+    disabled: disableDraftAutosave,
     defaultForm: formSeed,
     editingId,
     entityType: "guide_item",
@@ -14672,6 +14475,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     tripId: activeTrip?.id,
     userId: currentUserId,
   });
+  const hasUnsavedChanges = disableDraftAutosave ? JSON.stringify(form) !== JSON.stringify(formSeed) : autosaveHasUnsavedChanges;
   const activeEditorGuardId = `guide:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
@@ -14687,7 +14491,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
-    if (editingId) {
+    if (useEditLocks && editingId) {
       void releaseEditLock({ recordId: editingId, supabase, table: "guide_items", userId: currentUserId });
     }
     replaceForm(emptyGuideForm);
@@ -14700,7 +14504,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm]);
 
   useEffect(() => {
-    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
+    if (disableDraftAutosave || !restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "guide_item",
       tripId: activeTrip.id,
@@ -14739,7 +14543,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   }
 
   async function openEditGuide(item) {
-    if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
@@ -14750,7 +14554,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeGuideForm(true);
     }
-    const lockResult = await acquireEditLock({ record: item, supabase, table: "guide_items", userId: currentUserId });
+    const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "guide_items", userId: currentUserId }) : { data: item };
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const lockedItem = lockResult.data || item;
     const nextForm = {
@@ -14774,7 +14578,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
       if (result?.conflict) setConflict(true);
       return false;
     }
-    clearDraft(draftKey);
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyGuideForm);
     setFormSeed(emptyGuideForm);
     setBaseUpdatedAt(null);
@@ -14792,8 +14596,8 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
 
   async function closeGuideForm(force = false) {
     if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
-    if (editingId) await releaseEditLock({ recordId: editingId, supabase, table: "guide_items", userId: currentUserId });
-    clearDraft(draftKey);
+    if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "guide_items", userId: currentUserId });
+    if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyGuideForm);
     setFormSeed(emptyGuideForm);
     setBaseUpdatedAt(null);
@@ -14811,7 +14615,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
           <h3>指南</h3>
         </div>
         <button className="icon-button small" disabled={!canEdit} type="button" title="新增指南" onClick={openNewGuide}>
-          +
+          <Plus size={15} aria-hidden="true" /> 新增指南
         </button>
       </div>
 
@@ -14831,6 +14635,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
           <label className="full-label">
             說明
             <textarea
+              aria-label="說明"
               autoComplete="off"
               rows="3"
               value={form.description}
@@ -14852,6 +14657,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
         {guideItems.length ? (
           guideItems.map((item) => (
             <article className="guide-card" key={item.id}>
+              <span className="guide-link-icon"><ExternalLink size={18} aria-hidden="true" /></span>
               <div>
                 <strong>{item.title}</strong>
                 {item.description ? <p>{item.description}</p> : null}
@@ -14861,14 +14667,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
                   </a>
                 ) : null}
               </div>
-              <div className="member-actions">
-                <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditGuide(item)}>
-                  E
-                </button>
-                <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(item.id)}>
-                  X
-                </button>
-              </div>
+              <WorkspaceActions name={item.title} disabled={!canEdit} onEdit={() => openEditGuide(item)} onDelete={() => onDelete(item.id)} />
             </article>
           ))
         ) : (
@@ -14888,6 +14687,8 @@ function LuggagePanel({
   luggageItems,
   members,
   restoreDrafts = true,
+  disableDraftAutosave = false,
+  useEditLocks = true,
   sharedLuggageItems,
   onDeletePersonal,
   onDeleteShared,
@@ -14905,6 +14706,7 @@ function LuggagePanel({
   const [sharedUpdatedAt, setSharedUpdatedAt] = useState(null);
   const previousTripIdRef = useRef(activeTrip?.id || null);
   const personalDraft = useDraftAutosave({
+    disabled: disableDraftAutosave,
     defaultForm: personalSeed,
     editingId: editingPersonalId,
     entityType: "luggage_item",
@@ -14914,6 +14716,7 @@ function LuggagePanel({
     userId: currentUserId,
   });
   const sharedDraft = useDraftAutosave({
+    disabled: disableDraftAutosave,
     defaultForm: sharedSeed,
     editingId: editingSharedId,
     entityType: "shared_luggage_item",
@@ -14929,25 +14732,27 @@ function LuggagePanel({
   const approvedMembers = members.filter((member) => member.status === "approved");
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
+  const personalDirty = disableDraftAutosave ? JSON.stringify(personalForm) !== JSON.stringify(personalSeed) : personalDraft.hasUnsavedChanges;
+  const sharedDirty = disableDraftAutosave ? JSON.stringify(sharedForm) !== JSON.stringify(sharedSeed) : sharedDraft.hasUnsavedChanges;
   const personalEditorGuardId = `luggage-personal:${activeTrip?.id || "no-trip"}`;
   const sharedEditorGuardId = `luggage-shared:${activeTrip?.id || "no-trip"}`;
   const personalEditorGuard = useMemo(
     () => ({
       discard: () => discardPersonalEdit(),
-      isActive: Boolean(editingPersonalId || personalDraft.hasUnsavedChanges),
-      isDirty: personalDraft.hasUnsavedChanges,
+      isActive: Boolean(editingPersonalId || personalDirty),
+      isDirty: personalDirty,
       save: () => saveCurrentPersonal(),
     }),
-    [personalForm, personalDraft.hasUnsavedChanges, editingPersonalId, personalUpdatedAt],
+    [personalForm, personalDirty, editingPersonalId, personalUpdatedAt],
   );
   const sharedEditorGuard = useMemo(
     () => ({
       discard: () => discardSharedEdit(),
-      isActive: Boolean(editingSharedId || sharedDraft.hasUnsavedChanges),
-      isDirty: sharedDraft.hasUnsavedChanges,
+      isActive: Boolean(editingSharedId || sharedDirty),
+      isDirty: sharedDirty,
       save: () => saveCurrentShared(),
     }),
-    [sharedForm, sharedDraft.hasUnsavedChanges, editingSharedId, sharedUpdatedAt],
+    [sharedForm, sharedDirty, editingSharedId, sharedUpdatedAt],
   );
 
   useActiveEditorGuard(personalEditorGuardId, personalEditorGuard);
@@ -14957,10 +14762,10 @@ function LuggagePanel({
     const previousTripId = previousTripIdRef.current;
     const currentTripId = activeTrip?.id || null;
     if (previousTripId === currentTripId) return;
-    if (editingPersonalId) {
+    if (useEditLocks && editingPersonalId) {
       void releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
     }
-    if (editingSharedId) {
+    if (useEditLocks && editingSharedId) {
       void releaseEditLock({ recordId: editingSharedId, supabase, table: "shared_luggage_items", userId: currentUserId });
     }
     personalDraft.replaceForm(emptyLuggageForm);
@@ -14975,7 +14780,7 @@ function LuggagePanel({
   }, [activeTrip?.id, currentUserId, editingPersonalId, editingSharedId, personalDraft, sharedDraft]);
 
   useEffect(() => {
-    if (!restoreDrafts || !activeTrip?.id || !currentUserId || editingPersonalId) return;
+    if (disableDraftAutosave || !restoreDrafts || !activeTrip?.id || !currentUserId || editingPersonalId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "luggage_item",
       tripId: activeTrip.id,
@@ -14990,7 +14795,7 @@ function LuggagePanel({
   }, [activeTrip?.id, currentUserId, editingPersonalId, luggageItems, restoreDrafts]);
 
   useEffect(() => {
-    if (!restoreDrafts || !activeTrip?.id || !currentUserId || editingSharedId) return;
+    if (disableDraftAutosave || !restoreDrafts || !activeTrip?.id || !currentUserId || editingSharedId) return;
     const latest = loadLatestDraftForEntity({
       entityType: "shared_luggage_item",
       tripId: activeTrip.id,
@@ -15013,7 +14818,7 @@ function LuggagePanel({
     if (!canOpenEditor) return false;
     const result = await onSavePersonal(personalForm, editingPersonalId, { baseUpdatedAt: personalUpdatedAt, tripId: activeTrip?.id });
     if (!result?.ok) return false;
-    clearDraft(personalDraft.draftKey);
+    if (!disableDraftAutosave) clearDraft(personalDraft.draftKey);
     personalDraft.resetDraft(emptyLuggageForm);
     setPersonalSeed(emptyLuggageForm);
     setPersonalUpdatedAt(null);
@@ -15034,7 +14839,7 @@ function LuggagePanel({
     if (!canOpenEditor) return false;
     const result = await onSaveShared(sharedForm, editingSharedId, { baseUpdatedAt: sharedUpdatedAt, tripId: activeTrip?.id });
     if (!result?.ok) return false;
-    clearDraft(sharedDraft.draftKey);
+    if (!disableDraftAutosave) clearDraft(sharedDraft.draftKey);
     sharedDraft.resetDraft(emptySharedLuggageForm);
     setSharedSeed(emptySharedLuggageForm);
     setSharedUpdatedAt(null);
@@ -15048,19 +14853,19 @@ function LuggagePanel({
   }
 
   async function editPersonal(item) {
-    if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: personalEditorGuardId,
       tripId: activeTrip?.id,
     });
     if (!canOpenEditor) return;
-    if (editingPersonalId !== item.id && personalDraft.hasUnsavedChanges) {
+    if (editingPersonalId !== item.id && personalDirty) {
       const canContinue = await requestActiveEditorGuardResolution();
       if (!canContinue) return;
     } else if (editingPersonalId && editingPersonalId !== item.id) {
       await discardPersonalEdit();
     }
-    const lockResult = await acquireEditLock({ record: item, supabase, table: "luggage_items", userId: currentUserId });
+    const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "luggage_items", userId: currentUserId }) : { data: item };
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const nextForm = { title: item.title || "", category: item.category || "" };
     personalDraft.flushDraft();
@@ -15071,10 +14876,10 @@ function LuggagePanel({
   }
 
   async function discardPersonalEdit() {
-    if (editingPersonalId) {
+    if (useEditLocks && editingPersonalId) {
       await releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
     }
-    clearDraft(personalDraft.draftKey);
+    if (!disableDraftAutosave) clearDraft(personalDraft.draftKey);
     personalDraft.resetDraft(emptyLuggageForm);
     setPersonalSeed(emptyLuggageForm);
     setPersonalUpdatedAt(null);
@@ -15087,19 +14892,19 @@ function LuggagePanel({
   }
 
   async function editShared(item) {
-    if (isLockedByAnotherUser(item, currentUserId)) return;
+    if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: sharedEditorGuardId,
       tripId: activeTrip?.id,
     });
     if (!canOpenEditor) return;
-    if (editingSharedId !== item.id && sharedDraft.hasUnsavedChanges) {
+    if (editingSharedId !== item.id && sharedDirty) {
       const canContinue = await requestActiveEditorGuardResolution();
       if (!canContinue) return;
     } else if (editingSharedId && editingSharedId !== item.id) {
       await discardSharedEdit();
     }
-    const lockResult = await acquireEditLock({ record: item, supabase, table: "shared_luggage_items", userId: currentUserId });
+    const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "shared_luggage_items", userId: currentUserId }) : { data: item };
     if (lockResult.error || lockResult.lockedByAnotherUser) return;
     const nextForm = {
       title: item.title || "",
@@ -15114,10 +14919,10 @@ function LuggagePanel({
   }
 
   async function discardSharedEdit() {
-    if (editingSharedId) {
+    if (useEditLocks && editingSharedId) {
       await releaseEditLock({ recordId: editingSharedId, supabase, table: "shared_luggage_items", userId: currentUserId });
     }
-    clearDraft(sharedDraft.draftKey);
+    if (!disableDraftAutosave) clearDraft(sharedDraft.draftKey);
     sharedDraft.resetDraft(emptySharedLuggageForm);
     setSharedSeed(emptySharedLuggageForm);
     setSharedUpdatedAt(null);
@@ -15142,13 +14947,13 @@ function LuggagePanel({
   }
 
   return (
-    <section className="panel luggage-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Luggage</p>
-          <h3>行李</h3>
-        </div>
-      </div>
+    <section className="panel luggage-panel travel-workspace">
+      <WorkspaceHeading title="行李清單" description="自己的隨身物品，與旅伴分工一起確認。" />
+      <WorkspaceSummary items={[
+        { label: "個人已打包", value: `${luggageItems.filter((item) => item.packed).length} / ${luggageItems.length}`, detail: "僅自己可見的個人清單" },
+        { label: "指派給我", value: `${assignedSharedItems.length} 件`, detail: "團隊公物分工" },
+        { label: "總召已確認", value: `${sharedLuggageItems.filter((item) => item.confirmed_by_owner).length} / ${sharedLuggageItems.length}`, detail: "與負責人打包狀態分開記錄" },
+      ]} />
       <div className="mobile-tabs">
         <button
           className={activeTab === "personal" ? "active" : ""}
@@ -15167,23 +14972,26 @@ function LuggagePanel({
           <div className="panel-heading tight">
             <div>
               <p className="eyebrow">Personal</p>
-              <h3>私物</h3>
+              <h3>個人行李</h3>
             </div>
             <span className="pill">{luggageItems.filter((item) => item.packed).length}/{luggageItems.length}</span>
           </div>
+          <WorkspaceProgress label="個人打包進度" value={luggageItems.filter((item) => item.packed).length} total={luggageItems.length} />
           <form autoComplete="off" className="inline-form" onSubmit={submitPersonal}>
             <input
               placeholder="新增個人行李"
+              aria-label="個人行李名稱"
               value={personalForm.title}
               onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
             />
             <input
               placeholder="分類"
               value={personalForm.category}
+              aria-label="個人行李分類"
               onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
             />
-            <button className="icon-button small" type="submit" disabled={!personalForm.title.trim()}>
-              {editingPersonalId ? "S" : "+"}
+            <button className="icon-button small" aria-label={editingPersonalId ? "儲存個人行李" : "新增個人行李"} type="submit" disabled={!personalForm.title.trim()}>
+              {editingPersonalId ? "儲存" : <Plus size={16} aria-hidden="true" />}
             </button>
             {editingPersonalId ? (
               <button className="mini-button" type="button" onClick={cancelPersonalEdit}>
@@ -15195,19 +15003,12 @@ function LuggagePanel({
             {luggageItems.length ? (
               luggageItems.map((item) => (
                 <article className={`luggage-row${item.packed ? " packed" : ""}`} key={item.id}>
-                  <input checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
+                  <input aria-label={`打包：${item.title}`} checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
                   <div>
                     <strong>{item.title}</strong>
                     <span>{item.category || "未分類"}</span>
                   </div>
-                  <div className="member-actions">
-                    <button className="mini-button" type="button" onClick={() => editPersonal(item)}>
-                      E
-                    </button>
-                    <button className="mini-button" type="button" onClick={() => onDeletePersonal(item.id)}>
-                      X
-                    </button>
-                  </div>
+                  <WorkspaceActions name={item.title} onEdit={() => editPersonal(item)} onDelete={() => onDeletePersonal(item.id)} />
                 </article>
               ))
             ) : (
@@ -15226,6 +15027,7 @@ function LuggagePanel({
               assignedSharedItems.map((item) => (
                 <article className="luggage-row shared-assigned" key={item.id}>
                   <input
+                    aria-label={`打包指派公物：${item.title}`}
                     checked={item.packed_by_assignee}
                     type="checkbox"
                     onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
@@ -15247,15 +15049,17 @@ function LuggagePanel({
           <div className="panel-heading tight">
             <div>
               <p className="eyebrow">Team</p>
-              <h3>公物</h3>
+              <h3>團隊公物</h3>
             </div>
             <span className="pill">{sharedLuggageItems.length} 件</span>
           </div>
+          <WorkspaceProgress label="團隊打包進度" value={sharedLuggageItems.filter((item) => item.packed_by_assignee).length} total={sharedLuggageItems.length} />
           <form autoComplete="off" className="shared-luggage-form" onSubmit={submitShared}>
             <input
               autoComplete="off"
               disabled={!canEdit}
               placeholder="新增團隊公物"
+              aria-label="團隊公物名稱"
               value={sharedForm.title}
               onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
             />
@@ -15264,10 +15068,12 @@ function LuggagePanel({
               disabled={!canEdit}
               placeholder="分類"
               value={sharedForm.category}
+              aria-label="團隊公物分類"
               onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
             />
             <select
               disabled={!canEdit}
+              aria-label="指派公物負責人"
               value={sharedForm.assigned_to}
               onChange={(event) => void updateSharedForm({ ...sharedForm, assigned_to: event.target.value })}
             >
@@ -15278,9 +15084,10 @@ function LuggagePanel({
                 </option>
               ))}
             </select>
-            <button className="icon-button small" disabled={!canEdit || !sharedForm.title.trim()} type="submit">
-              {editingSharedId ? "S" : "+"}
+            <button className="icon-button small" aria-label={editingSharedId ? "儲存團隊公物" : "新增團隊公物"} disabled={!canEdit || !sharedForm.title.trim()} type="submit">
+              {editingSharedId ? "儲存" : <Plus size={16} aria-hidden="true" />}
             </button>
+            {editingSharedId ? <button className="mini-button" type="button" onClick={discardSharedEdit}>取消</button> : null}
           </form>
           <div className="luggage-list">
             {sharedLuggageItems.length ? (
@@ -15314,14 +15121,7 @@ function LuggagePanel({
                       />
                       總召確認
                     </label>
-                    <div className="member-actions">
-                      <button className="mini-button" disabled={!canEdit} type="button" onClick={() => editShared(item)}>
-                        E
-                      </button>
-                      <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDeleteShared(item.id)}>
-                        X
-                      </button>
-                    </div>
+                    <WorkspaceActions name={item.title} disabled={!canEdit} onEdit={() => editShared(item)} onDelete={() => onDeleteShared(item.id)} />
                   </article>
                 );
               })

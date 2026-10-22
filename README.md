@@ -2,6 +2,13 @@
 
 React + Supabase collaborative travel planner with Google login, owner-approved trip membership, realtime itinerary updates, packing lists, budget summary, invite links, and JSON export.
 
+## Project documents
+
+- [AGENT.md](AGENT.md): project operating guide.
+- [CURRENT_TASK.md](CURRENT_TASK.md): current handoff and phase records.
+- [DESIGN.md](DESIGN.md): current Formal desktop design rules; mobile/tablet design is deferred.
+- [UX rules](docs/UX_RULES.md) and [Timeline card specification](docs/timeline-card-ui-spec.md): detailed interaction and component contracts.
+
 ## Setup
 
 1. Install dependencies:

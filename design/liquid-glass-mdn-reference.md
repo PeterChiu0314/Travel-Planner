@@ -6,9 +6,9 @@
 - 主題：深墨綠色＋液態玻璃
 - 文件用途：記錄目前預覽採用的液態玻璃參數，以及後續 CSS 實作可查閱的 MDN 來源
 - 建立日期：2026 年 7 月 14 日
-- 相關設計檔：[DESIGN.md](./DESIGN.md)、[design-system-深墨綠v3.json](./design-system-深墨綠v3.json)
+- 相關設計檔：[DESIGN.md](../DESIGN.md)、[design-system-深墨綠v3.json](./design-system-深墨綠v3.json)
 
-> 本文件定義 CSS 的實作依據；品牌氣氛、視覺比例、元件使用時機與內容規範仍以網站設計規範為準。
+> 本文件保留早期預覽參數與 MDN 技術參考。現行正式桌面網站的視覺規則與已核對數值以根目錄 [DESIGN.md](../DESIGN.md) 及 `src/styles.css` 為準，不直接以此處舊參數覆蓋正式頁。
 
 ## 1. 目前採用的液態玻璃參數
 

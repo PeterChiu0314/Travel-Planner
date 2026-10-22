@@ -2,7 +2,19 @@
 
 This file is the concise live project ledger. Keep it aligned with the real branch, deployed behavior, production migration state, and next requested phase.
 
-## Active Local Work — 2026-10-22
+## Active Integration — 2026-10-22
+
+- User requested combining the four home-computer page improvements with the latest company Budget branch, with the company Budget implementation authoritative.
+- Remote fetched: `origin/codex/budget-page-polish` at `9ccb890` (2026-10-22 17:30 +08:00), 17 commits ahead of `origin/main` at `fdd332b`.
+- Original local work preserved in `codex/budget-management-redesign` at checkpoint `099ad87`. Integration branch: `codex/budget-workspaces-integration`, based on `9ccb890`. The old local Budget component/styles/tests were not ported.
+- Integrated Accommodation, Todo/Guide, Luggage and Settlement UI, root DESIGN relocation and local preview routes. Settlement keeps the company integer allocation, frozen-baseline and incomplete-data rules; Budget components, fixtures, finance/rate libraries, RPC callbacks and migrations retain the remote implementation.
+- Supporting Demo records are isolated per trip and remain in React memory only. Added local dirty-state tracking for their Save/Discard guard without enabling persistence or changing the shared autosave hook.
+- Local preview: `http://127.0.0.1:5174/demo/budget`; sidebar provides all four integrated pages. Desktop is the current acceptance scope.
+- Verification: full Playwright **395/395 passed** (1.3m), build and `git diff --check` passed. Company Budget files/finance libraries/fixtures/migrations and Formal save/rate callbacks are unchanged; 13 integration checks cover the four pages, dirty navigation, per-trip state, payment propagation and frozen baseline. Browser inspection and five desktop screenshots are recorded in the handoff.
+- No remote push, main merge, deployment, Supabase write or migration replay is authorized by this integration. Company rollout status below is handoff evidence, not a fresh hosted verification from this computer.
+- Active integration details and final verification: [Budget + four workspaces integration](docs/2026-10-22-budget-workspaces-integration-handoff.md).
+
+## Company Budget Handoff — 2026-10-22
 
 - **Rollout completed 2026-10-22 (user authorized push + migration):** feature branch `codex/budget-page-polish` pushed to origin. Production Supabase `lqvuqamzmchepgxkftcw` now has `20261022090000` and `20261022100000`; post-push dry-run is up to date, SQL lint passes, baseline RLS enabled, three Budget RPCs denied to anon/granted to authenticated, rate column/trigger verified. Staging is INACTIVE and was not changed. No main merge or explicit frontend Production deployment. Historical pending/not-applied notes below are superseded by this entry. Continue at home from this feature branch; see rollout details in active handoff.
 - Budget editor follow-up: removed only the subcategory input, preserving stored legacy subcategory/search/detail behavior, and moved payer beside category. Linked-itinerary heading now directly expands/collapses options; selected links remain visible. Planning budgets use shared trip rates: first automatic public quote, explicit manual refresh thereafter, server-atomic repricing of budgets only. Demo stays on fixed local examples. Full regression **382/382**, isolated all-migration SQL tests, build/diff checks passed. New `20261022100000_trip_budget_exchange_rates.sql` is **prepared, not applied**; Formal automatic retrieval/shared persistence remains gated until migration rollout. No hosted writes/deployment.
