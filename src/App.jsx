@@ -1,5 +1,6 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { BudgetAmount, BudgetOverview, PlannedBudgetList } from "./components/budget/BudgetPageParts.jsx";
 import {
   closestCenter,
   DndContext,
@@ -13677,14 +13678,6 @@ function BudgetPanel({
     });
     return next;
   }, [itineraryBudgetLinks]);
-  const total = budgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0);
-  const categoryTotals = useMemo(() => {
-    const next = {};
-    budgetItems.forEach((item) => {
-      next[item.category] = (next[item.category] || 0) + Number(item.twd_amount || 0);
-    });
-    return next;
-  }, [budgetItems]);
   const activeEditorGuardId = `budget:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
@@ -13846,32 +13839,23 @@ function BudgetPanel({
   }
 
   return (
-    <section className="panel budget-panel">
+    <section className="panel budget-panel budget-page">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">{headingEyebrow}</p>
+          <p className="eyebrow">旅程費用</p>
           <h3>預算</h3>
+          <p className="budget-section-description">先估算，再記錄實際支出。所有摘要金額均換算為新台幣。</p>
         </div>
-        <button className="icon-button" disabled={!canEdit} type="button" title="新增預算" onClick={openNewBudget}>
-          +
+        <button className="primary-button compact budget-add-button" disabled={!canEdit} type="button" title="新增預算" onClick={openNewBudget}>
+          <Plus size={16} aria-hidden="true" /> 新增預算
         </button>
       </div>
 
-      <div className="budget-overview">
-        <div>
-          <span>總預算</span>
-          <strong>{formatMoney(total)}</strong>
-        </div>
-        {Object.entries(categoryTotals).map(([category, amount]) => (
-          <div key={category}>
-            <span>{category}</span>
-            <strong>{formatMoney(amount)}</strong>
-          </div>
-        ))}
-      </div>
+      <BudgetOverview budgetItems={budgetItems} actualExpenses={actualExpenses} />
 
       {isOpen ? (
         <form autoComplete="off" className="item-form budget-form" onSubmit={submit}>
+          <h4>{editingId ? "編輯預算" : "新增預算"}</h4>
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeBudgetForm(true)} />
           ) : null}
@@ -13962,7 +13946,7 @@ function BudgetPanel({
           </label>
 
           <div className="budget-picker">
-            <strong>分攤成員（equal split）</strong>
+            <strong>分攤成員（均分）</strong>
             <div>
               {approvedMembers.map((member) => (
                 <label className="checkbox-chip" key={member.user_id}>
@@ -14004,65 +13988,22 @@ function BudgetPanel({
         </form>
       ) : null}
 
-      <div className="budget-cards">
-        {budgetItems.length ? (
-          budgetItems.map((item) => {
-            const lockedByOther = useEditLocks && isLockedByAnotherUser(item, currentUserId);
-            const locker = approvedMembers.find((member) => member.user_id === item.locked_by);
-            const participantIds = participantsByBudget[item.id] || [];
-            const linkedItemIds = linksByBudget[item.id] || [];
-            const participantNames = participantIds
-              .map((userId) => approvedMembers.find((member) => member.user_id === userId))
-              .filter(Boolean)
-              .map((member) => member.display_name || member.email || member.user_id);
-            const linkedNames = linkedItemIds
-              .map((itemId) => items.find((itineraryItem) => itineraryItem.id === itemId)?.title)
-              .filter(Boolean);
-            const payer = approvedMembers.find((member) => member.user_id === item.payer_id);
-            return (
-              <article className="budget-card" key={item.id}>
-                <div>
-                  <span>
-                    {item.category}
-                    {item.subcategory ? `｜${item.subcategory}` : ""}
-                  </span>
-                  <h4>{item.title}</h4>
-                </div>
-                <strong>
-                  {item.currency} {Number(item.amount || 0).toLocaleString("zh-TW")} → {formatMoney(item.twd_amount)}
-                </strong>
-                <p>付款人：{payer?.display_name || payer?.email || "未指定"}</p>
-                <p>分攤：{participantNames.length ? participantNames.join("、") : "未指定"}</p>
-                <p>連動行程：{linkedNames.length ? linkedNames.join("、") : "未連動"}</p>
-                {item.note ? <p>備註：{item.note}</p> : null}
-                <div className="item-meta">
-                  <span className="pill">{item.split_type === "equal" ? "均分" : "自訂"}</span>
-                  {item.is_fixed ? <span className="pill">固定費用</span> : null}
-                  {item.auto_created_actual_expense_id ? <span className="pill">已轉實付</span> : null}
-                </div>
-                <div className="budget-actions">
-                  <button
-                    className="ghost-button compact"
-                    disabled={!canEdit || Boolean(item.auto_created_actual_expense_id)}
-                    type="button"
-                    onClick={() => onConvertToActual(item)}
-                  >
-                    轉實付
-                  </button>
-                  <button className="mini-button" disabled={!canEdit || lockedByOther} type="button" onClick={() => openEditBudget(item)}>
-                    E
-                  </button>
-                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(item.id)}>
-                    X
-                  </button>
-                </div>
-              </article>
-            );
-          })
-        ) : (
-          <div className="timeline-empty">尚未建立預算</div>
-        )}
-      </div>
+      <div className="budget-list-heading"><h4>預計費用</h4><span>估算金額與分攤安排</span></div>
+      <PlannedBudgetList
+        key={activeTrip?.id}
+        budgetItems={budgetItems}
+        members={approvedMembers}
+        items={items}
+        participantsByBudget={participantsByBudget}
+        linksByBudget={linksByBudget}
+        canEdit={canEdit}
+        currentUserId={currentUserId}
+        useEditLocks={useEditLocks}
+        onEdit={openEditBudget}
+        onDelete={onDelete}
+        onConvertToActual={onConvertToActual}
+        onAdd={openNewBudget}
+      />
 
       <ActualExpensePanel
         activeTrip={activeTrip}
@@ -14132,7 +14073,6 @@ function ActualExpensePanel({
     });
     return next;
   }, [actualParticipants]);
-  const total = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
   const activeEditorGuardId = `actual:${activeTrip?.id || "no-trip"}`;
   const activeEditorGuard = useMemo(
     () => ({
@@ -14309,27 +14249,17 @@ function ActualExpensePanel({
     <section className="actual-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">{headingEyebrow}</p>
           <h3>實付</h3>
+          <p className="budget-section-description">已經支付的費用，與預計費用分開記錄。</p>
         </div>
-        <button className="icon-button" disabled={!canEdit} type="button" title="新增實付" onClick={openNewExpense}>
-          +
+        <button className="ghost-button compact budget-add-button" disabled={!canEdit} type="button" title="新增實付" onClick={openNewExpense}>
+          <Plus size={16} aria-hidden="true" /> 新增實付
         </button>
-      </div>
-
-      <div className="budget-overview">
-        <div>
-          <span>實付總額</span>
-          <strong>{formatMoney(total)}</strong>
-        </div>
-        <div>
-          <span>筆數</span>
-          <strong>{actualExpenses.length}</strong>
-        </div>
       </div>
 
       {isOpen ? (
         <form autoComplete="off" className="item-form budget-form" onSubmit={submit}>
+          <h4>{editingId ? "編輯實付" : "新增實付"}</h4>
           {conflict ? (
             <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeExpenseForm(true)} />
           ) : null}
@@ -14409,7 +14339,7 @@ function ActualExpensePanel({
             </label>
           </div>
           <div className="budget-picker">
-            <strong>分攤成員（equal split）</strong>
+            <strong>分攤成員（均分）</strong>
             <div>
               {approvedMembers.map((member) => (
                 <label className="checkbox-chip" key={member.user_id}>
@@ -14445,21 +14375,17 @@ function ActualExpensePanel({
             const payer = approvedMembers.find((member) => member.user_id === expense.payer_id);
             const budget = budgetItems.find((item) => item.id === expense.budget_item_id);
             return (
-              <article className="budget-card" key={expense.id}>
-                <div>
+              <article className="budget-card budget-page-card" key={expense.id}>
+                <div className="budget-card-heading"><div>
                   <span>{budget ? `來自預算｜${budget.category}` : "直接新增"}</span>
                   <h4>{expense.title}</h4>
-                </div>
-                <strong>
-                  {expense.currency} {Number(expense.amount || 0).toLocaleString("zh-TW")} →{" "}
-                  {formatMoney(expense.twd_amount)}
-                </strong>
-                <div>
-                  <p>付款人：{payer?.display_name || payer?.email || "未指定"}</p>
-                  <p>分攤：{participantNames.length ? participantNames.join("、") : "未指定"}</p>
-                  <p>付款時間：{expense.paid_at ? new Date(expense.paid_at).toLocaleString("zh-TW") : "未設定"}</p>
-                  {expense.note ? <p>備註：{expense.note}</p> : null}
-                </div>
+                </div><BudgetAmount item={expense} /></div>
+                <dl className="budget-card-details">
+                  <div><dt>付款人</dt><dd>{payer?.display_name || payer?.email || "未指定"}</dd></div>
+                  <div><dt>分攤成員</dt><dd>{participantNames.length ? participantNames.join("、") : "未指定"}</dd></div>
+                  <div className="budget-detail-wide"><dt>付款時間</dt><dd>{expense.paid_at ? new Date(expense.paid_at).toLocaleString("zh-TW") : "未設定"}</dd></div>
+                  {expense.note ? <div className="budget-detail-wide"><dt>備註</dt><dd>{expense.note}</dd></div> : null}
+                </dl>
                 {enableAttachments ? (
                   <AttachmentList
                     attachments={attachments.filter(
@@ -14474,11 +14400,11 @@ function ActualExpensePanel({
                   />
                 ) : null}
                 <div className="budget-actions">
-                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => openEditExpense(expense)}>
-                    E
+                  <button className="mini-button" aria-label={`編輯實付：${expense.title}`} title="編輯實付" disabled={!canEdit} type="button" onClick={() => openEditExpense(expense)}>
+                    <Pencil size={16} aria-hidden="true" />
                   </button>
-                  <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(expense.id)}>
-                    X
+                  <button className="mini-button" aria-label={`刪除實付：${expense.title}`} title="刪除實付" disabled={!canEdit} type="button" onClick={() => onDelete(expense.id)}>
+                    <Trash2 size={16} aria-hidden="true" />
                   </button>
                 </div>
               </article>

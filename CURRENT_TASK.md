@@ -2,6 +2,15 @@
 
 This file is the concise live project ledger. Keep it aligned with the real branch, deployed behavior, production migration state, and next requested phase.
 
+## Active Local Work — 2026-10-22
+
+- Branch: `codex/budget-page-polish`, based on synchronized `main` / `origin/main` at `fdd332b`.
+- Desktop Budget page first pass is implemented; user visual acceptance is pending. Mobile-specific work is deferred at the user's request.
+- Added trip-level planned/actual/difference summaries, category totals, budget search/category filters, structured expense cards, and labeled edit/delete icons. Formal and Demo reuse the same views and existing persistence callbacks.
+- Full Playwright passed 350/350, including five new Budget tests; build passed. Desktop checks cover 1280 and 1440 widths, filtering, create/edit/delete, conversion, and overspend feedback. No authenticated Formal writes, migration, push, or deployment was performed for this work.
+- References, scope, and home-computer integration notes: `docs/2026-10-22-budget-desktop-polish-handoff.md`.
+- Git correction to the older rollout notes below: Phase 7 AI exchange/import commits through `fdd332b` are already present on remote `main`. Production deployment has not been reverified in this session.
+
 Historical Phase 4 through Phase 5.7c detail is preserved in:
 
 - `docs/archive/Timeline_Phase5/2026-07-12-current-task-through-phase-5-7c.md`
@@ -34,7 +43,7 @@ Current source-of-truth documents:
 
 `docs/archive/` contains historical or superseded material. Do not read it by default. `docs/gpt/` is historical and must not be recreated.
 
-## Current Status
+## Previous Phase Status (Historical Handoff)
 
 ```text
 Current phase: Timeline Phase 7.5-7.9 AI itinerary exchange, planning, and import

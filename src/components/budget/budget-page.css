@@ -1,0 +1,98 @@
+.budget-page {
+  gap: 20px;
+  padding: 24px;
+}
+
+.budget-page .panel-heading {
+  padding: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.budget-page .panel-heading h3 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.budget-page .budget-section-description {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.budget-page .budget-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 38px;
+}
+
+.budget-page-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper, #fbfcfa);
+}
+
+.budget-page-summary > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 18px 20px;
+  min-width: 0;
+}
+
+.budget-page-summary > div + div { border-left: 1px solid var(--line); }
+.budget-page-summary span, .budget-page-summary small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.budget-page-summary strong { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.budget-page-summary .is-over-budget strong { color: var(--color-error); }
+.budget-category-summary { display: flex; gap: 10px 20px; flex-wrap: wrap; padding: 14px 2px 0; color: var(--muted); font-size: 12px; }
+.budget-category-summary b { color: var(--ink); font-weight: 500; margin-right: 6px; }
+.budget-list-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
+.budget-list-heading h4 { font-weight: 600; font-size: 15px; }
+.budget-list-heading > span { color: var(--muted); font-size: 12px; }
+.planned-budget-list { display: grid; gap: 14px; }
+.budget-list-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.budget-search { display: flex; align-items: center; gap: 8px; flex: 1 1 200px; max-width: 400px; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; color: var(--muted); }
+.budget-page .budget-search input { border: 0; background: transparent; box-shadow: none; padding: 9px 0; min-width: 0; min-height: 38px; font-size: 13px; width: 100%; }
+.budget-search:focus-within { border-color: var(--mint-dark); }
+.budget-search > svg { flex-shrink: 0; }
+.budget-search button { display: flex; border: 0; background: transparent; padding: 4px; color: var(--muted); }
+.budget-page .budget-list-toolbar select { width: auto; min-height: 38px; max-width: 100%; padding: 8px 28px 8px 10px; font-size: 13px; }
+.budget-result-count { color: var(--muted); font-size: 12px; white-space: nowrap; margin-left: auto; }
+.budget-page .budget-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; }
+.budget-page .budget-page-card { grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; padding: 18px; }
+.budget-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.budget-card-heading > div { min-width: 0; }
+.budget-page .budget-card-heading h4 { margin-top: 5px; font-size: 15px; font-weight: 600; line-height: 1.5; }
+.budget-page .budget-card-heading span { font-size: 12px; font-weight: 400; overflow-wrap: anywhere; }
+.budget-amount { display: grid; gap: 4px; text-align: right; flex-shrink: 0; max-width: 50%; }
+.budget-amount strong { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.budget-card-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; margin: 0; }
+.budget-card-details > div { display: grid; gap: 4px; min-width: 0; }
+.budget-card-details dt { color: var(--muted); font-size: 12px; }
+.budget-card-details dd { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.budget-card-details .budget-detail-wide { grid-column: 1 / -1; }
+.budget-card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.budget-page .item-meta { margin: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.budget-page .item-meta .pill { font-size: 11px; font-weight: 500; }
+.budget-page .budget-actions { align-items: center; justify-content: flex-end; margin-left: auto; }
+.budget-page .budget-actions .mini-button { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; min-height: 34px; }
+.budget-page .budget-actions .ghost-button { min-height: 34px; font-size: 12px; }
+.budget-page .actual-panel { gap: 16px; padding-top: 24px; margin-top: 4px; }
+.budget-page .budget-form { margin-bottom: 0; border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+.budget-page .budget-form > h4 { margin-bottom: 12px; font-size: 15px; font-weight: 600; }
+.budget-page .budget-form .budget-picker > strong { font-size: 13px; font-weight: 500; }
+.budget-page .budget-form .checkbox-chip { font-weight: 400; }
+.budget-list-empty { grid-column: 1 / -1; display: grid; justify-items: center; gap: 10px; padding: 32px 16px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); text-align: center; }
+.budget-list-empty strong { font-size: 14px; color: var(--ink); font-weight: 500; }
+.budget-list-empty p { font-size: 13px; line-height: 1.6; }
+
+@media (max-width: 1100px) {
+  .budget-page .budget-cards { grid-template-columns: minmax(0, 1fr); }
+}
