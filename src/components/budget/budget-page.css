@@ -1,7 +1,7 @@
 .budget-workspace { --board-scrollbar-width: 4px; --board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent); display: grid; grid-template-columns: minmax(0, 7fr) minmax(290px, 3fr); gap: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; min-height: min(760px, calc(100vh - 100px)); color: var(--ink); }
 .budget-workspace button, .budget-workspace input, .budget-workspace select, .budget-workspace textarea { font: inherit; }
 .bw-main { min-width: 0; padding: 0; }
-.bw-toolbar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin: 0; }
+.bw-toolbar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin: 0; background: var(--color-bg); }
 .bw-toolbar h3 { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
 .bw-tabs, .bw-side-tabs { display: flex; align-items: stretch; gap: 18px; }
 .bw-tabs button, .bw-side-tabs button { background: none; border: 0; border-radius: 0; border-bottom: 2px solid transparent; padding: 10px 0; color: var(--muted); cursor: pointer; font-size: 13px; white-space: nowrap; }
@@ -16,6 +16,7 @@
 .bw-table-scroll { overflow-x: auto; padding-bottom: 12px; }
 .bw-table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 13px; }
 .bw-table th { text-align: left; font-weight: 500; color: var(--muted); }
+.bw-table thead { background: var(--color-bg); box-shadow: 0 1px 0 var(--line); }
 .bw-table thead th { padding: 8px; height: 36px; border-bottom: 1px solid var(--line); font-size: 11px; }
 .bw-table th:first-child, .bw-table td:first-child { padding-left: 16px; }
 .bw-table th:last-child, .bw-table td:last-child { padding-right: 12px; }
@@ -85,7 +86,7 @@
 .bw-editor { display: flex; flex-direction: column; gap: 10px; }
 .bw-editor label { display: grid; gap: 5px; color: var(--muted); min-width: 0; }
 .bw-field { display: grid; gap: 5px; color: var(--muted); min-width: 0; }
-.bw-editor input, .bw-editor select, .bw-editor textarea { width: 100%; min-width: 0; min-height: 32px; height: 32px; padding: 5px 8px; line-height: 20px; border: 1px solid var(--line); border-radius: 4px; background: #fffefa; color: var(--ink); font-size: 12px; }
+.bw-editor input, .bw-editor select, .bw-editor textarea { width: 100%; min-width: 0; min-height: 32px; height: 32px; padding: 5px 8px; line-height: 20px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--ink); font-size: 12px; }
 .bw-editor textarea { height: 60px; min-height: 60px; resize: vertical; }
 .bw-two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .bw-editor fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
@@ -116,10 +117,7 @@
 .bw-linked-items li { display: flex; align-items: center; gap: 4px; padding: 3px 0; }
 .bw-linked-items li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
 .bw-link-options summary { color: var(--color-primary); cursor: pointer; padding: 4px 0; }
-.bw-link-scopes { display: flex; gap: 12px; margin: 6px 0; }
-.bw-link-scopes button { padding: 4px 0; min-height: 26px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--muted); cursor: pointer; }
-.bw-link-scopes button[aria-pressed=true] { border-bottom-color: var(--color-primary); color: var(--color-primary); }
-.bw-link-scopes button:disabled { opacity: .5; cursor: default; }
+.bw-editor fieldset.bw-link-suggestions { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .bw-link-filters { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 6px; margin: 6px 0 10px; }
 .bw-link-filters input, .bw-link-filters select { min-height: 32px; padding: 5px 6px; }
 .bw-link-results { max-height: 210px; overflow-y: auto; overscroll-behavior: contain; }
@@ -175,7 +173,7 @@
   .bw-main { display: flex; flex-direction: column; min-height: 0; }
   .bw-toolbar, .bw-comparison-summary, .bw-inline-hint { flex-shrink: 0; }
   .bw-table-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
-  .bw-table thead { position: sticky; top: 0; z-index: 1; background: color-mix(in srgb, var(--color-surface) 92%, transparent); backdrop-filter: blur(12px); }
+  .bw-table thead { position: sticky; top: 0; z-index: 1; background: var(--color-bg); }
   .bw-side { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: 68px; }
   .bw-side-tabs { position: sticky; top: 0; z-index: 2; background: var(--panel); }
   .bw-editor-actions { position: sticky; bottom: 0; z-index: 1; margin-top: 0; padding: 8px 0; border-top: 1px solid var(--line); background: var(--panel); }

@@ -168,13 +168,13 @@ function itinerarySuggestionScore(item, category) {
 function ItineraryPicker({ items, selectedIds, category, onChange }) {
   const [query, setQuery] = useState("");
   const [day, setDay] = useState("");
-  const [scope, setScope] = useState("suggested");
-  const suggested = items.filter((item) => itinerarySuggestionScore(item, category) > 0);
-  const useSuggestions = scope === "suggested" && suggested.length > 0;
   const days = [...new Set(items.map((item) => Number(item.day_index)))].sort((a, b) => a - b);
-  const matches = (useSuggestions ? suggested : items).filter((item) => (day === "" || Number(item.day_index) === Number(day)) && item.title.toLowerCase().includes(query.trim().toLowerCase()))
-    .sort((a, b) => Number(a.day_index) - Number(b.day_index) || (useSuggestions ? itinerarySuggestionScore(b, category) - itinerarySuggestionScore(a, category) : 0) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  const matches = items.filter((item) => (day === "" || Number(item.day_index) === Number(day)) && item.title.toLowerCase().includes(query.trim().toLowerCase()))
+    .sort((a, b) => Number(a.day_index) - Number(b.day_index) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  const suggested = matches.filter((item) => itinerarySuggestionScore(item, category) > 0)
+    .sort((a, b) => itinerarySuggestionScore(b, category) - itinerarySuggestionScore(a, category)).slice(0, 5);
   function toggle(id) { onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]); }
+  function option(item) { return <label key={item.id}><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} /><span>{item.title}</span></label>; }
   return <section className="bw-link-picker" aria-label="關聯行程">
     <div className="bw-link-heading"><span>關聯行程</span><small>{selectedIds.length} 項</small></div>
     {selectedIds.length ? <ul className="bw-linked-items">{selectedIds.map((id) => {
@@ -182,9 +182,8 @@ function ItineraryPicker({ items, selectedIds, category, onChange }) {
       return <li key={id}><span>{item ? `Day ${Number(item.day_index) + 1} · ${item.title}` : "已移除的行程"}</span><button type="button" className="bw-icon" aria-label={`取消關聯 ${item?.title || "已移除的行程"}`} onClick={() => toggle(id)}><X size={13} /></button></li>;
     })}</ul> : null}
     <details className="bw-link-options"><summary>{selectedIds.length ? "變更關聯" : "選擇行程"}</summary>
-      <div className="bw-link-scopes" role="group" aria-label="行程建議範圍"><button type="button" aria-pressed={useSuggestions} disabled={!suggested.length} onClick={() => setScope("suggested")}>建議 · {suggested.length}</button><button type="button" aria-pressed={!useSuggestions} onClick={() => setScope("all")}>全部行程</button></div>
       <div className="bw-link-filters"><input aria-label="搜尋關聯行程" placeholder="搜尋行程" value={query} onChange={(event) => setQuery(event.target.value)} /><MenuSelect label="關聯行程日期" value={day} onValueChange={setDay} options={[{value:"",label:"全部 Day"},...days.map(value=>({value:String(value),label:`Day ${value+1}`}))]} /></div>
-      <div className="bw-link-results">{days.filter((value) => matches.some((item) => Number(item.day_index) === value)).map((value) => <fieldset key={value}><legend>Day {value + 1}</legend>{matches.filter((item) => Number(item.day_index) === value).map((item) => <label key={item.id}><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} /><span>{item.title}</span></label>)}</fieldset>)}{!matches.length ? <p className="bw-muted">沒有符合的行程</p> : null}</div>
+      <div className="bw-link-results">{suggested.length ? <fieldset aria-label="建議行程" className="bw-link-suggestions"><legend>建議</legend>{suggested.map(option)}</fieldset> : null}{days.filter((value) => matches.some((item) => Number(item.day_index) === value)).map((value) => <fieldset key={value} aria-label={`Day ${value + 1} 行程`}><legend>Day {value + 1}</legend>{matches.filter((item) => Number(item.day_index) === value).map(option)}</fieldset>)}{!matches.length ? <p className="bw-muted">沒有符合的行程</p> : null}</div>
     </details>
   </section>;
 }
