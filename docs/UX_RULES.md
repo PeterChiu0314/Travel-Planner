@@ -263,6 +263,15 @@ Do not:
 
 ## Budget UX Rules
 
+Desktop requirements approved 2026-10-22 supersede the older generic notes below:
+
+- Existing Sidebar | dense grouped details | personal-first statistics/item detail. No expanded child rows or repeated categories.
+- Readonly journey phase. Planning prioritizes budget; Traveling prioritizes quick actual recording. Comparison appears only in Settlement, using the last committed predeparture snapshot.
+- Per-person price, split total and optional advanced custom shares are approved. Payer and participants are separate. Legacy `amount` means total.
+- Single click opens detail, double click edits title or numbers through the same draft. Explicit Save/Enter only; blur never writes. Preserve Save/Discard/Active Editor Guard.
+- Status labels are `預算` and `實付`; display money rounded to integers while preserving precision and reconciling allocations internally.
+- Mobile only needs minimum operability in this phase; a new card design is not required.
+
 Budget is for travel planning and group clarity, not accounting bureaucracy.
 
 Do:

@@ -1,6 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BudgetAmount, BudgetOverview, PlannedBudgetList } from "./components/budget/BudgetPageParts.jsx";
+import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
+import { budgetStage, calculatePricing, recordForm, settlementBalances } from "./lib/budgetFinance.js";
 import {
   closestCenter,
   DndContext,
@@ -463,31 +464,6 @@ const emptyItemForm = {
   alternative_map_url_baseline: "",
 };
 
-const emptyBudgetForm = {
-  category: "餐飲",
-  subcategory: "",
-  title: "",
-  amount: 0,
-  currency: "TWD",
-  exchange_rate: 1,
-  payer_id: "",
-  is_fixed: false,
-  note: "",
-  participantIds: [],
-  linkedItemIds: [],
-};
-
-const emptyActualForm = {
-  budget_item_id: "",
-  title: "",
-  amount: 0,
-  currency: "TWD",
-  exchange_rate: 1,
-  payer_id: "",
-  paid_at: "",
-  note: "",
-  participantIds: [],
-};
 
 const emptyAccommodationForm = {
   name: "",
@@ -2500,6 +2476,9 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [alternatives, setAlternatives] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
+  const [budgetBaseline, setBudgetBaseline] = useState(null);
+  const [budgetSchemaAvailable, setBudgetSchemaAvailable] = useState(false);
+  const budgetSchemaAvailabilityRef = useRef(null);
   const [budgetParticipants, setBudgetParticipants] = useState([]);
   const [actualExpenses, setActualExpenses] = useState([]);
   const [actualParticipants, setActualParticipants] = useState([]);
@@ -3154,6 +3133,7 @@ export default function App() {
       setItems([]);
       setAlternatives([]);
       setBudgetItems([]);
+      setBudgetBaseline(null);
       setBudgetParticipants([]);
       setActualExpenses([]);
       setActualParticipants([]);
@@ -3186,6 +3166,7 @@ export default function App() {
       budgetLinksResult,
       packResult,
       membersResult,
+      baselineResult,
     ] = await Promise.all([
       supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
       supabase.from("itinerary_alternatives").select("*"),
@@ -3206,7 +3187,14 @@ export default function App() {
         .select("id,trip_id,user_id,role,status,created_at,display_name,email")
         .eq("trip_id", tripId)
         .order("created_at"),
+      budgetSchemaAvailabilityRef.current === false ? Promise.resolve({ data: null, error: { code: "PGRST205" } }) : supabase.from("trip_budget_baselines").select("*").eq("trip_id", tripId).maybeSingle(),
     ]);
+
+    const baselineMissing = ["42P01", "PGRST205"].includes(baselineResult.error?.code);
+    if (baselineMissing) budgetSchemaAvailabilityRef.current = false;
+    setBudgetSchemaAvailable(!baselineResult.error);
+    setBudgetBaseline(baselineResult.data || null);
+    if (baselineResult.error && !baselineMissing) setNotice("無法讀取出發前預算快照，請重新連線後再試。");
 
     const error =
       itemsResult.error ||
@@ -3230,6 +3218,7 @@ export default function App() {
         setItems(cached.items || []);
         setAlternatives(cached.alternatives || []);
         setBudgetItems(cached.budgetItems || []);
+        setBudgetBaseline(cached.budgetBaseline || null);
         setBudgetParticipants(cached.budgetParticipants || []);
         setActualExpenses(cached.actualExpenses || []);
         setActualParticipants(cached.actualParticipants || []);
@@ -3301,6 +3290,7 @@ export default function App() {
     setPackItems(packResult.data || []);
     setMembers(membersResult.data || []);
     writeOfflineTripData(tripId, {
+      budgetBaseline: baselineResult.data || null,
       items: nextItems,
       alternatives: nextAlternatives,
       budgetItems: budgetResult.data || [],
@@ -4003,11 +3993,13 @@ export default function App() {
           loadTrips(activeTripId);
           loadTripData(activeTripId);
         },
-      )
-      .subscribe();
-
+      );
+    if (budgetSchemaAvailable) channel.on("postgres_changes",
+      { event: "*", schema: "public", table: "trip_budget_baselines", filter: `trip_id=eq.${activeTripId}` },
+      () => loadTripData(activeTripId));
+    channel.subscribe();
     return () => supabase.removeChannel(channel);
-  }, [activeDay, activeTripId, loadRouteOverrides, loadTripData, loadTrips, session?.user]);
+  }, [activeDay, activeTripId, budgetSchemaAvailable, loadRouteOverrides, loadTripData, loadTrips, session?.user]);
 
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
@@ -5286,8 +5278,12 @@ export default function App() {
   }
 
   async function saveBudget(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEditActiveTripContent) return;
+    if (!activeTrip || !canEdit) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
+    if (budgetSchemaAvailable) return saveBudgetWorkspaceRecord("budget", payload, editingId, meta);
+    if ((payload.pricing_mode && payload.pricing_mode !== "split_total") || payload.is_fixed) {
+      return { ok: false, error: { message: "此計價方式尚未啟用，需先完成預算資料升級。草稿已保留。" } };
+    }
     const amount = Number(payload.amount || 0);
     const exchangeRate = payload.currency === "TWD" ? 1 : Number(payload.exchange_rate || 1);
     const twdAmount = Math.round(amount * exchangeRate);
@@ -5350,16 +5346,21 @@ export default function App() {
     return { ok: true };
   }
 
-  async function deleteBudget(budgetId) {
-    if (!activeTrip || !canEditActiveTripContent) return;
+  async function deleteBudget(budgetId, meta = {}) {
+    if (!activeTrip || !canEdit) return;
+    if (budgetSchemaAvailable) return deleteBudgetWorkspaceRecord("budget", budgetId, meta);
     const { error } = await supabase.from("budget_items").delete().eq("id", budgetId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function saveActualExpense(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEditActiveTripContent) return;
+    if (!activeTrip || !canEdit) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
+    if (budgetSchemaAvailable) return saveBudgetWorkspaceRecord("actual", payload, editingId, meta);
+    if (payload.pricing_mode && payload.pricing_mode !== "split_total") {
+      return { ok: false, error: { message: "此計價方式尚未啟用，需先完成預算資料升級。草稿已保留。" } };
+    }
     const amount = Number(payload.amount || 0);
     const exchangeRate = payload.currency === "TWD" ? 1 : Number(payload.exchange_rate || 1);
     const twdAmount = Math.round(amount * exchangeRate);
@@ -5409,6 +5410,9 @@ export default function App() {
 
   async function convertBudgetToActual(budget) {
     if (!activeTrip || !canEditActiveTripContent) return;
+    if (budgetSchemaAvailable) return saveBudgetWorkspaceRecord("actual", {
+      ...recordForm(budget, budgetParticipants, "budget_item_id", members.filter((member) => member.status === "approved")), budget_item_id: budget.id,
+    }, null, { tripId: activeTrip.id });
     const participantIds = budgetParticipants
       .filter((participant) => participant.budget_item_id === budget.id)
       .map((participant) => participant.user_id);
@@ -5448,11 +5452,33 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function deleteActualExpense(expenseId) {
-    if (!activeTrip || !canEditActiveTripContent) return;
+  async function deleteActualExpense(expenseId, meta = {}) {
+    if (!activeTrip || !canEdit) return;
+    if (budgetSchemaAvailable) return deleteBudgetWorkspaceRecord("actual", expenseId, meta);
     const { error } = await supabase.from("actual_expenses").delete().eq("id", expenseId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
+  }
+
+  async function saveBudgetWorkspaceRecord(kind, payload, editingId, meta) {
+    let pricing;
+    try { pricing = calculatePricing(payload); }
+    catch (error) { return { ok: false, error }; }
+    const { data, error } = await supabase.rpc("save_budget_workspace_record", {
+      p_trip_id: activeTrip.id, p_kind: kind, p_id: editingId || null,
+      p_base_updated_at: meta.baseUpdatedAt || null,
+      p_payload: { ...payload, ...pricing, paid_at: payload.paid_at ? new Date(payload.paid_at).toISOString() : new Date().toISOString() },
+    });
+    if (error) return { ok: false, error, conflict: error.code === "40001" };
+    await loadTripData(activeTrip.id);
+    return { ok: true, data };
+  }
+
+  async function deleteBudgetWorkspaceRecord(kind, id, meta) {
+    const { error } = await supabase.rpc("delete_budget_workspace_record", { p_trip_id: activeTrip.id, p_kind: kind, p_id: id, p_base_updated_at: meta.baseUpdatedAt || null });
+    if (error) { setNotice(error.code === "40001" ? "資料已變更，請重新開啟後再刪除。" : error.message); return { ok: false, error }; }
+    await loadTripData(activeTrip.id);
+    return { ok: true };
   }
 
   async function saveAccommodation(payload, editingId, meta = {}) {
@@ -5617,7 +5643,7 @@ export default function App() {
   }
 
   async function uploadAttachment(targetType, targetId, file) {
-    if (!activeTrip || !canEditActiveTripContent || !file) return;
+    if (!activeTrip || !(targetType === "actual_expense" ? canEdit : canEditActiveTripContent) || !file) return;
     if (file.size > 10 * 1024 * 1024) {
       setNotice("附件大小需小於 10MB");
       return;
@@ -5656,7 +5682,7 @@ export default function App() {
   }
 
   async function deleteAttachment(attachment) {
-    if (!activeTrip || !canEditActiveTripContent) return;
+    if (!activeTrip || !(attachment.target_type === "actual_expense" ? canEdit : canEditActiveTripContent)) return;
     const storageResult = await supabase.storage.from(attachmentBucket).remove([attachment.file_url]);
     if (storageResult.error) {
       setNotice(storageResult.error.message);
@@ -6321,6 +6347,8 @@ export default function App() {
             attachments={attachments}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
+            budgetBaseline={budgetBaseline?.trip_id === activeTrip.id ? budgetBaseline : null}
+            canEditBudget={canEdit}
             canEdit={canEditActiveTripContent}
             dayItems={dayItems}
             days={days}
@@ -8290,6 +8318,15 @@ function DemoApp({ initialSection }) {
   const [actualExpenses, setActualExpenses] = useState(() => createDemoActualExpenses());
   const [actualParticipants, setActualParticipants] = useState(() => createDemoActualParticipants());
   const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState(() => demoItineraryBudgetLinks);
+  const [demoBudgetBaseline, setDemoBudgetBaseline] = useState(() => ({ trip_id: demoTrips[0].id,
+    departure_at: `${demoTrips[0].start_date}T00:00:00+08:00`, captured_at: new Date().toISOString(),
+    payload: { items: createDemoBudgetItems(), participants: createDemoBudgetParticipants(), links: demoItineraryBudgetLinks,
+      itinerary: createDemoTimelineItems(), members: demoMembers } }));
+  useEffect(() => {
+    if (budgetStage(demoActiveTrip) !== "planning" || (demoBudgetBaseline && new Date(demoBudgetBaseline.departure_at) <= new Date())) return;
+    setDemoBudgetBaseline({ trip_id: demoActiveTrip.id, departure_at: `${demoActiveTrip.start_date}T00:00:00+08:00`, captured_at: new Date().toISOString(),
+      payload: { items: budgetItems, participants: budgetParticipants, links: itineraryBudgetLinks, itinerary: timelineItems, members: demoMembers } });
+  }, [budgetItems, budgetParticipants, itineraryBudgetLinks, timelineItems, demoActiveTrip]);
   const [luggageItems, setLuggageItems] = useState(() => createDemoLuggageItems());
   const [sharedLuggageItems, setSharedLuggageItems] = useState(() => createDemoSharedLuggageItems());
   const [focusedItemId, setFocusedItemId] = useState(null);
@@ -8668,10 +8705,13 @@ function DemoApp({ initialSection }) {
 
   function saveBudgetItem(payload, editingId) {
     if (!payload.title.trim()) return;
-    const participantIds = payload.participantIds?.length ? payload.participantIds : demoMembers.map((member) => member.user_id);
-    const amount = Number(payload.amount || 0);
-    const exchangeRate = Number(payload.exchange_rate || 1);
+    const participantIds = payload.participantIds || [];
+    let pricing;
+    try { pricing = calculatePricing(payload); } catch (error) { return { ok: false, error }; }
+    const amount = pricing.amount;
+    const exchangeRate = pricing.exchange_rate;
     const nextBudget = {
+      pricing_mode: pricing.pricing_mode, unit_amount: pricing.unit_amount, split_type: pricing.split_type,
       category: payload.category || "其他",
       subcategory: payload.subcategory || "",
       title: payload.title.trim(),
@@ -8684,6 +8724,9 @@ function DemoApp({ initialSection }) {
       note: payload.note || "",
       updated_at: new Date().toISOString(),
     };
+    function saveFixedActual(budgetId) {
+      if (payload.is_fixed && !actualExpenses.some((expense) => expense.budget_item_id === budgetId)) saveActualExpense({ ...payload, budget_item_id: budgetId }, null);
+    }
 
     if (editingId) {
       setBudgetItems((current) => current.map((item) => (item.id === editingId ? { ...item, ...nextBudget } : item)));
@@ -8693,6 +8736,7 @@ function DemoApp({ initialSection }) {
           id: demoId("demo-budget-participant"),
           budget_item_id: editingId,
           user_id: userId,
+          share_amount: pricing.shares[userId],
         })),
       ]);
       setItineraryBudgetLinks((current) => [
@@ -8703,7 +8747,8 @@ function DemoApp({ initialSection }) {
           budget_item_id: editingId,
         })),
       ]);
-      return { ok: true };
+      saveFixedActual(editingId);
+      return { ok: true, data: { id: editingId } };
     }
 
     const budgetId = demoId("demo-budget");
@@ -8714,6 +8759,7 @@ function DemoApp({ initialSection }) {
         id: demoId("demo-budget-participant"),
         budget_item_id: budgetId,
         user_id: userId,
+        share_amount: pricing.shares[userId],
       })),
     ]);
     setItineraryBudgetLinks((current) => [
@@ -8724,7 +8770,8 @@ function DemoApp({ initialSection }) {
         budget_item_id: budgetId,
       })),
     ]);
-    return { ok: true };
+    saveFixedActual(budgetId);
+    return { ok: true, data: { id: budgetId } };
   }
 
   function savePersonalLuggage(payload, editingId) {
@@ -8745,10 +8792,14 @@ function DemoApp({ initialSection }) {
 
   function saveActualExpense(payload, editingId) {
     if (!payload.title.trim()) return { ok: false };
-    const participantIds = payload.participantIds?.length ? payload.participantIds : demoMembers.map((member) => member.user_id);
-    const amount = Number(payload.amount || 0);
-    const exchangeRate = Number(payload.exchange_rate || 1);
+    const participantIds = payload.participantIds || [];
+    let pricing;
+    try { pricing = calculatePricing(payload); } catch (error) { return { ok: false, error }; }
+    const amount = pricing.amount;
+    const exchangeRate = pricing.exchange_rate;
     const nextExpense = {
+      category: payload.category || "其他", subcategory: payload.subcategory || "",
+      pricing_mode: pricing.pricing_mode, unit_amount: pricing.unit_amount, split_type: pricing.split_type,
       trip_id: demoTrip.id,
       budget_item_id: payload.budget_item_id || null,
       title: payload.title.trim(),
@@ -8770,6 +8821,7 @@ function DemoApp({ initialSection }) {
           id: demoId("demo-actual-participant"),
           actual_expense_id: editingId,
           user_id: userId,
+          share_amount: pricing.shares[userId],
         })),
       ]);
       return { ok: true };
@@ -8783,6 +8835,7 @@ function DemoApp({ initialSection }) {
         id: demoId("demo-actual-participant"),
         actual_expense_id: expenseId,
         user_id: userId,
+        share_amount: pricing.shares[userId],
       })),
     ]);
     return { ok: true };
@@ -9079,6 +9132,7 @@ function DemoApp({ initialSection }) {
         {activeSection === "budget" ? (
           <BudgetPanel
             activeTrip={demoActiveTrip}
+            budgetBaseline={demoBudgetBaseline?.trip_id === demoActiveTrip.id ? demoBudgetBaseline : null}
             actualExpenses={actualExpenses}
             actualParticipants={actualParticipants}
             attachments={[]}
@@ -9155,6 +9209,7 @@ function DemoApp({ initialSection }) {
           </button>
         ))}
       </nav>
+      <ActiveEditorGuardDialog />
       {isDemoMembersDialogOpen ? (
         <MembersInviteDialog
           canManageMembers={false}
@@ -9770,6 +9825,8 @@ function TripWorkspace(props) {
     attachments,
     budgetItems,
     budgetParticipants,
+    budgetBaseline,
+    canEditBudget,
     canEdit,
     dayItems,
     days,
@@ -10096,7 +10153,8 @@ function TripWorkspace(props) {
           activeTrip={activeTrip}
           budgetItems={budgetItems}
           budgetParticipants={budgetParticipants}
-          canEdit={canEdit}
+          budgetBaseline={budgetBaseline}
+          canEdit={canEditBudget ?? canEdit}
           actualExpenses={actualExpenses}
           actualParticipants={actualParticipants}
           attachments={attachments}
@@ -10174,6 +10232,8 @@ function TripWorkspace(props) {
 
       <div className={isSettlementMode ? "" : "hidden-section"}>
         <SettlementPanel
+          activeTrip={activeTrip}
+          budgetBaseline={budgetBaseline}
           actualExpenses={actualExpenses}
           actualParticipants={actualParticipants}
           budgetItems={budgetItems}
@@ -13619,806 +13679,25 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
   );
 }
 
-function BudgetPanel({
-  activeTrip,
-  actualExpenses,
-  actualParticipants,
-  attachments,
-  budgetItems,
-  budgetParticipants,
-  canEdit,
-  currentUserId,
-  disableDraftAutosave = false,
-  enableAttachments = true,
-  headingEyebrow = "Budget",
-  itineraryBudgetLinks,
-  items,
-  members,
-  onConvertToActual,
-  onDelete,
-  onDeleteActual,
-  onDeleteAttachment,
-  onOpenAttachment,
-  onSave,
-  onSaveActual,
-  onUploadAttachment,
-  restoreDrafts = true,
-  useEditLocks = true,
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [formSeed, setFormSeed] = useState(emptyBudgetForm);
-  const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
-  const [editorTripId, setEditorTripId] = useState(null);
-  const [restoredDraftKey, setRestoredDraftKey] = useState(null);
-  const [conflict, setConflict] = useState(false);
-  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
-    defaultForm: formSeed,
-    disabled: disableDraftAutosave,
-    editingId,
-    entityType: "budget_item",
-    forceDirtyOnOpen: Boolean(restoredDraftKey),
-    isOpen,
-    serverUpdatedAt: baseUpdatedAt,
-    tripId: activeTrip?.id,
-    userId: currentUserId,
-  });
-  const approvedMembers = members.filter((member) => member.status === "approved");
-  const participantsByBudget = useMemo(() => {
-    const next = {};
-    budgetParticipants.forEach((participant) => {
-      next[participant.budget_item_id] = [...(next[participant.budget_item_id] || []), participant.user_id];
-    });
-    return next;
-  }, [budgetParticipants]);
-  const linksByBudget = useMemo(() => {
-    const next = {};
-    itineraryBudgetLinks.forEach((link) => {
-      next[link.budget_item_id] = [...(next[link.budget_item_id] || []), link.itinerary_item_id];
-    });
-    return next;
-  }, [itineraryBudgetLinks]);
-  const activeEditorGuardId = `budget:${activeTrip?.id || "no-trip"}`;
-  const activeEditorGuard = useMemo(
-    () => ({
-      discard: () => closeBudgetForm(true),
-      isActive: isOpen,
-      isDirty: hasUnsavedChanges,
-      save: () => saveCurrentBudget(),
-    }),
-    [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
-  );
-
-  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
-
-  useEffect(() => {
-    if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
-    if (useEditLocks && editingId) {
-      void releaseEditLock({ recordId: editingId, supabase, table: "budget_items", userId: currentUserId });
-    }
-    replaceForm(emptyBudgetForm);
-    setFormSeed(emptyBudgetForm);
-    setBaseUpdatedAt(null);
-    setConflict(false);
-    setEditingId(null);
-    setEditorTripId(null);
-    setRestoredDraftKey(null);
-    setIsOpen(false);
-  }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, useEditLocks]);
-
-  useEffect(() => {
-    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
-    const latest = loadLatestDraftForEntity({
-      entityType: "budget_item",
-      tripId: activeTrip.id,
-      userId: currentUserId,
-    });
-    if (!latest) return;
-    const matchingItem = budgetItems.find((item) => item.id === latest.entityId);
-    if (latest.entityId !== "new" && !matchingItem) return;
-    setFormSeed(latest.draft.form);
-    setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingItem?.updated_at || null);
-    setConflict(false);
-    setEditingId(latest.entityId === "new" ? null : latest.entityId);
-    setEditorTripId(activeTrip.id);
-    setRestoredDraftKey(latest.key);
-    setIsOpen(true);
-  }, [activeTrip?.id, budgetItems, currentUserId, isOpen, restoreDrafts]);
-
-  async function openNewBudget() {
-    const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: activeEditorGuardId,
-      tripId: activeTrip?.id,
-    });
-    if (!canOpenEditor) return;
-    if (isOpen) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
-      if (!canContinue) return;
-      if (!hasUnsavedChanges) await closeBudgetForm(true);
-    }
-    const nextForm = {
-      ...emptyBudgetForm,
-      participantIds: approvedMembers.map((member) => member.user_id),
-    };
-    flushDraft();
-    replaceForm(nextForm);
-    setFormSeed(nextForm);
-    setBaseUpdatedAt(null);
-    setConflict(false);
-    setEditingId(null);
-    setEditorTripId(activeTrip?.id || null);
-    setRestoredDraftKey(null);
-    setIsOpen(true);
-  }
-
-  async function openEditBudget(item) {
-    if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
-    const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: activeEditorGuardId,
-      tripId: activeTrip?.id,
-    });
-    if (!canOpenEditor) return;
-    if (isOpen && editingId !== item.id) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
-      if (!canContinue) return;
-      if (!hasUnsavedChanges) await closeBudgetForm(true);
-    }
-    let lockedItem = item;
-    if (useEditLocks) {
-      const lockResult = await acquireEditLock({ record: item, supabase, table: "budget_items", userId: currentUserId });
-      if (lockResult.error || lockResult.lockedByAnotherUser) return;
-      lockedItem = lockResult.data || item;
-    }
-    const nextForm = {
-      category: item.category || "其他",
-      subcategory: item.subcategory || "",
-      title: item.title || "",
-      amount: item.amount || 0,
-      currency: item.currency || "TWD",
-      exchange_rate: item.exchange_rate || 1,
-      payer_id: item.payer_id || "",
-      is_fixed: Boolean(item.is_fixed),
-      note: item.note || "",
-      participantIds: participantsByBudget[item.id] || approvedMembers.map((member) => member.user_id),
-      linkedItemIds: linksByBudget[item.id] || [],
-    };
-    flushDraft();
-    replaceForm(nextForm);
-    setFormSeed(nextForm);
-    setBaseUpdatedAt(lockedItem.updated_at || item.updated_at || null);
-    setConflict(false);
-    setEditingId(item.id);
-    setEditorTripId(activeTrip?.id || null);
-    setRestoredDraftKey(null);
-    setIsOpen(true);
-  }
-
-  function toggleListValue(key, value) {
-    const current = form[key] || [];
-    setForm({
-      ...form,
-      [key]: current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
-    });
-  }
-
-  async function saveCurrentBudget() {
-    const result = await onSave(form, editingId, { baseUpdatedAt, tripId: editorTripId });
-    if (!result?.ok) {
-      if (result?.conflict) setConflict(true);
-      return false;
-    }
-    if (!disableDraftAutosave) clearDraft(draftKey);
-    resetDraft(emptyBudgetForm);
-    setFormSeed(emptyBudgetForm);
-    setBaseUpdatedAt(null);
-    setConflict(false);
-    setIsOpen(false);
-    setEditingId(null);
-    setEditorTripId(null);
-    setRestoredDraftKey(null);
-    return true;
-  }
-
-  async function submit(event) {
-    event.preventDefault();
-    await saveCurrentBudget();
-  }
-
-  async function closeBudgetForm(force = false) {
-    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
-    if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "budget_items", userId: currentUserId });
-    if (!disableDraftAutosave) clearDraft(draftKey);
-    resetDraft(emptyBudgetForm);
-    setFormSeed(emptyBudgetForm);
-    setBaseUpdatedAt(null);
-    setConflict(false);
-    setIsOpen(false);
-    setEditingId(null);
-    setEditorTripId(null);
-    setRestoredDraftKey(null);
-  }
-
-  return (
-    <section className="panel budget-panel budget-page">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">旅程費用</p>
-          <h3>預算</h3>
-          <p className="budget-section-description">先估算，再記錄實際支出。所有摘要金額均換算為新台幣。</p>
-        </div>
-        <button className="primary-button compact budget-add-button" disabled={!canEdit} type="button" title="新增預算" onClick={openNewBudget}>
-          <Plus size={16} aria-hidden="true" /> 新增預算
-        </button>
-      </div>
-
-      <BudgetOverview budgetItems={budgetItems} actualExpenses={actualExpenses} />
-
-      {isOpen ? (
-        <form autoComplete="off" className="item-form budget-form" onSubmit={submit}>
-          <h4>{editingId ? "編輯預算" : "新增預算"}</h4>
-          {conflict ? (
-            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeBudgetForm(true)} />
-          ) : null}
-          <div className="field-group form-grid">
-            <label>
-              大項
-              <input
-                autoComplete="off"
-                required
-                value={form.category}
-                onChange={(event) => setForm({ ...form, category: event.target.value })}
-              />
-            </label>
-            <label>
-              細項
-              <input
-                autoComplete="off"
-                value={form.subcategory}
-                onChange={(event) => setForm({ ...form, subcategory: event.target.value })}
-              />
-            </label>
-            <label>
-              金額
-              <input
-                autoComplete="off"
-                min="0"
-                step="1"
-                type="number"
-                value={form.amount}
-                onChange={(event) => setForm({ ...form, amount: event.target.value })}
-              />
-            </label>
-            <label>
-              幣別
-              <input
-                autoComplete="off"
-                value={form.currency}
-                onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })}
-              />
-            </label>
-          </div>
-          <div className="field-group form-grid wide">
-            <label>
-              標題
-              <input
-                autoComplete="off"
-                required
-                value={form.title}
-                onChange={(event) => setForm({ ...form, title: event.target.value })}
-              />
-            </label>
-            <label>
-              匯率
-              <input
-                autoComplete="off"
-                min="0"
-                step="0.0001"
-                type="number"
-                value={form.exchange_rate}
-                onChange={(event) => setForm({ ...form, exchange_rate: event.target.value })}
-              />
-            </label>
-          </div>
-          <div className="field-group form-grid wide">
-            <label>
-              付款人
-              <select value={form.payer_id} onChange={(event) => setForm({ ...form, payer_id: event.target.value })}>
-                <option value="">未指定</option>
-                {approvedMembers.map((member) => (
-                  <option key={member.user_id} value={member.user_id}>
-                    {member.display_name || member.email || member.user_id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              備註
-              <input autoComplete="off" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
-            </label>
-          </div>
-          <label className="checkbox-label">
-            <input
-              checked={form.is_fixed}
-              type="checkbox"
-              onChange={(event) => setForm({ ...form, is_fixed: event.target.checked })}
-            />
-            固定費用
-          </label>
-
-          <div className="budget-picker">
-            <strong>分攤成員（均分）</strong>
-            <div>
-              {approvedMembers.map((member) => (
-                <label className="checkbox-chip" key={member.user_id}>
-                  <input
-                    checked={form.participantIds.includes(member.user_id)}
-                    type="checkbox"
-                    onChange={() => toggleListValue("participantIds", member.user_id)}
-                  />
-                  {member.display_name || member.email || member.user_id}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="budget-picker">
-            <strong>連動行程</strong>
-            <div>
-              {items.map((item) => (
-                <label className="checkbox-chip" key={item.id}>
-                  <input
-                    checked={form.linkedItemIds.includes(item.id)}
-                    type="checkbox"
-                    onChange={() => toggleListValue("linkedItemIds", item.id)}
-                  />
-                  {item.title}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => closeBudgetForm()}>
-              取消
-            </button>
-            <button className="primary-button compact" type="submit">
-              儲存
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      <div className="budget-list-heading"><h4>預計費用</h4><span>估算金額與分攤安排</span></div>
-      <PlannedBudgetList
-        key={activeTrip?.id}
-        budgetItems={budgetItems}
-        members={approvedMembers}
-        items={items}
-        participantsByBudget={participantsByBudget}
-        linksByBudget={linksByBudget}
-        canEdit={canEdit}
-        currentUserId={currentUserId}
-        useEditLocks={useEditLocks}
-        onEdit={openEditBudget}
-        onDelete={onDelete}
-        onConvertToActual={onConvertToActual}
-        onAdd={openNewBudget}
-      />
-
-      <ActualExpensePanel
-        activeTrip={activeTrip}
-        actualExpenses={actualExpenses}
-        actualParticipants={actualParticipants}
-        attachments={attachments}
-        budgetItems={budgetItems}
-        canEdit={canEdit}
-        currentUserId={currentUserId}
-        disableDraftAutosave={disableDraftAutosave}
-        enableAttachments={enableAttachments}
-        headingEyebrow={headingEyebrow === "預算" ? "實付" : "Actual"}
-        members={members}
-        onDeleteAttachment={onDeleteAttachment}
-        onDelete={onDeleteActual}
-        onOpenAttachment={onOpenAttachment}
-        onSave={onSaveActual}
-        onUploadAttachment={onUploadAttachment}
-        restoreDrafts={restoreDrafts}
-        useEditLocks={useEditLocks}
-      />
-    </section>
-  );
+function BudgetPanel(props) {
+  return <BudgetWorkspace {...props} baseline={props.budgetBaseline} services={budgetEditorServices}
+    renderAttachments={props.enableAttachments === false ? null : (expense) => <AttachmentList
+      attachments={props.attachments.filter((attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id)}
+      canEdit={props.canEdit} targetId={expense.id} targetType="actual_expense"
+      onDelete={props.onDeleteAttachment} onOpen={props.onOpenAttachment} onUpload={props.onUploadAttachment} />} />;
 }
 
-function ActualExpensePanel({
-  activeTrip,
-  actualExpenses,
-  actualParticipants,
-  attachments,
-  budgetItems,
-  canEdit,
-  currentUserId,
-  disableDraftAutosave = false,
-  enableAttachments = true,
-  headingEyebrow = "Actual",
-  members,
-  onDelete,
-  onDeleteAttachment,
-  onOpenAttachment,
-  onSave,
-  onUploadAttachment,
-  restoreDrafts = true,
-  useEditLocks = true,
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [formSeed, setFormSeed] = useState(emptyActualForm);
-  const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
-  const [editorTripId, setEditorTripId] = useState(null);
-  const [conflict, setConflict] = useState(false);
-  const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
-    defaultForm: formSeed,
-    disabled: disableDraftAutosave,
-    editingId,
-    entityType: "actual_expense",
-    isOpen,
-    serverUpdatedAt: baseUpdatedAt,
-    tripId: activeTrip?.id,
-    userId: currentUserId,
-  });
-  const approvedMembers = members.filter((member) => member.status === "approved");
-  const participantsByExpense = useMemo(() => {
-    const next = {};
-    actualParticipants.forEach((participant) => {
-      next[participant.actual_expense_id] = [...(next[participant.actual_expense_id] || []), participant.user_id];
-    });
-    return next;
-  }, [actualParticipants]);
-  const activeEditorGuardId = `actual:${activeTrip?.id || "no-trip"}`;
-  const activeEditorGuard = useMemo(
-    () => ({
-      discard: () => closeExpenseForm(true),
-      isActive: isOpen,
-      isDirty: hasUnsavedChanges,
-      save: () => saveCurrentExpense(),
-    }),
-    [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
-  );
+const budgetEditorServices = {
+  useGuard: useActiveEditorGuard,
+  handoff: requestActiveEditorHandoff,
+  acquire: (table, record, userId) => record ? acquireEditLock({ record, supabase, table, userId }) : Promise.resolve({ error: new Error("找不到項目") }),
+  read: (table, id, tripId) => supabase.from(table).select("*").eq("id", id).eq("trip_id", tripId).maybeSingle(),
+  isLocked: isLockedByAnotherUser,
+  release: (table, recordId, userId) => releaseEditLock({ recordId, supabase, table, userId }),
+};
 
-  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
 
-  useEffect(() => {
-    if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
-    if (useEditLocks && editingId) {
-      void releaseEditLock({ recordId: editingId, supabase, table: "actual_expenses", userId: currentUserId });
-    }
-    replaceForm(emptyActualForm);
-    setFormSeed(emptyActualForm);
-    setBaseUpdatedAt(null);
-    setConflict(false);
-    setEditingId(null);
-    setEditorTripId(null);
-    setIsOpen(false);
-  }, [activeTrip?.id, currentUserId, editingId, editorTripId, isOpen, replaceForm, useEditLocks]);
-
-  useEffect(() => {
-    if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
-    const latest = loadLatestDraftForEntity({
-      entityType: "actual_expense",
-      tripId: activeTrip.id,
-      userId: currentUserId,
-    });
-    if (!latest) return;
-    const matchingExpense = actualExpenses.find((expense) => expense.id === latest.entityId);
-    if (latest.entityId !== "new" && !matchingExpense) return;
-    setFormSeed(latest.draft.form);
-    setBaseUpdatedAt(latest.entityId === "new" ? latest.draft.serverUpdatedAt || null : matchingExpense?.updated_at || null);
-    setConflict(false);
-    setEditingId(latest.entityId === "new" ? null : latest.entityId);
-    setEditorTripId(activeTrip.id);
-    setIsOpen(true);
-  }, [activeTrip?.id, actualExpenses, currentUserId, isOpen, restoreDrafts]);
-
-  async function openNewExpense() {
-    const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: activeEditorGuardId,
-      tripId: activeTrip?.id,
-    });
-    if (!canOpenEditor) return;
-    if (isOpen) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
-      if (!canContinue) return;
-      if (!hasUnsavedChanges) await closeExpenseForm(true);
-    }
-    const nextForm = {
-      ...emptyActualForm,
-      paid_at: dateTimeLocalInput(),
-      participantIds: approvedMembers.map((member) => member.user_id),
-    };
-    flushDraft();
-    replaceForm(nextForm);
-    setFormSeed(nextForm);
-    setBaseUpdatedAt(null);
-    setConflict(false);
-    setEditingId(null);
-    setEditorTripId(activeTrip?.id || null);
-    setIsOpen(true);
-  }
-
-  async function openEditExpense(expense) {
-    if (useEditLocks && isLockedByAnotherUser(expense, currentUserId)) return;
-    const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: activeEditorGuardId,
-      tripId: activeTrip?.id,
-    });
-    if (!canOpenEditor) return;
-    if (isOpen && editingId !== expense.id) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
-      if (!canContinue) return;
-      if (!hasUnsavedChanges) await closeExpenseForm(true);
-    }
-    let lockedExpense = expense;
-    if (useEditLocks) {
-      const lockResult = await acquireEditLock({ record: expense, supabase, table: "actual_expenses", userId: currentUserId });
-      if (lockResult.error || lockResult.lockedByAnotherUser) return;
-      lockedExpense = lockResult.data || expense;
-    }
-    const paidAt = expense.paid_at ? dateTimeLocalInput(new Date(expense.paid_at)) : dateTimeLocalInput();
-    const nextForm = {
-      budget_item_id: expense.budget_item_id || "",
-      title: expense.title || "",
-      amount: expense.amount || 0,
-      currency: expense.currency || "TWD",
-      exchange_rate: expense.exchange_rate || 1,
-      payer_id: expense.payer_id || "",
-      paid_at: paidAt,
-      note: expense.note || "",
-      participantIds: participantsByExpense[expense.id] || approvedMembers.map((member) => member.user_id),
-    };
-    flushDraft();
-    replaceForm(nextForm);
-    setFormSeed(nextForm);
-    setBaseUpdatedAt(lockedExpense.updated_at || expense.updated_at || null);
-    setConflict(false);
-    setEditingId(expense.id);
-    setEditorTripId(activeTrip?.id || null);
-    setIsOpen(true);
-  }
-
-  function fillFromBudget(budgetId) {
-    const budget = budgetItems.find((item) => item.id === budgetId);
-    if (!budget) {
-      setForm({ ...form, budget_item_id: "" });
-      return;
-    }
-    setForm({
-      ...form,
-      budget_item_id: budget.id,
-      title: form.title || budget.title,
-      amount: budget.amount,
-      currency: budget.currency,
-      exchange_rate: budget.exchange_rate || 1,
-      payer_id: form.payer_id || budget.payer_id || "",
-      note: form.note || budget.note || "",
-    });
-  }
-
-  function toggleParticipant(userId) {
-    const current = form.participantIds || [];
-    setForm({
-      ...form,
-      participantIds: current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
-    });
-  }
-
-  async function saveCurrentExpense() {
-    const result = await onSave(form, editingId, { baseUpdatedAt, tripId: editorTripId });
-    if (!result?.ok) {
-      if (result?.conflict) setConflict(true);
-      return false;
-    }
-    if (!disableDraftAutosave) clearDraft(draftKey);
-    resetDraft(emptyActualForm);
-    setFormSeed(emptyActualForm);
-    setBaseUpdatedAt(null);
-    setConflict(false);
-    setIsOpen(false);
-    setEditingId(null);
-    setEditorTripId(null);
-    return true;
-  }
-
-  async function submit(event) {
-    event.preventDefault();
-    await saveCurrentExpense();
-  }
-
-  async function closeExpenseForm(force = false) {
-    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
-    if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "actual_expenses", userId: currentUserId });
-    if (!disableDraftAutosave) clearDraft(draftKey);
-    resetDraft(emptyActualForm);
-    setFormSeed(emptyActualForm);
-    setBaseUpdatedAt(null);
-    setConflict(false);
-    setIsOpen(false);
-    setEditingId(null);
-    setEditorTripId(null);
-  }
-
-  return (
-    <section className="actual-panel">
-      <div className="panel-heading">
-        <div>
-          <h3>實付</h3>
-          <p className="budget-section-description">已經支付的費用，與預計費用分開記錄。</p>
-        </div>
-        <button className="ghost-button compact budget-add-button" disabled={!canEdit} type="button" title="新增實付" onClick={openNewExpense}>
-          <Plus size={16} aria-hidden="true" /> 新增實付
-        </button>
-      </div>
-
-      {isOpen ? (
-        <form autoComplete="off" className="item-form budget-form" onSubmit={submit}>
-          <h4>{editingId ? "編輯實付" : "新增實付"}</h4>
-          {conflict ? (
-            <ConflictNotice onKeep={() => setConflict(false)} onLatest={() => closeExpenseForm(true)} />
-          ) : null}
-          <div className="field-group form-grid wide">
-            <label>
-              來源預算
-              <select value={form.budget_item_id} onChange={(event) => fillFromBudget(event.target.value)}>
-                <option value="">直接新增</option>
-                {budgetItems.map((budget) => (
-                  <option key={budget.id} value={budget.id}>
-                    {budget.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              標題
-              <input autoComplete="off" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-            </label>
-          </div>
-          <div className="field-group form-grid">
-            <label>
-              金額
-              <input
-                autoComplete="off"
-                min="0"
-                step="1"
-                type="number"
-                value={form.amount}
-                onChange={(event) => setForm({ ...form, amount: event.target.value })}
-              />
-            </label>
-            <label>
-              幣別
-              <input
-                autoComplete="off"
-                value={form.currency}
-                onChange={(event) => setForm({ ...form, currency: event.target.value.toUpperCase() })}
-              />
-            </label>
-            <label>
-              匯率
-              <input
-                autoComplete="off"
-                min="0"
-                step="0.0001"
-                type="number"
-                value={form.exchange_rate}
-                onChange={(event) => setForm({ ...form, exchange_rate: event.target.value })}
-              />
-            </label>
-            <label>
-              付款時間
-              <input
-                autoComplete="off"
-                type="datetime-local"
-                value={form.paid_at}
-                onChange={(event) => setForm({ ...form, paid_at: event.target.value })}
-              />
-            </label>
-          </div>
-          <div className="field-group form-grid wide">
-            <label>
-              付款人
-              <select value={form.payer_id} onChange={(event) => setForm({ ...form, payer_id: event.target.value })}>
-                <option value="">未指定</option>
-                {approvedMembers.map((member) => (
-                  <option key={member.user_id} value={member.user_id}>
-                    {member.display_name || member.email || member.user_id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              備註
-              <input autoComplete="off" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
-            </label>
-          </div>
-          <div className="budget-picker">
-            <strong>分攤成員（均分）</strong>
-            <div>
-              {approvedMembers.map((member) => (
-                <label className="checkbox-chip" key={member.user_id}>
-                  <input
-                    checked={form.participantIds.includes(member.user_id)}
-                    type="checkbox"
-                    onChange={() => toggleParticipant(member.user_id)}
-                  />
-                  {member.display_name || member.email || member.user_id}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="form-actions">
-            <button className="ghost-button" type="button" onClick={() => closeExpenseForm()}>
-              取消
-            </button>
-            <button className="primary-button compact" type="submit">
-              儲存
-            </button>
-          </div>
-        </form>
-      ) : null}
-
-      <div className="budget-cards">
-        {actualExpenses.length ? (
-          actualExpenses.map((expense) => {
-            const participantIds = participantsByExpense[expense.id] || [];
-            const participantNames = participantIds
-              .map((userId) => approvedMembers.find((member) => member.user_id === userId))
-              .filter(Boolean)
-              .map((member) => member.display_name || member.email || member.user_id);
-            const payer = approvedMembers.find((member) => member.user_id === expense.payer_id);
-            const budget = budgetItems.find((item) => item.id === expense.budget_item_id);
-            return (
-              <article className="budget-card budget-page-card" key={expense.id}>
-                <div className="budget-card-heading"><div>
-                  <span>{budget ? `來自預算｜${budget.category}` : "直接新增"}</span>
-                  <h4>{expense.title}</h4>
-                </div><BudgetAmount item={expense} /></div>
-                <dl className="budget-card-details">
-                  <div><dt>付款人</dt><dd>{payer?.display_name || payer?.email || "未指定"}</dd></div>
-                  <div><dt>分攤成員</dt><dd>{participantNames.length ? participantNames.join("、") : "未指定"}</dd></div>
-                  <div className="budget-detail-wide"><dt>付款時間</dt><dd>{expense.paid_at ? new Date(expense.paid_at).toLocaleString("zh-TW") : "未設定"}</dd></div>
-                  {expense.note ? <div className="budget-detail-wide"><dt>備註</dt><dd>{expense.note}</dd></div> : null}
-                </dl>
-                {enableAttachments ? (
-                  <AttachmentList
-                    attachments={attachments.filter(
-                      (attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id,
-                    )}
-                    canEdit={canEdit}
-                    targetId={expense.id}
-                    targetType="actual_expense"
-                    onDelete={onDeleteAttachment}
-                    onOpen={onOpenAttachment}
-                    onUpload={onUploadAttachment}
-                  />
-                ) : null}
-                <div className="budget-actions">
-                  <button className="mini-button" aria-label={`編輯實付：${expense.title}`} title="編輯實付" disabled={!canEdit} type="button" onClick={() => openEditExpense(expense)}>
-                    <Pencil size={16} aria-hidden="true" />
-                  </button>
-                  <button className="mini-button" aria-label={`刪除實付：${expense.title}`} title="刪除實付" disabled={!canEdit} type="button" onClick={() => onDelete(expense.id)}>
-                    <Trash2 size={16} aria-hidden="true" />
-                  </button>
-                </div>
-              </article>
-            );
-          })
-        ) : (
-          <div className="timeline-empty">尚未建立實付</div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function SettlementPanel({ actualExpenses, actualParticipants, budgetItems, members }) {
+function SettlementPanel({ activeTrip, budgetBaseline, actualExpenses, actualParticipants, budgetItems, members }) {
   const approvedMembers = members.filter((member) => member.status === "approved");
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const participantsByExpense = useMemo(
@@ -14427,30 +13706,11 @@ function SettlementPanel({ actualExpenses, actualParticipants, budgetItems, memb
   );
   const actualBudgetIds = new Set(actualExpenses.map((expense) => expense.budget_item_id).filter(Boolean));
   const pendingBudgetItems = budgetItems.filter((budget) => !actualBudgetIds.has(budget.id));
-  const plannedTotal = budgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0);
+  const hasBaseline = budgetStage(activeTrip) === "settled" && budgetBaseline?.trip_id === activeTrip?.id;
+  const plannedTotal = hasBaseline ? budgetBaseline.payload.items.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0) : null;
   const actualTotal = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
-  const balances = approvedMembers.map((member) => {
-    let shouldPay = 0;
-    let paid = 0;
-    actualExpenses.forEach((expense) => {
-      const amount = Number(expense.twd_amount || 0);
-      if (expense.payer_id === member.user_id) paid += amount;
-      const participants = participantsByExpense[expense.id]?.length
-        ? participantsByExpense[expense.id]
-        : approvedMembers.map((entry) => entry.user_id);
-      if (participants.includes(member.user_id) && participants.length) {
-        shouldPay += amount / participants.length;
-      }
-    });
-    return {
-      user_id: member.user_id,
-      name: memberName(member),
-      shouldPay,
-      paid,
-      balance: paid - shouldPay,
-    };
-  });
-  const transfers = simplifyTransfers(balances);
+  const { balances, incomplete } = settlementBalances(actualExpenses, actualParticipants, approvedMembers);
+  const transfers = incomplete ? [] : simplifyTransfers(balances);
 
   return (
     <section className="panel settlement-panel">
@@ -14462,10 +13722,10 @@ function SettlementPanel({ actualExpenses, actualParticipants, budgetItems, memb
       </div>
 
       <div className="budget-overview">
-        <div>
-          <span>規劃金額</span>
+        {hasBaseline ? <div>
+          <span>出發前預算</span>
           <strong>{formatMoney(plannedTotal)}</strong>
-        </div>
+        </div> : null}
         <div>
           <span>實際金額</span>
           <strong>{formatMoney(actualTotal)}</strong>
@@ -14474,10 +13734,10 @@ function SettlementPanel({ actualExpenses, actualParticipants, budgetItems, memb
           <span>尚未轉實付</span>
           <strong>{formatMoney(pendingBudgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0))}</strong>
         </div>
-        <div>
+        {hasBaseline ? <div>
           <span>差額</span>
           <strong>{formatMoney(actualTotal - plannedTotal)}</strong>
-        </div>
+        </div> : null}
       </div>
 
       <div className="settlement-grid">
@@ -14526,7 +13786,7 @@ function SettlementPanel({ actualExpenses, actualParticipants, budgetItems, memb
                 </div>
               ))
             ) : (
-              <div className="timeline-empty">目前沒有需要互相付款的差額</div>
+              <div className="timeline-empty">{incomplete ? "請先確認付款人及自訂分攤金額，再計算轉帳建議。" : "目前沒有需要互相付款的差額"}</div>
             )}
           </div>
         </section>

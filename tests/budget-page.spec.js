@@ -1,78 +1,121 @@
 import { expect, test } from "@playwright/test";
-
 test.beforeEach(async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-10-22T12:00:00+08:00") });
   await page.goto("/demo/budget");
-  await expect(page.getByRole("heading", { name: "預算", exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { name: "預算明細", exact: true })).toBeVisible();
 });
-
-test("search and category filters keep whole-trip totals and actual expenses unchanged", async ({ page }) => {
-  const summary = page.getByLabel("旅程費用摘要");
-  const summaryBefore = await summary.textContent();
-  await page.getByLabel("預算分類", { exact: true }).selectOption("餐飲");
-  await expect(page.locator(".planned-budget-list article")).toHaveCount(1);
-  await expect(page.locator(".planned-budget-list article")).toContainText("新宿午餐");
-  await page.getByLabel("搜尋預算", { exact: true }).fill("Peter");
-  await expect(page.getByText("找不到符合條件的預算")).toBeVisible();
-  await expect(summary).toHaveText(summaryBefore);
-  await expect(page.locator(".actual-panel article")).toHaveCount(1);
-  await page.getByRole("button", { name: "清除篩選", exact: true }).click();
-  await expect(page.locator(".planned-budget-list article")).toHaveCount(2);
-  await page.getByLabel("搜尋預算", { exact: true }).fill("指定席");
-  await expect(page.locator(".planned-budget-list article")).toHaveCount(1);
-  await expect(page.locator(".planned-budget-list article")).toContainText("成田特快");
+const rowByTitle = (page, title) => page.locator(".bw-row").filter({ has: page.getByRole("button", { name: title, exact: true }) });
+const editor = (page) => page.getByRole("form", { name: "預算編輯" });
+test("dense groups, filter independence, single-click details and no early comparison", async ({ page }) => {
+  await expect(page.getByRole("tab", { name: "對照", exact: true })).toHaveCount(0);
+  await expect(page.locator(".bw-row")).toHaveCount(2);
+  const before = await page.getByLabel("旅程費用摘要").textContent();
+  await page.getByLabel("費用分類", { exact: true }).selectOption("餐飲");
+  await expect(page.locator(".bw-row")).toHaveCount(1);
+  await expect(page.getByLabel("旅程費用摘要")).toHaveText(before);
+  await page.getByRole("button", { name: "新宿午餐", exact: true }).click();
+  await expect(page.locator(".bw-detail h3")).toHaveText("新宿午餐");
+  await expect(editor(page)).toHaveCount(0);
+  await page.getByLabel("搜尋項目").fill("不存在");
+  await expect(page.getByText("找不到符合條件的項目")).toBeVisible();
 });
-
-test("budget create edit convert and delete preserve the expense flow", async ({ page }) => {
+test("per-person pricing, custom split and actual conversion preserve the original budget", async ({ page }) => {
   await page.getByRole("button", { name: "新增預算", exact: true }).click();
-  const form = page.locator(".budget-panel > .budget-form");
-  await form.getByLabel("標題", { exact: true }).fill("桌面測試門票");
-  await form.getByLabel("金額", { exact: true }).fill("1200");
+  const form = editor(page);
+  await form.getByLabel("項目", { exact: true }).fill("兩人門票");
+  await form.getByRole("button", { name: "每人計價", exact: true }).click();
+  await form.getByLabel("每人單價", { exact: true }).fill("700");
+  await form.getByLabel("幣別", { exact: true }).selectOption("JPY");
+  await form.getByLabel(/匯率/).fill("0.22");
+  const people = form.locator('.bw-participants input[type=checkbox]');
+  for (let i=2; i<await people.count(); i++) await people.nth(i).uncheck();
   await form.getByRole("button", { name: "儲存", exact: true }).click();
-  const card = page.locator(".planned-budget-list article").filter({ hasText: "桌面測試門票" });
-  await expect(card).toContainText("$1,200");
-  await expect(form).toHaveCount(0);
-  await page.getByRole("button", { name: "編輯預算：桌面測試門票", exact: true }).click();
-  await form.getByLabel("備註", { exact: true }).fill("保留分攤及連動欄位");
+  const row = rowByTitle(page,"兩人門票");
+  await expect(row).toContainText("154");
+  await expect(row).toContainText("308");
+  await row.getByRole("button", { name: "兩人門票", exact: true }).click();
+  await page.getByRole("button", { name: "編輯項目", exact: true }).click();
+  await form.getByRole("button", { name: "自訂分攤", exact: true }).click();
+  const amounts = form.getByRole("spinbutton", { name: /分攤金額/ });
+  await amounts.nth(0).fill("1000"); await amounts.nth(1).fill("400");
   await form.getByRole("button", { name: "儲存", exact: true }).click();
-  await expect(card).toContainText("保留分攤及連動欄位");
-  await card.getByRole("button", { name: "轉實付", exact: true }).click();
-  await expect(card.getByRole("button", { name: "轉實付", exact: true })).toBeDisabled();
-  const expense = page.locator(".actual-panel article").filter({ hasText: "桌面測試門票" });
-  await expect(expense).toContainText("$1,200");
-  await expect(page.getByLabel("旅程費用摘要")).toContainText("$3,312");
-  await expense.getByRole("button", { name: "刪除實付：桌面測試門票", exact: true }).click();
-  await expect(expense).toHaveCount(0);
-  await expect(card.getByRole("button", { name: "轉實付", exact: true })).toBeEnabled();
-  await card.getByRole("button", { name: "刪除預算：桌面測試門票", exact: true }).click();
-  await expect(card).toHaveCount(0);
+  await expect(row).toContainText("依成員");
+  await row.getByRole("button", { name: "兩人門票", exact: true }).click();
+  await page.getByRole("button", { name: "記錄實付", exact: true }).click();
+  const actualForm=page.getByRole("form", { name: "實付編輯" });
+  await actualForm.getByRole("button", { name: "儲存", exact: true }).click();
+  await expect(page.getByRole("table", { name: "實付明細", exact: true })).toContainText("兩人門票");
+  await page.getByRole("tab", { name: "預算", exact: true }).click();
+  await expect(row).toContainText("308"); await expect(row).toContainText("實付");
 });
-
-test("direct actual expense updates the overview and identifies overspend", async ({ page }) => {
-  await page.getByRole("button", { name: "新增實付", exact: true }).click();
-  const form = page.locator(".actual-panel .budget-form");
-  await form.getByLabel("標題", { exact: true }).fill("額外購物");
-  await form.getByLabel("金額", { exact: true }).fill("5000");
-  await form.getByRole("button", { name: "儲存", exact: true }).click();
-  await expect(page.locator(".actual-panel article").filter({ hasText: "額外購物" })).toContainText("$5,000");
-  await expect(page.locator(".is-over-budget")).toContainText("實付超出預算");
-  await expect(page.locator(".is-over-budget")).toContainText("$3,416");
+test("double-click shares the right draft; blur does not save, Escape cancels, Enter saves", async ({ page }) => {
+  const row=page.locator(".bw-row").first();
+  const title=await row.locator("td").nth(1).textContent();
+  await row.locator("td").nth(1).getByRole("button").dblclick();
+  const input=page.getByRole("textbox",{name:/快速修改項目/});
+  await input.fill("尚未儲存");
+  await expect(editor(page).getByLabel("項目",{exact:true})).toHaveValue("尚未儲存");
+  await page.getByRole("tab",{name:"旅程統計",exact:true}).click();
+  await expect(input).toHaveValue("尚未儲存");
+  await page.getByRole("tab",{name:/項目明細/}).click();
+  await input.press("Escape");
+  await expect(row.locator("td").nth(1)).toHaveText(title);
+  await row.locator("td").nth(3).getByRole("button").dblclick();
+  const total=page.getByRole("spinbutton",{name:/快速修改總額/});
+  await total.fill("1000"); await total.press("Enter");
+  await expect(editor(page)).toHaveCount(0);
+  await expect(row.locator("td").nth(3)).toContainText("220"); // JPY 1,000 × 0.22, not TWD input.
 });
-
-for (const width of [1280, 1440]) {
-  test(`desktop ${width}px keeps readable cards without overflow or runtime errors`, async ({ page }) => {
-    const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    await page.setViewportSize({ width, height: 900 });
-    await page.reload();
-    await expect(page.locator(".budget-page-summary")).toBeVisible();
-    await expect(page).toHaveTitle("旅程工房｜Travel Studio");
-    await expect(page.locator("vite-error-overlay")).toHaveCount(0);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    const cards = page.locator(".planned-budget-list article");
-    const first = await cards.nth(0).boundingBox();
-    const second = await cards.nth(1).boundingBox();
-    expect(Math.abs(first.y - second.y)).toBeLessThan(1);
-    expect(first.width).toBeGreaterThan(350);
-    expect(errors).toEqual([]);
-  });
-}
+test("empty participants cannot save; view navigation uses the editor guard",async({page})=>{
+  await page.getByRole("button",{name:"新增預算",exact:true}).click();
+  const form=editor(page); await form.getByLabel("項目",{exact:true}).fill("草稿");
+  for(const checkbox of await form.locator('.bw-participants input[type=checkbox]').all()) await checkbox.uncheck();
+  await form.getByRole("button",{name:"儲存",exact:true}).click();
+  await expect(form.getByRole("alert")).toContainText("至少選擇一位");
+  await page.getByRole("tab",{name:"實付",exact:true}).click();
+  const guard=page.getByRole("dialog",{name:"您有未儲存的變更"});
+  await expect(guard).toBeVisible(); await guard.getByRole("button",{name:"不儲存",exact:true}).click();
+  await expect(page.getByRole("table",{name:"實付明細",exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"新增實付",exact:true}).click();
+  await expect(page.getByRole("form",{name:"實付編輯"}).getByLabel("項目",{exact:true})).toHaveValue("");
+});
+test("traveling prioritizes actuals; only settlement exposes frozen comparison",async({page})=>{
+  await page.clock.setSystemTime(new Date("2027-04-06T12:00:00+08:00")); await page.clock.runFor(30010);
+  await expect(page.getByRole("table",{name:"實付明細",exact:true})).toBeVisible();
+  await expect(page.getByRole("tab",{name:"對照",exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:"新增實付",exact:true}).click();
+  const form=page.getByRole("form",{name:"實付編輯"});
+  await form.getByLabel("項目",{exact:true}).fill("旅途中咖啡"); await form.getByLabel("總額",{exact:true}).fill("300");
+  await form.getByRole("button",{name:"儲存",exact:true}).click();
+  await page.clock.setSystemTime(new Date("2027-04-11T12:00:00+08:00")); await page.clock.runFor(30010);
+  await page.getByRole("tab",{name:"對照",exact:true}).click();
+  const before=await page.locator(".bw-comparison-summary").textContent();
+  await expect(page.getByRole("table",{name:"出發前預算對照",exact:true})).toContainText("旅途中咖啡");
+  await page.getByRole("tab",{name:"預算",exact:true}).click();
+  await page.locator(".bw-row").first().locator("td").nth(3).getByRole("button").dblclick();
+  await page.getByRole("spinbutton",{name:/快速修改總額/}).fill("9999"); await page.getByRole("spinbutton",{name:/快速修改總額/}).press("Enter");
+  await page.getByRole("tab",{name:"對照",exact:true}).click();
+  await expect(page.locator(".bw-comparison-summary")).toHaveText(before);
+});
+test("fixed costs create editable actuals only once",async({page})=>{
+  await page.getByRole("button",{name:"新增預算",exact:true}).click(); const form=editor(page);
+  await form.getByLabel("項目",{exact:true}).fill("已購機票"); await form.getByLabel("總額",{exact:true}).fill("12000");
+  await form.getByLabel("同時建立可編輯的實付紀錄").check(); await form.getByRole("button",{name:"儲存",exact:true}).click();
+  const row=rowByTitle(page,"已購機票"); await expect(row).toContainText("實付");
+  await row.getByRole("button",{name:"已購機票"}).click(); await page.getByRole("button",{name:"編輯項目"}).click();
+  await form.getByLabel("總額",{exact:true}).fill("13000"); await form.getByRole("button",{name:"儲存",exact:true}).click();
+  await page.getByRole("tab",{name:"實付",exact:true}).click(); await expect(row).toHaveCount(1); await expect(row).toContainText("12,000");
+});
+test("historical trip without a baseline never displays a fabricated zero budget",async({page})=>{
+  await page.getByRole("button",{name:"系統測試專用",exact:true}).click();
+  await page.getByRole("tab",{name:"對照",exact:true}).click();
+  await expect(page.getByText("無出發前快照，無法還原當時預算。")).toBeVisible();
+  await expect(page.locator(".bw-row")).toHaveCount(0);
+});
+for(const width of [390,1280,1440])test(`${width}px table and editor remain operable`,async({page})=>{
+  const errors=[];page.on("pageerror",e=>errors.push(e.message)); await page.setViewportSize({width,height:900});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  if(width>=1280){const main=await page.locator(".bw-main").boundingBox(),side=await page.locator(".bw-side").boundingBox();expect(side.x).toBeGreaterThan(main.x+main.width-1);expect((await page.locator(".bw-row").first().boundingBox()).height).toBeLessThanOrEqual(46);}
+  await page.getByRole("button",{name:"新增預算",exact:true}).click(); await editor(page).getByLabel("項目",{exact:true}).fill("可操作");
+  await expect(editor(page).getByRole("button",{name:"儲存",exact:true})).toBeEnabled(); expect(errors).toEqual([]);
+});

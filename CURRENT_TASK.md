@@ -5,10 +5,12 @@ This file is the concise live project ledger. Keep it aligned with the real bran
 ## Active Local Work — 2026-10-22
 
 - Branch: `codex/budget-page-polish`, based on synchronized `main` / `origin/main` at `fdd332b`.
-- Desktop Budget page first pass is implemented; user visual acceptance is pending. Mobile-specific work is deferred at the user's request.
-- Added trip-level planned/actual/difference summaries, category totals, budget search/category filters, structured expense cards, and labeled edit/delete icons. Formal and Demo reuse the same views and existing persistence callbacks.
-- Full Playwright passed 350/350, including five new Budget tests; build passed. Desktop checks cover 1280 and 1440 widths, filtering, create/edit/delete, conversion, and overspend feedback. No authenticated Formal writes, migration, push, or deployment was performed for this work.
-- References, scope, and home-computer integration notes: `docs/2026-10-22-budget-desktop-polish-handoff.md`.
+- User approved implementation after selecting desktop previews. The initial large-card pass (`6d4317b`) is superseded by the current compact grouped table and right statistics/detail panel. Mobile gets minimum usability only.
+- Planning defaults to budget; Traveling defaults to quick actual entry without budget compliance indicators. Phase is readonly. `對照` exists only in Settlement and compares against the final predeparture snapshot, never mutable current budgets.
+- Personal-first statistics, three pricing modes, independent payer/participants, shared inline/right-panel draft, integer TWD allocation and settlement calculations are implemented locally. Existing shell, Timeline protections, Draft/Save/Discard/locks and receipt flows remain.
+- Prepared migration `20261022090000_budget_workspace_baseline_and_pricing.sql` adds server-maintained immutable departure baselines, pricing/custom shares, durable actual origins and atomic save/delete RPCs. **Not applied to Staging or Production.** New pricing and snapshot persistence require this rollout; legacy split-total CRUD still works against the existing schema.
+- Final full Playwright passed **361/361**; isolated all-migration PostgreSQL tests and build passed. Authenticated Formal preview was inspected read-only at 1440px; no Formal data mutation, migration, push or deployment performed.
+- Current handoff and rollout constraints: `docs/2026-10-22-budget-workspace-handoff.md`; final visual QA: `design-qa.md`.
 - Git correction to the older rollout notes below: Phase 7 AI exchange/import commits through `fdd332b` are already present on remote `main`. Production deployment has not been reverified in this session.
 
 Historical Phase 4 through Phase 5.7c detail is preserved in:

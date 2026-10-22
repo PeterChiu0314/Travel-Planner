@@ -1,5 +1,7 @@
 # Desktop Budget page first pass — 2026-10-22
 
+> Superseded UI pass. The card layout below was replaced after user review. Current implementation, departure snapshot rules, pricing modes, test results and pending migration: [Budget Workspace handoff](2026-10-22-budget-workspace-handoff.md).
+
 Branch: `codex/budget-page-polish`. Base: `fdd332b` (remote `main`). Status: implemented and tested locally; awaiting user visual acceptance. No push or deployment.
 
 ## References and decisions
