@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 
 // Uses the established Timeline menu surface and option styles. Portal keeps
 // menus clear of the independently scrolling Budget panels.
-export default function MenuSelect({ label, value, options, onValueChange, editable = false, className = "", disabled = false }) {
+export default function MenuSelect({ label, value, options, onValueChange, editable = false, className = "", popupClassName = "", disabled = false }) {
   const id = useId();
   const root = useRef(null), menu = useRef(null), control = useRef(null);
   const [open, setOpen] = useState(false), [position, setPosition] = useState(null), [active, setActive] = useState(0);
@@ -66,7 +66,7 @@ export default function MenuSelect({ label, value, options, onValueChange, edita
   }}>
     {editable ? <div className="menu-select-editable"><input {...aria} disabled={disabled} ref={control} value={value} onClick={() => { if (!open) show(); }} onChange={(event) => { onValueChange(event.target.value); setFilter(event.target.value); setActive(0); setOpen(true); }} /><button type="button" aria-label={`開啟${label}選單`} disabled={disabled} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onClick={() => open ? setOpen(false) : show()}><ChevronDown size={15} /></button></div>
       : <button {...aria} disabled={disabled} ref={control} className="menu-select-trigger" type="button" onClick={() => open ? setOpen(false) : show()}><span>{selected?.label || value || "未指定"}</span><ChevronDown size={15} /></button>}
-    {open && position ? createPortal(<div id={id} ref={menu} className="timeline-time-menu timeline-type-menu menu-select-popup" role="listbox" aria-label={`${label}選項`} style={position}>
+    {open && position ? createPortal(<div id={id} ref={menu} className={`timeline-time-menu timeline-type-menu menu-select-popup ${popupClassName}`} role="listbox" aria-label={`${label}選項`} style={position}>
       {shown.map((option, index) => <button key={option.value} id={`${id}-${index}`} data-index={index} type="button" role="option" aria-selected={String(option.value) === String(value)} className={`${String(option.value) === String(value) ? "selected" : ""}${index === active ? " keyboard-active" : ""}`} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(option)}>{option.label}</button>)}
       {!shown.length ? <div className="menu-select-empty">可直接輸入自訂分類</div> : null}
     </div>, document.body) : null}

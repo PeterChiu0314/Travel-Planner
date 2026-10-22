@@ -2,10 +2,28 @@
 
 This file is the concise live project ledger. Keep it aligned with the real branch, deployed behavior, production migration state, and next requested phase.
 
-## Publication checkpoint — 2026-10-22
+## Active task — Luggage redesign — 2026-10-23
 
-- User authorized push of active branch codex/budget-workspaces-integration. This commit includes Budget safety/simplification, sidebar/menu/layout polish, tests and prepared migrations; supporting desktop pages are already in the branch history. No main merge, deployment or hosted migration requested.
-- Final validation: full Playwright 413/413 passed (54.8s), production build, both offline PostgreSQL suites and diff check passed. Migration files 20261022110000 and 20261022120000 remain NOT applied to hosted databases; apply before frontend deployment. Earlier local/uncommitted notes below describe their historical checkpoints.
+- Local branch: `codex/luggage-workspace-redesign`, based on pushed Budget integration commit `95e3a83`. Complete luggage UX/UI implementation is ready for local acceptance. User authorized committing and pushing this feature branch on 2026-10-23; this publication includes the implementation, design rules, QA and prepared migration. No main merge, deployment or hosted migration authorized/performed. The Budget publication/issue record below is prior context, not this branch's publication status.
+- New desktop 4:6 personal/team workspace, mobile personal/team tabs, category groups, always-visible quick add, search and state filters, per-list progress, 44px targets and project menus/scrollbars. My assigned public items remain visually distinct and read the same canonical team row. Removed duplicate top summary and unused legacy LuggageView; no new dependency.
+- Personal rows are private to their owner with trip/user defense filtering; approved viewer members can manage personal and shared luggage. Only the assignee can pack; only actual trip owner can confirm after packing. Rename/category/reassign/unpack clears confirmations appropriately. Revoked assignees require reassignment. Dirty save/cancel/navigation protection and edit locks retained; conflicts/failures preserve input.
+- Formal writes use invoker `mutate_luggage_item` RPC with exact updated_at and atomic state changes. Prepared additive migration `20261022162015_luggage_collaboration_state_safety.sql` adjusts RLS/triggers/RPC without changing historical rows/tables/columns. `pack_items` stays separate and unchanged; no duplicate private copies are created for public assignments.
+- Validation: full Playwright **431/431 passed (1.1m)**; final cancel/accessibility changes **34/34 passed (19.0s)** including 19 new luggage tests (current inventory 432). Offline all-migration PostgreSQL luggage suite **65 assertions passed**. Build and diff check passed. Actual Demo 1440/390 has no console errors, no backend calls and no draft/lock storage; 820/long/empty layouts and two-page simulated sync covered.
+- Unverified: hosted RLS/RPC and Supabase Realtime with real authenticated users, live migrations, real iPhone/Android. Local Supabase advisors could not run because local PostgreSQL54322 is unavailable. Prepared Budget + luggage migrations must precede any frontend rollout; none applied by this task.
+- Local acceptance: `http://127.0.0.1:5174/demo/luggage`. Detailed research, design, state rules, QA and manual checks: [luggage redesign handoff](docs/2026-10-23-luggage-redesign-handoff.md). The prior CURRENT_TASK-only update and Budget issue closeout are included in this publication.
+
+## Prior Budget publication — 2026-10-23
+
+- Active branch: `codex/budget-workspaces-integration`, tracking `origin/codex/budget-workspaces-integration`. Commit `95e3a83` (Budget safety, planning simplification and UI polish) was successfully pushed on 2026-10-22. Remote fetched and ahead/behind verified `0 / 0` on 2026-10-23 before this documentation edit.
+- Supporting Accommodation, Todo/Guide, Luggage and Settlement desktop improvements are included in branch history at `4086db8`; company Budget is the integration base. Desktop remains the current design/acceptance priority.
+- Final Budget UI: one planning list with paid/unpaid status; three equal-width icon tabs (Statistics / Details / Edit), pinned tab preference and no double-click editing. Category colors match statistics, without left stripes. Day aligns with category text; person/total/status columns are 120/130/100px, with 24px right padding only on Total. Toolbar controls are 36px; planning filters All / Unpaid / Paid and combines with search without changing trip-wide statistics. Menus match field width and use project 4px scrollbars.
+- GitHub issue closeout on 2026-10-23: [#1](https://github.com/PeterChiu0314/Travel-Planner/issues/1), [#2](https://github.com/PeterChiu0314/Travel-Planner/issues/2), [#4](https://github.com/PeterChiu0314/Travel-Planner/issues/4) closed as completed in the pushed feature branch. [#3](https://github.com/PeterChiu0314/Travel-Planner/issues/3) closed as not planned because the user replaced the dual-amount UI requirement with currency + amount. Closeout comments explain implementation, changed product decisions, validation and deployment limits.
+- Last code validation (2026-10-22): full Playwright **413/413 passed (54.8s)**, production build, both offline PostgreSQL suites and diff check passed. No code changes or repeated application tests for this documentation/issue closeout.
+- **Not merged into main; no frontend deployment or hosted migration performed by this work.** Prepared migrations `20261022110000_budget_payment_safety_and_actual_cost.sql` and `20261022120000_unified_planning_payments.sql` are committed/pushed but remain unapplied by this work. Apply in that order before deploying this frontend; missing RPC fails safely and retains drafts. Hosted state was not re-audited on 2026-10-23.
+- Local preview entry: `http://127.0.0.1:5174/demo/budget` (other pages via sidebar); server health was not rechecked for this documentation update. Recurring `.tmp-*`, `test-results/`, `supabase/.temp/` and unrelated historical QA screenshots remain untracked and untouched.
+- Handoffs: [current Budget simplification and UI](docs/2026-10-22-unified-planning-handoff.md), [issue safety implementation](docs/2026-10-22-budget-issue-fixes-handoff.md), [four-page integration](docs/2026-10-22-budget-workspaces-integration-handoff.md).
+
+The checkpoints below are historical implementation evidence. Their earlier uncommitted/unpushed status and superseded UI descriptions do not override the current status above.
 
 ## Active Simplification — 2026-10-22
 
@@ -340,4 +358,4 @@ See `docs/BUGS.md` for the current bug ledger.
 
 ## Next Step
 
-Production Vercel successfully deployed merged `main` through `47837e5`. Read-only authenticated page-health QA passed, and the served bundle contains the atomic alternative RPC plus stale-conflict handling. Staging may receive `20260811150000` later if the user wants environment parity.
+Manually review the completed local luggage page. Any hosted acceptance/release requires an authorized test environment and applying pending migrations before the frontend; do not infer the old Timeline Production record at `47837e5` covers this branch.

@@ -4,6 +4,8 @@ import { WorkspaceActions, WorkspaceHeading, WorkspaceProgress, WorkspaceSearch,
 import { createDemoGuides, createDemoStays, createDemoTodos } from "./components/workspace/demoWorkspaceData.js";
 import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
 import MenuSelect from "./components/MenuSelect.jsx";
+import LuggageBoard from "./components/luggage/LuggageBoard.jsx";
+import { mutateLuggageItem, transitionSharedLuggage, luggageErrorMessage } from "./lib/luggageService.js";
 import { budgetStage, recordForm, settlementBalances } from "./lib/budgetFinance.js";
 import { planningBudgetData } from "./lib/planningBudget.js";
 import { saveDemoBudgetRecord } from "./demo/saveBudgetRecord.js";
@@ -595,7 +597,7 @@ function useActiveEditorGuard(id, guard) {
   }, [id, guard]);
 }
 
-function ActiveEditorGuardDialog() {
+export function ActiveEditorGuardDialog() {
   const [isOpen, setIsOpen] = useState(Boolean(activeEditorPromptResolve));
 
   useEffect(() => {
@@ -2272,15 +2274,20 @@ function createDemoTimelineItems() {
 }
 
 
-function createDemoLuggageItems() {
+function createDemoLuggageItems(tripId) {
   return [
     { id: "demo-luggage-1", title: "護照", category: "證件", packed: true },
     { id: "demo-luggage-2", title: "充電器", category: "電子用品", packed: false },
     { id: "demo-luggage-3", title: "薄外套", category: "衣物", packed: false },
-  ];
+    { id: "demo-luggage-4", title: "健保卡・身分證", category: "證件", packed: false },
+    { id: "demo-luggage-5", title: "行動電源", category: "電子用品", packed: false },
+    { id: "demo-luggage-6", title: "換洗衣物", category: "衣物", packed: false },
+    { id: "demo-luggage-7", title: "牙刷・盥洗包", category: "盥洗用品", packed: false },
+    { id: "demo-luggage-8", title: "個人常備藥", category: "健康用品", packed: false },
+  ].map(item => ({ ...item, trip_id: tripId, owner_id: "demo-peter", updated_at: "2026-10-23T00:00:00.000Z" }));
 }
 
-function createDemoSharedLuggageItems() {
+function createDemoSharedLuggageItems(tripId) {
   return [
     {
       id: "demo-shared-luggage-1",
@@ -2298,7 +2305,10 @@ function createDemoSharedLuggageItems() {
       packed_by_assignee: false,
       confirmed_by_owner: false,
     },
-  ];
+    { id: "demo-shared-luggage-3", title: "延長線・萬用轉接頭", category: "電子用品", assigned_to: "demo-peter", packed_by_assignee: false, confirmed_by_owner: false },
+    { id: "demo-shared-luggage-4", title: "折疊購物袋", category: "日常用品", assigned_to: null, packed_by_assignee: false, confirmed_by_owner: false },
+    { id: "demo-shared-luggage-5", title: "票券資料夾", category: "證件", assigned_to: "demo-a", packed_by_assignee: false, confirmed_by_owner: false },
+  ].map(item => ({ ...item, trip_id: tripId, updated_at: "2026-10-23T00:00:00.000Z" }));
 }
 
 function offlineTripKey(tripId) {
@@ -2497,6 +2507,8 @@ export default function App() {
     () => trips.find((trip) => trip.id === activeTripId) || null,
     [activeTripId, trips],
   );
+  const luggageTripRef = useRef(activeTrip?.id);
+  luggageTripRef.current = activeTrip?.id;
   const activeMembership = activeTrip?.membership;
   const isOwner = activeMembership?.role === "owner" && activeMembership?.status === "approved";
   const canEdit =
@@ -5512,69 +5524,52 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function saveLuggageItem(payload, editingId, meta = {}) {
-    if (!activeTrip || !session?.user || !canEditActiveTripContent) return;
+  async function refreshLuggage(tripId) {
+    const [personal, shared] = await Promise.all([
+      supabase.from("luggage_items").select("*").eq("trip_id", tripId).eq("owner_id", session.user.id).order("created_at"),
+      supabase.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
+    ]);
+    if (luggageTripRef.current !== tripId) return;
+    if (!personal.error) setLuggageItems(personal.data || []);
+    if (!shared.error) setSharedLuggageItems(shared.data || []);
+  }
+  async function persistLuggage(scope, action, payload, itemId, meta = {}) {
+    if (!activeTrip || !session?.user || activeMembership?.status !== "approved") return { ok: false, error: new Error("你不是此旅程的已核准成員。") };
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const nextPayload = {
-      trip_id: activeTrip.id,
-      owner_id: session.user.id,
-      title: payload.title.trim(),
-      category: payload.category.trim() || null,
-      is_shared_assigned_item: false,
-    };
-    const result = editingId
-      ? await updateWithConflictCheck("luggage_items", nextPayload, editingId, meta)
-      : await supabase.from("luggage_items").insert(nextPayload);
-    if (result.error) setNotice(result.error.message);
-    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
-    else await loadTripData(activeTrip.id);
-    return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
+    const tripId = activeTrip.id;
+    const result = await mutateLuggageItem({ client: supabase, tripId, scope, action, payload,
+      itemId: itemId || null, baseUpdatedAt: meta.baseUpdatedAt || null });
+    if (result.error) {
+      const error = new Error(luggageErrorMessage(result.error));
+      if (result.conflict) await refreshLuggage(tripId);
+      setNotice(error.message);
+      return { ...result, error };
+    }
+    if (luggageTripRef.current === tripId) {
+      const setter = scope === "personal" ? setLuggageItems : setSharedLuggageItems;
+      setter(current => action === "delete" ? current.filter(row => row.id !== itemId)
+        : itemId ? current.map(row => row.id === itemId && row.updated_at <= result.data.updated_at ? result.data : row) : current.some(row => row.id === result.data.id) ? current : [...current, result.data]);
+      await refreshLuggage(tripId);
+    }
+    return result;
   }
-
-  async function toggleLuggageItem(item) {
-    if (!session?.user || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("luggage_items").update({ packed: !item.packed }).eq("id", item.id);
-    if (error) setNotice(error.message);
-    else await loadTripData(activeTrip.id);
+  function saveLuggageItem(payload, editingId, meta = {}) {
+    return persistLuggage("personal", "save", { title: payload.title.trim(), category: payload.category.trim() }, editingId, meta);
   }
-
-  async function deleteLuggageItem(itemId) {
-    if (!session?.user || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("luggage_items").delete().eq("id", itemId);
-    if (error) setNotice(error.message);
-    else await loadTripData(activeTrip.id);
+  function toggleLuggageItem(item) {
+    return persistLuggage("personal", "patch", { packed: !item.packed }, item.id, { tripId: item.trip_id, baseUpdatedAt: item.updated_at });
   }
-
-  async function saveSharedLuggageItem(payload, editingId, meta = {}) {
-    if (!activeTrip || !canEditActiveTripContent) return;
-    if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const nextPayload = {
-      trip_id: activeTrip.id,
-      title: payload.title.trim(),
-      category: payload.category.trim() || null,
-      assigned_to: payload.assigned_to || null,
-    };
-    const result = editingId
-      ? await updateWithConflictCheck("shared_luggage_items", nextPayload, editingId, meta)
-      : await supabase.from("shared_luggage_items").insert(nextPayload);
-    if (result.error) setNotice(result.error.message);
-    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
-    else await loadTripData(activeTrip.id);
-    return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
+  function deleteLuggageItem(itemId, item) {
+    return persistLuggage("personal", "delete", {}, itemId, { tripId: item?.trip_id, baseUpdatedAt: item?.updated_at });
   }
-
-  async function updateSharedLuggageItem(itemId, patch) {
-    if (!activeTrip || !session?.user || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("shared_luggage_items").update(patch).eq("id", itemId);
-    if (error) setNotice(error.message);
-    else await loadTripData(activeTrip.id);
+  function saveSharedLuggageItem(payload, editingId, meta = {}) {
+    return persistLuggage("shared", "save", { title: payload.title.trim(), category: payload.category.trim(), assigned_to: payload.assigned_to || null }, editingId, meta);
   }
-
-  async function deleteSharedLuggageItem(itemId) {
-    if (!canEditActiveTripContent) return;
-    const { error } = await supabase.from("shared_luggage_items").delete().eq("id", itemId);
-    if (error) setNotice(error.message);
-    else await loadTripData(activeTrip.id);
+  function updateSharedLuggageItem(itemId, patch, item) {
+    return persistLuggage("shared", "patch", patch, itemId, { tripId: item?.trip_id, baseUpdatedAt: item?.updated_at });
+  }
+  function deleteSharedLuggageItem(itemId, item) {
+    return persistLuggage("shared", "delete", {}, itemId, { tripId: item?.trip_id, baseUpdatedAt: item?.updated_at });
   }
 
   async function uploadAttachment(targetType, targetId, file) {
@@ -8295,8 +8290,8 @@ function DemoApp({ initialSection }) {
     accommodations: index === 0 ? createDemoStays(trip) : [],
     todoItems: index === 0 ? createDemoTodos(trip) : [],
     guideItems: index === 0 ? createDemoGuides() : [],
-    luggageItems: index === 0 ? createDemoLuggageItems() : [],
-    sharedLuggageItems: index === 0 ? createDemoSharedLuggageItems() : [],
+    luggageItems: index === 0 ? createDemoLuggageItems(trip.id) : [],
+    sharedLuggageItems: index === 0 ? createDemoSharedLuggageItems(trip.id) : [],
   }])));
   const support = demoSupportByTrip[demoActiveTrip.id];
   const { accommodations, todoItems, guideItems, luggageItems, sharedLuggageItems } = support;
@@ -8732,22 +8727,29 @@ function DemoApp({ initialSection }) {
   }
   function saveBudgetItem(payload, editingId, meta = {}) { return commitDemoFinance("budget", payload, editingId, meta); }
 
-  function savePersonalLuggage(payload, editingId) {
-    if (!payload.title.trim()) return { ok: false };
-    if (editingId) {
-      setLuggageItems((current) =>
-        current.map((item) =>
-          item.id === editingId ? { ...item, title: payload.title.trim(), category: payload.category.trim() } : item,
-        ),
-      );
-      return { ok: true };
-    }
-    setLuggageItems((current) => [
-      ...current,
-      { id: demoId("demo-luggage"), title: payload.title.trim(), category: payload.category.trim(), packed: false },
-    ]);
-    return { ok: true };
+  const demoLuggageRef = useRef(support);
+  demoLuggageRef.current = support;
+  function mutateDemoLuggage(scope, action, payload, id, meta = {}) {
+    if (meta.tripId && meta.tripId !== demoActiveTrip.id) return { ok: false, crossTrip: true };
+    const key = scope === "personal" ? "luggageItems" : "sharedLuggageItems";
+    const list = demoLuggageRef.current[key];
+    const old = list.find(row => row.id === id);
+    if (id && (!old || old.trip_id !== demoActiveTrip.id)) return { ok: false, error: new Error("找不到此旅程的物品。") };
+    if (old && old.updated_at !== meta.baseUpdatedAt) return { ok: false, conflict: true };
+    try {
+      const normalized = action === "save" ? { title: payload.title.trim(), category: payload.category.trim(), ...(scope === "shared" ? { assigned_to: payload.assigned_to || null } : {}) } : payload;
+      if (action === "save" && !normalized.title) return { ok: false };
+      const next = action === "delete" ? null : { ...(scope === "shared" ? transitionSharedLuggage(old || { packed_by_assignee: false, confirmed_by_owner: false }, normalized, {
+        userId: "demo-peter", isOwner: true, approvedMemberIds: demoMembers.filter(row => row.status === "approved").map(row => row.user_id),
+      }) : { ...old, ...normalized, owner_id: "demo-peter", packed: action === "save" ? Boolean(old?.packed) : payload.packed }),
+        id: id || demoId("demo-luggage"), trip_id: demoActiveTrip.id, updated_at: new Date(Math.max(Date.now(), Date.parse(old?.updated_at || 0) + 1)).toISOString() };
+      const nextList = action === "delete" ? list.filter(row => row.id !== id) : id ? list.map(row => row.id === id ? next : row) : [...list, next];
+      demoLuggageRef.current = { ...demoLuggageRef.current, [key]: nextList };
+      setSupportField(key, nextList);
+      return { ok: true, data: next };
+    } catch(error) { return { ok: false, error: new Error(luggageErrorMessage(error)) }; }
   }
+  function savePersonalLuggage(payload, editingId, meta) { return mutateDemoLuggage("personal", "save", payload, editingId, meta); }
 
   function saveActualExpense(payload, editingId, meta = {}) { return commitDemoFinance("actual", payload, editingId, meta); }
 
@@ -8756,31 +8758,7 @@ function DemoApp({ initialSection }) {
       budget_item_id: budget.id, twd_amount_source: "estimated", actual_twd_amount: null }, null);
   }
 
-  function saveSharedLuggage(payload, editingId) {
-    if (!payload.title.trim()) return { ok: false };
-    if (editingId) {
-      setSharedLuggageItems((current) =>
-        current.map((item) =>
-          item.id === editingId
-            ? { ...item, title: payload.title.trim(), category: payload.category.trim(), assigned_to: payload.assigned_to }
-            : item,
-        ),
-      );
-      return { ok: true };
-    }
-    setSharedLuggageItems((current) => [
-      ...current,
-      {
-        id: demoId("demo-shared-luggage"),
-        title: payload.title.trim(),
-        category: payload.category.trim(),
-        assigned_to: payload.assigned_to,
-        packed_by_assignee: false,
-        confirmed_by_owner: false,
-      },
-    ]);
-    return { ok: true };
-  }
+  function saveSharedLuggage(payload, editingId, meta) { return mutateDemoLuggage("shared", "save", payload, editingId, meta); }
 
   function saveDemoRecord(key, form, editingId, meta = {}) {
     if (!(form.title || form.name || "").trim() || (meta.tripId && meta.tripId !== demoActiveTrip.id)) return { ok: false };
@@ -9100,22 +9078,12 @@ function DemoApp({ initialSection }) {
             luggageItems={luggageItems}
             members={demoMembers}
             sharedLuggageItems={sharedLuggageItems}
-            onDeletePersonal={(itemId) => setLuggageItems((current) => current.filter((item) => item.id !== itemId))}
-            onDeleteShared={(itemId) =>
-              setSharedLuggageItems((current) => current.filter((item) => item.id !== itemId))
-            }
+            onDeletePersonal={(id, item) => mutateDemoLuggage("personal", "delete", {}, id, { tripId: item.trip_id, baseUpdatedAt: item.updated_at })}
+            onDeleteShared={(id, item) => mutateDemoLuggage("shared", "delete", {}, id, { tripId: item.trip_id, baseUpdatedAt: item.updated_at })}
             onSavePersonal={savePersonalLuggage}
             onSaveShared={saveSharedLuggage}
-            onTogglePersonal={(item) =>
-              setLuggageItems((current) =>
-                current.map((entry) => (entry.id === item.id ? { ...entry, packed: !entry.packed } : entry)),
-              )
-            }
-            onUpdateShared={(itemId, patch) =>
-              setSharedLuggageItems((current) =>
-                current.map((item) => (item.id === itemId ? { ...item, ...patch } : item)),
-              )
-            }
+            onTogglePersonal={(item) => mutateDemoLuggage("personal", "patch", { packed: !item.packed }, item.id, { tripId: item.trip_id, baseUpdatedAt: item.updated_at })}
+            onUpdateShared={(id, patch, item) => mutateDemoLuggage("shared", "patch", patch, id, { tripId: item.trip_id, baseUpdatedAt: item.updated_at })}
           />
         ) : null}
       </main>
@@ -9148,240 +9116,6 @@ function DemoApp({ initialSection }) {
         />
       ) : null}
     </Shell>
-  );
-}
-
-function LuggageView({
-  currentUserId,
-  luggageItems,
-  members,
-  sharedLuggageItems,
-  onDeletePersonal,
-  onDeleteShared,
-  onSavePersonal,
-  onSaveShared,
-  onTogglePersonal,
-  onUpdateShared,
-}) {
-  const [activeTab, setActiveTab] = useState("personal");
-  const [editingPersonalId, setEditingPersonalId] = useState(null);
-  const [editingSharedId, setEditingSharedId] = useState(null);
-  const [personalForm, setPersonalForm] = useState(emptyLuggageForm);
-  const [sharedForm, setSharedForm] = useState(emptySharedLuggageForm);
-  const memberById = new Map(members.map((member) => [member.user_id, member]));
-  const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
-
-  function resetPersonal() {
-    setEditingPersonalId(null);
-    setPersonalForm(emptyLuggageForm);
-  }
-
-  function resetShared() {
-    setEditingSharedId(null);
-    setSharedForm(emptySharedLuggageForm);
-  }
-
-  function submitPersonal(event) {
-    event.preventDefault();
-    onSavePersonal(personalForm, editingPersonalId);
-    resetPersonal();
-  }
-
-  function submitShared(event) {
-    event.preventDefault();
-    onSaveShared(sharedForm, editingSharedId);
-    resetShared();
-  }
-
-  return (
-    <section className="panel luggage-panel demo-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">行李 Demo</p>
-          <h3>行李</h3>
-        </div>
-      </div>
-      <div className="mobile-tabs">
-        <button className={activeTab === "personal" ? "active" : ""} type="button" onClick={() => setActiveTab("personal")}>
-          個人行李
-        </button>
-        <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => setActiveTab("shared")}>
-          團隊公物
-        </button>
-      </div>
-      <div className="luggage-layout">
-        <section className={`luggage-column${activeTab === "personal" ? " active" : ""}`}>
-          <div className="panel-heading tight">
-            <div>
-              <p className="eyebrow">個人</p>
-              <h3>個人行李</h3>
-            </div>
-            <span className="pill">
-              {luggageItems.filter((item) => item.packed).length}/{luggageItems.length}
-            </span>
-          </div>
-          <form autoComplete="off" className="inline-form" onSubmit={submitPersonal}>
-            <input
-              autoComplete="off"
-              placeholder="新增個人行李"
-              value={personalForm.title}
-              onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
-            />
-            <input
-              autoComplete="off"
-              placeholder="分類"
-              value={personalForm.category}
-              onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
-            />
-            <button className="icon-button small" disabled={!personalForm.title.trim()} type="submit">
-              {editingPersonalId ? "S" : "+"}
-            </button>
-            {editingPersonalId ? (
-              <button className="mini-button" type="button" onClick={resetPersonal}>
-                取消
-              </button>
-            ) : null}
-          </form>
-          <div className="luggage-list">
-            {luggageItems.map((item) => (
-              <article className={`luggage-row${item.packed ? " packed" : ""}`} key={item.id}>
-                <input checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{item.category || "未分類"}</span>
-                </div>
-                <div className="member-actions">
-                  <button
-                    className="mini-button"
-                    type="button"
-                    onClick={() => {
-                      setEditingPersonalId(item.id);
-                      setPersonalForm({ title: item.title || "", category: item.category || "" });
-                    }}
-                  >
-                    E
-                  </button>
-                  <button className="mini-button" type="button" onClick={() => onDeletePersonal(item.id)}>
-                    X
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-          <div className="assigned-shared-list">
-            <div className="panel-heading tight">
-              <div>
-                <p className="eyebrow">指派</p>
-                <h3>指派給我的公物</h3>
-              </div>
-            </div>
-            {assignedSharedItems.map((item) => (
-              <article className="luggage-row shared-assigned" key={item.id}>
-                <input
-                  checked={item.packed_by_assignee}
-                  type="checkbox"
-                  onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
-                />
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{item.category || "未分類"}</span>
-                </div>
-                <span className="pill">{item.confirmed_by_owner ? "總召已確認" : "等待總召確認"}</span>
-              </article>
-            ))}
-          </div>
-        </section>
-        <section className={`luggage-column${activeTab === "shared" ? " active" : ""}`}>
-          <div className="panel-heading tight">
-            <div>
-              <p className="eyebrow">團隊</p>
-              <h3>團隊公物</h3>
-            </div>
-            <span className="pill">{sharedLuggageItems.length} 件</span>
-          </div>
-          <form autoComplete="off" className="shared-luggage-form" onSubmit={submitShared}>
-            <input
-              autoComplete="off"
-              placeholder="新增團隊公物"
-              value={sharedForm.title}
-              onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
-            />
-            <input
-              autoComplete="off"
-              placeholder="分類"
-              value={sharedForm.category}
-              onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
-            />
-            <select value={sharedForm.assigned_to} onChange={(event) => setSharedForm({ ...sharedForm, assigned_to: event.target.value })}>
-              <option value="">未指派</option>
-              {members.map((member) => (
-                <option key={member.user_id} value={member.user_id}>
-                  {memberName(member)}
-                </option>
-              ))}
-            </select>
-            <button className="icon-button small" disabled={!sharedForm.title.trim()} type="submit">
-              {editingSharedId ? "S" : "+"}
-            </button>
-            {editingSharedId ? (
-              <button className="mini-button" type="button" onClick={resetShared}>
-                取消
-              </button>
-            ) : null}
-          </form>
-          <div className="luggage-list">
-            {sharedLuggageItems.map((item) => {
-              const assignee = memberById.get(item.assigned_to);
-              return (
-                <article className="shared-luggage-row" key={item.id}>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span>
-                      {item.category || "未分類"} / {assignee ? memberName(assignee) : "未指派"}
-                    </span>
-                  </div>
-                  <label className="checkbox-label">
-                    <input
-                      checked={item.packed_by_assignee}
-                      type="checkbox"
-                      onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
-                    />
-                    已打包
-                  </label>
-                  <label className="checkbox-label">
-                    <input
-                      checked={item.confirmed_by_owner}
-                      type="checkbox"
-                      onChange={() => onUpdateShared(item.id, { confirmed_by_owner: !item.confirmed_by_owner })}
-                    />
-                    總召確認
-                  </label>
-                  <div className="member-actions">
-                    <button
-                      className="mini-button"
-                      type="button"
-                      onClick={() => {
-                        setEditingSharedId(item.id);
-                        setSharedForm({
-                          title: item.title || "",
-                          category: item.category || "",
-                          assigned_to: item.assigned_to || "",
-                        });
-                      }}
-                    >
-                      E
-                    </button>
-                    <button className="mini-button" type="button" onClick={() => onDeleteShared(item.id)}>
-                      X
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      </div>
-    </section>
   );
 }
 
@@ -9895,9 +9629,9 @@ function TripWorkspace(props) {
         <LuggagePanel
           activeTrip={activeTrip}
           activeTab={luggageTab}
-          canEdit={canEdit}
+          canEdit={members.some(member => member.user_id === currentUserId && member.status === "approved")}
           currentUserId={currentUserId}
-          isOwner={isOwner}
+          isOwner={activeTrip.owner_id === currentUserId}
           luggageItems={luggageItems}
           members={members}
           restoreDrafts={isLuggageMode}
@@ -14555,18 +14289,18 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   );
 }
 
-function LuggagePanel({
+export function LuggagePanel({
   activeTrip,
   activeTab = "personal",
   canEdit,
   currentUserId,
   isOwner,
-  luggageItems,
+  luggageItems: incomingLuggageItems,
   members,
   restoreDrafts = true,
   disableDraftAutosave = false,
   useEditLocks = true,
-  sharedLuggageItems,
+  sharedLuggageItems: incomingSharedLuggageItems,
   onDeletePersonal,
   onDeleteShared,
   onSavePersonal,
@@ -14575,13 +14309,33 @@ function LuggagePanel({
   onTogglePersonal,
   onUpdateShared,
 }) {
+  // Defense in depth: cached/private and cross-trip rows never reach the board.
+  const luggageItems = useMemo(() => incomingLuggageItems.filter((item) => item.owner_id === currentUserId && item.trip_id === activeTrip?.id && !item.shared_item_id && !item.is_shared_assigned_item), [incomingLuggageItems, currentUserId, activeTrip?.id]);
+  const sharedLuggageItems = useMemo(() => incomingSharedLuggageItems.filter((item) => item.trip_id === activeTrip?.id), [incomingSharedLuggageItems, activeTrip?.id]);
+  const contextRef = useRef(`${activeTrip?.id}:${currentUserId}`);
+  contextRef.current = `${activeTrip?.id}:${currentUserId}`;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const busyRef = useRef(false);
+  async function performMutation(action) {
+    if (busyRef.current) return { ok: false };
+    const actionContext = contextRef.current;
+    busyRef.current = true; setBusy(true); setError("");
+    try {
+      const result = await action();
+      if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
+      if (!result?.ok) setError(result?.conflict ? "資料已更新，請保留草稿並重新開啟最新項目後再試。" : result?.error?.message || "未能儲存，請檢查連線後重試。你的輸入仍保留。 ");
+      return result || { ok: false };
+    } catch { setError("未能儲存，請檢查連線後重試。你的輸入仍保留。"); return { ok: false }; }
+    finally { busyRef.current = false; setBusy(false); }
+  }
   const [personalSeed, setPersonalSeed] = useState(emptyLuggageForm);
   const [sharedSeed, setSharedSeed] = useState(emptySharedLuggageForm);
   const [editingPersonalId, setEditingPersonalId] = useState(null);
   const [editingSharedId, setEditingSharedId] = useState(null);
   const [personalUpdatedAt, setPersonalUpdatedAt] = useState(null);
   const [sharedUpdatedAt, setSharedUpdatedAt] = useState(null);
-  const previousTripIdRef = useRef(activeTrip?.id || null);
+  const previousTripIdRef = useRef(`${activeTrip?.id}:${currentUserId}`);
   const personalDraft = useDraftAutosave({
     disabled: disableDraftAutosave,
     defaultForm: personalSeed,
@@ -14606,13 +14360,10 @@ function LuggagePanel({
   const sharedForm = sharedDraft.form;
   const setPersonalForm = personalDraft.setForm;
   const setSharedForm = sharedDraft.setForm;
-  const approvedMembers = members.filter((member) => member.status === "approved");
-  const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
-  const assignedSharedItems = sharedLuggageItems.filter((item) => item.assigned_to === currentUserId);
   const personalDirty = disableDraftAutosave ? JSON.stringify(personalForm) !== JSON.stringify(personalSeed) : personalDraft.hasUnsavedChanges;
   const sharedDirty = disableDraftAutosave ? JSON.stringify(sharedForm) !== JSON.stringify(sharedSeed) : sharedDraft.hasUnsavedChanges;
-  const personalEditorGuardId = `luggage-personal:${activeTrip?.id || "no-trip"}`;
-  const sharedEditorGuardId = `luggage-shared:${activeTrip?.id || "no-trip"}`;
+  const personalEditorGuardId = `luggage-personal:${currentUserId}:${activeTrip?.id || "no-trip"}`;
+  const sharedEditorGuardId = `luggage-shared:${currentUserId}:${activeTrip?.id || "no-trip"}`;
   const personalEditorGuard = useMemo(
     () => ({
       discard: () => discardPersonalEdit(),
@@ -14632,12 +14383,18 @@ function LuggagePanel({
     [sharedForm, sharedDirty, editingSharedId, sharedUpdatedAt],
   );
 
+  useEffect(() => () => {
+    if (useEditLocks && editingPersonalId) void releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
+  }, [editingPersonalId, currentUserId, useEditLocks]);
+  useEffect(() => () => {
+    if (useEditLocks && editingSharedId) void releaseEditLock({ recordId: editingSharedId, supabase, table: "shared_luggage_items", userId: currentUserId });
+  }, [editingSharedId, currentUserId, useEditLocks]);
   useActiveEditorGuard(personalEditorGuardId, personalEditorGuard);
   useActiveEditorGuard(sharedEditorGuardId, sharedEditorGuard);
 
   useEffect(() => {
     const previousTripId = previousTripIdRef.current;
-    const currentTripId = activeTrip?.id || null;
+    const currentTripId = `${activeTrip?.id}:${currentUserId}`;
     if (previousTripId === currentTripId) return;
     if (useEditLocks && editingPersonalId) {
       void releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
@@ -14687,13 +14444,13 @@ function LuggagePanel({
   }, [activeTrip?.id, currentUserId, editingSharedId, restoreDrafts, sharedLuggageItems]);
 
   async function saveCurrentPersonal() {
-    if (!personalForm.title.trim()) return false;
+    if (!personalForm.title.trim() || !canEdit) return false;
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: personalEditorGuardId,
       tripId: activeTrip?.id,
     });
     if (!canOpenEditor) return false;
-    const result = await onSavePersonal(personalForm, editingPersonalId, { baseUpdatedAt: personalUpdatedAt, tripId: activeTrip?.id });
+    const result = await performMutation(() => onSavePersonal(personalForm, editingPersonalId, { baseUpdatedAt: personalUpdatedAt, tripId: activeTrip?.id }));
     if (!result?.ok) return false;
     if (!disableDraftAutosave) clearDraft(personalDraft.draftKey);
     personalDraft.resetDraft(emptyLuggageForm);
@@ -14714,7 +14471,8 @@ function LuggagePanel({
       tripId: activeTrip?.id,
     });
     if (!canOpenEditor) return false;
-    const result = await onSaveShared(sharedForm, editingSharedId, { baseUpdatedAt: sharedUpdatedAt, tripId: activeTrip?.id });
+    if (!sharedForm.title.trim() || !canEdit) return false;
+    const result = await performMutation(() => onSaveShared(sharedForm, editingSharedId, { baseUpdatedAt: sharedUpdatedAt, tripId: activeTrip?.id }));
     if (!result?.ok) return false;
     if (!disableDraftAutosave) clearDraft(sharedDraft.draftKey);
     sharedDraft.resetDraft(emptySharedLuggageForm);
@@ -14742,9 +14500,15 @@ function LuggagePanel({
     } else if (editingPersonalId && editingPersonalId !== item.id) {
       await discardPersonalEdit();
     }
+    const openContext = contextRef.current;
     const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "luggage_items", userId: currentUserId }) : { data: item };
-    if (lockResult.error || lockResult.lockedByAnotherUser) return;
-    const nextForm = { title: item.title || "", category: item.category || "" };
+    if (contextRef.current !== openContext) {
+      if (useEditLocks && !lockResult.error) void releaseEditLock({ recordId: item.id, supabase, table: "luggage_items", userId: currentUserId });
+      return;
+    }
+    const lockedItem = lockResult.data || item;
+    if (lockResult.error || lockResult.lockedByAnotherUser) { setError("此物品正在由其他成員編輯，請稍後重試。"); return; }
+    const nextForm = { title: lockedItem.title || "", category: lockedItem.category || "" };
     personalDraft.flushDraft();
     setPersonalSeed(nextForm);
     personalDraft.replaceForm(nextForm, { dirty: false });
@@ -14765,7 +14529,12 @@ function LuggagePanel({
   }
 
   async function cancelPersonalEdit() {
-    await discardPersonalEdit();
+    if (personalDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id });
+    else await discardPersonalEdit();
+  }
+  async function cancelSharedEdit() {
+    if (sharedDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id });
+    else await discardSharedEdit();
   }
 
   async function editShared(item) {
@@ -14781,12 +14550,18 @@ function LuggagePanel({
     } else if (editingSharedId && editingSharedId !== item.id) {
       await discardSharedEdit();
     }
+    const openContext = contextRef.current;
     const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "shared_luggage_items", userId: currentUserId }) : { data: item };
-    if (lockResult.error || lockResult.lockedByAnotherUser) return;
+    if (contextRef.current !== openContext) {
+      if (useEditLocks && !lockResult.error) void releaseEditLock({ recordId: item.id, supabase, table: "shared_luggage_items", userId: currentUserId });
+      return;
+    }
+    const lockedItem = lockResult.data || item;
+    if (lockResult.error || lockResult.lockedByAnotherUser) { setError("此物品正在由其他成員編輯，請稍後重試。"); return; }
     const nextForm = {
-      title: item.title || "",
-      category: item.category || "",
-      assigned_to: item.assigned_to || "",
+      title: lockedItem.title || "",
+      category: lockedItem.category || "",
+      assigned_to: lockedItem.assigned_to || "",
     };
     sharedDraft.flushDraft();
     setSharedSeed(nextForm);
@@ -14823,193 +14598,24 @@ function LuggagePanel({
     if (canOpenEditor) setSharedForm(nextForm);
   }
 
-  return (
-    <section className="panel luggage-panel travel-workspace">
-      <WorkspaceHeading title="行李清單" description="自己的隨身物品，與旅伴分工一起確認。" />
-      <WorkspaceSummary items={[
-        { label: "個人已打包", value: `${luggageItems.filter((item) => item.packed).length} / ${luggageItems.length}`, detail: "僅自己可見的個人清單" },
-        { label: "指派給我", value: `${assignedSharedItems.length} 件`, detail: "團隊公物分工" },
-        { label: "總召已確認", value: `${sharedLuggageItems.filter((item) => item.confirmed_by_owner).length} / ${sharedLuggageItems.length}`, detail: "與負責人打包狀態分開記錄" },
-      ]} />
-      <div className="mobile-tabs">
-        <button
-          className={activeTab === "personal" ? "active" : ""}
-          type="button"
-          onClick={() => onTabChange?.("personal")}
-        >
-          私物
-        </button>
-        <button className={activeTab === "shared" ? "active" : ""} type="button" onClick={() => onTabChange?.("shared")}>
-          公物
-        </button>
-      </div>
-
-      <div className="luggage-layout">
-        <section className={`luggage-column${activeTab === "personal" ? " active" : ""}`}>
-          <div className="panel-heading tight">
-            <div>
-              <p className="eyebrow">Personal</p>
-              <h3>個人行李</h3>
-            </div>
-            <span className="pill">{luggageItems.filter((item) => item.packed).length}/{luggageItems.length}</span>
-          </div>
-          <WorkspaceProgress label="個人打包進度" value={luggageItems.filter((item) => item.packed).length} total={luggageItems.length} />
-          <form autoComplete="off" className="inline-form" onSubmit={submitPersonal}>
-            <input
-              placeholder="新增個人行李"
-              aria-label="個人行李名稱"
-              value={personalForm.title}
-              onChange={(event) => setPersonalForm({ ...personalForm, title: event.target.value })}
-            />
-            <input
-              placeholder="分類"
-              value={personalForm.category}
-              aria-label="個人行李分類"
-              onChange={(event) => setPersonalForm({ ...personalForm, category: event.target.value })}
-            />
-            <button className="icon-button small" aria-label={editingPersonalId ? "儲存個人行李" : "新增個人行李"} type="submit" disabled={!personalForm.title.trim()}>
-              {editingPersonalId ? "儲存" : <Plus size={16} aria-hidden="true" />}
-            </button>
-            {editingPersonalId ? (
-              <button className="mini-button" type="button" onClick={cancelPersonalEdit}>
-                取消
-              </button>
-            ) : null}
-          </form>
-          <div className="luggage-list">
-            {luggageItems.length ? (
-              luggageItems.map((item) => (
-                <article className={`luggage-row${item.packed ? " packed" : ""}`} key={item.id}>
-                  <input aria-label={`打包：${item.title}`} checked={item.packed} type="checkbox" onChange={() => onTogglePersonal(item)} />
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span>{item.category || "未分類"}</span>
-                  </div>
-                  <WorkspaceActions name={item.title} onEdit={() => editPersonal(item)} onDelete={() => onDeletePersonal(item.id)} />
-                </article>
-              ))
-            ) : (
-              <div className="timeline-empty">尚未建立個人行李</div>
-            )}
-          </div>
-
-          <div className="assigned-shared-list">
-            <div className="panel-heading tight">
-              <div>
-                <p className="eyebrow">Assigned</p>
-                <h3>指派給我的公物</h3>
-              </div>
-            </div>
-            {assignedSharedItems.length ? (
-              assignedSharedItems.map((item) => (
-                <article className="luggage-row shared-assigned" key={item.id}>
-                  <input
-                    aria-label={`打包指派公物：${item.title}`}
-                    checked={item.packed_by_assignee}
-                    type="checkbox"
-                    onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
-                  />
-                  <div>
-                    <strong>{item.title}</strong>
-                    <span>{item.category || "未分類"}</span>
-                  </div>
-                  <span className="pill">{item.confirmed_by_owner ? "總召已確認" : "待總召確認"}</span>
-                </article>
-              ))
-            ) : (
-              <div className="timeline-empty">目前沒有指派公物</div>
-            )}
-          </div>
-        </section>
-
-        <section className={`luggage-column${activeTab === "shared" ? " active" : ""}`}>
-          <div className="panel-heading tight">
-            <div>
-              <p className="eyebrow">Team</p>
-              <h3>團隊公物</h3>
-            </div>
-            <span className="pill">{sharedLuggageItems.length} 件</span>
-          </div>
-          <WorkspaceProgress label="團隊打包進度" value={sharedLuggageItems.filter((item) => item.packed_by_assignee).length} total={sharedLuggageItems.length} />
-          <form autoComplete="off" className="shared-luggage-form" onSubmit={submitShared}>
-            <input
-              autoComplete="off"
-              disabled={!canEdit}
-              placeholder="新增團隊公物"
-              aria-label="團隊公物名稱"
-              value={sharedForm.title}
-              onChange={(event) => setSharedForm({ ...sharedForm, title: event.target.value })}
-            />
-            <input
-              autoComplete="off"
-              disabled={!canEdit}
-              placeholder="分類"
-              value={sharedForm.category}
-              aria-label="團隊公物分類"
-              onChange={(event) => setSharedForm({ ...sharedForm, category: event.target.value })}
-            />
-            <select
-              disabled={!canEdit}
-              aria-label="指派公物負責人"
-              value={sharedForm.assigned_to}
-              onChange={(event) => void updateSharedForm({ ...sharedForm, assigned_to: event.target.value })}
-            >
-              <option value="">未指派</option>
-              {approvedMembers.map((member) => (
-                <option key={member.user_id} value={member.user_id}>
-                  {memberName(member)}
-                </option>
-              ))}
-            </select>
-            <button className="icon-button small" aria-label={editingSharedId ? "儲存團隊公物" : "新增團隊公物"} disabled={!canEdit || !sharedForm.title.trim()} type="submit">
-              {editingSharedId ? "儲存" : <Plus size={16} aria-hidden="true" />}
-            </button>
-            {editingSharedId ? <button className="mini-button" type="button" onClick={discardSharedEdit}>取消</button> : null}
-          </form>
-          <div className="luggage-list">
-            {sharedLuggageItems.length ? (
-              sharedLuggageItems.map((item) => {
-                const assignee = memberById.get(item.assigned_to);
-                const canToggleAssigned = canEdit && (item.assigned_to === currentUserId || canEdit);
-                return (
-                  <article className="shared-luggage-row" key={item.id}>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <span>
-                        {item.category || "未分類"} · 指派：
-                        {assignee ? memberName(assignee) : "未指派"}
-                      </span>
-                    </div>
-                    <label className="checkbox-label">
-                      <input
-                        checked={item.packed_by_assignee}
-                        disabled={!canToggleAssigned}
-                        type="checkbox"
-                        onChange={() => onUpdateShared(item.id, { packed_by_assignee: !item.packed_by_assignee })}
-                      />
-                      已打包
-                    </label>
-                    <label className="checkbox-label">
-                      <input
-                        checked={item.confirmed_by_owner}
-                        disabled={!isOwner}
-                        type="checkbox"
-                        onChange={() => onUpdateShared(item.id, { confirmed_by_owner: !item.confirmed_by_owner })}
-                      />
-                      總召確認
-                    </label>
-                    <WorkspaceActions name={item.title} disabled={!canEdit} onEdit={() => editShared(item)} onDelete={() => onDeleteShared(item.id)} />
-                  </article>
-                );
-              })
-            ) : (
-              <div className="timeline-empty">尚未建立團隊公物</div>
-            )}
-          </div>
-        </section>
-      </div>
-    </section>
-  );
+  async function removeItem(kind, id, item) {
+    if (!canEdit) return;
+    if (editingPersonalId || editingSharedId || personalDirty || sharedDirty) {
+      if (await requestActiveEditorHandoff({ tripId: activeTrip?.id })) setError("編輯已結束，請確認最新內容後再刪除物品。");
+      return;
+    }
+    if (!window.confirm(`刪除「${item.title}」？此操作無法復原。`)) return;
+    return performMutation(() => kind === "personal" ? onDeletePersonal(id, item) : onDeleteShared(id, item));
+  }
+  return <LuggageBoard key={`${activeTrip?.id}:${currentUserId}`} {...{
+    activeTrip, activeTab, canEdit, currentUserId, isOwner, luggageItems, sharedLuggageItems, members,
+    personalForm, sharedForm, editingPersonalId, editingSharedId, submitPersonal, submitShared,
+    editPersonal, editShared, cancelPersonalEdit, busy, error, onTabChange,
+  }} cancelSharedEdit={cancelSharedEdit} setPersonalForm={updatePersonalForm} setSharedForm={updateSharedForm}
+    onTogglePersonal={(item) => performMutation(() => onTogglePersonal(item))}
+    onUpdateShared={(id, patch, item) => performMutation(() => onUpdateShared(id, patch, item || sharedLuggageItems.find(row => row.id === id)))}
+    onDeletePersonal={(id, item) => removeItem("personal", id, item)}
+    onDeleteShared={(id, item) => removeItem("shared", id, item)} />;
 }
 
 function PackList({ canEdit, items, onAdd, onDelete, onToggle }) {

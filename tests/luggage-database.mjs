@@ -1,0 +1,180 @@
+// Offline PostgreSQL/RLS verification only; never connects to a hosted database.
+import fs from "node:fs/promises";
+import { pathToFileURL } from "node:url";
+import { randomUUID } from "node:crypto";
+import assert from "node:assert/strict";
+const { PGlite } = await import(pathToFileURL(process.env.PGLITE_MODULE).href);
+const db = new PGlite();
+let checks = 0;
+const check = (value, expected) => { assert.deepEqual(value, expected); checks += 1; };
+try {
+  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+    create schema auth; create schema storage;
+    create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb);
+    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+    create function auth.jwt() returns jsonb language sql stable as $$select '{}'::jsonb$$;
+    grant usage on schema public,auth,storage to authenticated,anon;
+    alter default privileges in schema public grant all on tables to authenticated;
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid,metadata jsonb);
+    create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;
+    create publication supabase_realtime;`);
+  const dir = new URL("../supabase/migrations/", import.meta.url);
+  const legacyPrivateId = randomUUID(), legacySharedId = randomUUID(), legacyPackId = randomUUID();
+  let legacySnapshot;
+  for (const file of (await fs.readdir(dir)).filter((name) => name.endsWith(".sql")).sort()) {
+    if (file.endsWith("_luggage_collaboration_state_safety.sql")) {
+      const historicOwner=randomUUID(), historicTrip=randomUUID();
+      await db.query("insert into auth.users(id) values($1)",[historicOwner]);
+      await db.query("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Historical','Historical','Japan',current_date-10,current_date-5,$2)",[historicTrip,historicOwner]);
+      await db.query("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved')",[historicTrip,historicOwner]);
+      await db.query("insert into shared_luggage_items(id,trip_id,title,assigned_to,packed_by_assignee,confirmed_by_owner) values($1,$2,'Historic shared',$3,true,true)",[legacySharedId,historicTrip,historicOwner]);
+      await db.query("insert into luggage_items(id,trip_id,owner_id,title,packed,is_shared_assigned_item,shared_item_id) values($1,$2,$3,'Historic mirror',false,true,$4)",[legacyPrivateId,historicTrip,historicOwner,legacySharedId]);
+      await db.query("insert into pack_items(id,trip_id,title,created_by,done) values($1,$2,'Historic pack',$3,true)",[legacyPackId,historicTrip,historicOwner]);
+      legacySnapshot=(await db.query("select to_jsonb(t.*) r from luggage_items t where id=$1 union all select to_jsonb(t.*) r from shared_luggage_items t where id=$2 union all select to_jsonb(t.*) r from pack_items t where id=$3",[legacyPrivateId,legacySharedId,legacyPackId])).rows;
+    }
+    await db.exec((await fs.readFile(new URL(file, dir), "utf8")).replace(/create extension if not exists pgcrypto;/ig, ""));
+  }
+  check((await db.query("select to_jsonb(t.*) r from luggage_items t where id=$1 union all select to_jsonb(t.*) r from shared_luggage_items t where id=$2 union all select to_jsonb(t.*) r from pack_items t where id=$3",[legacyPrivateId,legacySharedId,legacyPackId])).rows, legacySnapshot);
+  const owner = randomUUID(), editor = randomUUID(), viewer = randomUUID(), pending = randomUUID(), outsider = randomUUID();
+  const trip = randomUUID(), otherTrip = randomUUID();
+  const q = async (sql, args = []) => (await db.query(sql, args)).rows;
+  await q("insert into auth.users(id) select unnest($1::uuid[])", [[owner, editor, viewer, pending, outsider]]);
+  await q("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Trip','Trip','Japan',current_date+10,current_date+15,$3),($2,'Other','Other','Japan',current_date+10,current_date+15,$4)", [trip, otherTrip, owner, outsider]);
+  await q("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved'),($1,$3,'editor','approved'),($1,$4,'viewer','approved'),($1,$5,'viewer','pending'),($6,$7,'owner','approved')", [trip,owner,editor,viewer,pending,otherTrip,outsider]);
+  const login = async (id, role = "authenticated") => { await db.exec(`set role ${role}`); await q("select set_config('request.jwt.claim.sub',$1,false)",[id || ""]); };
+  const row = async (id, scope = "shared") => (await q(`select to_jsonb(t.*) r from ${scope === "shared" ? "shared_luggage_items" : "luggage_items"} t where id=$1`,[id]))[0]?.r;
+  const mutate = async (scope, action, payload = {}, item = null, tripId = trip, base = item?.updated_at) =>
+    (await q("select mutate_luggage_item($1,$2,$3,$4,$5,$6::jsonb) r",[tripId,scope,action,item?.id || null,base || null,JSON.stringify(payload)]))[0].r;
+  const rejects = async (task, code) => { await assert.rejects(task, new RegExp(code)); checks += 1; };
+
+  // Every approved member, including viewers, manages their own private list.
+  await login(viewer);
+  let own = await mutate("personal","save",{title:"護照",category:"證件"});
+  check(own.owner_id,viewer);
+  own = await mutate("personal","patch",{packed:true},own);
+  check(own.packed,true);
+  await rejects(()=>mutate("personal","patch",{packed:false},{...own,updated_at:"2000-01-01T00:00:00Z"}),"luggage_stale");
+  own = await mutate("personal","save",{title:"護照正本",category:"證件"},own);
+  check(own.packed,true);
+  // Even trip owner cannot query or mutate someone else's personal items.
+  await login(owner); check(await row(own.id,"personal"),undefined);
+  await rejects(()=>mutate("personal","delete",{},own),"luggage_not_found");
+  await rejects(()=>q("insert into luggage_items(trip_id,owner_id,title) values($1,$2,'Spy')",[trip,viewer]),"luggage_invalid_payload|row-level security");
+  await login(viewer);
+  await rejects(()=>q("update luggage_items set trip_id=$1 where id=$2",[otherTrip,own.id]),"luggage_invalid_payload");
+  await rejects(()=>q("update luggage_items set owner_id=$1 where id=$2",[owner,own.id]),"luggage_invalid_payload");
+
+  // Shared creation/content management by approved viewer is intentional.
+  let shared = await mutate("shared","save",{title:"延長線",category:"電子用品",assigned_to:editor});
+  check([shared.packed_by_assignee,shared.confirmed_by_owner],[false,false]);
+  await rejects(()=>mutate("shared","patch",{packed_by_assignee:true},shared),"luggage_forbidden");
+  await rejects(()=>mutate("shared","patch",{confirmed_by_owner:true},shared),"luggage_forbidden");
+  await login(owner);
+  await rejects(()=>mutate("shared","patch",{confirmed_by_owner:true},shared),"luggage_not_packed");
+  await rejects(()=>mutate("shared","patch",{packed_by_assignee:true},shared),"luggage_forbidden");
+  await login(editor);
+  shared = await mutate("shared","patch",{packed_by_assignee:true},shared);
+  check([shared.packed_by_assignee,shared.confirmed_by_owner],[true,false]);
+  await rejects(()=>mutate("shared","patch",{confirmed_by_owner:true},shared),"luggage_forbidden");
+  await login(owner);
+  shared = await mutate("shared","patch",{confirmed_by_owner:true},shared);
+  check([shared.packed_by_assignee,shared.confirmed_by_owner],[true,true]);
+  await login(viewer);
+  await rejects(()=>mutate("shared","patch",{confirmed_by_owner:false},shared),"luggage_forbidden");
+  await login(editor);
+  shared = await mutate("shared","patch",{packed_by_assignee:false},shared);
+  check([shared.packed_by_assignee,shared.confirmed_by_owner],[false,false]);
+
+  const packAndConfirm = async () => { await login(shared.assigned_to); shared=await mutate("shared","patch",{packed_by_assignee:true},shared); await login(owner); shared=await mutate("shared","patch",{confirmed_by_owner:true},shared); };
+  await packAndConfirm();
+  await login(viewer);
+  shared=await mutate("shared","save",{title:"延長線 2m",category:"電子用品",assigned_to:editor},shared);
+  check([shared.packed_by_assignee,shared.confirmed_by_owner],[false,false]);
+  await packAndConfirm();
+  shared=await mutate("shared","save",{title:shared.title,category:"共用裝備",assigned_to:editor},shared);
+  check([shared.packed_by_assignee,shared.confirmed_by_owner],[false,false]);
+  await packAndConfirm();
+  const staleBeforeReassign=shared;
+  shared=await mutate("shared","save",{title:shared.title,category:shared.category,assigned_to:viewer},shared);
+  check([shared.assigned_to,shared.packed_by_assignee,shared.confirmed_by_owner],[viewer,false,false]);
+  await login(editor);
+  await rejects(()=>mutate("shared","patch",{packed_by_assignee:true},staleBeforeReassign),"luggage_stale");
+  await rejects(()=>mutate("shared","patch",{packed_by_assignee:true},shared),"luggage_forbidden");
+  await login(viewer);
+  shared=await mutate("shared","patch",{packed_by_assignee:true},shared);
+  await login(owner); shared=await mutate("shared","patch",{confirmed_by_owner:true},shared);
+  shared=await mutate("shared","save",{title:shared.title,category:shared.category,assigned_to:null},shared);
+  check([shared.assigned_to,shared.packed_by_assignee,shared.confirmed_by_owner],[null,false,false]);
+  await rejects(()=>mutate("shared","save",{title:shared.title,assigned_to:pending},shared),"luggage_invalid_assignee");
+  await rejects(()=>mutate("shared","save",{title:shared.title,assigned_to:outsider},shared),"luggage_invalid_assignee");
+  await rejects(()=>mutate("shared","patch",{packed_by_assignee:true,confirmed_by_owner:true},shared),"luggage_invalid_payload");
+  await rejects(()=>mutate("shared","patch",{confirmed_by_owner:"true"},shared),"luggage_invalid_payload");
+  await rejects(()=>mutate("shared","save",{title:" ",assigned_to:null},shared),"luggage_invalid_payload");
+
+  // Direct table clients cannot forge confirmations or cross-trip identities.
+  await rejects(()=>q("update shared_luggage_items set confirmed_by_owner=true where id=$1",[shared.id]),"luggage_not_packed");
+  await rejects(()=>q("update shared_luggage_items set trip_id=$1 where id=$2",[otherTrip,shared.id]),"luggage_invalid_payload");
+  await login(viewer);
+  await rejects(()=>q("update shared_luggage_items set packed_by_assignee=true where id=$1",[shared.id]),"luggage_forbidden");
+  let fresh=await mutate("shared","save",{title:"藥包",assigned_to:viewer});
+  // An old client tries creating an already confirmed item: both states normalize safely.
+  let inserted=(await q("insert into shared_luggage_items(trip_id,title,assigned_to,packed_by_assignee,confirmed_by_owner) values($1,'Old client',$2,true,true) returning to_jsonb(shared_luggage_items.*) r",[trip,viewer]))[0].r;
+  check([inserted.packed_by_assignee,inserted.confirmed_by_owner],[false,false]);
+
+  // Live edit locks protect content, ticks and deletes; expiry allows recovery.
+  await q("update shared_luggage_items set locked_by=$1,locked_at=clock_timestamp() where id=$2",[viewer,fresh.id]);
+  fresh=await row(fresh.id); await login(owner);
+  await rejects(()=>mutate("shared","delete",{},fresh),"luggage_locked");
+  await rejects(()=>mutate("shared","save",{title:"Interference",assigned_to:viewer},fresh),"luggage_locked");
+  await rejects(()=>q("update shared_luggage_items set locked_by=$1,locked_at=clock_timestamp() where id=$2",[owner,fresh.id]),"luggage_locked");
+  await login(viewer); await q("update shared_luggage_items set locked_by=null,locked_at=null where id=$1",[fresh.id]);
+  const firstBase=await row(fresh.id);
+  fresh=await mutate("shared","save",{title:"Concurrent A",assigned_to:viewer},firstBase);
+  await login(owner);
+  await rejects(()=>mutate("shared","save",{title:"Concurrent B",assigned_to:viewer},firstBase),"luggage_stale");
+  check((await row(fresh.id)).title,"Concurrent A");
+  await rejects(()=>mutate("shared","delete",{},fresh,otherTrip),"luggage_forbidden");
+
+  // Membership revocation preserves history but prevents advancing an obsolete assignment.
+  let revoked=await mutate("shared","save",{title:"Former assignee",assigned_to:editor});
+  await login(editor); revoked=await mutate("shared","patch",{packed_by_assignee:true},revoked);
+  await login(owner);
+  await q("update trip_members set status='pending' where trip_id=$1 and user_id=$2",[trip,editor]);
+  await rejects(()=>mutate("shared","patch",{confirmed_by_owner:true},revoked),"luggage_invalid_assignee");
+  check([(await row(revoked.id)).packed_by_assignee,(await row(revoked.id)).confirmed_by_owner],[true,false]);
+  await login(editor);
+  await rejects(()=>mutate("shared","patch",{packed_by_assignee:false},revoked),"luggage_forbidden");
+  await login(owner);
+  revoked=await mutate("shared","save",{title:revoked.title,assigned_to:viewer},revoked);
+  check([revoked.assigned_to,revoked.packed_by_assignee,revoked.confirmed_by_owner],[viewer,false,false]);
+  await q("update trip_members set status='approved' where trip_id=$1 and user_id=$2",[trip,editor]);
+
+  // Pending, outsider and anonymous cannot access team/private data or RPCs.
+  for (const actor of [pending,outsider]) {
+    await login(actor); check(await row(shared.id),undefined); check(await row(own.id,"personal"),undefined);
+    await rejects(()=>mutate("shared","save",{title:"Blocked"}),"luggage_forbidden");
+    await rejects(()=>mutate("personal","save",{title:"Blocked"}),"luggage_forbidden");
+    await rejects(()=>q("insert into shared_luggage_items(trip_id,title) values($1,'Direct blocked')",[trip]),"luggage_forbidden|row-level security");
+    check((await q("update shared_luggage_items set title='No access' where id=$1 returning id",[shared.id])).length,0);
+  }
+  await login(null,"anon");
+  await rejects(()=>mutate("shared","save",{title:"Anon"}),"permission denied");
+  await rejects(()=>q("select * from luggage_items"),"permission denied");
+  await rejects(()=>q("select * from shared_luggage_items"),"permission denied");
+
+  // Existing legacy pack_items remains independent and unmodified.
+  await login(owner);
+  await q("insert into pack_items(trip_id,title,created_by,done) values($1,'Legacy camera',$2,true)",[trip,owner]);
+  const legacy=(await q("select to_jsonb(t.*) r from pack_items t where trip_id=$1",[trip]))[0].r;
+  await login(viewer); await mutate("shared","delete",{},await row(fresh.id));
+  check((await q("select to_jsonb(t.*) r from pack_items t where trip_id=$1",[trip]))[0].r,legacy);
+  await mutate("personal","delete",{},await row(own.id,"personal")); check(await row(own.id,"personal"),undefined);
+
+  // Security metadata: no definer RPC/new exposed tables, existing RLS+Realtime preserved.
+  await db.exec("reset role");
+  check((await q("select prosecdef from pg_proc where proname='mutate_luggage_item'"))[0].prosecdef,false);
+  check((await q("select count(*)::int n from pg_class where relname in ('luggage_items','shared_luggage_items') and relrowsecurity and relreplident='f'"))[0].n,2);
+  check((await q("select count(*)::int n from pg_publication_tables where pubname='supabase_realtime' and tablename in ('luggage_items','shared_luggage_items')"))[0].n,2);
+  console.log(`Luggage offline PostgreSQL: ${checks} assertions passed (full migration chain, RLS, two-role stale writes, private isolation, dual confirmation, locks, legacy compatibility).`);
+} finally { await db.close(); }
