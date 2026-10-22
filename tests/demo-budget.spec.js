@@ -70,6 +70,7 @@ test.describe('shared Demo UI',()=>{
     expect(requests).toEqual([]);
   });
   test('scenario controls show readonly stages, unique expenses, frozen comparison and balances',async({page})=>{
+    await page.goto('/demo/budget?budgetTools=1');
     await page.getByLabel('Demo 情境',{exact:true}).selectOption('traveling');
     await expect(page.locator('.budget-workspace')).toHaveAttribute('data-stage','traveling');
     await expect(page.locator('.trip-header-stage')).toContainText('旅行階段');

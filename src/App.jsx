@@ -8986,7 +8986,7 @@ function DemoApp({ initialSection }) {
           }}
           onUpdateTripDateRange={updateDemoTripDateRange}
         />
-        {activeSection === "budget" || activeSection === "settlement" ? <div className="demo-budget-controls">
+        {new URLSearchParams(window.location.search).get("budgetTools") === "1" && (activeSection === "budget" || activeSection === "settlement") ? <div className="demo-budget-controls">
           <label>Demo 情境<select aria-label="Demo 情境" value={demoScenario} onChange={(event) => void changeDemoScenario(event.target.value)}>
             <option value="live">依目前日期</option><option value="planning">行前規劃</option><option value="traveling">行程中</option><option value="settled">旅程結算</option>
           </select></label>
