@@ -42,9 +42,9 @@ test("per-person pricing, custom split and actual conversion preserve the origin
   await form.getByRole("button", { name: "儲存", exact: true }).click();
   await expect(row).toContainText("依成員");
   await row.getByRole("button", { name: "兩人門票", exact: true }).click();
-  await page.getByRole("button", { name: "記錄實付", exact: true }).click();
+  await page.getByRole("button", { name: "登記付款", exact: true }).click();
   const actualForm=page.getByRole("form", { name: "實付編輯" });
-  await actualForm.getByRole("button", { name: "儲存", exact: true }).click();
+  await actualForm.getByRole("button", { name: "確認付款", exact: true }).click();
   await expect(page.getByRole("table", { name: "實付明細", exact: true })).toContainText("兩人門票");
   await page.getByRole("tab", { name: "預算", exact: true }).click();
   await expect(row).toContainText("308"); await expect(row).toContainText("實付");
@@ -66,6 +66,9 @@ test("double-click shares the right draft; blur does not save, Escape cancels, E
   await total.fill("1000"); await total.press("Enter");
   await expect(editor(page)).toHaveCount(0);
   await expect(row.locator("td").nth(3)).toContainText("1,000"); // First flight line uses TWD.
+  await page.getByRole('tab',{name:'實付',exact:true}).click();
+  await expect(page.locator('.bw-row')).toHaveCount(8);
+  await expect(rowByTitle(page,'去程機票・桃園 → 關西')).toContainText('35,745');
 });
 test("empty participants cannot save; view navigation uses the editor guard",async({page})=>{
   await page.getByRole("button",{name:"新增預算",exact:true}).click();
@@ -99,11 +102,23 @@ test("traveling prioritizes actuals; only settlement exposes frozen comparison",
   await page.getByRole("tab",{name:"對照",exact:true}).click();
   await expect(page.locator(".bw-comparison-summary")).toHaveText(before);
 });
-test("fixed costs create editable actuals only once",async({page})=>{
+test("one payment entry requires confirmation and budget editing never changes the saved payment",async({page})=>{
   await page.getByRole("button",{name:"新增預算",exact:true}).click(); const form=editor(page);
   await form.getByLabel("項目",{exact:true}).fill("已購機票"); await form.getByLabel("總額",{exact:true}).fill("12000");
-  await form.getByLabel("這筆已付款").check(); await form.getByRole("button",{name:"儲存",exact:true}).click();
-  const row=rowByTitle(page,"已購機票"); await expect(row).toContainText("實付");
+  await expect(form.getByLabel("這筆已付款")).toHaveCount(0);
+  await form.getByRole("button",{name:"儲存",exact:true}).click();
+  const row=rowByTitle(page,"已購機票"); await expect(row).toContainText("預算");
+  await row.getByRole('button',{name:'已購機票',exact:true}).click();
+  await page.getByRole('button',{name:'登記付款',exact:true}).click();
+  await expect(page.getByRole('form',{name:'實付編輯'})).toContainText('登記付款');
+  await page.getByRole('form',{name:'實付編輯'}).getByRole('button',{name:'取消',exact:true}).click();
+  await page.getByRole('tab',{name:'預算',exact:true}).click();
+  await expect(row).toContainText('預算');
+  await row.getByRole('button',{name:'已購機票',exact:true}).click();
+  await page.getByRole('button',{name:'登記付款',exact:true}).click();
+  await page.getByRole('form',{name:'實付編輯'}).getByRole('button',{name:'確認付款',exact:true}).click();
+  await page.getByRole('tab',{name:'預算',exact:true}).click();
+  await expect(row).toContainText('實付');
   await row.getByRole("button",{name:"已購機票"}).click(); await page.getByRole("button",{name:"編輯項目"}).click();
   await form.getByLabel("總額",{exact:true}).fill("13000"); await form.getByRole("button",{name:"儲存",exact:true}).click();
   await page.getByRole("tab",{name:"實付",exact:true}).click(); await expect(row).toHaveCount(1); await expect(row).toContainText("12,000");
@@ -151,7 +166,7 @@ test("desktop panels stay below the header and reach save without scrolling the 
   await page.setViewportSize({width:1264,height:892});
   await page.locator('.bw-row').first().locator('td').nth(1).getByRole('button').dblclick();
   const form=editor(page);
-  await expect(form.getByText('已記錄實付',{exact:true})).toBeVisible();
+  await expect(form.getByText('已付款',{exact:true})).toBeVisible();
   await expect(form.getByLabel('這筆已付款')).toHaveCount(0);
   await form.locator('.bw-member-options > summary').click();
   await form.locator('.bw-link-options > summary').click();
@@ -168,6 +183,47 @@ test("desktop panels stay below the header and reach save without scrolling the 
   await expect(page.getByRole('button',{name:'新增預算',exact:true})).toBeInViewport();
   await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toBeInViewport();
 });
+test('inline editing keeps row height and uses compact inputs and edge-aligned board scrollbars',async({page})=>{
+  await page.setViewportSize({width:1264,height:892});
+  const row=page.locator('.bw-row').first();
+  const before=await row.boundingBox();
+  await row.locator('td').nth(2).getByRole('button').dblclick();
+  const input=page.getByRole('spinbutton',{name:/快速修改每人預算/});
+  expect((await row.boundingBox()).height).toBe(before.height);
+  expect((await input.boundingBox()).height).toBe(28);
+  expect(await input.evaluate(el=>getComputedStyle(el).appearance)).toBe('textfield');
+  const form=editor(page);
+  for(const field of await form.locator('input:not([type=checkbox]),select').all()) {
+    if(await field.isVisible()) expect((await field.boundingBox()).height).toBeLessThanOrEqual(32);
+  }
+  const main=await page.locator('.bw-main').boundingBox();
+  const table=await page.locator('.bw-table').boundingBox();
+  const side=await page.locator('.bw-side').boundingBox();
+  expect(Math.abs(table.x-main.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(side.x-main.x-main.width)).toBeLessThanOrEqual(1);
+  for(const selector of ['.bw-table-scroll','.bw-side']) {
+    expect(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::-webkit-scrollbar').width)).toBe('4px');
+  }
+});
+
+test('itinerary suggestions follow category and always allow the full trip without losing selected links',async({page})=>{
+  await rowByTitle(page,'京都山科山樂酒店・2 晚').getByRole('button',{name:'京都山科山樂酒店・2 晚',exact:true}).click();
+  await page.getByRole('button',{name:'編輯項目',exact:true}).click();
+  const form=editor(page);
+  await form.locator('.bw-link-options > summary').click();
+  await expect(form.getByRole('button',{name:/^建議 ·/})).toHaveAttribute('aria-pressed','true');
+  await expect(form.locator('.bw-link-results').getByLabel('京都山科山樂酒店',{exact:true})).toBeVisible();
+  await expect(form.locator('.bw-link-results').getByLabel('宇治吃午餐',{exact:true})).toHaveCount(0);
+  await expect(form.locator('.bw-linked-items')).toContainText('京都山科山樂酒店');
+  await form.getByRole('button',{name:'全部行程',exact:true}).click();
+  await expect(form.locator('.bw-link-results').getByLabel('宇治吃午餐',{exact:true})).toHaveCount(1);
+  await form.locator('.bw-link-results').getByLabel('宇治吃午餐',{exact:true}).check();
+  await form.getByRole('button',{name:/^建議 ·/}).click();
+  await expect(form.locator('.bw-linked-items')).toContainText('宇治吃午餐');
+  await form.getByLabel('搜尋關聯行程',{exact:true}).fill('沒有結果');
+  await expect(form.locator('.bw-link-results')).toContainText('沒有符合的行程');
+});
+
 for(const width of [390,1280,1440])test(`${width}px table and editor remain operable`,async({page})=>{
   const errors=[];page.on("pageerror",e=>errors.push(e.message)); await page.setViewportSize({width,height:900});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);

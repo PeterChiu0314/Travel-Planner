@@ -155,12 +155,26 @@ function PricingSummary({ amount, twdAmount, currency, mode, count }) {
   return <div className="bw-calculation"><div><span>每人</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>NT$ {money(twdAmount)}</strong>{currency !== "TWD" ? <small>{currency} {money(amount)}</small> : null}</div></div>;
 }
 
-function ItineraryPicker({ items, selectedIds, onChange }) {
+function itinerarySuggestionScore(item, category) {
+  const title = item.title || "";
+  if (category === "住宿" && /早餐|午餐|晚餐|起床|出發/.test(title)) return 0;
+  const types = { "住宿": ["hotel"], "餐飲": ["food"], "交通": ["transport"], "機票": ["transport"], "門票": ["attraction"], "購物": ["shopping"] };
+  const hints = { "住宿": /飯店|酒店|住宿|villa|check\s*in|入住/i, "餐飲": /早餐|午餐|晚餐|餐廳|火鍋|燒肉|咖啡|甜點/i, "交通": /租車|還車|車站|巴士|新幹線|名鐵/i, "機票": /航班|航空|虎航|飛機|起飛|降落|flight/i, "購物": /購物|採買|伴手禮|shopping/i };
+  const typeMatch = (types[category] || []).includes(item.type) || category === "交通" && item.item_type === "transport";
+  const hintMatch = hints[category]?.test(title);
+  if (category === "機票") return hintMatch ? 120 : 0;
+  return (typeMatch ? 100 : 0) + (hintMatch ? 30 : 0);
+}
+
+function ItineraryPicker({ items, selectedIds, category, onChange }) {
   const [query, setQuery] = useState("");
   const [day, setDay] = useState("");
+  const [scope, setScope] = useState("suggested");
+  const suggested = items.filter((item) => itinerarySuggestionScore(item, category) > 0);
+  const useSuggestions = scope === "suggested" && suggested.length > 0;
   const days = [...new Set(items.map((item) => Number(item.day_index)))].sort((a, b) => a - b);
-  const matches = items.filter((item) => (day === "" || Number(item.day_index) === Number(day)) && item.title.toLowerCase().includes(query.trim().toLowerCase()))
-    .sort((a, b) => Number(a.day_index) - Number(b.day_index) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  const matches = (useSuggestions ? suggested : items).filter((item) => (day === "" || Number(item.day_index) === Number(day)) && item.title.toLowerCase().includes(query.trim().toLowerCase()))
+    .sort((a, b) => Number(a.day_index) - Number(b.day_index) || (useSuggestions ? itinerarySuggestionScore(b, category) - itinerarySuggestionScore(a, category) : 0) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
   function toggle(id) { onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]); }
   return <section className="bw-link-picker" aria-label="關聯行程">
     <div className="bw-link-heading"><span>關聯行程</span><small>{selectedIds.length} 項</small></div>
@@ -169,6 +183,7 @@ function ItineraryPicker({ items, selectedIds, onChange }) {
       return <li key={id}><span>{item ? `Day ${Number(item.day_index) + 1} · ${item.title}` : "已移除的行程"}</span><button type="button" className="bw-icon" aria-label={`取消關聯 ${item?.title || "已移除的行程"}`} onClick={() => toggle(id)}><X size={13} /></button></li>;
     })}</ul> : null}
     <details className="bw-link-options"><summary>{selectedIds.length ? "變更關聯" : "選擇行程"}</summary>
+      <div className="bw-link-scopes" role="group" aria-label="行程建議範圍"><button type="button" aria-pressed={useSuggestions} disabled={!suggested.length} onClick={() => setScope("suggested")}>建議 · {suggested.length}</button><button type="button" aria-pressed={!useSuggestions} onClick={() => setScope("all")}>全部行程</button></div>
       <div className="bw-link-filters"><input aria-label="搜尋關聯行程" placeholder="搜尋行程" value={query} onChange={(event) => setQuery(event.target.value)} /><select aria-label="關聯行程日期" value={day} onChange={(event) => setDay(event.target.value)}><option value="">全部 Day</option>{days.map((value) => <option key={value} value={value}>Day {value + 1}</option>)}</select></div>
       <div className="bw-link-results">{days.filter((value) => matches.some((item) => Number(item.day_index) === value)).map((value) => <fieldset key={value}><legend>Day {value + 1}</legend>{matches.filter((item) => Number(item.day_index) === value).map((item) => <label key={item.id}><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} /><span>{item.title}</span></label>)}</fieldset>)}{!matches.length ? <p className="bw-muted">沒有符合的行程</p> : null}</div>
     </details>
@@ -196,7 +211,7 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
     if (mode === "custom") setMembersOpen(true);
   }
   return <form className="bw-editor" aria-label={actual ? "實付編輯" : "預算編輯"} autoComplete="off" onSubmit={(event) => { event.preventDefault(); void editor.save(); }}>
-    <div className="bw-detail-heading"><h3>{context.id ? "編輯" : "新增"}{actual ? "實付" : "預算"}</h3><button aria-label="關閉編輯" className="bw-icon" type="button" disabled={saving} onClick={onCancel}><X size={17} /></button></div>
+    <div className="bw-detail-heading"><h3>{actual && !context.id && form.budget_item_id ? "登記付款" : `${context.id ? "編輯" : "新增"}${actual ? "實付" : "預算"}`}</h3><button aria-label="關閉編輯" className="bw-icon" type="button" disabled={saving} onClick={onCancel}><X size={17} /></button></div>
     {error ? <p role="alert" className="bw-warning">{error}</p> : null}
     <label>項目<input name="title" required value={form.title} onChange={(event) => update("title", event.target.value)} /></label>
     {!actual ? <div className="bw-two-fields"><label>分類<input list="budget-categories" value={form.category} onChange={(event) => update("category", event.target.value)} /></label><label>細項<input value={form.subcategory} onChange={(event) => update("subcategory", event.target.value)} /></label></div> : null}
@@ -221,15 +236,15 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
         <fieldset className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset>
       </details>
     </> : <>
-      {hasActual ? <div className="bw-payment-note"><span><Check size={14} />已記錄實付</span><small>修改預算不會變更實付金額。</small></div> : <div className="bw-payment-note"><label className="bw-check"><input type="checkbox" checked={form.is_fixed} onChange={(event) => update("is_fixed", event.target.checked)} />這筆已付款</label>{form.is_fixed ? <small>儲存時新增一筆實付，原預算保留。</small> : null}</div>}
-      <ItineraryPicker items={items} selectedIds={form.linkedItemIds} onChange={(ids) => update("linkedItemIds", ids)} />
+      {hasActual ? <div className="bw-payment-note"><span><Check size={14} />已付款</span><small>修改預算不會變更實付金額。</small></div> : null}
+      <ItineraryPicker items={items} category={form.category} selectedIds={form.linkedItemIds} onChange={(ids) => update("linkedItemIds", ids)} />
     </>}
     <label>備註<textarea rows={2} value={form.note} onChange={(event) => update("note", event.target.value)} /></label>
-    <div className="bw-editor-actions"><button className="ghost-button compact" type="button" disabled={saving} onClick={onCancel}>取消</button><button className="primary-button compact" type="submit" disabled={saving}>{saving ? "儲存中…" : "儲存"}</button></div>
+    <div className="bw-editor-actions"><button className="ghost-button compact" type="button" disabled={saving} onClick={onCancel}>取消</button><button className="primary-button compact" type="submit" disabled={saving}>{saving ? "儲存中…" : actual && !context.id && form.budget_item_id ? "確認付款" : "儲存"}</button></div>
   </form>;
 }
 
-function RecordDetail({ record, actual, participants, members, links, items, canEdit, onEdit, onDelete, onConvert, renderAttachments }) {
+function RecordDetail({ record, actual, participants, members, links, items, payments, canEdit, onEdit, onDelete, onConvert, onViewPayment, renderAttachments }) {
   const shares = recordAllocations(record, participants);
   const mode = record.pricing_mode || (record.split_type === "custom" ? "custom" : "split_total");
   return <section className="bw-detail"><div className="bw-detail-heading"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><button className="bw-icon" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={16} /></button></div>
@@ -242,7 +257,8 @@ function RecordDetail({ record, actual, participants, members, links, items, can
     </dl><section><h4>各人負擔 <small>TWD</small></h4>{participants.map((participant) => <div className="bw-stat-line" key={participant.user_id}><span>{memberLabel(members.find((member) => member.user_id === participant.user_id))}</span><b>{shares ? money(shares[participant.user_id]) : "待確認"}</b></div>)}</section>
     {record.note ? <section><h4>備註</h4><p>{record.note}</p></section> : null}
     {renderAttachments?.(record)}
-    <div className="bw-detail-actions">{!actual ? <button className="ghost-button compact" disabled={!canEdit} type="button" onClick={onConvert}>記錄實付 <ArrowRight size={14} /></button> : null}<button className="bw-icon bw-danger" aria-label="刪除項目" disabled={!canEdit} type="button" onClick={onDelete}><Trash2 size={16} /></button></div>
+    {!actual && payments.length ? <section className="bw-payment-list"><h4><Check size={14} />已付款 · {payments.length} 筆</h4>{payments.map((expense) => <button key={expense.id} type="button" onClick={() => onViewPayment(expense)}><span>{memberLabel(members.find((member) => member.user_id === expense.payer_id))}</span><b>NT$ {money(expense.twd_amount)}</b><ArrowRight size={13} /></button>)}</section> : null}
+    <div className="bw-detail-actions">{!actual ? <button className="ghost-button compact" disabled={!canEdit} type="button" onClick={onConvert}>{payments.length ? "再登記一筆付款" : "登記付款"} <ArrowRight size={14} /></button> : null}<button className="bw-icon bw-danger" aria-label="刪除項目" disabled={!canEdit} type="button" onClick={onDelete}><Trash2 size={16} /></button></div>
   </section>;
 }
 
@@ -347,6 +363,11 @@ export default function BudgetWorkspace(incoming) {
     const seed = recordForm(selectedRecord, budgetParticipants, "budget_item_id", members);
     if (await actualEditor.open(null, { ...seed, budget_item_id: selectedRecord.id })) { setView("actual"); setPanel("detail"); }
   }
+  async function viewPayment(expense) {
+    if (!(await services.handoff({ tripId: activeTrip.id }))) return;
+    setView("actual"); setCategory(""); setQuery(""); setInline(null);
+    setSelected({ kind: "actual", id: expense.id }); setPanel("detail");
+  }
   const statsRecords = (actual || compare ? actualExpenses : budgetItems).map((row) => ({ ...row, hasActual: actualExpenses.some((expense) => expense.budget_item_id === row.id) }));
   const baselineTotal = baseline?.payload?.items?.reduce((sum, row) => sum + Number(row.twd_amount), 0) || 0;
   const actualTotal = actualExpenses.reduce((sum, row) => sum + Number(row.twd_amount), 0);
@@ -374,7 +395,7 @@ export default function BudgetWorkspace(incoming) {
       {inline ? <div className="bw-inline-hint">{inline.field === "title" ? "修改項目" : `以 ${activeEditor?.form.currency} 原幣金額編輯`} · Enter 儲存 · Esc 取消<button className="bw-icon" aria-label="儲存快速修改" type="button" onClick={() => void activeEditor?.save()}><Check size={15} /></button></div> : null}
     </div>
     <aside className="bw-side" ref={sideRef}><div className="bw-side-tabs" role="tablist" aria-label="右側面板"><button role="tab" type="button" aria-selected={panel === "stats"} onClick={() => setPanel("stats")}>旅程統計</button><button role="tab" type="button" aria-selected={panel === "detail"} onClick={() => setPanel("detail")}>項目明細{activeEditor?.hasUnsavedChanges ? " ·" : ""}</button></div>
-      {panel === "stats" ? <Stats viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : activeEditor ? <RecordEditor key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} actualExpenses={actualExpenses} onCancel={() => void activeEditor.close()} /> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} canEdit={canEdit && (!props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} onEdit={() => void (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord)} onDelete={() => void remove()} onConvert={() => void convert()} renderAttachments={selected.kind === "actual" ? props.renderAttachments : null} /> : <div className="bw-empty">選取項目查看明細</div>}
+      {panel === "stats" ? <Stats viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : activeEditor ? <RecordEditor key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} actualExpenses={actualExpenses} onCancel={() => void activeEditor.close()} /> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} payments={actualExpenses.filter((expense) => expense.budget_item_id === selectedRecord.id)} canEdit={canEdit && (!props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} onEdit={() => void (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord)} onDelete={() => void remove()} onConvert={() => void convert()} onViewPayment={(expense) => void viewPayment(expense)} renderAttachments={selected.kind === "actual" ? props.renderAttachments : null} /> : <div className="bw-empty">選取項目查看明細</div>}
     </aside>
   </section>;
 }
