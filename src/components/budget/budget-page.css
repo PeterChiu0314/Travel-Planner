@@ -1,6 +1,10 @@
 .budget-workspace { --board-scrollbar-width: 4px; --board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent); display: grid; grid-template-columns: minmax(0, 7fr) minmax(290px, 3fr); gap: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; min-height: min(760px, calc(100vh - 100px)); color: var(--ink); }
 .budget-workspace button, .budget-workspace input, .budget-workspace select, .budget-workspace textarea { font: inherit; }
 .bw-main { min-width: 0; padding: 0; }
+.bw-retained { padding: 12px 16px; border-top: 1px solid var(--line); }
+.bw-retained h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.bw-retained > div { margin-block: 8px; }
+.bw-retained button { max-width: 100%; white-space: normal; text-align: left; }
 .bw-toolbar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin: 0; background: var(--color-bg); }
 .bw-toolbar h3 { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); }
 .bw-tabs, .bw-side-tabs { display: flex; align-items: stretch; gap: 18px; }
@@ -22,11 +26,13 @@
 .bw-table th:last-child, .bw-table td:last-child { padding-right: 12px; }
 .bw-table small { font-size: 10px; color: var(--muted); font-weight: 400; }
 .bw-table thead small { display: inline; padding-left: 4px; font-size: 11px; }
-.bw-table th.bw-day { width: 76px; }
-.bw-table th.bw-number { width: 100px; }
-.bw-table th:last-child { width: 65px; text-align: center; }
+.bw-table th.bw-day { width: 97px; }
+.bw-table .bw-day:first-child { padding-left: 37px; }
+.bw-table th.bw-number { width: 120px; }
+.bw-table th.bw-number:nth-last-child(2) { width: 130px; }
+.bw-table th:last-child { width: 100px; text-align: center; }
 .bw-table .bw-number { text-align: right; font-variant-numeric: tabular-nums; }
-.bw-group { background: #eeece5; }
+.bw-group { background: color-mix(in srgb, var(--bw-category-color) 22%, var(--panel)); }
 .bw-group th, .bw-group td { padding: 7px 8px; font-weight: 600; color: var(--ink); border-top: 0; }
 .bw-group, .bw-table thead tr { cursor: pointer; }
 .bw-group-label { display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: inherit; font-weight: inherit; cursor: pointer; }
@@ -35,9 +41,10 @@
 .bw-fold-all { padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; }
 .bw-group-label:focus-visible, .bw-fold-all:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
 .bw-detail-heading > .bw-edit-item { width: 32px; height: 32px; min-height: 32px; flex: 0 0 32px; border: 1px solid var(--line); border-radius: 5px; }
-.bw-group-label svg { color: var(--muted); flex-shrink: 0; }
+.bw-group-label svg { color: var(--bw-category-color); flex-shrink: 0; }
 .bw-group small { margin-left: 0; }
 .bw-row td { border-bottom: 1px solid #e7e6de; padding: 0 8px; height: 36px; vertical-align: middle; }
+.bw-table .bw-number:nth-last-child(2) { padding-right: 24px; }
 .bw-row { cursor: pointer; }
 .bw-row:hover { background: #f1f3ed; }
 .bw-row.is-selected { background: #d7e7df; box-shadow: inset 3px 0 var(--color-primary); }
@@ -49,16 +56,15 @@
 .bw-table .bw-cell { font-size: 13px; line-height: 1.5; padding: 6px 0; }
 .bw-member-options > summary { color: var(--muted); cursor: pointer; margin-bottom: 8px; }
 .bw-total { color: var(--muted); }
-.bw-row input { display: block; width: 100%; min-width: 0; height: 28px; min-height: 28px; max-height: 28px; padding: 2px 4px; margin: 0; line-height: 20px; border: 1px solid var(--color-primary); border-radius: 3px; background: white; font-variant-numeric: tabular-nums; }
-.bw-row .bw-number input { text-align: right; }
 .budget-workspace input[type=number] { appearance: textfield; -moz-appearance: textfield; }
 .budget-workspace input[type=number]::-webkit-inner-spin-button, .budget-workspace input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .bw-status { background: #eeece5; color: #6f7064; border-radius: 4px; padding: 3px 6px; white-space: nowrap; }
 .bw-status.paid { background: #e1ece5; color: #385b49; }
-.bw-side { border-left: 1px solid var(--line); min-width: 0; padding: 0; background: transparent; }
+.bw-side { --bw-side-tabs-space: 59px; border-left: 1px solid var(--line); min-width: 0; padding: 0; background: transparent; }
 .bw-side > .bw-stats, .bw-side > .bw-detail, .bw-side > .bw-editor, .bw-side > .bw-empty { margin: 0 16px; padding-bottom: 12px; }
-.bw-side-tabs { border-bottom: 1px solid var(--line); margin: 0 0 12px; padding-inline: 16px; gap: 25px; }
-.bw-side-tabs button { padding: 19px 0 14px; }
+.bw-side-tabs { border-bottom: 1px solid var(--line); margin: 0 0 8px; padding-inline: 0; gap: 0; }
+.bw-side-tabs button { display: flex; flex: 1 1 0; min-width: 0; align-items: center; justify-content: center; gap: 5px; padding: 18px 0 10px; line-height: 20px; }
+.bw-side-tabs button > svg { flex-shrink: 0; }
 .bw-stats, .bw-detail, .bw-editor { font-size: 12px; }
 .bw-viewpoint { display: grid; gap: 7px; color: var(--muted); }
 .bw-viewpoint select { color: var(--ink); height: 32px; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); width: 100%; }
@@ -102,6 +108,8 @@
 .bw-trip-rate { display: grid; gap: 7px; color: var(--muted); font-size: 11px; }
 .bw-trip-rate > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .bw-trip-rate b { color: var(--ink); font-weight: 500; }
+.bw-editor > .bw-trip-rate { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bw-editor > .bw-trip-rate > b { margin-left: auto; text-align: right; white-space: nowrap; }
 .bw-trip-rate button { height: 28px; min-height: 28px; padding: 3px 7px; font-size: 11px; white-space: nowrap; }
 .bw-trip-rate a { color: var(--muted); font-size: 10px; }
 .bw-editor input, .bw-editor select, .bw-editor textarea { width: 100%; min-width: 0; min-height: 32px; height: 32px; padding: 5px 8px; line-height: 20px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--ink); font-size: 12px; }
@@ -161,7 +169,12 @@
 .bw-editor .menu-select-editable > input { flex: 1; height: 30px; min-height: 30px; padding: 4px 8px; border: 0; background: transparent; outline: none; }
 .menu-select-editable > button { display: grid; place-items: center; flex: 0 0 26px; align-self: stretch; padding: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .bw-filters > .menu-select { width: 108px; flex-shrink: 0; }
-.menu-select-popup { --board-scrollbar-width: 4px; --board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent); margin: 0; }
+.menu-select-popup { --board-scrollbar-width: 4px; --board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent); margin: 0; box-sizing: border-box; overflow-x: hidden; overscroll-behavior: contain; }
+.menu-select-popup > button { white-space: normal; overflow-wrap: anywhere; }
+@supports selector(::-webkit-scrollbar) {
+  /* Chromium's non-auto scrollbar-width/color override the 4px WebKit rules. */
+  .menu-select-popup { scrollbar-width: auto; scrollbar-color: auto; }
+}
 .menu-select-popup button.keyboard-active { outline: 1px solid var(--color-primary); outline-offset: -1px; }
 .menu-select-empty { padding: 8px; font-size: 12px; color: var(--muted); }
 .bw-table-scroll::-webkit-scrollbar, .bw-side::-webkit-scrollbar, .bw-link-results::-webkit-scrollbar { width: var(--board-scrollbar-width); height: var(--board-scrollbar-width); }
@@ -176,7 +189,6 @@
 .bw-comparison-summary { display: flex; justify-content: space-between; gap: 15px; padding: 12px 16px 18px; font-size: 12px; color: var(--muted); }
 .bw-comparison-summary span { display: grid; gap: 6px; }
 .bw-comparison-summary b { color: var(--ink); font-size: 15px; }
-.bw-inline-hint { display: flex; align-items: center; gap: 4px; margin: 6px 16px; color: var(--muted); font-size: 11px; }
 .demo-budget-controls { display: flex; gap: 14px; align-items: center; margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); font-size: 12px; color: var(--muted); }
 .demo-budget-controls label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .demo-budget-scenario { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
@@ -194,12 +206,12 @@
   .budget-workspace { flex: 1; min-height: 0; overflow: hidden; }
   .demo-budget-controls { flex-shrink: 0; }
   .bw-main { display: flex; flex-direction: column; min-height: 0; }
-  .bw-toolbar, .bw-comparison-summary, .bw-inline-hint { flex-shrink: 0; }
+  .bw-toolbar, .bw-comparison-summary { flex-shrink: 0; }
   .bw-table-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
   .bw-table thead th { position: sticky; top: 0; z-index: 1; background: var(--color-bg); }
-  .bw-side { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: 68px; }
+  .bw-side { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scroll-padding-top: var(--bw-side-tabs-space); }
   .bw-side-tabs { position: sticky; top: 0; z-index: 2; background: var(--panel); }
-  .bw-side > .bw-detail { display: flex; flex-direction: column; min-height: calc(100% - 68px); }
+  .bw-side > .bw-detail { display: flex; flex-direction: column; min-height: calc(100% - var(--bw-side-tabs-space)); }
   .bw-detail-actions { margin-top: auto; }
   .bw-editor-actions, .bw-detail-actions { position: sticky; bottom: 0; z-index: 1; padding: 8px 0; border-top: 1px solid var(--line); background: var(--panel); }
   .bw-editor-actions { margin-top: 0; }
@@ -208,9 +220,8 @@
   .budget-workspace { grid-template-columns: minmax(0, 1fr) 280px; }
   .bw-main { padding: 0; }
   .bw-toolbar { gap: 12px; }
-  .bw-table th.bw-number { width: 83px; }
-  .bw-table th.bw-day { width: 65px; }
-  .bw-table th:last-child { width: 58px; }
+  .bw-table th.bw-day { width: 86px; }
+  .bw-table th:last-child { width: 100px; }
   .bw-tabs { gap: 12px; }
 }
 @media (max-width: 760px) {
@@ -225,3 +236,12 @@
   .bw-hero strong { font-size: 28px; }
   .bw-editor select[multiple] { min-height: 110px; }
 }
+.budget-workspace .bw-cost-source { border: 1px solid var(--line); border-radius: 7px; padding: 10px; margin: 0; min-width: 0; }
+.budget-workspace .bw-cost-source legend { font-size: 12px; color: var(--muted); padding: 0 4px; }
+.budget-workspace .bw-cost-source > div { display: flex; gap: 7px; margin-bottom: 10px; }
+.budget-workspace .bw-cost-source button { flex: 1; background: transparent; border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; color: var(--muted); font-size: 12px; }
+.budget-workspace .bw-cost-source button[aria-pressed=true] { color: var(--color-primary); background: var(--color-success-bg); border-color: var(--color-primary); }
+.budget-workspace .bw-cost-source small { display: block; color: var(--muted); line-height: 1.6; font-size: 11px; }
+
+.bw-filters > label, .bw-filters > .menu-select > .menu-select-trigger, .bw-toolbar > .bw-add { height: 36px; min-height: 36px; }
+.bw-filters > label input { height: 32px; min-height: 32px; }

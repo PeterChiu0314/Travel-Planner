@@ -59,16 +59,16 @@ await login(viewer); await assert.rejects(()=>updateRates());
 await login(outsider); await assert.rejects(()=>updateRates()); await login(a);
 await assert.rejects(()=>updateRates({...quote,rates:{...quote.rates,JPY:0}}));
 await updateRates();
-assert.equal((await db.query('select twd_amount from budget_items where id=$1',[id])).rows[0].twd_amount,'525.00');
+assert.equal((await db.query('select twd_amount from budget_items where id=$1',[id])).rows[0].twd_amount,'462.00');
 assert.equal((await db.query('select twd_amount from actual_expenses where budget_item_id=$1 order by twd_amount',[id])).rows[0].twd_amount,'462.00');
 assert.equal((await db.query('select twd_amount from actual_expenses where id=$1',[custom])).rows[0].twd_amount,'990.00');
 await updateRates({...quote,rates:{...quote.rates,JPY:.3}},true);
-assert.equal(Number((await db.query('select exchange_rate from budget_items where id=$1',[id])).rows[0].exchange_rate),.25);
+assert.equal(Number((await db.query('select exchange_rate from budget_items where id=$1',[id])).rows[0].exchange_rate),.22);
 const rateBudget=await save('budget',{...payload,is_fixed:false,exchange_rate:.01});
 assert.equal(Number((await db.query('select exchange_rate from budget_items where id=$1',[rateBudget])).rows[0].exchange_rate),.25);
 await login(b); await db.query('update budget_items set locked_by=$1,locked_at=clock_timestamp() where id=$2',[b,rateBudget]);
 await login(a); await assert.rejects(()=>updateRates({...quote,rates:{...quote.rates,JPY:.3}}));
-assert.equal(Number((await db.query('select exchange_rate from budget_items where id=$1',[id])).rows[0].exchange_rate),.25);
+assert.equal(Number((await db.query('select exchange_rate from budget_items where id=$1',[id])).rows[0].exchange_rate),.22);
 await login(b); await db.query('delete from budget_items where id=$1',[rateBudget]); await login(a);
 // A write begun before cutoff but committed after it cannot replace the last
 // committed predeparture version. Deferred triggers check real commit-time.
@@ -89,7 +89,8 @@ baseline=(await db.query('select * from trip_budget_baselines where trip_id=$1',
 await db.exec('set role authenticated');await login(a);
 await assert.rejects(()=>updateRates());
 const version=(await db.query('select updated_at from budget_items where id=$1',[id])).rows[0].updated_at;
-await save('budget',{...payload,unit_amount:900},id,version);
+await assert.rejects(()=>save('budget',{...payload,unit_amount:900},id,version));
+await save('budget',{...payload,unit_amount:750,exchange_rate:.25,title:'Historical note correction'},id,version);
 assert.equal((await db.query('select count(*)::int n from actual_expenses where budget_item_id=$1',[id])).rows[0].n,2); // Fixed actual plus independent custom expense; no duplicate fixed actual.
 assert.deepEqual((await db.query('select payload from trip_budget_baselines where trip_id=$1',[trip])).rows[0].payload,baseline.payload);
 await login(b);

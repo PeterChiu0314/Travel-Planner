@@ -111,7 +111,7 @@ test.describe('shared Demo UI',()=>{
     await expect(row(page,'不要保留')).toHaveCount(0);
   });
   test('receipts upload open locally and delete through the Formal attachment component',async({page})=>{
-    await page.getByRole('tab',{name:'實付',exact:true}).click();
+    await page.clock.setSystemTime(new Date('2027-04-06T12:00:00+08:00'));await page.clock.runFor(30010);await page.getByRole('tab',{name:'實付',exact:true}).click();
     await row(page,'去程機票・桃園 → 關西').getByRole('button',{name:'去程機票・桃園 → 關西',exact:true}).click();
     await page.locator('.attachment-upload input').setInputFiles({name:'demo-receipt.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5QAAAABJRU5ErkJggg==','base64')});
     await expect(page.locator('.attachment-row')).toContainText('demo-receipt.png');

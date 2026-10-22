@@ -4,7 +4,10 @@ import { WorkspaceActions, WorkspaceHeading, WorkspaceProgress, WorkspaceSearch,
 import { createDemoGuides, createDemoStays, createDemoTodos } from "./components/workspace/demoWorkspaceData.js";
 import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
 import MenuSelect from "./components/MenuSelect.jsx";
-import { budgetStage, calculatePricing, recordForm, settlementBalances } from "./lib/budgetFinance.js";
+import { budgetStage, recordForm, settlementBalances } from "./lib/budgetFinance.js";
+import { planningBudgetData } from "./lib/planningBudget.js";
+import { saveDemoBudgetRecord } from "./demo/saveBudgetRecord.js";
+import { persistBudgetWorkspace } from "./lib/budgetWorkspaceService.js";
 import { demoBudgetQuote } from "./lib/tripBudgetRates.js";
 import { createDemoBudgetState, demoBudgetMembers, hydrateDemoBudgetScenario } from "./demo/budgetFixtures.js";
 import {
@@ -5207,6 +5210,7 @@ export default function App() {
     if (!activeTrip || !canEdit) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     if (budgetSchemaAvailable) return saveBudgetWorkspaceRecord("budget", payload, editingId, meta);
+    if (payload.payment_only || payload.payment_action !== "keep" || editingId && payload.currency !== "TWD") return { ok: false, error: { message: "安全預算儲存尚未啟用，資料未變更，草稿已保留。" } };
     if ((payload.pricing_mode && payload.pricing_mode !== "split_total") || payload.is_fixed) {
       return { ok: false, error: { message: "此計價方式尚未啟用，需先完成預算資料升級。草稿已保留。" } };
     }
@@ -5284,6 +5288,7 @@ export default function App() {
     if (!activeTrip || !canEdit) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     if (budgetSchemaAvailable) return saveBudgetWorkspaceRecord("actual", payload, editingId, meta);
+    if (payload.twd_amount_source !== "estimated") return { ok: false, error: { message: "實際台幣扣款功能尚未啟用，資料未變更，草稿已保留。" } };
     if (payload.pricing_mode && payload.pricing_mode !== "split_total") {
       return { ok: false, error: { message: "此計價方式尚未啟用，需先完成預算資料升級。草稿已保留。" } };
     }
@@ -5338,6 +5343,7 @@ export default function App() {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (budgetSchemaAvailable) return saveBudgetWorkspaceRecord("actual", {
       ...recordForm(budget, budgetParticipants, "budget_item_id", members.filter((member) => member.status === "approved")), budget_item_id: budget.id,
+      twd_amount_source: "estimated", actual_twd_amount: null,
     }, null, { tripId: activeTrip.id });
     const participantIds = budgetParticipants
       .filter((participant) => participant.budget_item_id === budget.id)
@@ -5387,18 +5393,10 @@ export default function App() {
     return { ok: !error, error };
   }
 
-  async function saveBudgetWorkspaceRecord(kind, payload, editingId, meta) {
-    let pricing;
-    try { pricing = calculatePricing(payload); }
-    catch (error) { return { ok: false, error }; }
-    const { data, error } = await supabase.rpc("save_budget_workspace_record", {
-      p_trip_id: activeTrip.id, p_kind: kind, p_id: editingId || null,
-      p_base_updated_at: meta.baseUpdatedAt || null,
-      p_payload: { ...payload, ...pricing, paid_at: payload.paid_at ? new Date(payload.paid_at).toISOString() : new Date().toISOString() },
-    });
-    if (error) return { ok: false, error, conflict: error.code === "40001" };
-    await loadTripData(activeTrip.id);
-    return { ok: true, data };
+  async function saveBudgetWorkspaceRecord(kind, payload, editingId, meta = {}) {
+    const result = await persistBudgetWorkspace({ supabase, tripId: activeTrip.id, reload: loadTripData }, kind, payload, editingId, meta);
+    if (result.refreshError) setNotice("資料已儲存，但重新整理失敗，請重新載入頁面確認。");
+    return result;
   }
 
   async function deleteBudgetWorkspaceRecord(kind, id, meta) {
@@ -8727,82 +8725,12 @@ function DemoApp({ initialSection }) {
     return { ok: true };
   }
 
-  function saveBudgetItem(payload, editingId, meta = {}) {
-    if (!payload.title.trim()) return;
-    if (meta.tripId && meta.tripId !== demoActiveTrip.id) return { ok: false, error: { message: "旅程已切換，請重新開啟編輯。" } };
-    const existing = budgetItems.find((item) => item.id === editingId);
-    if (editingId && (!existing || meta.baseUpdatedAt && meta.baseUpdatedAt !== existing.updated_at)) return { ok: false, conflict: true };
-    const participantIds = payload.participantIds || [];
-    let pricing;
-    try { pricing = calculatePricing(payload); } catch (error) { return { ok: false, error }; }
-    const amount = pricing.amount;
-    const exchangeRate = pricing.exchange_rate;
-    const nextBudget = {
-      pricing_mode: pricing.pricing_mode, unit_amount: pricing.unit_amount, split_type: pricing.split_type,
-      category: payload.category || "其他",
-      subcategory: payload.subcategory || "",
-      title: payload.title.trim(),
-      amount,
-      currency: payload.currency || "TWD",
-      exchange_rate: exchangeRate,
-      twd_amount: pricing.twd_amount,
-      payer_id: payload.payer_id || null,
-      is_fixed: Boolean(payload.is_fixed),
-      note: payload.note || "",
-      updated_at: new Date(Math.max(Date.now(), new Date(existing?.updated_at || 0).getTime() + 1)).toISOString(),
-    };
-    function saveFixedActual(budgetId) {
-      if (payload.is_fixed && !actualExpenses.some((expense) => expense.budget_item_id === budgetId)) {
-        const result = saveActualExpense({ ...payload, budget_item_id: budgetId }, null);
-        if (result?.ok) setBudgetItems((current) => current.map((item) => item.id === budgetId ? { ...item, auto_created_actual_expense_id: result.data.id } : item));
-      }
-    }
-
-    if (editingId) {
-      setBudgetItems((current) => current.map((item) => (item.id === editingId ? { ...item, ...nextBudget } : item)));
-      setBudgetParticipants((current) => [
-        ...current.filter((participant) => participant.budget_item_id !== editingId),
-        ...participantIds.map((userId) => ({
-          id: demoId("demo-budget-participant"),
-          budget_item_id: editingId,
-          user_id: userId,
-          share_amount: pricing.shares[userId],
-        })),
-      ]);
-      setItineraryBudgetLinks((current) => [
-        ...current.filter((link) => link.budget_item_id !== editingId),
-        ...(payload.linkedItemIds || []).map((itemId) => ({
-          id: demoId("demo-link"),
-          itinerary_item_id: itemId,
-          budget_item_id: editingId,
-        })),
-      ]);
-      saveFixedActual(editingId);
-      return { ok: true, data: { id: editingId, updated_at: nextBudget.updated_at } };
-    }
-
-    const budgetId = demoId("demo-budget");
-    setBudgetItems((current) => [...current, { ...nextBudget, id: budgetId, trip_id: demoActiveTrip.id }]);
-    setBudgetParticipants((current) => [
-      ...current,
-      ...participantIds.map((userId) => ({
-        id: demoId("demo-budget-participant"),
-        budget_item_id: budgetId,
-        user_id: userId,
-        share_amount: pricing.shares[userId],
-      })),
-    ]);
-    setItineraryBudgetLinks((current) => [
-      ...current,
-      ...(payload.linkedItemIds || []).map((itemId) => ({
-        id: demoId("demo-link"),
-        itinerary_item_id: itemId,
-        budget_item_id: budgetId,
-      })),
-    ]);
-    saveFixedActual(budgetId);
-    return { ok: true, data: { id: budgetId, updated_at: nextBudget.updated_at } };
+  function commitDemoFinance(kind, payload, editingId, meta = {}) {
+    const result = saveDemoBudgetRecord(finance, kind, payload, editingId, meta, demoActiveTrip, demoMembers, demoStage);
+    if (result.ok) setDemoBudgetByTrip((current) => ({ ...current, [demoActiveTrip.id]: result.nextState }));
+    return result;
   }
+  function saveBudgetItem(payload, editingId, meta = {}) { return commitDemoFinance("budget", payload, editingId, meta); }
 
   function savePersonalLuggage(payload, editingId) {
     if (!payload.title.trim()) return { ok: false };
@@ -8821,64 +8749,11 @@ function DemoApp({ initialSection }) {
     return { ok: true };
   }
 
-  function saveActualExpense(payload, editingId, meta = {}) {
-    if (!payload.title.trim()) return { ok: false };
-    if (meta.tripId && meta.tripId !== demoActiveTrip.id) return { ok: false, error: { message: "旅程已切換，請重新開啟編輯。" } };
-    const existing = actualExpenses.find((expense) => expense.id === editingId);
-    if (editingId && (!existing || meta.baseUpdatedAt && meta.baseUpdatedAt !== existing.updated_at)) return { ok: false, conflict: true };
-    const participantIds = payload.participantIds || [];
-    let pricing;
-    try { pricing = calculatePricing(payload); } catch (error) { return { ok: false, error }; }
-    const amount = pricing.amount;
-    const exchangeRate = pricing.exchange_rate;
-    const nextExpense = {
-      category: payload.category || "其他", subcategory: payload.subcategory || "",
-      pricing_mode: pricing.pricing_mode, unit_amount: pricing.unit_amount, split_type: pricing.split_type,
-      trip_id: demoActiveTrip.id,
-      budget_item_id: payload.budget_item_id || null,
-      budget_origin_id: payload.budget_item_id || existing?.budget_origin_id || null,
-      title: payload.title.trim(),
-      amount,
-      currency: payload.currency || "TWD",
-      exchange_rate: exchangeRate,
-      twd_amount: pricing.twd_amount,
-      payer_id: payload.payer_id || null,
-      paid_at: payload.paid_at ? new Date(payload.paid_at).toISOString() : new Date().toISOString(),
-      note: payload.note || "",
-      updated_at: new Date(Math.max(Date.now(), new Date(existing?.updated_at || 0).getTime() + 1)).toISOString(),
-    };
-
-    if (editingId) {
-      setActualExpenses((current) => current.map((expense) => (expense.id === editingId ? { ...expense, ...nextExpense } : expense)));
-      setActualParticipants((current) => [
-        ...current.filter((participant) => participant.actual_expense_id !== editingId),
-        ...participantIds.map((userId) => ({
-          id: demoId("demo-actual-participant"),
-          actual_expense_id: editingId,
-          user_id: userId,
-          share_amount: pricing.shares[userId],
-        })),
-      ]);
-      return { ok: true, data: { id: editingId } };
-    }
-
-    const expenseId = demoId("demo-actual");
-    setActualExpenses((current) => [...current, { ...nextExpense, id: expenseId }]);
-    setActualParticipants((current) => [
-      ...current,
-      ...participantIds.map((userId) => ({
-        id: demoId("demo-actual-participant"),
-        actual_expense_id: expenseId,
-        user_id: userId,
-        share_amount: pricing.shares[userId],
-      })),
-    ]);
-    return { ok: true, data: { id: expenseId } };
-  }
+  function saveActualExpense(payload, editingId, meta = {}) { return commitDemoFinance("actual", payload, editingId, meta); }
 
   function convertBudgetToActual(budget) {
     return saveActualExpense({ ...recordForm(budget, budgetParticipants, "budget_item_id", demoMembers),
-      budget_item_id: budget.id }, null);
+      budget_item_id: budget.id, twd_amount_source: "estimated", actual_twd_amount: null }, null);
   }
 
   function saveSharedLuggage(payload, editingId) {
@@ -9155,7 +9030,7 @@ function DemoApp({ initialSection }) {
               if (meta.tripId !== demoActiveTrip.id || demoStage !== "planning") return { ok: false, error: new Error("只有行前規劃可更新旅程預算匯率。") };
               const next = { ...demoBudgetQuote, updated_at: new Date().toISOString() };
               setDemoBudgetByTrip((current) => ({ ...current, [demoActiveTrip.id]: { ...current[demoActiveTrip.id], tripBudgetRates: next,
-                budgetItems: current[demoActiveTrip.id].budgetItems.map((row) => row.currency === "TWD" ? row : { ...row, exchange_rate: next.rates[row.currency], twd_amount: Math.round(row.amount * next.rates[row.currency]), updated_at: next.updated_at }) } }));
+                budgetItems: current[demoActiveTrip.id].budgetItems.map((row) => row.currency === "TWD" || current[demoActiveTrip.id].actualExpenses.some((expense) => expense.budget_item_id === row.id) ? row : { ...row, exchange_rate: next.rates[row.currency], twd_amount: Math.round(row.amount * next.rates[row.currency]), updated_at: next.updated_at }) } }));
               return { ok: true, data: next };
             }}
             demoStage={demoStage}
@@ -13505,8 +13380,10 @@ const budgetEditorServices = {
 };
 
 
-function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses, actualParticipants, budgetItems, members }) {
+function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses: allExpenses, actualParticipants, budgetItems: rawBudgetItems, members }) {
+  const actualExpenses = allExpenses.filter((row) => row.payment_active !== false);
   const approvedMembers = members.filter((member) => member.status === "approved");
+  const budgetItems = planningBudgetData(rawBudgetItems, allExpenses, actualParticipants, approvedMembers).rows;
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const participantsByExpense = useMemo(
     () => buildParticipantsMap(actualParticipants, "actual_expense_id"),
@@ -13526,7 +13403,7 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
       <WorkspaceSummary items={[
         ...(hasBaseline ? [{ label: "出發前預算", value: workspaceMoney(plannedTotal) }] : []),
         { label: "實際金額", value: workspaceMoney(actualTotal) },
-        { label: "尚未轉實付", value: workspaceMoney(pendingBudgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0)) },
+        { label: "尚未付款", value: workspaceMoney(pendingBudgetItems.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0)) },
         ...(hasBaseline ? [{ label: "實付與出發前預算差額", value: workspaceMoney(actualTotal - plannedTotal) }] : []),
       ]} />
 
@@ -13622,7 +13499,7 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
         <div className="panel-heading tight">
           <div>
             <p className="eyebrow">Pending Budget</p>
-            <h3>尚未轉實付的預算</h3>
+            <h3>尚未付款的預算</h3>
           </div>
         </div>
         <div className="budget-cards">

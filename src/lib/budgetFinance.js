@@ -49,6 +49,39 @@ export function calculatePricing(form) {
   };
 }
 
+export function calculateActualPricing(form) {
+  const source = form.twd_amount_source || "estimated";
+  if (!["actual", "estimated", "legacy"].includes(source)) throw new Error("請選擇有效的台幣金額來源。");
+  // A known debit does not require the traveler to reverse-engineer an FX rate.
+  const pricing = calculatePricing({ ...form, exchange_rate: source === "estimated" ? form.exchange_rate : 1 });
+  if (source === "estimated") return { ...pricing, twd_amount_source: source, actual_twd_amount: null };
+  const text = String(form.actual_twd_amount ?? "").trim();
+  if (!(source === "legacy" ? /^\d+(?:\.\d{1,2})?$/ : /^\d+$/).test(text) || Number(text) > 9999999999) throw new Error("台幣扣款金額請輸入有效的非負整數。");
+  const twd = Number(text);
+  const weights = form.participantIds.map((id) => [id, form.pricing_mode === "custom" ? decimal(form.shares?.[id], 2, "分攤金額") : 1n]);
+  if (twd > 0 && !weights.some(([, value]) => value > 0n)) throw new Error("自訂分攤合計為零，無法分配非零台幣成本。");
+  const referenceRate = form.currency === "TWD" ? 1 : String(form.exchange_rate ?? "").trim() ? Number(decimal(form.exchange_rate, 6, "參考匯率")) / 1000000 : null;
+  if (referenceRate === 0) throw new Error("參考匯率必須大於 0。");
+  return { ...pricing, exchange_rate: referenceRate, twd_amount: twd, allocations: allocateWhole(BigInt(Math.round(twd)), weights), twd_amount_source: source, actual_twd_amount: twd };
+}
+
+export function historicalForeignBudget(record, stage) {
+  return Boolean(record && record.currency !== "TWD" && stage !== "planning");
+}
+
+export function preservesBudgetPricing(form, record, participantRows, members = []) {
+  const people = participantRows.filter((row) => row.budget_item_id === record.id);
+  const ids = (people.length ? people : members).map((row) => row.user_id).sort();
+  const selected = [...new Set(form.participantIds || [])].sort();
+  return (form.currency || "TWD") === record.currency
+    && Number(form.amount) === Number(record.amount)
+    && Number(form.exchange_rate) === Number(record.exchange_rate)
+    && (form.pricing_mode || "split_total") === (record.pricing_mode || "split_total")
+    && Number(form.unit_amount || 0) === Number(record.unit_amount || 0)
+    && JSON.stringify(ids) === JSON.stringify(selected)
+    && (record.pricing_mode !== "custom" || people.every((row) => Number(form.shares?.[row.user_id]) === Number(row.share_amount)));
+}
+
 export function participantsFor(record, rows, key, members) {
   const matches = rows.filter((row) => row[key] === record.id);
   // Legacy records with no join rows used all approved members. Explicitly
@@ -57,11 +90,13 @@ export function participantsFor(record, rows, key, members) {
 }
 
 export function recordAllocations(record, participants) {
+  if ((record.twd_amount_source || "legacy") === "legacy" && !Number.isInteger(Number(record.twd_amount))) return null;
   const custom = record.pricing_mode === "custom" || record.split_type === "custom";
   const weights = participants.map((row) => [row.user_id, record.pricing_mode === "custom" || record.split_type === "custom"
     ? row.share_amount == null ? null : decimal(row.share_amount, 2, "分攤金額") : 1n]);
   if (weights.some(([, value]) => value === null)) return null;
   if (custom && weights.reduce((sum, [, value]) => sum + value, 0n) !== decimal(record.amount, 2, "總額")) return null;
+  if (Number(record.twd_amount) > 0 && !weights.some(([, value]) => value > 0n)) return null;
   return allocateWhole(BigInt(Math.round(Number(record.twd_amount || 0))), weights);
 }
 
@@ -69,12 +104,14 @@ export function recordForm(record, rows, key, members, links = []) {
   const participants = record ? participantsFor(record, rows, key, members) : members.map((member) => ({ user_id: member.user_id }));
   return {
     category: record?.category || "其他", subcategory: record?.subcategory || "", title: record?.title || "",
-    amount: record?.amount ?? 0, currency: record?.currency || "TWD", exchange_rate: record?.exchange_rate || 1,
+    amount: record?.amount ?? 0, currency: record?.currency || "TWD", exchange_rate: record ? record.exchange_rate ?? "" : 1,
     pricing_mode: record?.pricing_mode || (record?.split_type === "custom" ? "custom" : "split_total"),
     unit_amount: record?.unit_amount ?? "", shares: Object.fromEntries(participants.map((row) => [row.user_id, row.share_amount ?? ""])),
     payer_id: record?.payer_id || "", note: record?.note || "", is_fixed: Boolean(record?.is_fixed),
     participantIds: participants.map((row) => row.user_id), linkedItemIds: links.filter((row) => row.budget_item_id === record?.id).map((row) => row.itinerary_item_id),
     budget_item_id: record?.budget_item_id || "", paid_at: record?.paid_at ? localDateTime(record.paid_at) : localDateTime(),
+    twd_amount_source: record ? record.twd_amount_source || "legacy" : "estimated",
+    actual_twd_amount: record ? record.actual_twd_amount ?? record.twd_amount ?? "" : "",
   };
 }
 export function localDateTime(value = new Date()) {
@@ -98,6 +135,7 @@ export function budgetStage(trip, today = new Date()) {
 }
 
 export function comparisonRows(baseline, expenses) {
+  expenses = expenses.filter((row) => row.payment_active !== false);
   const planned = baseline?.payload?.items || [];
   const plannedIds = new Set(planned.map((row) => row.id));
   const rows = planned.map((row) => {
@@ -111,7 +149,7 @@ export function comparisonRows(baseline, expenses) {
 export function settlementBalances(expenses, participants, members) {
   const totals = Object.fromEntries(members.map((member) => [member.user_id, { ...member, paid: 0, shouldPay: 0 }]));
   let incomplete = false;
-  expenses.forEach((expense) => {
+  expenses.filter((row) => row.payment_active !== false).forEach((expense) => {
     const people = participantsFor(expense, participants, "actual_expense_id", members);
     const shares = recordAllocations(expense, people);
     if (!shares || !totals[expense.payer_id]) incomplete = true;

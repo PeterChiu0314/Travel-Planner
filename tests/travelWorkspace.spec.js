@@ -144,7 +144,7 @@ test("settlement retains latest payment propagation and frozen departure baselin
   const lunch = page.locator(".bw-row").filter({ has: page.getByRole("button", { name: "Day 1・關西機場午餐", exact: true }) });
   await lunch.getByRole("button", { name: "Day 1・關西機場午餐", exact: true }).click();
   await page.getByRole("button", { name: "付款狀態", exact: true }).click();
-  await expect(lunch).toContainText("實付");
+  await expect(lunch).toContainText("已付款");
   await navigate(page, "分帳結算");
   await expect(summary).not.toHaveText(amountBefore);
   // Section navigation intentionally returns to the default UI without opt-in Demo tools.
