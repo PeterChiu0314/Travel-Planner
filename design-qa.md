@@ -1,5 +1,11 @@
 # Budget desktop design QA — 2026-10-22
 
+## Payment capsule follow-up
+
+Selected visual: first displayed payment concept (`exec-b7f0ba9f-b3c7-4573-a2fb-c36ec8ac3d8f.png`), with the user's compact-size override. Compared this reference and rendered editor screenshot together in one tool input; inspected unpaid detail separately. Scope is the payment component/footer only; the mock's enlarged panel, content and typography are intentionally not adopted. Actual captures are 1264×892, light theme: `budget-payment-pill-detail.png` and `budget-payment-pill-editor.png` in the chat visualization directory.
+
+Final result: pass. Both views put the pill on the footer left. Explicit unpaid/paid text, hollow-circle/check-circle icon and amber-outline/green-fill match the selected states. Font is the existing app font at 12px; 14px Lucide icon is sharp; no raster assets are needed. Fixed 90×32px sizing intentionally replaces the enlarged concept proportions and matches adjacent buttons. Footer spacing leaves Cancel/Save unobstructed; state changes keep the same width. Automated checks at 1264/1140/390px verify dimensions, left alignment, non-overlap and keyboard toggling. Budget suite **20/20**, build and diff checks passed. No actionable P0/P1/P2 differences in this scoped comparison.
+
 Comparison target: selected personal-first Budget image `exec-12ef9ab4-418c-4a98-925e-9ff581265db2.png`, plus approved detail/inline previews and the user's later rules. Rendered target: authenticated Formal page `http://127.0.0.1:5175/#`, 1440×900, light theme, existing trip, statistics view.
 
 ## Iteration 1

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { BedDouble, Car, Check, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { BedDouble, Car, Check, Circle, CircleCheck, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
 import MenuSelect from "../MenuSelect.jsx";
 import { budgetDay, budgetStage, calculatePricing, comparisonRows, memberLabel, money, participantsFor, pricingLabels, recordAllocations, recordForm } from "../../lib/budgetFinance.js";
@@ -232,7 +232,8 @@ function ItineraryPicker({ items, selectedIds, category, onChange }) {
 }
 
 function PaymentToggle({ checked, disabled, onChange }) {
-  return <label className={`bw-payment-toggle${checked ? " is-paid" : ""}`}><input type="checkbox" aria-label="已付款" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} /><span>已付款</span></label>;
+  const Icon = checked ? CircleCheck : Circle;
+  return <button type="button" className={`bw-payment-toggle${checked ? " is-paid" : ""}`} aria-label="付款狀態" aria-pressed={checked} disabled={disabled} onClick={() => onChange(!checked)}><Icon size={14} aria-hidden="true" /><span>{checked ? "已付款" : "未付款"}</span></button>;
 }
 
 function RecordEditor({ editor, actual, members, items, budgets, budgetParticipants, onCancel }) {
@@ -279,11 +280,10 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
         <fieldset className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset>
       </details>
     </> : <>
-      <PaymentToggle checked={Boolean(form.paid)} disabled={saving} onChange={(checked) => update("paid", checked)} />
       <ItineraryPicker items={items} category={form.category} selectedIds={form.linkedItemIds} onChange={(ids) => update("linkedItemIds", ids)} />
     </>}
     <label>備註<textarea rows={2} value={form.note} onChange={(event) => update("note", event.target.value)} /></label>
-    <div className="bw-editor-actions"><button className="ghost-button compact" type="button" disabled={saving} onClick={onCancel}>取消</button><button className="primary-button compact" type="submit" disabled={saving}>{saving ? "儲存中…" : "儲存"}</button></div>
+    <div className="bw-editor-actions">{!actual ? <PaymentToggle checked={Boolean(form.paid)} disabled={saving} onChange={(checked) => update("paid", checked)} /> : null}<button className="ghost-button compact" type="button" disabled={saving} onClick={onCancel}>取消</button><button className="primary-button compact" type="submit" disabled={saving}>{saving ? "儲存中…" : "儲存"}</button></div>
   </form>;
 }
 
@@ -292,7 +292,6 @@ function RecordDetail({ record, actual, participants, members, links, items, pay
   const mode = record.pricing_mode || (record.split_type === "custom" ? "custom" : "split_total");
   return <section className="bw-detail"><div className="bw-detail-heading"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><button className="bw-icon" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={16} /></button></div>
     <h3>{record.title}</h3><PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />
-    {!actual ? <PaymentToggle checked={payments.length > 0} disabled={!canEdit || paymentBusy} onChange={onPaidChange} /> : null}
     {paymentError ? <p className="bw-warning" role="alert">{paymentError}</p> : null}
     <dl><div><dt>計價方式</dt><dd>{pricingLabels[mode]}</dd></div>{mode === "per_person" ? <div><dt>每人單價</dt><dd>{record.currency} {money(record.unit_amount)}</dd></div> : null}<div><dt>參與成員</dt><dd>{participants.length} 人</dd></div>
       <div><dt>付款人</dt><dd>{memberLabel(members.find((row) => row.user_id === record.payer_id))}</dd></div>
@@ -302,7 +301,7 @@ function RecordDetail({ record, actual, participants, members, links, items, pay
     </dl><section><h4>各人負擔 <small>TWD</small></h4>{participants.map((participant) => <div className="bw-stat-line" key={participant.user_id}><span>{memberLabel(members.find((member) => member.user_id === participant.user_id))}</span><b>{shares ? money(shares[participant.user_id]) : "待確認"}</b></div>)}</section>
     {record.note ? <section><h4>備註</h4><p>{record.note}</p></section> : null}
     {renderAttachments?.(record)}
-    <div className="bw-detail-actions"><button className="bw-icon bw-danger" aria-label="刪除項目" disabled={!canEdit || paymentBusy} type="button" onClick={onDelete}><Trash2 size={16} /></button></div>
+    <div className="bw-detail-actions">{!actual ? <PaymentToggle checked={payments.length > 0} disabled={!canEdit || paymentBusy} onChange={onPaidChange} /> : null}<button className="bw-icon bw-danger" aria-label="刪除項目" disabled={!canEdit || paymentBusy} type="button" onClick={onDelete}><Trash2 size={16} /></button></div>
   </section>;
 }
 
