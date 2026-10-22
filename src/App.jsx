@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
 import MenuSelect from "./components/MenuSelect.jsx";
 import { budgetStage, calculatePricing, recordForm, settlementBalances } from "./lib/budgetFinance.js";
+import { demoBudgetQuote } from "./lib/tripBudgetRates.js";
 import { createDemoBudgetState, demoBudgetMembers, hydrateDemoBudgetScenario } from "./demo/budgetFixtures.js";
 import {
   closestCenter,
@@ -5401,6 +5402,16 @@ export default function App() {
     return { ok: true };
   }
 
+  async function updateTripBudgetRates(quote, meta = {}) {
+    if (!activeTrip || !isCurrentTripContext(meta)) return rejectCrossTripSave();
+    const { data, error } = await supabase.rpc("update_trip_budget_rates", {
+      p_trip_id: activeTrip.id, p_quote: quote, p_initialize: Boolean(meta.initialize),
+    });
+    if (error) return { ok: false, error };
+    await Promise.all([loadTrips(activeTrip.id), loadTripData(activeTrip.id)]);
+    return { ok: true, data };
+  }
+
   async function saveAccommodation(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
@@ -6323,6 +6334,7 @@ export default function App() {
             onSaveActualExpense={saveActualExpense}
             onSaveAccommodation={saveAccommodation}
             onSaveBudget={saveBudget}
+            onUpdateBudgetRates={updateTripBudgetRates}
             onSaveGuide={saveGuide}
             onSaveItem={saveItem}
             onSaveRouteOverride={saveRouteOverrideChange}
@@ -9102,6 +9114,14 @@ function DemoApp({ initialSection }) {
         {activeSection === "budget" ? (
           <BudgetPanel
             activeTrip={demoActiveTrip}
+            tripBudgetRates={finance.tripBudgetRates || demoBudgetQuote}
+            onUpdateBudgetRates={(quote, meta) => {
+              if (meta.tripId !== demoActiveTrip.id || demoStage !== "planning") return { ok: false, error: new Error("只有行前規劃可更新旅程預算匯率。") };
+              const next = { ...demoBudgetQuote, updated_at: new Date().toISOString() };
+              setDemoBudgetByTrip((current) => ({ ...current, [demoActiveTrip.id]: { ...current[demoActiveTrip.id], tripBudgetRates: next,
+                budgetItems: current[demoActiveTrip.id].budgetItems.map((row) => row.currency === "TWD" ? row : { ...row, exchange_rate: next.rates[row.currency], twd_amount: Math.round(row.amount * next.rates[row.currency]), updated_at: next.updated_at }) } }));
+              return { ok: true, data: next };
+            }}
             demoStage={demoStage}
             budgetBaseline={demoBudgetBaseline?.trip_id === demoActiveTrip.id ? demoBudgetBaseline : null}
             actualExpenses={actualExpenses}
@@ -9853,6 +9873,7 @@ function TripWorkspace(props) {
     onSaveActualExpense,
     onSaveAccommodation,
     onSaveBudget,
+    onUpdateBudgetRates,
     onSaveGuide,
     onSaveItem,
     onSaveRouteOverride,
@@ -10143,6 +10164,7 @@ function TripWorkspace(props) {
           onOpenAttachment={onOpenAttachment}
           onSaveActual={onSaveActualExpense}
           onSave={onSaveBudget}
+          onUpdateBudgetRates={onUpdateBudgetRates}
           onUploadAttachment={onUploadAttachment}
           restoreDrafts={isBudgetMode}
         />

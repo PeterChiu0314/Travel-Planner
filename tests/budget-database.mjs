@@ -51,6 +51,25 @@ await login(a);
 const custom=await save('actual',{...payload,is_fixed:false,pricing_mode:'custom',shares:{[a]:2000,[b]:1500,[c]:1000},budget_item_id:id});
 assert.equal((await db.query('select amount from actual_expenses where id=$1',[custom])).rows[0].amount,'4500.00');
 assert.equal((await db.query('select sum(share_amount) s from actual_expense_participants where actual_expense_id=$1',[custom])).rows[0].s,'4500.00');
+// Trip rates reprice every planned amount atomically, preserve historical
+// payments, reject non-editors/bad quotes and keep initialization idempotent.
+const quote={rates:{JPY:.25,USD:32,EUR:35,KRW:.024,HKD:4.1},source:'ExchangeRate-API',quoted_at:new Date().toISOString()};
+const updateRates=(value=quote,initialize=false)=>db.query('select update_trip_budget_rates($1,$2::jsonb,$3)',[trip,JSON.stringify(value),initialize]);
+await login(viewer); await assert.rejects(()=>updateRates());
+await login(outsider); await assert.rejects(()=>updateRates()); await login(a);
+await assert.rejects(()=>updateRates({...quote,rates:{...quote.rates,JPY:0}}));
+await updateRates();
+assert.equal((await db.query('select twd_amount from budget_items where id=$1',[id])).rows[0].twd_amount,'525.00');
+assert.equal((await db.query('select twd_amount from actual_expenses where budget_item_id=$1 order by twd_amount',[id])).rows[0].twd_amount,'462.00');
+assert.equal((await db.query('select twd_amount from actual_expenses where id=$1',[custom])).rows[0].twd_amount,'990.00');
+await updateRates({...quote,rates:{...quote.rates,JPY:.3}},true);
+assert.equal(Number((await db.query('select exchange_rate from budget_items where id=$1',[id])).rows[0].exchange_rate),.25);
+const rateBudget=await save('budget',{...payload,is_fixed:false,exchange_rate:.01});
+assert.equal(Number((await db.query('select exchange_rate from budget_items where id=$1',[rateBudget])).rows[0].exchange_rate),.25);
+await login(b); await db.query('update budget_items set locked_by=$1,locked_at=clock_timestamp() where id=$2',[b,rateBudget]);
+await login(a); await assert.rejects(()=>updateRates({...quote,rates:{...quote.rates,JPY:.3}}));
+assert.equal(Number((await db.query('select exchange_rate from budget_items where id=$1',[id])).rows[0].exchange_rate),.25);
+await login(b); await db.query('delete from budget_items where id=$1',[rateBudget]); await login(a);
 // A write begun before cutoff but committed after it cannot replace the last
 // committed predeparture version. Deferred triggers check real commit-time.
 await db.exec('reset role');
@@ -68,6 +87,7 @@ await db.exec('reset role');
 await db.query(`update trip_budget_baselines set departure_at=clock_timestamp()-interval '1 second' where trip_id=$1`,[trip]);
 baseline=(await db.query('select * from trip_budget_baselines where trip_id=$1',[trip])).rows[0];
 await db.exec('set role authenticated');await login(a);
+await assert.rejects(()=>updateRates());
 const version=(await db.query('select updated_at from budget_items where id=$1',[id])).rows[0].updated_at;
 await save('budget',{...payload,unit_amount:900},id,version);
 assert.equal((await db.query('select count(*)::int n from actual_expenses where budget_item_id=$1',[id])).rows[0].n,2); // Fixed actual plus independent custom expense; no duplicate fixed actual.

@@ -26,7 +26,7 @@ test("per-person pricing, custom split and actual conversion preserve the origin
   await form.getByRole("button", { name: "每人計價", exact: true }).click();
   await form.getByLabel("每人單價", { exact: true }).fill("700");
   await form.getByRole("combobox",{name:"幣別",exact:true}).click(); await page.getByRole("option",{name:"JPY",exact:true}).click();
-  await form.getByLabel(/匯率/).fill("0.22");
+  await expect(form.locator('.bw-trip-rate')).toContainText('1 JPY = 0.22 TWD');
   await form.locator('.bw-member-options > summary').click();
   const people = form.locator('.bw-participants input[type=checkbox]');
   for (let i=2; i<await people.count(); i++) await people.nth(i).uncheck();
@@ -230,6 +230,52 @@ test("historical trip without a baseline never displays a fabricated zero budget
   await expect(page.getByText("無出發前快照，無法還原當時預算。")).toBeVisible();
   await expect(page.locator(".bw-row")).toHaveCount(0);
 });
+
+test('budget payer replaces subcategory without erasing legacy details; link heading toggles options',async({page})=>{
+  await page.getByRole('button',{name:'關西機場 → 京都巴士',exact:true}).click();
+  await page.getByRole('button',{name:'編輯項目',exact:true}).click();
+  const form=editor(page);
+  await expect(form.getByLabel('細項',{exact:true})).toHaveCount(0);
+  const fields=form.locator('.bw-two-fields').first();
+  await expect(fields.getByRole('combobox',{name:'分類',exact:true})).toBeVisible();
+  await expect(fields.getByRole('combobox',{name:'付款人',exact:true})).toBeVisible();
+  await expect(form.getByRole('combobox',{name:'付款人',exact:true})).toHaveCount(1);
+  const linked=await form.locator('.bw-linked-items').textContent();
+  const heading=form.getByRole('button',{name:/關聯行程/});
+  await expect(heading).toHaveAttribute('aria-expanded','false');
+  await heading.click(); await expect(form.getByLabel('搜尋關聯行程')).toBeVisible();
+  await heading.click(); await expect(form.getByLabel('搜尋關聯行程')).toBeHidden();
+  await expect(form.locator('.bw-linked-items')).toHaveText(linked);
+  await expect(form.getByText('變更關聯',{exact:true})).toHaveCount(0);
+  await expect(form.locator('.bw-trip-rate')).toContainText('1 JPY = 0.22 TWD');
+  await expect(form.getByRole('spinbutton',{name:/匯率/})).toHaveCount(0);
+  await fields.getByRole('combobox',{name:'付款人',exact:true}).click();
+  await page.getByRole('option',{name:'Dennis',exact:true}).click();
+  await form.getByRole('button',{name:'儲存',exact:true}).click();
+  await expect(page.locator('.bw-detail-heading')).toContainText('機場交通');
+  await expect(page.locator('.bw-detail dd').filter({hasText:'Dennis'})).toHaveCount(1);
+});
+
+test('Demo trip rates are shared across new budgets and updates stay local',async({page})=>{
+  const requests=[]; page.on('request',request=>{if(/open\.er-api\.com|supabase/.test(request.url()))requests.push(request.url());});
+  const rateSummary=page.locator('.bw-stats .bw-trip-rate');
+  await expect(rateSummary).toContainText('Demo 固定示例');
+  const groups=await page.locator('.bw-group').allTextContents();
+  await rateSummary.getByRole('button',{name:'更新匯率',exact:true}).click();
+  await expect(page.locator('.bw-group')).toHaveText(groups);
+  await page.getByRole('button',{name:'新增預算',exact:true}).click();
+  const form=editor(page);
+  await form.getByLabel('項目',{exact:true}).fill('共用匯率測試');
+  await form.getByLabel('總額',{exact:true}).fill('1000');
+  await form.getByRole('combobox',{name:'幣別',exact:true}).click();
+  await page.getByRole('option',{name:'JPY',exact:true}).click();
+  await expect(form.locator('.bw-trip-rate')).toContainText('1 JPY = 0.22 TWD');
+  await form.getByRole('button',{name:'儲存',exact:true}).click();
+  await expect(rowByTitle(page,'共用匯率測試')).toContainText('220');
+  await page.getByRole('tab',{name:'實付',exact:true}).click();
+  await expect(page.locator('.bw-row')).toHaveCount(8);
+  expect(requests).toEqual([]);
+});
 test("compact editor defaults, personal calculation and searchable itinerary links survive save",async({page})=>{
   await page.getByRole('button',{name:'新增預算',exact:true}).click();
   const form=editor(page);
@@ -244,7 +290,7 @@ test("compact editor defaults, personal calculation and searchable itinerary lin
   await form.locator('.bw-participants input[type=checkbox]').last().uncheck();
   await expect(form.locator('.bw-calculation')).toContainText('每人NT$ 250');
   await form.locator('.bw-member-options > summary').click();
-  await form.locator('.bw-link-options > summary').click();
+  await form.getByRole('button',{name:/關聯行程/}).click();
   await form.getByRole('combobox',{name:'關聯行程日期',exact:true}).click(); await page.getByRole('option',{name:'Day 2',exact:true}).click();
   await form.getByLabel('搜尋關聯行程',{exact:true}).fill('宇治');
   await form.locator('.bw-link-results').getByLabel('宇治吃午餐',{exact:true}).check();
@@ -270,7 +316,7 @@ test("desktop panels stay below the header and reach save without scrolling the 
   await expect(form.getByText('已付款',{exact:true})).toBeVisible();
   await expect(form.getByLabel('這筆已付款')).toHaveCount(0);
   await form.locator('.bw-member-options > summary').click();
-  await form.locator('.bw-link-options > summary').click();
+  await form.getByRole('button',{name:/關聯行程/}).click();
   await form.getByLabel('備註',{exact:true}).scrollIntoViewIfNeeded();
   await expect(form.getByRole('button',{name:'儲存',exact:true})).toBeInViewport();
   await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toBeInViewport();
@@ -316,7 +362,7 @@ test('itinerary suggestions follow category and always allow the full trip witho
   await rowByTitle(page,'京都山科山樂酒店・2 晚').getByRole('button',{name:'京都山科山樂酒店・2 晚',exact:true}).click();
   await page.getByRole('button',{name:'編輯項目',exact:true}).click();
   const form=editor(page);
-  await form.locator('.bw-link-options > summary').click();
+  await form.getByRole('button',{name:/關聯行程/}).click();
   const suggestions=form.getByRole('group',{name:'建議行程',exact:true});
   const day1=form.getByRole('group',{name:'Day 1 行程',exact:true});
   await expect(form.locator('.bw-link-results > fieldset').first()).toHaveAttribute('aria-label','建議行程');

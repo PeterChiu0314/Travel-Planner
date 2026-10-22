@@ -1,7 +1,19 @@
 import { expect, test } from "@playwright/test";
 import { budgetDay, budgetStage, calculatePricing, comparisonRows, recordAllocations, recordForm, settlementBalances } from "../src/lib/budgetFinance.js";
+import { fetchBudgetQuote, parseBudgetQuote } from "../src/lib/tripBudgetRates.js";
 const members=['a','b','c'].map(user_id=>({user_id,display_name:user_id,status:'approved'}));
 const form={currency:'JPY',exchange_rate:'0.22',pricing_mode:'per_person',unit_amount:'700',participantIds:['c','a','b']};
+
+test('public trip quote is inverted to TWD, validated, deduplicated and cached',async()=>{
+  const quote={result:'success',base_code:'TWD',time_last_update_unix:1792627200,rates:{JPY:5,USD:.03125,EUR:1/35,KRW:1/.024,HKD:1/4.1}};
+  expect(parseBudgetQuote(quote).rates).toEqual({JPY:.2,USD:32,EUR:35,KRW:.024,HKD:4.1});
+  expect(()=>parseBudgetQuote({...quote,base_code:'USD'})).toThrow();
+  expect(()=>parseBudgetQuote({...quote,rates:{...quote.rates,JPY:0}})).toThrow();
+  const original=globalThis.fetch; let calls=0;
+  globalThis.fetch=async(url,options)=>{calls++;expect(url).toBe('https://open.er-api.com/v6/latest/TWD');expect(options.credentials).toBe('omit');return {ok:true,json:async()=>quote};};
+  try { const values=await Promise.all([fetchBudgetQuote(),fetchBudgetQuote()]);expect(values[0]).toEqual(values[1]);await fetchBudgetQuote();expect(calls).toBe(1);await fetchBudgetQuote({force:true});expect(calls).toBe(2); }
+  finally {globalThis.fetch=original;}
+});
 test('three pricing modes reconcile original totals and deterministic TWD shares',()=>{
   expect(calculatePricing(form)).toMatchObject({amount:2100,twd_amount:462,allocations:{a:154,b:154,c:154}});
   expect(calculatePricing({...form,currency:'TWD',pricing_mode:'split_total',amount:'2491'}).allocations).toEqual({a:831,b:830,c:830});

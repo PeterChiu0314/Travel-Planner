@@ -99,6 +99,11 @@
 .bw-editor { display: flex; flex-direction: column; gap: 10px; }
 .bw-editor label { display: grid; gap: 5px; color: var(--muted); min-width: 0; }
 .bw-field { display: grid; gap: 5px; color: var(--muted); min-width: 0; }
+.bw-trip-rate { display: grid; gap: 7px; color: var(--muted); font-size: 11px; }
+.bw-trip-rate > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bw-trip-rate b { color: var(--ink); font-weight: 500; }
+.bw-trip-rate button { height: 28px; min-height: 28px; padding: 3px 7px; font-size: 11px; white-space: nowrap; }
+.bw-trip-rate a { color: var(--muted); font-size: 10px; }
 .bw-editor input, .bw-editor select, .bw-editor textarea { width: 100%; min-width: 0; min-height: 32px; height: 32px; padding: 5px 8px; line-height: 20px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--ink); font-size: 12px; }
 .bw-editor textarea { height: 60px; min-height: 60px; resize: vertical; }
 .bw-two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -130,6 +135,9 @@
 .bw-payment-toggle:disabled { cursor: default; opacity: .65; }
 .bw-link-picker { min-width: 0; }
 .bw-link-heading { display: flex; align-items: center; justify-content: space-between; color: var(--muted); margin-bottom: 7px; }
+.bw-link-picker > .bw-link-heading { width: 100%; border: 0; background: transparent; padding: 4px 0; cursor: pointer; text-align: left; font-size: 12px; }
+.bw-link-heading > span { display: inline-flex; gap: 4px; align-items: center; }
+.bw-link-heading:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .bw-link-heading small { font-size: 11px; }
 .bw-linked-items { list-style: none; margin: 0 0 6px; padding: 0; }
 .bw-linked-items li { display: flex; align-items: center; gap: 4px; padding: 3px 0; }
