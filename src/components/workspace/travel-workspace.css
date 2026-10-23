@@ -17,13 +17,13 @@
   .travel-workspace .mobile-tabs { display: none; }
   .travel-workspace .travel-workspace-search { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 0 12px; border: 1px solid #d9d8d1; background: #fff; border-radius: 6px; color: #68706b; margin: 0 0 16px; }
   .travel-workspace .travel-workspace-search input { width: 100%; border: 0; background: transparent; padding: 11px 0; font-size: 13px; box-shadow: none; outline: none; min-width: 0; }
-  .travel-workspace-search:focus-within { outline: 2px solid #7b9889; outline-offset: 2px; }
+  .travel-workspace-search:focus-within { border-color: var(--color-primary); outline: 0; }
   .travel-workspace input[type=checkbox] { accent-color: #325248; width: 17px; height: 17px; flex-shrink: 0; cursor: pointer; }
   .travel-workspace .travel-workspace-actions { flex-shrink: 0; gap: 3px; align-self: start; }
   .travel-workspace-actions .mini-button { width: 30px; height: 30px; display: inline-flex; justify-content: center; align-items: center; border: 0; border-radius: 5px; background: transparent; color: #68706b; padding: 0; }
   .travel-workspace-actions .mini-button:hover { background: #edf2ed; color: #325248; }
   .travel-workspace-actions .mini-button:last-child:hover { background: #faeeea; color: #a04b3b; }
-  .travel-workspace :is(button,input,select,textarea,a):focus-visible { outline: 2px solid #557e68; outline-offset: 3px; }
+  .travel-workspace :where(button,a,input[type=checkbox],input[type=radio]):focus-visible { outline: 2px solid #557e68; outline-offset: 3px; }
   .travel-workspace .item-form { background: #f4f6f1; border: 1px solid #d9dfd4; border-radius: 8px; margin: 0 0 22px; padding: 20px; }
   .travel-workspace :is(input,select,textarea) { border-radius: 6px; font-size: 13px; }
   .travel-workspace .timeline-empty { padding: 32px 18px; font-size: 13px; color: #68706b; background: #f8f9f5; border: 1px dashed #d9d8d1; border-radius: 7px; }

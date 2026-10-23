@@ -1493,8 +1493,7 @@ code {
   color: var(--color-primary);
 }
 
-.trip-header-title-button:focus-visible,
-.trip-header-title-input:focus-visible {
+.trip-header-title-button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
   outline-offset: 2px;
 }
@@ -1658,9 +1657,8 @@ code {
 }
 
 .trip-header-destination-field input:focus-visible {
-  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
-  outline: 3px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
-  outline-offset: 2px;
+  border-color: var(--color-primary);
+  outline: 0;
 }
 
 .trip-header-destination-error {
@@ -2308,6 +2306,16 @@ textarea {
   background: var(--color-surface);
   color: var(--ink);
   padding: 10px 12px;
+}
+
+/* Text fields focus through their existing border, without a second browser ring.
+   Compound fields retain the focus boundary on their surrounding field/control. */
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="image"], [type="hidden"]), select, textarea):focus {
+  outline: 0;
+  box-shadow: none;
+}
+:is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="image"], [type="hidden"]), select, textarea):focus:not(:user-invalid, [aria-invalid="true"], .invalid) {
+  border-color: var(--color-primary);
 }
 
 textarea {
@@ -5138,10 +5146,6 @@ textarea {
 
 .places-search-control:focus-within {
   border-color: var(--mint-dark);
-  box-shadow:
-    0 18px 36px rgba(20, 55, 46, 0.22),
-    0 0 0 3px rgba(228, 123, 37, 0.28);
-  transform: translateY(-1px);
 }
 
 .places-search-row {
@@ -7053,8 +7057,8 @@ textarea {
 }
 
 .compact-select:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
-  outline-offset: 1px;
+  border-color: var(--color-primary);
+  outline: 0;
 }
 
 .member-role-menu {
@@ -7073,10 +7077,9 @@ textarea {
 }
 
 .member-role-menu-trigger:focus-visible {
-  border-color: color-mix(in srgb, var(--color-primary) 42%, transparent);
+  border-color: var(--color-primary);
   background: var(--color-surface);
-  outline: 3px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-  outline-offset: 2px;
+  outline: 0;
 }
 
 .member-role-menu-caret {

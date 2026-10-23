@@ -102,7 +102,7 @@ test("todo completion, filtering, linked guides and CRUD stay usable", async ({ 
   await expect(card).toHaveCount(0);
 });
 
-test("luggage CRUD and assignee packing remain separate from owner confirmation", async ({ page }) => {
+test("luggage CRUD and assignee packing synchronize without a second confirmation", async ({ page }) => {
   await page.goto("/demo/luggage");
   const personal = page.locator(".luggage-column").first();
   const team = page.locator(".luggage-column").last();
@@ -110,12 +110,14 @@ test("luggage CRUD and assignee packing remain separate from owner confirmation"
   await personal.getByRole("combobox", { name: "個人行李分類", exact: true }).fill("電子用品");
   await personal.getByRole("button", { name: "新增個人行李", exact: true }).click();
   await expect(personal.getByLabel("個人行李名稱", { exact: true })).toHaveValue("");
+  const initialPacked = Number(await page.getByRole("progressbar", { name: "我的打包進度", exact: true }).getAttribute("aria-valuenow"));
   await page.getByRole("checkbox", { name: "打包：旅行轉接頭", exact: true }).check();
-  await expect(page.getByRole("progressbar", { name: "我的打包進度", exact: true })).toHaveAttribute("aria-valuenow", "2");
+  await expect(page.getByRole("progressbar", { name: "我的打包進度", exact: true })).toHaveAttribute("aria-valuenow", String(initialPacked + 1));
   await personal.getByRole("button", { name: "編輯：旅行轉接頭", exact: true }).click();
-  await expect(personal.getByRole("combobox", { name: "個人行李分類", exact: true })).toHaveValue("電子用品");
-  await personal.getByLabel("個人行李名稱", { exact: true }).fill("兩孔轉接頭");
-  await personal.getByRole("button", { name: "儲存個人行李", exact: true }).click();
+  await expect(personal.getByRole("combobox", { name: "編輯個人行李分類", exact: true })).toHaveValue("電子用品");
+  await personal.getByLabel("編輯個人行李名稱", { exact: true }).fill("兩孔轉接頭");
+  await personal.getByLabel("編輯個人行李名稱", { exact: true }).press("Enter");
+  await personal.getByRole("button", { name: "編輯：兩孔轉接頭", exact: true }).click();
   page.once("dialog", dialog => dialog.accept());
   await personal.getByRole("button", { name: "刪除：兩孔轉接頭", exact: true }).click();
   await team.getByLabel("團隊公物名稱", { exact: true }).fill("雨備地墊");
@@ -124,17 +126,17 @@ test("luggage CRUD and assignee packing remain separate from owner confirmation"
   await team.getByRole("button", { name: "新增團隊公物", exact: true }).click();
   const shared = team.locator(".shared-luggage-row").filter({ hasText: "雨備地墊" });
   await shared.getByRole("checkbox", { name: "成員已打包：雨備地墊", exact: true }).check();
-  await expect(shared.getByRole("checkbox", { name: "總召確認：雨備地墊", exact: true })).not.toBeChecked();
+  await expect(shared.getByRole("checkbox")).toHaveCount(1);
   await expect(personal.locator(".assigned-shared-list").filter({ hasText: "雨備地墊" }).getByRole("checkbox").last()).toBeChecked();
-  await shared.getByRole("checkbox", { name: "總召確認：雨備地墊", exact: true }).check();
-  await expect(personal.locator(".shared-assigned").filter({ hasText: "雨備地墊" })).toContainText("總召已確認");
+  await expect(shared).toHaveClass(/packed/);
   await shared.getByRole("button", { name: "編輯：雨備地墊", exact: true }).click();
-  await team.getByLabel("團隊公物名稱", { exact: true }).fill("變更尚未儲存");
-  await team.getByRole("button", { name: "取消編輯團隊公物", exact: true }).click();
+  await team.getByLabel("編輯團隊公物名稱", { exact: true }).fill("變更尚未儲存");
+  await team.getByLabel("編輯團隊公物名稱", { exact: true }).press("Escape");
   await page.getByRole("dialog", { name: "您有未儲存的變更", exact: true }).getByRole("button", { name: "不儲存", exact: true }).click();
   await expect(shared).toBeVisible();
+  await shared.getByRole("button", { name: "編輯：雨備地墊", exact: true }).click();
   page.once("dialog", dialog => dialog.accept());
-  await shared.getByRole("button", { name: "刪除：雨備地墊", exact: true }).click();
+  await team.getByRole("button", { name: "刪除：雨備地墊", exact: true }).click();
   await expect(shared).toHaveCount(0);
 });
 
@@ -170,7 +172,7 @@ for (const entry of [
   { route: "accommodation", name: "住宿資訊", edit: "京都車站旅館", scope: ".accommodation-form", field: "住宿名稱" },
   { route: "todo", name: "待辦指南", edit: "申請旅遊保險", scope: ".todo-panel form", field: "標題" },
   { route: "todo", name: "待辦指南", edit: "京都車站資訊", scope: ".guide-panel form", field: "標題" },
-  { route: "luggage", name: "行李清單", edit: "護照", scope: ".luggage-column:first-child form", field: "個人行李名稱" },
+  { route: "luggage", name: "行李清單", edit: "護照", scope: ".luggage-column:first-child .lb-inline-editor", field: "編輯個人行李名稱" },
 ]) {
   test(`${entry.route} ${entry.edit} protects navigation and keeps support data isolated by trip`, async ({ page }) => {
     await page.goto(`/demo/${entry.route}`);
@@ -203,7 +205,7 @@ for (const route of ["accommodation", "todo", "luggage", "settlement"]) {
     page.on("console", (message) => { if (message.type() === "error") failures.push(message.text()); });
     page.on("request", (request) => { if (/^https?:\/\/[^/]*supabase|\/(auth|rest|storage|realtime)\/v1\//i.test(request.url())) requests.push(request.url()); });
     await page.goto(`/demo/${route}`);
-    await expect(page.locator(route === "luggage" ? ".lb-heading" : ".travel-workspace-heading")).toBeVisible();
+    await expect(page.locator(route === "luggage" ? ".lb-column-heading" : ".travel-workspace-heading").first()).toBeVisible();
     for (const size of [{ width: 1280, height: 720 }, { width: 1440, height: 1000 }, { width: 1920, height: 1080 }]) {
       await page.setViewportSize(size);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -222,7 +224,7 @@ for (const route of ["accommodation", "todo", "luggage", "settlement"]) {
       await page.locator(".todo-panel form").getByLabel("標題", { exact: true }).fill("僅本機輸入");
     } else if (route === "luggage") {
       await page.getByRole("button", { name: "編輯：護照", exact: true }).click();
-      await page.getByPlaceholder("新增個人行李", { exact: true }).fill("僅本機輸入");
+      await page.getByLabel("編輯個人行李名稱", { exact: true }).fill("僅本機輸入");
     }
     await page.clock.runFor(700); // Exceeds the autosave debounce to detect accidental draft writes.
     expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => /draft|lock/i.test(key)))).toEqual([]);

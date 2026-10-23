@@ -5,6 +5,7 @@ import { createDemoGuides, createDemoStays, createDemoTodos } from "./components
 import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
 import MenuSelect from "./components/MenuSelect.jsx";
 import LuggageBoard from "./components/luggage/LuggageBoard.jsx";
+import { createDemoLuggageItems, createDemoSharedLuggageItems } from "./demo/luggageFixtures.js";
 import { mutateLuggageItem, transitionSharedLuggage, luggageErrorMessage } from "./lib/luggageService.js";
 import { budgetStage, recordForm, settlementBalances } from "./lib/budgetFinance.js";
 import { planningBudgetData } from "./lib/planningBudget.js";
@@ -536,9 +537,9 @@ function activeEditorGuardTripId(id) {
   return separatorIndex >= 0 ? id.slice(separatorIndex + 1) : null;
 }
 
-function getActiveEditorGuardEntries({ excludeId, tripId } = {}) {
+function getActiveEditorGuardEntries({ excludeId, excludeIds = [], tripId } = {}) {
   return [...activeEditorGuards.entries()].filter(([id]) => {
-    if (excludeId && id === excludeId) return false;
+    if (excludeId && id === excludeId || excludeIds.includes(id)) return false;
     if (tripId && activeEditorGuardTripId(id) !== tripId) return false;
     return true;
   });
@@ -2273,43 +2274,6 @@ function createDemoTimelineItems() {
     .sort((a, b) => a.day_index - b.day_index || a.sort_order - b.sort_order || (a.start_time || "").localeCompare(b.start_time || ""));
 }
 
-
-function createDemoLuggageItems(tripId) {
-  return [
-    { id: "demo-luggage-1", title: "護照", category: "證件", packed: true },
-    { id: "demo-luggage-2", title: "充電器", category: "電子用品", packed: false },
-    { id: "demo-luggage-3", title: "薄外套", category: "衣物", packed: false },
-    { id: "demo-luggage-4", title: "健保卡・身分證", category: "證件", packed: false },
-    { id: "demo-luggage-5", title: "行動電源", category: "電子用品", packed: false },
-    { id: "demo-luggage-6", title: "換洗衣物", category: "衣物", packed: false },
-    { id: "demo-luggage-7", title: "牙刷・盥洗包", category: "盥洗用品", packed: false },
-    { id: "demo-luggage-8", title: "個人常備藥", category: "健康用品", packed: false },
-  ].map(item => ({ ...item, trip_id: tripId, owner_id: "demo-peter", updated_at: "2026-10-23T00:00:00.000Z" }));
-}
-
-function createDemoSharedLuggageItems(tripId) {
-  return [
-    {
-      id: "demo-shared-luggage-1",
-      title: "隨身 Wi-Fi",
-      category: "團隊公物",
-      assigned_to: "demo-a",
-      packed_by_assignee: true,
-      confirmed_by_owner: false,
-    },
-    {
-      id: "demo-shared-luggage-2",
-      title: "常備藥包",
-      category: "健康用品",
-      assigned_to: "demo-peter",
-      packed_by_assignee: false,
-      confirmed_by_owner: false,
-    },
-    { id: "demo-shared-luggage-3", title: "延長線・萬用轉接頭", category: "電子用品", assigned_to: "demo-peter", packed_by_assignee: false, confirmed_by_owner: false },
-    { id: "demo-shared-luggage-4", title: "折疊購物袋", category: "日常用品", assigned_to: null, packed_by_assignee: false, confirmed_by_owner: false },
-    { id: "demo-shared-luggage-5", title: "票券資料夾", category: "證件", assigned_to: "demo-a", packed_by_assignee: false, confirmed_by_owner: false },
-  ].map(item => ({ ...item, trip_id: tripId, updated_at: "2026-10-23T00:00:00.000Z" }));
-}
 
 function offlineTripKey(tripId) {
   return `travel-planner-offline-${tripId}`;
@@ -9071,7 +9035,7 @@ function DemoApp({ initialSection }) {
         {activeSection === "settlement" ? <SettlementPanel activeTrip={demoActiveTrip} demoStage={demoStage} budgetBaseline={demoBudgetBaseline}
           actualExpenses={actualExpenses} actualParticipants={actualParticipants} budgetItems={budgetItems} members={demoMembers} /> : null}
         {activeSection === "luggage" ? (
-          <LuggagePanel
+          <LuggagePanel key={`${demoActiveTrip.id}:demo-peter`}
             activeTrip={demoActiveTrip} activeTab={luggageTab} onTabChange={setLuggageTab}
             canEdit isOwner disableDraftAutosave useEditLocks={false} restoreDrafts={false}
             currentUserId="demo-peter"
@@ -9626,7 +9590,7 @@ function TripWorkspace(props) {
       </div>
 
       <div className={isLuggageMode ? "" : "hidden-section"}>
-        <LuggagePanel
+        <LuggagePanel key={`${activeTrip.id}:${currentUserId}`}
           activeTrip={activeTrip}
           activeTab={luggageTab}
           canEdit={members.some(member => member.user_id === currentUserId && member.status === "approved")}
@@ -14289,6 +14253,32 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   );
 }
 
+// Quick-add drafts are independent of the single inline editor. Both participate in navigation guards.
+function useLuggageQuickAdd({ shared, activeTrip, currentUserId, restoreDrafts, disableDraftAutosave, canEdit, performMutation, onSave }) {
+  const [emptyForm, setEmptyForm] = useState(shared ? emptySharedLuggageForm : emptyLuggageForm);
+  const draft = useDraftAutosave({ disabled: disableDraftAutosave, defaultForm: emptyForm,
+    entityType: shared ? "shared_luggage_quick_add" : "luggage_quick_add", editingId: null,
+    isOpen: Boolean(activeTrip?.id && (restoreDrafts || disableDraftAutosave)), tripId: activeTrip?.id, userId: currentUserId });
+  const guardId = `luggage-quick-${shared ? "shared" : "personal"}:${currentUserId}:${activeTrip?.id}`;
+  function discard() {
+    const next = { ...draft.form, title: "" };
+    setEmptyForm(next); draft.resetDraft(next);
+    return true;
+  }
+  async function save() {
+    if (!canEdit || !draft.form.title.trim()) return false;
+    const result = await performMutation(() => onSave(draft.form, null, { tripId: activeTrip?.id }));
+    if (!result?.ok) return false;
+    const next = { ...draft.form, title: "" };
+    setEmptyForm(next); draft.resetDraft(next);
+    return true;
+  }
+  const dirty = Boolean(draft.form.title.trim());
+  useActiveEditorGuard(guardId, useMemo(() => ({ isActive: dirty, isDirty: dirty, save, discard }), [dirty, draft.form, canEdit, onSave, performMutation]));
+  async function submit(event) { event.preventDefault(); return save(); }
+  return { draft, guardId, submit };
+}
+
 export function LuggagePanel({
   activeTrip,
   activeTab = "personal",
@@ -14329,6 +14319,9 @@ export function LuggagePanel({
     } catch { setError("未能儲存，請檢查連線後重試。你的輸入仍保留。"); return { ok: false }; }
     finally { busyRef.current = false; setBusy(false); }
   }
+  const quickPersonal = useLuggageQuickAdd({ activeTrip, currentUserId, restoreDrafts, disableDraftAutosave, canEdit, performMutation, onSave: onSavePersonal });
+  const quickShared = useLuggageQuickAdd({ shared: true, activeTrip, currentUserId, restoreDrafts, disableDraftAutosave, canEdit, performMutation, onSave: onSaveShared });
+  const quickGuardIds = [quickPersonal.guardId, quickShared.guardId];
   const [personalSeed, setPersonalSeed] = useState(emptyLuggageForm);
   const [sharedSeed, setSharedSeed] = useState(emptySharedLuggageForm);
   const [editingPersonalId, setEditingPersonalId] = useState(null);
@@ -14336,12 +14329,13 @@ export function LuggagePanel({
   const [personalUpdatedAt, setPersonalUpdatedAt] = useState(null);
   const [sharedUpdatedAt, setSharedUpdatedAt] = useState(null);
   const previousTripIdRef = useRef(`${activeTrip?.id}:${currentUserId}`);
+  const openingEditor = useRef(0);
   const personalDraft = useDraftAutosave({
     disabled: disableDraftAutosave,
     defaultForm: personalSeed,
     editingId: editingPersonalId,
     entityType: "luggage_item",
-    isOpen: true,
+    isOpen: Boolean(editingPersonalId),
     serverUpdatedAt: personalUpdatedAt,
     tripId: activeTrip?.id,
     userId: currentUserId,
@@ -14351,13 +14345,32 @@ export function LuggagePanel({
     defaultForm: sharedSeed,
     editingId: editingSharedId,
     entityType: "shared_luggage_item",
-    isOpen: true,
+    isOpen: Boolean(editingSharedId),
     serverUpdatedAt: sharedUpdatedAt,
     tripId: activeTrip?.id,
     userId: currentUserId,
   });
   const personalForm = personalDraft.form;
   const sharedForm = sharedDraft.form;
+  const flushLuggageDrafts = useRef(null);
+  flushLuggageDrafts.current = () => {
+    quickPersonal.draft.flushDraft(); quickShared.draft.flushDraft();
+    personalDraft.flushDraft(); sharedDraft.flushDraft();
+  };
+  useEffect(() => {
+    if (disableDraftAutosave) return undefined;
+    // Do not depend on the autosave debounce when the user immediately reloads or backgrounds the page.
+    const flush = () => flushLuggageDrafts.current?.();
+    const hidden = () => { if (document.visibilityState === "hidden") flush(); };
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [disableDraftAutosave]);
   const setPersonalForm = personalDraft.setForm;
   const setSharedForm = sharedDraft.setForm;
   const personalDirty = disableDraftAutosave ? JSON.stringify(personalForm) !== JSON.stringify(personalSeed) : personalDraft.hasUnsavedChanges;
@@ -14367,8 +14380,8 @@ export function LuggagePanel({
   const personalEditorGuard = useMemo(
     () => ({
       discard: () => discardPersonalEdit(),
-      isActive: Boolean(editingPersonalId || personalDirty),
-      isDirty: personalDirty,
+      isActive: Boolean(editingPersonalId),
+      isDirty: Boolean(editingPersonalId && personalDirty),
       save: () => saveCurrentPersonal(),
     }),
     [personalForm, personalDirty, editingPersonalId, personalUpdatedAt],
@@ -14376,8 +14389,8 @@ export function LuggagePanel({
   const sharedEditorGuard = useMemo(
     () => ({
       discard: () => discardSharedEdit(),
-      isActive: Boolean(editingSharedId || sharedDirty),
-      isDirty: sharedDirty,
+      isActive: Boolean(editingSharedId),
+      isDirty: Boolean(editingSharedId && sharedDirty),
       save: () => saveCurrentShared(),
     }),
     [sharedForm, sharedDirty, editingSharedId, sharedUpdatedAt],
@@ -14413,40 +14426,45 @@ export function LuggagePanel({
     previousTripIdRef.current = currentTripId;
   }, [activeTrip?.id, currentUserId, editingPersonalId, editingSharedId, personalDraft, sharedDraft]);
 
+  const restoredEditor = useRef(false);
   useEffect(() => {
-    if (disableDraftAutosave || !restoreDrafts || !activeTrip?.id || !currentUserId || editingPersonalId) return;
-    const latest = loadLatestDraftForEntity({
-      entityType: "luggage_item",
-      tripId: activeTrip.id,
-      userId: currentUserId,
-    });
+    if (restoredEditor.current || disableDraftAutosave || !restoreDrafts || !activeTrip?.id || !currentUserId || editingPersonalId || editingSharedId) return;
+    const candidates = [];
+    for (const [entityType, quick, items, shared] of [
+      ["luggage_item", quickPersonal, luggageItems, false],
+      ["shared_luggage_item", quickShared, sharedLuggageItems, true],
+    ]) {
+      const latest = loadLatestDraftForEntity({ entityType, tripId: activeTrip.id, userId: currentUserId });
+      if (!latest) continue;
+      if (latest.entityId === "new") {
+        // Keep pre-upgrade new-item drafts, but never put them in the row editor.
+        quick.draft.replaceForm(latest.draft.form, { dirty: true });
+        quick.draft.flushDraft();
+        clearDraft(latest.key);
+      } else {
+        const item = items.find(row => row.id === latest.entityId);
+        if (item) candidates.push({ ...latest, item, shared });
+      }
+    }
+    // Only one row editor can reopen. Other saved drafts remain available when their row is opened.
+    const latest = candidates.sort((a, b) => new Date(b.draft.savedAt) - new Date(a.draft.savedAt))[0];
     if (!latest) return;
-    const matchingItem = luggageItems.find((item) => item.id === latest.entityId);
-    if (latest.entityId !== "new" && !matchingItem) return;
-    setPersonalSeed(latest.draft.form);
-    setPersonalUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
-    setEditingPersonalId(latest.entityId === "new" ? null : latest.entityId);
-  }, [activeTrip?.id, currentUserId, editingPersonalId, luggageItems, restoreDrafts]);
-
-  useEffect(() => {
-    if (disableDraftAutosave || !restoreDrafts || !activeTrip?.id || !currentUserId || editingSharedId) return;
-    const latest = loadLatestDraftForEntity({
-      entityType: "shared_luggage_item",
-      tripId: activeTrip.id,
-      userId: currentUserId,
-    });
-    if (!latest) return;
-    const matchingItem = sharedLuggageItems.find((item) => item.id === latest.entityId);
-    if (latest.entityId !== "new" && !matchingItem) return;
-    setSharedSeed(latest.draft.form);
-    setSharedUpdatedAt(latest.draft.serverUpdatedAt || matchingItem?.updated_at || null);
-    setEditingSharedId(latest.entityId === "new" ? null : latest.entityId);
-  }, [activeTrip?.id, currentUserId, editingSharedId, restoreDrafts, sharedLuggageItems]);
+    restoredEditor.current = true;
+    if (latest.shared) {
+      setSharedSeed(latest.draft.form);
+      setSharedUpdatedAt(latest.draft.serverUpdatedAt || latest.item.updated_at || null);
+      setEditingSharedId(latest.entityId);
+    } else {
+      setPersonalSeed(latest.draft.form);
+      setPersonalUpdatedAt(latest.draft.serverUpdatedAt || latest.item.updated_at || null);
+      setEditingPersonalId(latest.entityId);
+    }
+  }, [activeTrip?.id, currentUserId, editingPersonalId, editingSharedId, luggageItems, sharedLuggageItems, restoreDrafts, disableDraftAutosave]);
 
   async function saveCurrentPersonal() {
     if (!personalForm.title.trim() || !canEdit) return false;
     const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: personalEditorGuardId,
+      excludeId: personalEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
     if (!canOpenEditor) return false;
@@ -14462,12 +14480,12 @@ export function LuggagePanel({
 
   async function submitPersonal(event) {
     event.preventDefault();
-    await saveCurrentPersonal();
+    return saveCurrentPersonal();
   }
 
   async function saveCurrentShared() {
     const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: sharedEditorGuardId,
+      excludeId: sharedEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
     if (!canOpenEditor) return false;
@@ -14484,31 +14502,33 @@ export function LuggagePanel({
 
   async function submitShared(event) {
     event.preventDefault();
-    await saveCurrentShared();
+    return saveCurrentShared();
   }
 
   async function editPersonal(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
+    const requestId = ++openingEditor.current;
     const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: personalEditorGuardId,
+      excludeId: personalEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
-    if (!canOpenEditor) return;
+    if (!canOpenEditor || requestId !== openingEditor.current) return;
     if (editingPersonalId !== item.id && personalDirty) {
-      const canContinue = await requestActiveEditorGuardResolution();
+      const canContinue = await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds });
       if (!canContinue) return;
     } else if (editingPersonalId && editingPersonalId !== item.id) {
       await discardPersonalEdit();
     }
     const openContext = contextRef.current;
     const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "luggage_items", userId: currentUserId }) : { data: item };
-    if (contextRef.current !== openContext) {
+    if (contextRef.current !== openContext || requestId !== openingEditor.current) {
       if (useEditLocks && !lockResult.error) void releaseEditLock({ recordId: item.id, supabase, table: "luggage_items", userId: currentUserId });
       return;
     }
     const lockedItem = lockResult.data || item;
     if (lockResult.error || lockResult.lockedByAnotherUser) { setError("此物品正在由其他成員編輯，請稍後重試。"); return; }
     const nextForm = { title: lockedItem.title || "", category: lockedItem.category || "" };
+    restoredEditor.current = true;
     personalDraft.flushDraft();
     setPersonalSeed(nextForm);
     personalDraft.replaceForm(nextForm, { dirty: false });
@@ -14529,30 +14549,31 @@ export function LuggagePanel({
   }
 
   async function cancelPersonalEdit() {
-    if (personalDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id });
+    if (personalDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds });
     else await discardPersonalEdit();
   }
   async function cancelSharedEdit() {
-    if (sharedDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id });
+    if (sharedDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds });
     else await discardSharedEdit();
   }
 
   async function editShared(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
+    const requestId = ++openingEditor.current;
     const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: sharedEditorGuardId,
+      excludeId: sharedEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
-    if (!canOpenEditor) return;
+    if (!canOpenEditor || requestId !== openingEditor.current) return;
     if (editingSharedId !== item.id && sharedDirty) {
-      const canContinue = await requestActiveEditorGuardResolution();
+      const canContinue = await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds });
       if (!canContinue) return;
     } else if (editingSharedId && editingSharedId !== item.id) {
       await discardSharedEdit();
     }
     const openContext = contextRef.current;
     const lockResult = useEditLocks ? await acquireEditLock({ record: item, supabase, table: "shared_luggage_items", userId: currentUserId }) : { data: item };
-    if (contextRef.current !== openContext) {
+    if (contextRef.current !== openContext || requestId !== openingEditor.current) {
       if (useEditLocks && !lockResult.error) void releaseEditLock({ recordId: item.id, supabase, table: "shared_luggage_items", userId: currentUserId });
       return;
     }
@@ -14563,6 +14584,7 @@ export function LuggagePanel({
       category: lockedItem.category || "",
       assigned_to: lockedItem.assigned_to || "",
     };
+    restoredEditor.current = true;
     sharedDraft.flushDraft();
     setSharedSeed(nextForm);
     sharedDraft.replaceForm(nextForm, { dirty: false });
@@ -14584,7 +14606,7 @@ export function LuggagePanel({
 
   async function updatePersonalForm(nextForm) {
     const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: personalEditorGuardId,
+      excludeId: personalEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
     if (canOpenEditor) setPersonalForm(nextForm);
@@ -14592,23 +14614,32 @@ export function LuggagePanel({
 
   async function updateSharedForm(nextForm) {
     const canOpenEditor = await requestActiveEditorHandoff({
-      excludeId: sharedEditorGuardId,
+      excludeId: sharedEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
     if (canOpenEditor) setSharedForm(nextForm);
   }
 
   async function removeItem(kind, id, item) {
-    if (!canEdit) return;
-    if (editingPersonalId || editingSharedId || personalDirty || sharedDirty) {
-      if (await requestActiveEditorHandoff({ tripId: activeTrip?.id })) setError("編輯已結束，請確認最新內容後再刪除物品。");
-      return;
+    if (!canEdit || busyRef.current) return;
+    const isPersonal = kind === "personal";
+    const editingThis = isPersonal ? editingPersonalId === id : editingSharedId === id;
+    const otherDirty = isPersonal ? sharedDirty : personalDirty;
+    if (otherDirty) {
+      if (!await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return;
     }
-    if (!window.confirm(`刪除「${item.title}」？此操作無法復原。`)) return;
-    return performMutation(() => kind === "personal" ? onDeletePersonal(id, item) : onDeleteShared(id, item));
+    const hasDraft = editingThis && (isPersonal ? personalDirty : sharedDirty);
+    if (!window.confirm(`刪除「${item.title}」？${hasDraft ? "尚未儲存的修改也會捨棄。" : ""}此操作無法復原。`)) return;
+    const versioned = editingThis ? { ...item, updated_at: isPersonal ? personalUpdatedAt : sharedUpdatedAt } : item;
+    const result = await performMutation(() => isPersonal ? onDeletePersonal(id, versioned) : onDeleteShared(id, versioned));
+    if (result?.ok && editingThis) await (isPersonal ? discardPersonalEdit() : discardSharedEdit());
+    return result;
   }
   return <LuggageBoard key={`${activeTrip?.id}:${currentUserId}`} {...{
     activeTrip, activeTab, canEdit, currentUserId, isOwner, luggageItems, sharedLuggageItems, members,
+    personalQuickForm: quickPersonal.draft.form, sharedQuickForm: quickShared.draft.form,
+    setPersonalQuickForm: quickPersonal.draft.setForm, setSharedQuickForm: quickShared.draft.setForm,
+    submitPersonalQuick: quickPersonal.submit, submitSharedQuick: quickShared.submit,
     personalForm, sharedForm, editingPersonalId, editingSharedId, submitPersonal, submitShared,
     editPersonal, editShared, cancelPersonalEdit, busy, error, onTabChange,
   }} cancelSharedEdit={cancelSharedEdit} setPersonalForm={updatePersonalForm} setSharedForm={updateSharedForm}

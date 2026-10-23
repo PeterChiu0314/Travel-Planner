@@ -15,6 +15,8 @@ export function transitionSharedLuggage(item, patch, { userId, isOwner = false, 
     if (!item.assigned_to || item.assigned_to !== userId) throw new Error("luggage_forbidden");
     next.confirmed_by_owner = false;
   }
+  // Legacy clients may still send confirmation patches. The current UI only
+  // reads/writes packed_by_assignee; retain this guard for compatibility.
   if (Object.hasOwn(patch, "confirmed_by_owner") && next.confirmed_by_owner !== item.confirmed_by_owner) {
     if (!isOwner) throw new Error("luggage_forbidden");
     if (next.confirmed_by_owner && !next.packed_by_assignee) throw new Error("luggage_not_packed");
@@ -27,7 +29,7 @@ export function transitionSharedLuggage(item, patch, { userId, isOwner = false, 
 
 const errorMessages = {
   luggage_forbidden: "你沒有權限執行此行李操作。",
-  luggage_not_packed: "請先由負責成員確認打包，再由總召確認。",
+  luggage_not_packed: "請先由負責成員完成打包。",
   luggage_invalid_assignee: "請指派目前旅程中已核准的成員。",
   luggage_invalid_payload: "請檢查物品名稱與操作內容。",
   luggage_stale: "這件物品已被其他人更新，請依最新內容重試。",
