@@ -17,7 +17,7 @@ async function choose(page, label, value) {
 const canonical = async page => JSON.parse(await page.getByTestId("luggage-canonical-state").textContent());
 const discard = async page => page.getByRole("dialog", { name: "您有未儲存的變更", exact: true }).getByRole("button", { name: "不儲存", exact: true }).click();
 
-for (const kind of ["個人行李", "團隊公物"]) {
+for (const kind of ["個人行李"]) {
   test(`${kind}: Quick Add is one fixed row, remembers category and supports consecutive Enter additions`, async ({ page }) => {
     await load(page, "?empty=1");
     const form = quick(page, kind), name = form.getByLabel(`${kind}名稱`, { exact: true });
@@ -47,9 +47,8 @@ test("Quick Add category hints and choices stay isolated between tabs and trips"
   await page.goto("/demo/luggage");
   await choose(page, "個人行李分類", "衣物");
   await page.getByRole("tab", { name: "團隊公物", exact: true }).click();
-  await expect(page.getByRole("combobox", { name: "團隊公物分類", exact: true })).toHaveAttribute("placeholder", "未分類");
-  await expect(page.getByRole("combobox", { name: "團隊公物分類", exact: true })).toHaveValue("");
-  await choose(page, "團隊公物分類", "電子用品");
+  await expect(page.getByRole("combobox", { name: "團隊公物分類", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "指派公物負責人", exact: true })).toContainText("未指派");
   await page.getByRole("tab", { name: "個人行李", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "個人行李分類", exact: true })).toHaveValue("衣物");
   await page.getByRole("button", { name: "系統測試專用", exact: true }).click();
@@ -79,7 +78,7 @@ for (const width of [1440, 390]) {
   });
 }
 
-test("Quick Add and the inline draft stay independent, including creating while editing", async ({ page }) => {
+test("entering Quick Add saves the edited row without changing the separate new-item draft", async ({ page }) => {
   await load(page);
   const form = quick(page), name = form.getByLabel("個人行李名稱", { exact: true });
   await choose(page, "個人行李分類", "電子用品");
@@ -91,18 +90,18 @@ test("Quick Add and the inline draft stay independent, including creating while 
   await expect(editor.locator("..")).toHaveClass(/lb-private-row/);
   await expect(editor.getByLabel("編輯個人行李名稱", { exact: true })).toBeFocused();
   await editor.getByLabel("編輯個人行李名稱", { exact: true }).fill("護照及影本");
-  await choose(page, "編輯個人行李分類", "證件");
+  await editor.getByLabel("編輯個人行李備註", { exact: true }).fill("護照影本另放");
   await expect(name).toHaveValue("新增中的充電線");
   await expect(form.getByRole("combobox", { name: "個人行李分類", exact: true })).toHaveValue("電子用品");
   expect(await form.boundingBox()).toEqual(before);
+  await name.click();
+  await expect(editor).toHaveCount(0);
+  await expect(name).toBeFocused();
+  await expect(name).toHaveValue("新增中的充電線");
   await name.press("Enter");
   await expect(name).toHaveValue(""); await expect(name).toBeFocused();
-  await expect(editor.getByLabel("編輯個人行李名稱", { exact: true })).toHaveValue("護照及影本");
-  await editor.getByLabel("編輯個人行李名稱", { exact: true }).press("Enter");
-  await expect(editor).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "編輯：護照及影本", exact: true })).toBeFocused();
-  await expect(page.locator(".lb-private-row").filter({ hasText: "護照及影本" })).toContainText("證件");
-  expect((await canonical(page)).luggageItems.find(row => row.id === "own").category).toBe("證件");
+  await expect(page.getByRole("region", { name: "隨身必備", exact: true }).getByRole("button", { name: "編輯：護照及影本", exact: true })).toBeVisible();
+  expect((await canonical(page)).luggageItems.find(row => row.id === "own").notes).toBe("護照影本另放");
   await expect(page.getByRole("checkbox", { name: "打包：新增中的充電線", exact: true })).not.toBeChecked();
 });
 
@@ -112,7 +111,8 @@ test("only one inline editor opens across rows and columns without discarding Qu
   await page.getByRole("button", { name: "編輯：護照", exact: true }).click();
   await page.getByLabel("編輯個人行李名稱", { exact: true }).fill("未儲存護照");
   await page.getByRole("button", { name: "編輯：共享充電器", exact: true }).click();
-  await discard(page);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect((await canonical(page)).luggageItems.find(row => row.id === "own").title).toBe("未儲存護照");
   await expect(inline(page)).toHaveCount(1);
   await expect(page.getByLabel("編輯團隊公物名稱", { exact: true })).toHaveValue("共享充電器");
   await page.getByRole("button", { name: "編輯：團隊文件", exact: true }).click();
@@ -143,9 +143,9 @@ test("failed Quick Add retains name, category and focus; opening an editor does 
 test("desktop inline editing keeps the original row height and list position including the last item", async ({ page }) => {
   await page.goto("/demo/luggage");
   const list = page.locator(".lb-shared .lb-list-body"), form = quick(page, "團隊公物");
-  const head = await page.locator(".lb-team-head").boundingBox(), top = await form.boundingBox();
+  const top = await form.boundingBox();
   const item = page.getByRole("button", { name: "編輯：常備藥包", exact: true });
-  const row = await item.locator("..").boundingBox(), scroll = await list.evaluate(element => element.scrollTop);
+  const row = await item.locator("xpath=ancestor::article[1]").boundingBox(), scroll = await list.evaluate(element => element.scrollTop);
   await item.click();
   await expect(inline(page)).toBeVisible();
   expect((await inline(page).locator("..").boundingBox()).y).toBe(row.y);
@@ -159,19 +159,19 @@ test("desktop inline editing keeps the original row height and list position inc
   expect(reveal - bottomScroll).toBe(0);
   await expect(page.getByLabel("編輯團隊公物名稱", { exact: true })).toBeInViewport();
   expect(await form.boundingBox()).toEqual(top);
-  expect(await page.locator(".lb-team-head").boundingBox()).toEqual(head);
+  await expect(page.locator(".lb-team-head")).toHaveCount(0);
 });
 
-test("shared inline category and assignee edits regroup the same row and reset packing", async ({ page }) => {
+test("shared assignee edits preserve legacy category, regroup the same row and reset packing", async ({ page }) => {
   await load(page);
   await quick(page, "團隊公物").getByLabel("團隊公物名稱", { exact: true }).fill("待新增公物");
   await page.getByRole("button", { name: "編輯：團隊相機", exact: true }).click();
-  await choose(page, "編輯團隊公物分類", "電子用品");
+  await expect(page.getByRole("combobox", { name: "編輯團隊公物分類", exact: true })).toHaveCount(0);
   await choose(page, "編輯公物負責人", "旅伴 Dennis");
   await inline(page).getByLabel("編輯團隊公物名稱", { exact: true }).press("Enter");
   await expect(inline(page)).toHaveCount(0);
   const row = (await canonical(page)).sharedLuggageItems.find(item => item.id === "ready");
-  expect(row).toMatchObject({ category: "電子用品", assigned_to: "viewer", packed_by_assignee: false, confirmed_by_owner: false });
+  expect(row).toMatchObject({ category: "團隊裝備", assigned_to: "viewer", packed_by_assignee: false, confirmed_by_owner: false });
   await expect(page.getByRole("region", { name: "旅伴 Dennis的公物", exact: true }).getByRole("button", { name: "編輯：團隊相機", exact: true })).toBeVisible();
   await expect(quick(page, "團隊公物").getByLabel("團隊公物名稱", { exact: true })).toHaveValue("待新增公物");
 });
@@ -183,9 +183,8 @@ for (const width of [360, 820]) {
     await page.setViewportSize({ width, height: 900 }); await load(page, "?empty=1");
     await page.getByRole("tab", { name: "團隊公物", exact: true }).click();
     const form = quick(page, "團隊公物"), top = await form.boundingBox();
-    await expect(form.getByRole("combobox", { name: "團隊公物分類", exact: true })).toBeVisible();
+    await expect(form.getByRole("combobox", { name: "團隊公物分類", exact: true })).toHaveCount(0);
     await form.getByLabel("團隊公物名稱", { exact: true }).fill("共用野餐墊");
-    await choose(page, "團隊公物分類", "日常用品");
     await choose(page, "指派公物負責人", "總召 Peter（我）");
     await form.getByLabel("團隊公物名稱", { exact: true }).press("Enter");
     await page.getByRole("button", { name: "編輯：共用野餐墊", exact: true }).tap();

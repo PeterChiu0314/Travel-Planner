@@ -26,7 +26,8 @@ export async function preparePaymentChange(props, budgetId, paid, retain = false
   }
   if (!retain && !paid && payments.length) {
     const details = payments.map((row) => `• ${row.title}：NT$ ${money(row.twd_amount)}${row.payment_origin === "budget_toggle" ? "（由預算建立）" : "（人工或既有紀錄）"}`).join("\n");
-    if (!window.confirm(`取消已付款將刪除 ${payments.length} 筆實付及其分攤資料，無法復原。\n${details}\n人工修改的金額不會保留；日後重新勾選將依當時預算重建。\n若含收據，系統會保留全部資料並要求先處理附件。確定繼續？`)) return null;
+    if (!props.ask) throw new Error("缺少網站確認介面，未變更付款資料。");
+    if (!await props.ask({ title: "取消已付款？", message: `取消已付款將刪除 ${payments.length} 筆實付及其分攤資料，無法復原。\n${details}\n人工修改的金額不會保留；日後重新勾選將依當時預算重建。\n若含收據，系統會保留全部資料並要求先處理附件。確定繼續？`, confirmLabel: "取消付款", danger: true })) return null;
   }
   return { payment_action: paid ? "paid" : "unpaid", payment_expected: paymentSnapshot(payments), unified_planning: retain, payment_confirmed: !paid && payments.length > 0 };
 }

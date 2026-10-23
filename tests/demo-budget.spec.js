@@ -83,7 +83,8 @@ test.describe('shared Demo UI',()=>{
     await expect(page.getByRole('table',{name:'出發前預算對照',exact:true})).toContainText('預算外');
     await page.getByRole('tab',{name:'預算',exact:true}).click();
     const fuel=row(page,'租車加油');await fuel.getByRole('button',{name:'租車加油',exact:true}).click();
-    page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'刪除項目',exact:true}).click();
+    await page.getByRole('button',{name:'刪除項目',exact:true}).click();
+    await page.getByRole('dialog',{name:'刪除項目？',exact:true}).getByRole('button',{name:'刪除',exact:true}).click();
     await expect(page.locator('.bw-row')).toHaveCount(31);
     await page.getByRole('tab',{name:'對照',exact:true}).click();
     await expect(page.locator('.bw-comparison-summary')).toHaveText(before);

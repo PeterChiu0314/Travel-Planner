@@ -45,23 +45,20 @@ for (const width of [1440, 390, 360]) {
     await expect(editor.getByRole("button", { name: "刪除：護照", exact: true })).toHaveText("");
     const name = editor.getByLabel("編輯個人行李名稱", { exact: true });
     await name.fill("護照及影本");
-    await editor.getByRole("combobox", { name: "編輯個人行李分類", exact: true }).click();
-    await page.getByRole("option", { name: "證件", exact: true }).click();
+    await editor.getByLabel("編輯個人行李備註", { exact: true }).fill("確認效期");
     await expect(editor).toBeVisible();
     expect((await canonical(page)).luggageItems.find(item => item.id === "own").title).toBe("護照");
-    // Leaving a closed select via Escape cancels using the existing dirty guard.
-    await editor.getByRole("combobox", { name: "編輯個人行李分類", exact: true }).press("Escape");
+    await editor.getByLabel("編輯個人行李備註", { exact: true }).press("Escape");
     const guard = page.getByRole("dialog", { name: "您有未儲存的變更", exact: true });
     await expect(guard).toBeVisible();
     await guard.getByRole("button", { name: "不儲存", exact: true }).click();
     await row.getByRole("button", { name: "編輯：護照", exact: true }).click();
     await name.fill("護照及影本");
-    await editor.getByRole("combobox", { name: "編輯個人行李分類", exact: true }).fill("證件");
-    await editor.getByRole("combobox", { name: "編輯個人行李分類", exact: true }).press("Escape");
+    await editor.getByLabel("編輯個人行李備註", { exact: true }).fill("確認效期");
     await name.focus();
     await page.getByRole("heading", { name: /個人行李/ }).click();
     await expect(editor).toHaveCount(0);
-    expect((await canonical(page)).luggageItems.find(item => item.id === "own")).toMatchObject({ title: "護照及影本", category: "證件" });
+    expect((await canonical(page)).luggageItems.find(item => item.id === "own")).toMatchObject({ title: "護照及影本", notes: "確認效期" });
     expect((await row.boundingBox()).height).toBe(before.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
@@ -78,8 +75,8 @@ test("row autosave failure and IME Enter retain the draft, while icon deletion s
   await name.focus(); await page.getByRole("heading", { name: /個人行李/ }).click();
   await expect(page.getByRole("alert").first()).toBeVisible();
   await expect(name).toHaveValue("護照未完成輸入");
-  page.once("dialog", dialog => dialog.dismiss());
   await page.getByRole("button", { name: "刪除：護照", exact: true }).click();
+  await page.getByRole("dialog", { name: "刪除物品？" }).getByRole("button", { name: "取消", exact: true }).click();
   await expect(name).toHaveValue("護照未完成輸入");
   expect((await canonical(page)).luggageItems.some(item => item.id === "own")).toBe(true);
   await name.press("Enter");

@@ -1,3 +1,4 @@
+import { useSiteDialog } from "./components/SiteDialog.jsx";
 import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { WorkspaceActions, WorkspaceHeading, WorkspaceProgress, WorkspaceSearch, WorkspaceSummary, workspaceMoney } from "./components/workspace/TravelWorkspace.jsx";
@@ -505,11 +506,13 @@ const emptyTodoForm = {
 };
 
 const emptyLuggageForm = {
+  notes: "",
   title: "",
   category: "",
 };
 
 const emptySharedLuggageForm = {
+  notes: "",
   title: "",
   category: "",
   assigned_to: "",
@@ -5518,7 +5521,7 @@ export default function App() {
     return result;
   }
   function saveLuggageItem(payload, editingId, meta = {}) {
-    return persistLuggage("personal", "save", { title: payload.title.trim(), category: payload.category.trim() }, editingId, meta);
+    return persistLuggage("personal", "save", { title: payload.title.trim(), category: payload.category.trim(), notes: (payload.notes || "").trim() }, editingId, meta);
   }
   function toggleLuggageItem(item) {
     return persistLuggage("personal", "patch", { packed: !item.packed }, item.id, { tripId: item.trip_id, baseUpdatedAt: item.updated_at });
@@ -5527,7 +5530,7 @@ export default function App() {
     return persistLuggage("personal", "delete", {}, itemId, { tripId: item?.trip_id, baseUpdatedAt: item?.updated_at });
   }
   function saveSharedLuggageItem(payload, editingId, meta = {}) {
-    return persistLuggage("shared", "save", { title: payload.title.trim(), category: payload.category.trim(), assigned_to: payload.assigned_to || null }, editingId, meta);
+    return persistLuggage("shared", "save", { title: payload.title.trim(), category: payload.category.trim(), notes: (payload.notes || "").trim(), assigned_to: payload.assigned_to || null }, editingId, meta);
   }
   function updateSharedLuggageItem(itemId, patch, item) {
     return persistLuggage("shared", "patch", patch, itemId, { tripId: item?.trip_id, baseUpdatedAt: item?.updated_at });
@@ -8204,6 +8207,7 @@ function TripHeader({
 }
 
 function DemoApp({ initialSection }) {
+  const { ask: askDemo, dialog: demoDialog } = useSiteDialog();
   const [activeSection, setActiveSection] = useState(initialSection || "timeline");
   const [activeDay, setActiveDay] = useState(0);
   const [isDemoMembersDialogOpen, setIsDemoMembersDialogOpen] = useState(false);
@@ -8345,15 +8349,15 @@ function DemoApp({ initialSection }) {
 
   async function resetDemoBudget() {
     if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
-    if (!window.confirm("重設這個旅程的 Demo 預算、實付與附件？")) return;
+    if (!await askDemo({ title: "重設 Demo 預算？", message: "將重設這個旅程的 Demo 預算、實付與附件。", confirmLabel: "重設", danger: true })) return;
     demoAttachments.forEach((attachment) => { URL.revokeObjectURL(attachment.file_url); demoAttachmentUrls.current.delete(attachment.file_url); });
     setDemoBudgetByTrip((current) => ({ ...current, [demoActiveTrip.id]: createDemoBudgetState(demoActiveTrip, timelineItems) }));
     setDemoScenario("live");
   }
 
   function uploadDemoAttachment(targetType, targetId, file) {
-    if (!file || file.size > 10 * 1024 * 1024) { window.alert("附件大小需小於 10MB"); return; }
-    if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) { window.alert("請選擇 JPG、PNG、WebP 或 PDF。"); return; }
+    if (!file || file.size > 10 * 1024 * 1024) { void askDemo({ title: "無法上傳附件", message: "附件大小需小於 10MB", notice: true }); return; }
+    if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) { void askDemo({ title: "無法上傳附件", message: "請選擇 JPG、PNG、WebP 或 PDF。", notice: true }); return; }
     const url = URL.createObjectURL(file);
     demoAttachmentUrls.current.add(url);
     setFinanceField("attachments", (current) => [...current, { id: demoId("demo-attachment"), trip_id: demoActiveTrip.id,
@@ -8701,7 +8705,7 @@ function DemoApp({ initialSection }) {
     if (id && (!old || old.trip_id !== demoActiveTrip.id)) return { ok: false, error: new Error("找不到此旅程的物品。") };
     if (old && old.updated_at !== meta.baseUpdatedAt) return { ok: false, conflict: true };
     try {
-      const normalized = action === "save" ? { title: payload.title.trim(), category: payload.category.trim(), ...(scope === "shared" ? { assigned_to: payload.assigned_to || null } : {}) } : payload;
+      const normalized = action === "save" ? { title: payload.title.trim(), category: payload.category.trim(), notes: (payload.notes || "").trim(), ...(scope === "shared" ? { assigned_to: payload.assigned_to || null } : {}) } : payload;
       if (action === "save" && !normalized.title) return { ok: false };
       const next = action === "delete" ? null : { ...(scope === "shared" ? transitionSharedLuggage(old || { packed_by_assignee: false, confirmed_by_owner: false }, normalized, {
         userId: "demo-peter", isOwner: true, approvedMemberIds: demoMembers.filter(row => row.status === "approved").map(row => row.user_id),
@@ -9064,6 +9068,7 @@ function DemoApp({ initialSection }) {
         ))}
       </nav>
       <ActiveEditorGuardDialog />
+      {demoDialog}
       {isDemoMembersDialogOpen ? (
         <MembersInviteDialog
           canManageMembers={false}
@@ -14261,7 +14266,7 @@ function useLuggageQuickAdd({ shared, activeTrip, currentUserId, restoreDrafts, 
     isOpen: Boolean(activeTrip?.id && (restoreDrafts || disableDraftAutosave)), tripId: activeTrip?.id, userId: currentUserId });
   const guardId = `luggage-quick-${shared ? "shared" : "personal"}:${currentUserId}:${activeTrip?.id}`;
   function discard() {
-    const next = { ...draft.form, title: "" };
+    const next = { ...draft.form, title: "", notes: "" };
     setEmptyForm(next); draft.resetDraft(next);
     return true;
   }
@@ -14269,11 +14274,11 @@ function useLuggageQuickAdd({ shared, activeTrip, currentUserId, restoreDrafts, 
     if (!canEdit || !draft.form.title.trim()) return false;
     const result = await performMutation(() => onSave(draft.form, null, { tripId: activeTrip?.id }));
     if (!result?.ok) return false;
-    const next = { ...draft.form, title: "" };
+    const next = { ...draft.form, title: "", notes: "" };
     setEmptyForm(next); draft.resetDraft(next);
     return true;
   }
-  const dirty = Boolean(draft.form.title.trim());
+  const dirty = Boolean(draft.form.title.trim() || draft.form.notes?.trim());
   useActiveEditorGuard(guardId, useMemo(() => ({ isActive: dirty, isDirty: dirty, save, discard }), [dirty, draft.form, canEdit, onSave, performMutation]));
   async function submit(event) { event.preventDefault(); return save(); }
   return { draft, guardId, submit };
@@ -14299,6 +14304,7 @@ export function LuggagePanel({
   onTogglePersonal,
   onUpdateShared,
 }) {
+  const { ask, dialog } = useSiteDialog();
   // Defense in depth: cached/private and cross-trip rows never reach the board.
   const luggageItems = useMemo(() => incomingLuggageItems.filter((item) => item.owner_id === currentUserId && item.trip_id === activeTrip?.id && !item.shared_item_id && !item.is_shared_assigned_item), [incomingLuggageItems, currentUserId, activeTrip?.id]);
   const sharedLuggageItems = useMemo(() => incomingSharedLuggageItems.filter((item) => item.trip_id === activeTrip?.id), [incomingSharedLuggageItems, activeTrip?.id]);
@@ -14527,7 +14533,7 @@ export function LuggagePanel({
     }
     const lockedItem = lockResult.data || item;
     if (lockResult.error || lockResult.lockedByAnotherUser) { setError("此物品正在由其他成員編輯，請稍後重試。"); return; }
-    const nextForm = { title: lockedItem.title || "", category: lockedItem.category || "" };
+    const nextForm = { title: lockedItem.title || "", category: lockedItem.category || "", notes: lockedItem.notes || "" };
     restoredEditor.current = true;
     personalDraft.flushDraft();
     setPersonalSeed(nextForm);
@@ -14582,6 +14588,7 @@ export function LuggagePanel({
     const nextForm = {
       title: lockedItem.title || "",
       category: lockedItem.category || "",
+      notes: lockedItem.notes || "",
       assigned_to: lockedItem.assigned_to || "",
     };
     restoredEditor.current = true;
@@ -14629,13 +14636,13 @@ export function LuggagePanel({
       if (!await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return;
     }
     const hasDraft = editingThis && (isPersonal ? personalDirty : sharedDirty);
-    if (!window.confirm(`刪除「${item.title}」？${hasDraft ? "尚未儲存的修改也會捨棄。" : ""}此操作無法復原。`)) return;
+    if (!await ask({ title: "刪除物品？", message: `刪除「${item.title}」？${hasDraft ? "尚未儲存的修改也會捨棄。" : ""}此操作無法復原。`, confirmLabel: "刪除", danger: true })) return;
     const versioned = editingThis ? { ...item, updated_at: isPersonal ? personalUpdatedAt : sharedUpdatedAt } : item;
     const result = await performMutation(() => isPersonal ? onDeletePersonal(id, versioned) : onDeleteShared(id, versioned));
     if (result?.ok && editingThis) await (isPersonal ? discardPersonalEdit() : discardSharedEdit());
     return result;
   }
-  return <LuggageBoard key={`${activeTrip?.id}:${currentUserId}`} {...{
+  return <>{dialog}<LuggageBoard key={`${activeTrip?.id}:${currentUserId}`} {...{
     activeTrip, activeTab, canEdit, currentUserId, isOwner, luggageItems, sharedLuggageItems, members,
     personalQuickForm: quickPersonal.draft.form, sharedQuickForm: quickShared.draft.form,
     setPersonalQuickForm: quickPersonal.draft.setForm, setSharedQuickForm: quickShared.draft.setForm,
@@ -14645,8 +14652,14 @@ export function LuggagePanel({
   }} cancelSharedEdit={cancelSharedEdit} setPersonalForm={updatePersonalForm} setSharedForm={updateSharedForm}
     onTogglePersonal={(item) => performMutation(() => onTogglePersonal(item))}
     onUpdateShared={(id, patch, item) => performMutation(() => onUpdateShared(id, patch, item || sharedLuggageItems.find(row => row.id === id)))}
+    onMovePersonal={async (item, category) => {
+      if (!canEdit || item.category === category || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return false;
+      const latest = luggageItems.find(row => row.id === item.id);
+      if (!latest) return false;
+      return performMutation(() => onSavePersonal({ title: latest.title, notes: latest.notes || "", category }, latest.id, { baseUpdatedAt: latest.updated_at, tripId: activeTrip?.id }));
+    }}
     onDeletePersonal={(id, item) => removeItem("personal", id, item)}
-    onDeleteShared={(id, item) => removeItem("shared", id, item)} />;
+    onDeleteShared={(id, item) => removeItem("shared", id, item)} /></>;
 }
 
 function PackList({ canEdit, items, onAdd, onDelete, onToggle }) {

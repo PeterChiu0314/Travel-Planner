@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 // These regressions inspect saved data; the edit tab itself stays selected.
 async function inspectAfter(page, form, action) {
   await form.getByRole('button',{name:action,exact:true}).click();
+  if (action === '取消' && await page.getByRole('dialog',{name:'放棄尚未儲存的變更？',exact:true}).count()) await page.getByRole('dialog',{name:'放棄尚未儲存的變更？',exact:true}).getByRole('button',{name:'放棄變更',exact:true}).click();
   if (await form.count() === 0) await page.getByRole('tab',{name:'項目明細',exact:true}).click();
 }
 test.beforeEach(async ({ page }) => {
@@ -116,14 +117,12 @@ test("cancelled payment button drafts never create or remove actual expenses",as
   await page.getByRole("button",{name:"新增預算",exact:true}).click(); const form=editor(page);
   await form.getByLabel("項目",{exact:true}).fill("已購機票"); await form.getByLabel("總額",{exact:true}).fill("12000");
   await form.getByRole('button',{name:'付款狀態',exact:true}).click();
-  page.once('dialog',dialog=>dialog.accept());
   await inspectAfter(page, form, "取消");
   await expect(rowByTitle(page,'已購機票')).toHaveCount(0);
   await rowByTitle(page,'去程機票・桃園 → 關西').getByRole('button',{name:'去程機票・桃園 → 關西',exact:true}).click();
   await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
   await expect(form.getByRole('button',{name:'付款狀態',exact:true})).toHaveAttribute('aria-pressed','true');
   await form.getByRole('button',{name:'付款狀態',exact:true}).click();
-  page.once('dialog',dialog=>dialog.accept());
   await inspectAfter(page, form, "取消");
   await expect(page.getByRole('button',{name:'付款狀態',exact:true})).toHaveAttribute('aria-pressed','true');
   await showActual(page);
@@ -404,7 +403,7 @@ test('shared menus support keyboard, dismissal, custom categories and source sel
   await form.getByRole('combobox',{name:'付款人',exact:true}).click();
   await page.getByRole('option',{name:'Dennis',exact:true}).click();
   await expect(form.getByRole('combobox',{name:'付款人',exact:true})).toHaveText('Dennis');
-  page.once('dialog',d=>d.accept()); await inspectAfter(page, form, "取消");
+  await inspectAfter(page, form, "取消");
   await showActual(page);
   await page.getByRole('button',{name:'新增實付',exact:true}).click();
   const actual=page.getByRole('form',{name:'實付編輯'});

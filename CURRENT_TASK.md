@@ -2,13 +2,62 @@
 
 This file is the concise live project ledger. Keep it aligned with the real branch, deployed behavior, production migration state, and next requested phase.
 
+## Publication checkpoint — Demo notes and luggage follow-ups — 2026-10-23
+
+- User authorized push and migration, then explicitly chose push first / migration later after an access failure. Target remains codex/luggage-workspace-redesign; no main merge or PR. This publication includes the local row-exit autosave, site prompts, team simplification, collapsible/full-width lists, notes and category dragging, tests and design records below. Prior local/unpushed entries are historical checkpoints.
+- Expanded Demo notes to25 of40 private items and14 of20 shared items, preserving blank-note cases. All own assigned shared items also show the same canonical notes in personal projection. Reloaded the user's existing IAB preview to replace its old in-memory fixtures; actual screenshot confirms notes visible. No hosted seed/test data writes.
+- Final verification:124/124 budget/luggage/workspace Playwright passed(1.3m), full-chain offline PostgreSQL72 checks passed, Build/diff passed. Existing bundle-size advisory only. Temporary test results, Supabase temp state, expanded-layout scratch dirs and unrelated August QA screenshots excluded from publication.
+- Hosted migration NOT applied: linked Travel Planner ref lqvuqamzmchepgxkftcw; current connector/CLI account only lists drum-studio-staging. supabase migration list --linked returned403 insufficient privileges. User selected migration later. Re-authenticate to an account with Travel Planner access, inspect remote history, then apply20261023120000_luggage_notes.sql before deploying this frontend. Do not relink or mutate Drum Studio. Git publication does not confirm deployment/migration/hosted Realtime validation.
+
+## Previous local follow-up — Luggage notes and category drag — 2026-10-23
+
+- Approved preview implemented: desktop content uses35:65 name/notes columns, editable inline; personal inline category selector removed. Quick Add retains category/assignee and optional note popover, with no row expansion; successful adds clear title+notes, failed writes retain them. Notes searchable, max1000 characters, private notes stay private and shared notes project from the canonical shared item. Note-only edits retain packing.
+- Uses existing dnd-kit for private category transfer via a dedicated handle,8px activation threshold, highlighted group targets (including collapsed), no write on same category/outside drop. Only classification changes, not within-category ordering. Handle click offers a site menu for mobile/keyboard and empty target categories. Successful movement reveals destination and restores handle focus; notes/packing remain unchanged. No public-item-to-private copy.
+- Added nullable notes columns and extended invoker RPC in20261023120000_luggage_notes.sql; old clients omitting notes preserve it. Exact versions, locks, owner/member RLS and publication unchanged. Migration tested offline, NOT applied to hosted DB. Apply it before deploying this frontend; no hosted writes/deployment/merge/push in this task.
+- Verification:81/81 relevant Playwright passed(45.5s), final7 notes/drag cases passed again(6.6s) after drag-click suppression/accessibility polish. Offline full migration/PostgreSQL72 assertions passed. Build/diff passed, existing bundle advisory only. Earlier failures were obsolete category-selector assertions, a delayed-save assertion and a background-page focus fixture, corrected for the new flow.
+- Actual Demo desktop inline edit, note popover and390px screenshots inspected: luggage-notes-desktop.png, luggage-notes-add-popup.png, luggage-notes-mobile.png in the Codex visualization evidence directory. Zero runtime errors/overflow. Mobile notes appear below name in72px rows; controls remain44px. Physical touch drag/IME and hosted Realtime still need manual acceptance. Local/uncommitted/unpushed after cc9efc6; preview http://127.0.0.1:5174/demo/luggage.
+
+## Previous local follow-up — Full-width luggage list surfaces — 2026-10-23
+
+- CSS-only: list/category surfaces and separators span each column edge-to-edge, including the center divider; headings, filters and Quick Add retain inset controls. Item contents retain readable gutters; mobile/tablet use14/16px gutters.
+- Build/diff passed;9 existing fit/inline-edit geometry tests passed(5.7s) at1440/820/390/360px. Screenshot luggage-full-width-lists.png inspected; measured personal column/list left260px, top controls276px. No behavior/data changes. Local/unpushed; preview remains running.
+
+## Previous local follow-up — Collapsible personal luggage categories — 2026-10-23
+
+- Implemented the approved category-group preview: private items grouped under flat icon/chevron/count/completion headers; own shared gear is a distinct collapsible group. Removed category chips and per-row category labels; team column unchanged. Default groups expanded, collapse local to trip/user; search temporarily reveals matching groups without discarding collapse choices.
+- Preserves60:40 layout, direct packing, private categories in Quick Add/inline editor, same-row autosave and canonical team projection. Adding/moving items reveals the destination group. Collapsing an edited group saves first and remains open on failure. Fixed initial tracking that had prevented first-add reveal.
+- Relevant Playwright74/74 passed(43.0s), including1440/390px collapse/keyboard/search/add cases, failing saves, permissions, dialogs and collaboration simulations. Build/diff passed. Desktop/mobile screenshots inspected: luggage-category-desktop.png and luggage-category-mobile.png in the Codex visualization evidence directory.
+- No schema/sync/dependency/hosted changes, no commit/push/deployment. Last pushed cc9efc6; earlier local follow-ups remain included. Preview http://127.0.0.1:5174/demo/luggage. Physical device and real hosted collaboration remain manual.
+
+## Previous local follow-up — Site-styled budget/luggage prompts — 2026-10-23
+
+- Replaced native luggage deletion, budget/actual deletion and dirty-editor discard, Demo budget reset and attachment validation prompts with reusable site Dialog. Legacy payment-removal confirmation also uses the injected site prompt and fails closed if absent. Existing ActiveEditorGuard site dialog remains; browser beforeunload protection is intentionally retained.
+- Shared useSiteDialog uses the established modal/dialog shell, portal, safe cancel focus, Tab loop, Escape/backdrop cancellation and focus restoration. Confirmed actions retain existing mutation/version/permission handling; cancellation preserves drafts/data. No new dependency/schema/backend change.
+- Build passed (existing chunk-size advisory),109 existing focused tests plus5 new dialog/payment tests passed. Covered1440/390px, no native dialog events, cancel/deletion/discard, keyboard focus, Demo reset and invalid file notice. Diff check passed. Screenshot site-luggage-delete-dialog.png inspected in the Codex visualization evidence directory.
+- Added global no-alert/confirm/prompt design rule with beforeunload exception to DESIGN6.3. Other legacy pages' native prompts are outside this targeted migration. Local, uncommitted/unpushed after cc9efc6; no deployment or hosted writes.
+
+## Previous local follow-up — Team luggage simplification — 2026-10-23
+
+- Team checkboxes now precede item names, matching the private list; removed the redundant member-grouping/packing header. Own assignments have a subtle primary-color background, including editing state.
+- Shared Quick Add and row editor now omit category; edit retains the existing stored category. Assignee remains editable by every approved member, including viewer. Existing controller and repository SQL already permit this; no new schema/RPC/RLS changes. Only the assignee packs; changing content/assignment still resets packing and updates the canonical projection.
+- Preserves preceding row-exit autosave and 60:40 desktop/mobile layout. Build and diff check passed; focused Playwright66/66 passed(36.6s), including owner/editor/viewer assignment, desktop/mobile geometry, autosave, conflicts and simulated multi-member synchronization. Initial failures in the new tests were selector scoping mistakes, corrected before final verification.
+- Demo visual checked at1499px; evidence luggage-team-refinement.png in the Codex visualization directory. Local only, uncommitted/unpushed after cc9efc6. Hosted RLS/Realtime and physical devices not verified. Preview http://127.0.0.1:5174/demo/luggage.
+
+## Previous local follow-up — Luggage row-exit autosave — 2026-10-23
+
+- User requested auto-saving when clicking other controls/inputs or changing the edited item. A row now saves first, then continues the original click or restores keyboard focus. Switching rows/columns/mobile tabs or sidebar pages no longer asks Save/Discard for that inline row. Existing independent Quick Add drafts remain intact; their own navigation guards are unchanged.
+- Only the current row and its portal menu stay within the edit session. Delete confirmation and explicit Escape cancellation remain; backgrounding retains local drafts. Invalid/blank names, failed writes and stale-version conflicts retain the editor/input, block the requested action, and restore focus after controls are re-enabled. Enter, IME protection and single-submit behavior remain.
+- UI change is confined to LuggageBoard; no App-wide guard, data/RPC/schema/dependency change. Added delayed-save fixture support and7 interaction tests; updated old tests to the newly approved auto-save behavior. Actual Demo desktop/mobile check shows saved cash-wallet text followed by the next credit-card editor, with no dialog/runtime errors/overflow.
+- Final relevant Playwright62/62 passed(39.0s), Build and diff check passed (existing bundle-size advisory). Failure/conflict focus restoration was corrected and verified. An earlier parallel run had one pre-interaction fixture-load timeout; that case passed alone and in the final two-worker run. No full-suite rerun or hosted verification for this scoped change.
+- Same branch codex/luggage-workspace-redesign, last pushed cc9efc6; this follow-up remains local and uncommitted/unpushed. No merge/deployment/hosted writes. Preview http://127.0.0.1:5174/demo/luggage. Physical-device IME/keyboards and real Supabase multi-account collaboration remain manual checks.
+
 ## Publication checkpoint — 2026-10-23
 
 - User authorized committing and pushing the completed local follow-ups to codex/luggage-workspace-redesign. This publication contains the dense60-item Demo, Quick Add/row editing and drafts, shared field focus corrections, selected60:40/member-grouped layout, single-stage packing, search/progress polish, tests and updated design/QA records.
 - Validation before publication: relevant Playwright55/55 passed(25.6s), final Build and diff check passed. Earlier full-suite/focus audit results below remain historical; no application code changed for this publication step. Remote fetched and branch verified0/0 before committing.
 - Push target: origin/codex/luggage-workspace-redesign. No main merge, PR, deployment, hosted data write or migration. Temporary files, test-results, Supabase temp state and unrelated August QA captures are excluded. Prior uncommitted/unpushed descriptions below describe earlier checkpoints and do not override this publication.
 
-## Active follow-up — Luggage search/progress and same-row editor — 2026-10-23
+## Previous published follow-up — Luggage search/progress and same-row editor — 2026-10-23
 
 - User approved the refined preview exec-d416116a-3cd4-4500-b21d-5c3ff0ce3b73.png. Removed the standalone search row; icon follows personal已打包 and reveals an inline search field. Closing/Escape clears the hidden filter; mobile team exposes the same shared search. Progress shows counts only, with longer rounded4px tracks and retained screen-reader labels.
 - Editing now stays in the existing36px desktop row (28px fields): name/category/trash icon; shared gear also keeps assignee selection. No expanded form/captions/Save-Cancel toolbar. Enter saves, Escape uses the existing dirty-edit guard; leaving to blank space saves. Portal menus, Quick Add and other controls do not cause background auto-save. IME Enter, duplicate-submit, delete confirmation, failed writes, existing locks/versions/drafts and synchronized packing remain protected. Phone rows retain original touch height.

@@ -71,6 +71,11 @@ function Harness() {
       return { ok: true };
     } catch (error) { setNotice(luggageErrorMessage(error)); return { ok: false, error }; }
   }
+  async function save(scope, payload, id, meta) {
+    const latency = Math.min(500, Number(parameters.get("latency")) || 0);
+    if (latency > 0) await new Promise(resolve => setTimeout(resolve, latency));
+    return update(scope, "save", payload, id, meta);
+  }
   return <main style={{ padding: "12px", maxWidth: "1600px", margin: "auto" }}>
     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
       <label>測試使用者<select aria-label="測試使用者" value={actorId} onChange={(event) => setActorId(event.target.value)}>{actors.map((member) => <option value={member.user_id} key={member.user_id}>{member.display_name}</option>)}</select></label>
@@ -79,8 +84,8 @@ function Harness() {
     </div>
     {notice ? <p role="alert">{notice}</p> : null}
     <LuggagePanel key={actorId} activeTrip={{ ...trip }} activeTab={activeTab} onTabChange={setActiveTab} currentUserId={actorId} canEdit={actor.status === "approved"} isOwner={actorId === trip.owner_id} members={actors.map(member => ({ ...member }))} {...state} disableDraftAutosave={!parameters.has("drafts")} restoreDrafts={parameters.has("drafts")} useEditLocks={false}
-      onSavePersonal={(payload, id, meta) => update("personal", "save", payload, id, meta)}
-      onSaveShared={(payload, id, meta) => update("shared", "save", payload, id, meta)}
+      onSavePersonal={(payload, id, meta) => save("personal", payload, id, meta)}
+      onSaveShared={(payload, id, meta) => save("shared", payload, id, meta)}
       onDeletePersonal={(id) => update("personal", "delete", {}, id)} onDeleteShared={(id) => update("shared", "delete", {}, id)}
       onTogglePersonal={(item) => update("personal", "patch", { packed: !item.packed }, item.id)}
       onUpdateShared={(id, patch) => update("shared", "patch", patch, id)} />

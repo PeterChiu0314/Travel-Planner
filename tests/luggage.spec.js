@@ -13,7 +13,7 @@ const choose = async (page, label, value) => {
 };
 const state = async (page) => JSON.parse(await page.getByTestId("luggage-canonical-state").textContent());
 const actor = async (page, value) => page.getByLabel("測試使用者", { exact: true }).selectOption(value);
-const acceptDeletion = (page) => page.once("dialog", (dialog) => dialog.accept());
+const acceptDeletion = page => page.getByRole("dialog", { name: "刪除物品？", exact: true }).getByRole("button", { name: "刪除", exact: true }).click();
 async function load(page, query = "") {
   await page.goto(`${fixture}${query}`);
   await expect(page.getByRole("region", { name: "行李清單", exact: true })).toBeVisible();
@@ -41,7 +41,8 @@ test("personal quick add, edit, keyboard packing and delete work without a globa
   await personal(page).getByLabel("編輯個人行李名稱", { exact: true }).press("Enter");
   await expect(personal(page).getByRole("checkbox", { name: "打包：兩孔轉接頭", exact: true })).toBeChecked();
   await personal(page).getByRole("button", { name: "編輯：兩孔轉接頭", exact: true }).click();
-  acceptDeletion(page); await personal(page).getByRole("button", { name: "刪除：兩孔轉接頭", exact: true }).click();
+  await personal(page).getByRole("button", { name: "刪除：兩孔轉接頭", exact: true }).click();
+  await acceptDeletion(page);
   await expect(personal(page).getByText("兩孔轉接頭", { exact: true })).toHaveCount(0);
 });
 
@@ -76,7 +77,8 @@ test("approved viewer can manage shared gear, while unassigned items cannot be m
   await expect(sharedRow(page, "露營急救包").getByRole("checkbox", { name: /^成員已打包：/ })).toBeDisabled();
   await expect(sharedRow(page, "同行雨傘").getByRole("checkbox")).toHaveCount(1);
   await sharedRow(page, "同行雨傘").getByRole("button", { name: "編輯：同行雨傘", exact: true }).click();
-  acceptDeletion(page); await team(page).getByRole("button", { name: "刪除：同行雨傘", exact: true }).click();
+  await team(page).getByRole("button", { name: "刪除：同行雨傘", exact: true }).click();
+  await acceptDeletion(page);
   await expect(personal(page).getByText("同行雨傘", { exact: true })).toHaveCount(0);
 });
 
@@ -113,16 +115,15 @@ test("incoming snapshots do not overwrite drafts and a failed save keeps the edi
   await expect(personal(page).getByText("護照與影本", { exact: true })).toBeVisible();
 });
 
-test("discarding a dirty edit is deliberate and personal/shared fields never contaminate each other", async ({ page }) => {
+test("switching from personal to shared editing saves automatically without mixing fields", async ({ page }) => {
   await load(page);
   await personal(page).getByRole("button", { name: "編輯：護照", exact: true }).click();
-  await personal(page).getByLabel("編輯個人行李名稱", { exact: true }).fill("不應儲存的名稱");
+  await personal(page).getByLabel("編輯個人行李名稱", { exact: true }).fill("自動儲存的名稱");
   await sharedRow(page, "共享充電器").getByRole("button", { name: "編輯：共享充電器", exact: true }).click();
-  const guard = page.getByRole("dialog", { name: "您有未儲存的變更", exact: true });
-  await expect(guard).toBeVisible(); await guard.getByRole("button", { name: "不儲存", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(team(page).getByLabel("編輯團隊公物名稱", { exact: true })).toHaveValue("共享充電器");
-  await expect(personal(page).getByText("護照", { exact: true })).toBeVisible();
-  expect((await state(page)).luggageItems.find((item) => item.id === "own").title).toBe("護照");
+  await expect(personal(page).getByText("自動儲存的名稱", { exact: true })).toBeVisible();
+  expect((await state(page)).luggageItems.find((item) => item.id === "own").title).toBe("自動儲存的名稱");
 });
 
 test("Escape preserves dirty input until Save or Discard is explicitly chosen", async ({ page }) => {
@@ -231,7 +232,7 @@ test("category and assignee menus align to fields and exclude pending members", 
   await personal(page).getByLabel("個人行李名稱", { exact: true }).fill("頭燈");
   await category.fill("露營專用"); await category.press("Escape");
   await personal(page).getByRole("button", { name: "新增個人行李", exact: true }).click();
-  await expect(personal(page).getByRole("group", { name: "個人行李分類篩選", exact: true }).getByRole("button", { name: "露營專用", exact: true })).toBeVisible();
+  await expect(personal(page).getByRole("region", { name: "露營專用", exact: true }).locator(".lb-group-toggle")).toBeVisible();
   await team(page).getByLabel("團隊公物名稱", { exact: true }).focus();
   const trigger = team(page).getByRole("combobox", { name: "指派公物負責人", exact: true });
   await trigger.focus(); await trigger.press("ArrowDown");
@@ -304,31 +305,31 @@ test("the 60-item Demo stays flat and dense with independently reachable list en
   expect(density.visible).toBeGreaterThanOrEqual(10);
   expect(Math.max(...density.heights)).toBeLessThanOrEqual(40);
   expect(density.cards).toBe(false);
-  const headerY = (await page.locator(".lb-team-head").boundingBox()).y;
+  const headerY = (await page.locator(".lb-add-shared").boundingBox()).y;
   await team(page).locator(".lb-list-body").evaluate(element => { element.scrollTop = element.scrollHeight; });
   await team(page).getByRole("button", { name: "編輯：摺疊曬衣架", exact: true }).click();
   await expect(team(page).getByLabel("編輯團隊公物名稱", { exact: true })).toHaveValue("摺疊曬衣架");
-  expect((await page.locator(".lb-team-head").boundingBox()).y).toBe(headerY);
+  expect((await page.locator(".lb-add-shared").boundingBox()).y).toBe(headerY);
   await team(page).getByLabel("編輯團隊公物名稱", { exact: true }).press("Escape");
   await personal(page).locator(".lb-list-body").evaluate(element => { element.scrollTop = element.scrollHeight; });
   await personal(page).getByRole("button", { name: "編輯：旅行收納袋", exact: true }).click();
   await expect(personal(page).getByLabel("編輯個人行李名稱", { exact: true })).toHaveValue("旅行收納袋");
 });
 
-test("approved 6:4 workspace groups shared items by member and category chips filter personal projections", async ({ page }) => {
+test("approved 6:4 workspace groups shared items by member and personal category groups collapse independently", async ({ page }) => {
   await page.goto("/demo/luggage");
   const widths = await page.locator(".lb-layout").evaluate(element => [...element.children].map(child => child.getBoundingClientRect().width));
   expect(widths[0] / (widths[0] + widths[1])).toBeCloseTo(.6, 3);
   await expect(team(page).locator(".lb-member-group").first()).toHaveAccessibleName("Peter（我）的公物");
   await expect(team(page).locator(".lb-member-group").last()).toHaveAccessibleName("未指派的公物");
-  const categories = personal(page).getByRole("group", { name: "個人行李分類篩選", exact: true });
-  await categories.getByRole("button", { name: "電子用品", exact: true }).click();
-  await expect(personal(page).getByRole("checkbox", { name: "打包：護照", exact: true })).toHaveCount(0);
+  const group = personal(page).getByRole("region", { name: "證件", exact: true });
+  await group.getByRole("button", { name: /證件.*6項/ }).click();
+  await expect(personal(page).getByRole("checkbox", { name: "打包：護照", exact: true })).toBeHidden();
   await expect(personal(page).getByRole("checkbox", { name: "打包指派公物：延長線・萬用轉接頭", exact: true })).toBeVisible();
   await expect(personal(page).getByRole("progressbar")).toHaveAttribute("aria-valuemax", "44");
   await expect(team(page).locator(".shared-luggage-row")).toHaveCount(20);
   await expect(page.getByRole("checkbox", { name: /^總召確認：/ })).toHaveCount(0);
-  await categories.getByRole("button", { name: "全部分類", exact: true }).click();
+  await group.getByRole("button", { name: /證件.*6項/ }).click();
   await expect(personal(page).getByRole("checkbox", { name: "打包：護照", exact: true })).toBeVisible();
 });
 
@@ -336,14 +337,18 @@ test("deleting from an editor confirms unsaved changes and retains the draft on 
   await load(page);
   await personal(page).getByRole("button", { name: "編輯：護照", exact: true }).click();
   await personal(page).getByLabel("編輯個人行李名稱", { exact: true }).fill("尚未儲存的名稱");
-  page.once("dialog", async dialog => { expect(dialog.message()).toContain("尚未儲存的修改也會捨棄"); await dialog.dismiss(); });
+  // Cancellation leaves the draft intact.
   await personal(page).getByRole("button", { name: "刪除：護照", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "刪除物品？" })).toContainText("尚未儲存的修改也會捨棄");
+  await page.getByRole("dialog", { name: "刪除物品？" }).getByRole("button", { name: "取消", exact: true }).click();
   await expect(personal(page).getByLabel("編輯個人行李名稱", { exact: true })).toHaveValue("尚未儲存的名稱");
   await page.getByRole("button", { name: "下一次操作失敗", exact: true }).click();
-  acceptDeletion(page); await personal(page).getByRole("button", { name: "刪除：護照", exact: true }).click();
+  await personal(page).getByRole("button", { name: "刪除：護照", exact: true }).click();
+  await acceptDeletion(page);
   await expect(personal(page).getByLabel("編輯個人行李名稱", { exact: true })).toHaveValue("尚未儲存的名稱");
   expect((await state(page)).luggageItems.some(item => item.id === "own")).toBe(true);
-  acceptDeletion(page); await personal(page).getByRole("button", { name: "刪除：護照", exact: true }).click();
+  await personal(page).getByRole("button", { name: "刪除：護照", exact: true }).click();
+  await acceptDeletion(page);
   await expect(personal(page).getByLabel("個人行李名稱", { exact: true })).toHaveValue("");
   expect((await state(page)).luggageItems.some(item => item.id === "own")).toBe(false);
   expect((await state(page)).luggageItems.some(item => item.owner_id === "packer")).toBe(true);

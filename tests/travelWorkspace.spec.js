@@ -114,12 +114,12 @@ test("luggage CRUD and assignee packing synchronize without a second confirmatio
   await page.getByRole("checkbox", { name: "打包：旅行轉接頭", exact: true }).check();
   await expect(page.getByRole("progressbar", { name: "我的打包進度", exact: true })).toHaveAttribute("aria-valuenow", String(initialPacked + 1));
   await personal.getByRole("button", { name: "編輯：旅行轉接頭", exact: true }).click();
-  await expect(personal.getByRole("combobox", { name: "編輯個人行李分類", exact: true })).toHaveValue("電子用品");
+  await expect(personal.getByRole("combobox", { name: "編輯個人行李分類", exact: true })).toHaveCount(0);
   await personal.getByLabel("編輯個人行李名稱", { exact: true }).fill("兩孔轉接頭");
   await personal.getByLabel("編輯個人行李名稱", { exact: true }).press("Enter");
   await personal.getByRole("button", { name: "編輯：兩孔轉接頭", exact: true }).click();
-  page.once("dialog", dialog => dialog.accept());
   await personal.getByRole("button", { name: "刪除：兩孔轉接頭", exact: true }).click();
+  await page.getByRole("dialog", { name: "刪除物品？" }).getByRole("button", { name: "刪除", exact: true }).click();
   await team.getByLabel("團隊公物名稱", { exact: true }).fill("雨備地墊");
   await team.getByRole("combobox", {name: "指派公物負責人",exact:true}).click();
   await page.getByRole("option", {name: "Peter（我）",exact:true}).click();
@@ -135,8 +135,8 @@ test("luggage CRUD and assignee packing synchronize without a second confirmatio
   await page.getByRole("dialog", { name: "您有未儲存的變更", exact: true }).getByRole("button", { name: "不儲存", exact: true }).click();
   await expect(shared).toBeVisible();
   await shared.getByRole("button", { name: "編輯：雨備地墊", exact: true }).click();
-  page.once("dialog", dialog => dialog.accept());
   await team.getByRole("button", { name: "刪除：雨備地墊", exact: true }).click();
+  await page.getByRole("dialog", { name: "刪除物品？" }).getByRole("button", { name: "刪除", exact: true }).click();
   await expect(shared).toHaveCount(0);
 });
 
@@ -182,9 +182,12 @@ for (const entry of [
     await field.fill(updated);
     await navigate(page, "預算管理");
     const guard = page.getByRole("dialog", { name: "您有未儲存的變更" });
-    await expect(guard).toBeVisible();
-    await expect(field).toHaveValue(updated);
-    await guard.getByRole("button", { name: "儲存", exact: true }).click();
+    if (entry.route === "luggage") await expect(guard).toHaveCount(0);
+    else {
+      await expect(guard).toBeVisible();
+      await expect(field).toHaveValue(updated);
+      await guard.getByRole("button", { name: "儲存", exact: true }).click();
+    }
     await expect(page.locator(".bw-row")).toHaveCount(32);
     await navigate(page, entry.name);
     await expect(page.getByRole("button", { name: `編輯：${updated}`, exact: true })).toBeVisible();

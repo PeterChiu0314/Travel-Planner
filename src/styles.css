@@ -7948,3 +7948,8 @@ textarea {
     color: var(--color-primary);
   }
 }
+
+/* Site prompts share the existing dialog shell and action hierarchy. */
+.site-prompt { background: var(--paper); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.site-prompt p { white-space: pre-line; overflow-wrap: anywhere; }
+.site-prompt .site-prompt-danger { background: var(--color-error); }

@@ -1,3 +1,4 @@
+import { useSiteDialog } from "../SiteDialog.jsx";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { BedDouble, Car, ChartColumn, ChevronDown, ChevronRight, Circle, CircleCheck, List, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
@@ -56,7 +57,7 @@ function useWorkspaceEditor(kind, props) {
 
   async function close(force = false) {
     if (savingRef.current) return false;
-    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return false;
+    if (!force && hasUnsavedChanges && !await props.ask({ title: "放棄尚未儲存的變更？", message: "尚未儲存的內容將會捨棄。", confirmLabel: "放棄變更", danger: true })) return false;
     if (useEditLocks && context?.id) await services.release(table, context.id, currentUserId);
     resetDraft(empty);
     setContext(null);
@@ -319,7 +320,8 @@ function RecordDetail({ record, actual, participants, members, links, items, pay
 }
 
 export default function BudgetWorkspace(incoming) {
-  const props = { disableDraftAutosave: false, restoreDrafts: true, useEditLocks: true, ...incoming,
+  const { ask, dialog } = useSiteDialog();
+  const props = { ask, disableDraftAutosave: false, restoreDrafts: true, useEditLocks: true, ...incoming,
     members: incoming.members.filter((row) => row.status === "approved") };
   const { activeTrip, actualParticipants, itineraryBudgetLinks: links, items, members, canEdit, services, baseline } = props;
   const [stage, setStage] = useState(() => props.demoStage || budgetStage(activeTrip));
@@ -463,7 +465,7 @@ export default function BudgetWorkspace(incoming) {
   }
   async function remove() {
     if (!(await services.handoff({ tripId: activeTrip.id }))) return;
-    if (!window.confirm(`刪除「${selectedRecord.title}」？`)) return;
+    if (!await ask({ title: "刪除項目？", message: `刪除「${selectedRecord.title}」？此操作無法復原。`, confirmLabel: "刪除", danger: true })) return;
     const result = await (selected.kind === "actual" ? props.onDeleteActual : props.onDelete)(selectedRecord.id, { baseUpdatedAt: selectedRecord.updated_at, tripId: activeTrip.id });
     if (result?.ok === false) return;
     setSelected(null);
@@ -486,7 +488,7 @@ export default function BudgetWorkspace(incoming) {
   const baselineTotal = baseline?.payload?.items?.reduce((sum, row) => sum + Number(row.twd_amount), 0) || 0;
   const actualTotal = actualExpenses.reduce((sum, row) => sum + Number(row.twd_amount), 0);
   const ratesControl = { tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates: () => void refreshRates() };
-  return <section className="budget-panel budget-workspace" aria-label="預算工作區" data-stage={stage}>
+  return <section className="budget-panel budget-workspace" aria-label="預算工作區" data-stage={stage}>{dialog}
     <div className="bw-main"><div className="bw-toolbar"><h3>預算</h3>{!planning ? <div className="bw-tabs" role="tablist" aria-label="費用資料檢視">
       {[['budget', '預算'], ...(!planning ? [['actual', '實付']] : []), ...(stage === "settled" ? [['compare', '對照']] : [])].map(([key, label]) => <button role="tab" key={key} type="button" aria-selected={view === key} onClick={() => void changeView(key)}>{label}</button>)}
     </div> : null}

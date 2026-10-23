@@ -31,11 +31,11 @@ try {
       await db.query("insert into shared_luggage_items(id,trip_id,title,assigned_to,packed_by_assignee,confirmed_by_owner) values($1,$2,'Historic shared',$3,true,true)",[legacySharedId,historicTrip,historicOwner]);
       await db.query("insert into luggage_items(id,trip_id,owner_id,title,packed,is_shared_assigned_item,shared_item_id) values($1,$2,$3,'Historic mirror',false,true,$4)",[legacyPrivateId,historicTrip,historicOwner,legacySharedId]);
       await db.query("insert into pack_items(id,trip_id,title,created_by,done) values($1,$2,'Historic pack',$3,true)",[legacyPackId,historicTrip,historicOwner]);
-      legacySnapshot=(await db.query("select to_jsonb(t.*) r from luggage_items t where id=$1 union all select to_jsonb(t.*) r from shared_luggage_items t where id=$2 union all select to_jsonb(t.*) r from pack_items t where id=$3",[legacyPrivateId,legacySharedId,legacyPackId])).rows;
+      legacySnapshot=(await db.query("select (to_jsonb(t.*) - 'notes') r from luggage_items t where id=$1 union all select (to_jsonb(t.*) - 'notes') r from shared_luggage_items t where id=$2 union all select to_jsonb(t.*) r from pack_items t where id=$3",[legacyPrivateId,legacySharedId,legacyPackId])).rows;
     }
     await db.exec((await fs.readFile(new URL(file, dir), "utf8")).replace(/create extension if not exists pgcrypto;/ig, ""));
   }
-  check((await db.query("select to_jsonb(t.*) r from luggage_items t where id=$1 union all select to_jsonb(t.*) r from shared_luggage_items t where id=$2 union all select to_jsonb(t.*) r from pack_items t where id=$3",[legacyPrivateId,legacySharedId,legacyPackId])).rows, legacySnapshot);
+  check((await db.query("select (to_jsonb(t.*) - 'notes') r from luggage_items t where id=$1 union all select (to_jsonb(t.*) - 'notes') r from shared_luggage_items t where id=$2 union all select to_jsonb(t.*) r from pack_items t where id=$3",[legacyPrivateId,legacySharedId,legacyPackId])).rows, legacySnapshot);
   const owner = randomUUID(), editor = randomUUID(), viewer = randomUUID(), pending = randomUUID(), outsider = randomUUID();
   const trip = randomUUID(), otherTrip = randomUUID();
   const q = async (sql, args = []) => (await db.query(sql, args)).rows;
@@ -57,6 +57,12 @@ try {
   await rejects(()=>mutate("personal","patch",{packed:false},{...own,updated_at:"2000-01-01T00:00:00Z"}),"luggage_stale");
   own = await mutate("personal","save",{title:"護照正本",category:"證件"},own);
   check(own.packed,true);
+  own = await mutate("personal","save",{title:own.title,category:"證件",notes:"私人備註"},own);
+  check(own.notes,"私人備註");
+  own = await mutate("personal","save",{title:own.title,category:"電子用品"},own);
+  check([own.notes,own.category,own.packed],["私人備註","電子用品",true]);
+  await rejects(()=>mutate("personal","save",{title:own.title,notes:"x".repeat(1001)},own),"luggage_invalid_payload");
+  await rejects(()=>mutate("personal","save",{title:own.title,notes:42},own),"luggage_invalid_payload");
   // Even trip owner cannot query or mutate someone else's personal items.
   await login(owner); check(await row(own.id,"personal"),undefined);
   await rejects(()=>mutate("personal","delete",{},own),"luggage_not_found");
@@ -176,5 +182,13 @@ try {
   check((await q("select prosecdef from pg_proc where proname='mutate_luggage_item'"))[0].prosecdef,false);
   check((await q("select count(*)::int n from pg_class where relname in ('luggage_items','shared_luggage_items') and relrowsecurity and relreplident='f'"))[0].n,2);
   check((await q("select count(*)::int n from pg_publication_tables where pubname='supabase_realtime' and tablename in ('luggage_items','shared_luggage_items')"))[0].n,2);
+  await login(editor);
+  let noteGear = await mutate("shared","save",{title:"備註測試",assigned_to:editor,notes:"公開備註"});
+  noteGear = await mutate("shared","patch",{packed_by_assignee:true},noteGear);
+  await login(viewer);
+  noteGear = await mutate("shared","save",{title:noteGear.title,assigned_to:editor,notes:"更新說明"},noteGear);
+  check([noteGear.notes,noteGear.packed_by_assignee],["更新說明",true]);
+  await login(pending); await rejects(()=>mutate("shared","save",{title:noteGear.title,notes:"不應寫入"},noteGear),"luggage_forbidden");
+  await login(outsider); check(await row(noteGear.id),undefined);
   console.log(`Luggage offline PostgreSQL: ${checks} assertions passed (full migration chain, RLS, two-role stale writes, private isolation, dual confirmation, locks, legacy compatibility).`);
 } finally { await db.close(); }
