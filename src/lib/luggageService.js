@@ -60,3 +60,61 @@ export async function mutateLuggageItem({ client, tripId, scope, action, itemId 
     return { ok: false, data: null, error, conflict: Boolean(error?.message?.includes("luggage_stale")) };
   }
 }
+
+export async function assignLuggageItem({ client, tripId, scope, item, assignedTo }) {
+  if (!tripId || !["personal", "shared"].includes(scope) || !item?.id || !item.updated_at) {
+    return { ok: false, error: new Error("luggage_invalid_payload") };
+  }
+  try {
+    const { data, error } = await client.rpc("assign_luggage_item", {
+      p_trip_id: tripId, p_scope: scope, p_item_id: item.id,
+      p_expected_updated_at: item.updated_at, p_assigned_to: assignedTo || null,
+    });
+    return { ok: !error, data, error, conflict: Boolean(error?.message?.includes("luggage_stale")) };
+  } catch (error) { return { ok: false, error, conflict: Boolean(error?.message?.includes("luggage_stale")) }; }
+}
+
+/** Local-only equivalent of the atomic RPC for Demo and isolated UI fixtures. */
+export function assignLuggageSnapshot(snapshot, { scope, item, assignedTo, tripId, userId, approvedMemberIds, now = Date.now() }) {
+  if (!["personal", "shared"].includes(scope) || !item?.id || !item.updated_at) throw new Error("luggage_invalid_payload");
+  if (!approvedMemberIds.includes(userId)) throw new Error("luggage_forbidden");
+  if (assignedTo && !approvedMemberIds.includes(assignedTo)) throw new Error("luggage_invalid_assignee");
+  const source = (scope === "personal" ? snapshot.luggageItems : snapshot.sharedLuggageItems).find(row => row.id === item.id && row.trip_id === tripId);
+  if (!source || scope === "personal" && source.owner_id !== userId) throw new Error("luggage_not_found");
+  if (source.updated_at !== item.updated_at) throw new Error("luggage_stale");
+  if (source.locked_by && source.locked_by !== userId && Date.parse(source.locked_at) > now - 420000) throw new Error("luggage_locked");
+  if (scope === "personal" && (source.shared_item_id || source.is_shared_assigned_item || snapshot.sharedLuggageItems.some(row => row.id === source.id))) throw new Error("luggage_invalid_payload");
+  if (scope === "shared" && (source.assigned_to || "") === (assignedTo || "")) return snapshot;
+  const next = scope === "personal" ? {
+    id: source.id, trip_id: tripId, title: source.title, category: source.category, notes: source.notes || null,
+    assigned_to: assignedTo || null, packed_by_assignee: false, confirmed_by_owner: false,
+    created_at: new Date(now).toISOString(),
+  } : { ...transitionSharedLuggage(source, { assigned_to: assignedTo || null }, { userId, approvedMemberIds }), locked_by: null, locked_at: null };
+  next.updated_at = new Date(Math.max(now, Date.parse(source.updated_at) + 1)).toISOString();
+  return { ...snapshot, luggageItems: scope === "personal" ? snapshot.luggageItems.filter(row => row.id !== source.id) : snapshot.luggageItems,
+    sharedLuggageItems: scope === "personal" ? [...snapshot.sharedLuggageItems, next] : snapshot.sharedLuggageItems.map(row => row.id === source.id ? next : row) };
+}
+
+export async function privatizeLuggageItem({ client, tripId, item, category }) {
+  if (!tripId || !item?.id || !item.updated_at) return { ok: false, error: new Error("luggage_invalid_payload") };
+  try {
+    const { data, error } = await client.rpc("privatize_luggage_item", {
+      p_trip_id: tripId, p_item_id: item.id, p_expected_updated_at: item.updated_at, p_category: category || "",
+    });
+    return { ok: !error, data, error, conflict: Boolean(error?.message?.includes("luggage_stale")) };
+  } catch (error) { return { ok: false, error, conflict: Boolean(error?.message?.includes("luggage_stale")) }; }
+}
+
+export function privatizeLuggageSnapshot(snapshot, { item, category, tripId, userId, approvedMemberIds, now = Date.now() }) {
+  if (!item?.id || !item.updated_at) throw new Error("luggage_invalid_payload");
+  if (!approvedMemberIds.includes(userId)) throw new Error("luggage_forbidden");
+  const source = snapshot.sharedLuggageItems.find(row => row.id === item.id && row.trip_id === tripId);
+  if (!source) throw new Error("luggage_not_found");
+  if (source.updated_at !== item.updated_at) throw new Error("luggage_stale");
+  if (source.locked_by && source.locked_by !== userId && Date.parse(source.locked_at) > now - 420000) throw new Error("luggage_locked");
+  if (snapshot.luggageItems.some(row => row.id === source.id)) throw new Error("luggage_invalid_payload");
+  const target = { id: source.id, trip_id: tripId, owner_id: userId, title: source.title, category: (category || "").trim(),
+    notes: source.notes || null, packed: false, shared_item_id: null, is_shared_assigned_item: false,
+    created_at: new Date(now).toISOString(), updated_at: new Date(Math.max(now, Date.parse(source.updated_at) + 1)).toISOString() };
+  return { ...snapshot, luggageItems: [...snapshot.luggageItems, target], sharedLuggageItems: snapshot.sharedLuggageItems.filter(row => row.id !== source.id) };
+}

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { keyboardAssign } from "./helpers/luggageDrag.js";
 
 // Browser plugin unavailable; repository Playwright uses the shared controller
 // and isolated persistence adapter, never hosted data.
@@ -88,18 +89,18 @@ test("mobile team retains the same global search and same-height assignee editin
   await page.getByRole("button", { name: "展開行李搜尋", exact: true }).click();
   const search = page.getByRole("searchbox", { name: "搜尋行李", exact: true });
   await search.fill("共享充電器");
-  await page.getByRole("tab", { name: "團隊公物", exact: true }).click();
+  await page.getByRole("tab", { name: "共用物品", exact: true }).click();
   await expect(search).toHaveValue("共享充電器");
   await expect(search).toBeFocused();
   await search.press("Escape");
-  const row = page.locator(".shared-luggage-row").filter({ has: page.getByRole("button", { name: "編輯：共享充電器", exact: true }).or(page.getByRole("form", { name: "編輯團隊公物：共享充電器", exact: true })) });
+  const row = page.locator(".shared-luggage-row").filter({ has: page.getByRole("button", { name: "編輯：共享充電器", exact: true }).or(page.getByRole("form", { name: "編輯共用物品：共享充電器", exact: true })) });
   const before = await row.boundingBox();
   await row.getByRole("button", { name: "編輯：共享充電器", exact: true }).click();
   expect((await row.boundingBox()).height).toBe(before.height);
   const editor = row.getByRole("form");
-  await editor.getByRole("combobox", { name: "編輯公物負責人", exact: true }).click();
-  await page.getByRole("option", { name: "總召 Peter（我）", exact: true }).click();
-  await editor.getByLabel("編輯團隊公物名稱", { exact: true }).press("Enter");
+  await expect(editor.getByRole("combobox")).toHaveCount(0);
+  await editor.getByLabel("編輯共用物品名稱", { exact: true }).press("Escape");
+  await keyboardAssign(page, "共享充電器", "owner");
   await expect(row.getByRole("checkbox", { name: /^成員已打包/ })).toBeEnabled();
   expect((await canonical(page)).sharedLuggageItems.find(item => item.id === "shared").assigned_to).toBe("owner");
 });

@@ -32,7 +32,7 @@ test("notes edit directly, autosave on leaving, survive failure and synchronize 
   await notes.fill("確認效期");
   await page.getByRole("button", { name: "編輯：團隊文件", exact: true }).click();
   await expect.poll(async () => (await state(page)).luggageItems.find(item => item.id === "own").notes).toBe("確認效期");
-  const teamNotes = page.getByLabel("編輯團隊公物備註", { exact: true });
+  const teamNotes = page.getByLabel("編輯共用物品備註", { exact: true });
   await teamNotes.fill("門票與預約單"); await teamNotes.press("Enter");
   await expect(page.locator(".shared-assigned").filter({ hasText: "團隊文件" })).toContainText("門票與預約單");
 });
@@ -70,7 +70,7 @@ test("phone and keyboard users can move via the handle menu, preserving notes an
 test("note-only failure retains draft and a retry does not change shared packing", async ({ page }) => {
   await page.goto(`${fixture}?actor=packer&latency=100`);
   await page.getByRole("button", { name: "編輯備註：團隊相機", exact: true }).click();
-  const notes = page.getByLabel("編輯團隊公物備註", { exact: true });
+  const notes = page.getByLabel("編輯共用物品備註", { exact: true });
   await notes.fill("鏡頭另外包好");
   await page.getByRole("button", { name: "下一次操作失敗", exact: true }).click();
   await notes.press("Enter");

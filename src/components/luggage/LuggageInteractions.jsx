@@ -43,8 +43,8 @@ export function QuickNote({ value, onChange, disabled, kind }) {
     </div>, document.body) : null}</>;
 }
 
-export function DraggableRow({ item, disabled, draggingDisabled, categories, onMove, rowRef, className, children }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({ id: item.id, data: { item }, disabled: disabled || draggingDisabled });
+export function DraggableRow({ scope = "personal", item, disabled, draggingDisabled, categories = [], onMove, rowRef, className, children }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({ id: `${scope}:${item.id}`, data: { item, scope }, disabled: disabled || draggingDisabled });
   const [open, setOpen] = useState(false), trigger = useRef(null), popup = useRef(null), draggedAt = useRef(0), id = useId();
   const position = useAnchoredPopup(open, trigger, popup, () => setOpen(false));
   useLayoutEffect(() => {
@@ -53,7 +53,7 @@ export function DraggableRow({ item, disabled, draggingDisabled, categories, onM
   }, [isDragging]);
   useEffect(() => { if (open) popup.current?.querySelector("button")?.focus({ preventScroll: true }); }, [open]);
   return <article ref={node => { setNodeRef(node); rowRef(node); }} className={`${className} lb-draggable-row${isDragging ? " is-dragging" : ""}`}>
-    <button {...attributes} {...listeners} ref={node => { setActivatorNodeRef(node); trigger.current = node; }} type="button" className="lb-drag-handle" aria-disabled={disabled} disabled={disabled} aria-label={`移動分類：${item.title}`} title="拖曳至其他分類，或點擊選擇分類" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => { if (Date.now() - draggedAt.current > 250) setOpen(!open); }}><GripVertical size={15} /></button>
+    <button {...attributes} {...listeners} ref={node => { setActivatorNodeRef(node); trigger.current = node; }} type="button" className="lb-drag-handle" aria-disabled={disabled} disabled={disabled} aria-label={`${scope === "shared" ? "拖曳指派共用物品" : "移動分類"}：${item.title}`} title={scope === "shared" ? "拖曳至成員區指派；空白鍵開始，方向鍵選目標，空白鍵放置" : "拖曳至分類，或拖至成員區轉為共用物品；空白鍵拖曳，點擊選分類"} aria-expanded={scope === "personal" ? open : undefined} aria-controls={open ? id : undefined} onClick={() => { if (scope === "personal" && Date.now() - draggedAt.current > 250) setOpen(!open); }}><GripVertical size={15} /></button>
     {children}
     {open ? createPortal(<div ref={popup} id={id} style={position} className="lb-note-popup lb-move-popup" role="dialog" aria-label={`移動分類：${item.title}`} onKeyDown={event => { if (event.key === "Escape" && !popup.current?.querySelector('[aria-expanded="true"]')) { event.preventDefault(); setOpen(false); trigger.current?.focus(); } }}>
       <strong>移至分類</strong><MenuSelect label={`移動${item.title}至分類`} value={item.category || ""} options={[{ value: "", label: "未分類" }, ...categories]} onValueChange={async category => { if (category === (item.category || "") || (await onMove(item, category))?.ok) { setOpen(false); trigger.current?.focus({ preventScroll: true }); } }} />

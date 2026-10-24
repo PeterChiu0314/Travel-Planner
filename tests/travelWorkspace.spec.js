@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { dragLuggage } from "./helpers/luggageDrag.js";
 
 test.use({ viewport: { width: 1440, height: 1000 } });
 test.beforeEach(async ({ page }) => {
@@ -120,18 +121,17 @@ test("luggage CRUD and assignee packing synchronize without a second confirmatio
   await personal.getByRole("button", { name: "編輯：兩孔轉接頭", exact: true }).click();
   await personal.getByRole("button", { name: "刪除：兩孔轉接頭", exact: true }).click();
   await page.getByRole("dialog", { name: "刪除物品？" }).getByRole("button", { name: "刪除", exact: true }).click();
-  await team.getByLabel("團隊公物名稱", { exact: true }).fill("雨備地墊");
-  await team.getByRole("combobox", {name: "指派公物負責人",exact:true}).click();
-  await page.getByRole("option", {name: "Peter（我）",exact:true}).click();
-  await team.getByRole("button", { name: "新增團隊公物", exact: true }).click();
+  await personal.getByLabel("個人行李名稱", { exact: true }).fill("雨備地墊");
+  await personal.getByRole("button", { name: "新增個人行李", exact: true }).click();
+  await dragLuggage(page, "雨備地墊", "demo-peter", "personal");
   const shared = team.locator(".shared-luggage-row").filter({ hasText: "雨備地墊" });
   await shared.getByRole("checkbox", { name: "成員已打包：雨備地墊", exact: true }).check();
   await expect(shared.getByRole("checkbox")).toHaveCount(1);
   await expect(personal.locator(".assigned-shared-list").filter({ hasText: "雨備地墊" }).getByRole("checkbox").last()).toBeChecked();
   await expect(shared).toHaveClass(/packed/);
   await shared.getByRole("button", { name: "編輯：雨備地墊", exact: true }).click();
-  await team.getByLabel("編輯團隊公物名稱", { exact: true }).fill("變更尚未儲存");
-  await team.getByLabel("編輯團隊公物名稱", { exact: true }).press("Escape");
+  await team.getByLabel("編輯共用物品名稱", { exact: true }).fill("變更尚未儲存");
+  await team.getByLabel("編輯共用物品名稱", { exact: true }).press("Escape");
   await page.getByRole("dialog", { name: "您有未儲存的變更", exact: true }).getByRole("button", { name: "不儲存", exact: true }).click();
   await expect(shared).toBeVisible();
   await shared.getByRole("button", { name: "編輯：雨備地墊", exact: true }).click();

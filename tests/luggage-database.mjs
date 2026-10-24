@@ -190,5 +190,77 @@ try {
   check([noteGear.notes,noteGear.packed_by_assignee],["更新說明",true]);
   await login(pending); await rejects(()=>mutate("shared","save",{title:noteGear.title,notes:"不應寫入"},noteGear),"luggage_forbidden");
   await login(outsider); check(await row(noteGear.id),undefined);
-  console.log(`Luggage offline PostgreSQL: ${checks} assertions passed (full migration chain, RLS, two-role stale writes, private isolation, dual confirmation, locks, legacy compatibility).`);
+  // Conversion is one invoker transaction: private source is never duplicated,
+  // leaked to another owner or deleted after a rejected assignment.
+  const assign = async (scope, item, assignee, targetTrip = trip, base = item.updated_at) =>
+    (await q("select assign_luggage_item($1,$2,$3,$4,$5) r",[targetTrip,scope,item.id,base,assignee]))[0].r;
+  await login(viewer);
+  let source = await mutate("personal","save",{title:"分享用轉接頭",category:"電子用品",notes:"全體可見備註"});
+  source = await mutate("personal","patch",{packed:true},source);
+  await rejects(()=>assign("personal",source,pending),"luggage_invalid_assignee");
+  check((await row(source.id,"personal")).title,source.title); check(await row(source.id),undefined);
+  await rejects(()=>assign("personal",source,owner,trip,"2000-01-01T00:00:00Z"),"luggage_stale");
+  await login(owner); await rejects(()=>assign("personal",source,owner),"luggage_not_found");
+  await login(viewer);
+  const converted = await assign("personal",source,owner);
+  check([converted.id,converted.title,converted.category,converted.notes,converted.assigned_to,converted.packed_by_assignee],[source.id,source.title,source.category,source.notes,owner,false]);
+  check(await row(source.id,"personal"),undefined);
+  await rejects(()=>assign("personal",source,owner),"luggage_not_found");
+  check((await q("select count(*)::int n from shared_luggage_items where id=$1",[source.id]))[0].n,1);
+  const same = await assign("shared",converted,owner); check(same.updated_at,converted.updated_at);
+  await login(owner); let packedConverted = await mutate("shared","patch",{packed_by_assignee:true},converted);
+  await login(viewer); packedConverted = await assign("shared",packedConverted,null);
+  check([packedConverted.assigned_to,packedConverted.packed_by_assignee,packedConverted.notes],[null,false,source.notes]);
+  await rejects(()=>assign("shared",converted,viewer),"luggage_stale");
+  await login(pending); await rejects(()=>assign("shared",packedConverted,viewer),"luggage_forbidden");
+  await login(outsider); await rejects(()=>assign("shared",packedConverted,viewer),"luggage_forbidden");
+  await login(viewer);
+  let collision = await mutate("personal","save",{title:"碰撞時保留原項目",notes:"不能遺失"});
+  await q("insert into shared_luggage_items(id,trip_id,title) values($1,$2,'Existing id')",[collision.id,trip]);
+  await rejects(()=>assign("personal",collision,viewer),"duplicate key");
+  check((await row(collision.id,"personal")).notes,"不能遺失");
+  const blocked = await mutate("personal","save",{title:"交易回滾保護"});
+  await db.exec("reset role");
+  await db.exec("create function public.test_reject_conversion_delete() returns trigger language plpgsql as $$ begin raise exception 'test_delete_blocked'; end $$; create trigger test_reject_conversion_delete before delete on public.luggage_items for each row execute function public.test_reject_conversion_delete();");
+  await login(viewer); await rejects(()=>assign("personal",blocked,viewer),"test_delete_blocked");
+  check(await row(blocked.id),undefined); check((await row(blocked.id,"personal")).title,blocked.title);
+  await db.exec("reset role; drop trigger test_reject_conversion_delete on public.luggage_items; drop function public.test_reject_conversion_delete();");
+  check((await q("select prosecdef from pg_proc where proname='assign_luggage_item'"))[0].prosecdef,false);
+  await login("","anon"); await rejects(()=>assign("personal",blocked,viewer),"permission denied");
+  const privatize = async (item, category = "", targetTrip = trip, base = item.updated_at) =>
+    (await q("select privatize_luggage_item($1,$2,$3,$4) r",[targetTrip,item.id,base,category]))[0].r;
+  await login(viewer);
+  let publicSource = await mutate("shared","save",{title:"轉回私人物品",notes:"收納說明",assigned_to:owner});
+  await login(owner); publicSource = await mutate("shared","patch",{packed_by_assignee:true},publicSource);
+  await login(viewer);
+  await rejects(()=>privatize(publicSource,"衣物",otherTrip),"luggage_forbidden");
+  await rejects(()=>privatize(publicSource,"衣物",trip,"2000-01-01T00:00:00Z"),"luggage_stale");
+  check((await row(publicSource.id)).packed_by_assignee,true);
+  await login(pending); await rejects(()=>privatize(publicSource,"衣物"),"luggage_forbidden");
+  await login(outsider); await rejects(()=>privatize(publicSource,"衣物"),"luggage_forbidden");
+  await login(viewer); const returned = await privatize(publicSource," 衣物 ");
+  check([returned.id,returned.owner_id,returned.title,returned.notes,returned.category,returned.packed,returned.shared_item_id,returned.is_shared_assigned_item],
+    [publicSource.id,viewer,publicSource.title,publicSource.notes,"衣物",false,null,false]);
+  check(await row(publicSource.id),undefined);
+  await rejects(()=>privatize(publicSource,"衣物"),"luggage_not_found");
+  check((await q("select count(*)::int n from luggage_items where id=$1",[returned.id]))[0].n,1);
+  await login(owner); check(await row(returned.id,"personal"),undefined);
+  await login(viewer);
+  const roundTrip = await assign("personal",returned,owner);
+  check([roundTrip.notes,roundTrip.assigned_to,roundTrip.packed_by_assignee],[returned.notes,owner,false]);
+  check(await row(returned.id,"personal"),undefined);
+  const locked = await mutate("shared","save",{title:"鎖定中的公物",assigned_to:viewer});
+  await q("update shared_luggage_items set locked_by=$1,locked_at=clock_timestamp() where id=$2",[viewer,locked.id]);
+  const lockedBase=await row(locked.id); await login(owner);
+  await rejects(()=>privatize(lockedBase,"電子用品"),"luggage_locked"); check(await row(locked.id,"personal"),undefined);
+  await login(viewer); await rejects(async ()=>privatize(await row(collision.id),"電子用品"),"duplicate key");
+  check((await row(collision.id)).title,"Existing id");
+  const returnBlocked = await mutate("shared","save",{title:"回私物交易回滾",notes:"保留公物"});
+  await db.exec("reset role; create function public.test_reject_return_delete() returns trigger language plpgsql as $$ begin raise exception 'test_return_delete_blocked'; end $$; create trigger test_reject_return_delete before delete on public.shared_luggage_items for each row execute function public.test_reject_return_delete();");
+  await login(viewer); await rejects(()=>privatize(returnBlocked,"衣物"),"test_return_delete_blocked");
+  check(await row(returnBlocked.id,"personal"),undefined); check((await row(returnBlocked.id)).notes,"保留公物");
+  await db.exec("reset role; drop trigger test_reject_return_delete on public.shared_luggage_items; drop function public.test_reject_return_delete();");
+  check((await q("select prosecdef from pg_proc where proname='privatize_luggage_item'"))[0].prosecdef,false);
+  await login("","anon"); await rejects(()=>privatize(returnBlocked,"衣物"),"permission denied");
+  console.log(`Luggage offline PostgreSQL: ${checks} assertions passed (full migration chain, RLS, two-role stale writes, private isolation, bidirectional conversion rollback, locks, legacy compatibility).`);
 } finally { await db.close(); }

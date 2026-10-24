@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dragLuggage, keyboardAssign } from "./helpers/luggageDrag.js";
 
 // Browser plugin is unavailable; use the repository Playwright runner against
 // the shared controller and the real Demo shell. No hosted writes are made.
@@ -46,9 +47,9 @@ test("Quick Add category hints and choices stay isolated between tabs and trips"
   await page.setViewportSize({ width: 820, height: 1000 });
   await page.goto("/demo/luggage");
   await choose(page, "個人行李分類", "衣物");
-  await page.getByRole("tab", { name: "團隊公物", exact: true }).click();
-  await expect(page.getByRole("combobox", { name: "團隊公物分類", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("combobox", { name: "指派公物負責人", exact: true })).toContainText("未指派");
+  await page.getByRole("tab", { name: "共用物品", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "共用物品分類", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "指派共用物品負責人", exact: true })).toHaveCount(0);
   await page.getByRole("tab", { name: "個人行李", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "個人行李分類", exact: true })).toHaveValue("衣物");
   await page.getByRole("button", { name: "系統測試專用", exact: true }).click();
@@ -114,11 +115,11 @@ test("only one inline editor opens across rows and columns without discarding Qu
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect((await canonical(page)).luggageItems.find(row => row.id === "own").title).toBe("未儲存護照");
   await expect(inline(page)).toHaveCount(1);
-  await expect(page.getByLabel("編輯團隊公物名稱", { exact: true })).toHaveValue("共享充電器");
+  await expect(page.getByLabel("編輯共用物品名稱", { exact: true })).toHaveValue("共享充電器");
   await page.getByRole("button", { name: "編輯：團隊文件", exact: true }).click();
   await expect(inline(page)).toHaveCount(1);
-  await expect(page.getByLabel("編輯團隊公物名稱", { exact: true })).toHaveValue("團隊文件");
-  await page.getByLabel("編輯團隊公物名稱", { exact: true }).press("Escape");
+  await expect(page.getByLabel("編輯共用物品名稱", { exact: true })).toHaveValue("團隊文件");
+  await page.getByLabel("編輯共用物品名稱", { exact: true }).press("Escape");
   await expect(inline(page)).toHaveCount(0);
   await expect(quick(page).getByLabel("個人行李名稱", { exact: true })).toHaveValue("尚未新增的物品");
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -142,7 +143,7 @@ test("failed Quick Add retains name, category and focus; opening an editor does 
 
 test("desktop inline editing keeps the original row height and list position including the last item", async ({ page }) => {
   await page.goto("/demo/luggage");
-  const list = page.locator(".lb-shared .lb-list-body"), form = quick(page, "團隊公物");
+  const list = page.locator(".lb-shared .lb-list-body"), form = page.locator("#lb-shared .lb-column-heading");
   const top = await form.boundingBox();
   const item = page.getByRole("button", { name: "編輯：常備藥包", exact: true });
   const row = await item.locator("xpath=ancestor::article[1]").boundingBox(), scroll = await list.evaluate(element => element.scrollTop);
@@ -151,29 +152,24 @@ test("desktop inline editing keeps the original row height and list position inc
   expect((await inline(page).locator("..").boundingBox()).y).toBe(row.y);
   expect((await inline(page).locator("..").boundingBox()).height).toBe(row.height);
   expect(await list.evaluate(element => element.scrollTop)).toBe(scroll);
-  await page.getByLabel("編輯團隊公物名稱", { exact: true }).press("Escape");
+  await page.getByLabel("編輯共用物品名稱", { exact: true }).press("Escape");
   await list.evaluate(element => { element.scrollTop = element.scrollHeight; });
   const bottomScroll = await list.evaluate(element => element.scrollTop);
   await page.getByRole("button", { name: "編輯：摺疊曬衣架", exact: true }).click();
   const reveal = await list.evaluate(element => element.scrollTop);
   expect(reveal - bottomScroll).toBe(0);
-  await expect(page.getByLabel("編輯團隊公物名稱", { exact: true })).toBeInViewport();
+  await expect(page.getByLabel("編輯共用物品名稱", { exact: true })).toBeInViewport();
   expect(await form.boundingBox()).toEqual(top);
   await expect(page.locator(".lb-team-head")).toHaveCount(0);
 });
 
-test("shared assignee edits preserve legacy category, regroup the same row and reset packing", async ({ page }) => {
+test("shared drag preserves legacy category, regroups the canonical row and leaves private Quick Add intact", async ({ page }) => {
   await load(page);
-  await quick(page, "團隊公物").getByLabel("團隊公物名稱", { exact: true }).fill("待新增公物");
-  await page.getByRole("button", { name: "編輯：團隊相機", exact: true }).click();
-  await expect(page.getByRole("combobox", { name: "編輯團隊公物分類", exact: true })).toHaveCount(0);
-  await choose(page, "編輯公物負責人", "旅伴 Dennis");
-  await inline(page).getByLabel("編輯團隊公物名稱", { exact: true }).press("Enter");
-  await expect(inline(page)).toHaveCount(0);
+  await quick(page).getByLabel("個人行李名稱", { exact: true }).fill("待新增私物");
+  await dragLuggage(page, "團隊相機", "viewer");
   const row = (await canonical(page)).sharedLuggageItems.find(item => item.id === "ready");
   expect(row).toMatchObject({ category: "團隊裝備", assigned_to: "viewer", packed_by_assignee: false, confirmed_by_owner: false });
-  await expect(page.getByRole("region", { name: "旅伴 Dennis的公物", exact: true }).getByRole("button", { name: "編輯：團隊相機", exact: true })).toBeVisible();
-  await expect(quick(page, "團隊公物").getByLabel("團隊公物名稱", { exact: true })).toHaveValue("待新增公物");
+  await expect(quick(page).getByLabel("個人行李名稱", { exact: true })).toHaveValue("待新增私物");
 });
 
 for (const width of [360, 820]) {
@@ -181,21 +177,19 @@ for (const width of [360, 820]) {
   test.use({ hasTouch: true });
   test(`${width}px touch layout supports fixed Quick Add and inline edit without hover or overflow`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 }); await load(page, "?empty=1");
-    await page.getByRole("tab", { name: "團隊公物", exact: true }).click();
-    const form = quick(page, "團隊公物"), top = await form.boundingBox();
-    await expect(form.getByRole("combobox", { name: "團隊公物分類", exact: true })).toHaveCount(0);
-    await form.getByLabel("團隊公物名稱", { exact: true }).fill("共用野餐墊");
-    await choose(page, "指派公物負責人", "總召 Peter（我）");
-    await form.getByLabel("團隊公物名稱", { exact: true }).press("Enter");
+    const form = quick(page), top = await form.boundingBox();
+    await form.getByLabel("個人行李名稱", { exact: true }).fill("共用野餐墊");
+    await form.getByLabel("個人行李名稱", { exact: true }).press("Enter");
+    await keyboardAssign(page, "共用野餐墊", "owner", "personal");
     await page.getByRole("button", { name: "編輯：共用野餐墊", exact: true }).tap();
     const editor = inline(page);
-    await editor.getByLabel("編輯團隊公物名稱", { exact: true }).fill("防水野餐墊");
-    await editor.getByLabel("編輯團隊公物名稱", { exact: true }).press("Enter");
+    await editor.getByLabel("編輯共用物品名稱", { exact: true }).fill("防水野餐墊");
+    await editor.getByLabel("編輯共用物品名稱", { exact: true }).press("Enter");
     await expect(page.getByRole("button", { name: "編輯：防水野餐墊", exact: true })).toBeVisible();
     await expect(page.getByRole("checkbox", { name: "成員已打包：防水野餐墊", exact: true })).not.toBeChecked();
-    expect((await form.boundingBox()).height).toBe(top.height);
+    await page.getByRole("tab", { name: "個人行李", exact: true }).click(); expect((await form.boundingBox()).height).toBe(top.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    if (width === 360) expect((await form.getByRole("button", { name: "新增團隊公物", exact: true }).boundingBox()).height).toBeGreaterThanOrEqual(44);
+    if (width === 360) { await page.getByRole("tab", { name: "個人行李", exact: true }).click(); expect((await form.getByRole("button", { name: "新增個人行李", exact: true }).boundingBox()).height).toBeGreaterThanOrEqual(44); }
   });
   });
 }
@@ -204,19 +198,18 @@ test("local drafts survive refetch, visibility/focus events and a reload without
   await load(page, "?drafts=1");
   await quick(page).getByLabel("個人行李名稱", { exact: true }).fill("待新增外套");
   await choose(page, "個人行李分類", "衣物");
-  await quick(page, "團隊公物").getByLabel("團隊公物名稱", { exact: true }).fill("待新增公物");
   await page.getByRole("button", { name: "編輯：護照", exact: true }).click();
   await page.getByLabel("編輯個人行李名稱", { exact: true }).fill("草稿護照及影本");
   await page.getByRole("button", { name: "模擬遠端重新載入", exact: true }).click();
   await page.evaluate(() => { document.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("focus")); });
   await expect(page.getByLabel("編輯個人行李名稱", { exact: true })).toHaveValue("草稿護照及影本");
-  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("travel-planner-draft:")).length)).toBe(3);
+  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("travel-planner-draft:")).length)).toBe(2);
   page.once("dialog", dialog => dialog.accept()); await page.reload();
   await expect(inline(page)).toHaveCount(1);
   await expect(page.getByLabel("編輯個人行李名稱", { exact: true })).toHaveValue("草稿護照及影本");
   await expect(quick(page).getByLabel("個人行李名稱", { exact: true })).toHaveValue("待新增外套");
   await expect(quick(page).getByRole("combobox", { name: "個人行李分類", exact: true })).toHaveValue("衣物");
-  await expect(quick(page, "團隊公物").getByLabel("團隊公物名稱", { exact: true })).toHaveValue("待新增公物");
+  await expect(quick(page, "共用物品")).toHaveCount(0);
   await page.getByLabel("編輯個人行李名稱", { exact: true }).press("Escape"); await discard(page);
   await expect(inline(page)).toHaveCount(0);
   await expect(quick(page).getByLabel("個人行李名稱", { exact: true })).toHaveValue("待新增外套");
@@ -228,14 +221,31 @@ test("legacy top-form new drafts migrate to Quick Add and two old row drafts reo
     sessionStorage.setItem("legacy-drafts-seeded", "yes");
     const put = (type, id, form, savedAt) => localStorage.setItem(`travel-planner-draft:owner:luggage-trip:${type}:${id}`, JSON.stringify({ form, savedAt, serverUpdatedAt: "2026-10-23T01:00:00.000Z" }));
     put("luggage_item", "new", { title: "舊新增草稿", category: "證件" }, "2026-10-23T02:00:00.000Z");
-    put("shared_luggage_item", "shared", { title: "舊公物草稿", category: "團隊裝備", assigned_to: "packer" }, "2026-10-23T02:01:00.000Z");
+    put("shared_luggage_item", "shared", { title: "舊共用物品草稿", category: "團隊裝備", assigned_to: "packer" }, "2026-10-23T02:01:00.000Z");
   });
   await load(page, "?drafts=1");
   await expect(quick(page).getByLabel("個人行李名稱", { exact: true })).toHaveValue("舊新增草稿");
-  await expect(page.getByLabel("編輯團隊公物名稱", { exact: true })).toHaveValue("舊公物草稿");
+  await expect(page.getByLabel("編輯共用物品名稱", { exact: true })).toHaveValue("舊共用物品草稿");
   await expect(inline(page)).toHaveCount(1);
   expect(await page.evaluate(() => localStorage.getItem("travel-planner-draft:owner:luggage-trip:luggage_item:new"))).toBe(null);
   await page.evaluate(() => localStorage.setItem("travel-planner-draft:owner:luggage-trip:luggage_item:own", JSON.stringify({ form: { title: "舊個人草稿", category: "證件" }, savedAt: "2026-10-23T02:00:00.000Z", serverUpdatedAt: "2026-10-23T01:00:00.000Z" })));
   page.once("dialog", dialog => dialog.accept()); await page.reload();
   await expect(inline(page)).toHaveCount(1);
 });
+
+for (const competing of [false, true]) {
+  test(`removed team Quick Add draft stays private and preserves competing draft: ${competing}`, async ({ page }) => {
+    await page.addInitScript(({ competing }) => {
+      const put = (type, form) => localStorage.setItem(`travel-planner-draft:owner:luggage-trip:${type}:new`, JSON.stringify({ form, savedAt: "2026-10-23T02:00:00.000Z", serverUpdatedAt: null }));
+      put("shared_luggage_quick_add", { title: "尚未送出的共用物品", notes: "尚未公開的備註", category: "電子用品", assigned_to: "viewer" });
+      if (competing) put("luggage_quick_add", { title: "既有私人物品草稿", notes: "私人備註", category: "衣物" });
+    }, { competing });
+    await load(page, "?drafts=1");
+    await expect(quick(page).getByLabel("個人行李名稱", { exact: true })).toHaveValue(competing ? "既有私人物品草稿" : "尚未送出的共用物品");
+    await expect(quick(page, "共用物品")).toHaveCount(0);
+    const oldDraft = await page.evaluate(() => localStorage.getItem("travel-planner-draft:owner:luggage-trip:shared_luggage_quick_add:new"));
+    if (competing) expect(oldDraft).toContain("尚未公開的備註");
+    else expect(oldDraft).toBe(null);
+    await expect(page.locator("#lb-shared").getByRole("button", { name: "編輯：尚未送出的共用物品", exact: true })).toHaveCount(0);
+  });
+}

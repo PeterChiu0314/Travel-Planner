@@ -25,10 +25,10 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(fixture);
     await expect(page.locator(".lb-category-filters,.lb-item-category")).toHaveCount(0);
-    const publicGroup = group(page, "我負責的公物");
-    const publicCheck = publicGroup.getByRole("checkbox", { name: "打包指派公物：團隊文件", exact: true });
+    const publicGroup = group(page, "我負責的共用物品");
+    const publicCheck = publicGroup.getByRole("checkbox", { name: "打包指派共用物品：團隊文件", exact: true });
     await publicCheck.check();
-    await expect(toggle(page, "我負責的公物")).toContainText("1/1");
+    await expect(toggle(page, "我負責的共用物品")).toContainText("1/1");
     expect((await canonical(page)).sharedLuggageItems.find(item => item.id === "owner-assigned").packed_by_assignee).toBe(true);
     await toggle(page, "隨身必備").focus(); await page.keyboard.press("Enter");
     await expect(group(page, "隨身必備").getByRole("button", { name: "編輯：護照", exact: true })).toBeHidden();
