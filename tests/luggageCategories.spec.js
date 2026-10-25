@@ -21,7 +21,7 @@ test("collapsing an edited category saves first and failed saves keep it open", 
 });
 
 for (const width of [1440, 390]) {
-  test(`${width}px categories support keyboard, shared sync, search and adding into a collapsed group`, async ({ page }) => {
+  test(`${width}px categories support keyboard, shared sync and adding into a collapsed group`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(fixture);
     await expect(page.locator(".lb-category-filters,.lb-item-category")).toHaveCount(0);
@@ -32,10 +32,6 @@ for (const width of [1440, 390]) {
     expect((await canonical(page)).sharedLuggageItems.find(item => item.id === "owner-assigned").packed_by_assignee).toBe(true);
     await toggle(page, "隨身必備").focus(); await page.keyboard.press("Enter");
     await expect(group(page, "隨身必備").getByRole("button", { name: "編輯：護照", exact: true })).toBeHidden();
-    await page.getByRole("button", { name: "展開行李搜尋", exact: true }).click();
-    await page.locator("#lb-personal").getByLabel("搜尋行李", { exact: true }).fill("護照");
-    await expect(group(page, "隨身必備").getByRole("button", { name: "編輯：護照", exact: true })).toBeVisible();
-    await page.locator("#lb-personal").getByLabel("搜尋行李", { exact: true }).press("Escape");
     await expect(toggle(page, "隨身必備")).toHaveAttribute("aria-expanded", "false");
     await page.getByRole("combobox", { name: "個人行李分類", exact: true }).fill("隨身必備");
     const name = page.getByLabel("個人行李名稱", { exact: true });

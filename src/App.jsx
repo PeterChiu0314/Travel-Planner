@@ -7,7 +7,7 @@ import BudgetWorkspace from "./components/budget/BudgetWorkspace.jsx";
 import MenuSelect from "./components/MenuSelect.jsx";
 import LuggageBoard from "./components/luggage/LuggageBoard.jsx";
 import { createDemoLuggageItems, createDemoSharedLuggageItems } from "./demo/luggageFixtures.js";
-import { privatizeLuggageItem, privatizeLuggageSnapshot, assignLuggageItem, assignLuggageSnapshot, mutateLuggageItem, transitionSharedLuggage, luggageErrorMessage } from "./lib/luggageService.js";
+import { reorderLuggageItems, reorderLuggageSnapshot, privatizeLuggageItem, privatizeLuggageSnapshot, assignLuggageItem, assignLuggageSnapshot, mutateLuggageItem, transitionSharedLuggage, luggageErrorMessage } from "./lib/luggageService.js";
 import { budgetStage, recordForm, settlementBalances } from "./lib/budgetFinance.js";
 import { planningBudgetData } from "./lib/planningBudget.js";
 import { saveDemoBudgetRecord } from "./demo/saveBudgetRecord.js";
@@ -5573,6 +5573,25 @@ export default function App() {
     return result;
   }
 
+  async function reorderTripLuggage(scope, item, target, placement, items) {
+    if (!activeTrip || activeMembership?.status !== "approved" || item.trip_id !== activeTrip.id || target.trip_id !== activeTrip.id) return { ok: false, error: new Error("luggage_forbidden") };
+    const tripId = activeTrip.id;
+    const result = await reorderLuggageItems({ client: supabase, tripId, scope, item, target, placement, items });
+    if (!result.ok) {
+      if (result.conflict) await refreshLuggage(tripId);
+      return { ...result, error: new Error(luggageErrorMessage(result.error)) };
+    }
+    if (luggageTripRef.current === tripId) {
+      const setter = scope === "personal" ? setLuggageItems : setSharedLuggageItems;
+      setter(current => current.map(row => {
+        const updated = result.data.find(value => value.id === row.id);
+        return updated && row.updated_at <= updated.updated_at ? updated : row;
+      }));
+      await refreshLuggage(tripId);
+    }
+    return result;
+  }
+
   async function uploadAttachment(targetType, targetId, file) {
     if (!activeTrip || !(targetType === "actual_expense" ? canEdit : canEditActiveTripContent) || !file) return;
     if (file.size > 10 * 1024 * 1024) {
@@ -6342,6 +6361,7 @@ export default function App() {
             onSaveSharedLuggageItem={saveSharedLuggageItem}
             onAssignLuggage={assignTripLuggage}
             onPrivatizeLuggage={privatizeTripLuggage}
+            onReorderLuggage={reorderTripLuggage}
             onSaveTodo={saveTodo}
             onLuggageTabChange={setLuggageTab}
             onSectionChange={setActiveSection}
@@ -8782,6 +8802,16 @@ function DemoApp({ initialSection }) {
     } catch (error) { return { ok: false, error: new Error(luggageErrorMessage(error)) }; }
   }
 
+  function reorderDemoLuggage(scope, item, target, placement, items) {
+    try {
+      const next = reorderLuggageSnapshot(demoLuggageRef.current, { scope, item, target, placement, items, tripId: demoActiveTrip.id,
+        userId: "demo-peter", approvedMemberIds: demoMembers.filter(member => member.status === "approved").map(member => member.user_id) });
+      demoLuggageRef.current = next;
+      setDemoSupportByTrip(current => ({ ...current, [demoActiveTrip.id]: next }));
+      return { ok: true };
+    } catch (error) { return { ok: false, error: new Error(luggageErrorMessage(error)) }; }
+  }
+
   function saveDemoRecord(key, form, editingId, meta = {}) {
     if (!(form.title || form.name || "").trim() || (meta.tripId && meta.tripId !== demoActiveTrip.id)) return { ok: false };
     if (editingId && !support[key].some((item) => item.id === editingId)) return { ok: false };
@@ -9106,6 +9136,7 @@ function DemoApp({ initialSection }) {
             onSaveShared={saveSharedLuggage}
             onAssign={assignDemoLuggage}
             onPrivatize={privatizeDemoLuggage}
+            onReorder={reorderDemoLuggage}
             onTogglePersonal={(item) => mutateDemoLuggage("personal", "patch", { packed: !item.packed }, item.id, { tripId: item.trip_id, baseUpdatedAt: item.updated_at })}
             onUpdateShared={(id, patch, item) => mutateDemoLuggage("shared", "patch", patch, id, { tripId: item.trip_id, baseUpdatedAt: item.updated_at })}
           />
@@ -9328,6 +9359,7 @@ function TripWorkspace(props) {
     onSaveSharedLuggageItem,
     onAssignLuggage,
     onPrivatizeLuggage,
+    onReorderLuggage,
     onSaveTodo,
     onLuggageTabChange,
     onSectionChange,
@@ -9669,6 +9701,7 @@ function TripWorkspace(props) {
           onSaveShared={onSaveSharedLuggageItem}
           onAssign={onAssignLuggage}
           onPrivatize={onPrivatizeLuggage}
+          onReorder={onReorderLuggage}
           onTabChange={onLuggageTabChange}
           onTogglePersonal={onToggleLuggageItem}
           onUpdateShared={onUpdateSharedLuggageItem}
@@ -14362,6 +14395,7 @@ export function LuggagePanel({
   onSaveShared,
   onAssign,
   onPrivatize,
+  onReorder,
   onTabChange,
   onTogglePersonal,
   onUpdateShared,
@@ -14387,7 +14421,14 @@ export function LuggagePanel({
     } catch { setError("未能儲存，請檢查連線後重試。你的輸入仍保留。"); return { ok: false }; }
     finally { busyRef.current = false; setBusy(false); }
   }
-  const quickPersonal = useLuggageQuickAdd({ activeTrip, currentUserId, restoreDrafts, disableDraftAutosave, canEdit, performMutation, onSave: onSavePersonal });
+  const quickPersonal = useLuggageQuickAdd({ activeTrip, currentUserId, restoreDrafts, disableDraftAutosave, canEdit, performMutation,
+    onSave: (form, id, meta) => {
+      const { title, notes, category } = form;
+      if (form.creation_scope !== "shared") return onSavePersonal({ title, notes, category }, id, meta);
+      const assigned_to = form.assigned_to || currentUserId;
+      if (!members.some(member => member.user_id === assigned_to && member.status === "approved")) return { ok: false, error: new Error("請選擇仍在旅程中的攜帶者。") };
+      return onSaveShared({ title, notes, category: "", assigned_to }, id, meta);
+    } });
   const quickGuardIds = [quickPersonal.guardId];
   const [personalSeed, setPersonalSeed] = useState(emptyLuggageForm);
   const [sharedSeed, setSharedSeed] = useState(emptySharedLuggageForm);
@@ -14699,6 +14740,15 @@ export function LuggagePanel({
     if (canOpenEditor) setSharedForm(nextForm);
   }
 
+  async function confirmSharedReassignment(item, assignedTo) {
+    const nameOf = id => {
+      const member = members.find(value => value.user_id === id);
+      return id ? member?.display_name || member?.nickname || member?.email?.split("@")[0] || "旅程成員" : "未指派";
+    };
+    return ask({ title: assignedTo ? `改由 ${nameOf(assignedTo)} 攜帶？` : "取消負責人指派？",
+      message: `「${item.title}」目前${item.assigned_to ? `由 ${nameOf(item.assigned_to)} 攜帶` : "尚未指派負責人"}，將${assignedTo ? `改由 ${nameOf(assignedTo)} 攜帶` : "移至未指派群組"}，並重設打包狀態。`, confirmLabel: "確認" });
+  }
+
   async function removeItem(kind, id, item) {
     if (!canEdit || busyRef.current) return;
     const isPersonal = kind === "personal";
@@ -14724,6 +14774,19 @@ export function LuggagePanel({
   }} cancelSharedEdit={cancelSharedEdit} setPersonalForm={updatePersonalForm} setSharedForm={updateSharedForm}
     onTogglePersonal={(item) => performMutation(() => onTogglePersonal(item))}
     onUpdateShared={(id, patch, item) => performMutation(() => onUpdateShared(id, patch, item || sharedLuggageItems.find(row => row.id === id)))}
+    onReorder={async (scope, item, target, placement, expectedItems) => {
+      if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return { ok: false };
+      const items = scope === "personal" ? luggageItems : sharedLuggageItems;
+      if (!expectedItems || items.length !== expectedItems.length || !expectedItems.every(value => items.some(row => row.id === value.id && row.updated_at === value.updated_at))) {
+        setError("物品已更新，請依最新清單重新拖曳。"); return { ok: false };
+      }
+      const actionContext = contextRef.current;
+      if (scope === "shared" && (item.assigned_to || "") !== (target.assigned_to || "")) {
+        if (!await confirmSharedReassignment(item, target.assigned_to)) return { ok: false, cancelled: true };
+        if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
+      }
+      return performMutation(() => onReorder(scope, item, target, placement, items));
+    }}
     onAssign={async (scope, item, assignedTo) => {
       if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return { ok: false };
       const actionContext = contextRef.current;
@@ -14731,6 +14794,9 @@ export function LuggagePanel({
         const assignee = members.find(member => member.user_id === assignedTo);
         const name = assignee?.display_name || assignee?.nickname || "旅程成員";
         if (!await ask({ title: "轉為共用物品？", message: `「${item.title}」將轉為${assignedTo ? `由 ${name} 攜帶的` : "未指派的"}共用物品，名稱與備註供全體旅程成員查看，並重設打包狀態。`, confirmLabel: "確認" })) return { ok: false, cancelled: true };
+        if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
+      } else if ((item.assigned_to || "") !== (assignedTo || "")) {
+        if (!await confirmSharedReassignment(item, assignedTo)) return { ok: false, cancelled: true };
         if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
       }
       const latest = (scope === "personal" ? luggageItems : sharedLuggageItems).find(row => row.id === item.id);

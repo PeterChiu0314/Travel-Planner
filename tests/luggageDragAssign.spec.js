@@ -6,7 +6,7 @@ test("single private entry, no team creation or assignment selectors, every memb
   await page.goto(`${fixture}?empty=1`);
   await expect(page.getByRole("form", { name: "快速新增個人行李", exact: true })).toBeVisible();
   await expect(page.getByRole("form", { name: "快速新增共用物品", exact: true })).toHaveCount(0);
-  await expect(page.locator(".lb-member-group")).toHaveCount(4);
+  await expect(page.locator(".lb-member-group")).toHaveCount(3);
   await expect(page.locator('[data-member-id="viewer"]')).toContainText("尚無共用物品");
   await expect(page.locator('[data-member-id="pending"]')).toHaveCount(0);
   await expect(page.getByRole("button", { name: /共用物品操作/ })).toHaveCount(0);
@@ -71,7 +71,7 @@ test("viewer can drag to assign but cannot pack someone else's gear", async ({ p
   await expect(page.getByRole("checkbox", { name: "成員已打包：團隊相機", exact: true })).toBeDisabled();
 });
 
-test("phone touch drag switches to member slots, converts on release and cancels without writes", async ({ browser }) => {
+test("phone touch drag stays for ordering, hovers team tab to convert and cancels without writes", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 900 }, hasTouch: true, isMobile: true });
   const page = await context.newPage(); await page.goto(fixture);
   const cdp = await context.newCDPSession(page);
@@ -81,6 +81,9 @@ test("phone touch drag switches to member slots, converts on release and cancels
   const start = await handle.boundingBox();
   await touch("touchStart", start.x + start.width / 2, start.y + start.height / 2);
   await touch("touchMove", start.x + start.width / 2 + 14, start.y + start.height / 2 + 12);
+  await expect(page.getByRole("tab", { name: "個人行李", exact: true })).toHaveAttribute("aria-selected", "true");
+  const tab = await page.getByRole("tab", { name: "共用物品", exact: true }).boundingBox();
+  await touch("touchMove", tab.x + tab.width / 2, tab.y + tab.height / 2);
   await expect(page.getByRole("tab", { name: "共用物品", exact: true })).toHaveAttribute("aria-selected", "true");
   await touch("touchCancel");
   await expect(page.getByRole("tab", { name: "個人行李", exact: true })).toHaveAttribute("aria-selected", "true");
@@ -88,6 +91,7 @@ test("phone touch drag switches to member slots, converts on release and cancels
   const retry = await handle.boundingBox();
   await touch("touchStart", retry.x + retry.width / 2, retry.y + retry.height / 2);
   await touch("touchMove", retry.x + retry.width / 2 + 14, retry.y + retry.height / 2 + 12);
+  await touch("touchMove", tab.x + tab.width / 2, tab.y + tab.height / 2);
   const target = page.locator('[data-member-id="viewer"]'); await expect(target).toBeVisible();
   const end = await target.boundingBox(); await touch("touchMove", end.x + end.width / 2, end.y + 25);
   await expect(target).toHaveClass(/is-drop-target/); await touch("touchEnd");

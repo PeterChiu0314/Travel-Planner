@@ -1,3 +1,5 @@
+import { planLuggageOrder, sortLuggageItems } from "./luggageOrdering.js";
+
 /** One canonical shared row powers the team list and the assignee's personal view. */
 export function transitionSharedLuggage(item, patch, { userId, isOwner = false, approvedMemberIds = [] } = {}) {
   const next = { ...item, ...patch };
@@ -72,6 +74,38 @@ export async function assignLuggageItem({ client, tripId, scope, item, assignedT
     });
     return { ok: !error, data, error, conflict: Boolean(error?.message?.includes("luggage_stale")) };
   } catch (error) { return { ok: false, error, conflict: Boolean(error?.message?.includes("luggage_stale")) }; }
+}
+
+export async function reorderLuggageItems({ client, tripId, scope, item, target, placement, items }) {
+  try {
+    const { data, error } = await client.rpc("reorder_luggage_items", {
+      p_trip_id: tripId, p_scope: scope, p_item_id: item.id, p_target_id: target.id,
+      p_placement: placement, p_expected_items: items.map(row => ({ id: row.id, updated_at: row.updated_at })),
+    });
+    return { ok: !error, data, error, conflict: Boolean(error?.message?.includes("luggage_stale")) };
+  } catch (error) { return { ok: false, error, conflict: Boolean(error?.message?.includes("luggage_stale")) }; }
+}
+
+export function reorderLuggageSnapshot(snapshot, { scope, item, target, placement, items, tripId, userId, approvedMemberIds, now = Date.now() }) {
+  if (!approvedMemberIds.includes(userId)) throw new Error("luggage_forbidden");
+  if (!["personal", "shared"].includes(scope)) throw new Error("luggage_invalid_payload");
+  const key = scope === "personal" ? "luggageItems" : "sharedLuggageItems";
+  const list = snapshot[key].filter(row => row.trip_id === tripId && (scope === "shared" || row.owner_id === userId && !row.shared_item_id && !row.is_shared_assigned_item));
+  const versions = new Map(items.map(row => [row.id, row.updated_at]));
+  if (list.length !== items.length || versions.size !== list.length || list.some(row => versions.get(row.id) !== row.updated_at)) throw new Error("luggage_stale");
+  if (list.some(row => row.locked_by && row.locked_by !== userId && Date.parse(row.locked_at) > now - 420000)) throw new Error("luggage_locked");
+  const ordered = planLuggageOrder(list, item.id, target.id, placement);
+  const source = list.find(row => row.id === item.id), anchor = list.find(row => row.id === target.id);
+  const patch = scope === "personal" ? { category: anchor.category || "" } : { assigned_to: anchor.assigned_to || null };
+  const groupChanged = scope === "personal" ? (source.category || "") !== patch.category : (source.assigned_to || null) !== patch.assigned_to;
+  if (item.id === target.id || !groupChanged && sortLuggageItems(list).every((row, i) => ordered[i].id === row.id)) return snapshot;
+  const updates = new Map(ordered.map((row, index) => {
+    const moved = row.id === source.id && groupChanged;
+    if (!moved && row.sort_order === index + 1) return [row.id, row];
+    const next = moved ? scope === "personal" ? { ...row, ...patch } : transitionSharedLuggage(row, patch, { userId, approvedMemberIds }) : { ...row };
+    return [row.id, { ...next, sort_order: index + 1, updated_at: new Date(Math.max(now, Date.parse(row.updated_at) + 1)).toISOString() }];
+  }));
+  return { ...snapshot, [key]: snapshot[key].map(row => updates.get(row.id) || row) };
 }
 
 /** Local-only equivalent of the atomic RPC for Demo and isolated UI fixtures. */

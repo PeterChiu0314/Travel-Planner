@@ -1,4 +1,4 @@
-// Demo-only packing fixtures: 40 private + 20 canonical shared items. No backend writes.
+// Demo-only packing fixtures: 40 private + 16 assigned canonical shared items. No backend writes.
 const privateGroups = [
   ["證件", ["護照", "健保卡・身分證", "現金錢包", "信用卡", "國際駕照", "登機證"]],
   ["電子用品", ["充電器", "行動電源", "手機充電線", "相機", "記憶卡", "耳機", "手錶充電線"]],
@@ -18,7 +18,7 @@ const privateNotes = {
 };
 const sharedNotes = {
   "隨身 Wi-Fi": "出發前測試連線，回程記得歸還", "常備藥包": "腸胃藥、止痛藥與 OK 繃", "延長線・萬用轉接頭": "先確認可用插座與電壓",
-  "折疊購物袋": "採買時使用，放車內容易拿取處", "票券資料夾": "電子檔備份，重要憑證另存離線", "租車預約確認單": "取車前確認預約號碼與時間", "住宿預約確認單": "核對入住日期、房型及人數",
+  "票券資料夾": "電子檔備份，重要憑證另存離線", "租車預約確認單": "取車前確認預約號碼與時間", "住宿預約確認單": "核對入住日期、房型及人數",
   "相機腳架": "收納後綁緊固定帶", "多孔 USB 充電座": "晚上集中充電，離開前清點", "體溫計": "確認電池電量", "公用雨傘": "雨天放入口附近，使用後晾乾",
   "車用垃圾袋": "每日下車前清理", "野餐墊": "擦乾後再收納", "共用洗衣精": "少量分裝，瓶身標示清楚",
 };
@@ -29,27 +29,23 @@ export function createDemoLuggageItems(tripId) {
     .map((item, index) => ({ ...item, notes: privateNotes[item.title] || "", packed: index % 4 === 0, trip_id: tripId, owner_id: "demo-peter", updated_at: "2026-10-23T00:00:00.000Z" }));
 }
 const teamItems = [
-  ["隨身 Wi-Fi", "電子用品", "demo-a", true, false],
-  ["常備藥包", "健康用品", "demo-peter", false, false],
-  ["延長線・萬用轉接頭", "電子用品", "demo-peter", false, false],
-  ["折疊購物袋", "日常用品", null, false, false],
-  ["票券資料夾", "證件", "demo-a", false, false],
-  ["租車預約確認單", "證件", "demo-b", true, true],
-  ["住宿預約確認單", "證件", "demo-c", true, false],
-  ["景點預約憑證", "證件", null, false, false],
-  ["相機腳架", "電子用品", "demo-c", true, true],
-  ["多孔 USB 充電座", "電子用品", "demo-d", false, false],
-  ["備用充電線組", "電子用品", "demo-a", true, false],
-  ["體溫計", "健康用品", "demo-b", false, false],
-  ["OK 繃與紗布", "健康用品", "demo-d", true, true],
-  ["酒精消毒棉片", "健康用品", null, false, false],
-  ["公用雨傘", "日常用品", "demo-peter", false, false],
-  ["車用垃圾袋", "日常用品", "demo-peter", true, false],
-  ["野餐墊", "日常用品", "demo-b", false, false],
-  ["夾鏈袋組", "日常用品", "demo-c", true, true],
-  ["共用洗衣精", "盥洗用品", "demo-d", false, false],
-  ["摺疊曬衣架", "盥洗用品", null, false, false],
+  [1, "隨身 Wi-Fi", "電子用品", "demo-a", true, false],
+  [2, "常備藥包", "健康用品", "demo-peter", false, false],
+  [3, "延長線・萬用轉接頭", "電子用品", "demo-peter", false, false],
+  [5, "票券資料夾", "證件", "demo-a", false, false],
+  [6, "租車預約確認單", "證件", "demo-b", true, true],
+  [7, "住宿預約確認單", "證件", "demo-c", true, false],
+  [9, "相機腳架", "電子用品", "demo-c", true, true],
+  [10, "多孔 USB 充電座", "電子用品", "demo-d", false, false],
+  [11, "備用充電線組", "電子用品", "demo-a", true, false],
+  [12, "體溫計", "健康用品", "demo-b", false, false],
+  [13, "OK 繃與紗布", "健康用品", "demo-d", true, true],
+  [15, "公用雨傘", "日常用品", "demo-peter", false, false],
+  [16, "車用垃圾袋", "日常用品", "demo-peter", true, false],
+  [17, "野餐墊", "日常用品", "demo-b", false, false],
+  [18, "夾鏈袋組", "日常用品", "demo-c", true, true],
+  [19, "共用洗衣精", "盥洗用品", "demo-d", false, false],
 ];
 export function createDemoSharedLuggageItems(tripId) {
-  return teamItems.map(([title, category, assigned_to, packed_by_assignee, confirmed_by_owner], index) => ({ id: `demo-shared-luggage-${index + 1}`, title, category, assigned_to, packed_by_assignee, confirmed_by_owner, notes: sharedNotes[title] || "", trip_id: tripId, updated_at: "2026-10-23T00:00:00.000Z" }));
+  return teamItems.map(([fixtureId, title, category, assigned_to, packed_by_assignee, confirmed_by_owner]) => ({ id: `demo-shared-luggage-${fixtureId}`, title, category, assigned_to, packed_by_assignee, confirmed_by_owner, notes: sharedNotes[title] || "", trip_id: tripId, updated_at: "2026-10-23T00:00:00.000Z" }));
 }

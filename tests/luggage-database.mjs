@@ -35,7 +35,7 @@ try {
     }
     await db.exec((await fs.readFile(new URL(file, dir), "utf8")).replace(/create extension if not exists pgcrypto;/ig, ""));
   }
-  check((await db.query("select (to_jsonb(t.*) - 'notes') r from luggage_items t where id=$1 union all select (to_jsonb(t.*) - 'notes') r from shared_luggage_items t where id=$2 union all select to_jsonb(t.*) r from pack_items t where id=$3",[legacyPrivateId,legacySharedId,legacyPackId])).rows, legacySnapshot);
+  check((await db.query("select (to_jsonb(t.*) - 'notes' - 'sort_order') r from luggage_items t where id=$1 union all select (to_jsonb(t.*) - 'notes' - 'sort_order') r from shared_luggage_items t where id=$2 union all select to_jsonb(t.*) r from pack_items t where id=$3",[legacyPrivateId,legacySharedId,legacyPackId])).rows, legacySnapshot);
   const owner = randomUUID(), editor = randomUUID(), viewer = randomUUID(), pending = randomUUID(), outsider = randomUUID();
   const trip = randomUUID(), otherTrip = randomUUID();
   const q = async (sql, args = []) => (await db.query(sql, args)).rows;
@@ -262,5 +262,50 @@ try {
   await db.exec("reset role; drop trigger test_reject_return_delete on public.shared_luggage_items; drop function public.test_reject_return_delete();");
   check((await q("select prosecdef from pg_proc where proname='privatize_luggage_item'"))[0].prosecdef,false);
   await login("","anon"); await rejects(()=>privatize(returnBlocked,"衣物"),"permission denied");
-  console.log(`Luggage offline PostgreSQL: ${checks} assertions passed (full migration chain, RLS, two-role stale writes, private isolation, bidirectional conversion rollback, locks, legacy compatibility).`);
+  // Ordering is authoritative and atomic, with full-list versions including hidden rows.
+  await db.exec("reset role");
+  const orderTrip = randomUUID();
+  await q("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Order','Order','Japan',current_date+10,current_date+15,$2)",[orderTrip,owner]);
+  await q("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved'),($1,$3,'viewer','approved'),($1,$4,'viewer','pending')",[orderTrip,owner,viewer,pending]);
+  await login(viewer);
+  let a=await mutate('personal','save',{title:'A',category:'證件',notes:'keep'},null,orderTrip);
+  let b=await mutate('personal','save',{title:'B',category:'衣物'},null,orderTrip);
+  let c=await mutate('personal','save',{title:'C',category:'衣物'},null,orderTrip);
+  a=await mutate('personal','patch',{packed:true},a,orderTrip);
+  // PGlite parses timestamptz columns as JS Date (milliseconds). Return JSON text
+  // to retain PostgreSQL's microseconds, as PostgREST does for exact version checks.
+  const manifest=async scope => (await q(`select to_jsonb(t) r from (select id,updated_at from ${scope==='personal'?'luggage_items':'shared_luggage_items'} where trip_id=$1 order by sort_order nulls last,created_at,id) t`,[orderTrip])).map(row=>row.r);
+  const reorder=async (scope,source,target,placement='before',expected=null) => (await q('select reorder_luggage_items($1,$2,$3,$4,$5,$6::jsonb) r',[orderTrip,scope,source.id,target.id,placement,JSON.stringify(expected || await manifest(scope))]))[0].r;
+  const staleOrder=await manifest('personal');
+  let ordered=await reorder('personal',a,c);
+  check(ordered.map(r=>r.id),[b.id,a.id,c.id]);
+  a=ordered.find(r=>r.id===a.id); b=ordered.find(r=>r.id===b.id); c=ordered.find(r=>r.id===c.id);
+  check([a.category,a.notes,a.packed],['衣物','keep',true]);
+  await rejects(()=>reorder('personal',a,b,'before',staleOrder),'luggage_stale');
+  await rejects(()=>reorder('personal',a,b,'before',[...staleOrder.slice(0,2),staleOrder[0]]),'luggage_stale');
+  const sameOrder=await manifest('personal'); await reorder('personal',a,c);
+  check(await manifest('personal'),sameOrder);
+  ordered=await reorder('personal',b,c,'after'); check(ordered.map(r=>r.id),[a.id,c.id,b.id]);
+  await login(owner); await rejects(async ()=>reorder('personal',a,b,'before',await manifest('personal')),'luggage_not_found');
+  check((await manifest('personal')).length,0);
+  await login(viewer);
+  let s1=await mutate('shared','save',{title:'S1',assigned_to:viewer},null,orderTrip);
+  let s2=await mutate('shared','save',{title:'S2',assigned_to:viewer},null,orderTrip);
+  let s3=await mutate('shared','save',{title:'S3',assigned_to:owner},null,orderTrip);
+  s1=await mutate('shared','patch',{packed_by_assignee:true},s1,orderTrip);
+  ordered=await reorder('shared',s1,s2,'after'); check(ordered.map(r=>r.id),[s2.id,s1.id,s3.id]);
+  check(ordered.find(r=>r.id===s1.id).packed_by_assignee,true);
+  ordered=await reorder('shared',s1,s3); check(ordered.find(r=>r.id===s1.id).assigned_to,owner);
+  check(ordered.find(r=>r.id===s1.id).packed_by_assignee,false);
+  const beforeLock=await manifest('shared');
+  await login(owner); await q('update shared_luggage_items set locked_by=$1,locked_at=clock_timestamp() where id=$2',[owner,s3.id]);
+  await login(viewer); const lockedOrder=await manifest('shared');
+  await rejects(()=>reorder('shared',s1,s2,'before',beforeLock),'luggage_stale');
+  await rejects(()=>reorder('shared',s1,s2,'before',lockedOrder),'luggage_locked');
+  check(await manifest('shared'),lockedOrder);
+  await login(pending); await rejects(()=>reorder('shared',s1,s2,'before',lockedOrder),'luggage_forbidden');
+  await login(outsider); await rejects(()=>reorder('shared',s1,s2,'before',lockedOrder),'luggage_forbidden');
+  await login('','anon'); await rejects(()=>reorder('shared',s1,s2,'before',lockedOrder),'permission denied');
+  await db.exec('reset role'); check((await q("select prosecdef from pg_proc where proname='reorder_luggage_items'"))[0].prosecdef,false);
+  console.log(`Luggage offline PostgreSQL: ${checks} assertions passed (full migration chain, RLS, ordering, stale manifests, private isolation, conversion rollback, locks, legacy compatibility).`);
 } finally { await db.close(); }

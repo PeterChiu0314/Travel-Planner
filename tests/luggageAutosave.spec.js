@@ -40,18 +40,18 @@ test("clicking Quick Add saves first and restores the original input focus and d
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("filters, search and checkbox labels execute their original action after saving", async ({ page }) => {
+test("shared filters, creation mode and checkbox labels execute their original action after saving", async ({ page }) => {
   await load(page);
   await page.getByRole("button", { name: "編輯：護照", exact: true }).click(); await name(page).fill("護照A");
-  const filters = page.getByRole("group", { name: "個人行李篩選", exact: true });
+  const filters = page.getByRole("group", { name: "共用物品篩選", exact: true });
   await filters.getByRole("button", { name: "已打包", exact: true }).click();
   await expect(filters.getByRole("button", { name: "已打包", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect((await state(page)).luggageItems.find(item => item.id === "own").title).toBe("護照A");
   await filters.getByRole("button", { name: "全部", exact: true }).click();
   await page.getByRole("button", { name: "編輯：護照A", exact: true }).click(); await name(page).fill("護照B");
-  await page.getByRole("button", { name: "展開行李搜尋", exact: true }).click();
-  await expect(page.getByRole("searchbox", { name: "搜尋行李", exact: true })).toBeFocused();
-  await page.getByRole("searchbox", { name: "搜尋行李", exact: true }).press("Escape");
+  await page.getByRole("button", { name: "新增類型：共用", exact: true }).click();
+  await expect(page.getByRole("form", { name: "快速新增共用物品", exact: true })).toBeVisible();
+  expect((await state(page)).luggageItems.find(item => item.id === "own").title).toBe("護照B");
   await page.getByRole("button", { name: "編輯：護照B", exact: true }).click(); await name(page).fill("護照C");
   const check = page.getByRole("checkbox", { name: "成員已打包：團隊文件", exact: true });
   await check.locator("..").click();

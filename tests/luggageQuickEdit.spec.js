@@ -19,7 +19,7 @@ const canonical = async page => JSON.parse(await page.getByTestId("luggage-canon
 const discard = async page => page.getByRole("dialog", { name: "您有未儲存的變更", exact: true }).getByRole("button", { name: "不儲存", exact: true }).click();
 
 for (const kind of ["個人行李"]) {
-  test(`${kind}: Quick Add is one fixed row, remembers category and supports consecutive Enter additions`, async ({ page }) => {
+  test(`${kind}: Quick Add is a fixed two-row form, remembers category and supports consecutive Enter additions`, async ({ page }) => {
     await load(page, "?empty=1");
     const form = quick(page, kind), name = form.getByLabel(`${kind}名稱`, { exact: true });
     const category = form.getByRole("combobox", { name: `${kind}分類`, exact: true });
@@ -27,7 +27,10 @@ for (const kind of ["個人行李"]) {
     const before = await form.boundingBox();
     const field = await name.boundingBox(), select = await category.boundingBox(), button = await form.getByRole("button", { name: `新增${kind}`, exact: true }).boundingBox();
     expect(Math.abs(field.y - select.y)).toBeLessThanOrEqual(1);
-    expect(Math.abs(field.y - button.y)).toBeLessThanOrEqual(1);
+    expect(button.y).toBeGreaterThan(field.y + field.height);
+    const notes = await form.getByLabel(`${kind}備註`, { exact: true }).boundingBox();
+    expect(Math.abs(notes.y - button.y)).toBeLessThanOrEqual(1);
+    expect(select.x).toBeLessThan(field.x);
     await choose(page, `${kind}分類`, "電子用品");
     await name.fill("充電轉接頭");
     expect((await form.boundingBox()).height).toBe(before.height);
@@ -155,7 +158,7 @@ test("desktop inline editing keeps the original row height and list position inc
   await page.getByLabel("編輯共用物品名稱", { exact: true }).press("Escape");
   await list.evaluate(element => { element.scrollTop = element.scrollHeight; });
   const bottomScroll = await list.evaluate(element => element.scrollTop);
-  await page.getByRole("button", { name: "編輯：摺疊曬衣架", exact: true }).click();
+  await page.getByRole("button", { name: "編輯：共用洗衣精", exact: true }).click();
   const reveal = await list.evaluate(element => element.scrollTop);
   expect(reveal - bottomScroll).toBe(0);
   await expect(page.getByLabel("編輯共用物品名稱", { exact: true })).toBeInViewport();

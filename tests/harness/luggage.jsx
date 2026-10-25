@@ -4,7 +4,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ActiveEditorGuardDialog, LuggagePanel } from "../../src/App.jsx";
-import { privatizeLuggageSnapshot, assignLuggageSnapshot, luggageErrorMessage, transitionSharedLuggage } from "../../src/lib/luggageService.js";
+import { reorderLuggageSnapshot, privatizeLuggageSnapshot, assignLuggageSnapshot, luggageErrorMessage, transitionSharedLuggage } from "../../src/lib/luggageService.js";
 import "../../src/styles.css";
 import "../../src/components/budget/budget-page.css";
 
@@ -94,6 +94,16 @@ function Harness() {
       publish(next); setNotice(""); return { ok: true };
     } catch (error) { return { ok: false, error: new Error(luggageErrorMessage(error)) }; }
   }
+  async function reorder(scope, item, target, placement, items) {
+    const latency = Math.min(500, Number(parameters.get("latency")) || 0);
+    if (latency) await new Promise(resolve => setTimeout(resolve, latency));
+    if (failNext) { setFailNext(false); return { ok: false, error: new Error("暫時無法連線，請重試。") }; }
+    try {
+      const next = reorderLuggageSnapshot(stateRef.current, { scope, item, target, placement, items, tripId: trip.id,
+        userId: actorId, approvedMemberIds: actors.filter(member => member.status === "approved").map(member => member.user_id) });
+      publish(next); setNotice(""); return { ok: true };
+    } catch (error) { return { ok: false, error: new Error(luggageErrorMessage(error)) }; }
+  }
   return <main style={{ padding: "12px", maxWidth: "1600px", margin: "auto" }}>
     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" }}>
       <label>測試使用者<select aria-label="測試使用者" value={actorId} onChange={(event) => setActorId(event.target.value)}>{actors.map((member) => <option value={member.user_id} key={member.user_id}>{member.display_name}</option>)}</select></label>
@@ -106,6 +116,7 @@ function Harness() {
       onSaveShared={(payload, id, meta) => save("shared", payload, id, meta)}
       onAssign={assign}
       onPrivatize={privatize}
+      onReorder={reorder}
       onDeletePersonal={(id) => update("personal", "delete", {}, id)} onDeleteShared={(id) => update("shared", "delete", {}, id)}
       onTogglePersonal={(item) => update("personal", "patch", { packed: !item.packed }, item.id)}
       onUpdateShared={(id, patch) => update("shared", "patch", patch, id)} />

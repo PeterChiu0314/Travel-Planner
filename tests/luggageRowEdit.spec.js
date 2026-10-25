@@ -7,30 +7,16 @@ test.use({ viewport: { width: 1440, height: 900 } });
 const fixture = "/tests/harness/luggage.html";
 const canonical = async page => JSON.parse(await page.getByTestId("luggage-canonical-state").textContent());
 
-test("search opens after personal status tabs without moving lists and Escape clears the hidden filter", async ({ page }) => {
+test("personal status and search controls are removed while progress remains visible", async ({ page }) => {
   await page.goto(fixture);
-  await expect(page.getByRole("searchbox", { name: "搜尋行李", exact: true })).toHaveCount(0);
-  const tabs = page.getByRole("group", { name: "個人行李篩選", exact: true });
-  const packed = await tabs.getByRole("button", { name: "已打包", exact: true }).boundingBox();
-  const toggle = tabs.getByRole("button", { name: "展開行李搜尋", exact: true });
-  const icon = await toggle.boundingBox();
-  expect(icon.x).toBeGreaterThan(packed.x + packed.width);
-  expect(icon.y).toBeLessThan(packed.y + packed.height);
-  const position = await page.locator(".lb-personal .lb-list-body").boundingBox();
-  await toggle.click();
-  const search = page.getByRole("searchbox", { name: "搜尋行李", exact: true });
-  await expect(search).toBeFocused(); await search.fill("找不到的物品");
-  await expect(page.locator(".lb-private-row")).toHaveCount(0);
-  await search.press("Escape");
-  await expect(toggle).toBeFocused(); await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("group", { name: "個人行李篩選", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("searchbox")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "展開行李搜尋", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "編輯：護照", exact: true })).toBeVisible();
-  expect(await page.locator(".lb-personal .lb-list-body").boundingBox()).toEqual(position);
   for (const label of ["我的打包進度", "成員已打包"]) {
     const progress = page.getByRole("progressbar", { name: label, exact: true });
     expect(await progress.innerText()).toMatch(/^\d+\/\d+$/);
-    const meter = progress.locator(".lb-meter");
-    expect((await meter.boundingBox()).width).toBeGreaterThanOrEqual(100);
-    expect(await meter.evaluate(element => parseFloat(getComputedStyle(element).borderRadius))).toBeGreaterThan(0);
+    expect((await progress.locator(".lb-meter").boundingBox()).width).toBeGreaterThanOrEqual(100);
   }
 });
 
@@ -84,15 +70,10 @@ test("row autosave failure and IME Enter retain the draft, while icon deletion s
   await expect(page.getByRole("button", { name: "編輯：護照未完成輸入", exact: true })).toBeFocused();
 });
 
-test("mobile team retains the same global search and same-height assignee editing", async ({ page }) => {
+test("mobile team retains same-height editing and confirmed reassignment", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto(fixture);
-  await page.getByRole("button", { name: "展開行李搜尋", exact: true }).click();
-  const search = page.getByRole("searchbox", { name: "搜尋行李", exact: true });
-  await search.fill("共享充電器");
   await page.getByRole("tab", { name: "共用物品", exact: true }).click();
-  await expect(search).toHaveValue("共享充電器");
-  await expect(search).toBeFocused();
-  await search.press("Escape");
+  await expect(page.getByRole("searchbox")).toHaveCount(0);
   const row = page.locator(".shared-luggage-row").filter({ has: page.getByRole("button", { name: "編輯：共享充電器", exact: true }).or(page.getByRole("form", { name: "編輯共用物品：共享充電器", exact: true })) });
   const before = await row.boundingBox();
   await row.getByRole("button", { name: "編輯：共享充電器", exact: true }).click();
