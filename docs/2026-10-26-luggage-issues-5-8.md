@@ -1,6 +1,6 @@
 # 行李 Issues #5–#8 改善紀錄 — 2026-10-26
 
-基準：`codex/luggage-workspace-redesign`，`94d28a9`。本輪已完成本機實作與驗證，使用者已要求發布目前功能分支。Git發布範圍包含程式碼、測試、文件及新migration檔；尚未部署、套用新migration或更新／關閉GitHub issues。
+基準：`codex/luggage-workspace-redesign`，`94d28a9`。本輪已完成本機實作與驗證，使用者已要求發布目前功能分支。Git發布範圍包含程式碼、測試、文件及新migration檔；尚未部署或更新／關閉GitHub issues；新migration已於2026-10-26經使用者刪除確認後套用，見下方線上紀錄。
 
 ## #5：帳號與離線快取隔離
 
@@ -41,7 +41,7 @@
 
 ### 正式執行前
 
-新 migration **尚未套用**，未讀取或刪除正式物品。不能把離線測試清理筆數當成正式筆數。部署依賴：先核對目標專案、以下統計及是否有無效成員／舊影本，再於同一交易套用 migration；核對 migration 紀錄、欄位約束、觸發器與實際清理筆數。不要單獨發布前端後宣稱資料庫已禁止 NULL。
+新migration已於2026-10-26套用 Travel Planner `lqvuqamzmchepgxkftcw`。使用者在預檢後明確確認永久刪除2筆未指派共用紀錄。交易鎖定資料表、要求清理筆數仍為2，並比對完整已指派／私人JSON摘要，確保其內容未變；migration紀錄與原始SQL同交易寫入。以下預檢SQL保留供後續複查，不得把離線清理筆數視為正式筆數。
 
 ```sql
 select count(*) as unassigned_shared_items
@@ -59,7 +59,7 @@ where s.assigned_to is not null and not exists (
 );
 ```
 
-本次離線資料庫中刪除 4 筆舊 NULL 測試紀錄，已指派與私人紀錄的完整 JSON 快照未變；不是正式資料清理。
+離線資料庫刪除4筆NULL測試紀錄；線上實際刪除2筆。正式庫剩2筆已指派共用、3筆私人行李，完整內容摘要皆與交易前相同。11項線上檢查全部通過，包含NOT NULL、兩個NO ACTION外鍵、guard、RLS、RPC權限及舊欄位保留。驗證畫面與執行wrapper保存在本次visualization目錄。
 
 ## #7：二次確認盤點及分階段遷移
 

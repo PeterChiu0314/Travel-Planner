@@ -2432,6 +2432,7 @@ export default function App() {
   const accountRef = useRef({ userId: null, generation: 0 });
   const requestGuard = useRef(createRequestGuard()).current;
   requestGuard.setContext(session?.user?.id && activeTripId ? JSON.stringify([session.user.id, activeTripId]) : null);
+  const tripDataContext = requestGuard.context();
   const sharedSnapshotRef = useRef({ key: null, rows: [] });
   if (sharedSnapshotRef.current.key !== requestGuard.context().key) sharedSnapshotRef.current = { key: requestGuard.context().key, rows: [] };
   function updateSharedCache(tripId, userId, update) {
@@ -3025,10 +3026,15 @@ export default function App() {
   );
 
   const loadTripData = useCallback(async (tripId) => {
+    const userId = accountRef.current.userId;
+    // A queued callback must belong to this context's generation before it can
+    // advance any scope. Comparing IDs alone would accept an A -> B -> A callback.
+    if (tripId) {
+      if (!userId || !requestGuard.sameContext(tripDataContext) || tripDataContext.key !== JSON.stringify([userId, tripId])) return;
+    } else if (requestGuard.context().key !== null) return;
+    // Auth resets the guard to null before clearing, even through an older closure.
     const token = requestGuard.begin("trip");
     const personalToken = requestGuard.begin("personal"), sharedToken = requestGuard.begin("shared");
-    const userId = accountRef.current.userId;
-    if (tripId && (!userId || requestGuard.context().key !== JSON.stringify([userId, tripId]))) return;
     if (!tripId) {
       setItems([]);
       setAlternatives([]);
@@ -3215,7 +3221,7 @@ export default function App() {
       packItems: packResult.data || [],
       members: membersResult.data || [],
     });
-  }, []);
+  }, [tripDataContext.key, tripDataContext.generation]);
 
   const loadRouteOverrides = useCallback(async (tripId, dayIndex) => {
     const normalizedDayIndex = Number(dayIndex);

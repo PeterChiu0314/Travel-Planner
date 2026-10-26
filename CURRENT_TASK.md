@@ -2,6 +2,20 @@
 
 This file is the concise live project ledger. Keep it aligned with the real branch, deployed behavior, production migration state, and next requested phase.
 
+## Publication checkpoint — Trip request context race — 2026-10-26
+
+- User requested pushing the reviewed race fix on `codex/luggage-workspace-redesign`. Only application changes are in `src/App.jsx`; regression coverage extends the existing `tests/formalLuggageSync.spec.js`. The preceding hosted-migration application records in CURRENT_TASK, DESIGN and the issues handoff are included in this publication.
+- Reproduced late old-trip/account callbacks advancing trip/personal/shared sequences while the destination full load was pending. Context and generation are now checked before token creation; callbacks bind their originating generation, including A -> B -> A. The explicit null-context auth clear remains supported and cannot clear a currently active context. No request-guard API, luggageSync implementation, query payload, schema or subscription architecture changes.
+- Seven new race cases passed: late callbacks during destination loads, trip/account ABA callbacks and in-flight responses, and logout/next-account clearing. Full luggage/cache/Formal/workspace/smoke run: 212/213 passed initially; an existing component-harness drag-handle timeout did not recur when its entire group was repeated serially three times (30/30). Production build and diff checks passed; existing bundle advisory remains. Mocked local Chromium coverage, not hosted multi-account acceptance.
+- Feature-branch Git publication only. No main merge, manual frontend deployment, new production data operation or issue closure. Untracked scratch, Supabase metadata and test artifacts remain excluded.
+
+## Hosted migration applied — Required luggage assignee — 2026-10-26
+
+- User requested applying the migration and then explicitly confirmed deletion of the two unassigned shared records after live preflight. Target: Travel Planner `lqvuqamzmchepgxkftcw`. Connector access remained unavailable; used the authenticated Dashboard SQL Editor.
+- Applied committed `20261026120000_luggage_required_assignee.sql` and registered version/name/source in the same transaction. Wrapper locked the affected tables, required exactly two NULL-assignee rows and compared full assigned/private JSON digests before commit; any mismatch would roll back the entire operation.
+- Live result: deleted **2** unassigned shared records; remaining **2** assigned shared and **3** private records have unchanged complete content. No legacy mirrors or invalid non-NULL carriers blocked preflight. All **11** fresh readback checks passed: migration registration, counts, NOT NULL, NO ACTION deferrable account/member FKs, active guards, RLS, invoker/authenticated-only RPCs, private guard non-callability and legacy field preservation.
+- Evidence: luggage-required-assignee-{preflight,verified}.png plus apply/verification.sql in this chat's visualization folder. This completes the hosted #6 schema/cleanup step; it does not verify real two-account UI/Reconnection or deploy the frontend. Earlier migration-pending statements below are historical and superseded here. This application record/documentation update is included in the feature-branch publication above; the migration implementation was previously published as `ae480ec`. No main merge or issue closure.
+
 ## Publication checkpoint — Luggage issues #5–#8 — 2026-10-26
 
 - Read all four open issues and their empty comment threads: [#5 offline privacy](https://github.com/PeterChiu0314/Travel-Planner/issues/5), [#6 required assignee](https://github.com/PeterChiu0314/Travel-Planner/issues/6), [#7 legacy confirmation](https://github.com/PeterChiu0314/Travel-Planner/issues/7), [#8 scoped Realtime](https://github.com/PeterChiu0314/Travel-Planner/issues/8). User requested publication of the verified changes on `codex/luggage-workspace-redesign`; detailed behavior, compatibility plan, preflight SQL and verification boundaries: [issues handoff](docs/2026-10-26-luggage-issues-5-8.md).
