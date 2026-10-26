@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 
 // Uses the established Timeline menu surface and option styles. Portal keeps
 // menus clear of the independently scrolling Budget panels.
-export default function MenuSelect({ label, value, options, onValueChange, editable = false, placeholder, className = "", popupClassName = "", disabled = false }) {
+export default function MenuSelect({ label, value, options, onValueChange, editable = false, placeholder, className = "", popupClassName = "", disabled = false, triggerContent, popupWidth, popupAlign = "start" }) {
   const id = useId();
   const root = useRef(null), menu = useRef(null), control = useRef(null);
   const [open, setOpen] = useState(false), [position, setPosition] = useState(null), [active, setActive] = useState(0);
@@ -28,11 +28,11 @@ export default function MenuSelect({ label, value, options, onValueChange, edita
     if (!open) return;
     function place() {
       const rect = root.current.getBoundingClientRect();
-      const width = Math.min(rect.width, window.innerWidth - 16);
+      const width = Math.min(popupWidth || rect.width, window.innerWidth - 16);
       const roomBelow = window.innerHeight - rect.bottom - 8, roomAbove = rect.top - 8;
       const above = roomBelow < 160 && roomAbove > roomBelow;
       const maxHeight = Math.min(208, Math.max(60, above ? roomAbove - 5 : roomBelow - 5));
-      setPosition({ position: "fixed", left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)), width,
+      setPosition({ position: "fixed", left: Math.max(8, Math.min(popupAlign === "end" ? rect.right - width : rect.left, window.innerWidth - width - 8)), width,
         top: above ? "auto" : rect.bottom + 5, bottom: above ? window.innerHeight - rect.top + 5 : "auto", maxHeight, right: "auto", zIndex: 100 });
     }
     place();
@@ -65,7 +65,7 @@ export default function MenuSelect({ label, value, options, onValueChange, edita
     if (!root.current?.contains(event.relatedTarget) && !menu.current?.contains(event.relatedTarget)) setOpen(false);
   }}>
     {editable ? <div className="menu-select-editable"><input {...aria} placeholder={placeholder} disabled={disabled} ref={control} value={value} onClick={() => { if (!open) show(); }} onChange={(event) => { onValueChange(event.target.value); setFilter(event.target.value); setActive(0); setOpen(true); }} /><button type="button" aria-label={`開啟${label}選單`} disabled={disabled} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onClick={() => open ? setOpen(false) : show()}><ChevronDown size={15} /></button></div>
-      : <button {...aria} disabled={disabled} ref={control} className="menu-select-trigger" type="button" onClick={() => open ? setOpen(false) : show()}><span>{selected?.label || value || "未指定"}</span><ChevronDown size={15} /></button>}
+      : <button {...aria} disabled={disabled} ref={control} className="menu-select-trigger" type="button" onClick={() => open ? setOpen(false) : show()}>{triggerContent || <><span>{selected?.label || value || "未指定"}</span><ChevronDown size={15} /></>}</button>}
     {open && position ? createPortal(<div id={id} ref={menu} className={`timeline-time-menu timeline-type-menu menu-select-popup ${popupClassName}`} role="listbox" aria-label={`${label}選項`} style={position}>
       {shown.map((option, index) => <button key={option.value} id={`${id}-${index}`} data-index={index} type="button" role="option" aria-selected={String(option.value) === String(value)} className={`${String(option.value) === String(value) ? "selected" : ""}${index === active ? " keyboard-active" : ""}`} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(option)}>{option.label}</button>)}
       {!shown.length ? <div className="menu-select-empty">可直接輸入自訂分類</div> : null}

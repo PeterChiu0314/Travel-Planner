@@ -31,7 +31,7 @@ export function transitionSharedLuggage(item, patch, { userId, isOwner = false, 
 
 const errorMessages = {
   luggage_forbidden: "你沒有權限執行此行李操作。",
-  luggage_not_packed: "請先由負責成員完成打包。",
+  luggage_not_packed: "請先由負責成員完成準備。",
   luggage_invalid_assignee: "請指派目前旅程中已核准的成員。",
   luggage_invalid_payload: "請檢查物品名稱與操作內容。",
   luggage_stale: "這件物品已被其他人更新，請依最新內容重試。",

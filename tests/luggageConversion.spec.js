@@ -7,7 +7,7 @@ test("private sharing waits for the site dialog; cancellation keeps the private 
   const native = []; page.on("dialog", dialog => { native.push(dialog.type()); dialog.dismiss(); });
   await dragLuggage(page, "護照", "viewer", "personal", { confirm: false });
   const dialog = page.getByRole("dialog", { name: "轉為共用物品？", exact: true });
-  await expect(dialog).toContainText("旅伴 Dennis"); await expect(dialog).toContainText("名稱與備註供全體");
+  await expect(dialog).toContainText("旅伴 Dennis"); await expect(dialog).toContainText("所有成員都能查看名稱與備註");
   expect(await state(page)).toEqual(before);
   await dialog.getByRole("button", { name: "取消", exact: true }).click(); expect(await state(page)).toEqual(before);
   await dragLuggage(page, "護照", "viewer", "personal");
@@ -23,7 +23,7 @@ test("returning public gear confirms removal and privacy, preserves notes and re
   const before = await state(page);
   await returnLuggage(page, "團隊相機", "衣物", { confirm: false });
   const dialog = page.getByRole("dialog", { name: "轉為個人物品？", exact: true });
-  await expect(dialog).toContainText("從共用物品移除"); await expect(dialog).toContainText("僅自己可見");
+  await expect(dialog).toContainText("將移至你的個人行李"); await expect(dialog).toContainText("不再與團隊共享");
   expect(await state(page)).toEqual(before);
   await dialog.press("Escape"); expect(await state(page)).toEqual(before);
   await returnLuggage(page, "團隊相機", "衣物");

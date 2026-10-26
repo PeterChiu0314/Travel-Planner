@@ -106,7 +106,7 @@ test("entering Quick Add saves the edited row without changing the separate new-
   await expect(name).toHaveValue(""); await expect(name).toBeFocused();
   await expect(page.getByRole("region", { name: "隨身必備", exact: true }).getByRole("button", { name: "編輯：護照及影本", exact: true })).toBeVisible();
   expect((await canonical(page)).luggageItems.find(row => row.id === "own").notes).toBe("護照影本另放");
-  await expect(page.getByRole("checkbox", { name: "打包：新增中的充電線", exact: true })).not.toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "準備：新增中的充電線", exact: true })).not.toBeChecked();
 });
 
 test("only one inline editor opens across rows and columns without discarding Quick Add", async ({ page }) => {
@@ -189,7 +189,7 @@ for (const width of [360, 820]) {
     await editor.getByLabel("編輯共用物品名稱", { exact: true }).fill("防水野餐墊");
     await editor.getByLabel("編輯共用物品名稱", { exact: true }).press("Enter");
     await expect(page.getByRole("button", { name: "編輯：防水野餐墊", exact: true })).toBeVisible();
-    await expect(page.getByRole("checkbox", { name: "成員已打包：防水野餐墊", exact: true })).not.toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "成員已備妥：防水野餐墊", exact: true })).not.toBeChecked();
     await page.getByRole("tab", { name: "個人行李", exact: true }).click(); expect((await form.boundingBox()).height).toBe(top.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     if (width === 360) { await page.getByRole("tab", { name: "個人行李", exact: true }).click(); expect((await form.getByRole("button", { name: "新增個人行李", exact: true }).boundingBox()).height).toBeGreaterThanOrEqual(44); }

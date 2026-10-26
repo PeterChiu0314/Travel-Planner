@@ -1,7 +1,9 @@
+import { createPortal } from "react-dom";
+import { luggageTitleLimit, luggageNotesLimit } from "../../lib/luggageLimits.js";
 import { closestCenter, DndContext, DragOverlay, KeyboardSensor, MeasuringStrategy, PointerSensor, pointerWithin, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
-import { DraggableRow, GroupInsertion, LuggageDragLayout, luggageDropResizeObserver, useLuggageDragState } from "./LuggageInteractions.jsx";
+import { DraggableRow, GroupInsertion, LuggageDragLayout, useAnchoredPopup, luggageDropResizeObserver, useLuggageDragState } from "./LuggageInteractions.jsx";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronRight, CreditCard, GripVertical, LockKeyhole, Package, Pencil, Plus, Shirt, Smartphone, SoapDispenserDroplet, BriefcaseMedical, Luggage, Trash2, Users } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, CreditCard, GripVertical, LockKeyhole, Package, Pencil, Plus, Shirt, Smartphone, SoapDispenserDroplet, BriefcaseMedical, Luggage, Trash2, Users, Search, SlidersHorizontal, CircleHelp, X } from "lucide-react";
 import MenuSelect from "../MenuSelect.jsx";
 import { isLockedByAnotherUser } from "../../lib/editLocks.js";
 import { planLuggageOrder, sortLuggageItems } from "../../lib/luggageOrdering.js";
@@ -9,7 +11,6 @@ import "./luggage-board.css";
 
 const emptyItems = [];
 const categoryDefaults = ["證件", "電子用品", "衣物", "盥洗用品", "健康用品", "日常用品", "其他"];
-const packingFilters = [{ value: "all", label: "全部" }, { value: "unpacked", label: "未打包" }, { value: "packed", label: "已打包" }];
 function memberLabel(member) { return member?.display_name || member?.nickname || member?.profile?.display_name || member?.profiles?.display_name || member?.email?.split("@")[0] || "旅程成員"; }
 
 const categoryIcons = { 證件: CreditCard, 衣物: Shirt, 電子用品: Smartphone, 盥洗用品: SoapDispenserDroplet, 健康用品: BriefcaseMedical, 日常用品: Package };
@@ -42,7 +43,7 @@ function MemberSlot({ memberId, name, member, items, all, canReceive, children }
   const originalMember = active?.data.current?.scope === "shared" && (active.data.current.item.assigned_to || "") === memberId;
   const receiving = canReceive && !originalMember && (isOver || target?.kind === "row" && target.scope === "shared" && (target.item.assigned_to || "") === memberId);
   const conversion = active?.data.current?.scope === "personal";
-  const cue = conversion ? memberId ? `放開轉為共用物品並交給 ${name}` : "放開轉為未指派共用物品" : memberId ? `放開指派給 ${name}` : "放開取消指派";
+  const cue = conversion ? memberId ? `交給 ${name} 準備` : "放開轉為未指派共用物品" : memberId ? `交給 ${name} 準備` : "放開取消指派";
   return <section ref={setNodeRef} data-member-id={memberId || "unassigned"} className={`lb-member-group${!member ? " is-unassigned" : ""}${receiving ? " is-drop-target" : ""}`} aria-label={`${name}的共用物品`}>
     <h4><span className="lb-member-avatar" aria-hidden="true">{member ? memberLabel(member).slice(0, 1).toUpperCase() : "—"}</span><span>{name}</span><small>{all.filter(item => item.packed_by_assignee).length}/{all.length}</small></h4>
     {children}
@@ -70,20 +71,52 @@ function keyboardDestination(event, { currentCoordinates, context }, selectedTar
     y: currentCoordinates.y + rect.top + rect.height / 2 - active.top - active.height / 2 };
 }
 
-function PackingFilters({ label, value, onChange, children }) {
-  const options = packingFilters;
-  return <div className="lb-status-tabs" role="group" aria-label={label}>{options.map(option => <button type="button" key={option.value} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>{option.label}</button>)}{children}</div>;
-}
 function LuggageSelect({ caption, ...props }) {
   const select = <MenuSelect {...props} popupClassName="lb-menu-popup" />;
   return caption ? <label className="lb-meta-field"><span>{caption}</span>{select}</label> : select;
+}
+function ReadinessFilter({ label, filter, setFilter, disabled }) {
+  return (<MenuSelect className={`lb-heading-filter${filter !== "all" ? " is-filtered" : ""}`} label={label} value={filter} disabled={disabled} options={[{ value: "all", label: "全部" }, { value: "unpacked", label: "未準備" }, { value: "packed", label: "已備妥" }]} onValueChange={setFilter} popupWidth={144} popupAlign="end" popupClassName="lb-menu-popup" triggerContent={<><SlidersHorizontal size={17} aria-hidden="true" /><span className="lb-sr-status">{filter === "all" ? "全部" : filter === "packed" ? "已備妥" : "未準備"}</span></>} />);
+}
+function PersonalTools({ query, setQuery, filter, setFilter, disabled }) {
+  const [open, setOpen] = useState(false), input = useRef(null), trigger = useRef(null), search = useRef(null);
+  const id = useId();
+  useLayoutEffect(() => { if (open) input.current?.focus({ preventScroll: true }); }, [open]);
+  useEffect(() => {
+    if (!open || query.trim()) return;
+    function outside(event) { if (!search.current?.contains(event.target)) setOpen(false); }
+    document.addEventListener("pointerdown", outside, true);
+    return () => document.removeEventListener("pointerdown", outside, true);
+  }, [open, query]);
+  function close() { setQuery(""); setOpen(false); trigger.current?.focus({ preventScroll: true }); }
+  return <div className={`lb-heading-tools${open ? " is-search-open" : ""}`}>
+    <div ref={search} className="lb-heading-search">
+      {open ? <input id={id} ref={input} type="search" aria-label="搜尋所有行李" placeholder="搜尋所有行李名稱或備註" value={query} disabled={disabled} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === "Escape" && !event.nativeEvent.isComposing) { event.preventDefault(); event.stopPropagation(); close(); } }} /> : null}
+      <button ref={trigger} type="button" className="lb-heading-icon" aria-label={open ? "關閉行李搜尋" : "搜尋所有行李"} title={open ? "關閉搜尋" : "搜尋"} aria-expanded={open} aria-controls={open ? id : undefined} disabled={disabled} onClick={() => open ? close() : setOpen(true)}>{open ? <X size={17} /> : <Search size={17} />}</button>
+    </div>
+    <ReadinessFilter label="篩選個人行李" {...{ filter, setFilter, disabled }} />
+  </div>;
+}
+function SharedTools({ filter, setFilter, disabled }) {
+  const [open, setOpen] = useState(false), trigger = useRef(null), popup = useRef(null), id = useId();
+  const position = useAnchoredPopup(open, trigger, popup, () => setOpen(false));
+  useLayoutEffect(() => { if (open) popup.current?.querySelector("button")?.focus({ preventScroll: true }); }, [open]);
+  function close() { setOpen(false); trigger.current?.focus({ preventScroll: true }); }
+  return <div className="lb-heading-tools">
+    <ReadinessFilter label="篩選共用物品" {...{ filter, setFilter, disabled }} />
+    <button ref={trigger} className="lb-heading-icon" type="button" aria-label="行李頁說明" title="行李頁說明" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen(!open)}><CircleHelp size={17} /></button>
+    {open ? createPortal(<div ref={popup} id={id} className="lb-note-popup lb-help-popup" style={position} role="dialog" aria-label="行李頁說明" onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); } }}>
+      <header><strong>行李頁說明</strong><button type="button" aria-label="關閉行李頁說明" onClick={close}><X size={16} /></button></header>
+      <ul><li>個人行李僅自己可見；共用物品供旅程成員查看。</li><li>從左側新增，可選個人或共用，並指定負責人。</li><li>勾選表示已備妥；共用物品由負責人確認準備。</li><li>拖曳可調整順序、分類或負責人；共享、改派與轉回個人皆會先詢問。</li><li>搜尋涵蓋兩欄名稱與備註，兩欄可分別篩選準備狀態。</li></ul>
+    </div>, document.body) : null}
+  </div>;
 }
 function Progress({ label, value, total }) {
   return <span className="lb-progress" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={Math.max(total, 1)} aria-valuenow={value} aria-valuetext={`${value} / ${total}`}><span><b>{value}</b>/{total}</span><span className="lb-meter" aria-hidden="true"><span style={{ width: `${total ? value / total * 100 : 0}%` }} /></span></span>;
 }
 function PackCheck({ title, checked, disabled, onChange, label, description }) {
   return <label className="lb-check" title={description}>
-    <input type="checkbox" aria-label={`${label || "打包"}：${title}`} checked={Boolean(checked)} disabled={disabled} onChange={onChange} />
+    <input type="checkbox" aria-label={`${label || "準備"}：${title}`} checked={Boolean(checked)} disabled={disabled} onChange={onChange} />
     <span className="lb-check-box" aria-hidden="true"><Check size={12} /></span>
   </label>;
 }
@@ -131,9 +164,9 @@ function QuickAdd({ form, setForm, categories, members, currentUserId, disabled,
       }}><Icon size={15} aria-hidden="true" /><span>{label}</span></button>)}</div>
     {shared ? <LuggageSelect label="共用物品攜帶者" placeholder="選擇攜帶者" value={assignedTo} options={members.map(member => ({ value: member.user_id, label: `${memberLabel(member)}${member.user_id === currentUserId ? "（我）" : ""}` }))} disabled={disabled} onValueChange={assigned_to => setForm({ ...form, assigned_to })} />
       : <LuggageSelect label={`${kind}分類`} editable placeholder="未分類" value={form.category} options={[{ value: "", label: "未分類" }, ...categories]} disabled={disabled} onValueChange={category => setForm({ ...form, category })} />}
-    <input ref={input} aria-label={`${kind}名稱`} placeholder={`新增${kind}`} value={form.title} maxLength={160} disabled={disabled} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} onChange={event => setForm({ ...form, title: event.target.value })} />
+    <input ref={input} aria-label={`${kind}名稱`} placeholder={`新增${kind}`} value={form.title} maxLength={luggageTitleLimit} disabled={disabled} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} onChange={event => setForm({ ...form, title: event.target.value })} />
     <div className="lb-add-secondary">
-      <input className="lb-quick-notes" aria-label={`${kind}備註`} placeholder="備註（選填）" value={form.notes || ""} maxLength={1000} disabled={disabled} onChange={event => setForm({ ...form, notes: event.target.value })} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} />
+      <input className="lb-quick-notes" aria-label={`${kind}備註`} placeholder="備註（選填）" value={form.notes || ""} maxLength={luggageNotesLimit} disabled={disabled} onChange={event => setForm({ ...form, notes: event.target.value })} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} />
       <button className="lb-submit" type="submit" aria-label={`新增${kind}`} disabled={disabled || !form.title.trim() || shared && !members.some(member => member.user_id === assignedTo)}><Plus size={16} aria-hidden="true" /><span>新增</span></button>
     </div>
   </form>;
@@ -141,6 +174,31 @@ function QuickAdd({ form, setForm, categories, members, currentUserId, disabled,
 
 function InlineEditor({ shared = false, assigned = false, item, form, setForm, disabled, onSubmit, onCancel, onDelete, focusNotes = false }) {
   const input = useRef(null), noteInput = useRef(null), editor = useRef(null), acting = useRef(false);
+  const [stacked, setStacked] = useState(false);
+  useLayoutEffect(() => {
+    const fields = editor.current?.querySelector(".lb-inline-fields");
+    if (!fields) return;
+    const canvas = document.createElement("canvas"), context = canvas.getContext("2d");
+    function measure() {
+      if (!context) return;
+      // Always compare against the original two-column widths, even after
+      // expanding. Measuring expanded inputs would toggle the layout forever.
+      const width = fields.clientWidth, gap = 8;
+      const badge = fields.querySelector(".lb-public-tag")?.getBoundingClientRect().width || 0;
+      function exceeds(element, value, available) {
+        const style = getComputedStyle(element);
+        context.font = style.font;
+        const inset = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+        return context.measureText(value || "").width + inset > available + 1;
+      }
+      setStacked(width > 0 && (exceeds(input.current, form.title, (width - gap) * .35 - badge)
+        || exceeds(noteInput.current, form.notes, (width - gap) * .65)));
+    }
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(fields);
+    return () => observer.disconnect();
+  }, [form.title, form.notes, assigned]);
   const latest = useRef(null), replaying = useRef(false);
   const kind = shared ? "共用物品" : "個人行李";
   async function save(event, changes) {
@@ -225,13 +283,13 @@ function InlineEditor({ shared = false, assigned = false, item, form, setForm, d
     } else if (bottom > window.innerHeight) window.scrollBy(0, bottom - window.innerHeight);
     (focusNotes ? noteInput.current : input.current)?.focus({ preventScroll: true });
   }, []);
-  return <form ref={editor} autoComplete="off" className="lb-inline-editor" aria-label={`編輯${kind}：${item.title}`} onSubmit={save} onBlur={leave} onKeyDownCapture={event => {
+  return <form ref={editor} autoComplete="off" className={`lb-inline-editor${stacked ? " lb-editor-stacked" : ""}`} aria-label={`編輯${kind}：${item.title}`} onSubmit={save} onBlur={leave} onKeyDownCapture={event => {
     if (event.key === "Escape" && !event.nativeEvent.isComposing && !editor.current?.querySelector('[aria-expanded="true"]')) { event.preventDefault(); event.stopPropagation(); void cancel(); }
   }} onKeyDown={event => {
     if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault();
   }}>
-    <div className="lb-inline-fields"><div className="lb-inline-title">{assigned ? <span className="lb-public-tag">共用</span> : null}<input className="lb-inline-name" ref={input} required aria-label={`編輯${kind}名稱`} title="離開此列自動儲存，Enter 儲存，Esc 取消" value={form.title} maxLength={160} disabled={disabled} onChange={event => { event.target.setCustomValidity(""); setForm({ ...form, title: event.target.value }); }} /></div>
-    <input ref={noteInput} className="lb-inline-notes" aria-label={`編輯${kind}備註`} placeholder="新增備註" title={form.notes || ""} value={form.notes || ""} maxLength={1000} disabled={disabled} onChange={event => setForm({ ...form, notes: event.target.value })} /></div>
+    <div className="lb-inline-fields"><div className="lb-inline-title">{assigned ? <span className="lb-public-tag">共用</span> : null}<input className="lb-inline-name" ref={input} required aria-label={`編輯${kind}名稱`} title="離開此列自動儲存，Enter 儲存，Esc 取消" value={form.title} maxLength={luggageTitleLimit} disabled={disabled} onChange={event => { event.target.setCustomValidity(""); setForm({ ...form, title: event.target.value }); }} /></div>
+    <input ref={noteInput} className="lb-inline-notes" aria-label={`編輯${kind}備註`} placeholder="新增備註" title={form.notes || ""} value={form.notes || ""} maxLength={luggageNotesLimit} disabled={disabled} onChange={event => setForm({ ...form, notes: event.target.value })} /></div>
     <button className="lb-delete" type="button" disabled={disabled} aria-label={`刪除：${item.title}`} title="刪除物品" onClick={async () => {
       if (acting.current) return;
       acting.current = true;
@@ -245,7 +303,7 @@ function SharedItemRow({ personal = false, item, editing, locked, canEdit, busy,
   const disabled = !canEdit || busy || locked;
   const className = `${personal ? "luggage-row shared-assigned" : "shared-luggage-row"}${item.assigned_to === currentUserId ? " is-mine" : ""}${item.packed_by_assignee ? " packed" : ""}${editing ? " is-editing" : ""}`;
   const content = <>
-    <PackCheck title={item.title} label={personal ? "打包指派共用物品" : "成員已打包"} checked={item.packed_by_assignee} disabled={disabled || editing || item.assigned_to !== currentUserId} description={personal ? "共用物品打包狀態與團隊同步" : item.assigned_to === currentUserId ? "負責人確認打包" : "由負責成員確認打包"} onChange={() => onUpdate(item.id, { packed_by_assignee: !item.packed_by_assignee }, item)} />
+    <PackCheck title={item.title} label={personal ? "準備指派共用物品" : "成員已備妥"} checked={item.packed_by_assignee} disabled={disabled || editing || item.assigned_to !== currentUserId} description={personal ? "共用物品準備狀態與團隊同步" : item.assigned_to === currentUserId ? "負責人確認準備" : "由負責成員確認準備"} onChange={() => onUpdate(item.id, { packed_by_assignee: !item.packed_by_assignee }, item)} />
     {editing ? <InlineEditor shared assigned={personal} item={item} {...editorProps} /> : <>
       <ItemFields item={item} assigned={personal} disabled={disabled} onName={() => onOpen(false)} onNotes={() => onOpen(true)} />
     </>}
@@ -263,6 +321,9 @@ export default function LuggageBoard({
   const [focusNotes, setFocusNotes] = useState(false);
   const [sharedEditorLocation, setSharedEditorLocation] = useState("shared");
   const [assignmentNotice, setAssignmentNotice] = useState("");
+  const [personalQuery, setPersonalQuery] = useState("");
+  const [personalFilter, setPersonalFilter] = useState("all");
+  const [sharedFilter, setSharedFilter] = useState("all");
   const [dragged, setDragged] = useState(null);
   const [dropPreview, setDropPreview] = useState(null);
   const busy = mutationBusy || Boolean(dropPreview);
@@ -296,7 +357,6 @@ export default function LuggageBoard({
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: (event, args) => keyboardDestination(event, args, keyboardTarget), keyboardCodes: { start: ["Space"], end: ["Space", "Enter"], cancel: ["Escape", "Tab"] } }));
-  const [sharedFilter, setSharedFilter] = useState("all");
   const [collapsedGroups, setCollapsedGroups] = useState([]);
   const previousCategories = useRef(new Map());
   const rows = useRef(new Map()), previousEditor = useRef(null);
@@ -308,11 +368,18 @@ export default function LuggageBoard({
   const sharedLocation = sharedEditorLocation === "personal" && (busy || assigned.some(item => item.id === editingSharedId)) ? "personal" : "shared";
   const myPacked = luggageItems.filter(item => item.packed).length + assigned.filter(item => item.packed_by_assignee).length;
   const categories = [...new Set([...categoryDefaults, ...luggageItems.map(item => item.category), ...sharedLuggageItems.map(item => item.category)].filter(Boolean))].map(value => ({ value, label: value }));
-  const shownPersonal = sortLuggageItems(presentedPersonal), shownAssigned = assigned;
-  const shownShared = sortLuggageItems(presentedShared.filter(item => item.id === editingSharedId || sharedFilter === "all" || sharedFilter === "unassigned" && !item.assigned_to || sharedFilter === "unpacked" && !item.packed_by_assignee || sharedFilter === "packed" && item.packed_by_assignee));
+  const query = personalQuery.trim().toLocaleLowerCase();
+  const personalFiltered = Boolean(query || personalFilter !== "all");
+  const matchesQuery = item => !query || `${item.title}\n${item.notes || ""}`.toLocaleLowerCase().includes(query);
+  const matchesPersonal = (item, packed) => matchesQuery(item)
+    && (personalFilter === "all" || (personalFilter === "packed") === Boolean(packed));
+  const shownPersonal = sortLuggageItems(presentedPersonal.filter(item => item.id === editingPersonalId || matchesPersonal(item, item.packed)));
+  const shownAssigned = assigned.filter(item => item.id === editingSharedId && sharedLocation === "personal" || matchesPersonal(item, item.packed_by_assignee));
+  const sharedFiltered = Boolean(query || sharedFilter !== "all");
+  const shownShared = sortLuggageItems(presentedShared.filter(item => item.id === editingSharedId || matchesQuery(item) && (sharedFilter === "all" || (sharedFilter === "packed") === Boolean(item.packed_by_assignee))));
   const categoryOf = item => item.category?.trim() || "未分類";
   const personalGroups = [...new Set([...categoryDefaults, ...presentedPersonal.map(categoryOf), ...(dragged?.scope === "shared" ? ["未分類"] : [])])].map(category => ({ category, items: shownPersonal.filter(item => categoryOf(item) === category), all: presentedPersonal.filter(item => categoryOf(item) === category) })).filter(group => group.items.length || dragged?.scope === "shared");
-  const isCollapsed = key => collapsedGroups.includes(key);
+  const isCollapsed = key => !personalFiltered && collapsedGroups.includes(key);
   function toggleGroup(key) { setCollapsedGroups(current => current.includes(key) ? current.filter(value => value !== key) : [...current, key]); }
   useEffect(() => {
     const next = new Map(luggageItems.map(item => [item.id, categoryOf(item)]));
@@ -329,7 +396,7 @@ export default function LuggageBoard({
   }
   const memberOrder = [currentUserId, ...approved.map(member => member.user_id).filter(id => id !== currentUserId)];
   const rankMember = id => !id ? Number.MAX_SAFE_INTEGER : memberOrder.includes(id) ? memberOrder.indexOf(id) : memberOrder.length;
-  const orderedGroups = [...memberGroups].sort(([a], [b]) => rankMember(a) - rankMember(b));
+  const orderedGroups = [...memberGroups].filter(([, items]) => !sharedFiltered || items.length || dragged).sort(([a], [b]) => rankMember(a) - rankMember(b));
   async function movePersonal(item, category) {
     const result = await onMovePersonal(item, category);
     if (result?.ok) {
@@ -343,7 +410,7 @@ export default function LuggageBoard({
     event.preventDefault(); const next = event.key === "Home" ? "personal" : event.key === "End" ? "shared" : activeTab === "personal" ? "shared" : "personal";
     onTabChange?.(next); event.currentTarget.querySelector(`#lb-${next}-tab`)?.focus();
   }
-  useEffect(() => { setSharedFilter("all"); setCollapsedGroups([]); }, [activeTrip?.id]);
+  useEffect(() => { setCollapsedGroups([]); setPersonalQuery(""); setPersonalFilter("all"); setSharedFilter("all"); }, [activeTrip?.id]);
   useEffect(() => {
     if (!assignmentNotice) return;
     const timer = setTimeout(() => setAssignmentNotice(""), 4500);
@@ -516,35 +583,33 @@ export default function LuggageBoard({
     </div>
     <div className="luggage-layout lb-layout">
       <section id="lb-personal" className={`luggage-column lb-personal${activeTab === "personal" ? " active" : ""}`} aria-label="個人行李">
-        <header className="lb-column-heading"><h3><Luggage size={20} aria-hidden="true" />個人行李</h3><Progress label="我的打包進度" value={myPacked} total={luggageItems.length + assigned.length} /></header>
+        <header className="lb-column-heading"><h3><Luggage size={20} aria-hidden="true" />個人行李</h3><Progress label="我的準備進度" value={myPacked} total={luggageItems.length + assigned.length} /><PersonalTools query={personalQuery} setQuery={setPersonalQuery} filter={personalFilter} setFilter={setPersonalFilter} disabled={busy || Boolean(dragged)} /></header>
         <QuickAdd form={personalQuickForm} setForm={setPersonalQuickForm} categories={categories} members={approved} currentUserId={currentUserId} disabled={!canEdit || busy} onSubmit={async event => {
           const saved = await submitPersonalQuick(event);
           if (saved) {
             const shared = personalQuickForm.creation_scope === "shared";
             setCollapsedGroups(current => current.filter(key => key !== (shared ? "assigned" : personalQuickForm.category || "未分類")));
-            if (shared) { setSharedFilter("all"); setAssignmentNotice(`已新增共用物品，由 ${memberLabel(byMember.get(personalQuickForm.assigned_to || currentUserId))} 攜帶`); }
+            if (shared) { setAssignmentNotice(`已新增共用物品，由 ${memberLabel(byMember.get(personalQuickForm.assigned_to || currentUserId))} 攜帶`); }
           }
           return saved;
         }} />
         <div className="lb-list-body" tabIndex={0} aria-label="個人行李清單">
           <div className="lb-list-content" style={{ minHeight: dragged?.listHeights.personal }}>
-          <div className="lb-list-labels" aria-hidden="true"><span>物品</span><span>備註</span></div>
           {shownAssigned.length ? <PersonalGroup label="我負責的共用物品" shared count={assigned.length} packed={assigned.filter(item => item.packed_by_assignee).length} collapsed={isCollapsed("assigned") && !(editingSharedId && sharedLocation === "personal")} toggle={() => toggleGroup("assigned")}><div className="assigned-shared-list lb-assigned">{shownAssigned.map(item => sharedRow(item, true))}</div></PersonalGroup> : null}
           {personalGroups.length ? <div className="luggage-list lb-private-list">{personalGroups.map(group => <PersonalGroup key={group.category} label={group.category} count={group.all.length} packed={group.all.filter(item => item.packed).length} collapsed={isCollapsed(group.category) && !group.items.some(item => item.id === editingPersonalId)} toggle={() => toggleGroup(group.category)}>{group.items.map(item => {
             const locked = isLockedByAnotherUser(item, currentUserId);
             return <DraggableRow item={item} disabled={!canEdit || busy || locked} draggingDisabled={Boolean(editingPersonalId || editingSharedId)} categories={categories} onMove={movePersonal} rowRef={node => { if (node) rows.current.set(item.id, node); else rows.current.delete(item.id); }} className={`luggage-row lb-private-row${item.packed ? " packed" : ""}${editingPersonalId === item.id ? " is-editing" : ""}`} key={item.id}>{editingPersonalId === item.id
               ? <><PackCheck title={item.title} checked={item.packed} disabled /><InlineEditor focusNotes={focusNotes} item={item} form={personalForm} setForm={setPersonalForm} categories={categories} disabled={!canEdit || busy} onSubmit={submitPersonal} onCancel={cancelPersonalEdit} onDelete={onDeletePersonal} /></>
               : <><PackCheck title={item.title} checked={item.packed} disabled={!canEdit || busy || locked} onChange={() => onTogglePersonal(item)} /><ItemFields item={item} disabled={!canEdit || busy || locked} onName={() => { setFocusNotes(false); editPersonal(item); }} onNotes={() => { setFocusNotes(true); editPersonal(item); }} />{locked ? <LockKeyhole size={12} aria-label="其他成員編輯中" /> : null}</>}</DraggableRow>;
-          })}</PersonalGroup>)}</div> : !shownAssigned.length ? <Empty /> : null}
+          })}</PersonalGroup>)}</div> : !shownAssigned.length ? <Empty filtered={personalFiltered} /> : null}
           </div>
         </div>
       </section>
       <section id="lb-shared" className={`luggage-column lb-shared${activeTab === "shared" ? " active" : ""}`} aria-label="共用物品">
-        <header className="lb-column-heading"><h3><Users size={20} aria-hidden="true" />共用物品</h3><Progress label="成員已打包" value={sharedLuggageItems.filter(item => item.packed_by_assignee).length} total={sharedLuggageItems.length} /></header>
-        <PackingFilters label="共用物品篩選" value={sharedFilter} onChange={setSharedFilter} shared />
+        <header className="lb-column-heading"><h3><Users size={20} aria-hidden="true" />共用物品</h3><Progress label="成員已備妥" value={sharedLuggageItems.filter(item => item.packed_by_assignee).length} total={sharedLuggageItems.length} /><SharedTools filter={sharedFilter} setFilter={setSharedFilter} disabled={busy || Boolean(dragged)} /></header>
         <div className="lb-list-body" tabIndex={0} aria-label="共用物品清單">
           <div className="lb-list-content" style={{ minHeight: dragged?.listHeights.shared }}>
-          <div className="luggage-list">{orderedGroups.map(([memberId, items]) => {
+          {!shownShared.length && sharedFiltered && !dragged ? <Empty filtered /> : null}<div className="luggage-list">{orderedGroups.map(([memberId, items]) => {
             const member = byMember.get(memberId);
             const name = member ? `${memberLabel(member)}${memberId === currentUserId ? "（我）" : ""}` : memberId ? "需重新指派" : "未指派";
             return <MemberSlot key={memberId} {...{ memberId, name, member, items }} all={sharedLuggageItems.filter(item => (item.assigned_to || "") === memberId)} canReceive={canEdit && !busy && Boolean(member || !memberId)}>{items.map(item => sharedRow(item, false))}</MemberSlot>; })}</div>

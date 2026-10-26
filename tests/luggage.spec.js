@@ -35,12 +35,12 @@ test("personal quick add, edit, keyboard packing and delete work without a globa
   await load(page);
   await personal(page).getByLabel("個人行李名稱", { exact: true }).fill("旅行轉接頭");
   await personal(page).getByRole("button", { name: "新增個人行李", exact: true }).click();
-  const checkbox = personal(page).getByRole("checkbox", { name: "打包：旅行轉接頭", exact: true });
+  const checkbox = personal(page).getByRole("checkbox", { name: "準備：旅行轉接頭", exact: true });
   await checkbox.focus(); await page.keyboard.press("Space"); await expect(checkbox).toBeChecked();
   await personal(page).getByRole("button", { name: "編輯：旅行轉接頭", exact: true }).click();
   await personal(page).getByLabel("編輯個人行李名稱", { exact: true }).fill("兩孔轉接頭");
   await personal(page).getByLabel("編輯個人行李名稱", { exact: true }).press("Enter");
-  await expect(personal(page).getByRole("checkbox", { name: "打包：兩孔轉接頭", exact: true })).toBeChecked();
+  await expect(personal(page).getByRole("checkbox", { name: "準備：兩孔轉接頭", exact: true })).toBeChecked();
   await personal(page).getByRole("button", { name: "編輯：兩孔轉接頭", exact: true }).click();
   await personal(page).getByRole("button", { name: "刪除：兩孔轉接頭", exact: true }).click();
   await acceptDeletion(page);
@@ -50,18 +50,16 @@ test("personal quick add, edit, keyboard packing and delete work without a globa
 test("only assigned members pack; packing immediately completes the item without owner confirmation", async ({ page }) => {
   await load(page);
   const row = sharedRow(page, "共享充電器");
-  await expect(row.getByRole("checkbox", { name: /^成員已打包：/ })).toBeDisabled();
+  await expect(row.getByRole("checkbox", { name: /^成員已備妥：/ })).toBeDisabled();
   await expect(page.getByRole("checkbox", { name: /^總召確認：/ })).toHaveCount(0);
   await actor(page, "packer");
-  await row.getByRole("checkbox", { name: /^成員已打包：/ }).check();
-  await expect(personal(page).getByRole("checkbox", { name: "打包指派共用物品：共享充電器", exact: true })).toBeChecked();
+  await row.getByRole("checkbox", { name: /^成員已備妥：/ }).check();
+  await expect(personal(page).getByRole("checkbox", { name: "準備指派共用物品：共享充電器", exact: true })).toBeChecked();
   await expect(row).toHaveClass(/packed/);
   expect((await state(page)).sharedLuggageItems.find(item => item.id === "shared").confirmed_by_owner).toBe(false);
-  await team(page).getByRole("group", { name: "共用物品篩選", exact: true }).getByRole("button", { name: "已打包", exact: true }).click();
   await expect(row).toBeVisible();
-  await team(page).getByRole("group", { name: "共用物品篩選", exact: true }).getByRole("button", { name: "全部", exact: true }).click();
-  await personal(page).getByRole("checkbox", { name: "打包指派共用物品：共享充電器", exact: true }).uncheck();
-  await expect(row.getByRole("checkbox", { name: /^成員已打包：/ })).not.toBeChecked();
+  await personal(page).getByRole("checkbox", { name: "準備指派共用物品：共享充電器", exact: true }).uncheck();
+  await expect(row.getByRole("checkbox", { name: /^成員已備妥：/ })).not.toBeChecked();
   const canonical = (await state(page)).sharedLuggageItems.find((item) => item.id === "shared");
   expect(canonical.packed_by_assignee).toBe(false); expect(canonical.confirmed_by_owner).toBe(false);
 });
@@ -72,9 +70,9 @@ test("approved viewer can manage shared gear, while unassigned items cannot be m
   await personal(page).getByLabel("個人行李名稱", { exact: true }).fill("同行雨傘");
   await personal(page).getByRole("button", { name: "新增個人行李", exact: true }).click();
   await dragLuggage(page, "同行雨傘", "viewer", "personal");
-  await sharedRow(page, "同行雨傘").getByRole("checkbox", { name: /^成員已打包：/ }).check();
-  await expect(personal(page).getByRole("checkbox", { name: "打包指派共用物品：同行雨傘", exact: true })).toBeChecked();
-  await expect(sharedRow(page, "露營急救包").getByRole("checkbox", { name: /^成員已打包：/ })).toBeDisabled();
+  await sharedRow(page, "同行雨傘").getByRole("checkbox", { name: /^成員已備妥：/ }).check();
+  await expect(personal(page).getByRole("checkbox", { name: "準備指派共用物品：同行雨傘", exact: true })).toBeChecked();
+  await expect(sharedRow(page, "露營急救包").getByRole("checkbox", { name: /^成員已備妥：/ })).toBeDisabled();
   await expect(sharedRow(page, "同行雨傘").getByRole("checkbox")).toHaveCount(1);
   await sharedRow(page, "同行雨傘").getByRole("button", { name: "編輯：同行雨傘", exact: true }).click();
   await team(page).getByRole("button", { name: "刪除：同行雨傘", exact: true }).click();
@@ -85,16 +83,16 @@ test("approved viewer can manage shared gear, while unassigned items cannot be m
 test("editing content or changing assignee resets packing and moves the canonical row to the new member", async ({ page }) => {
   await load(page);
   let row = sharedRow(page, "團隊相機");
-  await expect(row.getByRole("checkbox", { name: /^成員已打包：/ })).toBeChecked();
+  await expect(row.getByRole("checkbox", { name: /^成員已備妥：/ })).toBeChecked();
   await row.getByRole("button", { name: "編輯：團隊相機", exact: true }).click();
   await team(page).getByLabel("編輯共用物品名稱", { exact: true }).fill("團隊相機與充電器");
   await team(page).getByLabel("編輯共用物品名稱", { exact: true }).press("Enter");
   row = sharedRow(page, "團隊相機與充電器");
-  await expect(row.getByRole("checkbox", { name: /^成員已打包：/ })).not.toBeChecked();
-  await actor(page, "packer"); await row.getByRole("checkbox", { name: /^成員已打包：/ }).check();
+  await expect(row.getByRole("checkbox", { name: /^成員已備妥：/ })).not.toBeChecked();
+  await actor(page, "packer"); await row.getByRole("checkbox", { name: /^成員已備妥：/ }).check();
   await actor(page, "owner");
   await dragLuggage(page, "團隊相機與充電器", "viewer");
-  await expect(row.getByRole("checkbox", { name: /^成員已打包：/ })).not.toBeChecked();
+  await expect(row.getByRole("checkbox", { name: /^成員已備妥：/ })).not.toBeChecked();
   await expect(team(page).getByRole("region", { name: "旅伴 Dennis的共用物品", exact: true }).getByRole("button", { name: "編輯：團隊相機與充電器", exact: true })).toBeVisible();
   await actor(page, "packer"); await expect(personal(page).getByText("團隊相機與充電器", { exact: true })).toHaveCount(0);
   await actor(page, "viewer"); await expect(personal(page).getByText("團隊相機與充電器", { exact: true })).toBeVisible();
@@ -148,12 +146,12 @@ test("two member pages receive packing and unpacking from the same canonical row
   const room = `sync-${Date.now()}-${Math.random()}`;
   await load(page, `?room=${room}&actor=packer`);
   const owner = await context.newPage(); await load(owner, `?room=${room}&actor=owner`);
-  await personal(page).getByRole("checkbox", { name: "打包指派共用物品：共享充電器", exact: true }).check();
-  await expect(sharedRow(owner, "共享充電器").getByRole("checkbox", { name: /^成員已打包：/ })).toBeChecked();
+  await personal(page).getByRole("checkbox", { name: "準備指派共用物品：共享充電器", exact: true }).check();
+  await expect(sharedRow(owner, "共享充電器").getByRole("checkbox", { name: /^成員已備妥：/ })).toBeChecked();
   await expect(sharedRow(owner, "共享充電器")).toHaveClass(/packed/);
   await expect(owner.getByText("總召確認", { exact: true })).toHaveCount(0);
-  await personal(page).getByRole("checkbox", { name: "打包指派共用物品：共享充電器", exact: true }).uncheck();
-  await expect(sharedRow(owner, "共享充電器").getByRole("checkbox", { name: /^成員已打包：/ })).not.toBeChecked();
+  await personal(page).getByRole("checkbox", { name: "準備指派共用物品：共享充電器", exact: true }).uncheck();
+  await expect(sharedRow(owner, "共享充電器").getByRole("checkbox", { name: /^成員已備妥：/ })).not.toBeChecked();
   await expect(owner.getByText("Chloe 私人藥物", { exact: true })).toHaveCount(0);
   await expect(page.getByText("護照", { exact: true })).toHaveCount(0);
   await owner.close();
@@ -183,7 +181,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 820, height: 1000
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     const outside = await page.locator(".luggage-panel").evaluate((root) => [...root.querySelectorAll("button,input,select")].filter((element) => element.getBoundingClientRect().width > 0).filter((element) => element.getBoundingClientRect().right > innerWidth + 1).map((element) => element.getAttribute("aria-label") || element.textContent));
     expect(outside).toEqual([]);
-    await expect(personal(page).getByRole("checkbox", { name: "打包：長清單物品 55", exact: true })).toBeEnabled();
+    await expect(personal(page).getByRole("checkbox", { name: "準備：長清單物品 55", exact: true })).toBeEnabled();
     if (viewport.width === 390) {
       await page.getByRole("tab", { name: /共用物品/ }).click();
       await expect(sharedRow(page, "共享充電器")).toBeVisible();
@@ -199,20 +197,15 @@ test("empty lists expose useful add actions and no phantom completion", async ({
   await expect(page.getByRole("checkbox")).toHaveCount(0);
   await personal(page).getByLabel("個人行李名稱", { exact: true }).fill("第一件行李");
   await personal(page).getByRole("button", { name: "新增個人行李", exact: true }).click();
-  await expect(personal(page).getByRole("checkbox", { name: "打包：第一件行李", exact: true })).toBeVisible();
+  await expect(personal(page).getByRole("checkbox", { name: "準備：第一件行李", exact: true })).toBeVisible();
 });
 
-test("shared readiness filters do not change total progress", async ({ page }) => {
+test("shared list has no status filters and keeps all items and progress visible", async ({ page }) => {
   await load(page);
-  const packed = page.getByRole("progressbar", { name: "成員已打包", exact: true });
-  await expect(packed).toHaveAttribute("aria-valuenow", "1"); await expect(packed).toHaveAttribute("aria-valuemax", "4");
-  const filters = team(page).getByRole("group", { name: "共用物品篩選", exact: true });
-  await expect(filters.getByRole("button", { name: "未指派", exact: true })).toHaveCount(0);
-  await filters.getByRole("button", { name: "已打包", exact: true }).click();
-  await expect(team(page).locator(".shared-luggage-row")).toHaveCount(1);
-  await expect(sharedRow(page, "團隊相機")).toBeVisible();
-  await expect(packed).toHaveAttribute("aria-valuenow", "1"); await expect(packed).toHaveAttribute("aria-valuemax", "4");
-  await filters.getByRole("button", { name: "全部", exact: true }).click();
+  await expect(page.getByRole("group", { name: "共用物品篩選", exact: true })).toHaveCount(0);
+  const packed = page.getByRole("progressbar", { name: "成員已備妥", exact: true });
+  await expect(packed).toHaveAttribute("aria-valuenow", "1");
+  await expect(packed).toHaveAttribute("aria-valuemax", "4");
   await expect(team(page).locator(".shared-luggage-row")).toHaveCount(4);
 });
 
@@ -223,7 +216,7 @@ test("category and assignee menus align to fields and exclude pending members", 
   await category.fill("露營專用"); await category.press("Escape");
   await personal(page).getByRole("button", { name: "新增個人行李", exact: true }).click();
   await expect(personal(page).getByRole("region", { name: "露營專用", exact: true }).locator(".lb-group-toggle")).toBeVisible();
-  await expect(team(page).getByRole("combobox")).toHaveCount(0);
+  await expect(team(page).locator(".lb-list-body").getByRole("combobox")).toHaveCount(0);
   await expect(page.locator('[data-member-id="pending"]')).toHaveCount(0);
   await expect(page.locator('[data-member-id="viewer"]')).toBeVisible();
 });
@@ -239,8 +232,8 @@ test("mobile list switching retains input and allows immediate packing", async (
   await page.getByRole("tab", { name: /個人行李/ }).click();
   await expect(personal(page).getByLabel("個人行李名稱", { exact: true })).toHaveValue("尚未新增的物品");
   await personal(page).getByRole("button", { name: "新增個人行李", exact: true }).click();
-  await personal(page).getByRole("checkbox", { name: "打包：尚未新增的物品", exact: true }).check();
-  await expect(personal(page).getByRole("checkbox", { name: "打包：尚未新增的物品", exact: true })).toBeChecked();
+  await personal(page).getByRole("checkbox", { name: "準備：尚未新增的物品", exact: true }).check();
+  await expect(personal(page).getByRole("checkbox", { name: "準備：尚未新增的物品", exact: true })).toBeChecked();
 });
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
@@ -256,7 +249,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await expect(page.getByRole("region", { name: "行李清單", exact: true })).toBeVisible();
     expect(await page.locator(".lb-column-heading").first().evaluate((element) => element.getBoundingClientRect().top)).toBeLessThan(viewport.height - 180);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-    const passport = personal(page).getByRole("checkbox", { name: "打包：護照", exact: true });
+    const passport = personal(page).getByRole("checkbox", { name: "準備：護照", exact: true });
     const initialPacked = await passport.isChecked();
     await passport.setChecked(!initialPacked); await expect(passport).toBeChecked({ checked: !initialPacked });
     if (viewport.width === 390) {
@@ -305,13 +298,13 @@ test("approved 6:4 workspace groups shared items by member and personal category
   await expect(team(page).locator('[data-member-id="unassigned"]')).toHaveCount(0);
   const group = personal(page).getByRole("region", { name: "證件", exact: true });
   await group.getByRole("button", { name: /證件.*6項/ }).click();
-  await expect(personal(page).getByRole("checkbox", { name: "打包：護照", exact: true })).toBeHidden();
-  await expect(personal(page).getByRole("checkbox", { name: "打包指派共用物品：延長線・萬用轉接頭", exact: true })).toBeVisible();
+  await expect(personal(page).getByRole("checkbox", { name: "準備：護照", exact: true })).toBeHidden();
+  await expect(personal(page).getByRole("checkbox", { name: "準備指派共用物品：延長線・萬用轉接頭", exact: true })).toBeVisible();
   await expect(personal(page).getByRole("progressbar")).toHaveAttribute("aria-valuemax", "44");
   await expect(team(page).locator(".shared-luggage-row")).toHaveCount(16);
   await expect(page.getByRole("checkbox", { name: /^總召確認：/ })).toHaveCount(0);
   await group.getByRole("button", { name: /證件.*6項/ }).click();
-  await expect(personal(page).getByRole("checkbox", { name: "打包：護照", exact: true })).toBeVisible();
+  await expect(personal(page).getByRole("checkbox", { name: "準備：護照", exact: true })).toBeVisible();
 });
 
 test("deleting from an editor confirms unsaved changes and retains the draft on failure", async ({ page }) => {

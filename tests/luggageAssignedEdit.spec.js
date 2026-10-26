@@ -10,7 +10,7 @@ const notes = page => page.getByRole("textbox", { name: "編輯共用物品備�
 for (const width of [1440, 390]) {
   test(`${width}px own public gear edits in place, saves one canonical record and preserves packing for notes`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 }); await page.goto(`${fixture}?latency=100`);
-    await personal(page).getByRole("checkbox", { name: "打包指派共用物品：團隊文件", exact: true }).check();
+    await personal(page).getByRole("checkbox", { name: "準備指派共用物品：團隊文件", exact: true }).check();
     await personal(page).getByRole("button", { name: "編輯指派共用物品備註：團隊文件", exact: true }).click();
     await expect(notes(page)).toBeFocused();
     await expect(personal(page).locator(".lb-inline-editor")).toHaveCount(1);

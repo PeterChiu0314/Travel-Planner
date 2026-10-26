@@ -16,7 +16,7 @@ for(const width of [1440,390]) {
     const before=await luggageState(page);
     for(const cancel of ['button','escape','backdrop']) {
       await dragLuggage(page,'團隊相機','owner','shared',{confirm:false});
-      const dialog=reassignmentDialog(page);await expect(dialog).toContainText('旅伴 Chloe');await expect(dialog).toContainText('總召 Peter');await expect(dialog).toContainText('重設打包狀態');
+      const dialog=reassignmentDialog(page);await expect(dialog).toContainText('將交給總召 Peter');await expect(dialog).toContainText('重置準備狀態');
       expect(await luggageState(page)).toEqual(before);await expect(page.locator('.lb-assignment-notice')).toHaveCount(0);
       if(cancel==='button') await dialog.getByRole('button',{name:'取消',exact:true}).click();
       else if(cancel==='escape') await page.keyboard.press('Escape');

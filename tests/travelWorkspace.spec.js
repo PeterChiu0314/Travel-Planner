@@ -111,9 +111,9 @@ test("luggage CRUD and assignee packing synchronize without a second confirmatio
   await personal.getByRole("combobox", { name: "個人行李分類", exact: true }).fill("電子用品");
   await personal.getByRole("button", { name: "新增個人行李", exact: true }).click();
   await expect(personal.getByLabel("個人行李名稱", { exact: true })).toHaveValue("");
-  const initialPacked = Number(await page.getByRole("progressbar", { name: "我的打包進度", exact: true }).getAttribute("aria-valuenow"));
-  await page.getByRole("checkbox", { name: "打包：旅行轉接頭", exact: true }).check();
-  await expect(page.getByRole("progressbar", { name: "我的打包進度", exact: true })).toHaveAttribute("aria-valuenow", String(initialPacked + 1));
+  const initialPacked = Number(await page.getByRole("progressbar", { name: "我的準備進度", exact: true }).getAttribute("aria-valuenow"));
+  await page.getByRole("checkbox", { name: "準備：旅行轉接頭", exact: true }).check();
+  await expect(page.getByRole("progressbar", { name: "我的準備進度", exact: true })).toHaveAttribute("aria-valuenow", String(initialPacked + 1));
   await personal.getByRole("button", { name: "編輯：旅行轉接頭", exact: true }).click();
   await expect(personal.getByRole("combobox", { name: "編輯個人行李分類", exact: true })).toHaveCount(0);
   await personal.getByLabel("編輯個人行李名稱", { exact: true }).fill("兩孔轉接頭");
@@ -125,7 +125,7 @@ test("luggage CRUD and assignee packing synchronize without a second confirmatio
   await personal.getByRole("button", { name: "新增個人行李", exact: true }).click();
   await dragLuggage(page, "雨備地墊", "demo-peter", "personal");
   const shared = team.locator(".shared-luggage-row").filter({ hasText: "雨備地墊" });
-  await shared.getByRole("checkbox", { name: "成員已打包：雨備地墊", exact: true }).check();
+  await shared.getByRole("checkbox", { name: "成員已備妥：雨備地墊", exact: true }).check();
   await expect(shared.getByRole("checkbox")).toHaveCount(1);
   await expect(personal.locator(".assigned-shared-list").filter({ hasText: "雨備地墊" }).getByRole("checkbox").last()).toBeChecked();
   await expect(shared).toHaveClass(/packed/);

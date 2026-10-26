@@ -55,7 +55,7 @@ test("dragging changes only the private category; dropping outside a category do
 
 test("phone and keyboard users can move via the handle menu, preserving notes and packing", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 }); await page.goto(fixture);
-  await page.getByRole("checkbox", { name: "打包：護照", exact: true }).check();
+  await page.getByRole("checkbox", { name: "準備：護照", exact: true }).check();
   const handle = page.getByRole("button", { name: "移動分類：護照", exact: true });
   await handle.focus(); await handle.press("Enter");
   await page.getByRole("combobox", { name: "移動護照至分類", exact: true }).click();

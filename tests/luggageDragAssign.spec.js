@@ -16,7 +16,7 @@ test("private promotion transfers title/category/notes atomically, resets packin
   await page.setViewportSize({ width: 1440, height: 900 }); await page.goto(fixture);
   await page.getByRole("button", { name: "編輯備註：護照", exact: true }).click();
   const notes = page.getByRole("textbox", { name: "編輯個人行李備註", exact: true }); await notes.fill("轉共享前可檢視的備註"); await notes.press("Enter");
-  await page.getByRole("checkbox", { name: "打包：護照", exact: true }).check();
+  await page.getByRole("checkbox", { name: "準備：護照", exact: true }).check();
   await dragLuggage(page, "護照", "viewer", "personal");
   await expect.poll(async () => (await state(page)).luggageItems.some(item => item.id === "own")).toBe(false);
   expect((await state(page)).sharedLuggageItems.find(item => item.id === "own")).toMatchObject({ title: "護照", category: "隨身必備", notes: "轉共享前可檢視的備註", assigned_to: "viewer", packed_by_assignee: false });
@@ -68,7 +68,7 @@ for (const width of [1440, 390]) {
 test("viewer can drag to assign but cannot pack someone else's gear", async ({ page }) => {
   await page.goto(`${fixture}?actor=viewer`); await dragLuggage(page, "團隊相機", "owner");
   await expect.poll(async () => (await state(page)).sharedLuggageItems.find(item => item.id === "ready").assigned_to).toBe("owner");
-  await expect(page.getByRole("checkbox", { name: "成員已打包：團隊相機", exact: true })).toBeDisabled();
+  await expect(page.getByRole("checkbox", { name: "成員已備妥：團隊相機", exact: true })).toBeDisabled();
 });
 
 test("phone touch drag stays for ordering, hovers team tab to convert and cancels without writes", async ({ browser }) => {
@@ -106,6 +106,6 @@ test("cross-member snapshots receive promotion and reassignment without private 
   await page.bringToFront(); await dragLuggage(page, "護照", "viewer", "personal");
   await expect(remote.getByRole("button", { name: "編輯指派共用物品：護照", exact: true })).toBeVisible();
   await expect(remote.getByRole("button", { name: "編輯：護照", exact: true })).toBeVisible();
-  await remote.bringToFront(); await remote.getByRole("checkbox", { name: "打包指派共用物品：護照", exact: true }).check();
-  await expect(page.getByRole("checkbox", { name: "成員已打包：護照", exact: true })).toBeChecked();
+  await remote.bringToFront(); await remote.getByRole("checkbox", { name: "準備指派共用物品：護照", exact: true }).check();
+  await expect(page.getByRole("checkbox", { name: "成員已備妥：護照", exact: true })).toBeChecked();
 });

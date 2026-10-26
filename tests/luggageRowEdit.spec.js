@@ -13,7 +13,7 @@ test("personal status and search controls are removed while progress remains vis
   await expect(page.getByRole("searchbox")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "展開行李搜尋", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "編輯：護照", exact: true })).toBeVisible();
-  for (const label of ["我的打包進度", "成員已打包"]) {
+  for (const label of ["我的準備進度", "成員已備妥"]) {
     const progress = page.getByRole("progressbar", { name: label, exact: true });
     expect(await progress.innerText()).toMatch(/^\d+\/\d+$/);
     expect((await progress.locator(".lb-meter").boundingBox()).width).toBeGreaterThanOrEqual(100);
@@ -82,6 +82,6 @@ test("mobile team retains same-height editing and confirmed reassignment", async
   await expect(editor.getByRole("combobox")).toHaveCount(0);
   await editor.getByLabel("編輯共用物品名稱", { exact: true }).press("Escape");
   await keyboardAssign(page, "共享充電器", "owner");
-  await expect(row.getByRole("checkbox", { name: /^成員已打包/ })).toBeEnabled();
+  await expect(row.getByRole("checkbox", { name: /^成員已備妥/ })).toBeEnabled();
   expect((await canonical(page)).sharedLuggageItems.find(item => item.id === "shared").assigned_to).toBe("owner");
 });

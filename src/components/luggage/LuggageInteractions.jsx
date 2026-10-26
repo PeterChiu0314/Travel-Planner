@@ -1,22 +1,23 @@
+import { luggageNotesLimit } from "../../lib/luggageLimits.js";
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDndContext, useDraggable, useDroppable } from "@dnd-kit/core";
 import { GripVertical, StickyNote, X } from "lucide-react";
 import MenuSelect from "../MenuSelect.jsx";
 
-function useAnchoredPopup(open, trigger, popup, close) {
+export function useAnchoredPopup(open, trigger, popup, close, compact = false) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   useLayoutEffect(() => {
     if (!open) return;
     function place() {
       const rect = trigger.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.min(320, innerWidth - 24), height = popup.current?.offsetHeight || 200;
-      setPosition({ width, left: Math.max(12, Math.min(rect.right - width, innerWidth - width - 12)), top: rect.bottom + height + 6 < innerHeight ? rect.bottom + 6 : Math.max(12, rect.top - height - 6) });
+      const width = Math.min(compact ? 200 : 320, innerWidth - 24), height = popup.current?.offsetHeight || 200;
+      setPosition({ width, left: Math.max(12, Math.min(compact ? rect.right + 6 : rect.right - width, innerWidth - width - 12)), top: rect.bottom + height + 6 < innerHeight ? rect.bottom + 6 : Math.max(12, rect.top - height - 6) });
     }
     place(); window.addEventListener("resize", place); document.addEventListener("scroll", place, true);
     return () => { window.removeEventListener("resize", place); document.removeEventListener("scroll", place, true); };
-  }, [open, trigger, popup]);
+  }, [open, trigger, popup, compact]);
   useEffect(() => {
     if (!open) return;
     function outside(event) {
@@ -38,7 +39,7 @@ export function QuickNote({ value, onChange, disabled, kind }) {
     {open ? createPortal(<div ref={popup} id={id} style={position} className="lb-note-popup" role="dialog" aria-label={`新增${kind}備註`} onKeyDown={event => {
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); }
     }}><header><strong>新增備註（選填）</strong><button type="button" aria-label="關閉備註" onClick={close}><X size={15} /></button></header>
-      <textarea ref={input} aria-label={`${kind}新增備註內容`} maxLength={1000} value={value || ""} disabled={disabled} onChange={event => onChange(event.target.value)} />
+      <textarea ref={input} aria-label={`${kind}新增備註內容`} maxLength={luggageNotesLimit} value={value || ""} disabled={disabled} onChange={event => onChange(event.target.value)} />
       <small>與物品一起新增</small>
     </div>, document.body) : null}</>;
 }
@@ -157,7 +158,7 @@ export function DraggableRow({ scope = "personal", personalProjection = false, i
   const placement = active && active.data.current?.item.id !== item.id && !isDragging && over?.data.current?.idPrefix === idPrefix ? over.data.current.placement : null;
   const height = active?.rect.current.initial?.height || 36;
   const [open, setOpen] = useState(false), trigger = useRef(null), popup = useRef(null), draggedAt = useRef(0), id = useId();
-  const position = useAnchoredPopup(open, trigger, popup, () => setOpen(false));
+  const position = useAnchoredPopup(open, trigger, popup, () => setOpen(false), true);
   useLayoutEffect(() => {
     if (isDragging) draggedAt.current = Infinity;
     else if (draggedAt.current === Infinity) draggedAt.current = Date.now();

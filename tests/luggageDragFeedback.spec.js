@@ -48,7 +48,7 @@ test('shared row insertion into another member keeps the full receiving area and
   const target=row(page,'shared','owner-assigned'), destination=page.locator('[data-member-id="owner"]');
   const bounds=await target.boundingBox(); await page.mouse.move(bounds.x+bounds.width*.7,bounds.y+8,{steps:10});
   await expect(destination).toHaveClass(/is-drop-target/);
-  await expect(destination.locator('.lb-drop-cue')).toContainText('放開指派給 總召 Peter');
+  await expect(destination.locator('.lb-drop-cue')).toContainText('交給 總召 Peter（我） 準備');
   await expect(page.locator('.lb-assignment-notice')).toHaveCount(0);
   await expect(destination.locator('.lb-insertion-ghost')).toHaveCount(1);
   expect((await page.locator('.lb-drag-preview').boundingBox()).height).toBeCloseTo(original.height,0);

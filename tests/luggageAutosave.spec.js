@@ -40,20 +40,17 @@ test("clicking Quick Add saves first and restores the original input focus and d
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("shared filters, creation mode and checkbox labels execute their original action after saving", async ({ page }) => {
+test("shared list, creation mode and checkbox labels execute their original action after saving", async ({ page }) => {
   await load(page);
   await page.getByRole("button", { name: "編輯：護照", exact: true }).click(); await name(page).fill("護照A");
-  const filters = page.getByRole("group", { name: "共用物品篩選", exact: true });
-  await filters.getByRole("button", { name: "已打包", exact: true }).click();
-  await expect(filters.getByRole("button", { name: "已打包", exact: true })).toHaveAttribute("aria-pressed", "true");
-  expect((await state(page)).luggageItems.find(item => item.id === "own").title).toBe("護照A");
-  await filters.getByRole("button", { name: "全部", exact: true }).click();
+  await page.locator('#lb-shared .lb-list-body').click({ position: { x: 3, y: 3 } });
+  await expect.poll(async () => (await state(page)).luggageItems.find(item => item.id === "own").title).toBe("護照A");
   await page.getByRole("button", { name: "編輯：護照A", exact: true }).click(); await name(page).fill("護照B");
   await page.getByRole("button", { name: "新增類型：共用", exact: true }).click();
   await expect(page.getByRole("form", { name: "快速新增共用物品", exact: true })).toBeVisible();
   expect((await state(page)).luggageItems.find(item => item.id === "own").title).toBe("護照B");
   await page.getByRole("button", { name: "編輯：護照B", exact: true }).click(); await name(page).fill("護照C");
-  const check = page.getByRole("checkbox", { name: "成員已打包：團隊文件", exact: true });
+  const check = page.getByRole("checkbox", { name: "成員已備妥：團隊文件", exact: true });
   await check.locator("..").click();
   await expect(check).toBeChecked();
   expect((await state(page)).luggageItems.find(item => item.id === "own").title).toBe("護照C");
@@ -67,7 +64,7 @@ test("Tab leaving the editor auto-saves without stealing the destination focus",
   await expect(editor(page)).toHaveCount(1);
   await page.getByRole("textbox", { name: "編輯個人行李備註", exact: true }).press("Tab");
   await page.getByRole("button", { name: "刪除：護照", exact: true }).press("Tab");
-  const next = page.getByRole("group", { name: "共用物品篩選", exact: true }).getByRole("button", { name: "全部", exact: true });
+  const next = page.getByRole("combobox", { name: "篩選共用物品", exact: true });
   await expect(editor(page)).toHaveCount(0); await expect(next).toBeFocused();
   expect((await state(page)).luggageItems.find(item => item.id === "own").title).toBe("鍵盤編輯");
 });
@@ -117,7 +114,7 @@ test("mobile list tabs auto-save before switching once and keep canonical shared
   expect((await state(page)).luggageItems.find(item => item.id === "own").title).toBe("手機護照");
   await page.getByRole("button", { name: "編輯：團隊文件", exact: true }).click(); await name(page, true).fill("團隊文件新版");
   await page.getByRole("tab", { name: "個人行李", exact: true }).tap();
-  await expect(page.getByRole("checkbox", { name: "打包指派共用物品：團隊文件新版", exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "準備指派共用物品：團隊文件新版", exact: true })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 });

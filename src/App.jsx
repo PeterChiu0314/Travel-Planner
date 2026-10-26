@@ -1,3 +1,4 @@
+import { luggageLengthError } from "./lib/luggageLimits.js";
 import { useSiteDialog } from "./components/SiteDialog.jsx";
 import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -14365,7 +14366,8 @@ function useLuggageQuickAdd({ shared, activeTrip, currentUserId, restoreDrafts, 
   }
   async function save() {
     if (!canEdit || !draft.form.title.trim()) return false;
-    const result = await performMutation(() => onSave(draft.form, null, { tripId: activeTrip?.id }));
+    const lengthError = luggageLengthError(draft.form);
+    const result = await performMutation(() => lengthError ? { ok: false, error: new Error(lengthError) } : onSave(draft.form, null, { tripId: activeTrip?.id }));
     if (!result?.ok) return false;
     const next = { ...draft.form, title: "", notes: "" };
     setEmptyForm(next); draft.resetDraft(next);
@@ -14582,6 +14584,8 @@ export function LuggagePanel({
 
   async function saveCurrentPersonal() {
     if (!personalForm.title.trim() || !canEdit) return false;
+    const lengthError = luggageLengthError(personalForm);
+    if (lengthError) { setError(lengthError); return false; }
     const canOpenEditor = await requestActiveEditorHandoff({
       excludeId: personalEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
@@ -14609,6 +14613,8 @@ export function LuggagePanel({
     });
     if (!canOpenEditor) return false;
     if (!sharedForm.title.trim() || !canEdit) return false;
+    const lengthError = luggageLengthError({ ...sharedForm, ...changes });
+    if (lengthError) { setError(lengthError); return false; }
     const result = await performMutation(() => onSaveShared({ ...sharedForm, ...changes }, editingSharedId, { baseUpdatedAt: sharedUpdatedAt, tripId: activeTrip?.id }));
     if (!result?.ok) return false;
     if (!disableDraftAutosave) clearDraft(sharedDraft.draftKey);
@@ -14746,7 +14752,7 @@ export function LuggagePanel({
       return id ? member?.display_name || member?.nickname || member?.email?.split("@")[0] || "旅程成員" : "未指派";
     };
     return ask({ title: assignedTo ? `改由 ${nameOf(assignedTo)} 攜帶？` : "取消負責人指派？",
-      message: `「${item.title}」目前${item.assigned_to ? `由 ${nameOf(item.assigned_to)} 攜帶` : "尚未指派負責人"}，將${assignedTo ? `改由 ${nameOf(assignedTo)} 攜帶` : "移至未指派群組"}，並重設打包狀態。`, confirmLabel: "確認" });
+      message: `「${item.title}」${assignedTo ? `將交給${nameOf(assignedTo)}` : "將移至未指派群組"}，並重置準備狀態。`, confirmLabel: "確認" });
   }
 
   async function removeItem(kind, id, item) {
@@ -14793,7 +14799,7 @@ export function LuggagePanel({
       if (scope === "personal") {
         const assignee = members.find(member => member.user_id === assignedTo);
         const name = assignee?.display_name || assignee?.nickname || "旅程成員";
-        if (!await ask({ title: "轉為共用物品？", message: `「${item.title}」將轉為${assignedTo ? `由 ${name} 攜帶的` : "未指派的"}共用物品，名稱與備註供全體旅程成員查看，並重設打包狀態。`, confirmLabel: "確認" })) return { ok: false, cancelled: true };
+        if (!await ask({ title: "轉為共用物品？", message: `「${item.title}」${assignedTo ? `將交由${name}負責` : "將轉為未指派的共用物品"}，所有成員都能查看名稱與備註，準備狀態將重置。`, confirmLabel: "確認" })) return { ok: false, cancelled: true };
         if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
       } else if ((item.assigned_to || "") !== (assignedTo || "")) {
         if (!await confirmSharedReassignment(item, assignedTo)) return { ok: false, cancelled: true };
@@ -14806,7 +14812,7 @@ export function LuggagePanel({
     onPrivatize={async (item, category) => {
       if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return { ok: false };
       const actionContext = contextRef.current;
-      if (!await ask({ title: "轉為個人物品？", message: `「${item.title}」將從共用物品移除，放入你的「${category || "未分類"}」分類。名稱與備註改為僅自己可見，原負責人的清單也會移除此共用物品，並重設打包狀態。`, confirmLabel: "確認" })) return { ok: false, cancelled: true };
+      if (!await ask({ title: "轉為個人物品？", message: <>「{item.title}」將移至你的個人行李，不再與團隊共享，並重置準備狀態。<br />原負責人的清單也會移除此物品。</>, confirmLabel: "確認" })) return { ok: false, cancelled: true };
       if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
       return performMutation(() => onPrivatize(item, category));
     }}

@@ -24,7 +24,7 @@ for (const width of [1440, 390]) {
       await page.getByLabel("個人行李名稱", { exact: true }).press("Enter");
     }
     const state = await luggageState(page), wallet = state.luggageItems.find(item => item.title === "錢包"), ticket = state.luggageItems.find(item => item.title === "登機證");
-    await page.getByRole("checkbox", { name: "打包：登機證", exact: true }).check();
+    await page.getByRole("checkbox", { name: "準備：登機證", exact: true }).check();
     await dragRow(page, "personal", ticket.id, "personal", wallet.id);
     await expect.poll(() => ids(page, "personal", '.lb-category-group[aria-label="未分類"]')).toEqual([ticket.id, wallet.id]);
     expect((await luggageState(page)).luggageItems.find(item => item.id === ticket.id).packed).toBe(true);

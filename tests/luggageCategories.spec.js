@@ -26,7 +26,7 @@ for (const width of [1440, 390]) {
     await page.goto(fixture);
     await expect(page.locator(".lb-category-filters,.lb-item-category")).toHaveCount(0);
     const publicGroup = group(page, "我負責的共用物品");
-    const publicCheck = publicGroup.getByRole("checkbox", { name: "打包指派共用物品：團隊文件", exact: true });
+    const publicCheck = publicGroup.getByRole("checkbox", { name: "準備指派共用物品：團隊文件", exact: true });
     await publicCheck.check();
     await expect(toggle(page, "我負責的共用物品")).toContainText("1/1");
     expect((await canonical(page)).sharedLuggageItems.find(item => item.id === "owner-assigned").packed_by_assignee).toBe(true);

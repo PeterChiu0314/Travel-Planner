@@ -2,6 +2,46 @@
 
 This file is the concise live project ledger. Keep it aligned with the real branch, deployed behavior, production migration state, and next requested phase.
 
+## Publication checkpoint — Luggage wording and header tools — 2026-10-26
+
+- User requested publishing the accepted follow-ups on `codex/luggage-workspace-redesign`: preparation wording/confirmation copy; 30-character names and 100-character notes with legacy draft preservation; overflow-only stacked inline editors; compact headings and category popup; global title/notes search; independent readiness filters; centered white active filter icons; and concise luggage help.
+- Closeout verification: all 148 luggage cases passed in the full 161-case run; one shared-workspace luggage case still used old packing labels, so its selectors were updated and the entire travelWorkspace group passed 13/13. Build and diff checks passed with the existing bundle-size advisory. Application source did not change after these checks.
+- Publish only these implementation/docs/tests; exclude scratch folders, local Supabase metadata and test outputs. No new migration, main merge or manual frontend deployment. The ordering migration remains applied as verified on 2026-10-25. Earlier local/uncommitted statements below describe their historical checkpoints and are superseded by this publication checkpoint.
+
+## Previous local follow-up — Global search, shared filter and help — 2026-10-26
+
+- Search now covers both columns' titles/notes with placeholder 「搜尋所有行李名稱或備註」. An empty/whitespace query collapses on outside pointerdown without stealing focus; typed queries remain open, explicit close/Esc still clears. Each column has an independent readiness filter combined with global search; full progress and edit/drag manifests remain intact. Filtered shared groups with no matches hide, while drag destinations remain available.
+- Added shared filter then help icon at the right of the team heading. Reused the existing popup placement hook for concise luggage guidance, close button, outside dismissal, Esc and focus restoration. Shared filter reuses the centered white-icon/primary-background active state.
+- Global tools and search/filter cases passed 8/8, including desktop/narrow help and search outside behavior, global shared title/notes matches and independent filter counts. Existing luggage/autosave 29/29 passed after updating the keyboard tab destination to the new shared filter. Build/diff check passed with existing bundle advisory. Inspected luggage-global-search-help.png. Local only; uncommitted/unpushed.
+
+## Previous local follow-up — Personal header search and filter — 2026-10-26
+
+- Added search then filter icons at the personal header's trailing edge. Search expands left and focuses the input; matches title/notes case-insensitively, closing/Esc clears it. Filter uses existing MenuSelect with all/unprepared/ready options, a solid primary background and white icon when active and a right-aligned menu. Narrow headers allow the open search to wrap; reduced motion disables its entry animation.
+- Search/filter combine across personal rows and own assigned-shared projection only. Full progress counts, team contents and drag persistence manifests remain intact. Active editing rows are retained; matches temporarily reveal collapsed groups without changing saved collapse choices. Trip changes reset search/filter. Added optional custom trigger/menu width/alignment to MenuSelect with unchanged defaults elsewhere.
+- Four search/filter cases passed for desktop/narrow, title/notes, composable readiness, projection/team isolation, keyboard and collapse restoration. Existing autosave/header checks passed 8/8; ordering regression passed 7/7. Build/diff checks passed with existing bundle advisory. Screenshot luggage-header-search-filter.png captures the open controls; local only, uncommitted/unpushed.
+
+## Previous local follow-up — Compact luggage headers and category popup — 2026-10-26
+
+- Removed the personal item/notes heading row and shared status tabs plus their state/reset logic. Shared contents are always shown. Both readiness progress indicators now sit immediately beside their headings. Private-handle category popups are 200px wide and prefer the lower-right side with viewport clamping; legacy note popup placement remains unchanged.
+- Existing luggage flow cases passed 22/22; autosave plus new real-Demo header/popup interaction checks passed 8/8 after updating removed-filter test assumptions and waiting for asynchronous saves. Build/diff checks passed (existing bundle advisory). Inspected luggage-compact-header-popup.png. Local only; not committed or pushed.
+
+## Previous local follow-up — Fixed luggage text limits — 2026-10-26
+
+- User chose item names 30 characters and notes 100 characters. Shared constants now drive personal/shared Quick Add, inline editing and the legacy note popup. Save paths also validate restored/legacy content and show a specific message without truncating drafts. Existing database compatibility limits and non-content operations are unchanged; no migration needed.
+- Character counting follows native maxlength/JavaScript UTF-16 units. Updated overflow fixtures to remain within the new limits. All 14 focused boundary/overflow/unified-add cases and build/diff checks passed (existing bundle advisory). Local only; not committed or pushed.
+
+## Previous local follow-up — Expand overflowing inline editors only — 2026-10-26
+
+- User clarified that normal item rows must retain their current single-line ellipsis layout. Desktop inline editors alone switch to stacked name/notes fields when either value exceeds its original 35:65 column; notes align left while expanded. Measurements use the original column widths to prevent oscillation, react to text/container width changes, and run only while editing. Mobile retains its existing two-line editing layout.
+- Input nodes, focus, Enter/Esc and existing autosave/permission/data flows are preserved. Short editors retain their original row height; save/cancel restores compact display even for long content.
+- Existing row-edit/autosave cases passed 13/13; new personal/projected-shared/team-shared overflow, compact display restoration and resize stability cases passed 4/4 after fixing test locators and using text that spans the measured width threshold. Build and diff check passed (existing bundle advisory). Inspected luggage-overflow-editor.png in this chat visualization folder. Local only; not committed or pushed.
+
+## Previous local follow-up — Luggage preparation wording — 2026-10-26
+
+- Updated reassignment, personal-to-shared and shared-to-personal confirmation copy to the user-provided text; the private-return explanation has an explicit line break. Recipient drop cues now say 「交給 {姓名} 準備」.
+- Luggage filters use 未準備／已備妥; checkbox labels, descriptions, progress and service errors use 準備. Persisted packed fields, mutations, permissions and drag layout are unchanged. Updated existing accessible-name/copy assertions.
+- Targeted 44 UI cases covered: initial run 43 passed with one outdated self-recipient expectation, then all 7 feedback cases passed after correcting it. Build and diff check passed (existing bundle-size advisory). Local only; not committed or pushed.
+
 ## Publication checkpoint — Accepted luggage improvements — 2026-10-25
 
 - User accepted desktop drag feel (「絲滑」) and requested push plus applying the pending migration. Publish the accumulated unified personal/shared creation, confirmed reassignment, item ordering, stable insertion spacing and drag performance changes on `codex/luggage-workspace-redesign`.
