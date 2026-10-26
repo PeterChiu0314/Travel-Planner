@@ -31,9 +31,8 @@ for(const width of [1440,390]) {
     await reassignmentDialog(page).getByRole('button',{name:'確認',exact:true}).click();
     await expect.poll(async()=>(await luggageState(page)).sharedLuggageItems.find(item=>item.id==='ready').assigned_to).toBe('owner');
     expect((await luggageState(page)).sharedLuggageItems.find(item=>item.id==='ready').packed_by_assignee).toBe(false);
-    await dragLuggage(page,'團隊相機','','shared',{confirm:false});await expect(reassignmentDialog(page)).toContainText('未指派群組');
-    await reassignmentDialog(page).getByRole('button',{name:'確認',exact:true}).click();
-    await expect.poll(async()=>(await luggageState(page)).sharedLuggageItems.find(item=>item.id==='ready').assigned_to).toBe(null);
+    await expect(page.locator('[data-member-id="unassigned"]')).toHaveCount(0);
+
   });
   test(`${width}px item-row insertion waits for confirmation; cancel preserves both order and assignment`,async({page})=>{
     await page.setViewportSize({width,height:1000});await page.goto(fixture);if(width<=1000) await page.getByRole('tab',{name:'共用物品',exact:true}).click();

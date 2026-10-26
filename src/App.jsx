@@ -1,3 +1,5 @@
+import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, clearOfflineAccount } from "./lib/offlineCache.js";
+import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
 import { luggageLengthError } from "./lib/luggageLimits.js";
 import { useSiteDialog } from "./components/SiteDialog.jsx";
 import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -2279,54 +2281,6 @@ function createDemoTimelineItems() {
 }
 
 
-function offlineTripKey(tripId) {
-  return `travel-planner-offline-${tripId}`;
-}
-
-function offlineTripsKey(userId) {
-  return `travel-planner-offline-trips-${userId}`;
-}
-
-function readOfflineTrips(userId) {
-  try {
-    const raw = localStorage.getItem(offlineTripsKey(userId));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeOfflineTrips(userId, payload) {
-  try {
-    localStorage.setItem(offlineTripsKey(userId), JSON.stringify(payload));
-  } catch {
-    // Offline read is best effort; storage can be unavailable in private windows.
-  }
-}
-
-function readOfflineTripData(tripId) {
-  try {
-    const raw = localStorage.getItem(offlineTripKey(tripId));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeOfflineTripData(tripId, payload) {
-  try {
-    localStorage.setItem(
-      offlineTripKey(tripId),
-      JSON.stringify({
-        ...payload,
-        cached_at: new Date().toISOString(),
-      }),
-    );
-  } catch {
-    // Offline read is best effort; storage can be unavailable in private windows.
-  }
-}
-
 const activeEditDraftEntityTypes = ["itinerary_item", "budget_item", "accommodation", "todo_item"];
 const sessionContextStoragePrefix = "travel-planner-session-context";
 const sessionContextSections = new Set([...desktopNavItems, ...mobileNavItems].map((item) => item.id));
@@ -2475,8 +2429,38 @@ export default function App() {
     () => trips.find((trip) => trip.id === activeTripId) || null,
     [activeTripId, trips],
   );
-  const luggageTripRef = useRef(activeTrip?.id);
-  luggageTripRef.current = activeTrip?.id;
+  const accountRef = useRef({ userId: null, generation: 0 });
+  const requestGuard = useRef(createRequestGuard()).current;
+  requestGuard.setContext(session?.user?.id && activeTripId ? JSON.stringify([session.user.id, activeTripId]) : null);
+  const sharedSnapshotRef = useRef({ key: null, rows: [] });
+  if (sharedSnapshotRef.current.key !== requestGuard.context().key) sharedSnapshotRef.current = { key: requestGuard.context().key, rows: [] };
+  function updateSharedCache(tripId, userId, update) {
+    sharedSnapshotRef.current.rows = update(sharedSnapshotRef.current.rows);
+    updateOfflineSharedLuggage(tripId, userId, () => sharedSnapshotRef.current.rows);
+  }
+  const luggageRefreshRef = useRef(null);
+  if (!luggageRefreshRef.current) luggageRefreshRef.current = createLuggageRefresh({
+    guard: requestGuard,
+    read: (scope, key) => {
+      const [userId, tripId] = JSON.parse(key);
+      let query = supabase.from(scope === "personal" ? "luggage_items" : "shared_luggage_items").select("*").eq("trip_id", tripId);
+      if (scope === "personal") query = query.eq("owner_id", userId);
+      return query.order("created_at");
+    },
+    apply: (scope, rows) => {
+      (scope === "personal" ? setLuggageItems : setSharedLuggageItems)(rows);
+      if (scope === "shared") {
+        const [userId, tripId] = JSON.parse(requestGuard.context().key);
+        sharedSnapshotRef.current.rows = rows;
+        updateOfflineSharedLuggage(tripId, userId, () => rows);
+      }
+    },
+  });
+  const refreshLuggage = useCallback((tripId, scopes = ["personal", "shared"]) => {
+    const key = requestGuard.context().key;
+    if (!key || JSON.parse(key)[1] !== tripId) return Promise.resolve();
+    return luggageRefreshRef.current.refresh(scopes);
+  }, [requestGuard]);
   const activeMembership = activeTrip?.membership;
   const isOwner = activeMembership?.role === "owner" && activeMembership?.status === "approved";
   const canEdit =
@@ -2947,7 +2931,9 @@ export default function App() {
 
   const loadTrips = useCallback(
     async (preferredTripId = activeTripId) => {
-      if (!session?.user) return;
+      if (!session?.user || accountRef.current.userId !== session.user.id) return;
+      const account = { ...accountRef.current };
+      const listToken = requestGuard.begin("trips");
       const canRestoreSessionContext = !preferredTripId || preferredTripId === activeTripId;
       setLoading(true);
       const { data, error } = await supabase
@@ -2957,6 +2943,7 @@ export default function App() {
         )
         .eq("user_id", session.user.id);
 
+      if (account.userId !== accountRef.current.userId || account.generation !== accountRef.current.generation || !requestGuard.valid(listToken)) return;
       if (error) {
         const cachedTrips = readOfflineTrips(session.user.id);
         if (cachedTrips?.trips?.length) {
@@ -3038,6 +3025,10 @@ export default function App() {
   );
 
   const loadTripData = useCallback(async (tripId) => {
+    const token = requestGuard.begin("trip");
+    const personalToken = requestGuard.begin("personal"), sharedToken = requestGuard.begin("shared");
+    const userId = accountRef.current.userId;
+    if (tripId && (!userId || requestGuard.context().key !== JSON.stringify([userId, tripId]))) return;
     if (!tripId) {
       setItems([]);
       setAlternatives([]);
@@ -3086,7 +3077,7 @@ export default function App() {
       supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
       supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
-      supabase.from("luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
+      supabase.from("luggage_items").select("*").eq("trip_id", tripId).eq("owner_id", userId).order("created_at"),
       supabase.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("attachments").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("itinerary_budget_items").select("*"),
@@ -3099,6 +3090,7 @@ export default function App() {
       budgetSchemaAvailabilityRef.current === false ? Promise.resolve({ data: null, error: { code: "PGRST205" } }) : supabase.from("trip_budget_baselines").select("*").eq("trip_id", tripId).maybeSingle(),
     ]);
 
+    if (!requestGuard.valid(token)) return;
     const baselineMissing = ["42P01", "PGRST205"].includes(baselineResult.error?.code);
     if (baselineMissing) budgetSchemaAvailabilityRef.current = false;
     setBudgetSchemaAvailable(!baselineResult.error);
@@ -3122,7 +3114,7 @@ export default function App() {
       packResult.error ||
       membersResult.error;
     if (error) {
-      const cached = readOfflineTripData(tripId);
+      const cached = readOfflineTripData(tripId, userId);
       if (cached) {
         setItems(cached.items || []);
         setAlternatives(cached.alternatives || []);
@@ -3134,8 +3126,12 @@ export default function App() {
         setAccommodations(cached.accommodations || []);
         setGuideItems(cached.guideItems || []);
         setTodoItems(cached.todoItems || []);
-        setLuggageItems(cached.luggageItems || []);
-        setSharedLuggageItems(cached.sharedLuggageItems || []);
+        // Keep this context's in-memory private rows during a short outage;
+        // never hydrate them from persistent storage. Auth changes clear them.
+        if (requestGuard.valid(sharedToken)) {
+          sharedSnapshotRef.current.rows = cached.sharedLuggageItems || [];
+          setSharedLuggageItems(sharedSnapshotRef.current.rows);
+        }
         setAttachments(cached.attachments || []);
         setItineraryBudgetLinks(cached.itineraryBudgetLinks || []);
         setPackItems(cached.packItems || []);
@@ -3192,13 +3188,16 @@ export default function App() {
     setAccommodations(accommodationsResult.data || []);
     setGuideItems(guideResult.data || []);
     setTodoItems(todoResult.data || []);
-    setLuggageItems(luggageResult.data || []);
-    setSharedLuggageItems(sharedLuggageResult.data || []);
+    if (requestGuard.valid(personalToken)) setLuggageItems(luggageResult.data || []);
+    if (requestGuard.valid(sharedToken)) {
+      sharedSnapshotRef.current.rows = sharedLuggageResult.data || [];
+      setSharedLuggageItems(sharedLuggageResult.data || []);
+    }
     setAttachments(attachmentsResult.data || []);
     setItineraryBudgetLinks(nextItineraryBudgetLinks);
     setPackItems(packResult.data || []);
     setMembers(membersResult.data || []);
-    writeOfflineTripData(tripId, {
+    writeOfflineTripData(tripId, userId, {
       budgetBaseline: baselineResult.data || null,
       items: nextItems,
       alternatives: nextAlternatives,
@@ -3210,7 +3209,7 @@ export default function App() {
       guideItems: guideResult.data || [],
       todoItems: todoResult.data || [],
       luggageItems: luggageResult.data || [],
-      sharedLuggageItems: sharedLuggageResult.data || [],
+      sharedLuggageItems: sharedSnapshotRef.current.rows,
       attachments: attachmentsResult.data || [],
       itineraryBudgetLinks: nextItineraryBudgetLinks,
       packItems: packResult.data || [],
@@ -3300,20 +3299,29 @@ export default function App() {
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setAuthReady(true);
-    });
-
-    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      setSession(nextSession);
-      if (event === "SIGNED_OUT" || !nextSession) {
-        setTrips([]);
-        setActiveTripId(null);
+    let alive = true, authEvent = 0;
+    function acceptSession(nextSession) {
+      if (!alive) return;
+      const nextId = nextSession?.user?.id || null, previous = accountRef.current;
+      if (previous.userId !== nextId) {
+        clearOfflineAccount(previous.userId);
+        accountRef.current = { userId: nextId, generation: previous.generation + 1 };
+        requestGuard.setContext(null);
+        luggageRefreshRef.current.cancel();
+        setTrips([]); setActiveTripId(null);
+        void loadTripData(null);
       }
+      setSession(nextSession);
+      setAuthReady(true);
+    }
+    supabase.auth.getSession().then(({ data }) => { if (!authEvent) acceptSession(data.session); });
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      authEvent++;
+      acceptSession(nextSession);
+      if (event === "SIGNED_OUT" || !nextSession) clearOfflineAccount(accountRef.current.userId);
     });
 
-    return () => data.subscription.unsubscribe();
+    return () => { alive = false; data.subscription.unsubscribe(); };
   }, [isDemoMode]);
 
   useEffect(() => {
@@ -3872,16 +3880,6 @@ export default function App() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "luggage_items", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "shared_luggage_items", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
         { event: "*", schema: "public", table: "attachments", filter: `trip_id=eq.${activeTripId}` },
         () => loadTripData(activeTripId),
       )
@@ -3906,9 +3904,25 @@ export default function App() {
     if (budgetSchemaAvailable) channel.on("postgres_changes",
       { event: "*", schema: "public", table: "trip_budget_baselines", filter: `trip_id=eq.${activeTripId}` },
       () => loadTripData(activeTripId));
-    channel.subscribe();
-    return () => supabase.removeChannel(channel);
+    subscribeSharedLuggage(channel, activeTripId, luggageRefreshRef.current);
+    channel.subscribe(status => {
+      if (status === "SUBSCRIBED") luggageRefreshRef.current.schedule(["personal", "shared"]);
+    });
+    return () => { luggageRefreshRef.current.cancel(); supabase.removeChannel(channel); };
   }, [activeDay, activeTripId, budgetSchemaAvailable, loadRouteOverrides, loadTripData, loadTrips, session?.user]);
+
+  useEffect(() => {
+    if (isDemoMode || !session?.user || !activeTripId || activeSection !== "luggage") return;
+    const refresh = () => { if (document.visibilityState !== "hidden") luggageRefreshRef.current.schedule(["personal", "shared"]); };
+    refresh();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [isDemoMode, session?.user?.id, activeTripId, activeSection]);
 
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
@@ -4695,7 +4709,9 @@ export default function App() {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    clearOfflineAccount(session?.user?.id);
+    const { error } = await supabase.auth.signOut();
+    if (error) setNotice(error.message);
   }
 
   async function createTrip(event) {
@@ -5492,32 +5508,27 @@ export default function App() {
     else await loadTripData(activeTrip.id);
   }
 
-  async function refreshLuggage(tripId) {
-    const [personal, shared] = await Promise.all([
-      supabase.from("luggage_items").select("*").eq("trip_id", tripId).eq("owner_id", session.user.id).order("created_at"),
-      supabase.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
-    ]);
-    if (luggageTripRef.current !== tripId) return;
-    if (!personal.error) setLuggageItems(personal.data || []);
-    if (!shared.error) setSharedLuggageItems(shared.data || []);
-  }
   async function persistLuggage(scope, action, payload, itemId, meta = {}) {
     if (!activeTrip || !session?.user || activeMembership?.status !== "approved") return { ok: false, error: new Error("你不是此旅程的已核准成員。") };
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const tripId = activeTrip.id;
+    const context = requestGuard.context();
+    requestGuard.invalidate([scope]);
     const result = await mutateLuggageItem({ client: supabase, tripId, scope, action, payload,
       itemId: itemId || null, baseUpdatedAt: meta.baseUpdatedAt || null });
+    if (!requestGuard.sameContext(context)) return { ok: false, contextChanged: true };
+    requestGuard.invalidate([scope]);
     if (result.error) {
       const error = new Error(luggageErrorMessage(result.error));
-      if (result.conflict) await refreshLuggage(tripId);
+      if (result.conflict) await refreshLuggage(tripId, [scope]);
       setNotice(error.message);
       return { ...result, error };
     }
-    if (luggageTripRef.current === tripId) {
+    if (requestGuard.sameContext(context)) {
       const setter = scope === "personal" ? setLuggageItems : setSharedLuggageItems;
-      setter(current => action === "delete" ? current.filter(row => row.id !== itemId)
-        : itemId ? current.map(row => row.id === itemId && row.updated_at <= result.data.updated_at ? result.data : row) : current.some(row => row.id === result.data.id) ? current : [...current, result.data]);
-      await refreshLuggage(tripId);
+      const update = current => applyLuggageMutation(current, { action, itemId, data: result.data });
+      if (scope === "shared") updateSharedCache(tripId, session.user.id, update);
+      setter(update);
     }
     return result;
   }
@@ -5543,17 +5554,21 @@ export default function App() {
   async function assignTripLuggage(scope, item, assignedTo) {
     if (!activeTrip || !session?.user || activeMembership?.status !== "approved" || item.trip_id !== activeTrip.id) return { ok: false, error: new Error("luggage_forbidden") };
     const tripId = activeTrip.id;
+    const context = requestGuard.context();
+    requestGuard.invalidate(["personal", "shared"]);
     const result = await assignLuggageItem({ client: supabase, tripId, scope, item, assignedTo });
+    if (!requestGuard.sameContext(context)) return { ok: false, contextChanged: true };
+    requestGuard.invalidate(["personal", "shared"]);
     if (!result.ok) {
       const error = new Error(luggageErrorMessage(result.error));
       if (result.conflict) await refreshLuggage(tripId);
       return { ...result, error };
     }
-    if (luggageTripRef.current === tripId) {
+    if (requestGuard.sameContext(context)) {
       if (scope === "personal") setLuggageItems(current => current.filter(row => row.id !== item.id));
-      setSharedLuggageItems(current => current.some(row => row.id === result.data.id)
-        ? current.map(row => row.id === result.data.id && row.updated_at <= result.data.updated_at ? result.data : row) : [...current, result.data]);
-      await refreshLuggage(tripId);
+      const update = current => applyLuggageMutation(current, { action: "save", itemId: scope === "shared" ? item.id : null, data: result.data });
+      updateSharedCache(tripId, session.user.id, update);
+      setSharedLuggageItems(update);
     }
     return result;
   }
@@ -5561,15 +5576,19 @@ export default function App() {
   async function privatizeTripLuggage(item, category) {
     if (!activeTrip || !session?.user || activeMembership?.status !== "approved" || item.trip_id !== activeTrip.id) return { ok: false, error: new Error("luggage_forbidden") };
     const tripId = activeTrip.id;
+    const context = requestGuard.context();
+    requestGuard.invalidate(["personal", "shared"]);
     const result = await privatizeLuggageItem({ client: supabase, tripId, item, category });
+    if (!requestGuard.sameContext(context)) return { ok: false, contextChanged: true };
+    requestGuard.invalidate(["personal", "shared"]);
     if (!result.ok) {
       if (result.conflict) await refreshLuggage(tripId);
       return { ...result, error: new Error(luggageErrorMessage(result.error)) };
     }
-    if (luggageTripRef.current === tripId) {
+    if (requestGuard.sameContext(context)) {
+      updateSharedCache(tripId, session.user.id, current => current.filter(row => row.id !== item.id));
       setSharedLuggageItems(current => current.filter(row => row.id !== item.id));
       setLuggageItems(current => current.some(row => row.id === result.data.id) ? current : [...current, result.data]);
-      await refreshLuggage(tripId);
     }
     return result;
   }
@@ -5577,18 +5596,20 @@ export default function App() {
   async function reorderTripLuggage(scope, item, target, placement, items) {
     if (!activeTrip || activeMembership?.status !== "approved" || item.trip_id !== activeTrip.id || target.trip_id !== activeTrip.id) return { ok: false, error: new Error("luggage_forbidden") };
     const tripId = activeTrip.id;
+    const context = requestGuard.context();
+    requestGuard.invalidate([scope]);
     const result = await reorderLuggageItems({ client: supabase, tripId, scope, item, target, placement, items });
+    if (!requestGuard.sameContext(context)) return { ok: false, contextChanged: true };
+    requestGuard.invalidate([scope]);
     if (!result.ok) {
-      if (result.conflict) await refreshLuggage(tripId);
+      if (result.conflict) await refreshLuggage(tripId, [scope]);
       return { ...result, error: new Error(luggageErrorMessage(result.error)) };
     }
-    if (luggageTripRef.current === tripId) {
+    if (requestGuard.sameContext(context)) {
       const setter = scope === "personal" ? setLuggageItems : setSharedLuggageItems;
-      setter(current => current.map(row => {
-        const updated = result.data.find(value => value.id === row.id);
-        return updated && row.updated_at <= updated.updated_at ? updated : row;
-      }));
-      await refreshLuggage(tripId);
+      const update = current => applyLuggageOrder(current, result.data);
+      if (scope === "shared") updateSharedCache(tripId, session.user.id, update);
+      setter(update);
     }
     return result;
   }
@@ -6058,7 +6079,7 @@ export default function App() {
     if (!ok) return { ok: false, cancelled: true };
     const { error } = await supabase.from("trip_members").delete().eq("id", memberId).eq("trip_id", activeTrip.id);
     if (error) {
-      setNotice(error.message);
+      setNotice(luggageErrorMessage(error));
       return { ok: false, error };
     }
     await loadTripData(activeTrip.id);
@@ -8764,7 +8785,7 @@ function DemoApp({ initialSection }) {
     try {
       const normalized = action === "save" ? { title: payload.title.trim(), category: payload.category.trim(), notes: (payload.notes || "").trim(), ...(scope === "shared" ? { assigned_to: payload.assigned_to || null } : {}) } : payload;
       if (action === "save" && !normalized.title) return { ok: false };
-      const next = action === "delete" ? null : { ...(scope === "shared" ? transitionSharedLuggage(old || { packed_by_assignee: false, confirmed_by_owner: false }, normalized, {
+      const next = action === "delete" ? null : { ...(scope === "shared" ? transitionSharedLuggage(old || { packed_by_assignee: false }, normalized, {
         userId: "demo-peter", isOwner: true, approvedMemberIds: demoMembers.filter(row => row.status === "approved").map(row => row.user_id),
       }) : { ...old, ...normalized, owner_id: "demo-peter", packed: action === "save" ? Boolean(old?.packed) : payload.packed }),
         id: id || demoId("demo-luggage"), trip_id: demoActiveTrip.id, updated_at: new Date(Math.max(Date.now(), Date.parse(old?.updated_at || 0) + 1)).toISOString() };
@@ -14405,7 +14426,7 @@ export function LuggagePanel({
   const { ask, dialog } = useSiteDialog();
   // Defense in depth: cached/private and cross-trip rows never reach the board.
   const luggageItems = useMemo(() => incomingLuggageItems.filter((item) => item.owner_id === currentUserId && item.trip_id === activeTrip?.id && !item.shared_item_id && !item.is_shared_assigned_item), [incomingLuggageItems, currentUserId, activeTrip?.id]);
-  const sharedLuggageItems = useMemo(() => incomingSharedLuggageItems.filter((item) => item.trip_id === activeTrip?.id), [incomingSharedLuggageItems, activeTrip?.id]);
+  const sharedLuggageItems = useMemo(() => incomingSharedLuggageItems.filter((item) => item.trip_id === activeTrip?.id && item.assigned_to), [incomingSharedLuggageItems, activeTrip?.id]);
   const contextRef = useRef(`${activeTrip?.id}:${currentUserId}`);
   contextRef.current = `${activeTrip?.id}:${currentUserId}`;
   const [busy, setBusy] = useState(false);
@@ -14749,10 +14770,11 @@ export function LuggagePanel({
   async function confirmSharedReassignment(item, assignedTo) {
     const nameOf = id => {
       const member = members.find(value => value.user_id === id);
-      return id ? member?.display_name || member?.nickname || member?.email?.split("@")[0] || "旅程成員" : "未指派";
+      return id ? member?.display_name || member?.nickname || member?.email?.split("@")[0] || "旅程成員" : "旅程成員";
     };
-    return ask({ title: assignedTo ? `改由 ${nameOf(assignedTo)} 攜帶？` : "取消負責人指派？",
-      message: `「${item.title}」${assignedTo ? `將交給${nameOf(assignedTo)}` : "將移至未指派群組"}，並重置準備狀態。`, confirmLabel: "確認" });
+    if (!assignedTo) return false;
+    return ask({ title: `改由 ${nameOf(assignedTo)} 攜帶？`,
+      message: `「${item.title}」將交給${nameOf(assignedTo)}，並重置準備狀態。`, confirmLabel: "確認" });
   }
 
   async function removeItem(kind, id, item) {
@@ -14795,11 +14817,12 @@ export function LuggagePanel({
     }}
     onAssign={async (scope, item, assignedTo) => {
       if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return { ok: false };
+      if (!assignedTo || !members.some(member => member.user_id === assignedTo && member.status === "approved")) return { ok: false, error: new Error("請選擇有效的負責成員。") };
       const actionContext = contextRef.current;
       if (scope === "personal") {
         const assignee = members.find(member => member.user_id === assignedTo);
         const name = assignee?.display_name || assignee?.nickname || "旅程成員";
-        if (!await ask({ title: "轉為共用物品？", message: `「${item.title}」${assignedTo ? `將交由${name}負責` : "將轉為未指派的共用物品"}，所有成員都能查看名稱與備註，準備狀態將重置。`, confirmLabel: "確認" })) return { ok: false, cancelled: true };
+        if (!await ask({ title: "轉為共用物品？", message: `「${item.title}」將交由${name}負責，所有成員都能查看名稱與備註，準備狀態將重置。`, confirmLabel: "確認" })) return { ok: false, cancelled: true };
         if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
       } else if ((item.assigned_to || "") !== (assignedTo || "")) {
         if (!await confirmSharedReassignment(item, assignedTo)) return { ok: false, cancelled: true };

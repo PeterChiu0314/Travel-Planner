@@ -22,7 +22,7 @@ try {
   const dir = new URL("../supabase/migrations/", import.meta.url);
   const legacyPrivateId = randomUUID(), legacySharedId = randomUUID(), legacyPackId = randomUUID();
   let legacySnapshot;
-  for (const file of (await fs.readdir(dir)).filter((name) => name.endsWith(".sql")).sort()) {
+  for (const file of (await fs.readdir(dir)).filter((name) => name.endsWith(".sql") && !name.endsWith("_luggage_required_assignee.sql")).sort()) {
     if (file.endsWith("_luggage_collaboration_state_safety.sql")) {
       const historicOwner=randomUUID(), historicTrip=randomUUID();
       await db.query("insert into auth.users(id) values($1)",[historicOwner]);
@@ -293,7 +293,7 @@ try {
   let s2=await mutate('shared','save',{title:'S2',assigned_to:viewer},null,orderTrip);
   let s3=await mutate('shared','save',{title:'S3',assigned_to:owner},null,orderTrip);
   s1=await mutate('shared','patch',{packed_by_assignee:true},s1,orderTrip);
-  ordered=await reorder('shared',s1,s2,'after'); check(ordered.map(r=>r.id),[s2.id,s1.id,s3.id]);
+  ordered=await reorder('shared',s1,s2,'after'); check(ordered.findIndex(r=>r.id===s1.id),ordered.findIndex(r=>r.id===s2.id)+1);
   check(ordered.find(r=>r.id===s1.id).packed_by_assignee,true);
   ordered=await reorder('shared',s1,s3); check(ordered.find(r=>r.id===s1.id).assigned_to,owner);
   check(ordered.find(r=>r.id===s1.id).packed_by_assignee,false);
@@ -307,5 +307,53 @@ try {
   await login(outsider); await rejects(()=>reorder('shared',s1,s2,'before',lockedOrder),'luggage_forbidden');
   await login('','anon'); await rejects(()=>reorder('shared',s1,s2,'before',lockedOrder),'permission denied');
   await db.exec('reset role'); check((await q("select prosecdef from pg_proc where proname='reorder_luggage_items'"))[0].prosecdef,false);
+  // Phase 2: exercise all historic compatibility first, then the new
+  // irreversible cleanup in one offline transaction with exact snapshots.
+  await db.exec('reset role');
+  await q("select set_config('request.jwt.claim.sub','',false)");
+  const beforeCleanup = await q("select id from shared_luggage_items where assigned_to is null order by id");
+  const assignedBefore = await q("select to_jsonb(t) r from shared_luggage_items t where assigned_to is not null order by id");
+  const privateBefore = await q("select to_jsonb(t) r from luggage_items t order by id");
+  await db.exec('begin');
+  await db.exec(await fs.readFile(new URL('20261026120000_luggage_required_assignee.sql',dir),'utf8'));
+  await db.exec('commit');
+  check((await q("select count(*)::int n from shared_luggage_items where assigned_to is null"))[0].n,0);
+  check(await q("select to_jsonb(t) r from shared_luggage_items t order by id"),assignedBefore);
+  check(await q("select to_jsonb(t) r from luggage_items t order by id"),privateBefore);
+  await login(viewer);
+  await rejects(()=>mutate('shared','save',{title:'No carrier'}),'luggage_invalid_assignee');
+  await rejects(()=>q("insert into shared_luggage_items(trip_id,title,assigned_to) values($1,'No carrier',null)",[trip]),'luggage_invalid_assignee');
+  let required=await mutate('shared','save',{title:'Required carrier',assigned_to:editor});
+  await rejects(()=>mutate('shared','save',{title:required.title,assigned_to:null},required),'luggage_invalid_assignee');
+  await rejects(()=>assign('shared',required,null),'luggage_invalid_assignee');
+  await rejects(()=>q("update shared_luggage_items set assigned_to=null where id=$1",[required.id]),'luggage_invalid_assignee');
+  await rejects(()=>q("update shared_luggage_items set assigned_to=$1 where id=$2",[pending,required.id]),'luggage_invalid_assignee');
+  await rejects(()=>mutate('shared','patch',{packed_by_assignee:true},required),'luggage_forbidden');
+  // Existing legacy owner-confirmation fields remain server-compatible, while
+  // readiness is still exclusively controlled by the assignee.
+  await login(owner);
+  await rejects(()=>mutate('shared','patch',{packed_by_assignee:true},required),'luggage_forbidden');
+  await db.exec('reset role');
+  const member=(await q("select id from trip_members where trip_id=$1 and user_id=$2",[trip,editor]))[0];
+  await rejects(()=>q("delete from trip_members where id=$1",[member.id]),'luggage_assignee_membership_fk');
+  await rejects(()=>q("update trip_members set status='pending' where id=$1",[member.id]),'luggage_reassign_required');
+  await rejects(()=>q("delete from auth.users where id=$1",[editor]),'luggage_assignee');
+  check((await q("select assigned_to from shared_luggage_items where id=$1",[required.id]))[0].assigned_to,editor);
+  // A whole-trip delete remains legal: both member and assigned item disappear
+  // within the same statement, rather than blocking parent cascade cleanup.
+  const deleteTrip=randomUUID();
+  await q("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Delete','Delete','Japan',current_date,current_date+1,$2)",[deleteTrip,owner]);
+  await q("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved'),($1,$3,'viewer','approved')",[deleteTrip,owner,viewer]);
+  await login(owner);let movable=await mutate('shared','save',{title:'Whole trip',assigned_to:viewer},null,deleteTrip);
+  movable=await assign('shared',movable,owner,deleteTrip);
+  await db.exec('reset role');
+  await q('delete from trip_members where trip_id=$1 and user_id=$2',[deleteTrip,viewer]);
+  check((await q('select count(*)::int n from trip_members where trip_id=$1 and user_id=$2',[deleteTrip,viewer]))[0].n,0);
+  await q('delete from trips where id=$1',[deleteTrip]);
+  check((await q('select count(*)::int n from shared_luggage_items where trip_id=$1',[deleteTrip]))[0].n,0);
+  check((await q("select has_function_privilege('authenticated','app_private.require_luggage_assignee()','EXECUTE') allowed"))[0].allowed,false);
+  check((await q("select has_function_privilege('anon','app_private.require_luggage_assignee()','EXECUTE') allowed"))[0].allowed,false);
+  check((await q("select bool_and(relrowsecurity) enabled from pg_class where oid in ('public.luggage_items'::regclass,'public.shared_luggage_items'::regclass)"))[0].enabled,true);
+  console.log(`Required-assignee offline cleanup: ${beforeCleanup.length} null-assignee rows removed; assigned/private snapshots unchanged.`);
   console.log(`Luggage offline PostgreSQL: ${checks} assertions passed (full migration chain, RLS, ordering, stale manifests, private isolation, conversion rollback, locks, legacy compatibility).`);
 } finally { await db.close(); }

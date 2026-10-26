@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 
 export const luggageState = async page => JSON.parse(await page.getByTestId("luggage-canonical-state").textContent());
-export const reassignmentDialog = page => page.getByRole("dialog", { name: /^(改由 .+ 攜帶？|取消負責人指派？)$/ });
+export const reassignmentDialog = page => page.getByRole("dialog", { name: /^改由 .+ 攜帶？$/ });
 async function settlePickup(page) {
   await expect(page.locator(".lb-drag-preview")).toBeVisible();
   // Read destination coordinates after the source's real layout has closed.
@@ -19,17 +19,17 @@ export async function dragLuggage(page, title, memberId, scope = "shared", { can
     const tab = await page.getByRole("tab", { name: "共用物品", exact: true }).boundingBox();
     await page.mouse.move(tab.x + tab.width / 2, tab.y + tab.height / 2, { steps: 5 });
   }
-  const target = page.locator(`#lb-shared [data-member-id="${memberId || "unassigned"}"]`);
+  const target = page.locator(`#lb-shared [data-member-id="${memberId}"]`);
   // Hover the visible heading rather than tweening toward coordinates captured
   // before an intervening group's insertion space pushes this destination down.
   await target.locator("h4").hover();
-  if (scope === "shared" && previousMember === (memberId || "unassigned")) await expect(target).not.toHaveClass(/is-drop-target/);
+  if (scope === "shared" && previousMember === (memberId)) await expect(target).not.toHaveClass(/is-drop-target/);
   else await expect(target).toHaveClass(/is-drop-target/);
   if (cancel) { await page.keyboard.press("Escape"); await page.mouse.up(); }
   else {
     await page.mouse.up();
     if (scope === "personal" && confirm) await page.getByRole("dialog", { name: "轉為共用物品？", exact: true }).getByRole("button", { name: "確認", exact: true }).click();
-    if (scope === "shared" && confirm && previousMember !== (memberId || "unassigned")) await reassignmentDialog(page).getByRole("button", { name: "確認", exact: true }).click();
+    if (scope === "shared" && confirm && previousMember !== (memberId)) await reassignmentDialog(page).getByRole("button", { name: "確認", exact: true }).click();
   }
 }
 
@@ -43,7 +43,7 @@ export async function keyboardAssign(page, title, memberId, scope = "shared") {
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole('tab', { name: '共用物品', exact: true })).toHaveAttribute('aria-selected', 'true');
   }
-  const target = page.locator(`#lb-shared [data-member-id="${memberId || "unassigned"}"]`);
+  const target = page.locator(`#lb-shared [data-member-id="${memberId}"]`);
   for (let i = 0; i < 100; i += 1) {
     await page.keyboard.press("ArrowDown");
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -51,7 +51,7 @@ export async function keyboardAssign(page, title, memberId, scope = "shared") {
   }
   await expect(target).toHaveClass(/is-drop-target/); await page.keyboard.press("Space");
   if (scope === "personal") await page.getByRole("dialog", { name: "轉為共用物品？", exact: true }).getByRole("button", { name: "確認", exact: true }).click();
-  if (scope === "shared" && previousMember !== (memberId || "unassigned")) await reassignmentDialog(page).getByRole("button", { name: "確認", exact: true }).click();
+  if (scope === "shared" && previousMember !== (memberId)) await reassignmentDialog(page).getByRole("button", { name: "確認", exact: true }).click();
 }
 
 export async function returnLuggage(page, title, category, { confirm = true, keyboard = false } = {}) {

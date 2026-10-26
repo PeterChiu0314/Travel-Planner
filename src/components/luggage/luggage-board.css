@@ -95,8 +95,6 @@
 .lb-member-group h4 { display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 6px 0 0; color: var(--ink); font-size: 13px; font-weight: 600; }
 .lb-member-group h4 small { margin-left: auto; padding-right: 10px; color: var(--muted); font-size: 11px; font-weight: 400; }
 .lb-member-avatar { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--color-primary); color: var(--paper); font-size: 11px; font-weight: 500; }
-.lb-member-group.is-unassigned .lb-member-avatar { background: var(--color-surface-subtle); color: var(--muted); }
-.lb-member-group.is-unassigned h4 > span:nth-child(2) { color: var(--color-warning); }
 .lb-member-group .shared-luggage-row > .lb-item-name { padding-left: 4px; }
 .lb-stage { display: flex; justify-content: center; align-items: center; }
 .lb-mobile-label { display: none; }

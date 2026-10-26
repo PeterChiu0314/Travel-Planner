@@ -18,10 +18,10 @@ const actors = [
 const trip = { id: "luggage-trip", title: "京都同行", start_date: "2090-04-05", end_date: "2090-04-10", owner_id: "owner" };
 const initialTime = "2026-10-23T01:00:00.000Z";
 const personal = (id, owner_id, title, category = "隨身必備", packed = false, trip_id = trip.id) => ({ id, owner_id, title, category, packed, trip_id, updated_at: initialTime });
-const shared = (id, title, assigned_to, packed = false, confirmed = false, category = "團隊裝備", trip_id = trip.id) => ({ id, title, assigned_to, category, trip_id, packed_by_assignee: packed, confirmed_by_owner: confirmed, updated_at: initialTime });
+const shared = (id, title, assigned_to, packed = false, confirmed = false, category = "團隊裝備", trip_id = trip.id) => ({ id, title, assigned_to, category, trip_id, packed_by_assignee: packed, ...(confirmed ? { confirmed_by_owner: true } : {}), updated_at: initialTime });
 const initial = () => ({
   luggageItems: parameters.has("empty") ? [] : [personal("own", "owner", "護照"), personal("other", "packer", "Chloe 私人藥物"), personal("viewer", "viewer", "Dennis 私人證件"), personal("cross-trip", "owner", "另一旅程私人行李", "證件", false, "other-trip"), { ...personal("legacy-proxy", "owner", "過期共用物品複本"), is_shared_assigned_item: true }, ...(parameters.has("long") ? Array.from({ length: 55 }, (_, i) => personal(`long-${i}`, "owner", `長清單物品 ${i + 1}`, i % 2 ? "換洗衣物" : "電子用品", i < 10)) : [])],
-  sharedLuggageItems: parameters.has("empty") ? [] : [shared("shared", "共享充電器", "packer"), shared("owner-assigned", "團隊文件", "owner"), shared("unassigned", "露營急救包", null), shared("ready", "團隊相機", "packer", true, true), shared("cross-team", "另一旅程共用物品", "owner", false, false, "團隊裝備", "other-trip"), ...(parameters.has("assigned") ? Array.from({ length: 36 }, (_, i) => shared(`assigned-${i}`, `指派共用物品 ${i + 1}`, "owner")) : [])],
+  sharedLuggageItems: parameters.has("empty") ? [] : [shared("shared", "共享充電器", "packer"), shared("owner-assigned", "團隊文件", "owner"), shared("emergency", "露營急救包", "packer"), shared("ready", "團隊相機", "packer", true, true), shared("cross-team", "另一旅程共用物品", "owner", false, false, "團隊裝備", "other-trip"), ...(parameters.has("assigned") ? Array.from({ length: 36 }, (_, i) => shared(`assigned-${i}`, `指派共用物品 ${i + 1}`, "owner")) : [])],
 });
 
 function Harness() {
@@ -61,7 +61,7 @@ function Harness() {
       if (action === "delete") next = rows.filter((row) => row.id !== id);
       else {
         const clean = Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value]));
-        let value = record || { id: crypto.randomUUID(), trip_id: trip.id, owner_id: actorId, packed: false, packed_by_assignee: false, confirmed_by_owner: false, assigned_to: null };
+        let value = record || { id: crypto.randomUUID(), trip_id: trip.id, owner_id: actorId, packed: false, packed_by_assignee: false };
         if (scope === "shared") value = transitionSharedLuggage(value, clean, { userId: actorId, isOwner: actorId === trip.owner_id, approvedMemberIds: actors.filter((member) => member.status === "approved").map((member) => member.user_id) });
         else value = { ...value, ...clean };
         value.updated_at = now;

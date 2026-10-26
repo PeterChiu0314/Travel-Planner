@@ -1,37 +1,34 @@
 import { planLuggageOrder, sortLuggageItems } from "./luggageOrdering.js";
 
 /** One canonical shared row powers the team list and the assignee's personal view. */
-export function transitionSharedLuggage(item, patch, { userId, isOwner = false, approvedMemberIds = [] } = {}) {
+export function transitionSharedLuggage(item, patch, { userId, approvedMemberIds = [] } = {}) {
+  if (Object.hasOwn(patch, "confirmed_by_owner")) throw new Error("luggage_invalid_payload");
   const next = { ...item, ...patch };
   const contentChanged = ["title", "category", "assigned_to"].some((key) =>
     Object.hasOwn(patch, key) && (patch[key] || null) !== (item[key] || null));
-  if (Object.hasOwn(patch, "assigned_to") && next.assigned_to && !approvedMemberIds.includes(next.assigned_to)) {
+  if (!next.assigned_to || !approvedMemberIds.includes(next.assigned_to)) {
     throw new Error("luggage_invalid_assignee");
   }
   if (contentChanged) {
     next.packed_by_assignee = false;
-    next.confirmed_by_owner = false;
+    if (Object.hasOwn(item, "confirmed_by_owner")) next.confirmed_by_owner = false;
     return next;
   }
   if (Object.hasOwn(patch, "packed_by_assignee") && next.packed_by_assignee !== item.packed_by_assignee) {
     if (!item.assigned_to || item.assigned_to !== userId) throw new Error("luggage_forbidden");
-    next.confirmed_by_owner = false;
+    if (Object.hasOwn(item, "confirmed_by_owner")) next.confirmed_by_owner = false;
   }
-  // Legacy clients may still send confirmation patches. The current UI only
-  // reads/writes packed_by_assignee; retain this guard for compatibility.
-  if (Object.hasOwn(patch, "confirmed_by_owner") && next.confirmed_by_owner !== item.confirmed_by_owner) {
-    if (!isOwner) throw new Error("luggage_forbidden");
-    if (next.confirmed_by_owner && !next.packed_by_assignee) throw new Error("luggage_not_packed");
-    if (next.confirmed_by_owner && !approvedMemberIds.includes(next.assigned_to)) throw new Error("luggage_invalid_assignee");
-  }
-  if (!next.assigned_to || !next.packed_by_assignee) next.confirmed_by_owner = false;
-  if (!next.assigned_to) next.packed_by_assignee = false;
+  // Read-only legacy compatibility: preserve a server-returned field, never
+  // offer a confirmation mutation or use it as readiness. New Demo rows omit it.
+  if (Object.hasOwn(item, "confirmed_by_owner") && !next.packed_by_assignee) next.confirmed_by_owner = false;
   return next;
 }
 
 const errorMessages = {
   luggage_forbidden: "你沒有權限執行此行李操作。",
-  luggage_not_packed: "請先由負責成員完成準備。",
+  luggage_reassign_required: "此成員仍負責共用物品，請先改派給其他成員。",
+  luggage_assignee_membership_fk: "此成員仍負責共用物品，請先完成改派再移除成員。",
+  luggage_assignee_account_fk: "此帳號仍負責共用物品，請先完成改派再刪除帳號。",
   luggage_invalid_assignee: "請指派目前旅程中已核准的成員。",
   luggage_invalid_payload: "請檢查物品名稱與操作內容。",
   luggage_stale: "這件物品已被其他人更新，請依最新內容重試。",
@@ -52,6 +49,9 @@ export async function mutateLuggageItem({ client, tripId, scope, action, itemId 
   if (!tripId || !["personal", "shared"].includes(scope) || !["save", "patch", "delete"].includes(action)) {
     return { ok: false, data: null, error: new Error("luggage_invalid_payload"), conflict: false };
   }
+  if (scope === "shared" && (action === "save" && !payload.assigned_to || Object.hasOwn(payload, "confirmed_by_owner"))) {
+    return { ok: false, data: null, error: new Error(Object.hasOwn(payload, "confirmed_by_owner") ? "luggage_invalid_payload" : "luggage_invalid_assignee"), conflict: false };
+  }
   try {
     const { data, error } = await client.rpc("mutate_luggage_item", {
       p_trip_id: tripId, p_scope: scope, p_action: action,
@@ -67,16 +67,18 @@ export async function assignLuggageItem({ client, tripId, scope, item, assignedT
   if (!tripId || !["personal", "shared"].includes(scope) || !item?.id || !item.updated_at) {
     return { ok: false, error: new Error("luggage_invalid_payload") };
   }
+  if (!assignedTo) return { ok: false, error: new Error("luggage_invalid_assignee") };
   try {
     const { data, error } = await client.rpc("assign_luggage_item", {
       p_trip_id: tripId, p_scope: scope, p_item_id: item.id,
-      p_expected_updated_at: item.updated_at, p_assigned_to: assignedTo || null,
+      p_expected_updated_at: item.updated_at, p_assigned_to: assignedTo,
     });
     return { ok: !error, data, error, conflict: Boolean(error?.message?.includes("luggage_stale")) };
   } catch (error) { return { ok: false, error, conflict: Boolean(error?.message?.includes("luggage_stale")) }; }
 }
 
 export async function reorderLuggageItems({ client, tripId, scope, item, target, placement, items }) {
+  if (scope === "shared" && !target.assigned_to) return { ok: false, error: new Error("luggage_invalid_assignee") };
   try {
     const { data, error } = await client.rpc("reorder_luggage_items", {
       p_trip_id: tripId, p_scope: scope, p_item_id: item.id, p_target_id: target.id,
@@ -112,7 +114,7 @@ export function reorderLuggageSnapshot(snapshot, { scope, item, target, placemen
 export function assignLuggageSnapshot(snapshot, { scope, item, assignedTo, tripId, userId, approvedMemberIds, now = Date.now() }) {
   if (!["personal", "shared"].includes(scope) || !item?.id || !item.updated_at) throw new Error("luggage_invalid_payload");
   if (!approvedMemberIds.includes(userId)) throw new Error("luggage_forbidden");
-  if (assignedTo && !approvedMemberIds.includes(assignedTo)) throw new Error("luggage_invalid_assignee");
+  if (!assignedTo || !approvedMemberIds.includes(assignedTo)) throw new Error("luggage_invalid_assignee");
   const source = (scope === "personal" ? snapshot.luggageItems : snapshot.sharedLuggageItems).find(row => row.id === item.id && row.trip_id === tripId);
   if (!source || scope === "personal" && source.owner_id !== userId) throw new Error("luggage_not_found");
   if (source.updated_at !== item.updated_at) throw new Error("luggage_stale");
@@ -121,9 +123,9 @@ export function assignLuggageSnapshot(snapshot, { scope, item, assignedTo, tripI
   if (scope === "shared" && (source.assigned_to || "") === (assignedTo || "")) return snapshot;
   const next = scope === "personal" ? {
     id: source.id, trip_id: tripId, title: source.title, category: source.category, notes: source.notes || null,
-    assigned_to: assignedTo || null, packed_by_assignee: false, confirmed_by_owner: false,
+    assigned_to: assignedTo, packed_by_assignee: false,
     created_at: new Date(now).toISOString(),
-  } : { ...transitionSharedLuggage(source, { assigned_to: assignedTo || null }, { userId, approvedMemberIds }), locked_by: null, locked_at: null };
+  } : { ...transitionSharedLuggage(source, { assigned_to: assignedTo }, { userId, approvedMemberIds }), locked_by: null, locked_at: null };
   next.updated_at = new Date(Math.max(now, Date.parse(source.updated_at) + 1)).toISOString();
   return { ...snapshot, luggageItems: scope === "personal" ? snapshot.luggageItems.filter(row => row.id !== source.id) : snapshot.luggageItems,
     sharedLuggageItems: scope === "personal" ? [...snapshot.sharedLuggageItems, next] : snapshot.sharedLuggageItems.map(row => row.id === source.id ? next : row) };

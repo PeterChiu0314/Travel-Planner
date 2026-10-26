@@ -189,12 +189,12 @@ Formal app data flow:
    - `trip_members`
 5. RLS filters what the user can see and mutate.
 6. Local React state feeds view components.
-7. Mutations call Supabase then reload trip data.
+7. Most mutations call Supabase then reload trip data; luggage applies canonical RPC results and performs scoped refresh only for conflicts/recovery.
 8. Realtime also reloads trip data when relevant tables change.
 
 Offline read flow:
 
-- `readOfflineTrips`, `writeOfflineTrips`, `readOfflineTripData`, and `writeOfflineTripData` cache previously loaded data in `localStorage`.
+- `src/lib/offlineCache.js` owns `readOfflineTrips`, `writeOfflineTrips`, `readOfflineTripData`, and `writeOfflineTripData`. Cache envelopes/keys bind user + trip, expire after 12 hours and are cleared for the previous account on logout/account change. Private luggage is never persisted or recovered from these caches; old unscoped trip keys are removed, never imported. In-memory private rows survive short same-context outages.
 - If network/Supabase reads fail, cached data is used as readonly-ish fallback.
 - `design/sw.js` caches the shell and same-origin GET assets. This is lightweight offline read, not offline edit sync.
 
@@ -254,7 +254,7 @@ Important tables:
 - `todo_items`: in-app todo items.
 - `guide_items`: reference guide links/notes.
 - `luggage_items`: personal luggage, visible only to the owner user.
-- `shared_luggage_items`: team gear with assignee packed state and owner confirmation.
+- `shared_luggage_items`: team gear with assignee-only readiness. `confirmed_by_owner` remains a legacy compatibility field, not current UI state.
 - `pack_items`: older/general packing checklist used by Today/legacy packing flows.
 - `attachments`: shared attachment metadata.
 - `share_links`: readonly public share tokens.
@@ -331,7 +331,6 @@ The channel is named `trip-${activeTripId}` and listens to `postgres_changes` fo
 - `accommodations`
 - `guide_items`
 - `todo_items`
-- `luggage_items`
 - `shared_luggage_items`
 - `attachments`
 - `itinerary_budget_items`
@@ -368,6 +367,12 @@ Rules:
 Known risk:
 
 - Current Realtime strategy reloads broad trip data. This is simple but can interact badly with active forms if a component reinitializes form state on data changes.
+
+Luggage exceptions (2026-10-26):
+
+- Personal `luggage_items` has no persistent Realtime subscription. Approved users still save via invoker RPCs; successful mutations apply canonical returned records without reloading the whole trip.
+- Shared luggage events use an 80ms coalesced, shared-only refresh. Reconnect refreshes both scopes; entering luggage, window focus, online and visible-page recovery refresh both. Personal cross-device changes converge at these points, not continuously.
+- `src/lib/luggageSync.js` guards requests by account/trip generation and per-scope sequence, including whole-trip snapshots interleaved with RPCs. Do not restore the broad `loadTripData` callback for luggage events or bypass the guard.
 
 ## 8. Draft Autosave Flow
 

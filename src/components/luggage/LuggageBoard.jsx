@@ -43,8 +43,8 @@ function MemberSlot({ memberId, name, member, items, all, canReceive, children }
   const originalMember = active?.data.current?.scope === "shared" && (active.data.current.item.assigned_to || "") === memberId;
   const receiving = canReceive && !originalMember && (isOver || target?.kind === "row" && target.scope === "shared" && (target.item.assigned_to || "") === memberId);
   const conversion = active?.data.current?.scope === "personal";
-  const cue = conversion ? memberId ? `交給 ${name} 準備` : "放開轉為未指派共用物品" : memberId ? `交給 ${name} 準備` : "放開取消指派";
-  return <section ref={setNodeRef} data-member-id={memberId || "unassigned"} className={`lb-member-group${!member ? " is-unassigned" : ""}${receiving ? " is-drop-target" : ""}`} aria-label={`${name}的共用物品`}>
+  const cue = `交給 ${name} 準備`;
+  return <section ref={setNodeRef} data-member-id={memberId} className={`lb-member-group${receiving ? " is-drop-target" : ""}`} aria-label={`${name}的共用物品`}>
     <h4><span className="lb-member-avatar" aria-hidden="true">{member ? memberLabel(member).slice(0, 1).toUpperCase() : "—"}</span><span>{name}</span><small>{all.filter(item => item.packed_by_assignee).length}/{all.length}</small></h4>
     {children}
     {!items.length ? <p className="lb-slot-empty">{all.length ? "沒有符合的物品" : "尚無共用物品"}</p> : null}
@@ -390,12 +390,13 @@ export default function LuggageBoard({
   const memberGroups = new Map();
   for (const member of approved) memberGroups.set(member.user_id, []);
   for (const item of shownShared) {
-    const key = item.assigned_to || "";
+    if (!item.assigned_to) continue;
+    const key = item.assigned_to;
     if (!memberGroups.has(key)) memberGroups.set(key, []);
     memberGroups.get(key).push(item);
   }
   const memberOrder = [currentUserId, ...approved.map(member => member.user_id).filter(id => id !== currentUserId)];
-  const rankMember = id => !id ? Number.MAX_SAFE_INTEGER : memberOrder.includes(id) ? memberOrder.indexOf(id) : memberOrder.length;
+  const rankMember = id => memberOrder.includes(id) ? memberOrder.indexOf(id) : memberOrder.length;
   const orderedGroups = [...memberGroups].filter(([, items]) => !sharedFiltered || items.length || dragged).sort(([a], [b]) => rankMember(a) - rankMember(b));
   async function movePersonal(item, category) {
     const result = await onMovePersonal(item, category);
@@ -476,7 +477,7 @@ export default function LuggageBoard({
           ...(data.scope === "personal" ? { category: target.item.category || "" } : {}) }, reorder);
         if (result?.ok) {
           const reassigned = data.scope === "shared" && (data.item.assigned_to || "") !== (target.item.assigned_to || "");
-          setAssignmentNotice(reassigned ? target.item.assigned_to ? `已改由 ${memberLabel(byMember.get(target.item.assigned_to))} 攜帶` : "已取消指派，移至未指派群組" : "已更新物品順序");
+          setAssignmentNotice(reassigned ? `已改由 ${memberLabel(byMember.get(target.item.assigned_to))} 攜帶` : "已更新物品順序");
           if (data.scope === "personal") setCollapsedGroups(current => current.filter(key => key !== (target.item.category || "未分類")));
           await new Promise(resolve => requestAnimationFrame(resolve));
           rows.current.get(data.personalProjection ? `personal:${data.item.id}` : data.scope === "shared" ? `shared:${data.item.id}` : data.item.id)?.querySelector(".lb-drag-handle")?.focus({ preventScroll: true });
@@ -513,7 +514,7 @@ export default function LuggageBoard({
     if (target.kind !== "member" || data.scope === "shared" && (data.item.assigned_to || "") === target.assignedTo) { dragOriginTab.current = null; return; }
     const result = await onAssign(data.scope, data.item, target.assignedTo);
     if (result?.ok) {
-      setAssignmentNotice(data.scope === "personal" ? target.assignedTo ? `已轉為共用物品，由 ${target.label} 攜帶` : "已轉為未指派共用物品" : target.assignedTo ? `已改由 ${target.label} 攜帶` : "已取消指派，移至未指派群組");
+      setAssignmentNotice(data.scope === "personal" ? `已轉為共用物品，由 ${target.label} 攜帶` : `已改由 ${target.label} 攜帶`);
       if (target.assignedTo === currentUserId) setCollapsedGroups(current => current.filter(key => key !== "assigned"));
       await new Promise(resolve => requestAnimationFrame(resolve));
       rows.current.get(`shared:${data.item.id}`)?.querySelector(".lb-drag-handle")?.focus({ preventScroll: true });
@@ -611,8 +612,8 @@ export default function LuggageBoard({
           <div className="lb-list-content" style={{ minHeight: dragged?.listHeights.shared }}>
           {!shownShared.length && sharedFiltered && !dragged ? <Empty filtered /> : null}<div className="luggage-list">{orderedGroups.map(([memberId, items]) => {
             const member = byMember.get(memberId);
-            const name = member ? `${memberLabel(member)}${memberId === currentUserId ? "（我）" : ""}` : memberId ? "需重新指派" : "未指派";
-            return <MemberSlot key={memberId} {...{ memberId, name, member, items }} all={sharedLuggageItems.filter(item => (item.assigned_to || "") === memberId)} canReceive={canEdit && !busy && Boolean(member || !memberId)}>{items.map(item => sharedRow(item, false))}</MemberSlot>; })}</div>
+            const name = member ? `${memberLabel(member)}${memberId === currentUserId ? "（我）" : ""}` : "需重新指派";
+            return <MemberSlot key={memberId} {...{ memberId, name, member, items }} all={sharedLuggageItems.filter(item => (item.assigned_to || "") === memberId)} canReceive={canEdit && !busy && Boolean(member)}>{items.map(item => sharedRow(item, false))}</MemberSlot>; })}</div>
           </div>
         </div>
       </section>

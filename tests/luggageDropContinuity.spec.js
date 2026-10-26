@@ -58,9 +58,9 @@ test("same-carrier shared reorder keeps both projections at destination without 
   await page.goto(`${fixture}?actor=packer&latency=500`);
   await hoverBefore(page, "shared", "ready", "shared");
   const frames = (await observeRelease(page, "shared", "ready")).filter(frame => !frame.dragging);
-  for (const frame of frames) expect(frame.ids).toEqual(["ready", "shared"]);
+  for (const frame of frames) expect(frame.ids).toEqual(["ready", "shared", "emergency"]);
   const personal = page.locator('#lb-personal .lb-public-group article[data-item-id]');
-  expect(await personal.evaluateAll(els => els.map(el => el.dataset.itemId))).toEqual(["ready", "shared"]);
+  expect(await personal.evaluateAll(els => els.map(el => el.dataset.itemId))).toEqual(["ready", "shared", "emergency"]);
   expect((await luggageState(page)).sharedLuggageItems.find(item => item.id === "ready").packed_by_assignee).toBe(true);
   await expect(reassignmentDialog(page)).toHaveCount(0);
 });

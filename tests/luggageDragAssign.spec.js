@@ -40,16 +40,16 @@ test("shared drag updates assignee only, same-slot and cancellation leave record
   await dragLuggage(page, "團隊相機", "viewer");
   await expect.poll(async () => (await state(page)).sharedLuggageItems.find(item => item.id === "ready").assigned_to).toBe("viewer");
   expect((await state(page)).sharedLuggageItems.find(item => item.id === "ready")).toMatchObject({ category: "團隊裝備", packed_by_assignee: false, confirmed_by_owner: false });
-  await dragLuggage(page, "團隊相機", "");
-  await expect.poll(async () => (await state(page)).sharedLuggageItems.find(item => item.id === "ready").assigned_to).toBe(null);
+  await dragLuggage(page, "團隊相機", "owner");
+  await expect.poll(async () => (await state(page)).sharedLuggageItems.find(item => item.id === "ready").assigned_to).toBe("owner");
 });
 
 test("failed conversion leaves the entire private source intact, retry converts once", async ({ page }) => {
   await page.goto(`${fixture}?latency=100`); const before = await state(page);
   await page.getByRole("button", { name: "下一次操作失敗", exact: true }).click();
-  await dragLuggage(page, "護照", "", "personal");
+  await dragLuggage(page, "護照", "viewer", "personal");
   await expect(page.getByRole("alert").first()).toBeVisible(); expect(await state(page)).toEqual(before);
-  await dragLuggage(page, "護照", "", "personal");
+  await dragLuggage(page, "護照", "viewer", "personal");
   await expect.poll(async () => (await state(page)).luggageItems.some(item => item.id === "own")).toBe(false);
   expect((await state(page)).sharedLuggageItems.filter(item => item.id === "own")).toHaveLength(1);
 });

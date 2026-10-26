@@ -56,15 +56,15 @@ test("only assigned members pack; packing immediately completes the item without
   await row.getByRole("checkbox", { name: /^成員已備妥：/ }).check();
   await expect(personal(page).getByRole("checkbox", { name: "準備指派共用物品：共享充電器", exact: true })).toBeChecked();
   await expect(row).toHaveClass(/packed/);
-  expect((await state(page)).sharedLuggageItems.find(item => item.id === "shared").confirmed_by_owner).toBe(false);
+  expect((await state(page)).sharedLuggageItems.find(item => item.id === "shared").confirmed_by_owner).toBeUndefined();
   await expect(row).toBeVisible();
   await personal(page).getByRole("checkbox", { name: "準備指派共用物品：共享充電器", exact: true }).uncheck();
   await expect(row.getByRole("checkbox", { name: /^成員已備妥：/ })).not.toBeChecked();
   const canonical = (await state(page)).sharedLuggageItems.find((item) => item.id === "shared");
-  expect(canonical.packed_by_assignee).toBe(false); expect(canonical.confirmed_by_owner).toBe(false);
+  expect(canonical.packed_by_assignee).toBe(false); expect(canonical.confirmed_by_owner).toBeUndefined();
 });
 
-test("approved viewer can manage shared gear, while unassigned items cannot be marked packed", async ({ page }) => {
+test("approved viewer can manage shared gear, while other assignees cannot be marked packed", async ({ page }) => {
   await load(page, "?actor=viewer");
   await expect(personal(page).getByText("Dennis 私人證件", { exact: true })).toBeVisible();
   await personal(page).getByLabel("個人行李名稱", { exact: true }).fill("同行雨傘");

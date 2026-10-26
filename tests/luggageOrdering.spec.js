@@ -56,11 +56,11 @@ test("shared order is canonical in both columns, viewer can reorder without rese
   const room = `order-${Date.now()}`; await page.setViewportSize({ width: 1440, height: 900 }); await page.goto(`${fixture}?actor=packer&room=${room}`);
   const remote = await context.newPage(); await remote.goto(`${fixture}?actor=viewer&room=${room}`); await remote.setViewportSize({ width: 1440, height: 900 });
   await remote.bringToFront(); await dragRow(remote, "shared", "ready", "shared", "shared");
-  await expect.poll(() => ids(remote, "shared", '[data-member-id="packer"]')).toEqual(["ready", "shared"]);
+  await expect.poll(() => ids(remote, "shared", '[data-member-id="packer"]')).toEqual(["ready", "shared", "emergency"]);
   expect((await luggageState(remote)).sharedLuggageItems.find(item => item.id === "ready").packed_by_assignee).toBe(true);
-  await expect.poll(() => ids(page, "personal", ".lb-assigned")).toEqual(["ready", "shared"]);
+  await expect.poll(() => ids(page, "personal", ".lb-assigned")).toEqual(["ready", "shared", "emergency"]);
   await page.bringToFront(); await dragRow(page, "personal", "shared", "personal", "ready");
-  await expect.poll(() => ids(page, "shared", '[data-member-id="packer"]')).toEqual(["shared", "ready"]);
+  await expect.poll(() => ids(page, "shared", '[data-member-id="packer"]')).toEqual(["shared", "ready", "emergency"]);
   await dragRow(page, "shared", "ready", "shared", "owner-assigned");
   await reassignmentDialog(page).getByRole('button',{name:'確認',exact:true}).click();
   await expect.poll(async () => (await luggageState(page)).sharedLuggageItems.find(item => item.id === "ready").assigned_to).toBe("owner");
@@ -90,7 +90,7 @@ test("keyboard can choose an item's insertion position and cancel without writes
     if ((await row(page, "shared", "shared").getAttribute("class")).includes("lb-insert-before")) break;
   }
   await page.keyboard.press("Space");
-  await expect.poll(() => ids(page, "shared", '[data-member-id="packer"]')).toEqual(["ready", "shared"]);
+  await expect.poll(() => ids(page, "shared", '[data-member-id="packer"]')).toEqual(["ready", "shared", "emergency"]);
 });
 
 test("remote edits during a drag reject the stale list without overwriting content or order", async ({ page, context }) => {
@@ -104,7 +104,7 @@ test("remote edits during a drag reject the stale list without overwriting conte
   await page.bringToFront(); const end=await row(page,'shared','shared').boundingBox();
   await page.mouse.move(end.x+end.width/2,end.y+8,{steps:8}); await page.mouse.up();
   await expect(page.getByRole('alert').first()).toContainText('重新拖曳');
-  expect(await ids(page,'shared','[data-member-id="packer"]')).toEqual(['shared','ready']);
+  expect(await ids(page,'shared','[data-member-id="packer"]')).toEqual(['shared','emergency','ready']);
   expect((await luggageState(page)).sharedLuggageItems.find(item=>item.id==='shared').title).toBe('遠端更新充電器');
   await remote.close();
 });
