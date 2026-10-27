@@ -5,6 +5,14 @@ const row=(page,title="JPY fare")=>page.locator(".bw-row").filter({hasText:title
 async function ready(page,db,actor="A") {await boot(page,db,actor);await page.waitForTimeout(200);}
 test.afterEach(async({page})=>{if(page.qaErrors)expect(page.qaErrors).toEqual([]);});
 
+test("an approved snapshot clears the earlier pending-membership budget warning",async({page})=>{
+  const db=backend({leases:true});db.snapshotDenied=true;await ready(page,db);
+  await expect(page.getByText("目前無法讀取此旅程預算。",{exact:true})).toBeVisible();
+  db.snapshotDenied=false;await db.emit("budget_items",{eventType:"UPDATE",new:db.rows.budget_items[0]});
+  await expect(page.getByRole("button",{name:"JPY fare",exact:true})).toBeVisible();
+  await expect(page.getByText("目前無法讀取此旅程預算。",{exact:true})).toHaveCount(0);
+});
+
 test("twenty Budget events read one snapshot per client and no unrelated tables",async({page,context})=>{
   const db=backend({leases:true});await ready(page,db);const other=await context.newPage();
   try {

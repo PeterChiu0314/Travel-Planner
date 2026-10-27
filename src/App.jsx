@@ -2436,6 +2436,7 @@ export default function App() {
     setAttachments(current => mergeBudgetAttachments(current, data));
     if (data.tripId) {
       setBudgetSchemaAvailable(true);
+      setNotice(current => current === "目前無法讀取此旅程預算。" ? "" : current);
       if (cache) {
         const [userId, tripId] = JSON.parse(key);
         updateOfflineBudget(tripId, userId, data);

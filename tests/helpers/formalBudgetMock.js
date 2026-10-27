@@ -37,6 +37,7 @@ export function backend({ empty = false, departed = false, leases = false } = {}
         }
         if (name === "read_budget_snapshot") {
           this.snapshotReads.push({actor,tripId:args.p_trip_id});
+          if(this.snapshotDenied)return {data:null,error:null};
           const trip=trips.find(t=>t.id===args.p_trip_id), budgets=(rows.budget_items||[]).filter(r=>r.trip_id===args.p_trip_id), actuals=(rows.actual_expenses||[]).filter(r=>r.trip_id===args.p_trip_id);
           const result=structuredClone({data:{tripId:args.p_trip_id,tripBudgetRates:trip.budget_exchange_rates,
             budgetItems:budgets,budgetParticipants:(rows.budget_item_participants||[]).filter(p=>budgets.some(b=>b.id===p.budget_item_id)),
