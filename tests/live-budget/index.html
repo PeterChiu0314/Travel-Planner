@@ -1,0 +1,7 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Budget #10 live acceptance</title></head>
+<body><main><h1>Budget #10 實站驗收</h1><p>僅用明確核准的 QA 旅程。所有操作都經現有登入身分與 RLS；不顯示或匯出憑證。</p>
+<p id="identity">讀取登入狀態…</p><button id="login">Google 登入</button><button id="reload">重新讀取登入狀態</button>
+<label>測試旅程 ID<input id="trip" autocomplete="off"></label><label>測試項目 ID<input id="record" autocomplete="off"></label>
+<label>項目種類<select id="kind"><option value="budget">預算</option><option value="actual">實付</option></select></label>
+<div id="actions"><button data-action="snapshot">讀取預算快照</button><button data-action="collaboration">讀取協作狀態</button><button data-action="subscribe">訂閱測試旅程的訊號</button><button data-action="select">送出自己的選取</button><button data-action="clear">清除此分頁的選取</button><button data-action="forge">直接改寫訊號（應拒絕）</button><button data-action="latency">量測十次快照延遲</button><button data-action="reset">清空畫面紀錄</button></div>
+<pre id="results" role="log" aria-label="驗收結果"></pre></main><script type="module" src="./live-budget.js"></script></body></html>
