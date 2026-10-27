@@ -46,6 +46,18 @@ test("same-account tabs have distinct capabilities; loser cannot release winner"
   await a.client.dispose(); await b.client.dispose(); expect(db.held.size).toBe(0); expect(db.timers.size).toBe(0);
 });
 
+test("a restored draft with no in-memory capability is unconfirmed until acquisition", async () => {
+  const db=fixture(),a=db.client(),b=db.client(),states=[];
+  b.client.watch("budget_items","item",value=>states.push(value));
+  expect(states.at(-1)).toBe(true);
+  await a.client.acquire("budget_items",db.rows.item,"A");
+  await b.client.acquire("budget_items",db.rows.item,"A");
+  expect(states.at(-1)).toBe(true);
+  await a.client.release("budget_items","item","A");
+  await b.client.acquire("budget_items",db.rows.item,"A");expect(states.at(-1)).toBe(false);
+  await a.client.dispose();await b.client.dispose();
+});
+
 test("twelve one-minute renewals retain ownership without financial row writes", async () => {
   const db = fixture(), { client } = db.client(), original = structuredClone(db.rows);
   await client.acquire("budget_items", db.rows.item, "A");

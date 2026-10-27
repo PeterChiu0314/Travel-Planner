@@ -6,7 +6,7 @@ export function createBudgetEditLeaseClient({ supabase, makeId = () => crypto.ra
   const kind = table => table === "budget_items" ? "budget" : table === "actual_expenses" ? "actual" : null;
   const key = (table, id) => `${table}:${id}`;
   const lostError = () => new Error("編輯權限尚未確認或已到期，草稿已保留。請重新確認編輯權限。");
-  const emit = entryKey => watchers.get(entryKey)?.forEach(fn => fn(Boolean(entries.get(entryKey) && entries.get(entryKey).state !== "held")));
+  const emit = entryKey => watchers.get(entryKey)?.forEach(fn => fn(entries.get(entryKey)?.state !== "held"));
   const current = entry => entry.generation === generation && entry.userId === userId && entry.tripId === tripId && entries.get(entry.key) === entry;
   function stop() { if (timer !== null) clearTimer(timer); timer = null; }
   function start() {

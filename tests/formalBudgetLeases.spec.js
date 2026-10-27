@@ -136,9 +136,31 @@ test("hidden workspace keeps its draft but rechecks authority before saving afte
   await page.getByRole("button",{name:"預算管理",exact:true}).click();
   await expect(form(page).getByRole("textbox",{name:"備註"})).toHaveValue("Preserved during navigation");
   expect(db.held.size).toBe(0);
+  await expect(form(page).getByRole("button",{name:"儲存",exact:true})).toBeDisabled();
+  await page.getByRole("button",{name:"重新確認編輯權限",exact:true}).click();
   await form(page).getByRole("button",{name:"儲存",exact:true}).click();
   await expect.poll(()=>db.rpcs.length).toBe(1); await expect(form(page)).toHaveCount(0);
   expect(db.rows.budget_items[0].note).toBe("Preserved during navigation"); expect(db.held.size).toBe(0);
+});
+
+test("same-account tab restoring a shared dirty draft cannot offer Save before obtaining its own lease",async({page,context})=>{
+  const db=backend({leases:true});await boot(page,db);await edit(page);
+  await form(page).getByRole("textbox",{name:"備註",exact:true}).fill("Shared draft stays safe");
+  await expect.poll(()=>page.evaluate(()=>Object.entries(localStorage).some(([key,value])=>key.includes("draft")&&value.includes("Shared draft stays safe")))).toBe(true);
+  const other=await context.newPage();try{
+    await boot(other,db,"A");await expect(form(other).getByRole("textbox",{name:"備註",exact:true})).toHaveValue("Shared draft stays safe");
+    await expect(form(other).getByRole("button",{name:"儲存",exact:true})).toBeDisabled();
+    await other.getByRole("button",{name:"重新確認編輯權限",exact:true}).click();
+    await expect(form(other).getByRole("alert").first()).toContainText("其他成員或分頁正在編輯");
+    await expect(form(other).getByRole("button",{name:"儲存",exact:true})).toBeDisabled();
+    expect(db.held.size).toBe(1);expect(db.rpcs).toEqual([]);
+    await cancel(page);
+    await page.getByRole("dialog",{name:"放棄尚未儲存的變更？",exact:true}).getByRole("button",{name:"放棄變更",exact:true}).click();
+    await expect.poll(()=>db.held.size).toBe(0);
+    await other.getByRole("button",{name:"重新確認編輯權限",exact:true}).click();
+    await expect(form(other).getByRole("button",{name:"儲存",exact:true})).toBeEnabled();
+    await expect(form(other).getByRole("textbox",{name:"備註",exact:true})).toHaveValue("Shared draft stays safe");
+  }finally{await other.close();}
 });
 
 test("late old-account admission cannot open the new account's editor or release using its credentials", async ({ page }) => {
