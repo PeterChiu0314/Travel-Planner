@@ -37,6 +37,13 @@ export function updateOfflineSharedLuggage(tripId, userId, update, storage = loc
   const cached = read(userId, tripId, storage, now);
   if (cached) write(userId, tripId, { ...cached, sharedLuggageItems: update(cached.sharedLuggageItems || []) }, storage, now);
 }
+export function updateOfflineBudget(tripId, userId, snapshot, storage = localStorage, now = Date.now()) {
+  const cached = read(userId, tripId, storage, now);
+  if (!cached) return;
+  const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks, budgetBaseline } = snapshot;
+  write(userId, tripId, { ...cached, budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks, budgetBaseline,
+    attachments: [...(cached.attachments || []).filter(a => a.target_type !== "actual_expense"), ...snapshot.attachments], budgetSnapshot: snapshot }, storage, now);
+}
 export function clearOfflineAccount(userId, storage = localStorage) {
   try {
     cleanLegacy(storage);
