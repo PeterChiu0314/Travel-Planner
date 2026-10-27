@@ -2940,7 +2940,7 @@ export default function App() {
       const { data, error } = await supabase
         .from("trip_members")
         .select(
-          "role,status,trip_id,trips(id,title,name,status,destination,destination_country,destination_city,start_date,end_date,owner_id,updated_at)",
+          "role,status,trip_id,trips(id,title,name,status,destination,destination_country,destination_city,start_date,end_date,owner_id,updated_at,budget_exchange_rates)",
         )
         .eq("user_id", session.user.id);
 
