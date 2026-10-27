@@ -41,7 +41,7 @@ async function boot(page) {
     mock.switchAccount = next => { actor = next; callbacks.forEach(callback => callback("SIGNED_IN", session())); };
     mock.release = () => { mock.pending.splice(0).forEach(resolve => resolve()); };
     // Retain a real callback even after removeChannel: emulate an already queued event.
-    mock.captureReload = () => channels.filter(c => !c.closed && c.name.startsWith("trip-")).at(-1).handlers.find(h => h.config.table === "budget_items").callback;
+    mock.captureReload = () => channels.filter(c => !c.closed && c.name.startsWith("trip-")).at(-1).handlers.find(h => h.config.table === "accommodations").callback;
     mock.emit = table => channels.filter(c => !c.closed).forEach(c => c.handlers.filter(h => h.type === "postgres_changes" && h.config.table === table).forEach(h => h.callback({ eventType: "UPDATE" })));
     mock.client = {
       auth: { getSession: async () => ({ data: { session: session() } }), onAuthStateChange(callback) { callbacks.push(callback); return { data: { subscription: { unsubscribe() {} } } }; }, signOut: async () => { callbacks.forEach(c => c("SIGNED_OUT", null)); return {}; } },
@@ -65,6 +65,7 @@ async function boot(page) {
         }; return query;
       },
       async rpc(name, args) {
+        if(name === "read_budget_snapshot") return {data:{tripId:args.p_trip_id,budgetItems:[],budgetParticipants:[],actualExpenses:[],actualParticipants:[],itineraryBudgetLinks:[],budgetBaseline:null,items:[],members:allMembers.filter(m=>m.trip_id===args.p_trip_id),attachments:[],tripBudgetRates:{}},error:null};
         if (name !== "mutate_luggage_item") return { data: null, error: null };
         const row = rows[args.p_scope === "personal" ? "luggage_items" : "shared_luggage_items"].find(r => r.id === args.p_item_id);
         Object.assign(row, args.p_payload, { updated_at: new Date().toISOString() });
@@ -114,13 +115,13 @@ test("real App private mutations read zero tables; shared event bursts read only
 
 test("older full loads cannot roll back a successful shared RPC or its offline snapshot", async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { formalLuggageMock.holdA = true; formalLuggageMock.emit("budget_items"); });
+  await page.evaluate(() => { formalLuggageMock.holdA = true; formalLuggageMock.emit("accommodations"); });
   await expect.poll(() => page.evaluate(() => formalLuggageMock.pending.length)).toBeGreaterThan(0);
   const check = page.locator("#lb-shared").getByRole("checkbox", { name: "成員已備妥：Team gear", exact: true });
   await check.check();
   await page.evaluate(() => { formalLuggageMock.holdA = false; formalLuggageMock.release(); });
   await expect(check).toBeChecked();
-  await page.evaluate(() => { formalLuggageMock.offline = true; formalLuggageMock.emit("budget_items"); });
+  await page.evaluate(() => { formalLuggageMock.offline = true; formalLuggageMock.emit("accommodations"); });
   await expect(page.getByText("目前使用已快取的離線資料；重新連線後會自動更新。", { exact: true })).toBeVisible();
   await expect(check).toBeChecked();
   await expect(page.getByRole("button", { name: "編輯：A private", exact: true })).toBeVisible();

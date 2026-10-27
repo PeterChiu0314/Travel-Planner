@@ -1,5 +1,7 @@
 import { useSiteDialog } from "../SiteDialog.jsx";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { collaboratorColor } from "../../lib/collaboratorColors.js";
 import { BedDouble, Car, ChartColumn, ChevronDown, ChevronRight, Circle, CircleCheck, List, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
 import MenuSelect from "../MenuSelect.jsx";
@@ -18,14 +20,14 @@ function categoryColor(category) {
 }
 const empty = recordForm(null, [], "", []);
 
-async function applyPaymentStatus(props, budget, paid) {
+async function applyPaymentStatus(props, budget, paid, leaseMeta = {}) {
   try {
     const intent = await preparePaymentChange(props, budget.id, paid, true);
     if (!intent) return { ok: true, cancelled: true };
     const latest = props.useEditLocks ? await props.services.read("budget_items", budget.id, props.activeTrip.id) : { data: budget };
     if (latest.error || !latest.data) throw latest.error || new Error("找不到預算項目。");
     return await props.onSave({ payment_only: true, ...intent }, budget.id,
-      { tripId: props.activeTrip.id, baseUpdatedAt: latest.data.updated_at, operationId: crypto.randomUUID() });
+      { tripId: props.activeTrip.id, baseUpdatedAt: latest.data.updated_at, operationId: crypto.randomUUID(), ...leaseMeta });
   } catch (error) { return { ok: false, error }; }
 }
 
@@ -42,30 +44,42 @@ function useWorkspaceEditor(kind, props) {
   const [context, setContext] = useState(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [leaseLost, setLeaseLost] = useState(false);
   const savingRef = useRef(false);
   const retryRequest = useRef(null);
   const openingRef = useRef(false);
+  const scopeRef = useRef({ key: "", generation: 0 });
+  const scopeKey = JSON.stringify([currentUserId, activeTrip.id, props.workspaceActive !== false]);
+  if (scopeRef.current.key !== scopeKey) scopeRef.current = { key: scopeKey, generation: scopeRef.current.generation + 1 };
+  const scopeCurrent = generation => scopeRef.current.generation === generation;
   const guardId = `${kind}:${activeTrip?.id || "no-trip"}`;
   const draft = useDraftAutosave({ defaultForm: context?.seed || empty, disabled: disableDraftAutosave,
     editingId: context?.id, entityType, forceDirtyOnOpen: Boolean(context?.restored), isOpen: Boolean(context),
     serverUpdatedAt: context?.baseUpdatedAt, tripId: activeTrip?.id, userId: currentUserId });
   const { form, replaceForm, resetDraft } = draft;
   const hasUnsavedChanges = draft.hasUnsavedChanges || Boolean(disableDraftAutosave && context && JSON.stringify(form) !== JSON.stringify(context.seed));
+  useEffect(() => services.watch?.(table, context?.id, setLeaseLost), [services, table, context?.id, currentUserId, activeTrip.id]);
+  useEffect(() => {
+    if (context?.id && useEditLocks && services.leaseProtocol && !canEdit) setLeaseLost(true);
+  }, [canEdit, context?.id, services, useEditLocks]);
   useEffect(() => {
     if (!disableDraftAutosave && context?.previousDraftKey) clearDraft(context.previousDraftKey);
   }, [context?.previousDraftKey, disableDraftAutosave]);
 
   async function close(force = false) {
+    const generation = scopeRef.current.generation;
     if (savingRef.current) return false;
     if (!force && hasUnsavedChanges && !await props.ask({ title: "放棄尚未儲存的變更？", message: "尚未儲存的內容將會捨棄。", confirmLabel: "放棄變更", danger: true })) return false;
     if (useEditLocks && context?.id) await services.release(table, context.id, currentUserId);
+    if (!scopeCurrent(generation)) return true;
     resetDraft(empty);
     setContext(null);
     setError("");
     return true;
   }
   async function save() {
-    if (savingRef.current || !canEdit || !context || context.tripId !== activeTrip?.id) return false;
+    if (savingRef.current || !canEdit || !context || context.tripId !== activeTrip?.id || context.userId !== currentUserId) return false;
+    const generation = scopeRef.current.generation;
     const original = records.find((record) => record.id === context.id);
     const historical = !isActual && historicalForeignBudget(original, props.stage);
     const saveForm = !isActual && !historical && props.tripBudgetRates?.rates?.[form.currency] ? { ...form, exchange_rate: props.tripBudgetRates.rates[form.currency] } : form;
@@ -82,19 +96,33 @@ function useWorkspaceEditor(kind, props) {
       let saveBaseline = context.baseUpdatedAt;
       if (useEditLocks && context.id && context.restored) {
         const latest = await services.read(table, context.id, context.tripId);
+        if (!scopeCurrent(generation)) return false;
         if (latest.error || !latest.data || latest.data.updated_at !== context.baseUpdatedAt) {
           setError("資料已由其他人更新。你的草稿仍保留，請取消後重新開啟最新資料。"); return false;
         }
         const lock = await services.acquire(table, latest.data, currentUserId);
+        if (!scopeCurrent(generation)) return false;
         if (lock.error || lock.lockedByAnotherUser) { setError("其他成員正在編輯此項目，請稍後再試。"); return false; }
         saveBaseline = lock.data.updated_at;
         setContext((current) => ({ ...current, baseUpdatedAt: saveBaseline, restored: false }));
       }
+      let leaseMeta = {};
+      if (useEditLocks && services.leaseProtocol) {
+        leaseMeta = { leaseProtocol: true, editLease: null };
+        if (context.id) {
+          const ownership = await services.ensure(table, context.id, currentUserId);
+          if (!scopeCurrent(generation)) return false;
+          if (!ownership.ok) { setError(ownership.error?.message || "編輯權限已到期，草稿已保留。"); return false; }
+          leaseMeta.editLease = ownership.editLease;
+        }
+      }
       const requestBody = { ...saveForm, ...pricing };
-      const fingerprint = JSON.stringify({ requestBody, id: context.id, tripId: context.tripId, saveBaseline });
+      if (!scopeCurrent(generation)) return false;
+      const fingerprint = JSON.stringify({ requestBody, id: context.id, tripId: context.tripId, saveBaseline, ...leaseMeta });
       if (retryRequest.current?.fingerprint !== fingerprint) retryRequest.current = { fingerprint, id: crypto.randomUUID() };
       const result = await (isActual ? props.onSaveActual : props.onSave)(requestBody, context.id,
-        { baseUpdatedAt: saveBaseline, tripId: context.tripId, operationId: retryRequest.current.id });
+        { baseUpdatedAt: saveBaseline, tripId: context.tripId, operationId: retryRequest.current.id, ...leaseMeta });
+      if (!scopeCurrent(generation)) return false;
       if (!result?.ok) {
         if (result?.persisted) setContext((current) => ({ ...current, id: result.persisted.id, baseUpdatedAt: result.persisted.updated_at,
           previousDraftKey: current.id ? current.previousDraftKey : draft.draftKey }));
@@ -102,28 +130,39 @@ function useWorkspaceEditor(kind, props) {
         return false;
       }
       if (useEditLocks && context.id) await services.release(table, context.id, currentUserId);
+      if (!scopeCurrent(generation)) return false;
       resetDraft(empty);
       retryRequest.current = null;
       setContext(null);
       return true;
-    } catch (err) { setError(err.message); return false; }
-    finally { savingRef.current = false; setSaving(false); }
+    } catch (err) { if (scopeCurrent(generation)) setError(err.message); return false; }
+    finally { if (scopeCurrent(generation)) { savingRef.current = false; setSaving(false); } }
   }
   services.useGuard(guardId, useMemo(() => ({ isActive: Boolean(context), isDirty: hasUnsavedChanges || saving, save, discard: () => close(true) }),
     [context, form, hasUnsavedChanges, saving]));
 
   useEffect(() => {
-    if (!context || context.tripId === activeTrip?.id) return;
+    if (!context || (context.tripId === activeTrip?.id && context.userId === currentUserId)) return;
     // useDraftAutosave's previous-key cleanup preserves the old trip draft.
     // Do not resetDraft here: its key already points at the destination trip.
-    if (useEditLocks && context.id) void services.release(table, context.id, currentUserId);
+    if (useEditLocks && context.id) void services.release(table, context.id, context.userId);
     replaceForm(empty);
     setContext(null);
     setError("");
-  }, [activeTrip?.id]);
+    savingRef.current = false; setSaving(false); openingRef.current = false;
+  }, [activeTrip?.id, currentUserId]);
 
   useEffect(() => {
-    if (!restoreDrafts || disableDraftAutosave || context || !activeTrip?.id || !currentUserId || !canEdit) return;
+    if (!useEditLocks || !services.leaseProtocol || props.workspaceActive !== false || !context) return;
+    // Formal keeps hidden workspaces mounted. Preserve unsaved input while the
+    // container releases its capability; returning must recheck the baseline.
+    draft.flushDraft();
+    setContext(null); setError("");
+    savingRef.current = false; setSaving(false); openingRef.current = false;
+  }, [props.workspaceActive, context, services, useEditLocks]);
+
+  useEffect(() => {
+    if (props.workspaceActive === false || !restoreDrafts || disableDraftAutosave || context || !activeTrip?.id || !currentUserId || !canEdit) return;
     const latest = loadLatestDraftForEntity({ entityType, tripId: activeTrip.id, userId: currentUserId });
     if (!latest || (latest.entityId !== "new" && !records.some((row) => row.id === latest.entityId))) return;
     // A restored draft keeps its original conflict baseline, not the latest
@@ -131,32 +170,48 @@ function useWorkspaceEditor(kind, props) {
     const recorded = !isActual && props.actualExpenses.some((expense) => expense.budget_item_id === latest.entityId && isPaymentActive(expense));
     const seed = { ...empty, paid: recorded, paidAtOpen: recorded, ...latest.draft.form };
     replaceForm(seed, { dirty: true });
-    setContext({ id: latest.entityId === "new" ? null : latest.entityId, tripId: activeTrip.id,
+    setContext({ id: latest.entityId === "new" ? null : latest.entityId, tripId: activeTrip.id, userId: currentUserId,
       seed, baseUpdatedAt: latest.draft.serverUpdatedAt || null, restored: true });
   }, [activeTrip?.id, restoreDrafts, records, context, currentUserId, canEdit]);
 
   async function open(record = null, overrides = {}) {
+    const generation = scopeRef.current.generation;
     if (!canEdit || savingRef.current || openingRef.current) return false;
     if (useEditLocks && record && services.isLocked(record, currentUserId)) { setError("其他成員正在編輯此項目。"); return false; }
     if (record && context?.id === record.id) return true;
     openingRef.current = true;
     try {
       if (!(await services.handoff({ tripId: activeTrip.id }))) return false;
+      if (!scopeCurrent(generation)) return false;
       let locked = record;
       if (useEditLocks && record) {
         const result = await services.acquire(table, record, currentUserId);
-        if (result.error || result.lockedByAnotherUser) { setError("其他成員正在編輯此項目。"); return false; }
+        if (!scopeCurrent(generation)) return false;
+        if (result.error || result.lockedByAnotherUser) { setError(result.error?.message || "其他成員或分頁正在編輯此項目，請稍後再試。"); return false; }
         locked = result.data || record;
       }
       const recorded = !isActual && Boolean(record && props.actualExpenses.some((expense) => expense.budget_item_id === record.id && isPaymentActive(expense)));
       const seed = { ...recordForm(record, participants, key, members, props.itineraryBudgetLinks), paid: recorded, paidAtOpen: recorded, ...overrides };
       replaceForm(seed);
-      setContext({ id: record?.id || null, seed, baseUpdatedAt: locked?.updated_at || null, tripId: activeTrip.id });
+      setContext({ id: record?.id || null, seed, baseUpdatedAt: locked?.updated_at || null, tripId: activeTrip.id, userId: currentUserId });
       setError("");
       return true;
-    } finally { openingRef.current = false; }
+    } finally { if (scopeCurrent(generation)) openingRef.current = false; }
   }
-  return { ...draft, hasUnsavedChanges, context, error, saving, open, close, save };
+  async function retryLease() {
+    if (!context?.id || savingRef.current || !canEdit || !services.leaseProtocol) return;
+    const generation = scopeRef.current.generation;
+    const latest = await services.read(table, context.id, context.tripId);
+    if (!scopeCurrent(generation)) return;
+    if (latest.error || !latest.data || latest.data.updated_at !== context.baseUpdatedAt) {
+      setError("資料已由其他人更新。草稿仍保留，請取消後重新開啟最新資料。"); return;
+    }
+    const result = await services.acquire(table, latest.data, currentUserId);
+    if (!scopeCurrent(generation)) return;
+    if (result.error || result.lockedByAnotherUser) setError(result.error?.message || "其他成員或分頁正在編輯此項目，草稿已保留。");
+    else { setLeaseLost(false); setError(""); }
+  }
+  return { ...draft, hasUnsavedChanges, context, error, saving, leaseLost, retryLease, open, close, save };
 }
 
 function Stats({ records, rows, members, actual, budgets, viewpoint, setViewpoint, ratesControl }) {
@@ -296,7 +351,8 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
       <ItineraryPicker items={items} category={form.category} selectedIds={form.linkedItemIds} onChange={(ids) => update("linkedItemIds", ids)} />
     </>}
     <label>備註<textarea aria-label="備註" rows={2} value={form.note} onChange={(event) => update("note", event.target.value)} /></label>
-    <div className="bw-editor-actions">{!actual ? <PaymentToggle checked={Boolean(form.paid)} disabled={saving} onChange={(checked) => update("paid", checked)} /> : null}<button className="ghost-button compact" type="button" disabled={saving} onClick={onCancel}>取消</button><button className="primary-button compact" type="submit" disabled={saving}>{saving ? "儲存中…" : "儲存"}</button></div>
+    {editor.leaseLost ? <div role="alert" className="bw-warning">編輯權限尚未確認或已到期，草稿已保留。<button type="button" className="ghost-button compact" onClick={() => void editor.retryLease()}>重新確認編輯權限</button></div> : null}
+    <div className="bw-editor-actions">{!actual ? <PaymentToggle checked={Boolean(form.paid)} disabled={saving} onChange={(checked) => update("paid", checked)} /> : null}<button className="ghost-button compact" type="button" disabled={saving} onClick={onCancel}>取消</button><button className="primary-button compact" type="submit" disabled={saving || editor.leaseLost}>{saving ? "儲存中…" : "儲存"}</button></div>
   </form>;
 }
 
@@ -392,6 +448,38 @@ export default function BudgetWorkspace(incoming) {
   const actualEditor = useWorkspaceEditor("actual", { ...props, restoreDrafts: props.restoreDrafts && view === "actual" });
   const activeEditor = actualEditor.context ? actualEditor : budgetEditor.context ? budgetEditor : null;
   const editingActual = activeEditor === actualEditor;
+  const [remoteTooltip, setRemoteTooltip] = useState(null);
+  useEffect(() => {
+    const id = activeEditor?.context ? activeEditor.context.id : selected?.id;
+    props.onSelectionChange?.(props.workspaceActive === false || !id ? null : { kind: activeEditor ? editingActual ? "actual" : "budget" : selected.kind, id });
+  }, [props.onSelectionChange, props.workspaceActive, activeTrip.id, props.currentUserId, selected?.id, selected?.kind, activeEditor?.context?.id, Boolean(activeEditor), editingActual]);
+  useEffect(() => {
+    const close = () => setRemoteTooltip(null);
+    const scroll = () => {
+      const focused = document.activeElement?.closest?.(".bw-row.has-collaborators");
+      if (!focused) { close(); return; }
+      const rect = focused.getBoundingClientRect();
+      setRemoteTooltip(current => current && rect.bottom >= 0 && rect.top <= window.innerHeight ? { ...current, left: Math.max(8, Math.min(rect.left + 12, window.innerWidth - 260)), top: Math.max(8, rect.top - 34) } : null);
+    };
+    const key = event => { if (event.key === "Escape") close(); };
+    window.addEventListener("scroll", scroll, true); window.addEventListener("pointerdown", close); window.addEventListener("keydown", key);
+    return () => { window.removeEventListener("scroll", scroll, true); window.removeEventListener("pointerdown", close); window.removeEventListener("keydown", key); };
+  }, []);
+  function remoteFor(record, kind) {
+    if (!record) return [];
+    const users = new Map();
+    for (const entry of props.remoteCollaborators || []) {
+      if (entry.own_session || !(entry.kind === kind && entry.resource_id === record.id || kind === "budget" && entry.kind === "actual" && allExpenses.some(e => e.id === entry.resource_id && e.budget_item_id === record.id))) continue;
+      const existing = users.get(entry.user_id);
+      if (!existing || entry.mode === "edit") users.set(entry.user_id, { ...entry, name: memberLabel(members.find(m => m.user_id === entry.user_id)) });
+    }
+    return [...users.values()].sort((a,b) => a.user_id.localeCompare(b.user_id));
+  }
+  function showRemote(event, record, kind) {
+    if (!remoteFor(record, kind).length) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setRemoteTooltip({ id: record.id, kind, left: Math.max(8, Math.min(rect.left + 12, window.innerWidth - 260)), top: Math.max(8, rect.top - 34) });
+  }
   const sideRef = useRef(null);
   services.useGuard(`budget-payment:${activeTrip.id}`, useMemo(() => ({ isActive: paymentBusy, isDirty: paymentBusy,
     save: async () => false, discard: async () => false }), [paymentBusy]));
@@ -466,8 +554,10 @@ export default function BudgetWorkspace(incoming) {
   async function remove() {
     if (!(await services.handoff({ tripId: activeTrip.id }))) return;
     if (!await ask({ title: "刪除項目？", message: `刪除「${selectedRecord.title}」？此操作無法復原。`, confirmLabel: "刪除", danger: true })) return;
-    const result = await (selected.kind === "actual" ? props.onDeleteActual : props.onDelete)(selectedRecord.id, { baseUpdatedAt: selectedRecord.updated_at, tripId: activeTrip.id });
-    if (result?.ok === false) return;
+    const run = (leaseMeta = {}) => (selected.kind === "actual" ? props.onDeleteActual : props.onDelete)(selectedRecord.id, { baseUpdatedAt: selectedRecord.updated_at, tripId: activeTrip.id, ...leaseMeta });
+    const result = services.leaseProtocol && props.useEditLocks
+      ? await services.withLease(selected.kind === "actual" ? "actual_expenses" : "budget_items", selectedRecord, props.currentUserId, run) : await run();
+    if (result?.ok === false) { setPaymentError(result.error?.message || "刪除失敗，資料已保留。"); return; }
     setSelected(null);
   }
   async function togglePayment(paid) {
@@ -475,7 +565,9 @@ export default function BudgetWorkspace(incoming) {
     if (paymentBusyRef.current) return;
     paymentBusyRef.current = true; setPaymentBusy(true); setPaymentError("");
     try {
-      const result = await applyPaymentStatus(props, selectedRecord, paid);
+      const result = services.leaseProtocol && props.useEditLocks
+        ? await services.withLease("budget_items", selectedRecord, props.currentUserId, leaseMeta => applyPaymentStatus(props, selectedRecord, paid, leaseMeta))
+        : await applyPaymentStatus(props, selectedRecord, paid);
       if (!result?.ok) setPaymentError(result?.error?.message || "付款狀態更新失敗，請重試。");
     } finally { paymentBusyRef.current = false; setPaymentBusy(false); }
   }
@@ -510,8 +602,16 @@ export default function BudgetWorkspace(incoming) {
             const people = participantsFor(row, participantRows, joinKey, members);
             const custom = row.pricing_mode === "custom" || row.split_type === "custom";
             const isSelected = selected?.id === row.id || activeEditor?.context?.id === row.id;
-            return <tr key={row.id} className={`bw-row${isSelected ? " is-selected" : ""}`} onClick={compare ? undefined : (event) => void select(row, event)}>
-              <td className="bw-day">{budgetDay(row, compare ? baseline?.payload?.links || [] : links, compare ? baseline?.payload?.itinerary || [] : items)}</td><td>{compare ? <span>{row.title}{row.extra ? <small className="bw-muted"> · 預算外</small> : null}</span> : cell("title", row.title)}</td>
+            const kind = actual ? "actual" : "budget", remote = compare ? [] : remoteFor(row, kind);
+            return <tr key={row.id} className={`bw-row${isSelected ? " is-selected" : ""}${remote.length ? " has-collaborators" : ""}`} tabIndex={remote.length ? 0 : undefined}
+              aria-describedby={remote.length ? `bw-collaboration-${kind}-${row.id}` : undefined}
+              onMouseEnter={event => showRemote(event, row, kind)} onMouseLeave={() => setRemoteTooltip(null)} onFocus={event => showRemote(event, row, kind)}
+              onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setRemoteTooltip(null); }}
+              onClick={compare ? undefined : (event) => { showRemote(event, row, kind); void select(row, event); }}>
+              <td className="bw-day">{budgetDay(row, compare ? baseline?.payload?.links || [] : links, compare ? baseline?.payload?.itinerary || [] : items)}
+                {remote.length > 4 ? <span className="bw-collaboration-outline is-segmented" aria-hidden="true" style={{ inset: "1px 1px 1px 5px", "--bw-remote-gradient": remote.map((entry,index) => `${collaboratorColor(entry.user_id)} ${index*100/remote.length}% ${(index+1)*100/remote.length}%`).join(",") }} />
+                  : remote.map((entry,index) => <span key={entry.user_id} className="bw-collaboration-outline" data-user={entry.user_id} data-mode={entry.mode} aria-hidden="true" style={{ "--bw-remote-color": collaboratorColor(entry.user_id), inset: `${1+index*3}px ${1+index*3}px ${1+index*3}px ${5+index*3}px` }} />)}
+              </td><td>{compare ? <span>{row.title}{row.extra ? <small className="bw-muted"> · 預算外</small> : null}</span> : cell("title", row.title)}</td>
               <td className="bw-number">{compare ? money(row.planned) : cell("person", custom ? "依成員" : people.length ? `${Number(row.twd_amount) % people.length ? "≈ " : ""}${money(Number(row.twd_amount) / people.length)}` : "—")}</td>
               <td className="bw-number bw-total">{compare ? money(row.actual) : cell("total", money(row.twd_amount))}</td>
               <td>{compare ? <span className={row.difference > 0 ? "bw-danger" : ""}>{row.difference > 0 ? "+" : ""}{money(row.difference)}{row.unrecorded ? <small className="bw-muted"> 未記錄</small> : null}</span> : <span className={`bw-status${actual || actualExpenses.some((expense) => expense.budget_item_id === row.id) ? " paid" : ""}`}>{actual ? row.twd_amount_source === "actual" ? "實扣" : row.twd_amount_source === "estimated" ? "估算" : "既有" : actualExpenses.some((expense) => expense.budget_item_id === row.id) ? "已付款" : "未付款"}</span>}</td>
@@ -524,5 +624,9 @@ export default function BudgetWorkspace(incoming) {
       {planning && allExpenses.some((row) => !row.budget_item_id) ? <section className="bw-retained"><h4>其他付款紀錄</h4>{allExpenses.filter((row) => !row.budget_item_id).map((row) => <button className="ghost-button compact" key={row.id} onClick={async () => { if (await actualEditor.open(row)) { setSelected({kind:"actual",id:row.id}); setPanel("edit"); } }}>{row.title} · NT$ {money(row.twd_amount)}</button>)}</section> : null}
       {panel === "stats" ? <Stats ratesControl={ratesControl} viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : panel === "edit" ? activeEditor ? <RecordEditor readOnlyPayments={!editingActual && Boolean(budgetItems.find((row) => row.id === activeEditor.context?.id)?.payment_readonly)} historical={!editingActual && historicalForeignBudget(budgetItems.find((row) => row.id === activeEditor.context?.id), stage)} {...ratesControl} key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} onCancel={() => void activeEditor.close()} /> : <div className="bw-empty">{budgetEditor.error || actualEditor.error ? <p role="alert" className="bw-warning">{budgetEditor.error || actualEditor.error}</p> : null}{!canEdit ? "目前沒有編輯權限" : selectedRecord ? <button type="button" className="ghost-button compact" disabled={!canEdit} onClick={() => void editSelected()}>繼續編輯此項目</button> : "選取項目開始編輯"}</div> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} payments={actualExpenses.filter((expense) => expense.budget_item_id === selectedRecord.id)} canEdit={canEdit && !paymentBusy && (!props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} paymentBusy={paymentBusy} paymentError={paymentError} onEdit={() => void editSelected()} onDelete={() => void remove()} onPaidChange={(paid) => void togglePayment(paid)} renderAttachments={selected.kind === "actual" ? props.renderAttachments : renderBudgetAttachments} /> : <div className="bw-empty">選取項目查看明細</div>}
     </aside>
+    {remoteTooltip && remoteFor((remoteTooltip.kind === "actual" ? allExpenses : budgetItems).find(r => r.id === remoteTooltip.id),remoteTooltip.kind).length ? createPortal(
+      <div role="tooltip" id={`bw-collaboration-${remoteTooltip.kind}-${remoteTooltip.id}`} className="bw-collaboration-tooltip" style={{left:remoteTooltip.left,top:remoteTooltip.top}}>
+        {remoteFor((remoteTooltip.kind === "actual" ? allExpenses : budgetItems).find(r => r.id === remoteTooltip.id),remoteTooltip.kind).map(entry => <span key={entry.user_id}><i style={{background:collaboratorColor(entry.user_id)}} />{entry.name} · {entry.mode === "edit" ? "編輯" : "選取"}</span>)}
+      </div>,document.body) : null}
   </section>;
 }

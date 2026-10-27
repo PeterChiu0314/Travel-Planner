@@ -1,4 +1,5 @@
-import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, clearOfflineAccount } from "./lib/offlineCache.js";
+import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
+import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
 import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
 import { luggageLengthError } from "./lib/luggageLimits.js";
 import { useSiteDialog } from "./components/SiteDialog.jsx";
@@ -15,6 +16,10 @@ import { budgetStage, recordForm, settlementBalances } from "./lib/budgetFinance
 import { planningBudgetData } from "./lib/planningBudget.js";
 import { saveDemoBudgetRecord } from "./demo/saveBudgetRecord.js";
 import { persistBudgetWorkspace } from "./lib/budgetWorkspaceService.js";
+import { createBudgetEditLeaseClient } from "./lib/budgetEditLeases.js";
+import { deleteBudgetReceipt } from "./lib/budgetReceipts.js";
+import { collaboratorColors as timelineCardSelectionColors } from "./lib/collaboratorColors.js";
+import { createBudgetCollaboration } from "./lib/budgetCollaboration.js";
 import { demoBudgetQuote } from "./lib/tripBudgetRates.js";
 import { createDemoBudgetState, demoBudgetMembers, hydrateDemoBudgetScenario } from "./demo/budgetFixtures.js";
 import {
@@ -148,14 +153,6 @@ const timelineCardSelectionStaleMs = 30000;
 const tripPresenceHeartbeatMs = 28000;
 const tripPresenceStaleMs = 55000;
 const tripPresenceRecoverableStatuses = new Set(["CLOSED", "CHANNEL_ERROR", "TIMED_OUT"]);
-const timelineCardSelectionColors = {
-  blue: "#2f6df6",
-  purple: "#7c4dff",
-  orange: "#e57a1f",
-  pink: "#d94d8c",
-  cyan: "#1598b7",
-  yellow: "#c99a00",
-};
 const timelineCardSelectionColorKeys = Object.keys(timelineCardSelectionColors);
 
 const tripPresencePageLabels = {
@@ -2336,20 +2333,15 @@ export default function App() {
   const [activeDay, setActiveDay] = useState(0);
   const [items, setItems] = useState([]);
   const [alternatives, setAlternatives] = useState([]);
-  const [budgetItems, setBudgetItems] = useState([]);
-  const [budgetBaseline, setBudgetBaseline] = useState(null);
+  const [budgetSnapshot, setBudgetSnapshot] = useState(emptyBudgetSnapshot);
+  const { budgetItems, budgetBaseline, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks } = budgetSnapshot.tripId === activeTripId ? budgetSnapshot : emptyBudgetSnapshot();
   const [budgetSchemaAvailable, setBudgetSchemaAvailable] = useState(false);
-  const budgetSchemaAvailabilityRef = useRef(null);
-  const [budgetParticipants, setBudgetParticipants] = useState([]);
-  const [actualExpenses, setActualExpenses] = useState([]);
-  const [actualParticipants, setActualParticipants] = useState([]);
   const [accommodations, setAccommodations] = useState([]);
   const [guideItems, setGuideItems] = useState([]);
   const [todoItems, setTodoItems] = useState([]);
   const [luggageItems, setLuggageItems] = useState([]);
   const [sharedLuggageItems, setSharedLuggageItems] = useState([]);
   const [attachments, setAttachments] = useState([]);
-  const [itineraryBudgetLinks, setItineraryBudgetLinks] = useState([]);
   const [routeOverrides, setRouteOverrides] = useState([]);
   const [routeOverrideSaveError, setRouteOverrideSaveError] = useState("");
   const [routeEditLocalState, setRouteEditLocalState] = useState({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
@@ -2433,6 +2425,35 @@ export default function App() {
   const requestGuard = useRef(createRequestGuard()).current;
   requestGuard.setContext(session?.user?.id && activeTripId ? JSON.stringify([session.user.id, activeTripId]) : null);
   const tripDataContext = requestGuard.context();
+  const budgetReceiptIdsRef = useRef({ key: null, ids: new Set() });
+  if (budgetReceiptIdsRef.current.key !== tripDataContext.key) budgetReceiptIdsRef.current = { key: tripDataContext.key, ids: new Set() };
+  const budgetSnapshotRef = useRef({ key: null, data: emptyBudgetSnapshot() });
+  if (budgetSnapshotRef.current.key !== tripDataContext.key) budgetSnapshotRef.current = { key: tripDataContext.key, data: emptyBudgetSnapshot() };
+  function applyBudgetSnapshot(data, key, cache = true) {
+    for (const receipt of data.attachments) budgetReceiptIdsRef.current.ids.add(receipt.id);
+    while (budgetReceiptIdsRef.current.ids.size > 1000) budgetReceiptIdsRef.current.ids.delete(budgetReceiptIdsRef.current.ids.values().next().value);
+    budgetSnapshotRef.current = { key, data }; setBudgetSnapshot(data);
+    setAttachments(current => mergeBudgetAttachments(current, data));
+    if (data.tripId) {
+      setBudgetSchemaAvailable(true);
+      if (cache) {
+        const [userId, tripId] = JSON.parse(key);
+        updateOfflineBudget(tripId, userId, data);
+      }
+      if (data.tripBudgetRates) setTrips(current => current.map(t => t.id === data.tripId ? { ...t, budget_exchange_rates: data.tripBudgetRates } : t));
+    }
+  }
+  const budgetRefreshRef = useRef(null);
+  if (!budgetRefreshRef.current) budgetRefreshRef.current = createBudgetRefresh({
+    guard: requestGuard,
+    read: key => readBudgetSnapshot(supabase, JSON.parse(key)[1]),
+    apply: applyBudgetSnapshot,
+    onError: error => setNotice(error.code === "PGRST202" ? "預算快照尚未啟用，需先套用預算同步 migration。" : error.message || "預算重新整理失敗，原資料與草稿已保留。"),
+  });
+  const refreshBudget = useCallback((tripId) => {
+    if (!requestGuard.sameContext(tripDataContext) || !tripDataContext.key || JSON.parse(tripDataContext.key)[1] !== tripId) return Promise.resolve({ ok: false, stale: true });
+    return budgetRefreshRef.current.committed();
+  }, [tripDataContext.key, tripDataContext.generation]);
   const sharedSnapshotRef = useRef({ key: null, rows: [] });
   if (sharedSnapshotRef.current.key !== requestGuard.context().key) sharedSnapshotRef.current = { key: requestGuard.context().key, rows: [] };
   function updateSharedCache(tripId, userId, update) {
@@ -3038,133 +3059,59 @@ export default function App() {
     if (!tripId) {
       setItems([]);
       setAlternatives([]);
-      setBudgetItems([]);
-      setBudgetBaseline(null);
-      setBudgetParticipants([]);
-      setActualExpenses([]);
-      setActualParticipants([]);
+      setBudgetSnapshot(emptyBudgetSnapshot());
       setAccommodations([]);
       setGuideItems([]);
       setTodoItems([]);
       setLuggageItems([]);
       setSharedLuggageItems([]);
       setAttachments([]);
-      setItineraryBudgetLinks([]);
       setRouteOverrides([]);
       setPackItems([]);
       setMembers([]);
       return;
     }
 
-    const [
-      itemsResult,
-      alternativesResult,
-      budgetResult,
-      budgetParticipantsResult,
-      actualResult,
-      actualParticipantsResult,
-      accommodationsResult,
-      guideResult,
-      todoResult,
-      luggageResult,
-      sharedLuggageResult,
-      attachmentsResult,
-      budgetLinksResult,
-      packResult,
-      membersResult,
-      baselineResult,
-    ] = await Promise.all([
+    const budgetToken = requestGuard.begin("budget");
+    const [itemsResult, alternativesResult, accommodationsResult, guideResult, todoResult, luggageResult, sharedLuggageResult,
+      attachmentsResult, packResult, membersResult, budgetResult] = await Promise.all([
       supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
       supabase.from("itinerary_alternatives").select("*"),
-      supabase.from("budget_items").select("*").eq("trip_id", tripId),
-      supabase.from("budget_item_participants").select("*"),
-      supabase.from("actual_expenses").select("*").eq("trip_id", tripId),
-      supabase.from("actual_expense_participants").select("*"),
       supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
       supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
       supabase.from("luggage_items").select("*").eq("trip_id", tripId).eq("owner_id", userId).order("created_at"),
       supabase.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("attachments").select("*").eq("trip_id", tripId).order("created_at"),
-      supabase.from("itinerary_budget_items").select("*"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
-      supabase
-        .from("trip_members")
-        .select("id,trip_id,user_id,role,status,created_at,display_name,email")
-        .eq("trip_id", tripId)
-        .order("created_at"),
-      budgetSchemaAvailabilityRef.current === false ? Promise.resolve({ data: null, error: { code: "PGRST205" } }) : supabase.from("trip_budget_baselines").select("*").eq("trip_id", tripId).maybeSingle(),
+      supabase.from("trip_members").select("id,trip_id,user_id,role,status,created_at,display_name,email").eq("trip_id", tripId).order("created_at"),
+      readBudgetSnapshot(supabase, tripId),
     ]);
-
     if (!requestGuard.valid(token)) return;
-    const baselineMissing = ["42P01", "PGRST205"].includes(baselineResult.error?.code);
-    if (baselineMissing) budgetSchemaAvailabilityRef.current = false;
-    setBudgetSchemaAvailable(!baselineResult.error);
-    setBudgetBaseline(baselineResult.data || null);
-    if (baselineResult.error && !baselineMissing) setNotice("無法讀取出發前預算快照，請重新連線後再試。");
-
-    const error =
-      itemsResult.error ||
-      alternativesResult.error ||
-      budgetResult.error ||
-      budgetParticipantsResult.error ||
-      actualResult.error ||
-      actualParticipantsResult.error ||
-      accommodationsResult.error ||
-      guideResult.error ||
-      todoResult.error ||
-      luggageResult.error ||
-      sharedLuggageResult.error ||
-      attachmentsResult.error ||
-      budgetLinksResult.error ||
-      packResult.error ||
-      membersResult.error;
+    const error = itemsResult.error || alternativesResult.error || accommodationsResult.error || guideResult.error || todoResult.error
+      || luggageResult.error || sharedLuggageResult.error || attachmentsResult.error || packResult.error || membersResult.error || budgetResult.error;
     if (error) {
       const cached = readOfflineTripData(tripId, userId);
+      if (requestGuard.valid(budgetToken) && budgetResult.error?.code === "42501") applyBudgetSnapshot(emptyBudgetSnapshot(), token.key);
       if (cached) {
-        setItems(cached.items || []);
-        setAlternatives(cached.alternatives || []);
-        setBudgetItems(cached.budgetItems || []);
-        setBudgetBaseline(cached.budgetBaseline || null);
-        setBudgetParticipants(cached.budgetParticipants || []);
-        setActualExpenses(cached.actualExpenses || []);
-        setActualParticipants(cached.actualParticipants || []);
-        setAccommodations(cached.accommodations || []);
-        setGuideItems(cached.guideItems || []);
-        setTodoItems(cached.todoItems || []);
-        // Keep this context's in-memory private rows during a short outage;
-        // never hydrate them from persistent storage. Auth changes clear them.
-        if (requestGuard.valid(sharedToken)) {
-          sharedSnapshotRef.current.rows = cached.sharedLuggageItems || [];
-          setSharedLuggageItems(sharedSnapshotRef.current.rows);
+        setItems(cached.items || []); setAlternatives(cached.alternatives || []);
+        if (requestGuard.valid(budgetToken) && budgetResult.error?.code !== "42501") {
+          const snapshot = cached.budgetSnapshot || { ...emptyBudgetSnapshot(), tripId, budgetItems: cached.budgetItems || [], budgetBaseline: cached.budgetBaseline,
+            budgetParticipants: cached.budgetParticipants || [], actualExpenses: cached.actualExpenses || [], actualParticipants: cached.actualParticipants || [],
+            itineraryBudgetLinks: cached.itineraryBudgetLinks || [], items: cached.items || [], members: cached.members || [], attachments: (cached.attachments || []).filter(a=>a.target_type==="actual_expense") };
+          applyBudgetSnapshot(snapshot, token.key, false);
         }
-        setAttachments(cached.attachments || []);
-        setItineraryBudgetLinks(cached.itineraryBudgetLinks || []);
-        setPackItems(cached.packItems || []);
-        setMembers(cached.members || []);
-        setNotice("目前使用已快取的離線資料；重新連線後會自動更新。");
-        return;
+        setAccommodations(cached.accommodations || []); setGuideItems(cached.guideItems || []); setTodoItems(cached.todoItems || []);
+        if (requestGuard.valid(sharedToken)) { sharedSnapshotRef.current.rows = cached.sharedLuggageItems || []; setSharedLuggageItems(sharedSnapshotRef.current.rows); }
+        setAttachments(mergeBudgetAttachments(cached.attachments || [], budgetSnapshotRef.current.data)); setPackItems(cached.packItems || []); setMembers(cached.members || []);
+        setNotice("目前使用已快取的離線資料；重新連線後會自動更新。"); return;
       }
-      setNotice(error.message);
-      return;
+      setNotice(error.message); return;
     }
-
     const nextItems = itemsResult.data || [];
-    const itemIds = new Set(nextItems.map((item) => item.id));
-    const budgetIds = new Set((budgetResult.data || []).map((budget) => budget.id));
-    const actualIds = new Set((actualResult.data || []).map((expense) => expense.id));
-    const nextAlternatives = (alternativesResult.data || []).filter((alternative) =>
-      itemIds.has(alternative.itinerary_item_id),
-    );
-    const nextBudgetParticipants = (budgetParticipantsResult.data || []).filter((participant) =>
-      budgetIds.has(participant.budget_item_id),
-    );
-    const nextActualParticipants = (actualParticipantsResult.data || []).filter((participant) =>
-      actualIds.has(participant.actual_expense_id),
-    );
-    const nextItineraryBudgetLinks = (budgetLinksResult.data || []).filter(
-      (link) => itemIds.has(link.itinerary_item_id) && budgetIds.has(link.budget_item_id),
-    );
+    const itemIds = new Set(nextItems.map(item => item.id));
+    const nextAlternatives = (alternativesResult.data || []).filter(alternative => itemIds.has(alternative.itinerary_item_id));
+    if (requestGuard.valid(budgetToken)) applyBudgetSnapshot(budgetResult.data, token.key);
 
     // Apply itinerary-primary route invalidation in the same authoritative
     // load that receives changed endpoint coordinates.  Waiting for a later
@@ -3187,10 +3134,6 @@ export default function App() {
 
     setItems(nextItems);
     setAlternatives(nextAlternatives);
-    setBudgetItems(budgetResult.data || []);
-    setBudgetParticipants(nextBudgetParticipants);
-    setActualExpenses(actualResult.data || []);
-    setActualParticipants(nextActualParticipants);
     setAccommodations(accommodationsResult.data || []);
     setGuideItems(guideResult.data || []);
     setTodoItems(todoResult.data || []);
@@ -3199,25 +3142,26 @@ export default function App() {
       sharedSnapshotRef.current.rows = sharedLuggageResult.data || [];
       setSharedLuggageItems(sharedLuggageResult.data || []);
     }
-    setAttachments(attachmentsResult.data || []);
-    setItineraryBudgetLinks(nextItineraryBudgetLinks);
+    const nextAttachments = mergeBudgetAttachments(attachmentsResult.data || [], budgetSnapshotRef.current.data);
+    setAttachments(nextAttachments);
     setPackItems(packResult.data || []);
     setMembers(membersResult.data || []);
     writeOfflineTripData(tripId, userId, {
-      budgetBaseline: baselineResult.data || null,
+      budgetSnapshot: budgetSnapshotRef.current.data,
+      budgetBaseline: budgetSnapshotRef.current.data.budgetBaseline,
       items: nextItems,
       alternatives: nextAlternatives,
-      budgetItems: budgetResult.data || [],
-      budgetParticipants: nextBudgetParticipants,
-      actualExpenses: actualResult.data || [],
-      actualParticipants: nextActualParticipants,
+      budgetItems: budgetSnapshotRef.current.data.budgetItems,
+      budgetParticipants: budgetSnapshotRef.current.data.budgetParticipants,
+      actualExpenses: budgetSnapshotRef.current.data.actualExpenses,
+      actualParticipants: budgetSnapshotRef.current.data.actualParticipants,
       accommodations: accommodationsResult.data || [],
       guideItems: guideResult.data || [],
       todoItems: todoResult.data || [],
       luggageItems: luggageResult.data || [],
       sharedLuggageItems: sharedSnapshotRef.current.rows,
-      attachments: attachmentsResult.data || [],
-      itineraryBudgetLinks: nextItineraryBudgetLinks,
+      attachments: nextAttachments,
+      itineraryBudgetLinks: budgetSnapshotRef.current.data.itineraryBudgetLinks,
       packItems: packResult.data || [],
       members: membersResult.data || [],
     });
@@ -3314,6 +3258,7 @@ export default function App() {
         accountRef.current = { userId: nextId, generation: previous.generation + 1 };
         requestGuard.setContext(null);
         luggageRefreshRef.current.cancel();
+        budgetRefreshRef.current.cancel();
         setTrips([]); setActiveTripId(null);
         void loadTripData(null);
       }
@@ -3827,12 +3772,13 @@ export default function App() {
 
   useEffect(() => {
     if (!activeTripId || !session?.user) return undefined;
+    const invalidateBudget = () => { if (requestGuard.sameContext(tripDataContext)) budgetRefreshRef.current.schedule(); };
     const channel = supabase
       .channel(`trip-${activeTripId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "trips", filter: `id=eq.${activeTripId}` },
-        () => loadTrips(activeTripId),
+        () => { invalidateBudget(); loadTrips(activeTripId); },
       )
       .on(
         "postgres_changes",
@@ -3852,22 +3798,22 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "budget_items", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
+        invalidateBudget,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "budget_item_participants" },
-        () => loadTripData(activeTripId),
+        invalidateBudget,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "actual_expenses", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
+        invalidateBudget,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "actual_expense_participants" },
-        () => loadTripData(activeTripId),
+        invalidateBudget,
       )
       .on(
         "postgres_changes",
@@ -3887,12 +3833,17 @@ export default function App() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "attachments", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
+        payload => {
+          const row = payload.new?.target_type ? payload.new : payload.old;
+          const knownReceipt = row?.target_type === "actual_expense" || !row?.target_type && budgetReceiptIdsRef.current.ids.has(row?.id);
+          if (knownReceipt) invalidateBudget();
+          else loadTripData(activeTripId);
+        },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "itinerary_budget_items" },
-        () => loadTripData(activeTripId),
+        invalidateBudget,
       )
       .on(
         "postgres_changes",
@@ -3909,12 +3860,18 @@ export default function App() {
       );
     if (budgetSchemaAvailable) channel.on("postgres_changes",
       { event: "*", schema: "public", table: "trip_budget_baselines", filter: `trip_id=eq.${activeTripId}` },
-      () => loadTripData(activeTripId));
+      invalidateBudget);
+    // DELETE payload/filter behavior depends on server replica identity and
+    // RLS. Keep an unfiltered invalidation fallback; never apply event rows.
+    for (const table of ["budget_items", "actual_expenses", "trip_budget_baselines"]) channel.on("postgres_changes",
+      { event: "DELETE", schema: "public", table }, payload => {
+        if (!payload.old?.trip_id || payload.old.trip_id === activeTripId) invalidateBudget();
+      });
     subscribeSharedLuggage(channel, activeTripId, luggageRefreshRef.current);
     channel.subscribe(status => {
-      if (status === "SUBSCRIBED") luggageRefreshRef.current.schedule(["personal", "shared"]);
+      if (status === "SUBSCRIBED") { luggageRefreshRef.current.schedule(["personal", "shared"]); invalidateBudget(); }
     });
-    return () => { luggageRefreshRef.current.cancel(); supabase.removeChannel(channel); };
+    return () => { budgetRefreshRef.current.cancel(); luggageRefreshRef.current.cancel(); supabase.removeChannel(channel); };
   }, [activeDay, activeTripId, budgetSchemaAvailable, loadRouteOverrides, loadTripData, loadTrips, session?.user]);
 
   useEffect(() => {
@@ -3929,6 +3886,19 @@ export default function App() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [isDemoMode, session?.user?.id, activeTripId, activeSection]);
+
+  useEffect(() => {
+    if (isDemoMode || !session?.user || !activeTripId || !["budget", "settlement"].includes(activeSection)) return;
+    const context = tripDataContext;
+    const refresh = () => { if (document.visibilityState !== "hidden" && requestGuard.sameContext(context)) budgetRefreshRef.current.schedule(); };
+    refresh();
+    window.addEventListener("focus", refresh); window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [isDemoMode, session?.user?.id, activeTripId, activeSection, tripDataContext.generation]);
 
   useEffect(() => {
     if (!activeTripId || !activeUserId || activeMembership?.status !== "approved") {
@@ -5211,7 +5181,7 @@ export default function App() {
   async function saveBudget(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    if (budgetSchemaAvailable) return saveBudgetWorkspaceRecord("budget", payload, editingId, meta);
+    if (budgetSchemaAvailable || meta.leaseProtocol) return saveBudgetWorkspaceRecord("budget", payload, editingId, meta);
     if (payload.payment_only || payload.payment_action !== "keep" || editingId && payload.currency !== "TWD") return { ok: false, error: { message: "安全預算儲存尚未啟用，資料未變更，草稿已保留。" } };
     if ((payload.pricing_mode && payload.pricing_mode !== "split_total") || payload.is_fixed) {
       return { ok: false, error: { message: "此計價方式尚未啟用，需先完成預算資料升級。草稿已保留。" } };
@@ -5280,7 +5250,7 @@ export default function App() {
 
   async function deleteBudget(budgetId, meta = {}) {
     if (!activeTrip || !canEdit) return;
-    if (budgetSchemaAvailable) return deleteBudgetWorkspaceRecord("budget", budgetId, meta);
+    if (budgetSchemaAvailable || meta.leaseProtocol) return deleteBudgetWorkspaceRecord("budget", budgetId, meta);
     const { error } = await supabase.from("budget_items").delete().eq("id", budgetId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
@@ -5289,7 +5259,7 @@ export default function App() {
   async function saveActualExpense(payload, editingId, meta = {}) {
     if (!activeTrip || !canEdit) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    if (budgetSchemaAvailable) return saveBudgetWorkspaceRecord("actual", payload, editingId, meta);
+    if (budgetSchemaAvailable || meta.leaseProtocol) return saveBudgetWorkspaceRecord("actual", payload, editingId, meta);
     if (payload.twd_amount_source !== "estimated") return { ok: false, error: { message: "實際台幣扣款功能尚未啟用，資料未變更，草稿已保留。" } };
     if (payload.pricing_mode && payload.pricing_mode !== "split_total") {
       return { ok: false, error: { message: "此計價方式尚未啟用，需先完成預算資料升級。草稿已保留。" } };
@@ -5388,7 +5358,7 @@ export default function App() {
 
   async function deleteActualExpense(expenseId, meta = {}) {
     if (!activeTrip || !canEdit) return;
-    if (budgetSchemaAvailable) return deleteBudgetWorkspaceRecord("actual", expenseId, meta);
+    if (budgetSchemaAvailable || meta.leaseProtocol) return deleteBudgetWorkspaceRecord("actual", expenseId, meta);
     const { error } = await supabase.from("actual_expenses").delete().eq("id", expenseId);
     if (error) setNotice(error.message);
     else await loadTripData(activeTrip.id);
@@ -5396,15 +5366,22 @@ export default function App() {
   }
 
   async function saveBudgetWorkspaceRecord(kind, payload, editingId, meta = {}) {
-    const result = await persistBudgetWorkspace({ supabase, tripId: activeTrip.id, reload: loadTripData }, kind, payload, editingId, meta);
+    const result = await persistBudgetWorkspace({ supabase, tripId: activeTrip.id, reload: refreshBudget }, kind, payload, editingId, meta);
     if (result.refreshError) setNotice("資料已儲存，但重新整理失敗，請重新載入頁面確認。");
     return result;
   }
 
   async function deleteBudgetWorkspaceRecord(kind, id, meta) {
-    const { error } = await supabase.rpc("delete_budget_workspace_record", { p_trip_id: activeTrip.id, p_kind: kind, p_id: id, p_base_updated_at: meta.baseUpdatedAt || null });
-    if (error) { setNotice(error.code === "40001" ? "資料已變更，請重新開啟後再刪除。" : error.message); return { ok: false, error }; }
-    await loadTripData(activeTrip.id);
+    const { error } = await supabase.rpc(meta.leaseProtocol ? "delete_budget_workspace_record_v2" : "delete_budget_workspace_record", {
+      p_trip_id: activeTrip.id, p_kind: kind, p_id: id, p_base_updated_at: meta.baseUpdatedAt || null,
+      ...(meta.leaseProtocol ? { p_edit_session_id: meta.editLease?.sessionId || null, p_edit_token: meta.editLease?.token || null } : {}),
+    });
+    if (error) {
+      if (error.code === "40001") await refreshBudget(activeTrip.id);
+      setNotice(error.code === "40001" ? "資料已變更，請重新開啟後再刪除。" : error.message); return { ok: false, error };
+    }
+    const refreshed = await refreshBudget(activeTrip.id);
+    if (!refreshed.ok) setNotice("資料已儲存，預算重新整理未完成，請重新連線確認。");
     return { ok: true };
   }
 
@@ -5414,7 +5391,8 @@ export default function App() {
       p_trip_id: activeTrip.id, p_quote: quote, p_initialize: Boolean(meta.initialize),
     });
     if (error) return { ok: false, error };
-    await Promise.all([loadTrips(activeTrip.id), loadTripData(activeTrip.id)]);
+    const refreshed = await refreshBudget(activeTrip.id);
+    if (!refreshed.ok) setNotice("匯率已儲存，預算重新整理未完成，請重新連線確認。");
     return { ok: true, data };
   }
 
@@ -5620,7 +5598,7 @@ export default function App() {
     return result;
   }
 
-  async function uploadAttachment(targetType, targetId, file) {
+  async function uploadAttachment(targetType, targetId, file, meta = {}) {
     if (!activeTrip || !(targetType === "actual_expense" ? canEdit : canEditActiveTripContent) || !file) return;
     if (file.size > 10 * 1024 * 1024) {
       setNotice("附件大小需小於 10MB");
@@ -5636,7 +5614,7 @@ export default function App() {
       setNotice(uploadResult.error.message);
       return;
     }
-    const { error } = await supabase.from("attachments").insert({
+    const receipt = {
       trip_id: activeTrip.id,
       target_type: targetType,
       target_id: targetId,
@@ -5645,9 +5623,17 @@ export default function App() {
       file_type: file.type || null,
       file_size: file.size,
       uploaded_by: session.user.id,
-    });
-    if (error) setNotice(error.message);
-    else await loadTripData(activeTrip.id);
+    };
+    const { error } = meta.leaseProtocol ? await supabase.rpc("mutate_budget_receipt", {
+      p_trip_id: activeTrip.id, p_actual_id: targetId, p_action: "insert", p_receipt: receipt,
+      p_edit_session_id: meta.editLease?.sessionId, p_edit_token: meta.editLease?.token,
+    }) : await supabase.from("attachments").insert(receipt);
+    if (error) {
+      if (meta.leaseProtocol) await supabase.storage.from(attachmentBucket).remove([path]);
+      setNotice(error.message); return { ok: false, error };
+    }
+    if (meta.leaseProtocol) await refreshBudget(activeTrip.id); else await loadTripData(activeTrip.id);
+    return { ok: true };
   }
 
   async function openAttachment(attachment) {
@@ -5659,8 +5645,14 @@ export default function App() {
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-  async function deleteAttachment(attachment) {
+  async function deleteAttachment(attachment, meta = {}) {
     if (!activeTrip || !(attachment.target_type === "actual_expense" ? canEdit : canEditActiveTripContent)) return;
+    if (meta.leaseProtocol) {
+      const result = await deleteBudgetReceipt({ supabase, tripId: activeTrip.id, attachment, meta, refresh: refreshBudget });
+      if (!result.ok) setNotice(result.error.message);
+      else if (result.cleanupError) setNotice("附件紀錄已移除，檔案清理未完成，請稍後確認。");
+      return result;
+    }
     const storageResult = await supabase.storage.from(attachmentBucket).remove([attachment.file_url]);
     if (storageResult.error) {
       setNotice(storageResult.error.message);
@@ -6323,6 +6315,7 @@ export default function App() {
             accommodations={accommodations}
             alternatives={alternatives}
             attachments={attachments}
+            budgetSnapshot={budgetSnapshot.tripId === activeTrip.id ? budgetSnapshot : null}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
             budgetBaseline={budgetBaseline?.trip_id === activeTrip.id ? budgetBaseline : null}
@@ -9324,6 +9317,7 @@ function TripWorkspace(props) {
     budgetItems,
     budgetParticipants,
     budgetBaseline,
+    budgetSnapshot,
     canEditBudget,
     canEdit,
     dayItems,
@@ -9656,13 +9650,14 @@ function TripWorkspace(props) {
           budgetItems={budgetItems}
           budgetParticipants={budgetParticipants}
           budgetBaseline={budgetBaseline}
+          tripBudgetRates={budgetSnapshot?.tripBudgetRates}
           canEdit={canEditBudget ?? canEdit}
           actualExpenses={actualExpenses}
           actualParticipants={actualParticipants}
-          attachments={attachments}
+          attachments={budgetSnapshot?.attachments || attachments}
           itineraryBudgetLinks={itineraryBudgetLinks}
-          items={items}
-          members={members}
+          items={budgetSnapshot?.items || items}
+          members={budgetSnapshot?.members || members}
           currentUserId={currentUserId}
           onConvertToActual={onConvertBudgetToActual}
           onDeleteActual={onDeleteActualExpense}
@@ -13186,11 +13181,50 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 }
 
 function BudgetPanel(props) {
-  return <BudgetWorkspace {...props} baseline={props.budgetBaseline} services={budgetEditorServices}
-    renderAttachments={props.enableAttachments === false ? null : (expense) => <AttachmentList
+  const leases = useMemo(() => createBudgetEditLeaseClient({ supabase }), []);
+  const [remoteCollaborators, setRemoteCollaborators] = useState([]);
+  const collaboration = useMemo(() => createBudgetCollaboration({ supabase, sessionId: leases.sessionId, onChange: setRemoteCollaborators }), [leases]);
+  const publishSelection = useCallback(value => collaboration.select(value), [collaboration]);
+  const services = useMemo(() => ({ ...budgetEditorServices, ...leases }), [leases]);
+  const [receiptError, setReceiptError] = useState("");
+  async function receiptAction(id, run) {
+    if (props.useEditLocks === false) return run({});
+    const expense = props.actualExpenses.find(e => e.id === id);
+    if (!expense) { setReceiptError("找不到實付資料，請重新整理。"); return; }
+    setReceiptError("");
+    try {
+      const result = await leases.withLease("actual_expenses", expense, props.currentUserId, run);
+      if (result?.ok === false) setReceiptError(result.error?.message || "附件操作未完成，原資料已保留。");
+    } catch (error) { setReceiptError(error.message); }
+  }
+  const workspaceActive = props.restoreDrafts !== false;
+  useEffect(() => {
+    if (props.useEditLocks === false) return;
+    void collaboration.configure(props.currentUserId, props.activeTrip.id, workspaceActive && props.members.some(m => m.user_id === props.currentUserId && m.status === "approved"));
+    const refresh = event => { if (event?.type === "offline" || navigator.onLine === false || document.visibilityState === "hidden") collaboration.hide(); else collaboration.reconcile(); };
+    window.addEventListener("focus", refresh); window.addEventListener("online", refresh); window.addEventListener("offline", refresh); document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh); window.removeEventListener("offline", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [collaboration, props.currentUserId, props.activeTrip.id, workspaceActive, props.useEditLocks, props.members]);
+  useEffect(() => () => { void collaboration.dispose(); }, [collaboration]);
+  leases.configure(props.currentUserId, props.activeTrip.id, props.canEdit && workspaceActive);
+  useEffect(() => {
+    void leases.flushReleases();
+    const refresh = () => { if (document.visibilityState !== "hidden") void leases.reconcile(); };
+    window.addEventListener("online", refresh); window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("online", refresh); window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [leases, props.currentUserId, props.activeTrip.id, props.canEdit, workspaceActive]);
+  useEffect(() => () => { void leases.dispose(); }, [leases]);
+  return <BudgetWorkspace {...props} workspaceActive={workspaceActive} baseline={props.budgetBaseline} services={services}
+    remoteCollaborators={props.useEditLocks === false ? [] : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}
+    renderAttachments={props.enableAttachments === false ? null : (expense) => <>{receiptError ? <p role="alert" className="bw-warning">{receiptError}</p> : null}<AttachmentList
       attachments={props.attachments.filter((attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id)}
       canEdit={props.canEdit} targetId={expense.id} targetType="actual_expense"
-      onDelete={props.onDeleteAttachment} onOpen={props.onOpenAttachment} onUpload={props.onUploadAttachment} />} />;
+      onDelete={attachment => receiptAction(expense.id, meta => props.onDeleteAttachment(attachment, meta))} onOpen={props.onOpenAttachment}
+      onUpload={(type, id, file) => receiptAction(id, meta => props.onUploadAttachment(type, id, file, meta))} /></>} />;
 }
 
 const budgetEditorServices = {
