@@ -58,7 +58,10 @@ function useWorkspaceEditor(kind, props) {
     serverUpdatedAt: context?.baseUpdatedAt, tripId: activeTrip?.id, userId: currentUserId });
   const { form, replaceForm, resetDraft } = draft;
   const hasUnsavedChanges = draft.hasUnsavedChanges || Boolean(disableDraftAutosave && context && JSON.stringify(form) !== JSON.stringify(context.seed));
-  useEffect(() => services.watch?.(table, context?.id, setLeaseLost), [services, table, context?.id, currentUserId, activeTrip.id]);
+  useEffect(() => {
+    if (!useEditLocks || !services.leaseProtocol) { setLeaseLost(false); return; }
+    return services.watch?.(table, context?.id, setLeaseLost);
+  }, [services, table, context?.id, currentUserId, activeTrip.id, useEditLocks]);
   useEffect(() => {
     if (context?.id && useEditLocks && services.leaseProtocol && !canEdit) setLeaseLost(true);
   }, [canEdit, context?.id, services, useEditLocks]);

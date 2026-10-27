@@ -3,6 +3,7 @@ import {pathToFileURL} from "node:url";
 import assert from "node:assert/strict";
 import {randomUUID} from "node:crypto";
 import {budgetSnapshotSQL,collaborationReadinessSQL,collaborationMigrations,prepareBudgetCollaborationRollout} from "../scripts/qa/prepare-budget-collaboration-rollout.mjs";
+import {acceptanceTrips,prepareAcceptanceCleanup} from "../scripts/qa/prepare-budget-acceptance-cleanup.mjs";
 const {PGlite}=await import(pathToFileURL(process.env.PGLITE_MODULE).href);
 for(const failure of [false,true]){
  const db=new PGlite();try{
@@ -37,6 +38,13 @@ for(const failure of [false,true]){
    assert.equal((await db.query(collaborationReadinessSQL)).rows.find(r=>r.check_name==='new_migrations_absent').passed,false);
    assert.equal((await db.query("select count(*)::int n from supabase_migrations.schema_migrations")).rows[0].n,5);
    await assert.rejects(()=>db.exec(result.sql),/Already\/partially applied/);await db.exec("rollback");
+   const qaOwner='eb16ad00-aef3-4dfb-a0c5-874b2d5aef5d';await db.query("insert into auth.users(id) values($1)",[qaOwner]);
+   for(const qa of acceptanceTrips)await db.query("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,$2,$2,'QA',current_date+10,current_date+15,$3)",[qa.id,qa.title,qaOwner]);
+   await db.query("insert into budget_items(trip_id,title,category,amount,currency,exchange_rate,twd_amount) values($1,'Disposable','其他',1,'TWD',1,1)",[acceptanceTrips[0].id]);
+   const cleanup=prepareAcceptanceCleanup(expected);assert.deepEqual((await db.query(cleanup.originalsSQL)).rows,expected);
+   await assert.rejects(()=>db.exec(cleanup.sql.replace('-- ACCEPTANCE_VERIFY',`update budget_items set title='unwanted' where trip_id='${trip}';\n-- ACCEPTANCE_VERIFY`)),/Original data changed by cleanup/);await db.exec('rollback');
+   assert.equal((await db.query('select count(*)::int n from trips where id=any($1::uuid[])',[acceptanceTrips.map(t=>t.id)])).rows[0].n,2);
+   await db.exec(cleanup.sql);assert.deepEqual((await db.query(budgetSnapshotSQL)).rows,expected);assert.ok((await db.query(cleanup.verifySQL)).rows.every(r=>r.passed));
  }
  }finally{await db.close();}
 }
