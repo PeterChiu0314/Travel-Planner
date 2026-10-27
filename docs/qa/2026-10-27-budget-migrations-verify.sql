@@ -1,0 +1,10 @@
+-- Fresh post-commit readback, before any test-record creation.
+select 'migration_history' as check_name,(select count(*)=2 from supabase_migrations.schema_migrations where version in ('20261022110000','20261022120000')) as passed
+union all select 'five_actual_columns',(select count(*)=5 from information_schema.columns where table_schema='public' and table_name='actual_expenses' and column_name in ('twd_amount_source','actual_twd_amount','payment_origin','payment_active','payment_history'))
+union all select 'exact_actual_cost_preserved',(select count(*)=1 and md5(coalesce(jsonb_agg(to_jsonb(t)-array['updated_at','twd_amount_source','actual_twd_amount','payment_origin','payment_active','payment_history'] order by t.id)::text,'[]'))='5c1bfe01cf4ff7b95bc500917f8ae45d' from public.actual_expenses t)
+union all select 'all_budget_content_preserved',(select count(*)=13 and md5(coalesce(jsonb_agg(to_jsonb(t) order by t.id)::text,'[]'))='7dc61b89fe73d035645bde5d16eee259' from public.budget_items t)
+union all select 'backfill_metadata_valid',not exists(select 1 from public.actual_expenses where twd_amount_source<>'legacy' or actual_twd_amount is distinct from twd_amount or payment_origin<>'manual' or payment_active is distinct from true or payment_history<>'[]'::jsonb)
+union all select 'four_baselines_retained',(select count(*)=4 from public.trip_budget_baselines)
+union all select 'two_invoker_save_rpcs',(select count(*)=2 and bool_and(not p.prosecdef and has_function_privilege('authenticated',p.oid,'EXECUTE') and not has_function_privilege('anon',p.oid,'EXECUTE')) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('save_budget_workspace_record_v2','save_budget_workspace_record_v3'))
+union all select 'private_ledger_not_client_accessible',not has_table_privilege('authenticated','app_private.budget_workspace_requests','SELECT,INSERT,UPDATE,DELETE') and not has_table_privilege('anon','app_private.budget_workspace_requests','SELECT,INSERT,UPDATE,DELETE')
+union all select 'new_phase1_not_applied',not exists(select 1 from supabase_migrations.schema_migrations where version='20261027140044');
