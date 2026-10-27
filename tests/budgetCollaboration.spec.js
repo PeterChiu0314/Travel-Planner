@@ -10,6 +10,8 @@ function setup(){
       const result={data:{tripId:args.p_trip_id,serverNow:new Date(now).toISOString(),entries:[{kind:"budget",resource_id:"record",user_id:"B",mode:"edit",expires_at:new Date(now+20000).toISOString(),own_session:false}]}};
       if(f.hold)await new Promise(r=>pending.push(r));return result;},
     channel:()=>({on(){return this;},subscribe(cb){queueMicrotask(()=>cb("SUBSCRIBED"));return this;}}),removeChannel:async()=>{},};
+  // Supabase PostgrestBuilder is awaitable through then(), without catch().
+  const execute=supabase.rpc;supabase.rpc=(...args)=>({then:(resolve,reject)=>execute(...args).then(resolve,reject)});
   f.client=createBudgetCollaboration({supabase,sessionId:"session",onChange:rows=>changes.push(rows),now:()=>now,setTimer:fn=>{tick=fn;return fn;},clearTimer:()=>{tick=null;}});return f;
 }
 test("expired authority is swept locally without a financial or metadata read per tick",async()=>{

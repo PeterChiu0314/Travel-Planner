@@ -7,7 +7,8 @@ export function createBudgetCollaboration({supabase,sessionId,onChange,now=Date.
   async function writeSelection(c,value) {
     const auth=await supabase.auth.getSession().catch(()=>null);
     if(auth?.data?.session?.user?.id!==c.userId)return;
-    return supabase.rpc("update_budget_selection",{p_trip_id:c.tripId,p_session_id:sessionId,p_kind:value?.kind||null,p_id:value?.id||null}).catch(()=>null);
+    try { return await supabase.rpc("update_budget_selection",{p_trip_id:c.tripId,p_session_id:sessionId,p_kind:value?.kind||null,p_id:value?.id||null}); }
+    catch { return null; }
   }
   function queueSelection(value) {
     const c=context,g=generation;
@@ -22,7 +23,9 @@ export function createBudgetCollaboration({supabase,sessionId,onChange,now=Date.
     const work=(async()=>{
       do {
         dirty=false;const start=now();
-        const result=await supabase.rpc("read_budget_collaboration",{p_trip_id:c.tripId,p_session_id:sessionId}).catch(error=>({error}));
+        let result;
+        try { result=await supabase.rpc("read_budget_collaboration",{p_trip_id:c.tripId,p_session_id:sessionId}); }
+        catch(error) { result={error}; }
         if(!current(g,c)||!visible||epoch!==readEpoch)return;
         if(result.error||!result.data||result.data.tripId!==c.tripId){entries=[];emit();return;}
         offset=Date.parse(result.data.serverNow)-start;
