@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
+import {prepareBudgetSelectionRollout} from "../scripts/qa/prepare-budget-selection-rollout.mjs";
 const { PGlite } = await import(pathToFileURL(process.env.PGLITE_MODULE).href);
 const db = new PGlite();
 try {
@@ -27,7 +28,18 @@ try {
       assert.equal((await db.query("select count(*)::int n from information_schema.columns where table_schema='app_private' and table_name='budget_selections' and column_name in ('activity_id','selected_at')")).rows[0].n,0);
       assert.equal((await db.query("select pg_get_functiondef('app_private.read_budget_collaboration(uuid,uuid)'::regprocedure) definition")).rows[0].definition,before);
     }
-    await db.exec(source);
+    if(file.endsWith('_budget_selection_activity.sql')){
+      await db.exec("create schema supabase_migrations; create table supabase_migrations.schema_migrations(version text primary key,name text,statements text[]); insert into supabase_migrations.schema_migrations(version) values('20261027140044'),('20261027145613'),('20261027152539')");
+      const reader=(await db.query("select md5(pg_get_functiondef('app_private.read_budget_collaboration(uuid,uuid)'::regprocedure)) digest")).rows[0].digest;
+      const rollout=await prepareBudgetSelectionRollout(reader);
+      await assert.rejects(()=>db.exec(rollout.sql.replace('-- VERIFY_SELECTION_ROLLOUT',"alter table budget_items add column unexpected text;\n-- VERIFY_SELECTION_ROLLOUT").replace("do $verify$ begin","do $verify$ begin raise exception 'Injected wrapper failure';")),/Injected wrapper failure/);
+      await db.exec('rollback');
+      assert.equal((await db.query("select to_regprocedure('public.update_budget_selection_v2(uuid,uuid,text,uuid,uuid,text)') api")).rows[0].api,null);
+      assert.equal((await db.query("select count(*)::int n from supabase_migrations.schema_migrations where version='20261028104333'")).rows[0].n,0);
+      await db.exec(rollout.sql.replace(/\n/g,'\r\n')); // Windows Dashboard paste must preserve the reviewed LF source hash.
+      const verified=(await db.exec(rollout.verifySql)).flatMap(result=>result.rows);
+      assert.equal(verified.length,7);for(const check of verified)assert.equal(check.passed,true,check.check_name);
+    }else await db.exec(source);
   }
   const query = async (sql, args = []) => (await db.query(sql, args)).rows;
   const a = randomUUID(), b = randomUUID(), viewer = randomUUID(), pending = randomUUID(), outsider = randomUUID(), trip = randomUUID();

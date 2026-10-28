@@ -1,4 +1,4 @@
--- Readonly post-application checks. This task has not applied the migration remotely.
+-- Readonly post-application checks for 20261028104333 (applied 2026-10-28).
 select 'activity_columns' check_name,
   (select count(*)=2 from information_schema.columns where table_schema='app_private' and table_name='budget_selections' and column_name in ('activity_id','selected_at')) passed
 union all
