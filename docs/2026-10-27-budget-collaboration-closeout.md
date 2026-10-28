@@ -1,6 +1,6 @@
 # Issue #10 — Implementation, hosted acceptance and cleanup
 
-Updated October 28, 2026. Budget phases 0–3 are implemented and published through `5bb11c8` on `codex/luggage-workspace-redesign`. The three approved Production migrations are applied; frontend publication is Preview only. **Keep #10 open**, per the user's latest instruction. Final normal Preview verification follows this documentation push. No main merge or Production frontend promotion.
+Updated October 28, 2026. Budget phases 0–3 are implemented and published through `5bb11c8` on `codex/luggage-workspace-redesign`. The three approved Production migrations are applied; frontend publication is Preview only. **Keep #10 open**, per the user's latest instruction. Normal Preview `c61377b` is Ready with the QA entry removed. No main merge or Production frontend promotion.
 
 ## Implemented boundaries
 
@@ -70,9 +70,9 @@ Only the authorized disposable trips were deleted:
 
 **Preservation boundaries:** all eleven matched immediately after migration. Before cleanup, nine still matched that original rollout baseline exactly, including Budget/Actual, participants, links, attachments and luggage. Full `trips` / `trip_budget_baselines` digests differed. The original system-test trip updated at 2026-10-27 16:14:48 UTC and its baseline captured immediately afterward, consistent with existing automatic empty-rate initialization reached through #9. Exact historical row bodies were not saved, so field-level changes/cause remain unproven. No historical values were guessed or overwritten; a separate fresh pre-cleanup manifest protected all current originals, preserved exactly by cleanup.
 
-Removed the one temporary exact OAuth redirect; original six redirects and Production Site URL retained. Deleted branch-only Preview `BUDGET_QA`; final documentation push triggers a normal rebuild. Older immutable QA-enabled builds remain authenticated historical artifacts; their temporary origin is no longer allowlisted for new login.
+Removed the one temporary exact OAuth redirect; original six redirects and Production Site URL retained. Deleted branch-only Preview `BUDGET_QA`; the connector confirms no branch-specific environment variables remain. Normal rebuild at `c61377b` is **Ready**, deployment `dpl_AQpBwDSgRDE6RjfLtdCkrHmQ66Kb`, canonical `https://travel-planner-gd7cnewad-peter-chiu-s-projects.vercel.app`. Homepage shows the normal Google login; `/tests/live-budget/index.html` returns **404**. The branch alias resolves to this deployment. Older immutable QA-enabled builds remain authenticated historical artifacts; their temporary origin is no longer allowlisted for new login.
 
-Evidence is in this chat's visualization folder: `budget-live-*.json/png`, migration preflight/apply/post-commit files, `budget-acceptance-cleanup-manifest.json`, cleanup/verify SQL, `budget-acceptance-cleaned.png`, `budget-oauth-restored.png`, `budget-qa-flag-removed.png`.
+Evidence is in this chat's visualization folder: `budget-live-*.json/png`, migration preflight/apply/post-commit files, `budget-acceptance-cleanup-manifest.json`, cleanup/verify SQL, `budget-acceptance-cleaned.png`, `budget-acceptance-final-verified.png`, `budget-oauth-restored.png`, `budget-qa-flag-removed.png`, `budget-preview-qa-absent.png`.
 
 ## Publication / remaining boundaries
 
