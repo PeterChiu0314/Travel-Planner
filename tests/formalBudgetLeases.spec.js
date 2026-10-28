@@ -12,6 +12,73 @@ async function cancel(page) {
 }
 test.afterEach(async ({ page }) => { if (page.qaErrors) expect(page.qaErrors).toEqual([]); });
 
+for (const target of ["項目明細", "旅程統計"]) test(`clean sidebar exit to ${target} releases DB authority and clears the remote warning without auto-acquire`, async ({page,context}) => {
+  const db=backend({leases:true});await boot(page,db);const b=await context.newPage();
+  try {
+    await boot(b,db,"B");await edit(page);await edit(b);
+    await expect(b.getByRole("alert")).toContainText("其他成員或分頁");
+    const admissions=db.leaseCalls.filter(c=>c.actor==="B"&&c.args.p_action==="acquire").length;
+    await page.getByRole("tab",{name:target,exact:true}).click();
+    await expect(form(page)).toHaveCount(0);await expect.poll(()=>db.held.size).toBe(0);
+    await expect(b.getByRole("alert")).toHaveCount(0);await expect(form(b)).toHaveCount(0);
+    expect(db.leaseCalls.filter(c=>c.actor==="B"&&c.args.p_action==="acquire")).toHaveLength(admissions);
+    await b.getByRole("tab",{name:"編輯項目",exact:true}).click();await expect(form(b)).toBeVisible();
+  }finally{await b.close();}
+});
+
+test("sidebar dirty exit stays locked on continue, then discards the exact draft on confirmation",async({page})=>{
+  const db=backend({leases:true});await boot(page,db);await edit(page);
+  await form(page).getByRole("textbox",{name:"備註"}).fill("Explicitly discard this note");
+  await expect.poll(()=>page.evaluate(()=>Object.values(localStorage).some(v=>v.includes("Explicitly discard this note")))).toBe(true);
+  await page.getByRole("tab",{name:"項目明細",exact:true}).click();
+  const prompt=page.getByRole("dialog",{name:"放棄尚未儲存的變更？",exact:true});
+  await expect(prompt).toBeVisible();await prompt.getByRole("button",{name:"繼續編輯",exact:true}).click();
+  await expect(form(page).getByRole("textbox",{name:"備註"})).toHaveValue("Explicitly discard this note");expect(db.held.size).toBe(1);
+  await expect(page.getByRole("tab",{name:"編輯項目",exact:true})).toHaveAttribute("aria-selected","true");
+  await page.getByRole("tab",{name:"項目明細",exact:true}).click();await prompt.getByRole("button",{name:"放棄修改",exact:true}).click();
+  await expect(form(page)).toHaveCount(0);expect(db.held.size).toBe(0);
+  expect(await page.evaluate(()=>Object.values(localStorage).some(v=>v.includes("Explicitly discard this note")))).toBe(false);
+  await db.emit("budget_items");await page.getByRole("tab",{name:"編輯項目",exact:true}).click();
+  await expect(form(page).getByRole("textbox",{name:"備註"})).not.toHaveValue("Explicitly discard this note");
+});
+
+for(const failure of ["reject","offline"])test(`sidebar ${failure} release preserves editor and supports retry without false exit`,async({page})=>{
+  const db=backend({leases:true});await boot(page,db);await edit(page);
+  if(failure==="reject")db.releaseFailure=true;else db.offline=true;
+  await page.getByRole("tab",{name:"旅程統計",exact:true}).click();
+  await expect(form(page)).toBeVisible();await expect(form(page).getByRole("alert").first()).toContainText("釋放");
+  await expect(form(page).getByRole("button",{name:"儲存",exact:true})).toBeDisabled();expect(db.held.size).toBe(1);
+  db.releaseFailure=false;db.offline=false;
+  await page.getByRole("tab",{name:"旅程統計",exact:true}).click();
+  await expect(form(page)).toHaveCount(0);expect(db.held.size).toBe(0);
+});
+
+test("rapid sidebar clicks wait for confirmed release and cannot orphan an editor",async({page})=>{
+  const db=backend({leases:true});await boot(page,db);await edit(page);db.hold={actor:"A",action:"release"};
+  await page.getByRole("tab",{name:"旅程統計",exact:true}).click();await expect.poll(()=>db.pending.length).toBe(1);
+  await page.getByRole("tab",{name:"項目明細",exact:true}).click();
+  await expect(form(page)).toBeVisible();expect(db.held.size).toBe(1);
+  db.release();await expect(form(page)).toHaveCount(0);expect(db.held.size).toBe(0);
+  await expect(page.getByRole("tab",{name:"旅程統計",exact:true})).toHaveAttribute("aria-selected","true");
+});
+
+test('unverified empty metadata cannot falsely clear a blocked-editor warning',async({page,context})=>{
+  const db=backend({leases:true});await boot(page,db);const b=await context.newPage();
+  try{
+    await boot(b,db,'B');await edit(page);await edit(b);await expect(b.getByRole('alert')).toContainText('其他成員或分頁');
+    db.collaborationOffline=true;await cancel(page);await expect.poll(()=>db.held.size).toBe(0);
+    await b.evaluate(()=>window.dispatchEvent(new Event('focus')));await expect(b.getByRole('alert')).toContainText('其他成員或分頁');
+    db.collaborationOffline=false;await db.emit('budget_collaboration_signals');await expect(b.getByRole('alert')).toHaveCount(0);await expect(form(b)).toHaveCount(0);
+  }finally{await b.close();}
+});
+
+test('editing then undoing a field is a clean exit without a discard dialog',async({page})=>{
+  const db=backend({leases:true});await boot(page,db);await edit(page);
+  const title=form(page).getByRole('textbox',{name:'項目',exact:true});await title.fill('Temporary change');await title.fill('JPY fare');
+  await page.getByRole('tab',{name:'旅程統計',exact:true}).click();
+  await expect(form(page)).toHaveCount(0);await expect(page.getByRole('dialog')).toHaveCount(0);expect(db.held.size).toBe(0);
+});
+
 for (const actor of ["A", "B"]) test(`two ${actor === "A" ? "same-account tabs" : "accounts"} cannot edit the same row; different rows remain independent`, async ({ page, context }) => {
   const db = backend({ leases: true }); await boot(page, db);
   const other = await context.newPage();
@@ -22,7 +89,7 @@ for (const actor of ["A", "B"]) test(`two ${actor === "A" ? "same-account tabs" 
     await other.getByRole("button", { name: "Second fare", exact: true }).click();
     await expect(form(other)).toBeVisible(); expect(db.held.size).toBe(2);
     await cancel(other); expect(db.held.has("budget:budget")).toBe(true);
-    await cancel(page); await other.getByRole("button", { name: "JPY fare", exact: true }).click();
+    await cancel(page); await edit(other);
     await expect(form(other)).toBeVisible(); expect(db.held.get("budget:budget").actor).toBe(actor);
     await cancel(other); expect(db.held.size).toBe(0); expect(db.rpcs).toEqual([]);
     expect(other.qaErrors).toEqual([]);
@@ -171,4 +238,19 @@ test("late old-account admission cannot open the new account's editor or release
   await expect(page.getByRole("button", { name: "帳號選單" })).toContainText("B");
   db.release(); await expect(form(page)).toHaveCount(0);
   expect(db.leaseCalls.filter(c => c.actor === "B" && c.args.p_action === "release")).toEqual([]); expect(db.rpcs).toEqual([]);
+});
+
+test('restored draft remains dirty after admission when its financial save fails',async({page,context})=>{
+  const db=backend({leases:true});await boot(page,db);await edit(page);
+  await form(page).getByRole('textbox',{name:'備註'}).fill('Restored unsaved value');
+  await expect.poll(()=>page.evaluate(()=>Object.values(localStorage).some(v=>v.includes('Restored unsaved value')))).toBe(true);
+  const other=await context.newPage();try{
+    await boot(other,db);await expect(form(other).getByRole('textbox',{name:'備註'})).toHaveValue('Restored unsaved value');
+    await cancel(page);await page.getByRole('dialog',{name:'放棄尚未儲存的變更？',exact:true}).getByRole('button',{name:'放棄變更',exact:true}).click();
+    db.saveFailure={code:'40001',message:'Injected conflict'};
+    await other.getByRole('button',{name:'重新確認編輯權限',exact:true}).click();await form(other).getByRole('button',{name:'儲存',exact:true}).click();
+    await expect(form(other).getByRole('alert').first()).toContainText('草稿仍保留');await cancel(other);
+    await expect(other.getByRole('dialog',{name:'放棄尚未儲存的變更？',exact:true})).toBeVisible();
+    expect(db.rows.budget_items[0].note).not.toBe('Restored unsaved value');
+  }finally{await other.close();}
 });

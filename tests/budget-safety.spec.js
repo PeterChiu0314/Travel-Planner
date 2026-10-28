@@ -4,7 +4,7 @@ import { calculateActualPricing, calculatePricing, recordForm, recordAllocations
 import { saveDemoBudgetRecord } from "../src/demo/saveBudgetRecord.js";
 import { persistBudgetWorkspace } from "../src/lib/budgetWorkspaceService.js";
 
-// These regressions inspect saved data; the edit tab itself stays selected.
+// Save/cancel now return to the selected canonical detail (#11).
 async function inspectAfter(page, form, action) {
   await form.getByRole('button',{name:action,exact:true}).click();
   if (await form.count() === 0) await page.getByRole('tab',{name:'項目明細',exact:true}).click();
@@ -102,7 +102,7 @@ test.describe("payment and actual-cost browser regressions", () => {
     await editor.getByRole("combobox",{name:"付款人",exact:true}).click();await page.getByRole("option",{name:"Peter",exact:true}).click();
     if(process.env.BUDGET_ISSUES_QA_DIR) await page.screenshot({path:`${process.env.BUDGET_ISSUES_QA_DIR}/actual-debit-editor.png`});
     await inspectAfter(page, editor, "儲存");await expect(row(page,"信用卡實扣")).toContainText("625");
-    await row(page,"信用卡實扣").getByRole("button",{name:"信用卡實扣",exact:true}).click();await expect(page.locator(".bw-detail")).toContainText("實際扣款");
+    await expect(row(page,"信用卡實扣")).toHaveClass(/is-selected/);await expect(page.locator(".bw-detail")).toContainText("實際扣款");
     if(process.env.BUDGET_ISSUES_QA_DIR) await page.screenshot({path:`${process.env.BUDGET_ISSUES_QA_DIR}/actual-debit-detail.png`});
     await page.getByRole('tab',{name:'編輯項目',exact:true}).click();await expect(editor.getByLabel("總額",{exact:true})).toHaveValue("625");await expect(editor.getByLabel("實際台幣扣款",{exact:true})).toHaveCount(0);
     await editor.locator(".bw-secondary-fields > summary").click();await expect(editor.getByLabel("細項",{exact:true})).toHaveCount(0);
@@ -124,6 +124,6 @@ test.describe("payment and actual-cost browser regressions", () => {
     await inspectAfter(page, editor, "儲存");await expect(editor.getByRole("alert")).toContainText("草稿仍保留");await expect(editor.getByLabel("項目",{exact:true})).toHaveValue("交易失敗後重試");
     await inspectAfter(page, editor, "儲存");await expect(editor).toHaveCount(0);await expect(row(page,"交易失敗後重試")).toContainText("已付款");
     const calls=JSON.parse(await page.getByTestId("rpc-contract").textContent());expect(calls).toHaveLength(2);expect(calls[0].request).toBe(calls[1].request);
-    await row(page,"交易失敗後重試").getByRole("button",{name:"交易失敗後重試",exact:true}).click();await expect(page.locator(".bw-detail .bw-calculation")).toContainText("1,000");
+    await expect(row(page,"交易失敗後重試")).toHaveClass(/is-selected/);await expect(page.locator(".bw-detail .bw-calculation")).toContainText("1,000");
   });
 });

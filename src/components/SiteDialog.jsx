@@ -39,7 +39,7 @@ function SiteDialog({ request, choose }) {
       <h2 id={titleId}>{request.title}</h2>
       <p id={descriptionId}>{request.message}</p>
       <div className="form-actions">
-        {!request.notice ? <button className="ghost-button" type="button" onClick={() => choose(false)}>取消</button> : null}
+        {!request.notice ? <button className="ghost-button" type="button" onClick={() => choose(false)}>{request.cancelLabel || "取消"}</button> : null}
         <button className={request.danger ? "primary-button compact site-prompt-danger" : "primary-button compact"} type="button" onClick={() => choose(true)}>{request.confirmLabel || "確定"}</button>
       </div>
     </div>

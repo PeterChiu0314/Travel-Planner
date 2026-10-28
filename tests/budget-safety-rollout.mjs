@@ -20,7 +20,7 @@ for (const inject of [false, true]) {
       create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;
       create publication supabase_realtime;`);
     const dir = new URL("../supabase/migrations/", import.meta.url);
-    for (const file of (await fs.readdir(dir)).filter(name => name.endsWith(".sql") && !/^(20261022110000|20261022120000|20261027140044|20261027145613|20261027152539)/.test(name)).sort()) {
+    for (const file of (await fs.readdir(dir)).filter(name => name.endsWith(".sql") && name < "20261022110000").sort()) {
       await db.exec((await fs.readFile(new URL(file, dir), "utf8")).replace(/create extension if not exists pgcrypto;/ig, ""));
     }
     const user = randomUUID(), trip = randomUUID(), budget = randomUUID();

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// These regressions inspect saved data; the edit tab itself stays selected.
+// Save/cancel now return to the selected canonical detail (#11).
 async function inspectAfter(page, form, action) {
   await form.getByRole('button',{name:action,exact:true}).click();
   if (action === '取消' && await page.getByRole('dialog',{name:'放棄尚未儲存的變更？',exact:true}).count()) await page.getByRole('dialog',{name:'放棄尚未儲存的變更？',exact:true}).getByRole('button',{name:'放棄變更',exact:true}).click();
@@ -53,7 +53,7 @@ test("per-person pricing, custom split and actual conversion preserve the origin
   const row = rowByTitle(page,"兩人門票");
   await expect(row).toContainText("154");
   await expect(row).toContainText("308");
-  await row.getByRole("button", { name: "兩人門票", exact: true }).click();
+  await expect(row).toHaveClass(/is-selected/);
   await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
   await form.getByRole("button", { name: "自訂分攤", exact: true }).click();
   const amounts = form.getByRole("spinbutton", { name: /分攤金額/ });
@@ -135,7 +135,7 @@ test("paid toggle saves with the budget and detail changes preserve saved paymen
   await form.getByRole('button',{name:'付款狀態',exact:true}).click();
   await inspectAfter(page, form, "儲存");
   const row=rowByTitle(page,"已購機票"); await expect(row).toContainText("已付款");
-  await row.getByRole('button',{name:'已購機票',exact:true}).click();
+  await expect(row).toHaveClass(/is-selected/);
   await page.getByRole('button',{name:'付款狀態',exact:true}).click();
   await expect(row).toContainText('未付款');
   await page.getByRole('button',{name:'付款狀態',exact:true}).click();
@@ -309,7 +309,7 @@ test("compact editor defaults, personal calculation and searchable itinerary lin
   await inspectAfter(page, form, "儲存");
   const row=rowByTitle(page,'關聯行程測試');
   await expect(row).toContainText('Day 2');
-  await row.getByRole('button',{name:'關聯行程測試',exact:true}).click();
+  await expect(row).toHaveClass(/is-selected/);
   await expect(page.locator('.bw-detail .bw-calculation')).toContainText('每人NT$ 250');
   await expect(page.locator('.bw-detail .bw-calculation')).toContainText('總額NT$ 1,000');
   await page.getByRole('tab',{name:'編輯項目',exact:true}).click();

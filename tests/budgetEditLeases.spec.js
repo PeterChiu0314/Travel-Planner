@@ -7,7 +7,7 @@ function fixture() {
   const rows = { item: { id: "item", trip_id: "trip", title: "Keep draft", updated_at: "version-1" }, other: { id: "other", trip_id: "other-trip", updated_at: "version-2" } };
   const held = new Map(), calls = [], timers = new Set();
   const server = { rows, held, calls, timers, offline: false, hold: null, authReads: 0, advance(ms) { now += ms; },
-    client(actor = "A") {
+    client(actor = "A", options = {}) {
       const identity = { actor };
       const supabase = {
         auth: { async getSession() { server.authReads++; return { data: { session: { user: { id: identity.actor } } } }; } },
@@ -29,7 +29,7 @@ function fixture() {
           return { data, error: null };
         },
       };
-      const client = createBudgetEditLeaseClient({ supabase, makeId: () => `capability-${++serial}`, setTimer: fn => { timers.add(fn); return fn; }, clearTimer: fn => timers.delete(fn) });
+      const client = createBudgetEditLeaseClient({ supabase, makeId: () => `capability-${++serial}`, setTimer: fn => { timers.add(fn); return fn; }, clearTimer: fn => timers.delete(fn), ...options });
       client.configure(actor, "trip");
       return { client, identity };
     },
@@ -119,6 +119,57 @@ test("temporary action lease is released even when its operation throws", async 
 test("empty/Demo controller makes no auth call on cleanup", async () => {
   const db = fixture(), { client } = db.client(); await client.dispose();
   expect(db.calls).toEqual([]); expect(db.authReads).toBe(0);
+});
+
+test("failed release keeps the capability retryable and never renews a requested release",async()=>{
+  const db=fixture(),a=db.client(),b=db.client("B");await a.client.acquire("budget_items",db.rows.item,"A");
+  db.offline=true;expect((await a.client.release("budget_items","item","A")).ok).toBe(false);
+  expect((await a.client.ensure("budget_items","item","A")).ok).toBe(false);
+  expect(db.held.size).toBe(1);const renewals=db.calls.filter(c=>c.args.p_action==="renew").length;
+  db.offline=false;await a.client.reconcile();expect(db.held.size).toBe(0);
+  expect(db.calls.filter(c=>c.args.p_action==="renew")).toHaveLength(renewals);
+  expect((await b.client.acquire("budget_items",db.rows.item,"B")).lockedByAnotherUser).toBe(false);
+  await a.client.dispose();await b.client.dispose();
+});
+
+test("a pending release cannot be reacquired by the tab or be mistaken for confirmed cleanup",async()=>{
+  const db=fixture(),a=db.client();await a.client.acquire("budget_items",db.rows.item,"A");let done;
+  db.hold={action:"release",promise:new Promise(resolve=>{done=resolve;})};
+  const work=a.client.release("budget_items","item","A");
+  expect((await a.client.acquire("budget_items",db.rows.item,"A")).error.message).toContain("尚待釋放");
+  expect((await a.client.ensure("budget_items","item","A")).ok).toBe(false);
+  done();expect((await work).ok).toBe(true);await a.client.dispose();
+});
+
+test('unanswered release times out as uncertain and permits a safe idempotent retry',async()=>{
+  const db=fixture(),a=db.client('A',{releaseTimeoutMs:20});await a.client.acquire('budget_items',db.rows.item,'A');let done;
+  db.hold={action:'release',promise:new Promise(resolve=>{done=resolve;})};
+  expect((await a.client.release('budget_items','item','A')).ok).toBe(false);
+  expect((await a.client.ensure('budget_items','item','A')).ok).toBe(false);
+  db.hold=null;expect((await a.client.release('budget_items','item','A')).ok).toBe(true);done();await a.client.dispose();
+});
+
+test('an unanswered renewal cannot block release or later restore authority',async()=>{
+  const db=fixture(),a=db.client();await a.client.acquire('budget_items',db.rows.item,'A');let done;
+  db.hold={action:'renew',promise:new Promise(resolve=>{done=resolve;})};const pending=a.client.ensure('budget_items','item','A');
+  expect((await a.client.release('budget_items','item','A')).ok).toBe(true);expect(db.held.size).toBe(0);
+  done();expect((await pending).ok).toBe(false);await a.client.dispose();
+});
+
+test('a detached pending capability cannot be mistaken for an already released row',async()=>{
+  const db=fixture(),a=db.client();await a.client.acquire('budget_items',db.rows.item,'A');db.offline=true;
+  a.client.configure('A','trip',false);await a.client.flushReleases();
+  expect((await a.client.release('budget_items','item','A')).ok).toBe(false);expect(db.held.size).toBe(1);
+  db.offline=false;expect((await a.client.release('budget_items','item','A')).ok).toBe(true);expect(db.held.size).toBe(0);await a.client.dispose();
+});
+
+test('pending cleanup remains discoverable while its DB acknowledgement is in flight',async()=>{
+  const db=fixture(),a=db.client();await a.client.acquire('budget_items',db.rows.item,'A');let done;
+  db.hold={action:'release',promise:new Promise(resolve=>{done=resolve;})};a.client.configure('A','trip',false);
+  const cleanup=a.client.flushReleases();let finished=false;const close=a.client.release('budget_items','item','A').then(result=>{finished=true;return result;});
+  await Promise.resolve();await Promise.resolve();expect(finished).toBe(false);
+  a.client.configure('A','trip');expect((await a.client.acquire('budget_items',db.rows.item,'A')).error.message).toContain('尚待釋放');
+  done();expect((await close).ok).toBe(true);await cleanup;db.hold=null;await a.client.dispose();
 });
 
 test("Formal save forwards capability outside financial payload and fails closed without fallback", async () => {

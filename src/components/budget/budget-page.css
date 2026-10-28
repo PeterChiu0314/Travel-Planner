@@ -115,8 +115,8 @@
 .bw-trip-rate { display: grid; gap: 7px; color: var(--muted); font-size: 11px; }
 .bw-trip-rate > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .bw-trip-rate b { color: var(--ink); font-weight: 500; }
-.bw-editor > .bw-trip-rate { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.bw-editor > .bw-trip-rate > b { margin-left: auto; text-align: right; white-space: nowrap; }
+:is(.bw-editor, .bw-editor-fields) > .bw-trip-rate { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+:is(.bw-editor, .bw-editor-fields) > .bw-trip-rate > b { margin-left: auto; text-align: right; white-space: nowrap; }
 .bw-trip-rate button { height: 28px; min-height: 28px; padding: 3px 7px; font-size: 11px; white-space: nowrap; }
 .bw-trip-rate a { color: var(--muted); font-size: 10px; }
 .bw-editor input, .bw-editor select, .bw-editor textarea { width: 100%; min-width: 0; min-height: 32px; height: 32px; padding: 5px 8px; line-height: 20px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--ink); font-size: 12px; }

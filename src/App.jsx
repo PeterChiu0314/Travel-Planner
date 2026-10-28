@@ -13184,9 +13184,18 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 function BudgetPanel(props) {
   const leases = useMemo(() => createBudgetEditLeaseClient({ supabase }), []);
   const [remoteCollaborators, setRemoteCollaborators] = useState([]);
-  const collaboration = useMemo(() => createBudgetCollaboration({ supabase, sessionId: leases.sessionId, onChange: setRemoteCollaborators }), [leases]);
-  const publishSelection = useCallback(value => collaboration.select(value), [collaboration]);
-  const services = useMemo(() => ({ ...budgetEditorServices, ...leases }), [leases]);
+  const [collaborationRevision, setCollaborationRevision] = useState(0);
+  const collaboration = useMemo(() => createBudgetCollaboration({ supabase, sessionId: leases.sessionId, onChange: setRemoteCollaborators,
+    onVerified: () => setCollaborationRevision(value => value + 1) }), [leases]);
+  const publishSelection = useCallback((value, options) => options?.suspended ? collaboration.hide() : collaboration.select(value), [collaboration]);
+  const services = useMemo(() => ({ ...budgetEditorServices, ...leases,
+    async checkLeaseReleased(table, id) {
+      const result = await supabase.rpc("read_budget_collaboration", { p_trip_id: props.activeTrip.id, p_session_id: leases.sessionId });
+      const kind = table === "budget_items" ? "budget" : "actual";
+      return { ok: !result.error && result.data?.tripId === props.activeTrip.id && Array.isArray(result.data.entries),
+        released: !result.data?.entries?.some(entry => entry.mode === "edit" && entry.kind === kind && entry.resource_id === id) };
+    },
+  }), [leases, props.activeTrip.id]);
   const [receiptError, setReceiptError] = useState("");
   async function receiptAction(id, run) {
     if (props.useEditLocks === false) return run({});
@@ -13220,7 +13229,7 @@ function BudgetPanel(props) {
   }, [leases, props.currentUserId, props.activeTrip.id, props.canEdit, workspaceActive]);
   useEffect(() => () => { void leases.dispose(); }, [leases]);
   return <BudgetWorkspace {...props} workspaceActive={workspaceActive} baseline={props.budgetBaseline} services={services}
-    remoteCollaborators={props.useEditLocks === false ? [] : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}
+    collaborationRevision={collaborationRevision} remoteCollaborators={props.useEditLocks === false ? [] : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}
     renderAttachments={props.enableAttachments === false ? null : (expense) => <>{receiptError ? <p role="alert" className="bw-warning">{receiptError}</p> : null}<AttachmentList
       attachments={props.attachments.filter((attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id)}
       canEdit={props.canEdit} targetId={expense.id} targetType="actual_expense"

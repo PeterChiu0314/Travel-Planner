@@ -1,13 +1,13 @@
 import {expect,test} from "@playwright/test";
 import {createBudgetCollaboration} from "../src/lib/budgetCollaboration.js";
 const pause=()=>new Promise(r=>setTimeout(r,110));
-function setup(){
+function setup({protocol=1}={}){
   let now=Date.now(),actor="A",tick;const calls=[],changes=[],pending=[];
   const f={calls,changes,pending,offline:false,hold:false,advance:ms=>now+=ms,actor:value=>{actor=value;},tick:()=>tick?.()};
   const supabase={auth:{getSession:async()=>({data:{session:{user:{id:actor}}}})},
     rpc:async(name,args)=>{calls.push({name,args,actor});if(f.offline)throw Error("offline");
-      if(name==="update_budget_selection")return {data:null};
-      const result={data:{tripId:args.p_trip_id,serverNow:new Date(now).toISOString(),entries:[{kind:"budget",resource_id:"record",user_id:"B",mode:"edit",expires_at:new Date(now+20000).toISOString(),own_session:false}]}};
+      if(name.startsWith("update_budget_selection")){if(f.failWrites)throw Error('write interrupted');return {data:null};}
+      const result={data:{tripId:args.p_trip_id,selectionProtocol:protocol,serverNow:new Date(now).toISOString(),entries:[{kind:"budget",resource_id:"record",user_id:"B",mode:"edit",expires_at:new Date(now+20000).toISOString(),own_session:false}]}};
       if(f.hold)await new Promise(r=>pending.push(r));return result;},
     channel:()=>({on(){return this;},subscribe(cb){queueMicrotask(()=>cb("SUBSCRIBED"));return this;}}),removeChannel:async()=>{},};
   // Supabase PostgrestBuilder is awaitable through then(), without catch().
@@ -33,5 +33,17 @@ test("hidden/offline reads cannot reintroduce names and hidden selection stops h
 test("selection payloads contain no names, amounts, financial drafts or authority tokens",async()=>{
   const f=setup();await f.client.configure("A","trip");f.client.select({kind:"budget",id:"record",title:"private draft",amount:123,token:"not-authority"});await pause();
   const writes=f.calls.filter(c=>c.name==="update_budget_selection");expect(writes.at(-1).args).toEqual({p_trip_id:"trip",p_session_id:"session",p_kind:"budget",p_id:"record"});
+  await f.client.dispose();
+});
+
+test('v2 heartbeat, visibility recovery and retry never manufacture a new active selection',async()=>{
+  const f=setup({protocol:2});await f.client.configure('A','trip');await pause();f.failWrites=true;
+  f.client.select({kind:'budget',id:'record'});await pause();
+  f.failWrites=false;f.advance(16000);f.tick();await pause();f.client.hide();await pause();f.client.reconcile();await pause();
+  const writes=f.calls.filter(c=>c.name==='update_budget_selection_v2');
+  expect(writes.filter(c=>c.args.p_action==='select')).toHaveLength(1);
+  expect(writes.filter(c=>c.args.p_action==='refresh').length).toBeGreaterThan(0);
+  expect(new Set(writes.map(c=>c.args.p_activity_id)).size).toBe(1);
+  expect(Object.keys(writes[0].args).sort()).toEqual(['p_action','p_activity_id','p_id','p_kind','p_session_id','p_trip_id']);
   await f.client.dispose();
 });

@@ -6,6 +6,41 @@ const outlines=(page,title)=>row(page,title).locator(".bw-collaboration-outline"
 async function start(page,db,actor="A"){await boot(page,db,actor);await page.waitForTimeout(180);}
 test.afterEach(async({page})=>{if(page.qaErrors)expect(page.qaErrors).toEqual([]);});
 
+test('same-account edit dominates selection, while two actual edit leases stay visible',async({page,context})=>{
+  const db=backend({leases:true});await start(page,db);const second=await context.newPage(),observer=await context.newPage();
+  try {
+    await start(second,db);await start(observer,db,'B');
+    await page.getByRole('button',{name:'JPY fare',exact:true}).click();await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
+    await second.getByRole('button',{name:'Second fare',exact:true}).click();
+    await expect(outlines(observer,'JPY fare')).toHaveAttribute('data-mode','edit');await expect(outlines(observer,'Second fare')).toHaveCount(0);
+    await expect(outlines(page,'Second fare')).toHaveCount(0);
+    await second.getByRole('tab',{name:'編輯項目',exact:true}).click();
+    await expect(outlines(observer,'Second fare')).toHaveAttribute('data-mode','edit');await expect(outlines(observer,'JPY fare')).toHaveCount(1);
+    expect(db.held.size).toBe(2);expect(second.qaErrors).toEqual([]);expect(observer.qaErrors).toEqual([]);
+    if(process.env.BUDGET_LIFECYCLE_QA_DIR)await observer.screenshot({path:`${process.env.BUDGET_LIFECYCLE_QA_DIR}/budget-14-two-real-leases.png`});
+  }finally{await second.close();await observer.close();}
+});
+
+test('latest actual same-account selection stays primary through heartbeat and hide/resume',async({page,context})=>{
+  const db=backend({leases:true});await start(page,db);const second=await context.newPage(),observer=await context.newPage();
+  try {
+    await start(second,db);await start(observer,db,'B');
+    const geometry=await row(observer,'Second fare').boundingBox();
+    await page.getByRole('button',{name:'JPY fare',exact:true}).click();await expect(outlines(observer,'JPY fare')).toHaveCount(1);
+    await second.getByRole('button',{name:'Second fare',exact:true}).click();await expect(outlines(observer,'Second fare')).toHaveCount(1);await expect(outlines(observer,'JPY fare')).toHaveCount(0);
+    const stamps=[...db.selections.values()].map(e=>e.selected_at);
+    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await expect.poll(()=>db.selectionCalls.some(c=>c.args.p_action==='refresh')).toBe(true);
+    expect([...db.selections.values()].map(e=>e.selected_at)).toEqual(stamps);
+    await page.evaluate(()=>window.dispatchEvent(new Event('offline')));await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+    await expect(outlines(observer,'Second fare')).toHaveCount(1);await expect(outlines(observer,'JPY fare')).toHaveCount(0);
+    await expect.poll(()=>[...db.selections.values()].every(e=>stamps.includes(e.selected_at))).toBe(true);
+    expect(await row(observer,'Second fare').boundingBox()).toEqual(geometry);
+    await row(observer,'Second fare').focus();await expect(observer.getByRole('tooltip')).toHaveText('A · 選取');
+    if(process.env.BUDGET_LIFECYCLE_QA_DIR)await observer.screenshot({path:`${process.env.BUDGET_LIFECYCLE_QA_DIR}/budget-14-primary-selection.png`});
+    expect(second.qaErrors).toEqual([]);expect(observer.qaErrors).toEqual([]);
+  }finally{await second.close();await observer.close();}
+});
+
 test("remote selection adds a stable frame without moving the table; names appear only on hover/focus",async({page,context})=>{
   const db=backend({leases:true});await start(page,db);const b=await context.newPage();
   try{

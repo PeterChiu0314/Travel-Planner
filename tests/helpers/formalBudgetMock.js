@@ -22,6 +22,15 @@ export function backend({ empty = false, departed = false, leases = false } = {}
     async request({ op, table, columns, filters = [], patch, single, actor, name, args, action, path, paths }) {
       if(op==="storage") {this.storageCalls.push({action,path,paths});return {data:{},error:null};}
       if (op === "rpc") {
+        if(name==="update_budget_selection_v2") {
+          this.selectionCalls.push({actor,args});if(this.offline)return {error:{message:"offline"}};
+          const key=`${args.p_trip_id}:${actor}:${args.p_session_id}`,previous=this.selections.get(key);
+          if(args.p_action==="clear") {if(previous?.activity_id===args.p_activity_id)previous.expires_at=new Date(this.now).toISOString();}
+          else if(args.p_action==="refresh") {if(previous?.activity_id===args.p_activity_id)previous.expires_at=new Date(this.now+45000).toISOString();}
+          else this.selections.set(key,{tripId:args.p_trip_id,user_id:actor,session:args.p_session_id,kind:args.p_kind,resource_id:args.p_id,mode:"selection",
+            activity_id:args.p_activity_id,selected_at:previous?.activity_id===args.p_activity_id?previous.selected_at:new Date(this.now+(this.activitySerial=(this.activitySerial||0)+1)).toISOString(),expires_at:new Date(this.now+45000).toISOString()});
+          await this.emit("budget_collaboration_signals");return {data:null,error:null};
+        }
         if(name==="update_budget_selection") {
           this.selectionCalls.push({actor,args});const key=`${args.p_trip_id}:${actor}:${args.p_session_id}`;
           if(this.offline)return {error:{message:"offline"}};
@@ -30,10 +39,10 @@ export function backend({ empty = false, departed = false, leases = false } = {}
           await this.emit("budget_collaboration_signals");return {data:null,error:null};
         }
         if(name==="read_budget_collaboration") {
-          this.collaborationReads.push({actor,args});if(this.offline)return {error:{message:"offline"}};
+          this.collaborationReads.push({actor,args});if(this.offline||this.collaborationOffline)return {error:{message:"offline"}};
           const entries=[...this.selections.values()].filter(e=>e.tripId===args.p_trip_id).map(e=>({...e,own_session:e.user_id===actor&&e.session===args.p_session_id}));
           for(const [key,h] of this.held){const [kind,id]=key.split(":"),record=(rows[kind==="budget"?"budget_items":"actual_expenses"]||[]).find(r=>r.id===id);if(record?.trip_id===args.p_trip_id)entries.push({kind,resource_id:id,user_id:h.actor,mode:"edit",expires_at:new Date(h.expires).toISOString(),own_session:h.actor===actor&&h.session===args.p_session_id});}
-          return {data:{tripId:args.p_trip_id,serverNow:new Date(this.now).toISOString(),entries:entries.filter(e=>Date.parse(e.expires_at)>this.now)},error:null};
+          return {data:{tripId:args.p_trip_id,serverNow:new Date(this.now).toISOString(),selectionProtocol:2,entries:entries.filter(e=>Date.parse(e.expires_at)>this.now)},error:null};
         }
         if (name === "read_budget_snapshot") {
           this.snapshotReads.push({actor,tripId:args.p_trip_id});
@@ -57,7 +66,13 @@ export function backend({ empty = false, departed = false, leases = false } = {}
           const row = (rows[args.p_kind === "budget" ? "budget_items" : "actual_expenses"] || []).find(r => r.id === args.p_id);
           const key = `${args.p_kind}:${args.p_id}`, held = this.held.get(key);
           const owns = held?.actor === actor && held.session === args.p_session_id && held.token === args.p_token;
-          if (args.p_action === "release") { if (owns) { this.held.delete(key); await this.emit("budget_collaboration_signals"); } return { data: { granted: true }, error: null }; }
+          if (args.p_action === "release") {
+            if (this.releaseFailure) return { error: { message: "release rejected", code: "P0001" } };
+            if (this.hold?.action === "release" && this.hold.actor === actor) await new Promise(resolve => this.pending.push(resolve));
+            const current = this.held.get(key);
+            if (current?.actor === actor && current.session === args.p_session_id && current.token === args.p_token) { this.held.delete(key); await this.emit("budget_collaboration_signals"); }
+            return { data: { granted: true }, error: null };
+          }
           if (!row || !members.some(m => m.trip_id === row.trip_id && m.user_id === actor && m.status === "approved" && m.role !== "viewer")) return { error: { code: "42501", message: "Forbidden" } };
           if (args.p_action === "renew" && (!owns || held.expires <= this.now)) return { data: { granted: false }, error: null };
           if (args.p_action === "acquire" && args.p_base_updated_at !== row.updated_at) return { error: { code: "40001", message: "Record changed" } };
@@ -79,6 +94,7 @@ export function backend({ empty = false, departed = false, leases = false } = {}
           return {data:structuredClone(receipt),error:null};
         }
         if (leases && ["save_budget_workspace_record_v4", "delete_budget_workspace_record_v2"].includes(name)) {
+          if (this.saveFailure && name.startsWith("save_")) return {error:this.saveFailure};
           if (this.offline) return { error: { message: "offline" } };
           if (args.p_id) {
             const held = this.held.get(`${args.p_kind}:${args.p_id}`);
@@ -97,7 +113,7 @@ export function backend({ empty = false, departed = false, leases = false } = {}
           if (!result.ok) return { error: { code: result.conflict ? "40001" : "P0001", message: result.error.message } };
           for (const [table, key] of Object.entries(stateKeys)) rows[table] = result.nextState[key];
           this.operations = result.nextState.operations;
-          await this.emit(rowKey); return { data: result.data, error: null };
+          await this.emit(rowKey); return { data: this.omitSaveId ? {updated_at:result.data.updated_at} : result.data, error: null };
         }
         if (name !== "update_trip_budget_rates") throw new Error(`Unexpected RPC: ${name}`);
         const trip = trips.find(trip => trip.id === args.p_trip_id);

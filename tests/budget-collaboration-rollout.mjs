@@ -19,7 +19,7 @@ for(const failure of [false,true]){
  create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;
  create publication supabase_realtime;`);
  const dir=new URL("../supabase/migrations/",import.meta.url);
- for(const name of (await fs.readdir(dir)).filter(n=>n.endsWith(".sql")&&!collaborationMigrations.includes(n)).sort())await db.exec((await fs.readFile(new URL(name,dir),"utf8")).replace(/create extension if not exists pgcrypto;/ig,""));
+ for(const name of (await fs.readdir(dir)).filter(n=>n.endsWith(".sql")&&n<collaborationMigrations[0]).sort())await db.exec((await fs.readFile(new URL(name,dir),"utf8")).replace(/create extension if not exists pgcrypto;/ig,""));
  await db.exec("insert into supabase_migrations.schema_migrations(version) values('20261022110000'),('20261022120000')");
  const user=randomUUID(),trip=randomUUID();await db.query("insert into auth.users(id) values($1)",[user]);
  await db.query("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Keep trip','Keep trip','Japan',current_date+10,current_date+15,$2)",[trip,user]);

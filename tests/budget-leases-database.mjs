@@ -18,7 +18,17 @@ try {
     create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;
     create publication supabase_realtime;`);
   const dir = new URL("../supabase/migrations/", import.meta.url);
-  for (const file of (await fs.readdir(dir)).filter(name => name.endsWith(".sql")).sort()) await db.exec((await fs.readFile(new URL(file, dir), "utf8")).replace(/create extension if not exists pgcrypto;/ig, ""));
+  for (const file of (await fs.readdir(dir)).filter(name => name.endsWith(".sql")).sort()) {
+    const source=(await fs.readFile(new URL(file,dir),'utf8')).replace(/create extension if not exists pgcrypto;/ig,'');
+    if(file.endsWith('_budget_selection_activity.sql')){
+      const before=(await db.query("select pg_get_functiondef('app_private.read_budget_collaboration(uuid,uuid)'::regprocedure) definition")).rows[0].definition;
+      await assert.rejects(()=>db.exec(source.replace(/^commit;/m,"do $failure$ begin raise exception 'Injected activity rollback'; end $failure$;\ncommit;")),/Injected activity rollback/);await db.exec('rollback');
+      assert.equal((await db.query("select to_regprocedure('public.update_budget_selection_v2(uuid,uuid,text,uuid,uuid,text)') api")).rows[0].api,null);
+      assert.equal((await db.query("select count(*)::int n from information_schema.columns where table_schema='app_private' and table_name='budget_selections' and column_name in ('activity_id','selected_at')")).rows[0].n,0);
+      assert.equal((await db.query("select pg_get_functiondef('app_private.read_budget_collaboration(uuid,uuid)'::regprocedure) definition")).rows[0].definition,before);
+    }
+    await db.exec(source);
+  }
   const query = async (sql, args = []) => (await db.query(sql, args)).rows;
   const a = randomUUID(), b = randomUUID(), viewer = randomUUID(), pending = randomUUID(), outsider = randomUUID(), trip = randomUUID();
   const s1 = randomUUID(), s2 = randomUUID(), t1 = randomUUID(), t2 = randomUUID();
@@ -144,6 +154,27 @@ try {
   await lease("release");
   await admin(); assert.equal((await query("select count(*)::int n from app_private.budget_edit_leases"))[0].n, 0);
   await query("update trip_members set status='approved' where trip_id=$1 and user_id=$2", [trip,a]);
+  // v2 orders real actions by server time, never heartbeat/resume expiry.
+  const forbiddenSelectionId=(await query("select id from budget_items where trip_id=$1",[secretTrip]))[0].id;
+  await login(a);
+  const financialBeforeActivity=(await query("select read_budget_snapshot($1) data",[trip]))[0].data;
+  const action1=randomUUID(),action2=randomUUID();
+  const selectV2=async(session,resource,activity,action='select')=>query("select update_budget_selection_v2($1,$2,'budget',$3,$4,$5)",[trip,session,resource,activity,action]);
+  await selectV2(s1,id,action1);const first=(await collab()).entries.find(e=>e.resource_id===id&&e.mode==='selection').selected_at;
+  await selectV2(s2,other,action2);const second=(await collab()).entries.find(e=>e.resource_id===other&&e.mode==='selection').selected_at;
+  assert.ok(second>first);assert.equal((await collab()).selectionProtocol,2);
+  for(const action of ['refresh','clear','refresh','select']){await selectV2(s1,id,action1,action);if(action!=='clear')assert.equal((await collab()).entries.find(e=>e.resource_id===id&&e.mode==='selection').selected_at,first);}
+  assert.equal((await collab()).entries.some(e=>'activity_id'in e||'session_id'in e),false);
+  await selectV2(s1,id,randomUUID(),'clear');assert.equal((await collab()).entries.some(e=>e.resource_id===id&&e.mode==='selection'),true);
+  await deny(()=>selectV2(s1,id,action1,null),'42501');
+  for(const actor of [pending,outsider]){await login(actor);await deny(()=>selectV2(s1,id,randomUUID()),'42501');}
+  await login(null);await deny(()=>selectV2(s1,id,randomUUID()),'42501');
+  await login(a);await deny(()=>selectV2(s1,forbiddenSelectionId,randomUUID()),'40001');
+  await login(viewer);const viewerActivity=randomUUID();await selectV2(s1,id,viewerActivity);assert.ok((await collab()).entries.some(e=>e.user_id===viewer));
+  await login(a);await selectV2(s1,id,viewerActivity,'clear');assert.ok((await collab()).entries.some(e=>e.user_id===viewer));
+  await login(viewer);await selectV2(s1,id,viewerActivity,'clear');await login(a);
+  await selectV2(s1,id,action1,'clear');await selectV2(s2,other,action2,'clear');
+  assert.deepEqual((await query("select read_budget_snapshot($1) data",[trip]))[0].data,financialBeforeActivity);
   await login(a); await lease("acquire", s1, t1, other);
   const version = (await row(other)).updated_at;
   await query("select delete_budget_workspace_record_v2($1,'budget',$2,$3,$4,$5)", [trip,other,version,s1,t1]);
@@ -166,9 +197,12 @@ try {
   await admin();await query("delete from trips where id=$1",[secretTrip]);
   assert.equal((await query("select count(*)::int n from budget_collaboration_signals where trip_id=$1",[secretTrip]))[0].n,1);
   assert.equal((await query("select count(*)::int n from app_private.budget_edit_leases where trip_id=$1",[secretTrip]))[0].n,0);
-  for (const fn of ["budget_edit_lease(text,uuid,uuid,uuid,text,timestamptz)","save_budget_workspace_record_v4(uuid,text,uuid,timestamptz,jsonb,uuid,uuid,uuid)","delete_budget_workspace_record_v2(uuid,text,uuid,timestamptz,uuid,uuid)","mutate_budget_receipt(uuid,uuid,text,jsonb,uuid,uuid)","read_budget_collaboration(uuid,uuid)","update_budget_selection(uuid,uuid,text,uuid)"]) {
+  for (const fn of ["budget_edit_lease(text,uuid,uuid,uuid,text,timestamptz)","save_budget_workspace_record_v4(uuid,text,uuid,timestamptz,jsonb,uuid,uuid,uuid)","delete_budget_workspace_record_v2(uuid,text,uuid,timestamptz,uuid,uuid)","mutate_budget_receipt(uuid,uuid,text,jsonb,uuid,uuid)","read_budget_collaboration(uuid,uuid)","update_budget_selection(uuid,uuid,text,uuid)","update_budget_selection_v2(uuid,uuid,text,uuid,uuid,text)"]) {
     assert.equal((await query("select has_function_privilege('anon',$1,'EXECUTE') allowed", [fn]))[0].allowed, false);
     assert.equal((await query("select prosecdef from pg_proc where oid=$1::regprocedure", [fn]))[0].prosecdef, false);
   }
-  console.log("PASS: full-chain Budget leases/snapshots/receipts; atomic authority, cross-trip RLS, STABLE invoker snapshot, zero financial heartbeat writes, guarded metadata, Actual/Budget delete, rollback and revocation");
+  const rolloutChecks=await query(await fs.readFile(new URL('../docs/qa/2026-10-28-budget-selection-activity-verify.sql',import.meta.url),'utf8'));
+  assert.equal(rolloutChecks.length,6);
+  for(const check of rolloutChecks)assert.equal(check.passed,true,check.check_name);
+  console.log("PASS: full-chain Budget leases/snapshots/receipts; atomic authority, cross-trip RLS, STABLE invoker snapshot, zero financial heartbeat writes, guarded metadata, Actual/Budget delete, rollback, revocation and 6/6 selection rollout checks");
 } finally { await db.close(); }
