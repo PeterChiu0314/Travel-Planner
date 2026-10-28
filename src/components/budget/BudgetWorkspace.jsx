@@ -9,6 +9,7 @@ import { budgetDay, budgetStage, calculateActualPricing, calculatePricing, histo
 import { calculateEntryPricing, isPaymentActive, planningBudgetData } from "../../lib/planningBudget.js";
 import { preparePaymentChange } from "../../lib/budgetPayment.js";
 import { budgetCurrencies, fetchBudgetQuote } from "../../lib/tripBudgetRates.js";
+import { friendlyError } from "../../lib/notifications.js";
 
 const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
 const categoryIcons = { "機票": Plane, "交通": Car, "住宿": BedDouble, "門票": Ticket, "餐飲": UtensilsCrossed, "購物": ShoppingBag, "其他": Package };
@@ -366,7 +367,7 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
   return <form className="bw-editor" aria-label={actual ? "實付編輯" : "預算編輯"} autoComplete="off" onSubmit={(event) => { event.preventDefault(); void editor.save(); }}>
     <fieldset className="bw-editor-fields" disabled={editor.closing} style={{ display: "contents" }}>
     <div className="bw-detail-heading"><h3>{context.id ? "編輯" : "新增"}{actual ? "實付" : "預算"}</h3><button aria-label="關閉編輯" className="bw-icon" type="button" disabled={saving} onClick={onCancel}><X size={17} /></button></div>
-    {error ? <p role="alert" className="bw-warning">{error}</p> : null}
+    {error ? <p role="alert" className="bw-warning">{friendlyError(error)}</p> : null}
     <label>項目<input name="title" required value={form.title} onChange={(event) => update("title", event.target.value)} /></label>
     {!actual ? <div className="bw-two-fields"><div className="bw-field"><span>分類</span><MenuSelect editable label="分類" value={form.category} onValueChange={(value)=>update("category",value)} options={categoryOrder.map(value=>({value,label:value}))} /></div>{payer}</div> : null}
     {!actual ? <fieldset disabled={locked} className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset> : null}
@@ -404,7 +405,7 @@ function RecordDetail({ record, actual, participants, members, links, items, pay
   const mode = record.pricing_mode || (record.split_type === "custom" ? "custom" : "split_total");
   return <section className="bw-detail"><div className="bw-detail-heading"><div className="bw-detail-title"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><h3>{record.title}</h3></div><button className="bw-icon bw-edit-item" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={18} /></button></div>
     <PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />
-    {paymentError ? <p className="bw-warning" role="alert">{paymentError}</p> : null}
+    {paymentError ? <p className="bw-warning" role="alert">{friendlyError(paymentError)}</p> : null}
     <dl><div><dt>計價方式</dt><dd>{pricingLabels[mode]}</dd></div>{mode === "per_person" ? <div><dt>每人單價</dt><dd>{record.currency} {money(record.unit_amount)}</dd></div> : null}<div><dt>參與成員</dt><dd>{participants.length} 人</dd></div>
       <div><dt>付款人</dt><dd>{memberLabel(members.find((row) => row.user_id === record.payer_id))}</dd></div>
       {actual ? <div><dt>台幣金額來源</dt><dd>{record.twd_amount_source === "actual" ? "實際扣款" : record.twd_amount_source === "estimated" ? "匯率估算" : "既有紀錄（來源未註記）"}</dd></div> : null}

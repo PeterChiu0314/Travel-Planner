@@ -58,7 +58,8 @@ test("A's manual quote refresh reaches B's already open Formal budget and totals
 test("offline trip cache preserves rates; a later authoritative event updates them", async ({ page }) => {
   const db = backend(); await boot(page, db); await expectRate(page, .2);
   db.offline = true; await page.reload(); await expectRate(page, .2);
-  await expect(page.getByRole("status")).toContainText("目前使用已快取的離線");
+  await expect(page.locator('[data-sonner-toast]')).toContainText("目前顯示已快取資料");
+  await expect(page.locator('.workspace > .notice')).toHaveCount(0);
   db.offline = false; db.trips[0].budget_exchange_rates.rates.JPY = .3;
   await page.evaluate(() => window.dispatchEvent(new Event("online"))); await db.emit();
   await expectRate(page, .3);

@@ -3,6 +3,8 @@ import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readB
 import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
 import { luggageLengthError } from "./lib/luggageLimits.js";
 import { useSiteDialog } from "./components/SiteDialog.jsx";
+import { notify, friendlyError } from "./lib/notifications.js";
+import { createSyncNotifications } from "./lib/syncNotifications.js";
 import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { WorkspaceActions, WorkspaceHeading, WorkspaceProgress, WorkspaceSearch, WorkspaceSummary, workspaceMoney } from "./components/workspace/TravelWorkspace.jsx";
@@ -2351,7 +2353,15 @@ export default function App() {
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState("");
+  const syncFeedback = useMemo(() => createSyncNotifications(notify), []);
+  useEffect(() => {
+    if (!isDemoMode) syncFeedback.configure(session?.user?.id || null, activeTripId);
+  }, [isDemoMode, session?.user?.id, activeTripId, syncFeedback]);
+  useEffect(() => {
+    if (isDemoMode || !session?.user) return;
+    return notify.onTransportError(error => { syncFeedback.failure("action", error); });
+  }, [isDemoMode, session?.user?.id, syncFeedback]);
+  useEffect(() => () => syncFeedback.dispose(), [syncFeedback]);
   const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
   const [tripImportState, setTripImportState] = useState(null);
   const [aiExchangeState, setAiExchangeState] = useState(null);
@@ -2436,7 +2446,6 @@ export default function App() {
     setAttachments(current => mergeBudgetAttachments(current, data));
     if (data.tripId) {
       setBudgetSchemaAvailable(true);
-      setNotice(current => current === "目前無法讀取此旅程預算。" ? "" : current);
       if (cache) {
         const [userId, tripId] = JSON.parse(key);
         updateOfflineBudget(tripId, userId, data);
@@ -2447,9 +2456,13 @@ export default function App() {
   const budgetRefreshRef = useRef(null);
   if (!budgetRefreshRef.current) budgetRefreshRef.current = createBudgetRefresh({
     guard: requestGuard,
-    read: key => readBudgetSnapshot(supabase, JSON.parse(key)[1]),
+    read: async key => {
+      const feedbackCheckpoint = syncFeedback.checkpoint();
+      return { ...await readBudgetSnapshot(supabase, JSON.parse(key)[1]), feedbackCheckpoint };
+    },
     apply: applyBudgetSnapshot,
-    onError: error => setNotice(error.code === "PGRST202" ? "預算快照尚未啟用，需先套用預算同步 migration。" : error.message || "預算重新整理失敗，原資料與草稿已保留。"),
+    onVerified: result => syncFeedback.verified("budget", result.feedbackCheckpoint),
+    onError: error => syncFeedback.failure("budget", error.code === "PGRST202" ? "預算快照尚未啟用，需先套用預算同步 migration。" : error),
   });
   const refreshBudget = useCallback((tripId) => {
     if (!requestGuard.sameContext(tripDataContext) || !tripDataContext.key || JSON.parse(tripDataContext.key)[1] !== tripId) return Promise.resolve({ ok: false, stale: true });
@@ -2464,11 +2477,12 @@ export default function App() {
   const luggageRefreshRef = useRef(null);
   if (!luggageRefreshRef.current) luggageRefreshRef.current = createLuggageRefresh({
     guard: requestGuard,
-    read: (scope, key) => {
+    read: async (scope, key) => {
+      const feedbackCheckpoint = syncFeedback.checkpoint();
       const [userId, tripId] = JSON.parse(key);
       let query = supabase.from(scope === "personal" ? "luggage_items" : "shared_luggage_items").select("*").eq("trip_id", tripId);
       if (scope === "personal") query = query.eq("owner_id", userId);
-      return query.order("created_at");
+      return { ...await query.order("created_at"), feedbackCheckpoint };
     },
     apply: (scope, rows) => {
       (scope === "personal" ? setLuggageItems : setSharedLuggageItems)(rows);
@@ -2478,6 +2492,8 @@ export default function App() {
         updateOfflineSharedLuggage(tripId, userId, () => rows);
       }
     },
+    onError: (error, scope) => syncFeedback.failure(`luggage:${scope}`, error),
+    onVerified: (scope, result) => syncFeedback.verified(`luggage:${scope}`, result.feedbackCheckpoint),
   });
   const refreshLuggage = useCallback((tripId, scopes = ["personal", "shared"]) => {
     const key = requestGuard.context().key;
@@ -2956,6 +2972,7 @@ export default function App() {
     async (preferredTripId = activeTripId) => {
       if (!session?.user || accountRef.current.userId !== session.user.id) return;
       const account = { ...accountRef.current };
+      const feedbackCheckpoint = syncFeedback.checkpoint();
       const listToken = requestGuard.begin("trips");
       const canRestoreSessionContext = !preferredTripId || preferredTripId === activeTripId;
       setLoading(true);
@@ -2996,11 +3013,11 @@ export default function App() {
             }
           }
           setActiveTripId(nextActive);
-          setNotice("目前使用已快取的離線旅程清單；重新連線後會自動更新。");
+          syncFeedback.failure("trips", error, { cached: true });
           setLoading(false);
           return;
         }
-        setNotice(error.message);
+        syncFeedback.failure("trips", error);
         setLoading(false);
         return;
       }
@@ -3019,6 +3036,7 @@ export default function App() {
         .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
 
       setTrips(nextTrips);
+      syncFeedback.verified(nextTrips.length ? "trips" : ["trips", "connection", "action"], feedbackCheckpoint);
       const savedContext = canRestoreSessionContext ? readSessionContext(session.user.id) : null;
       const savedTrip = savedContext ? nextTrips.find((trip) => trip.id === savedContext.activeTripId) || null : null;
       const latestEditDraft = findLatestDraftTrip({
@@ -3074,6 +3092,7 @@ export default function App() {
     }
 
     const budgetToken = requestGuard.begin("budget");
+    const feedbackCheckpoint = syncFeedback.checkpoint();
     const [itemsResult, alternativesResult, accommodationsResult, guideResult, todoResult, luggageResult, sharedLuggageResult,
       attachmentsResult, packResult, membersResult, budgetResult] = await Promise.all([
       supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
@@ -3089,8 +3108,10 @@ export default function App() {
       readBudgetSnapshot(supabase, tripId),
     ]);
     if (!requestGuard.valid(token)) return;
-    const error = itemsResult.error || alternativesResult.error || accommodationsResult.error || guideResult.error || todoResult.error
-      || luggageResult.error || sharedLuggageResult.error || attachmentsResult.error || packResult.error || membersResult.error || budgetResult.error;
+    const otherError = itemsResult.error || alternativesResult.error || accommodationsResult.error || guideResult.error || todoResult.error
+      || luggageResult.error || sharedLuggageResult.error || attachmentsResult.error || packResult.error || membersResult.error;
+    const error = otherError || budgetResult.error;
+    const failureSource = otherError ? "trip-data" : "budget";
     if (error) {
       const cached = readOfflineTripData(tripId, userId);
       if (requestGuard.valid(budgetToken) && budgetResult.error?.code === "42501") applyBudgetSnapshot(emptyBudgetSnapshot(), token.key);
@@ -3105,9 +3126,9 @@ export default function App() {
         setAccommodations(cached.accommodations || []); setGuideItems(cached.guideItems || []); setTodoItems(cached.todoItems || []);
         if (requestGuard.valid(sharedToken)) { sharedSnapshotRef.current.rows = cached.sharedLuggageItems || []; setSharedLuggageItems(sharedSnapshotRef.current.rows); }
         setAttachments(mergeBudgetAttachments(cached.attachments || [], budgetSnapshotRef.current.data)); setPackItems(cached.packItems || []); setMembers(cached.members || []);
-        setNotice("目前使用已快取的離線資料；重新連線後會自動更新。"); return;
+        syncFeedback.failure(failureSource, error, { cached: true }); return { ok: false, error };
       }
-      setNotice(error.message); return;
+      syncFeedback.failure(failureSource, error); return { ok: false, error };
     }
     const nextItems = itemsResult.data || [];
     const itemIds = new Set(nextItems.map(item => item.id));
@@ -3166,7 +3187,38 @@ export default function App() {
       packItems: packResult.data || [],
       members: membersResult.data || [],
     });
+    syncFeedback.verified(["trip-data", "connection", "action",
+      ...(requestGuard.valid(budgetToken) ? ["budget"] : []),
+      ...(requestGuard.valid(personalToken) ? ["luggage:personal"] : []),
+      ...(requestGuard.valid(sharedToken) ? ["luggage:shared"] : [])], feedbackCheckpoint);
+    return { ok: true };
   }, [tripDataContext.key, tripDataContext.generation]);
+
+  useEffect(() => {
+    if (isDemoMode || !session?.user) return;
+    const retry = async () => {
+      const pending = syncFeedback.pending();
+      if (!pending.length || navigator.onLine === false) { syncFeedback.online(); return; }
+      const work = [];
+      if (pending.includes("trips")) work.push(loadTrips(activeTripId));
+      if (pending.some(source => ["connection", "action", "trip-data"].includes(source))) {
+        if (activeTripId) work.push(loadTripData(activeTripId));
+        else if (!pending.includes("trips")) work.push(loadTrips());
+      } else {
+        if (pending.includes("budget") || pending.includes("realtime")) budgetRefreshRef.current.schedule();
+        const scopes = ["personal", "shared"].filter(scope => pending.includes(`luggage:${scope}`) || pending.includes("realtime"));
+        if (scopes.length) luggageRefreshRef.current.schedule(scopes);
+      }
+      await Promise.allSettled(work);
+      syncFeedback.online();
+    };
+    const offline = () => syncFeedback.failure("connection", "offline");
+    const foreground = () => { if (document.visibilityState !== "hidden") void retry(); };
+    syncFeedback.setRetry(retry);
+    window.addEventListener("offline", offline); window.addEventListener("online", foreground); window.addEventListener("focus", foreground);
+    if (navigator.onLine === false) offline();
+    return () => { window.removeEventListener("offline", offline); window.removeEventListener("online", foreground); window.removeEventListener("focus", foreground); };
+  }, [isDemoMode, session?.user?.id, activeTripId, loadTrips, loadTripData, syncFeedback]);
 
   const loadRouteOverrides = useCallback(async (tripId, dayIndex) => {
     const normalizedDayIndex = Number(dayIndex);
@@ -3319,12 +3371,12 @@ export default function App() {
       });
 
       if (error || !tripId) {
-        setNotice(error?.message || "邀請連結無效或已失效。");
+        notify.error(error?.message || "邀請連結無效或已失效。");
         clearInviteTokenFromUrl();
         return;
       }
 
-      setNotice("已送出加入申請，等待旅程擁有者核准。");
+      notify.info("已送出加入申請，等待旅程擁有者核准。");
       await loadTrips(tripId);
       clearInviteTokenFromUrl();
     }
@@ -3773,6 +3825,7 @@ export default function App() {
 
   useEffect(() => {
     if (!activeTripId || !session?.user) return undefined;
+    let subscriptionActive = true;
     const invalidateBudget = () => { if (requestGuard.sameContext(tripDataContext)) budgetRefreshRef.current.schedule(); };
     const channel = supabase
       .channel(`trip-${activeTripId}`)
@@ -3870,9 +3923,16 @@ export default function App() {
       });
     subscribeSharedLuggage(channel, activeTripId, luggageRefreshRef.current);
     channel.subscribe(status => {
+      if (!subscriptionActive || !requestGuard.sameContext(tripDataContext)) return;
+      if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) syncFeedback.failure("realtime", "即時連線暫時中斷，資料同步尚未確認。");
+      if (status === "SUBSCRIBED" && syncFeedback.pending().includes("realtime")) {
+        // Existing subscription recovery already schedules these scoped reads.
+        for (const source of ["budget", "luggage:personal", "luggage:shared"]) syncFeedback.failure(source, "正在重新核對資料，請稍候。");
+        syncFeedback.verified("realtime");
+      }
       if (status === "SUBSCRIBED") { luggageRefreshRef.current.schedule(["personal", "shared"]); invalidateBudget(); }
     });
-    return () => { budgetRefreshRef.current.cancel(); luggageRefreshRef.current.cancel(); supabase.removeChannel(channel); };
+    return () => { subscriptionActive = false; budgetRefreshRef.current.cancel(); luggageRefreshRef.current.cancel(); supabase.removeChannel(channel); };
   }, [activeDay, activeTripId, budgetSchemaAvailable, loadRouteOverrides, loadTripData, loadTrips, session?.user]);
 
   useEffect(() => {
@@ -4682,13 +4742,13 @@ export default function App() {
       // prevents redirect loops when using custom domains + OAuth allowlists.
       options: { redirectTo: window.location.origin },
     });
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
   }
 
   async function signOut() {
     clearOfflineAccount(session?.user?.id);
     const { error } = await supabase.auth.signOut();
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
   }
 
   async function createTrip(event) {
@@ -4713,7 +4773,7 @@ export default function App() {
     });
 
     if (tripError) {
-      setNotice(tripError.message);
+      notify.error(tripError.message);
       return;
     }
 
@@ -4727,7 +4787,7 @@ export default function App() {
     });
 
     if (memberError) {
-      setNotice(memberError.message);
+      notify.error(memberError.message);
       return;
     }
 
@@ -4802,7 +4862,7 @@ export default function App() {
     const importedTitle = tripImportState.document.trip.title;
     setTripImportState(null);
     setActiveDay(0);
-    setNotice(`已匯入「${importedTitle}」。`);
+    notify.success(`已匯入「${importedTitle}」。`);
     await loadTrips(data.trip_id);
   }
 
@@ -4828,7 +4888,7 @@ export default function App() {
     }
     const { error } = await supabase.from("trips").update(nextPatch).eq("id", activeTrip.id);
     if (error) {
-      setNotice(error.message);
+      notify.error(error.message);
       return { ok: false, error };
     }
     await loadTrips(activeTrip.id);
@@ -4845,21 +4905,21 @@ export default function App() {
     const canOverrideSettlementLock = allowSettlementOverride === true && source === "developer-date-tool";
     if (!activeTrip || !isOwner) {
       const message = "You do not have permission to change trip dates.";
-      setNotice(message);
+      notify.error(message);
       return { ok: false, permissionDenied: true, message };
     }
     if (isTripDateLocked && !canOverrideSettlementLock) {
       const message = "旅程已進入結算階段，無法修改日期。";
-      setNotice(message);
+      notify.error(message);
       return { ok: false, dateLocked: true, message };
     }
     if (!startDate || !endDate || endDate < startDate) {
-      setNotice("Invalid trip date range");
+      notify.error("Invalid trip date range");
       return { ok: false };
     }
     if (hasActiveEditorGuard({ tripId: activeTrip.id })) {
       const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
-      setNotice(message);
+      notify.error(message);
       return { ok: false, dirtyDraft: true, message };
     }
     const latestTripDraft = session?.user?.id
@@ -4867,7 +4927,7 @@ export default function App() {
       : null;
     if (latestTripDraft?.tripId === activeTrip.id) {
       const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
-      setNotice(message);
+      notify.error(message);
       return { ok: false, dirtyDraft: true, message };
     }
     const preview = buildTripDateChangePreview({
@@ -4877,7 +4937,7 @@ export default function App() {
       trip: activeTrip,
     });
     if (preview.hasTimelineRemoval && !confirmTimelineRemoval) {
-      setNotice("This date change would remove Timeline data. Please handle it in the shortening cleanup flow.");
+      notify.error("This date change would remove Timeline data. Please handle it in the shortening cleanup flow.");
       return { ok: false, unsafeShortening: true };
     }
     const removedTimelineDraftIds =
@@ -4891,7 +4951,7 @@ export default function App() {
       new_end_date: endDate,
     });
     if (error) {
-      setNotice(error.message);
+      notify.error(error.message);
       return { ok: false, error };
     }
     if (removedTimelineDraftIds.size && session?.user?.id) {
@@ -4916,12 +4976,12 @@ export default function App() {
     const ok = window.confirm(`刪除「${activeTrip.title}」？`);
     if (!ok) return;
     const { error } = await supabase.from("trips").delete().eq("id", activeTrip.id);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTrips();
   }
 
   function rejectCrossTripSave() {
-    setNotice("偵測到跨旅程編輯狀態，已阻止儲存。請回到原旅程或重新開啟編輯器。");
+    notify.warning("偵測到跨旅程編輯狀態，已阻止儲存。請回到原旅程或重新開啟編輯器。");
     return { ok: false, crossTrip: true };
   }
 
@@ -4933,7 +4993,7 @@ export default function App() {
     const localItem = items.find((item) => item.id === itemId);
     if (localItem && isTransportationCard(localItem)) return true;
     if (localItem?.is_fixed) {
-      setNotice("此行程已固定，請先解鎖後再修改。");
+      notify.warning("此行程已固定，請先解鎖後再修改。");
       return false;
     }
     const { data, error } = await supabase
@@ -4943,11 +5003,11 @@ export default function App() {
       .eq("trip_id", activeTrip.id)
       .maybeSingle();
     if (error) {
-      setNotice(error.message);
+      notify.error(error.message);
       return false;
     }
     if (data?.is_fixed) {
-      setNotice("此行程已固定，請先解鎖後再修改。");
+      notify.warning("此行程已固定，請先解鎖後再修改。");
       return false;
     }
     return true;
@@ -4967,6 +5027,7 @@ export default function App() {
   }
 
   async function applyTimelineScheduleOperation({
+    inlineFeedback = false,
     confirmedMajorEffect = null,
     dayIndex = activeDay,
     expectedVisitIds = null,
@@ -5000,7 +5061,7 @@ export default function App() {
       const errorMessage = conflict
         ? "此日行程已由其他成員更新，請重新載入最新資料後再試。"
         : destinationReorderErrorMessage(result.error || { message });
-      setNotice(errorMessage);
+      if (!inlineFeedback) notify.error(errorMessage);
       if (conflict) await loadTripData(activeTrip.id);
       return { conflict, error: result.error, errorMessage, ok: false, preview: result.data?.preview || null };
     }
@@ -5013,13 +5074,13 @@ export default function App() {
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
     const editingItem = editingId ? items.find((item) => item.id === editingId) : null;
     if (isEffectiveFixedVisit(editingItem)) {
-      setNotice("此行程已固定，請先解鎖後再修改。");
+      notify.warning("此行程已固定，請先解鎖後再修改。");
       return { ok: false, fixed: true };
     }
     if (editingId && !(await ensureItineraryItemEditable(editingId))) return { ok: false, fixed: true };
     if (payload?.item_type !== "transport" && Boolean(payload?.start_time) !== Boolean(payload?.end_time)) {
       const errorMessage = "開始與結束時間必須同時設定，或同時清除。";
-      setNotice(errorMessage);
+      notify.error(errorMessage);
       return { ok: false, errorMessage };
     }
     const normalizedPayload = normalizeItemPayload(payload);
@@ -5027,12 +5088,12 @@ export default function App() {
       isTransportationCard(normalizedPayload) &&
       (!normalizedPayload.from_item_id || !normalizedPayload.to_item_id)
     ) {
-      setNotice("交通卡必須連接兩張相鄰行程。");
+      notify.error("交通卡必須連接兩張相鄰行程。");
       return { ok: false };
     }
     const invalidTimeRange = !isTransportationCard(normalizedPayload) && isInvalidTimeRange(normalizedPayload.start_time, normalizedPayload.end_time);
     if (invalidTimeRange) {
-      setNotice("結束時間必須晚於開始時間。");
+      notify.error("結束時間必須晚於開始時間。");
       return { ok: false };
     }
     const overlapItem = findOverlappingVisitItem({
@@ -5050,6 +5111,7 @@ export default function App() {
     const timelineScheduleTargetId = meta.timelineScheduleTargetId || editingId;
     if (timelineScheduleTargetId && timelineSchedulePlan && timelineScheduleOperation) {
       const result = await applyTimelineScheduleOperation({
+        inlineFeedback: true,
         confirmedMajorEffect: meta.confirmedScheduleEffect || null,
         expectedVisitIds: meta.timelineScheduleExpectedVisitIds,
         itemUpdatedAtBaselines: meta.timelineScheduleItemBaselines,
@@ -5072,8 +5134,8 @@ export default function App() {
     }
     if (editingId) {
       const result = await updateWithConflictCheck("itinerary_items", normalizedPayload, editingId, meta);
-      if (result.error) setNotice(result.error.message);
-      else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
+      if (result.error) notify.error(result.error.message);
+      else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
       else await loadTripData(activeTrip.id);
       return result;
     }
@@ -5091,7 +5153,7 @@ export default function App() {
       .select("*")
       .single();
     if (insertResult.error) {
-      setNotice(insertResult.error.message);
+      notify.error(insertResult.error.message);
       return { ok: false, error: insertResult.error };
     }
     await loadTripData(activeTrip.id);
@@ -5101,7 +5163,7 @@ export default function App() {
     if (!activeTrip || !canEditActiveTripContent) return { ok: false };
     const item = items.find((currentItem) => currentItem.id === itemId);
     if (isEffectiveFixedVisit(item)) {
-      setNotice("此行程已固定，請先解鎖後再修改。");
+      notify.warning("此行程已固定，請先解鎖後再修改。");
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     }
     if (!(await ensureItineraryItemEditable(itemId))) {
@@ -5124,7 +5186,7 @@ export default function App() {
 
     if (editingId) {
       const { error } = await supabase.from("itinerary_alternatives").update(nextPayload).eq("id", editingId);
-      if (error) setNotice(error.message);
+      if (error) notify.error(error.message);
       else await loadTripData(activeTrip.id);
       return { ok: !error, error };
     }
@@ -5133,7 +5195,7 @@ export default function App() {
       ...nextPayload,
       itinerary_item_id: itemId,
     });
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
     return { ok: !error, error };
   }
@@ -5143,14 +5205,14 @@ export default function App() {
     const alternative = alternatives.find((item) => item.id === alternativeId);
     const parentItem = alternative ? items.find((item) => item.id === alternative.itinerary_item_id) : null;
     if (isEffectiveFixedVisit(parentItem)) {
-      setNotice("此行程已固定，請先解鎖後再修改。");
+      notify.warning("此行程已固定，請先解鎖後再修改。");
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     }
     if (parentItem && !(await ensureItineraryItemEditable(parentItem.id))) {
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     }
     const { error } = await supabase.from("itinerary_alternatives").delete().eq("id", alternativeId);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
     return { ok: !error, error };
   }
@@ -5158,7 +5220,7 @@ export default function App() {
   async function applyAlternative(item, alternative) {
     if (!activeTrip || !canEditActiveTripContent) return { ok: false };
     if (isEffectiveFixedVisit(item)) {
-      setNotice("此行程已固定，請先解鎖後再修改。");
+      notify.warning("此行程已固定，請先解鎖後再修改。");
       return { ok: false, error: { message: "此行程已固定，請先解鎖後再修改。" } };
     }
     const result = await supabase.rpc("apply_itinerary_alternative", {
@@ -5171,7 +5233,7 @@ export default function App() {
       const error = result.error || { message: "invalid_result" };
       const conflict = /stale_|item_not_found|alternative_not_found/.test(String(error.message || ""));
       const errorMessage = alternativeApplyErrorMessage(error);
-      setNotice(errorMessage);
+      notify.error(errorMessage);
       if (conflict) await loadTripData(activeTrip.id);
       return { conflict, error, errorMessage, ok: false };
     }
@@ -5213,8 +5275,8 @@ export default function App() {
       : await supabase.from("budget_items").insert(budgetPayload).select("id").single();
 
     if (result.error || result.conflict) {
-      if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
-      else setNotice(result.error.message);
+      if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
+      else notify.error(result.error.message);
       return result;
     }
 
@@ -5225,7 +5287,7 @@ export default function App() {
     ]);
     const clearError = clearParticipantsResult.error || clearLinksResult.error;
     if (clearError) {
-      setNotice(clearError.message);
+      notify.error(clearError.message);
       return { ok: false, error: clearError };
     }
 
@@ -5242,7 +5304,7 @@ export default function App() {
     ]);
     const error = participantsResult.error || linksResult.error;
     if (error) {
-      setNotice(error.message);
+      notify.error(error.message);
       return { ok: false, error };
     }
     await loadTripData(activeTrip.id);
@@ -5253,7 +5315,7 @@ export default function App() {
     if (!activeTrip || !canEdit) return;
     if (budgetSchemaAvailable || meta.leaseProtocol) return deleteBudgetWorkspaceRecord("budget", budgetId, meta);
     const { error } = await supabase.from("budget_items").delete().eq("id", budgetId);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5289,15 +5351,15 @@ export default function App() {
       : await supabase.from("actual_expenses").insert(expensePayload).select("id").single();
 
     if (result.error || result.conflict) {
-      if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
-      else setNotice(result.error.message);
+      if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
+      else notify.error(result.error.message);
       return result;
     }
 
     const actualExpenseId = editingId || result.data.id;
     const clearResult = await supabase.from("actual_expense_participants").delete().eq("actual_expense_id", actualExpenseId);
     if (clearResult.error) {
-      setNotice(clearResult.error.message);
+      notify.error(clearResult.error.message);
       return { ok: false, error: clearResult.error };
     }
     const participantRows = participantIds.map((userId) => ({ actual_expense_id: actualExpenseId, user_id: userId }));
@@ -5305,7 +5367,7 @@ export default function App() {
       ? await supabase.from("actual_expense_participants").insert(participantRows)
       : { error: null };
     if (participantsResult.error) {
-      setNotice(participantsResult.error.message);
+      notify.error(participantsResult.error.message);
       return { ok: false, error: participantsResult.error };
     }
     await loadTripData(activeTrip.id);
@@ -5338,7 +5400,7 @@ export default function App() {
       .select("id")
       .single();
     if (result.error) {
-      setNotice(result.error.message);
+      notify.error(result.error.message);
       return;
     }
     const actualExpenseId = result.data.id;
@@ -5353,7 +5415,7 @@ export default function App() {
         .eq("id", budget.id),
     ]);
     const error = participantsResult.error || budgetResult.error;
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5361,14 +5423,13 @@ export default function App() {
     if (!activeTrip || !canEdit) return;
     if (budgetSchemaAvailable || meta.leaseProtocol) return deleteBudgetWorkspaceRecord("actual", expenseId, meta);
     const { error } = await supabase.from("actual_expenses").delete().eq("id", expenseId);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
     return { ok: !error, error };
   }
 
   async function saveBudgetWorkspaceRecord(kind, payload, editingId, meta = {}) {
     const result = await persistBudgetWorkspace({ supabase, tripId: activeTrip.id, reload: refreshBudget }, kind, payload, editingId, meta);
-    if (result.refreshError) setNotice("資料已儲存，但重新整理失敗，請重新載入頁面確認。");
     return result;
   }
 
@@ -5379,10 +5440,10 @@ export default function App() {
     });
     if (error) {
       if (error.code === "40001") await refreshBudget(activeTrip.id);
-      setNotice(error.code === "40001" ? "資料已變更，請重新開啟後再刪除。" : error.message); return { ok: false, error };
+      return { ok: false, error };
     }
     const refreshed = await refreshBudget(activeTrip.id);
-    if (!refreshed.ok) setNotice("資料已儲存，預算重新整理未完成，請重新連線確認。");
+    if (!refreshed.ok) syncFeedback.failure("budget", "資料已儲存，預算重新整理未完成，請重新連線確認。");
     return { ok: true };
   }
 
@@ -5393,7 +5454,7 @@ export default function App() {
     });
     if (error) return { ok: false, error };
     const refreshed = await refreshBudget(activeTrip.id);
-    if (!refreshed.ok) setNotice("匯率已儲存，預算重新整理未完成，請重新連線確認。");
+    if (!refreshed.ok) syncFeedback.failure("budget", "匯率已儲存，預算重新整理未完成，請重新連線確認。");
     return { ok: true, data };
   }
 
@@ -5421,8 +5482,8 @@ export default function App() {
     const result = editingId
       ? await updateWithConflictCheck("accommodations", nextPayload, editingId, meta)
       : await supabase.from("accommodations").insert(nextPayload);
-    if (result.error) setNotice(result.error.message);
-    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
+    if (result.error) notify.error(result.error.message);
+    else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
     return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
   }
@@ -5430,7 +5491,7 @@ export default function App() {
   async function deleteAccommodation(accommodationId) {
     if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("accommodations").delete().eq("id", accommodationId);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5446,8 +5507,8 @@ export default function App() {
     const result = editingId
       ? await updateWithConflictCheck("guide_items", nextPayload, editingId, meta)
       : await supabase.from("guide_items").insert(nextPayload);
-    if (result.error) setNotice(result.error.message);
-    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
+    if (result.error) notify.error(result.error.message);
+    else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
     return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
   }
@@ -5455,7 +5516,7 @@ export default function App() {
   async function deleteGuide(guideId) {
     if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("guide_items").delete().eq("id", guideId);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5473,8 +5534,8 @@ export default function App() {
     const result = editingId
       ? await updateWithConflictCheck("todo_items", nextPayload, editingId, meta)
       : await supabase.from("todo_items").insert(nextPayload);
-    if (result.error) setNotice(result.error.message);
-    else if (result.conflict) setNotice("此資料在你編輯期間已被其他人更新。");
+    if (result.error) notify.error(result.error.message);
+    else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
     return result.conflict ? { ok: false, conflict: true } : { ok: !result.error, error: result.error };
   }
@@ -5482,14 +5543,14 @@ export default function App() {
   async function toggleTodo(todo) {
     if (!canEditActiveTripContent) return;
     const { error } = await supabase.from("todo_items").update({ completed: !todo.completed }).eq("id", todo.id);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function deleteTodo(todoId) {
     if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("todo_items").delete().eq("id", todoId);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5506,7 +5567,7 @@ export default function App() {
     if (result.error) {
       const error = new Error(luggageErrorMessage(result.error));
       if (result.conflict) await refreshLuggage(tripId, [scope]);
-      setNotice(error.message);
+      notify.error(error.message);
       return { ...result, error };
     }
     if (requestGuard.sameContext(context)) {
@@ -5602,8 +5663,9 @@ export default function App() {
   async function uploadAttachment(targetType, targetId, file, meta = {}) {
     if (!activeTrip || !(targetType === "actual_expense" ? canEdit : canEditActiveTripContent) || !file) return;
     if (file.size > 10 * 1024 * 1024) {
-      setNotice("附件大小需小於 10MB");
-      return;
+      const error = new Error("附件大小需小於 10MB");
+      if (!meta.leaseProtocol) notify.error(error);
+      return { ok: false, error };
     }
     const fileName = safeFileName(file.name) || `attachment-${Date.now()}`;
     const path = `trips/${activeTrip.id}/attachments/${targetType}/${targetId}/${Date.now()}-${fileName}`;
@@ -5612,8 +5674,8 @@ export default function App() {
       upsert: false,
     });
     if (uploadResult.error) {
-      setNotice(uploadResult.error.message);
-      return;
+      if (!meta.leaseProtocol) notify.error(uploadResult.error);
+      return { ok: false, error: uploadResult.error };
     }
     const receipt = {
       trip_id: activeTrip.id,
@@ -5631,7 +5693,8 @@ export default function App() {
     }) : await supabase.from("attachments").insert(receipt);
     if (error) {
       if (meta.leaseProtocol) await supabase.storage.from(attachmentBucket).remove([path]);
-      setNotice(error.message); return { ok: false, error };
+      if (!meta.leaseProtocol) notify.error(error);
+      return { ok: false, error };
     }
     if (meta.leaseProtocol) await refreshBudget(activeTrip.id); else await loadTripData(activeTrip.id);
     return { ok: true };
@@ -5640,7 +5703,7 @@ export default function App() {
   async function openAttachment(attachment) {
     const { data, error } = await supabase.storage.from(attachmentBucket).createSignedUrl(attachment.file_url, 600);
     if (error) {
-      setNotice(error.message);
+      notify.error(error.message);
       return;
     }
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
@@ -5650,17 +5713,16 @@ export default function App() {
     if (!activeTrip || !(attachment.target_type === "actual_expense" ? canEdit : canEditActiveTripContent)) return;
     if (meta.leaseProtocol) {
       const result = await deleteBudgetReceipt({ supabase, tripId: activeTrip.id, attachment, meta, refresh: refreshBudget });
-      if (!result.ok) setNotice(result.error.message);
-      else if (result.cleanupError) setNotice("附件紀錄已移除，檔案清理未完成，請稍後確認。");
+      if (result.cleanupError) notify.warning("附件紀錄已移除，檔案清理未完成，請稍後確認。");
       return result;
     }
     const storageResult = await supabase.storage.from(attachmentBucket).remove([attachment.file_url]);
     if (storageResult.error) {
-      setNotice(storageResult.error.message);
+      notify.error(storageResult.error.message);
       return;
     }
     const { error } = await supabase.from("attachments").delete().eq("id", attachment.id);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5668,7 +5730,7 @@ export default function App() {
     if (!activeTrip || !canEditActiveTripContent) return;
     const item = items.find((currentItem) => currentItem.id === itemId);
     if (isEffectiveFixedVisit(item)) {
-      setNotice("此行程已固定，請先解鎖後再修改。");
+      notify.warning("此行程已固定，請先解鎖後再修改。");
       return;
     }
     if (item && !isTransportationCard(item) && !(await ensureItineraryItemEditable(itemId))) return;
@@ -5680,7 +5742,7 @@ export default function App() {
         plan: planTimelineSchedule({ items: dayItems, operation, orderedVisitIds: expectedVisitIds }),
       });
       if (!plan.ok) {
-        setNotice(timelineScheduleErrorMessage(plan));
+        notify.error(timelineScheduleErrorMessage(plan));
         return;
       }
       await applyTimelineScheduleOperation({
@@ -5707,23 +5769,23 @@ export default function App() {
       ]);
       const relatedError = relatedDeleteResults.find((result) => result.error)?.error;
       if (relatedError) {
-        setNotice(relatedError.message);
+        notify.error(relatedError.message);
         return;
       }
     }
     const { error } = await supabase.from("itinerary_items").delete().eq("id", itemId).eq("trip_id", activeTrip.id);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function toggleItemFixed(item) {
     if (!activeTrip || !canEditActiveTripContent || !item || isTransportationCard(item)) return { ok: false };
     if (!isTimedVisit(item)) {
-      setNotice("未設定完整時間的行程不能固定。");
+      notify.error("未設定完整時間的行程不能固定。");
       return { ok: false };
     }
     if (!item.is_fixed && item.locked_by) {
-      setNotice("此行程目前有人正在編輯，暫時無法鎖定。");
+      notify.warning("此行程目前有人正在編輯，暫時無法鎖定。");
       return { ok: false };
     }
     const nextFixed = !item.is_fixed;
@@ -5737,7 +5799,7 @@ export default function App() {
       .eq("id", item.id)
       .eq("trip_id", activeTrip.id);
     if (error) {
-      setNotice(error.message);
+      notify.error(error.message);
       return { ok: false, error };
     }
     await loadTripData(activeTrip.id);
@@ -5757,7 +5819,7 @@ export default function App() {
       .update({ ...snapshot, updated_at: new Date().toISOString() })
       .eq("id", itemId)
       .eq("trip_id", activeTrip.id);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5978,7 +6040,7 @@ export default function App() {
     const { error } = await supabase
       .from("pack_items")
       .insert({ trip_id: activeTrip.id, title: title.trim() });
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5988,14 +6050,14 @@ export default function App() {
       .from("pack_items")
       .update({ done: !item.done })
       .eq("id", item.id);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function deletePackItem(itemId) {
     if (!canEditActiveTripContent) return;
     const { error } = await supabase.from("pack_items").delete().eq("id", itemId);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -6006,14 +6068,14 @@ export default function App() {
       .update({ status: "approved" })
       .eq("id", memberId)
       .eq("trip_id", activeTrip.id);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function rejectMember(memberId) {
     if (!activeTrip || !canInviteMembers) return;
     const { error } = await supabase.from("trip_members").delete().eq("id", memberId).eq("trip_id", activeTrip.id);
-    if (error) setNotice(error.message);
+    if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -6022,7 +6084,7 @@ export default function App() {
       const message = isTripDateLocked
         ? "旅程已進入結算階段，無法邀請或管理成員。"
         : "You do not have permission to invite members.";
-      setNotice(message);
+      notify.error(message);
       return { ok: false, message };
     }
     const token = crypto.randomUUID();
@@ -6031,7 +6093,7 @@ export default function App() {
       token,
     });
     if (error) {
-      setNotice(error.message);
+      notify.error(error.message);
       return { ok: false, error, message: error.message };
     }
     return { ok: true, token };
@@ -6056,7 +6118,7 @@ export default function App() {
       .eq("id", memberId)
       .eq("trip_id", activeTrip.id);
     if (error) {
-      setNotice(error.message);
+      notify.error(error.message);
       return { ok: false, error };
     }
     await loadTripData(activeTrip.id);
@@ -6078,7 +6140,7 @@ export default function App() {
     if (!ok) return { ok: false, cancelled: true };
     const { error } = await supabase.from("trip_members").delete().eq("id", memberId).eq("trip_id", activeTrip.id);
     if (error) {
-      setNotice(luggageErrorMessage(error));
+      notify.error(luggageErrorMessage(error));
       return { ok: false, error };
     }
     await loadTripData(activeTrip.id);
@@ -6090,7 +6152,7 @@ export default function App() {
     const exportedItems = timelineItemsInTripRange(items, activeTrip);
     const result = serializeTripToJson({ alternatives, items: exportedItems, trip: activeTrip });
     if (!result.ok) {
-      setNotice(result.errors?.[0]?.message || "旅程資料不符合 JSON 匯出契約，未建立檔案。");
+      notify.error(result.errors?.[0]?.message || "旅程資料不符合 JSON 匯出契約，未建立檔案。");
       return;
     }
     const blob = new Blob([result.json], { type: "application/json" });
@@ -6107,7 +6169,7 @@ export default function App() {
     const exportedItems = timelineItemsInTripRange(items, activeTrip);
     const result = serializeTripToAiItinerary({ alternatives, items: exportedItems, trip: activeTrip });
     if (!result.ok) {
-      setNotice(result.errors?.[0]?.message || "旅程資料不符合 AI 交換契約，無法建立交換資料。");
+      notify.error(result.errors?.[0]?.message || "旅程資料不符合 AI 交換契約，無法建立交換資料。");
       return;
     }
     setAiExchangeState({ document: result.document, fileName: result.fileName, mode: aiItineraryExchangeModes.reviseCopy });
@@ -6168,7 +6230,7 @@ export default function App() {
   if (!session) {
     return (
       <Shell>
-        <LoginView onSignIn={signInWithGoogle} notice={notice} />
+        <LoginView onSignIn={signInWithGoogle} />
       </Shell>
     );
   }
@@ -6290,15 +6352,6 @@ export default function App() {
           onUpdateTripDateRange={updateTripDateRange}
           showDeveloperTools={isOwner}
         />
-
-        {notice ? (
-          <div className="notice" role="status">
-            <span>{notice}</span>
-            <button type="button" onClick={() => setNotice("")}>
-              X
-            </button>
-          </div>
-        ) : null}
 
         {loading ? <div className="center-state">同步資料中...</div> : null}
 
@@ -9229,14 +9282,13 @@ function ConfigMissing() {
   );
 }
 
-function LoginView({ onSignIn, notice }) {
+function LoginView({ onSignIn }) {
   return (
     <section className="login-view">
       <div className="login-panel">
         <p className="eyebrow">Travel Planner</p>
         <h1>一起把旅程排好</h1>
         <p>使用 Google 登入後，就能建立旅程、邀請朋友、等待擁有者核准並即時共同編輯。</p>
-        {notice ? <div className="notice">{notice}</div> : null}
         <button className="primary-button" type="button" onClick={onSignIn}>
           使用 Google 登入
         </button>
@@ -13204,8 +13256,8 @@ function BudgetPanel(props) {
     setReceiptError("");
     try {
       const result = await leases.withLease("actual_expenses", expense, props.currentUserId, run);
-      if (result?.ok === false) setReceiptError(result.error?.message || "附件操作未完成，原資料已保留。");
-    } catch (error) { setReceiptError(error.message); }
+      if (result?.ok === false) setReceiptError(friendlyError(result.error || "附件操作未完成，原資料已保留。"));
+    } catch (error) { setReceiptError(friendlyError(error)); }
   }
   const workspaceActive = props.restoreDrafts !== false;
   useEffect(() => {
@@ -14489,7 +14541,7 @@ export function LuggagePanel({
     try {
       const result = await action();
       if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
-      if (!result?.ok) setError(result?.conflict ? "資料已更新，請保留草稿並重新開啟最新項目後再試。" : result?.error?.message || "未能儲存，請檢查連線後重試。你的輸入仍保留。 ");
+      if (!result?.ok) setError(result?.conflict ? "資料已更新，請保留草稿並重新開啟最新項目後再試。" : friendlyError(result?.error || "未能儲存，請檢查連線後重試。你的輸入仍保留。"));
       return result || { ok: false };
     } catch { setError("未能儲存，請檢查連線後重試。你的輸入仍保留。"); return { ok: false }; }
     finally { busyRef.current = false; setBusy(false); }

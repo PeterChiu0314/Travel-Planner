@@ -193,6 +193,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif
 - 避免重複堆疊 Dialog；AI 引導與新增旅程用替換／返回銜接。
 - 新增或調整 Dialog 時檢查可讀名稱、焦點進出與鍵盤關閉；不宣稱既有 Dialog 均已完成 focus trap。
 - 同步、草稿與協作優先使用區域狀態，不連續彈通知。失敗說明未完成的動作及下一步。
+- 全域非阻斷回饋統一使用 `notify.success/info/warning/error` 與根層單一 Sonner Toaster，底部置中浮動，不以 Header 下方 Notice 撐高工作區。成功／資訊／警告時長集中設定，錯誤可手動關閉；網路與同步失敗共用穩定 ID、提供重試，僅在必要資料核對成功後收斂。Mobile 預留底部導覽、安全區與鍵盤；表單驗證、付款／租約限制及高風險確認保留原位 alert／Dialog，不同時重複通知。
 
 ## 7. 行程路線桌面工作區
 

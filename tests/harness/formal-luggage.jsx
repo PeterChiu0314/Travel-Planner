@@ -2,5 +2,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "../../src/App.jsx";
+import AppToaster from "../../src/components/AppToaster.jsx";
 import "../../src/styles.css";
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(<><App /><AppToaster /></>);

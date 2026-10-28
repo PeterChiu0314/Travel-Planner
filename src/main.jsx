@@ -1,12 +1,14 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
+import AppToaster from "./components/AppToaster.jsx";
 import "./styles.css";
 import "./components/budget/budget-page.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <App />
+    <AppToaster />
   </React.StrictMode>,
 );
 

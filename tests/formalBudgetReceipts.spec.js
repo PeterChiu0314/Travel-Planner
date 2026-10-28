@@ -27,6 +27,7 @@ test("upload uses an Actual lease and canonical snapshot; delete removes metadat
 test("failed upload metadata registration removes only the newly uploaded bytes",async({page})=>{
   const db=await setup(page);db.receiptFailure=true;await page.locator(".attachment-upload input").setInputFiles(file);
   await expect(page.getByRole("alert")).toContainText("Receipt lease lost");
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
   expect(db.rows.attachments||[]).toEqual([]);expect(db.storageCalls.map(c=>c.action)).toEqual(["upload","remove"]);
   expect(db.storageCalls[1].paths).toEqual([db.storageCalls[0].path]);await expect.poll(()=>db.held.size).toBe(0);
 });

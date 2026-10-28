@@ -27,7 +27,7 @@ export function createRequestGuard() {
   };
 }
 
-export function createLuggageRefresh({ guard, read, apply, onError = () => {} }) {
+export function createLuggageRefresh({ guard, read, apply, onError = () => {}, onVerified = () => {} }) {
   const work = new Map();
   let timer = null, scheduledContext = null;
   const scheduled = new Set();
@@ -44,10 +44,10 @@ export function createLuggageRefresh({ guard, read, apply, onError = () => {} })
         try {
           const result = await read(scope, context.key);
           if (guard.valid(token) && !entry.dirty) {
-            if (result.error) onError(result.error);
-            else apply(scope, result.data || []);
+            if (result.error) onError(result.error, scope);
+            else { apply(scope, result.data || []); onVerified(scope, result); }
           }
-        } catch (error) { if (guard.valid(token)) onError(error); }
+        } catch (error) { if (guard.valid(token)) onError(error, scope); }
       } while (entry.dirty && guard.sameContext(context));
     })().finally(() => { if (work.get(scope) === entry) work.delete(scope); });
     work.set(scope, entry);

@@ -17,7 +17,7 @@ export async function readBudgetSnapshot(supabase, tripId) {
 
 // One coalesced authority read for the complete financial graph. Invalidations
 // during a read discard its result and rerun once quiet; generations cover ABA.
-export function createBudgetRefresh({ guard, read, apply, onError = () => {}, delay = 80 }) {
+export function createBudgetRefresh({ guard, read, apply, onError = () => {}, onVerified = () => {}, delay = 80 }) {
   let entry = null, timer = null;
   function cancel() { clearTimeout(timer); timer = null; }
   function refresh() {
@@ -35,7 +35,7 @@ export function createBudgetRefresh({ guard, read, apply, onError = () => {}, de
         if (!guard.sameContext(context)) return { ok: false, stale: true };
         if (guard.valid(token) && !work.dirty) {
           if (result.error) { onError(result.error); return { ok: false, error: result.error }; }
-          apply(result.data, context.key); return { ok: true };
+          apply(result.data, context.key); onVerified(result); return { ok: true };
         }
         // A full-trip read may advance this scope too. Its guarded application
         // wins; only a real invalidation requires another snapshot request.

@@ -122,7 +122,8 @@ test("older full loads cannot roll back a successful shared RPC or its offline s
   await page.evaluate(() => { formalLuggageMock.holdA = false; formalLuggageMock.release(); });
   await expect(check).toBeChecked();
   await page.evaluate(() => { formalLuggageMock.offline = true; formalLuggageMock.emit("accommodations"); });
-  await expect(page.getByText("目前使用已快取的離線資料；重新連線後會自動更新。", { exact: true })).toBeVisible();
+  await expect(page.locator('[data-sonner-toast]')).toContainText("目前顯示已快取資料");
+  await expect(page.locator('.workspace > .notice')).toHaveCount(0);
   await expect(check).toBeChecked();
   await expect(page.getByRole("button", { name: "編輯：A private", exact: true })).toBeVisible();
 });
