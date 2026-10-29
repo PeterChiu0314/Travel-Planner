@@ -333,6 +333,62 @@ try{
     await Promise.all([ca.discard(title),cb.discard(note)]);await Promise.all(clients.map(c=>c.dispose()));
     return {overlap:true,transport:'actual PostgreSQL named RPCs; no HTTP mock',fields:['title','note'],financialPreserved:true};
   });
+  const nativeModel=(client,options={})=>{
+    const identity=identities.get(client),calls=[];
+    const service=createBudgetMetadataService({auth:{getSession:async()=>({data:{session:{user:{id:identity.actor}}}})},rpc:async(name,params)=>{
+      calls.push({name,params});const keys=Object.keys(params),values=Object.values(params);
+      let sql=`public.${name}(${keys.map((k,i)=>`${k}=>$${i+1}`).join(',')})`;
+      if(name==='patch_budget_metadata_group'&&options.patchGate){values.push(options.patchGate);options.patchGate=null;sql=`budget_test.hold_result(${sql},$${values.length}::bigint)`;}
+      try {const data=(await query(client,`select ${sql} data`,values))[0].data;
+        if(name==='patch_budget_metadata_group'&&options.loseAck){options.loseAck=false;return {error:{message:'simulated lost transport acknowledgement AFTER actual DB commit'}};}
+        return {data};}catch(error){return {error};}
+    }});
+    const model=createBudgetMetadataEditor({service,sessionId:options.session||identity.session,storage:options.storage,debounceMs:40,
+      read:async()=>options.failRead?{ok:false}:{ok:true,data:{...await snapshot(client,trip,options.session||identity.session),metadataVerified:true,metadataReadStartedAt:Date.now()}}});
+    model.configure(identity.actor,trip,true,true);return {model,calls,options};
+  };
+  await test('B-3 debounced queued typing overlaps another real writer without losing either group',async()=>{
+    const id=await fixture(),heldGate=++gate,fa=nativeModel(a,{patchGate:heldGate}),fb=nativeModel(b);
+    await Promise.all([fa.model.refresh(),fb.model.refresh()]);const title=fa.model.get('budget',id,'title'),note=fb.model.get('budget',id,'note');
+    assert(await fa.model.focus(title));assert(await fb.model.focus(note));await admin('select pg_advisory_lock($1::bigint)',[heldGate]);
+    try {
+      fa.model.input(title,'First');
+      await waitUntil(async()=>{const rows=await activity();return rows.find(r=>r.pid===pidA)?.blocking_pids.includes(observerPid);},'B-3 actual autosave holds transaction');
+      fa.model.input(title,'Queued middle');fa.model.input(title,'Queued latest');fb.model.input(note,'Parallel note');
+      const proof=await waitUntil(async()=>{const rows=await activity();return rows.find(r=>r.pid===pidB)?.blocking_pids.includes(pidA)?rows:false;},'B-3 second autosave actively waits for first');
+      observations.push({name:'B-3-debounced-controller-patches',proof});
+      assert.equal(fa.model.view(title).display,'Queued latest');assert(fa.model.view(title).acceptsIntent);
+      assert.equal(fa.calls.filter(c=>c.name==='patch_budget_metadata_group').length,1);
+    }finally{await admin('select pg_advisory_unlock($1::bigint)',[heldGate]);}
+    await waitUntil(async()=>!title.saveWork&&!note.saveWork&&!fa.model.view(title).dirty&&!fb.model.view(note).dirty,'B-3 final queued save');
+    const final=await record(id);assert.equal(final.title,'Queued latest');assert.equal(final.note,'Parallel note');assert.equal(Number(final.twd_amount),900);
+    const patches=fa.calls.filter(c=>c.name==='patch_budget_metadata_group');assert.deepEqual(patches.map(c=>c.params.p_patch.title),['First','Queued latest']);
+    assert.equal(Number((await state(id,'title')).revision),2);assert.equal(Number((await state(id,'note')).revision),1);
+    await Promise.all([fa.model.dispose(),fb.model.dispose()]);return {overlap:true,autosave:true,queuedVersions:2,financialPreserved:true};
+  });
+  await test('B-3 confirmed patch survives failed snapshot and unknown ack replays after document reload without capability',async()=>{
+    const id=await fixture(),values=new Map(),storage={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};
+    const f=nativeModel(a,{storage});await f.model.refresh();const title=f.model.get('budget',id,'title');assert(await f.model.focus(title));
+    f.model.input(title,'Confirmed canonical');f.options.failRead=true;assert(await f.model.save(title));assert.equal(title.value,'Confirmed canonical');assert(title.syncPending);
+    assert.equal(f.calls.filter(c=>c.name==='patch_budget_metadata_group').length,1);f.options.failRead=false;await f.model.refresh();assert(!title.syncPending);
+    assert(await f.model.retry(title));f.options.loseAck=true;f.model.input(title,'Committed lost ack');assert.equal(await f.model.save(title),false);
+    const pending=JSON.parse([...values.values()][0]).pending;assert(pending.id);assert(!JSON.stringify([...values.values()]).includes('p_token'));
+    await f.model.dispose();
+    const restored=nativeModel(a,{storage,session:uuid()});await restored.model.refresh();const g=restored.model.get('budget',id,'title');
+    assert(!restored.model.view(g).writable);assert.equal(g.request.p_token,null);assert(await restored.model.retry(g));
+    assert.equal(g.value,'Committed lost ack');assert.equal(Number((await state(id,'title')).revision),2);
+    const replay=restored.calls.find(c=>c.name==='patch_budget_metadata_group').params;assert.equal(replay.p_request_id,pending.id);assert.equal(replay.p_token,null);assert.equal(replay.p_epoch,null);
+    assert.equal((await admin('select count(*)::int n from app_private.budget_metadata_requests where request_id=$1',[pending.id]))[0].n,1);
+    await restored.model.dispose();return {native:true,confirmedReadFailure:true,reloadReplayWithoutAuthority:true,commits:2};
+  });
+  await test('B-3 dirty flush and exact group release admit a legacy whole-record lease using fresh canonical',async()=>{
+    const id=await fixture(),f=nativeModel(a);await f.model.refresh();const title=f.model.get('budget',id,'title');assert(await f.model.focus(title));
+    f.model.input(title,'Before full editor');assert(await f.model.prepare('budget',id));assert(await f.model.close('budget',id));
+    const row=await record(id);assert.equal(row.title,'Before full editor');const held=await call(a,legacyAction(a,id,row.updated_at));assert(held.granted);
+    const identity=identities.get(a);await query(a,"select public.budget_edit_lease('budget',$1,$2,$3,'release',null)",[id,identity.session,identity.token]);
+    const patch=f.calls.find(c=>c.name==='patch_budget_metadata_group').params,release=f.calls.find(c=>c.params.p_action==='release').params;
+    assert.equal(release.p_token,patch.p_token);assert.equal(release.p_epoch,patch.p_epoch);await f.model.dispose();return {native:true,dirtyHandoff:true,exactRelease:true};
+  });
   await test('same group exclusive across two simultaneously active user sessions',async()=>{
     const id=await fixture();const result=await overlap('same-group',leaseAction(a,id,'title'),leaseAction(b,id,'title'));
     assert(result.outcomes[0].ok&&result.outcomes[0].data.granted);assert(result.outcomes[1].ok&&!result.outcomes[1].data.granted);

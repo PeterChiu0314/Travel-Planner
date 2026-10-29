@@ -39,7 +39,7 @@ export function createBudgetMetadataService(supabase) {
 // Authority is held only in this controller. Snapshot own_session and persisted
 // input are hints; neither can manufacture a capability. No legacy save fallback.
 export function createBudgetMetadataEditor({ service, read, sessionId, storage = null, now = Date.now,
-  makeId = () => crypto.randomUUID(), timeoutMs = 10000 }) {
+  makeId = () => crypto.randomUUID(), timeoutMs = 10000, debounceMs = 1000 }) {
   const entries = new Map(), listeners = new Set();
   let context = null, generation = 0, revision = 0, projectionRevision = 0, snapshot = null, verified = false, message = "正在確認協作狀態…", offset = 0;
   let readWork = null, renewAt = 0, refreshAt = Infinity, suspended = false;
@@ -47,11 +47,22 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
   const key = (kind, id, group) => `${kind}:${id}:${group}`;
   const current = g => g.generation === generation && g.actor === context?.actor && g.trip === context?.trip && entries.get(g.key) === g;
   const draftKey = g => `travel-planner-metadata:${g.actor}:${g.trip}:${g.key}`;
-  const dirty = g => (g.staged ?? g.value) !== g.canonical;
+  const dirty = g => patchValue(g.group, g.staged ?? g.value) !== patchValue(g.group, g.canonical);
+  const cancelTimer = g => { clearTimeout(g.timer); g.timer = null; };
+  function schedule(g) {
+    cancelTimer(g);
+    if (!current(g) || !dirty(g) || !owns(g) || g.composing || g.failed || g.request || g.saveWork) return;
+    g.timer = setTimeout(() => { g.timer = null; void save(g, false); }, Math.max(0, (g.dueAt ?? now()) - now()));
+    g.timer.unref?.();
+  }
   function persist(g) {
     try {
-      if (!dirty(g)) storage?.removeItem(draftKey(g));
-      else storage?.setItem(draftKey(g), JSON.stringify({ version: 1, value: g.staged ?? g.value, base: g.base }));
+      if (!dirty(g) && !g.request) storage?.removeItem(draftKey(g));
+      else {
+        const pending = g.request ? { id: g.request.p_request_id, session: g.request.p_session_id,
+          base: g.request.p_base_revision, value: g.request.p_patch[g.group] } : undefined;
+        storage?.setItem(draftKey(g), JSON.stringify({ version: 2, value: g.staged ?? g.value, base: g.base, pending }));
+      }
     } catch { /* In-memory input remains available if storage is blocked. */ }
   }
   const allowed = g => current(g) && context.editable && verified && snapshot?.metadataProtocol.enabled
@@ -86,6 +97,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       g.deleted = !record; g.supported = record?.supported; g.ready = record?.state_ready;
       if (!remote) { g.state = "lost"; g.error = "項目已移除，未提交內容仍保留。"; continue; }
       if (remote.revision < g.base) continue; // A response predating our confirmed patch cannot roll it back.
+      g.syncPending = false;
       g.remote = remote;
       if (remote.revision !== g.base && (dirty(g) || g.request)) {
         if (!g.request) { g.conflict = true; g.error = "此欄位已由其他人更新，草稿已保留。請確認最新內容。"; }
@@ -110,18 +122,27 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     })().finally(() => { if (readWork === work) readWork = null; });
     readWork = work; return work;
   }
-  function get(kind, id, group) {
+  function get(kind, id, group, initialValue = "") {
     if (!context || !groups.includes(group)) return null;
     const k = key(kind, id, group); let g = entries.get(k);
     if (!g) {
       const record = snapshot?.metadataRecords.find(r => r.kind === kind && r.id === id), remote = record?.groups.find(r => r.group === group);
       g = { key: k, kind, id, group, actor: context.actor, trip: context.trip, generation,
-        canonical: remote?.value ?? "", value: remote?.value ?? "", base: remote?.revision, remote,
-        state: "idle", supported: record?.supported, ready: record?.state_ready, lastActivity: now() };
+        canonical: remote?.value ?? initialValue, value: remote?.value ?? initialValue, base: remote?.revision, remote,
+        state: "idle", localRevision: 0, supported: record?.supported, ready: record?.state_ready, lastActivity: now() };
       try { const saved = JSON.parse(storage?.getItem(draftKey(g)) || "null");
-        if (saved?.version === 1 && typeof saved.value === "string" && version(saved.base)) {
+        if ([1, 2].includes(saved?.version) && typeof saved.value === "string" && version(saved.base)) {
           g.staged = saved.value; g.base = saved.base; g.conflict = Boolean(remote && remote.revision !== saved.base);
           g.error = g.conflict ? "遠端版本已更新，已保留此分頁草稿。" : "已恢復此分頁草稿，請先確認編輯權限。";
+          const p = saved.pending;
+          if (saved.version === 2 && p && typeof p.id === "string" && typeof p.session === "string" && version(p.base)
+            && (typeof p.value === "string" || group === "note" && p.value === null)) {
+            g.request = { ...args(g, "patch"), p_request_id: p.id, p_session_id: p.session,
+              p_base_revision: p.base, p_token: null, p_epoch: null, p_patch: { [group]: p.value } };
+            g.value = saved.value; delete g.staged;
+            g.submittedRevision = patchValue(group, saved.value) === p.value ? 0 : -1;
+            g.conflict = false; g.failed = true; g.error = "先前儲存結果待確認，請重試原請求。";
+          }
         }
       } catch { /* Invalid stored data never grants authority. */ }
       entries.set(k, g);
@@ -130,6 +151,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
   }
   async function release(g) {
     if (!g || !current(g)) return true;
+    cancelTimer(g);
     g.focused = false; g.releasing = true;
     if (g.acquiring) { await g.acquiring; if (!current(g)) return false; }
     const result = await cleanup(g);
@@ -139,10 +161,11 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     emit(); return result.ok;
   }
   async function focus(g) {
-    if (!g || !allowed(g) || g.conflict || g.request || g.releasing) return false;
+    if (!g || !allowed(g) || g.conflict || g.request || g.releasing || g.exiting) return false;
     g.focused = true;
     if (owns(g)) return true;
     if (g.acquiring) return g.acquiring;
+    g.lastActivity = now(); g.activity = (g.activity || 0) + 1;
     g.state = "pending"; g.error = ""; g.token ||= makeId(); emit();
     const work = (async () => {
       if (!(await service.authorized(g.actor)) || !current(g)) { g.token = null; return false; }
@@ -153,7 +176,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
           if (current(g) && released.ok) { g.token = null; g.state = "idle"; g.releasing = false; emit(); }
         }
       });
-      if (!current(g) || g.releasing || !g.focused) {
+      if (!current(g) || g.releasing || !g.focused && !dirty(g)) {
         if (result.data?.granted) { g.epoch = result.data.epoch; await cleanup(g); }
         return false;
       }
@@ -168,55 +191,87 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       }
       g.epoch = data.epoch; g.expires = Date.parse(data.expires_at) - offset;
       g.canonical = data.value ?? ""; g.value = g.staged ?? g.value; delete g.staged;
-      g.state = "held"; g.lastActivity = now(); g.activity = (g.activity || 0) + 1;
-      persist(g); emit(); return true;
+      g.state = "held";
+      persist(g); emit(); schedule(g); return true;
     })().finally(() => { g.acquiring = null; if (current(g) && g.state === "pending") {
       g.state = "uncertain"; g.error = "編輯權限尚未確認，請重試。"; emit();
     } });
     g.acquiring = work; return work;
   }
   function input(g, value) {
-    if (!g || !allowed(g) || g.conflict || g.releasing || g.request || typeof value !== "string") return;
+    if (!g || !allowed(g) || g.conflict || g.releasing || g.exiting || typeof value !== "string") return;
     if (g.state === "pending") g.staged = value; // Intent buffer, never a committable value before admission.
     else if (owns(g)) g.value = value;
     else return;
-    g.lastActivity = now(); g.activity = (g.activity || 0) + 1; g.error = ""; persist(g); emit();
+    g.localRevision++; g.lastActivity = now(); g.dueAt = now() + debounceMs;
+    g.activity = (g.activity || 0) + 1;
+    if (g.invalid) { g.failed = false; g.invalid = false; g.error = ""; }
+    persist(g); emit(); schedule(g);
   }
-  async function save(g) {
-    if (!g || !current(g) || g.saving) return false;
+  function save(g, flush = true) {
+    if (!g || !current(g)) return Promise.resolve(false);
+    cancelTimer(g); g.flush ||= flush;
+    if (g.saveWork) return g.saveWork;
+    const work = commit(g).finally(() => {
+      if (g.saveWork === work) { g.saveWork = null; g.flush = false; schedule(g); }
+    });
+    g.saveWork = work; return work;
+  }
+  async function commit(g) {
+    if (g.acquiring) await g.acquiring;
+    if (!current(g) || g.composing || suspended || !verified) return false;
     if (!g.request && (!owns(g) || g.conflict || !dirty(g))) return !dirty(g);
-    if (g.group === "title" && !g.value.trim() && !g.request) { g.error = "請填寫項目名稱。"; emit(); return false; }
-    if (!(await service.authorized(g.actor)) || !current(g)) return false;
-    g.request ||= { ...args(g, "patch"), p_request_id: makeId(), p_patch: { [g.group]: patchValue(g.group, g.value) } };
+    if (g.group === "title" && !g.value.trim() && !g.request) { g.invalid = true; g.failed = true; g.error = "請填寫項目名稱。"; emit(); return false; }
+    if (!(await service.authorized(g.actor))) {
+      if (current(g)) { g.failed = true; g.state = "uncertain"; g.error = "登入狀態尚未確認，草稿已保留。"; emit(); }
+      return false;
+    }
+    if (!current(g)) return false;
+    if (!g.request) {
+      if (!owns(g) || g.composing) return false;
+      g.request = { ...args(g, "patch"), p_request_id: makeId(), p_patch: { [g.group]: patchValue(g.group, g.value) } };
+      g.submittedRevision = g.localRevision;
+    }
     const { p_action, p_activity_seq, p_dirty, ...request } = g.request;
-    g.saving = true; g.error = ""; emit();
-    const result = await bounded(service.patch(request));
+    g.saving = true; g.error = ""; persist(g); emit();
+    // A timeout cannot start another transport while the original is still in flight.
+    const transport = g.patchWork ||= Promise.resolve().then(() => service.patch(request)).catch(error => ({ error }));
+    let settled = false; transport.then(() => { settled = true; });
+    const result = await bounded(transport);
+    if (settled && g.patchWork === transport) g.patchWork = null;
     if (!current(g)) return false;
     g.saving = false;
     const data = result.data;
     if (result.error || data?.id !== g.id || data?.kind !== g.kind || data?.group !== g.group || data?.request_id !== request.p_request_id
-      || data?.value !== request.p_patch[g.group] || !version(data?.revision) || ![g.base, g.base + 1].includes(data.revision)) {
+      || data?.value !== request.p_patch[g.group] || !version(data?.revision) || ![request.p_base_revision, request.p_base_revision + 1].includes(data.revision)) {
       const code = result.error?.code;
       if (["40001", "40P01", "55P03", "42501", "55000", "22023", "0A000"].includes(code)) {
         g.request = null; g.state = "lost"; g.conflict = code === "40001";
       }
       g.error = code === "55P03" ? "編輯權限或交易忙碌，草稿已保留。請重新確認後重試。"
         : code === "40001" ? "此欄位已更新，請確認最新內容；草稿已保留。" : result.error?.message || "儲存結果尚待確認，請以原請求重試。";
-      persist(g); emit(); void refresh(); return false;
+      g.failed = true; persist(g); emit(); void refresh(); return false;
     }
-    g.value = data.value ?? ""; g.canonical = g.value; g.base = data.revision;
-    g.request = null; g.conflict = false; g.error = ""; g.saved = true; persist(g); emit();
-    const refreshed = await refresh();
+    g.canonical = data.value ?? ""; g.base = data.revision;
+    if (g.localRevision === g.submittedRevision) g.value = g.canonical;
+    g.request = null; g.conflict = false; g.error = ""; g.failed = false; g.saved = true; g.syncPending = true; persist(g); emit();
+    await refresh();
     if (!current(g)) return false;
+    if (dirty(g)) {
+      if (g.flush || (g.dueAt ?? Infinity) <= now()) return commit(g);
+      return true;
+    }
     if (!g.focused && !dirty(g)) return release(g);
-    return refreshed.ok !== false; // A committed value is never resubmitted to repair a failed refresh.
+    return true; // A committed value is never resubmitted to repair a failed refresh.
   }
   async function discard(g) {
+    if (!g || !current(g)) return false;
     if (g.request || g.saving) { g.error = "儲存結果仍待確認，請先重試原請求。"; emit(); return false; }
     if (!(await release(g))) return false;
-    const remote = g.remote;
+    if (!current(g)) return false;
+    const remote = g.remote?.revision >= g.base ? g.remote : null;
     g.value = remote?.value ?? g.canonical; g.canonical = g.value; g.base = remote?.revision ?? g.base;
-    delete g.staged; g.conflict = false; g.saved = false; persist(g); emit(); return true;
+    cancelTimer(g); delete g.staged; g.conflict = false; g.failed = false; g.invalid = false; g.saved = false; persist(g); emit(); return true;
   }
   return {
     sessionId, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, getVersion: () => revision,
@@ -224,19 +279,37 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     matches: (actor, trip) => context?.actor === actor && context?.trip === trip,
     reconcile() { suspended = false; renewAt = 0; return refresh(); },
     get, ingest, refresh, focus, input, save, discard, release,
+    composition(g, active) { if (!g || !current(g)) return; g.composing = active;
+      if (active) cancelTimer(g); else { g.dueAt = g.focused ? now() + debounceMs : now(); schedule(g); } },
+    async retry(g) {
+      if (!g || !current(g) || !(await refresh()).ok || !current(g)) return false;
+      if (g.request) {
+        const confirmed = await save(g); // Exact replay is checked by DB even after expiry.
+        if (!current(g) || g.request || !dirty(g)) return confirmed;
+      }
+      if (g.conflict || g.releasing) return false;
+      g.failed = false;
+      if (!owns(g) && !(await focus(g))) return false;
+      return save(g);
+    },
     status: () => ({ verified, message, snapshot, editable: context?.editable }),
     invalidate(error = "協作狀態尚未確認，草稿已保留。") {
       verified = false; message = error;
+      for (const g of entries.values()) cancelTimer(g);
       for (const g of entries.values()) if (g.state === "held") g.state = "uncertain";
       emit(true);
     },
     view(g) { return { ...g, display: g.staged ?? g.value, dirty: dirty(g), writable: owns(g),
-      acceptsIntent: allowed(g) && !g.conflict && !g.request && !g.releasing && (owns(g) || g.state === "pending") }; },
-    blur(g) { if (!g) return; g.focused = false; if (!dirty(g) && !g.request && !g.saving) void release(g); },
-    suspend() { suspended = true; verified = false; for (const g of entries.values()) { if (g.state === "held") g.state = "uncertain"; } emit(true); },
+      acceptsIntent: allowed(g) && !g.conflict && !g.releasing && !g.exiting && (owns(g) || g.state === "pending") }; },
+    blur(g) { if (!g) return; g.focused = false; g.dueAt = now(); cancelTimer(g);
+      if (g.composing) return;
+      if (dirty(g) || g.saving) { if (!g.failed) void save(g); }
+      else if (!g.request) void release(g);
+    },
+    suspend() { suspended = true; verified = false; for (const g of entries.values()) { cancelTimer(g); if (g.state === "held") g.state = "uncertain"; } emit(true); },
     configure(actor, trip, active, editable) {
       if (context?.actor === actor && context?.trip === trip && context?.active === active && context?.editable === editable) return;
-      generation++; for (const g of entries.values()) { persist(g); g.releasing = true; if (!g.acquiring) void cleanup(g); }
+      generation++; for (const g of entries.values()) { cancelTimer(g); persist(g); g.releasing = true; if (!g.acquiring) void cleanup(g); }
       entries.clear(); context = actor && trip ? { actor, trip, active, editable: editable && active } : null;
       verified = false; snapshot = null; readWork = null; refreshAt = Infinity; suspended = false;
       message = "正在確認協作狀態…"; emit(true);
@@ -245,7 +318,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       if (!context?.active || suspended) return;
       for (const g of entries.values()) {
         if (g.state === "held" && g.expires <= now()) { g.state = "lost"; g.error = "編輯權限已到期，草稿已保留。"; emit(); }
-        if (g.token && !g.request && !g.saving && now() - g.lastActivity >= (dirty(g) ? 600000 : 120000) && !g.releasing) await release(g);
+        if (g.token && !g.saving && now() - g.lastActivity >= (dirty(g) || g.failed || g.request ? 600000 : 120000) && !g.releasing) await release(g);
       }
       if (now() >= refreshAt) { refreshAt = Infinity; await refresh(); }
       if (now() < renewAt || !verified) return;
@@ -256,7 +329,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         const result = await bounded(service.lease(args(g, "renew")));
         if (!current(g) || g.releasing) continue;
         g.state = !result.error && result.data?.granted ? "held" : "uncertain";
-        if (g.state === "held") g.expires = Date.parse(result.data.expires_at) - offset;
+        if (g.state === "held") { g.expires = Date.parse(result.data.expires_at) - offset; schedule(g); }
         else g.error = "編輯權限尚未確認，草稿已保留。";
         emit();
       }
@@ -267,10 +340,25 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       return true;
     },
     async saveAll(kind, id) {
-      for (const g of entries.values()) if (g.kind === kind && g.id === id && (dirty(g) || g.request) && !(await save(g))) return false;
+      const selected = [...entries.values()].filter(g => g.kind === kind && g.id === id);
+      for (const g of selected) if ((dirty(g) || g.request || g.saveWork) && !(await save(g))) return false;
+      if (selected.some(g => !current(g) || dirty(g) || g.request || g.saveWork)) return false;
       return true;
     },
+    async prepare(kind, id) {
+      if ([...entries.values()].some(g => g.kind === kind && g.id === id && (g.failed || g.conflict || g.composing || g.request && !g.saving))) return false;
+      return this.saveAll(kind, id);
+    },
+    async finish(kind, id) {
+      const selected = [...entries.values()].filter(g => g.kind === kind && g.id === id);
+      for (const g of selected) { g.exiting = true; cancelTimer(g); } emit();
+      try {
+        if (!(await this.prepare(kind, id))) return false;
+        for (const g of selected) if (!current(g) || !(await release(g))) return false;
+        return selected.every(current);
+      } finally { for (const g of selected) g.exiting = false; emit(); }
+    },
     async dispose() { generation++; const previous = [...entries.values()]; entries.clear(); context = null;
-      for (const g of previous) { persist(g); g.releasing = true; if (!g.acquiring) await cleanup(g); } },
+      for (const g of previous) { cancelTimer(g); persist(g); g.releasing = true; if (!g.acquiring) await cleanup(g); } },
   };
 }

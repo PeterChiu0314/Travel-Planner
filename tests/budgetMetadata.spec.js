@@ -3,16 +3,19 @@ import { createBudgetMetadataEditor, validBudgetMetadataSnapshot, withoutBudgetM
 import { createDemoBudgetMetadataService } from "../src/demo/budgetMetadata.js";
 import { primaryBudgetCollaborators } from "../src/lib/budgetCollaboration.js";
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
+const clients = [];
+test.afterEach(async () => { await Promise.all(clients.splice(0).map(c => c.dispose())); });
 async function setup(options = {}) {
   let time = Date.now(), serial = 0;
   const values = new Map(), storage = { getItem: k => values.get(k), setItem: (k, v) => values.set(k, v), removeItem: k => values.delete(k) };
   const props = { currentUserId: "A", activeTrip: { id: "trip" }, budgetItems: [{ id: "id", trip_id: "trip", title: "Title", note: "Note", currency: "TWD", amount: 900 }], actualExpenses: [],
     onSaveMetadata(kind, id, group, value) { props.budgetItems[0] = { ...props.budgetItems[0], [group]: value }; } };
-  const transport = createDemoBudgetMetadataService(() => props, () => time), calls = [];
-  const service = { ...transport, lease: async args => { calls.push(args); return transport.lease(args); } };
-  const client = createBudgetMetadataEditor({ service, read: trip => transport.read(trip), sessionId: "tab", now: () => time, makeId: () => `token-${++serial}`, storage, ...options });
+  const transport = createDemoBudgetMetadataService(() => props, () => time), calls = [], patches = [], reads = { fail: false };
+  const service = { ...transport, lease: async args => { calls.push(args); return transport.lease(args); }, patch: async args => { patches.push(args); return transport.patch(args); } };
+  const client = createBudgetMetadataEditor({ service, read: trip => reads.fail ? {ok:false} : transport.read(trip), sessionId: "tab", now: () => time, makeId: () => `token-${++serial}`, storage, ...options });
+  clients.push(client);
   client.configure("A", "trip", true, true); await client.refresh();
-  return { client, props, calls, service, transport, values, storage, title: client.get("budget", "id", "title"), note: client.get("budget", "id", "note"), advance: ms => { time += ms; } };
+  return { client, props, calls, patches, reads, service, transport, values, storage, title: client.get("budget", "id", "title"), note: client.get("budget", "id", "note"), advance: ms => { time += ms; } };
 }
 test("initial inspection has no authority; snapshot readiness/schema are strictly checked", async () => {
   const f = await setup(); expect(f.calls).toEqual([]); expect(f.client.view(f.title).writable).toBe(false);
@@ -22,7 +25,7 @@ test("initial inspection has no authority; snapshot readiness/schema are strictl
 test("pending typing is an intent buffer, promoted only after the actual grant", async () => {
   const f = await setup(), gate = deferred(), original = f.service.lease; f.service.lease = async args => args.p_action === "acquire" ? gate.promise : original(args);
   const work = f.client.focus(f.title); await Promise.resolve(); f.client.input(f.title, "First IME input");
-  expect(f.title.value).toBe("Title"); expect(f.title.staged).toBe("First IME input"); expect(await f.client.save(f.title)).toBe(false);
+  expect(f.title.value).toBe("Title"); expect(f.title.staged).toBe("First IME input"); expect(f.props.budgetItems[0].title).toBe("Title");
   gate.resolve({ data: { granted: true, revision: 0, epoch: 1, value: "Title", expires_at: new Date(Date.now() + 120000).toISOString() } });
   await work; expect(f.title.value).toBe("First IME input"); expect(f.client.view(f.title).writable).toBe(true);
 });
@@ -51,9 +54,10 @@ test("same group remote revision creates conflict, not an automatic base replace
   expect(f.title.conflict).toBe(true); expect(f.title.base).toBe(0); expect(await f.client.save(f.title)).toBe(false);
   expect(await f.client.discard(f.title)).toBe(true); expect(f.title.value).toBe("Remote"); expect(f.title.base).toBe(1);
 });
-test("clean blur releases and dirty blur retains recoverable input", async () => {
+test("clean blur releases and dirty blur flushes before release", async () => {
   const f = await setup(); await f.client.focus(f.title); f.client.blur(f.title); await f.client.release(f.title); expect(f.title.token).toBe(null);
-  await f.client.focus(f.note); f.client.input(f.note, "Draft"); f.client.blur(f.note); expect(f.note.token).toBeTruthy(); expect(f.client.view(f.note).dirty).toBe(true);
+  await f.client.focus(f.note); f.client.input(f.note, "Draft"); f.client.blur(f.note);
+  await expect.poll(() => f.note.token).toBe(null); expect(f.props.budgetItems[0].note).toBe("Draft");
 });
 test("real idle releases clean leases and heartbeats do not count as human activity", async () => {
   const f = await setup(); await f.client.focus(f.title); const activity = f.title.activity;
@@ -115,4 +119,126 @@ test("group-aware account deduplication retains two edits on the same record", (
 });
 test("offline graph caching strips metadata authority and transient hints", () => {
   expect(withoutBudgetMetadata({ tripId: "trip", metadataVerified: true, metadataProtocol: {}, metadataRecords: [], collaboration: {}, serverNow: "now", collaborationRevision: 7, nextRefreshAt: "later" })).toEqual({ tripId: "trip" });
+});
+
+test("debounce coalesces rapid input and ignores canonical no-ops", async () => {
+  const f = await setup({debounceMs:30}); await f.client.focus(f.title);
+  f.client.input(f.title,"  Title  "); await new Promise(r=>setTimeout(r,45)); expect(f.patches).toHaveLength(0);
+  for (const text of ["A","AB","ABC"]) f.client.input(f.title,text);
+  expect(f.patches).toHaveLength(0); await expect.poll(()=>f.patches.length).toBe(1);
+  expect(f.props.budgetItems[0].title).toBe("ABC");
+});
+
+test("composition suppresses debounce and blur until composition ends", async () => {
+  const f=await setup({debounceMs:20}); await f.client.focus(f.title); f.client.composition(f.title,true);
+  f.client.input(f.title,"京都"); f.client.blur(f.title); await new Promise(r=>setTimeout(r,35));
+  expect(f.patches).toHaveLength(0); f.client.composition(f.title,false);
+  await expect.poll(()=>f.title.token).toBe(null); expect(f.props.budgetItems[0].title).toBe("京都");
+});
+
+test("in-flight acknowledgement confirms only submitted revision; latest input drains serially", async () => {
+  const f=await setup(), gate=deferred(), old=f.service.patch; let active=0, maximum=0, first=true;
+  f.service.patch=async args=>{active++; maximum=Math.max(active,maximum); if(first){first=false;await gate.promise;} const result=await old(args); active--; return result;};
+  await f.client.focus(f.title); f.client.input(f.title,"A"); const work=f.client.save(f.title);
+  await expect.poll(()=>f.title.saving).toBe(true); f.client.input(f.title,"B"); f.client.input(f.title,"C");
+  expect(f.client.view(f.title).acceptsIntent).toBe(true); gate.resolve(); expect(await work).toBe(true);
+  expect(f.patches.map(p=>p.p_patch.title)).toEqual(["A","C"]); expect(maximum).toBe(1);
+  expect(f.title.base).toBe(2); expect(f.title.value).toBe("C"); expect(f.props.budgetItems[0].title).toBe("C");
+});
+
+test("committed canonical survives a failed snapshot and is not resubmitted", async () => {
+  const f=await setup(); await f.client.focus(f.title); f.client.input(f.title,"  Confirmed  "); f.reads.fail=true;
+  expect(await f.client.save(f.title)).toBe(true); expect(f.title.value).toBe("Confirmed"); expect(f.title.syncPending).toBe(true);
+  expect(f.title.request).toBe(null); expect(f.client.status().verified).toBe(false); expect(f.patches).toHaveLength(1);
+  f.reads.fail=false; await f.client.refresh(); expect(f.title.value).toBe("Confirmed"); expect(f.title.syncPending).toBe(false); expect(f.patches).toHaveLength(1);
+});
+
+test("queued input survives successful first patch plus failed refresh", async () => {
+  const f=await setup(), gate=deferred(), old=f.service.patch;
+  f.service.patch=async args=>{await gate.promise;return old(args);}; await f.client.focus(f.title); f.client.input(f.title,"A");
+  const work=f.client.save(f.title); await expect.poll(()=>f.title.saving).toBe(true); f.client.input(f.title,"B"); f.reads.fail=true; gate.resolve();
+  expect(await work).toBe(false); expect(f.title.canonical).toBe("A"); expect(f.title.value).toBe("B"); expect(f.patches).toHaveLength(1);
+  f.reads.fail=false; expect(await f.client.retry(f.title)).toBe(true); expect(f.props.budgetItems[0].title).toBe("B");
+});
+
+test("unknown result preserves original payload while newer input queues", async () => {
+  const f=await setup(), old=f.service.patch; let first=true;
+  f.service.patch=async args=>{const result=await old(args);if(first){first=false;return {error:{message:"lost ack"}};}return result;};
+  await f.client.focus(f.title); f.client.input(f.title,"A"); expect(await f.client.save(f.title)).toBe(false);
+  f.client.input(f.title,"B"); expect(await f.client.prepare("budget","id")).toBe(false); expect(f.patches).toHaveLength(1);
+  expect(await f.client.retry(f.title)).toBe(true); expect(f.patches).toHaveLength(3); expect(f.patches[0]).toEqual(f.patches[1]);
+  expect(f.patches[2].p_request_id).not.toBe(f.patches[0].p_request_id); expect(f.props.budgetItems[0].title).toBe("B");
+});
+
+test("transport timeout never overlaps a second patch before the original settles", async () => {
+  const f=await setup({timeoutMs:15}),gate=deferred(),old=f.service.patch; let count=0;
+  f.service.patch=async args=>{count++;await gate.promise;return old(args);}; await f.client.focus(f.title); f.client.input(f.title,"A");
+  expect(await f.client.save(f.title)).toBe(false); expect(await f.client.save(f.title)).toBe(false); expect(count).toBe(1);
+  gate.resolve(); expect(await f.client.save(f.title)).toBe(true); expect(count).toBe(1); expect(f.props.budgetItems[0].title).toBe("A");
+});
+
+test("unknown result persists an inert replay ledger without capability and survives new document session", async () => {
+  const f=await setup(),old=f.service.patch; let first=true;
+  f.service.patch=async args=>{const result=await old(args);if(first){first=false;return {error:{message:"ack lost"}};}return result;};
+  await f.client.focus(f.title); f.client.input(f.title,"Committed"); await f.client.save(f.title);
+  const payload=JSON.parse([...f.values.values()][0]); expect(payload.pending.id).toBe(f.patches[0].p_request_id);
+  expect(JSON.stringify(payload)).not.toMatch(/p_token|p_epoch|token_hash/);
+  const client=createBudgetMetadataEditor({service:f.service,read:trip=>f.transport.read(trip),sessionId:"new-tab",storage:f.storage}); clients.push(client);
+  client.configure("A","trip",true,true); await client.refresh(); const group=client.get("budget","id","title");
+  expect(client.view(group).writable).toBe(false); expect(group.request.p_token).toBe(null);
+  expect(await client.retry(group)).toBe(true); expect(f.patches[1]).toMatchObject({p_request_id:payload.pending.id,p_session_id:"tab",p_token:null,p_epoch:null});
+  expect(group.request).toBe(null); expect(group.value).toBe("Committed"); expect(group.base).toBe(1);
+});
+
+test("dirty prepare drains final patch before exact cleanup; failed patch cannot prepare", async () => {
+  const f=await setup(); await f.client.focus(f.title); f.client.input(f.title,"Last revision");
+  expect(await f.client.prepare("budget","id")).toBe(true); expect(f.props.budgetItems[0].title).toBe("Last revision");
+  const epoch=f.title.epoch, token=f.title.token; expect(await f.client.close("budget","id")).toBe(true);
+  expect(f.calls.at(-1)).toMatchObject({p_action:"release",p_token:token,p_epoch:epoch});
+  await f.client.focus(f.title); f.client.input(f.title,""); expect(await f.client.prepare("budget","id")).toBe(false);
+  expect(f.client.view(f.title).dirty).toBe(true);
+});
+
+test("invalid draft uses ten minute idle; heartbeat, snapshots and saved responses do not reset activity", async () => {
+  const f=await setup(); await f.client.focus(f.title); f.client.input(f.title,""); await f.client.save(f.title);
+  const activity=f.title.lastActivity; for(let i=0;i<9;i++){f.advance(60000);await f.client.tick();}
+  expect(f.title.token).toBeTruthy(); expect(f.title.lastActivity).toBe(activity); expect(f.props.budgetItems[0].title).toBe("Title");
+  f.advance(60001); await f.client.tick(); expect(f.title.token).toBe(null); expect(f.title.value).toBe("");
+});
+
+test("late patch after ABA cannot replace the new context or submit queued input", async () => {
+  const f=await setup(),gate=deferred(),old=f.service.patch; f.service.patch=async args=>{await gate.promise;return old(args);};
+  await f.client.focus(f.title); f.client.input(f.title,"Old"); const work=f.client.save(f.title); await expect.poll(()=>f.title.saving).toBe(true);
+  f.client.input(f.title,"Queued old"); f.client.configure("A","other",true,true); f.client.configure("A","trip",true,true); await f.client.refresh();
+  const current=f.client.get("budget","id","title"); gate.resolve(); expect(await work).toBe(false);
+  expect(current.value).toBe("Queued old"); expect(current.base).toBe(0); expect(current.request.p_request_id).toBe(f.patches[0].p_request_id);
+  expect(f.patches).toHaveLength(1); expect(f.client.view(current).writable).toBe(false);
+});
+
+test("unknown result at ten minute idle releases exact capability but keeps replay intent",async()=>{
+  const f=await setup(),old=f.service.patch;f.service.patch=async args=>{await old(args);return {error:{message:"lost ack"}};};
+  await f.client.focus(f.title); f.client.input(f.title,"Unknown committed");await f.client.save(f.title);
+  const request=f.title.request;f.advance(600001);await f.client.tick();expect(f.title.token).toBe(null);expect(f.title.request).toEqual(request);
+  expect(JSON.parse([...f.values.values()][0]).pending.id).toBe(request.p_request_id);
+});
+
+test("failed auth confirmation stops autosave without busy retrying or issuing a patch",async()=>{
+  const f=await setup({debounceMs:20});await f.client.focus(f.title);let checks=0;
+  f.service.authorized=async()=>{checks++;return false;};f.client.input(f.title,"Private draft");
+  await expect.poll(()=>f.title.failed).toBe(true);await new Promise(r=>setTimeout(r,60));
+  expect(checks).toBe(1);expect(f.patches).toHaveLength(0);expect(f.title.value).toBe("Private draft");expect(f.client.view(f.title).writable).toBe(false);
+});
+
+test("finish freezes both groups while flushing and releasing, preserving the last accepted revision",async()=>{
+  const f=await setup(),gate=deferred(),old=f.service.lease;
+  await f.client.focus(f.title);await f.client.focus(f.note);f.client.input(f.title,"Title final");f.client.input(f.note,"Note final");
+  f.service.lease=async args=>{if(args.p_action==="release"&&args.p_group==="title")await gate.promise;return old(args);};
+  const finish=f.client.finish("budget","id");await expect.poll(()=>f.title.releasing).toBe(true);
+  f.client.input(f.note,"Too late to mutate a leaving editor");expect(f.note.value).toBe("Note final");expect(f.client.view(f.note).acceptsIntent).toBe(false);
+  gate.resolve();expect(await finish).toBe(true);expect(f.props.budgetItems[0]).toMatchObject({title:"Title final",note:"Note final"});expect(f.note.token).toBe(null);
+});
+
+test("first real focus after an idle inspection starts its own activity window",async()=>{
+  const f=await setup();f.advance(180000);await f.client.focus(f.title);await f.client.tick();expect(f.title.token).toBeTruthy();
+  f.advance(120001);await f.client.tick();expect(f.title.token).toBe(null);
 });

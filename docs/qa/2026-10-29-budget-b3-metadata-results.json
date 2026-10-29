@@ -1,0 +1,1764 @@
+{
+  "recordedOn": "2026-10-29",
+  "baseCommit": "1d3d1f7946eab593c41cf6906267cdcfc78c7054",
+  "scope": "B-2 review corrections and B-3 title/note autosave only; default disabled; no hosted rollout",
+  "native": {
+    "marker": "099a5815-d31c-43c1-a4e7-5b8332abf386",
+    "host": "127.0.0.1",
+    "port": 1349,
+    "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+    "results": [
+      {
+        "name": "snapshot extension migration failure is atomic and dormant reverse preserves old definitions/signals",
+        "status": "passed",
+        "ms": 10
+      },
+      {
+        "name": "metadata snapshot keeps the complete invoker financial graph and exposes explicit limited readiness",
+        "status": "passed",
+        "ms": 22,
+        "financialGraphUnchanged": true,
+        "limitedProtocol": true
+      },
+      {
+        "name": "group hints preserve both editors plus legacy selection ordering without leaking secrets",
+        "status": "passed",
+        "ms": 19,
+        "groupEditors": 2,
+        "legacySelectionPreserved": true
+      },
+      {
+        "name": "lease acquire/renew/release notify through opaque signals without touching financial rows or group revisions",
+        "status": "passed",
+        "ms": 14,
+        "financialRowUnchanged": true
+      },
+      {
+        "name": "expired and revoked ownership is hidden on refresh and stale release cannot disturb takeover",
+        "status": "passed",
+        "ms": 24,
+        "expiredHidden": true,
+        "revokedHidden": true,
+        "staleReleaseIgnored": true
+      },
+      {
+        "name": "natural expiry produces no event and uses statement time even inside a long transaction",
+        "status": "passed",
+        "ms": 621,
+        "expiry": "2026-10-29T08:19:03.068Z",
+        "noExpiryWrite": true
+      },
+      {
+        "name": "one STABLE statement retains graph/group/signal snapshot across an overlapping committed patch",
+        "status": "passed",
+        "ms": 87,
+        "overlap": true,
+        "oldRevision": 32,
+        "newRevision": 34
+      },
+      {
+        "name": "uncommitted patch and its signal remain invisible; injected failure rolls both back",
+        "status": "passed",
+        "ms": 47,
+        "overlap": true,
+        "uncommittedVisible": false,
+        "signalRolledBack": true
+      },
+      {
+        "name": "legacy metadata mutations and delete/recreate invalidate without emitting tombstone resources",
+        "status": "passed",
+        "ms": 41,
+        "tombstoneHidden": true,
+        "recreatedFenced": true
+      },
+      {
+        "name": "paused protocol is notified and remains readable with active ownership; linked records report unsupported",
+        "status": "passed",
+        "ms": 19,
+        "pausedReadable": true,
+        "unsupportedExplicit": true
+      },
+      {
+        "name": "snapshot auth/RLS, publication and signal grants preserve private boundaries",
+        "status": "passed",
+        "ms": 43,
+        "invokerStable": true,
+        "onlyOpaqueSignalPublished": true
+      },
+      {
+        "name": "trip deletion retains only its opaque signal and does not resurrect metadata or authorized reads",
+        "status": "passed",
+        "ms": 11,
+        "retainedOpaqueRevision": "3",
+        "metadataRemoved": true
+      },
+      {
+        "name": "B-2 JavaScript adapters/controllers use real named RPCs and independently commit title/note",
+        "status": "passed",
+        "ms": 71,
+        "overlap": true,
+        "transport": "actual PostgreSQL named RPCs; no HTTP mock",
+        "fields": [
+          "title",
+          "note"
+        ],
+        "financialPreserved": true
+      },
+      {
+        "name": "B-3 debounced queued typing overlaps another real writer without losing either group",
+        "status": "passed",
+        "ms": 205,
+        "overlap": true,
+        "autosave": true,
+        "queuedVersions": 2,
+        "financialPreserved": true
+      },
+      {
+        "name": "B-3 confirmed patch survives failed snapshot and unknown ack replays after document reload without capability",
+        "status": "passed",
+        "ms": 52,
+        "native": true,
+        "confirmedReadFailure": true,
+        "reloadReplayWithoutAuthority": true,
+        "commits": 2
+      },
+      {
+        "name": "B-3 dirty flush and exact group release admit a legacy whole-record lease using fresh canonical",
+        "status": "passed",
+        "ms": 20,
+        "native": true,
+        "dirtyHandoff": true,
+        "exactRelease": true
+      },
+      {
+        "name": "same group exclusive across two simultaneously active user sessions",
+        "status": "passed",
+        "ms": 38,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "epoch": 1,
+              "value": "Initial",
+              "granted": true,
+              "revision": 0,
+              "expires_at": "2026-10-29T16:21:03.691377+08:00"
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "reason": "group_locked",
+              "granted": false,
+              "owner_id": "afe76d32-a5f7-4717-800f-6cc874f39eac",
+              "expires_at": "2026-10-29T16:21:03.691377+08:00"
+            }
+          }
+        ],
+        "overlap": true
+      },
+      {
+        "name": "same account different tab sessions cannot share a group capability",
+        "status": "passed",
+        "ms": 28,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "epoch": 1,
+              "value": "Initial",
+              "granted": true,
+              "revision": 0,
+              "expires_at": "2026-10-29T16:21:03.731249+08:00"
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "reason": "group_locked",
+              "granted": false,
+              "owner_id": "afe76d32-a5f7-4717-800f-6cc874f39eac",
+              "expires_at": "2026-10-29T16:21:03.731249+08:00"
+            }
+          }
+        ],
+        "overlap": true
+      },
+      {
+        "name": "different groups acquire in overlapping transactions and both remain held",
+        "status": "passed",
+        "ms": 33,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "epoch": 1,
+              "value": "Initial",
+              "granted": true,
+              "revision": 0,
+              "expires_at": "2026-10-29T16:21:03.759568+08:00"
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "epoch": 1,
+              "value": "Initial note",
+              "granted": true,
+              "revision": 0,
+              "expires_at": "2026-10-29T16:21:03.786481+08:00"
+            }
+          }
+        ],
+        "overlap": true,
+        "serialization": "short trip advisory transactions; long-lived group leases coexist"
+      },
+      {
+        "name": "overlapping partial patches preserve both fields and hide uncommitted data",
+        "status": "passed",
+        "ms": 54,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "id": "00e27b64-6e47-4a23-bbc7-7eebafa8dba0",
+              "kind": "budget",
+              "group": "title",
+              "value": "A title",
+              "revision": 1,
+              "request_id": "c96a7a0e-c3d9-4e47-8897-79cdebc2cc2c",
+              "updated_at": "2026-10-29T16:19:03.795916+08:00",
+              "undo_supported": false
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "id": "00e27b64-6e47-4a23-bbc7-7eebafa8dba0",
+              "kind": "budget",
+              "group": "note",
+              "value": "B note",
+              "revision": 1,
+              "request_id": "deef471f-edf0-4ea9-b216-a5619bccde48",
+              "updated_at": "2026-10-29T16:19:03.832678+08:00",
+              "undo_supported": false
+            }
+          }
+        ],
+        "uncommittedVisible": false
+      },
+      {
+        "name": "standalone Actual partial patches overlap without changing known debit or provenance",
+        "status": "passed",
+        "ms": 80,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "id": "e399fef4-ea96-4732-a10a-73db00553b19",
+              "kind": "actual",
+              "group": "title",
+              "value": "Actual A",
+              "revision": 1,
+              "request_id": "a9bde503-6e70-4a6e-9cb9-cc80da42a824",
+              "updated_at": "2026-10-29T16:19:03.845137+08:00",
+              "undo_supported": false
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "id": "e399fef4-ea96-4732-a10a-73db00553b19",
+              "kind": "actual",
+              "group": "note",
+              "value": "Actual B",
+              "revision": 1,
+              "request_id": "01a5c90d-2015-43da-afbf-617043bb623b",
+              "updated_at": "2026-10-29T16:19:03.878435+08:00",
+              "undo_supported": false
+            }
+          }
+        ],
+        "knownDebitPreserved": true
+      },
+      {
+        "name": "new group wins overlapping legacy whole-record admission",
+        "status": "passed",
+        "ms": 68,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "epoch": 1,
+              "value": "Initial",
+              "granted": true,
+              "revision": 0,
+              "expires_at": "2026-10-29T16:21:03.92809+08:00"
+            }
+          },
+          {
+            "ok": false,
+            "code": "55P03",
+            "message": "group_locked"
+          }
+        ]
+      },
+      {
+        "name": "legacy whole-record lease wins overlapping group admission",
+        "status": "passed",
+        "ms": 50,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "record": {
+                "id": "607de3f0-c7e7-4418-88eb-942c0c8fbf89",
+                "note": "Initial note",
+                "title": "Initial",
+                "amount": 900,
+                "trip_id": "1d6fcb99-2548-40b3-ae45-97a0ef3e5275",
+                "category": "交通",
+                "currency": "TWD",
+                "is_fixed": false,
+                "payer_id": "afe76d32-a5f7-4717-800f-6cc874f39eac",
+                "locked_at": null,
+                "locked_by": null,
+                "created_at": "2026-10-29T16:19:03.992791+08:00",
+                "split_type": "equal",
+                "twd_amount": 900,
+                "updated_at": "2026-10-29T16:19:03.992791+08:00",
+                "subcategory": null,
+                "unit_amount": null,
+                "pricing_mode": "split_total",
+                "exchange_rate": 1,
+                "auto_created_actual_expense_id": null
+              },
+              "granted": true,
+              "expires_at": "2026-10-29T16:26:03.999917+08:00"
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "reason": "legacy_locked",
+              "granted": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "expiry is rechecked after real advisory-lock waiting",
+        "status": "passed",
+        "ms": 1052,
+        "overlap": true,
+        "validityWhileWaiting": {
+          "expires_at": "2026-10-29T08:19:05.058Z",
+          "observed_at": "2026-10-29T08:19:04.099Z",
+          "still_valid": true
+        },
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "epoch": 1,
+              "value": "Initial note",
+              "granted": true,
+              "revision": 0,
+              "expires_at": "2026-10-29T16:21:04.059833+08:00"
+            }
+          },
+          {
+            "ok": false,
+            "code": "55P03",
+            "message": "lease_lost"
+          }
+        ]
+      },
+      {
+        "name": "late old release overlaps takeover without clearing the new epoch",
+        "status": "passed",
+        "ms": 41,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "epoch": 2,
+              "value": "Initial",
+              "granted": true,
+              "revision": 0,
+              "expires_at": "2026-10-29T16:21:05.107909+08:00"
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "granted": true
+            }
+          }
+        ]
+      },
+      {
+        "name": "failed transaction rolls back value/revision/request while overlapping another writer",
+        "status": "passed",
+        "ms": 59,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": false,
+            "code": "22012",
+            "message": "division by zero"
+          },
+          {
+            "ok": true,
+            "data": {
+              "id": "a57f4107-1513-46e0-b2ae-9f2f7b275bb3",
+              "kind": "budget",
+              "group": "note",
+              "value": "B survived",
+              "revision": 1,
+              "request_id": "887102d2-86bb-4099-901b-726e78afe6c4",
+              "updated_at": "2026-10-29T16:19:05.182916+08:00",
+              "undo_supported": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "deferred unfinished-effect commit failure rolls back before an overlapping writer succeeds",
+        "status": "passed",
+        "ms": 43,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": false,
+            "code": "40001",
+            "message": "unfinished_group_patch"
+          },
+          {
+            "ok": true,
+            "data": {
+              "id": "c11a47cf-92e0-49ca-88dd-7b72bb369b5a",
+              "kind": "budget",
+              "group": "note",
+              "value": "After failed commit",
+              "revision": 1,
+              "request_id": "6e5cefad-77ae-4612-b7c2-9ed9cbe36d67",
+              "updated_at": "2026-10-29T16:19:05.229439+08:00",
+              "undo_supported": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "concurrent duplicate request commits once and returns the original result",
+        "status": "passed",
+        "ms": 38,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "id": "d9c538f4-93f8-4812-9682-9b06907e66cc",
+              "kind": "budget",
+              "group": "title",
+              "value": "Exactly once",
+              "revision": 1,
+              "request_id": "bd6b87ec-f2cc-42f2-9864-a4e859be27aa",
+              "updated_at": "2026-10-29T16:19:05.244539+08:00",
+              "undo_supported": false
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "id": "d9c538f4-93f8-4812-9682-9b06907e66cc",
+              "kind": "budget",
+              "group": "title",
+              "value": "Exactly once",
+              "revision": 1,
+              "request_id": "bd6b87ec-f2cc-42f2-9864-a4e859be27aa",
+              "updated_at": "2026-10-29T16:19:05.244539+08:00",
+              "undo_supported": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "budget: row-first legacy transaction versus group patch fails safely without deadlock",
+        "status": "passed",
+        "ms": 32,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": false,
+            "code": "55P03",
+            "message": "group_locked"
+          },
+          {
+            "ok": false,
+            "code": "55P03",
+            "message": "could not obtain lock on row in relation \"budget_items\""
+          }
+        ],
+        "retry": "passed",
+        "proof": {
+          "simultaneous": [
+            {
+              "pid": 46128,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "964",
+              "xact_start": "2026-10-29T08:19:05.283Z",
+              "query_start": "2026-10-29T08:19:05.283Z",
+              "observed_at": "2026-10-29T08:19:05.284Z",
+              "blocking_pids": [
+                60452
+              ]
+            },
+            {
+              "pid": 47664,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-29T08:19:05.284Z",
+              "query_start": "2026-10-29T08:19:05.284Z",
+              "observed_at": "2026-10-29T08:19:05.284Z",
+              "blocking_pids": [
+                60452
+              ]
+            }
+          ],
+          "boundedRejection": {
+            "ok": false,
+            "code": "55P03",
+            "message": "could not obtain lock on row in relation \"budget_items\""
+          },
+          "activeAWhenRejected": [
+            {
+              "pid": 46128,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "964",
+              "xact_start": "2026-10-29T08:19:05.283Z",
+              "query_start": "2026-10-29T08:19:05.283Z",
+              "observed_at": "2026-10-29T08:19:05.306Z",
+              "blocking_pids": [
+                60452
+              ]
+            },
+            {
+              "pid": 47664,
+              "application_name": "metadata-test-B",
+              "state": "idle",
+              "wait_event_type": "Client",
+              "wait_event": "ClientRead",
+              "backend_xid": null,
+              "xact_start": null,
+              "query_start": "2026-10-29T08:19:05.285Z",
+              "observed_at": "2026-10-29T08:19:05.306Z",
+              "blocking_pids": []
+            }
+          ]
+        }
+      },
+      {
+        "name": "actual: row-first legacy transaction versus group patch fails safely without deadlock",
+        "status": "passed",
+        "ms": 6,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": false,
+            "code": "55P03",
+            "message": "group_locked"
+          },
+          {
+            "ok": false,
+            "code": "55P03",
+            "message": "could not obtain lock on row in relation \"actual_expenses\""
+          }
+        ],
+        "retry": "passed",
+        "proof": {
+          "simultaneous": [
+            {
+              "pid": 46128,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "968",
+              "xact_start": "2026-10-29T08:19:05.312Z",
+              "query_start": "2026-10-29T08:19:05.313Z",
+              "observed_at": "2026-10-29T08:19:05.313Z",
+              "blocking_pids": [
+                60452
+              ]
+            },
+            {
+              "pid": 47664,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-29T08:19:05.313Z",
+              "query_start": "2026-10-29T08:19:05.313Z",
+              "observed_at": "2026-10-29T08:19:05.313Z",
+              "blocking_pids": [
+                60452
+              ]
+            }
+          ],
+          "boundedRejection": {
+            "ok": false,
+            "code": "55P03",
+            "message": "could not obtain lock on row in relation \"actual_expenses\""
+          },
+          "activeAWhenRejected": [
+            {
+              "pid": 46128,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "968",
+              "xact_start": "2026-10-29T08:19:05.312Z",
+              "query_start": "2026-10-29T08:19:05.313Z",
+              "observed_at": "2026-10-29T08:19:05.314Z",
+              "blocking_pids": [
+                60452
+              ]
+            },
+            {
+              "pid": 47664,
+              "application_name": "metadata-test-B",
+              "state": "idle in transaction (aborted)",
+              "wait_event_type": "Client",
+              "wait_event": "ClientRead",
+              "backend_xid": null,
+              "xact_start": null,
+              "query_start": "2026-10-29T08:19:05.313Z",
+              "observed_at": "2026-10-29T08:19:05.314Z",
+              "blocking_pids": []
+            }
+          ]
+        }
+      },
+      {
+        "name": "bounded lock timeout aborts without a partial patch and can retry",
+        "status": "passed",
+        "ms": 725,
+        "overlap": true,
+        "outcome": {
+          "ok": false,
+          "code": "55P03",
+          "message": "canceling statement due to lock timeout"
+        },
+        "retry": "passed"
+      },
+      {
+        "name": "membership revocation committed during lock wait prevents stale-authority writes",
+        "status": "passed",
+        "ms": 49,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {}
+          },
+          {
+            "ok": false,
+            "code": "42501",
+            "message": "Forbidden"
+          }
+        ]
+      },
+      {
+        "name": "real-server RLS and grants retain viewer/pending/outsider/anon and private-table boundaries",
+        "status": "passed",
+        "ms": 29,
+        "checks": "viewer read-only, pending/outsider/anon denied, four private tables denied"
+      }
+    ],
+    "observations": [
+      {
+        "name": "single-statement-snapshot-across-commit",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.093Z",
+            "query_start": "2026-10-29T08:19:03.093Z",
+            "observed_at": "2026-10-29T08:19:03.148Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "848",
+            "xact_start": "2026-10-29T08:19:03.118Z",
+            "query_start": "2026-10-29T08:19:03.118Z",
+            "observed_at": "2026-10-29T08:19:03.148Z",
+            "blocking_pids": [
+              60452
+            ]
+          }
+        ]
+      },
+      {
+        "name": "snapshot-during-uncommitted-patch",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "852",
+            "xact_start": "2026-10-29T08:19:03.184Z",
+            "query_start": "2026-10-29T08:19:03.184Z",
+            "observed_at": "2026-10-29T08:19:03.215Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "idle",
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "backend_xid": null,
+            "xact_start": null,
+            "query_start": "2026-10-29T08:19:03.210Z",
+            "observed_at": "2026-10-29T08:19:03.215Z",
+            "blocking_pids": []
+          }
+        ],
+        "reader": "B completed while A active/uncommitted"
+      },
+      {
+        "name": "B-2-controller-real-RPC-admission",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "873",
+            "xact_start": "2026-10-29T08:19:03.348Z",
+            "query_start": "2026-10-29T08:19:03.348Z",
+            "observed_at": "2026-10-29T08:19:03.381Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.381Z",
+            "query_start": "2026-10-29T08:19:03.381Z",
+            "observed_at": "2026-10-29T08:19:03.381Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "B-3-debounced-controller-patches",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "885",
+            "xact_start": "2026-10-29T08:19:03.473Z",
+            "query_start": "2026-10-29T08:19:03.473Z",
+            "observed_at": "2026-10-29T08:19:03.567Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.550Z",
+            "query_start": "2026-10-29T08:19:03.550Z",
+            "observed_at": "2026-10-29T08:19:03.567Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "same-group",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "906",
+            "xact_start": "2026-10-29T08:19:03.690Z",
+            "query_start": "2026-10-29T08:19:03.691Z",
+            "observed_at": "2026-10-29T08:19:03.723Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.723Z",
+            "query_start": "2026-10-29T08:19:03.723Z",
+            "observed_at": "2026-10-29T08:19:03.723Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "same-account-tabs",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "910",
+            "xact_start": "2026-10-29T08:19:03.730Z",
+            "query_start": "2026-10-29T08:19:03.730Z",
+            "observed_at": "2026-10-29T08:19:03.753Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.752Z",
+            "query_start": "2026-10-29T08:19:03.753Z",
+            "observed_at": "2026-10-29T08:19:03.753Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "different-groups",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "914",
+            "xact_start": "2026-10-29T08:19:03.758Z",
+            "query_start": "2026-10-29T08:19:03.759Z",
+            "observed_at": "2026-10-29T08:19:03.784Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.784Z",
+            "query_start": "2026-10-29T08:19:03.784Z",
+            "observed_at": "2026-10-29T08:19:03.784Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "partial-patches",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "920",
+            "xact_start": "2026-10-29T08:19:03.795Z",
+            "query_start": "2026-10-29T08:19:03.796Z",
+            "observed_at": "2026-10-29T08:19:03.833Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.832Z",
+            "query_start": "2026-10-29T08:19:03.833Z",
+            "observed_at": "2026-10-29T08:19:03.833Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "actual-partial-patches",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "925",
+            "xact_start": "2026-10-29T08:19:03.845Z",
+            "query_start": "2026-10-29T08:19:03.845Z",
+            "observed_at": "2026-10-29T08:19:03.908Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.878Z",
+            "query_start": "2026-10-29T08:19:03.878Z",
+            "observed_at": "2026-10-29T08:19:03.908Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "group-vs-legacy",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "929",
+            "xact_start": "2026-10-29T08:19:03.927Z",
+            "query_start": "2026-10-29T08:19:03.927Z",
+            "observed_at": "2026-10-29T08:19:03.986Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:03.955Z",
+            "query_start": "2026-10-29T08:19:03.955Z",
+            "observed_at": "2026-10-29T08:19:03.986Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "legacy-vs-group",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "932",
+            "xact_start": "2026-10-29T08:19:03.999Z",
+            "query_start": "2026-10-29T08:19:03.999Z",
+            "observed_at": "2026-10-29T08:19:04.035Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:04.033Z",
+            "query_start": "2026-10-29T08:19:04.034Z",
+            "observed_at": "2026-10-29T08:19:04.035Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "expiry-after-wait",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "938",
+            "xact_start": "2026-10-29T08:19:04.059Z",
+            "query_start": "2026-10-29T08:19:04.059Z",
+            "observed_at": "2026-10-29T08:19:04.097Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:04.095Z",
+            "query_start": "2026-10-29T08:19:04.096Z",
+            "observed_at": "2026-10-29T08:19:04.097Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "late-release",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "944",
+            "xact_start": "2026-10-29T08:19:05.107Z",
+            "query_start": "2026-10-29T08:19:05.107Z",
+            "observed_at": "2026-10-29T08:19:05.135Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:05.134Z",
+            "query_start": "2026-10-29T08:19:05.134Z",
+            "observed_at": "2026-10-29T08:19:05.135Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "rollback",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "949",
+            "xact_start": "2026-10-29T08:19:05.145Z",
+            "query_start": "2026-10-29T08:19:05.146Z",
+            "observed_at": "2026-10-29T08:19:05.184Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:05.182Z",
+            "query_start": "2026-10-29T08:19:05.183Z",
+            "observed_at": "2026-10-29T08:19:05.184Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "deferred-rollback",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "955",
+            "xact_start": "2026-10-29T08:19:05.204Z",
+            "query_start": "2026-10-29T08:19:05.205Z",
+            "observed_at": "2026-10-29T08:19:05.230Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:05.229Z",
+            "query_start": "2026-10-29T08:19:05.229Z",
+            "observed_at": "2026-10-29T08:19:05.230Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "duplicate-request",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "960",
+            "xact_start": "2026-10-29T08:19:05.244Z",
+            "query_start": "2026-10-29T08:19:05.244Z",
+            "observed_at": "2026-10-29T08:19:05.275Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:05.275Z",
+            "query_start": "2026-10-29T08:19:05.275Z",
+            "observed_at": "2026-10-29T08:19:05.275Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "row-first-order-budget",
+        "proof": {
+          "simultaneous": [
+            {
+              "pid": 46128,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "964",
+              "xact_start": "2026-10-29T08:19:05.283Z",
+              "query_start": "2026-10-29T08:19:05.283Z",
+              "observed_at": "2026-10-29T08:19:05.284Z",
+              "blocking_pids": [
+                60452
+              ]
+            },
+            {
+              "pid": 47664,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-29T08:19:05.284Z",
+              "query_start": "2026-10-29T08:19:05.284Z",
+              "observed_at": "2026-10-29T08:19:05.284Z",
+              "blocking_pids": [
+                60452
+              ]
+            }
+          ],
+          "boundedRejection": {
+            "ok": false,
+            "code": "55P03",
+            "message": "could not obtain lock on row in relation \"budget_items\""
+          },
+          "activeAWhenRejected": [
+            {
+              "pid": 46128,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "964",
+              "xact_start": "2026-10-29T08:19:05.283Z",
+              "query_start": "2026-10-29T08:19:05.283Z",
+              "observed_at": "2026-10-29T08:19:05.306Z",
+              "blocking_pids": [
+                60452
+              ]
+            },
+            {
+              "pid": 47664,
+              "application_name": "metadata-test-B",
+              "state": "idle",
+              "wait_event_type": "Client",
+              "wait_event": "ClientRead",
+              "backend_xid": null,
+              "xact_start": null,
+              "query_start": "2026-10-29T08:19:05.285Z",
+              "observed_at": "2026-10-29T08:19:05.306Z",
+              "blocking_pids": []
+            }
+          ]
+        }
+      },
+      {
+        "name": "row-first-order-actual",
+        "proof": {
+          "simultaneous": [
+            {
+              "pid": 46128,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "968",
+              "xact_start": "2026-10-29T08:19:05.312Z",
+              "query_start": "2026-10-29T08:19:05.313Z",
+              "observed_at": "2026-10-29T08:19:05.313Z",
+              "blocking_pids": [
+                60452
+              ]
+            },
+            {
+              "pid": 47664,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-29T08:19:05.313Z",
+              "query_start": "2026-10-29T08:19:05.313Z",
+              "observed_at": "2026-10-29T08:19:05.313Z",
+              "blocking_pids": [
+                60452
+              ]
+            }
+          ],
+          "boundedRejection": {
+            "ok": false,
+            "code": "55P03",
+            "message": "could not obtain lock on row in relation \"actual_expenses\""
+          },
+          "activeAWhenRejected": [
+            {
+              "pid": 46128,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "968",
+              "xact_start": "2026-10-29T08:19:05.312Z",
+              "query_start": "2026-10-29T08:19:05.313Z",
+              "observed_at": "2026-10-29T08:19:05.314Z",
+              "blocking_pids": [
+                60452
+              ]
+            },
+            {
+              "pid": 47664,
+              "application_name": "metadata-test-B",
+              "state": "idle in transaction (aborted)",
+              "wait_event_type": "Client",
+              "wait_event": "ClientRead",
+              "backend_xid": null,
+              "xact_start": null,
+              "query_start": "2026-10-29T08:19:05.313Z",
+              "observed_at": "2026-10-29T08:19:05.314Z",
+              "blocking_pids": []
+            }
+          ]
+        }
+      },
+      {
+        "name": "bounded-timeout",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:05.322Z",
+            "query_start": "2026-10-29T08:19:05.323Z",
+            "observed_at": "2026-10-29T08:19:05.323Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:05.323Z",
+            "query_start": "2026-10-29T08:19:05.323Z",
+            "observed_at": "2026-10-29T08:19:05.323Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      },
+      {
+        "name": "revocation-after-wait",
+        "proof": [
+          {
+            "pid": 46128,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "977",
+            "xact_start": "2026-10-29T08:19:06.050Z",
+            "query_start": "2026-10-29T08:19:06.050Z",
+            "observed_at": "2026-10-29T08:19:06.084Z",
+            "blocking_pids": [
+              60452
+            ]
+          },
+          {
+            "pid": 47664,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-29T08:19:06.083Z",
+            "query_start": "2026-10-29T08:19:06.083Z",
+            "observed_at": "2026-10-29T08:19:06.084Z",
+            "blocking_pids": [
+              46128
+            ]
+          }
+        ]
+      }
+    ],
+    "passed": 33,
+    "failed": 0,
+    "pids": [
+      46128,
+      47664,
+      60452
+    ],
+    "sessions": [
+      [
+        {
+          "pid": 46128,
+          "session_user": "budget_actor_a",
+          "current_user": "authenticated",
+          "actor": "afe76d32-a5f7-4717-800f-6cc874f39eac",
+          "isolation": "read committed"
+        }
+      ],
+      [
+        {
+          "pid": 47664,
+          "session_user": "budget_actor_b",
+          "current_user": "authenticated",
+          "actor": "00f1863b-b22c-43bd-b71f-e623278a7cea",
+          "isolation": "read committed"
+        }
+      ]
+    ],
+    "serverStopped": true,
+    "deadlockErrors": 0,
+    "allMigrationsUnchanged": true,
+    "hashes": [
+      {
+        "file": "001_collaborative_travel_planner.sql",
+        "sha256": "2c559727546f568179f6752262361f721c34acc69f657acdf5504236f99a3e70"
+      },
+      {
+        "file": "002_core_mvp_schema.sql",
+        "sha256": "cf93fb48deca5bc12dcbc8cb5d34dbae422689e4fb6a008f3c4c255e032d28d4"
+      },
+      {
+        "file": "003_trip_name_compat.sql",
+        "sha256": "0229879cde2b7ac212a917216ad45a8fb2ab23daaf3aa657123e915cd852c7da"
+      },
+      {
+        "file": "004_harden_rls_rpc_permissions.sql",
+        "sha256": "fca57bbbd326a961ad35ca65735781199ba8045a456383519fb90e535b751e68"
+      },
+      {
+        "file": "005_revoke_public_rpc_execute.sql",
+        "sha256": "e2efd8bb24451133442819b798b09b7afe11c69c17e6e01b41c7e7217e474d2d"
+      },
+      {
+        "file": "006_move_rls_helpers_private.sql",
+        "sha256": "5fdaec34cf98a73fbfe852772475ad4c2e6e580d52a0fc71ecd89350e6eca332"
+      },
+      {
+        "file": "007_create_attachments_storage.sql",
+        "sha256": "28760121ea7b4c39fa21984c23cedec49848d4b160556ed69383fe7e34a73aa1"
+      },
+      {
+        "file": "008_share_snapshot_rpc.sql",
+        "sha256": "1f53688fdb65878c9723c5ca6644b6aad5992a044332f59c97e5a51a5e516252"
+      },
+      {
+        "file": "009_add_edit_locks.sql",
+        "sha256": "1c5dfd46196ffafe923b7ba3eff2d947a86e9c9c759149c393c71c56c16a6548"
+      },
+      {
+        "file": "010_add_transportation_card_fields.sql",
+        "sha256": "0738b2c408b34015aac1e01177c9c47b94aa934f0669d73d5f74ff69ad75f3f6"
+      },
+      {
+        "file": "011_add_transport_card_pair_fields.sql",
+        "sha256": "de18b98a802061202031d66119cb0eff0f97bb72a367de98e41d015e77b34fe5"
+      },
+      {
+        "file": "012_add_transport_review_snapshots.sql",
+        "sha256": "0218850d70659172558e9f692e9760a9822b6f83c142d287f1c7c05da3096a18"
+      },
+      {
+        "file": "013_add_itinerary_alternative_visit_fields.sql",
+        "sha256": "4c81260113596f1a62b565db92a7fe03257eb8601b2ad22eeb444bfea7424406"
+      },
+      {
+        "file": "014_add_itinerary_item_fixed_fields.sql",
+        "sha256": "27c4c0e2710d92421714711b617dbfae7d381e6c4ed4224b1d70be92cba35d6e"
+      },
+      {
+        "file": "015_add_trip_destination_fields.sql",
+        "sha256": "fcdcc2336af1b32ec305372872f4d6ad7cf2c23d5ac201343b8a2688f80930a1"
+      },
+      {
+        "file": "016_apply_trip_date_change.sql",
+        "sha256": "88c9096bc5a0d6243c10d90dcb380de54b5cd203cbc551a3cddd4eec4bf42e05"
+      },
+      {
+        "file": "017_confirm_trip_date_shortening.sql",
+        "sha256": "57cdf997aab42914cfc6ade6bdce0078d6c648c55dc471527532b9f2d62ead75"
+      },
+      {
+        "file": "018_filter_share_snapshot_timeline.sql",
+        "sha256": "dbe86281388fbe5e9f8f972ece6934214b27396a370bfd0fa888f684745acdfb"
+      },
+      {
+        "file": "019_swap_itinerary_destination_packages.sql",
+        "sha256": "9695497ad7b391655d0a2213e657c4b2294075deee139d636308f75daa83c329"
+      },
+      {
+        "file": "020_reorder_itinerary_destination_packages.sql",
+        "sha256": "940b82a1f51c00cc68968bd330f440bca56a28c7b9b3cc17cba3fdb287b4a57e"
+      },
+      {
+        "file": "021_fix_reorder_baseline_count.sql",
+        "sha256": "707efa2e0170ecc6badfb2832be8611ddf2a480dde7fdb4b89dfb1f191ed7b5b"
+      },
+      {
+        "file": "022_add_transport_role_to_itinerary_items.sql",
+        "sha256": "88ccb063b79b72ae8cf0a41760e1401eb019c6f34777346aa88da63db27e165c"
+      },
+      {
+        "file": "023_reorder_itinerary_timed_auto_continuation.sql",
+        "sha256": "040ad6378d5c4f12de98216c625f5068312a2dd82dc5a2253a2266cdbf925999"
+      },
+      {
+        "file": "024_reorder_itinerary_fixed_anchor_continuation.sql",
+        "sha256": "05695715d0b5ad0c7e0139a7d9c81e3d1d7f0619e9036fd9051ee56c76f9f3ad"
+      },
+      {
+        "file": "20260708063744_add_itinerary_route_overrides.sql",
+        "sha256": "147bf943762e4416b11d6b4a544b72075505303bc7d11357532082dc2cd5c4c0"
+      },
+      {
+        "file": "20260710125337_add_itinerary_route_override_nodes.sql",
+        "sha256": "a30eb87abebae0f0b648e3a23f7dbe903090fb4a91739a80ab98bfc1dc93218a"
+      },
+      {
+        "file": "20260712033758_add_route_tables_to_realtime.sql",
+        "sha256": "4308e1c0fe6a8ec11170968fc73a33465ad15f0ab4e3d2b89c64cf271086e052"
+      },
+      {
+        "file": "20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+        "sha256": "c37f7935db8661f106e642ad60e776687bef877b3b7f9eebe3d72896148fd7c2"
+      },
+      {
+        "file": "20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+        "sha256": "ccd5c78833a68f069dad0218ae8537aeded7d64fb461fccb2c7f0ef2c703ce5f"
+      },
+      {
+        "file": "20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+        "sha256": "58edf5399e8e7689b156a1fc1967ef3a84f54a977c0fca57f88c940f83c39d31"
+      },
+      {
+        "file": "20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+        "sha256": "0697ce63ce72e9daed3838271f444a3a68681cec4808755a16aa7210fc808594"
+      },
+      {
+        "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+        "sha256": "989aaf7a7ef59156b1ee123d6e53dd07f8579acd60252e3eb818947e3299bb0e"
+      },
+      {
+        "file": "20260819125851_phase_7_import_trip_timeline_v1.sql",
+        "sha256": "5b058ad0d9801d3255d5ed8e226aa22a44313496e2350b96e66d47532366b9ff"
+      },
+      {
+        "file": "20261022090000_budget_workspace_baseline_and_pricing.sql",
+        "sha256": "5192af80043e7f528427869d9794a1a776d71dc959ccf3c2caf7d8909566bfba"
+      },
+      {
+        "file": "20261022100000_trip_budget_exchange_rates.sql",
+        "sha256": "fdbb06c2ea236063bd0cac358e23b8836890f13f2618401323b2f7b85159f825"
+      },
+      {
+        "file": "20261022110000_budget_payment_safety_and_actual_cost.sql",
+        "sha256": "cfe8cc1299ac1ae3691893f423397625d0485483c6bb59ab67259789c9e8ba4a"
+      },
+      {
+        "file": "20261022120000_unified_planning_payments.sql",
+        "sha256": "b273373f79b4c3bc03855d98b1dd8e90bc73a4c7f2c1fe5acd4132f73103c020"
+      },
+      {
+        "file": "20261022162015_luggage_collaboration_state_safety.sql",
+        "sha256": "e3bd393e4bb7a0440112bc6b15e20b9d4fa1e21362010f0477990d4b810ae316"
+      },
+      {
+        "file": "20261023120000_luggage_notes.sql",
+        "sha256": "03507634da292437b7b3c9206e17af892b9cd7cee7cd683d9df8ae854a3e357a"
+      },
+      {
+        "file": "20261024054121_luggage_drag_assignment.sql",
+        "sha256": "8672ee2dd183dce21d7fd8b90c5633882a8078de3d36ecbd9357b089e1df8b66"
+      },
+      {
+        "file": "20261024063828_luggage_private_return.sql",
+        "sha256": "62b3533f949fd9a5e95ebe62dbc4f4c61821f22b9c1ad0ee1191be694b481224"
+      },
+      {
+        "file": "20261024112902_luggage_item_ordering.sql",
+        "sha256": "e160fc6dd44f89cfc0e8b79152f3696a2265f34a879ec1793e59a2b980c2f125"
+      },
+      {
+        "file": "20261026120000_luggage_required_assignee.sql",
+        "sha256": "308d75bdcd54610012594b19da4266b22a9939b2353c46129f764517bb7fbc8a"
+      },
+      {
+        "file": "20261027140044_budget_atomic_edit_leases.sql",
+        "sha256": "83d996db64fbfc47613ba22c18dc5a6c7b523dcb8828c77f8c7c93676e63403f"
+      },
+      {
+        "file": "20261027145613_budget_consistent_snapshot.sql",
+        "sha256": "83e184ef986ad003481a1cb43c072f8e1e4409068e38e0aa13dc6754d3a07447"
+      },
+      {
+        "file": "20261027152539_budget_collaboration_state.sql",
+        "sha256": "0912cf21fdd0af0a43e737d38afce1409ef14e97057e445f01475d7513d7e4f5"
+      },
+      {
+        "file": "20261028104333_budget_selection_activity.sql",
+        "sha256": "f0377e4ad41c12d0f3d51295ec296f4fc29b773edaebd20a77803f3bfcbf5f52"
+      },
+      {
+        "file": "20261029020551_budget_group_metadata_prototype.sql",
+        "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+      },
+      {
+        "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+        "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+      }
+    ]
+  },
+  "sourceHashes": [
+    {
+      "file": "src/App.jsx",
+      "sha256": "b6fe22f49ef34a32983c0cd8ca9b4022264a7ba1ba9ee6f337509ab8130b3ac1"
+    },
+    {
+      "file": "src/components/budget/BudgetWorkspace.jsx",
+      "sha256": "0c3601e8406711ed2374083022a33959185a5ab0286ac52e5be3a46a1e8abfed"
+    },
+    {
+      "file": "src/components/budget/BudgetMetadataEditor.jsx",
+      "sha256": "5a9e10507ea82a87489b8c2996f22214ebb8c1e2c94006a9be331f134483cef1"
+    },
+    {
+      "file": "src/lib/budgetMetadataService.js",
+      "sha256": "9f1da73c1041252cdc4b41a213fcdb0aea8a085385afbc005c6af6461123a154"
+    },
+    {
+      "file": "tests/budgetMetadata.spec.js",
+      "sha256": "610a1e43b88e3bb9bb18089f83fdff7633be1cc5f4d2a648816b0cb4f0f9dbf5"
+    },
+    {
+      "file": "tests/formalBudgetMetadata.spec.js",
+      "sha256": "7a4a0c116f12da3dfefd24434cde99a70fdd075d0b7f6fe7e4204ce18d0e221b"
+    },
+    {
+      "file": "tests/helpers/budgetMetadataMock.js",
+      "sha256": "7d2b50931caec27b48c753bf2eb8d10f667ccd585d2a5ab78e3f198745ca3717"
+    },
+    {
+      "file": "tests/budget-metadata-parallel.mjs",
+      "sha256": "583de956d8205007b5510552728b1d38d045b118871223cd204b954a0e00c0f2"
+    }
+  ],
+  "tests": {
+    "groupController": {
+      "passed": 35
+    },
+    "groupRenderedUI": {
+      "passed": 32,
+      "finalAffectedUnicodeInputCases": 4,
+      "note": "67 group cases passed together. Final grapheme handling and Unicode idle-delete assertion were followed by the four affected UI cases; do not sum repeated cases."
+    },
+    "legacyBudgetAndNotification": {
+      "passed": 119,
+      "renderedSonnerIncluded": 11,
+      "metadataGroupCasesIncluded": 0
+    },
+    "smoke": {
+      "passed": 30
+    },
+    "metadataDatabase": {
+      "passed": 23
+    },
+    "otherDatabaseSuites": [
+      "budget-database",
+      "budget-safety-database",
+      "budget-leases-database (existing LF disposable mirror; unchanged migrations)"
+    ],
+    "build": "passed",
+    "syntax": "passed",
+    "diffCheck": "passed"
+  },
+  "transientFailures": [
+    {
+      "case": "Timeline visit editor stages alternative changes and saves them with main itinerary",
+      "initialBatch": {
+        "passed": 148,
+        "failed": 1
+      },
+      "baselineCommit": "1d3d1f7946eab593c41cf6906267cdcfc78c7054",
+      "baselineReproduction": "passed",
+      "currentFullSmokeRerun": {
+        "passed": 30,
+        "failed": 0
+      },
+      "change": "No Timeline/CSS/test assertion change. Root cause not established; live dev-server edits/timing are possible."
+    },
+    {
+      "case": "Sandbox Chromium console ERR_NETWORK_ACCESS_DENIED",
+      "resolution": "Run local browser process in the approved environment; retain strict console assertions."
+    }
+  ],
+  "uiEnvironment": {
+    "browser": "Chromium / Playwright",
+    "browserPlugin": "not available",
+    "url": "http://127.0.0.1:5174",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "formal": "Actual React App with isolated shared Auth/RPC/Realtime/Storage mock boundary; no hosted request",
+    "demo": "Actual shared UI and memory-only transport; no Supabase/Auth/Realtime/Storage/draft persistence API",
+    "evidenceDirectory": "C:/Users/Administrator/AppData/Local/Temp/travel-budget-b3"
+  },
+  "limitations": [
+    "No hosted PostgREST/WebSocket/multi-account or Storage service acceptance.",
+    "No physical IME/device/screen-reader speech/native Undo certification; automated composition events verified.",
+    "No financial/category/payment-group expansion, blank persisted creation, five-step Undo/Redo/history UI or production enablement.",
+    "Session draft/intent persistence is best effort when browser storage is available; capabilities are never persisted.",
+    "After reload, another document session cannot release the old session capability; expiry may be required before new writes."
+  ],
+  "findings": [
+    "DB-confirmed canonical remains visible after failed snapshot and does not resend a successful Patch.",
+    "Submitted local revision and queued latest input are separate; one active transport per group, including timeout.",
+    "Dirty handoff flushes and freezes the leaving editor, releases exact capabilities, then reads fresh canonical for wildcard acquisition.",
+    "Unknown replay ledger persists request/origin/base/payload only; null token/epoch can replay an authorized existing result but cannot grant authority.",
+    "Initial real focus starts idle activity; snapshot/heartbeat/ACK do not. Idle refocus preserves first input/delete/paste intent."
+  ]
+}

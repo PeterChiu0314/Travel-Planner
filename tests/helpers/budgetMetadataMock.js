@@ -16,6 +16,9 @@ export function metadataBackend() {
   };
   db.request = async req => {
     const { name, args, actor } = req;
+    if (name === "budget_edit_lease" && args.p_action === "acquire" && [...db.groupStates.entries()].some(([key,g])=>key.startsWith(`${args.p_kind}:${args.p_id}:`) && g.actor && g.expires > db.now)) {
+      db.leaseCalls.push({args,actor});return {data:{granted:false,reason:"group_locked"}};
+    }
     if (name === "read_budget_metadata_snapshot") {
       if (db.metadataMissing) return { error: { code: "PGRST202" } };
       const result = await original({ ...req, name: "read_budget_snapshot" }); if (!result.data || result.error) return result;
@@ -36,7 +39,7 @@ export function metadataBackend() {
     }
     if (["budget_metadata_group_lease", "patch_budget_metadata_group"].includes(name)) {
       db.groupCalls.push({ name, args, actor });
-      if (db.metadataHold?.actor === actor && db.metadataHold.action === args.p_action) await new Promise(resolve => db.metadataPending.push(resolve));
+      if (db.metadataHold?.actor === actor && db.metadataHold.action === (name === "patch_budget_metadata_group" ? "patch" : args.p_action)) await new Promise(resolve => db.metadataPending.push(resolve));
       if (db.offline) return { error: { message: "offline" } };
       const row = rowFor(args), g = row && state(args.p_kind, row, args.p_group);
       if (!g) return { error: { code: "42501" } };

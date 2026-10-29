@@ -572,7 +572,12 @@ function showActiveEditorPrompt() {
 }
 
 async function requestActiveEditorGuardResolution(options) {
-  const dirtyGuards = getDirtyActiveEditorGuards(options);
+  // Narrow autosave editors flush valid work before asking how to keep a draft.
+  const prepared = new Set();
+  for (const [id, guard] of getActiveEditorGuardEntries(options)) {
+    if (guard.prepare && await guard.prepare()) prepared.add(id);
+  }
+  const dirtyGuards = getActiveEditorGuardEntries(options).filter(([id, guard]) => guard.isDirty && !prepared.has(id)).map(([, guard]) => guard);
   if (!dirtyGuards.length) return true;
   const choice = await showActiveEditorPrompt();
   if (!choice) return false;
@@ -591,9 +596,9 @@ async function requestActiveEditorHandoff(options) {
     const canContinue = await requestActiveEditorGuardResolution(options);
     if (!canContinue) return false;
   }
-  const cleanEntries = getActiveEditorGuardEntries(options).filter(([, guard]) => !guard.isDirty);
+  const cleanEntries = getActiveEditorGuardEntries(options).filter(([, guard]) => guard.prepare || !guard.isDirty);
   for (const [, guard] of cleanEntries) {
-    const ok = await guard.discard();
+    const ok = await (guard.finish ? guard.finish() : guard.discard());
     if (ok === false) return false;
   }
   return true;

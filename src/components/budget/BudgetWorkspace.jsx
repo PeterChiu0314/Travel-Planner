@@ -654,7 +654,10 @@ export default function BudgetWorkspace(incoming) {
     kind={selected.kind} members={members} services={services}
     onClose={async () => { const scope = workspaceScope.current; if (await services.handoff({ tripId: activeTrip.id }) && scope === workspaceScope.current) finishEditor(selected.kind, selected.id); }}
     onLegacy={async () => { const scope = workspaceScope.current; if (!(await services.handoff({ tripId: activeTrip.id })) || scope !== workspaceScope.current) return;
-      if (await (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord)) setPanel("edit"); }} />
+      if (!(await props.metadataClient.refresh()).ok || scope !== workspaceScope.current) return;
+      const graph = props.metadataClient.status().snapshot;
+      const canonical = graph?.[selected.kind === "actual" ? "actualExpenses" : "budgetItems"]?.find(row => row.id === selected.id);
+      if (canonical && await (selected.kind === "actual" ? actualEditor : budgetEditor).open(canonical) && scope === workspaceScope.current) setPanel("edit"); }} />
     : <p className="bw-muted" role="status">正在確認協作狀態…</p> : null;
   const ratesControl = { tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates: () => void refreshRates() };
   return <section className="budget-panel budget-workspace" aria-label="預算工作區" data-stage={stage}>{dialog}
