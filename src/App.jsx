@@ -23,7 +23,7 @@ import { deleteBudgetReceipt } from "./lib/budgetReceipts.js";
 import { collaboratorColors as timelineCardSelectionColors } from "./lib/collaboratorColors.js";
 import { createBudgetCollaboration, primaryBudgetCollaborators } from "./lib/budgetCollaboration.js";
 import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./lib/budgetMetadataConfig.js";
-import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata } from "./lib/budgetMetadataService.js";
+import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata, budgetAuthorityTimeoutMs } from "./lib/budgetMetadataService.js";
 import { createDemoBudgetMetadataService } from "./demo/budgetMetadata.js";
 import { demoBudgetQuote } from "./lib/tripBudgetRates.js";
 import { createDemoBudgetState, demoBudgetMembers, hydrateDemoBudgetScenario } from "./demo/budgetFixtures.js";
@@ -2467,6 +2467,7 @@ export default function App() {
   const budgetRefreshRef = useRef(null);
   if (!budgetRefreshRef.current) budgetRefreshRef.current = createBudgetRefresh({
     guard: requestGuard,
+    timeoutMs: budgetMetadataEnabled ? budgetAuthorityTimeoutMs : null,
     read: async key => {
       const feedbackCheckpoint = syncFeedback.checkpoint();
       return { ...await readBudgetSnapshot(supabase, JSON.parse(key)[1]), feedbackCheckpoint };

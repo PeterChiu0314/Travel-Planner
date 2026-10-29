@@ -26,7 +26,8 @@ export default function BudgetMetadataEditor({ client, record, kind, members, se
       const field = fields[index], title = g.group === "title", label = title ? "項目名稱" : "備註";
       const hintId = `metadata-${kind}-${record.id}-${g.group}`;
       const owner = g.remote?.held && !g.remote.own_session ? memberLabel(members.find(m => m.user_id === g.remote.owner_id)) : null;
-      const text = g.saved && g.syncPending && !g.dirty ? "已儲存，最新同步待確認" : !editable ? "目前沒有編輯權限" : !verified ? "協作狀態尚未確認" : !g.supported ? "此項目尚未支援分欄編輯，請使用完整項目編輯"
+      const text = g.saved && g.syncPending ? g.dirty ? "已儲存，最新同步待確認；另有尚未儲存的修改" : "已儲存，最新同步待確認"
+        : !editable ? "目前沒有編輯權限" : !verified ? "協作狀態尚未確認" : !g.supported ? "此項目尚未支援分欄編輯，請使用完整項目編輯"
         : !g.ready ? "群組資料尚未確認" : g.request && !g.saving ? "儲存結果待確認，請重試原請求"
         : g.saving ? "儲存中…" : g.state === "pending" ? "正在取得編輯權，輸入暫存中…" : owner ? `${g.saved ? "已儲存；" : ""}${owner} 正在編輯${label}`
         : g.conflict ? "版本衝突；本機草稿仍保留" : g.failed ? "尚未儲存／儲存失敗" : g.dirty ? "修改中" : g.saved ? "已儲存" : g.writable ? "可編輯" : "聚焦後取得編輯權";

@@ -1,4 +1,17 @@
 const groups = ["title", "note"];
+export const budgetAuthorityTimeoutMs = 10000;
+export const budgetSnapshotTimeoutError = () => ({ code: "BUDGET_SNAPSHOT_TIMEOUT", message: "最新同步逾時，草稿已保留。請重新確認後重試。" });
+// The settled race owns the result. An uncancellable transport may finish later,
+// but only lease admission has an explicit, capability-scoped late cleanup.
+export async function withBudgetAuthorityTimeout(work, { timeoutMs = budgetAuthorityTimeoutMs, late, onTimeout,
+  error = { code: "METADATA_TIMEOUT", message: "連線逾時，結果尚待確認。" } } = {}) {
+  let timer, expired = false;
+  const result = Promise.resolve(work).catch(error => ({ error }));
+  result.then(value => { if (expired) late?.(value); });
+  try { return await Promise.race([result, new Promise(resolve => { timer = setTimeout(() => {
+    expired = true; onTimeout?.(); resolve({ error });
+  }, timeoutMs); })]); } finally { clearTimeout(timer); }
+}
 const version = value => Number.isSafeInteger(value) && value >= 0;
 // Match PostgreSQL btrim(text): normalize ordinary spaces, preserving other text.
 const patchValue = (group, value) => group === "note" ? value.replace(/^ +| +$/g, "") || null : value.replace(/^ +| +$/g, "");
@@ -39,7 +52,7 @@ export function createBudgetMetadataService(supabase) {
 // Authority is held only in this controller. Snapshot own_session and persisted
 // input are hints; neither can manufacture a capability. No legacy save fallback.
 export function createBudgetMetadataEditor({ service, read, sessionId, storage = null, now = Date.now,
-  makeId = () => crypto.randomUUID(), timeoutMs = 10000, debounceMs = 1000 }) {
+  makeId = () => crypto.randomUUID(), timeoutMs = budgetAuthorityTimeoutMs, debounceMs = 1000 }) {
   const entries = new Map(), listeners = new Set();
   let context = null, generation = 0, revision = 0, projectionRevision = 0, snapshot = null, verified = false, message = "正在確認協作狀態…", offset = 0;
   let readWork = null, renewAt = 0, refreshAt = Infinity, suspended = false;
@@ -71,14 +84,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
   const args = (g, action) => ({ p_trip_id: g.trip, p_kind: g.kind, p_id: g.id, p_group: g.group,
     p_session_id: sessionId, p_token: g.token, p_action: action, p_base_revision: g.base,
     p_epoch: g.epoch ?? null, p_activity_seq: g.activity || 0, p_dirty: dirty(g) });
-  async function bounded(work, late) {
-    let timer, expired = false;
-    const result = Promise.resolve(work).catch(error => ({ error }));
-    result.then(value => { if (expired) late?.(value); });
-    try { return await Promise.race([result, new Promise(resolve => { timer = setTimeout(() => {
-      expired = true; resolve({ error: { code: "METADATA_TIMEOUT", message: "連線逾時，結果尚待確認。" } });
-    }, timeoutMs); })]); } finally { clearTimeout(timer); }
-  }
+  const bounded = (work, late) => withBudgetAuthorityTimeout(work, { timeoutMs, late });
   async function cleanup(g, epoch = g.epoch) {
     if (!g.token) return { ok: true };
     if (epoch == null) return { ok: false }; // An unanswered admission is not a confirmed absence of authority.
@@ -113,11 +119,15 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     if (readWork) return readWork;
     const c = context, gen = generation;
     const work = (async () => {
-      let result; try { result = await read(c.trip); } catch (error) { result = { error }; }
+      let result; try { result = await withBudgetAuthorityTimeout(read(c.trip), { timeoutMs, error: budgetSnapshotTimeoutError() }); } catch (error) { result = { error }; }
       if (c !== context || gen !== generation) return { ok: false, stale: true };
       if (result?.ok && ingest(result.data)) return result;
-      verified = false; message = result?.data?.metadataError || "協作狀態尚未確認，輸入已保留。請重新整理。";
+      verified = false; message = result?.error?.code === "BUDGET_SNAPSHOT_TIMEOUT" ? result.error.message
+        : result?.data?.metadataError || "協作狀態尚未確認，輸入已保留。請重新整理。";
       for (const g of entries.values()) if (g.state === "held") g.state = "uncertain";
+      if (result?.error?.code === "BUDGET_SNAPSHOT_TIMEOUT") for (const g of entries.values()) {
+        if (dirty(g) && !g.request) { g.failed = true; g.error = message; }
+      }
       emit(true); return { ok: false };
     })().finally(() => { if (readWork === work) readWork = null; });
     readWork = work; return work;

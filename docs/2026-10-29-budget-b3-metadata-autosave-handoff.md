@@ -6,6 +6,8 @@
 
 [機器可讀逐案結果、原生鎖等待證據與來源 hashes](qa/2026-10-29-budget-b3-metadata-results.json)；[前階段 B-2](2026-10-29-budget-b2-metadata-ui-handoff.md) 的手動儲存及 value/base-only 待確認請求限制，由本交接取代；其他 DB 安全契約維持。[B-1](2026-10-29-budget-collaboration-b1-contract.md) 仍是完整方案目標，並不表示全部已實作。
 
+後續使用者要求的 Snapshot timeout 補強見本文末節及[最新驗證紀錄](qa/2026-10-29-budget-b3-snapshot-timeout-results.json)。以下原始 B-3 數量與 native run 是 `d72bcab` 的歷史 checkpoint；最新狀態以末節及 CURRENT_TASK 為準。
+
 ## 實際行為
 
 - 名稱／備註各自停止輸入約 1 秒提交，失焦有有效修改立即 flush。普通空白按 PostgreSQL btrim 規則 canonicalize；無實質變更不送 Patch。IME composition 中不提交，compositionend 才重新排程。
@@ -89,3 +91,57 @@ git diff --check
 native runner 需另備 PostgreSQL binaries（`BUDGET_TEST_PG_BIN` 或忽略的 `.tmp-budget-native-pg/runtime/pgsql/bin`）及 pg8.16.3；PGlite0.5.11 在忽略的獨立 runtime，`PGLITE_MODULE` 指其 index.js。這些本機 binaries／cluster／依賴／env 不透過 Git 交接。Node24.15.0。Native SHA、PID、等待圖、各案例結果見 QA JSON；沒有連 hosted。
 
 下一輪先對本 commit 做 Code Review。分類、計價、付款人、付款／實付交易、空白正式新增、五步 Undo／Redo／歷史 UI、收據 Storage 協定及完整方案 B 啟用都未做。真正 Hosted PostgREST/Realtime、多帳號多分頁、實體中文／日文 IME、瀏覽器原生 Undo 保真、screen-reader 語音與裝置背景節流仍未驗收；本階段只驗自動化 composition events，未攔截 Ctrl+Z。Storage 被禁用／quota 滿時保留記憶體草稿，無法承諾關閉瀏覽器後仍可恢復。
+
+## B-3 補強｜Snapshot timeout 與佇列恢復
+
+2026-10-29；本機與 GitHub HEAD 先確認為 `d72bcabf085594863b05bd40350ee30f41afd4c0`，工作區乾淨。使用者另授權本節補強、隔離驗證、commit/push；仍不允許 hosted 操作、main merge、部署或金融／分類／付款／空白新增／Undo 擴張。
+
+### 確實重現後才修正
+
+先只新增測試、未動 production code。`budgetMetadata.spec.js` 的 `confirmed patch plus permanently pending snapshot times out without losing queued input`、`budgetSync.spec.js` 的 `pending coalesced snapshot releases its read slot after the authority deadline` 在原版均失敗：以 Deferred gate 保持 read Promise pending，Node mock timers 推進現有 10000ms 期限後，`settled` 仍為 false。第一個案例已先確認 A 的 Patch ACK、canonical A、request=null，並確認 B 在 value 中且只有一筆 Patch；失敗是等待未結束，不是測試沒有先提交 A。
+
+根因有兩層：metadata `commit()` 成功後 `await refresh()`，而 refresh 直接 await read、只在 finally 清除 `readWork`；Formal read 又委派既有 Budget coalescer，該 entry 同樣無期限。原來的 bounded timeout 只用在 lease／Patch，沒有涵蓋 Snapshot。因此僅限外層等待也不夠，retry 仍可能接回 coalescer 中同一個不回應的 Promise。
+
+### 修正與檔案
+
+| 檔案 | 本次變更 |
+| --- | --- |
+| [budgetMetadataService.js](../src/lib/budgetMetadataService.js) | 將既有 bounded helper 提取為共用 `withBudgetAuthorityTimeout`，沿用 `budgetAuthorityTimeoutMs=10000`；refresh 也有期限，finally 釋放 readWork；Snapshot 使用獨立 `BUDGET_SNAPSHOT_TIMEOUT` 錯誤，與未知 Patch 分開；timeout 停止未確認 authority，dirty queued input 留存並可明確重試 |
+| [budgetSync.js](../src/lib/budgetSync.js) | 既有 coalescer 增加 opt-in deadline，覆蓋整個 logical work（包含 dirty reruns），不因 repeated committed()/Retry 重啟期限；timer 到期先設 retired/expired fence，晚到 transport 不 apply/onVerified；entry 的 finally identity guard 保留 |
+| [App.jsx](../src/App.jsx) | 僅 metadata opt-in 時向 coalescer 傳入相同 10000ms；旗標關閉仍是原本無此 deadline 的舊讀取路徑。沒有新增 Snapshot manager、channel 或寫入入口 |
+| [BudgetMetadataEditor.jsx](../src/components/budget/BudgetMetadataEditor.jsx) | 新輸入 B 尚未提交時顯示「已儲存，最新同步待確認；另有尚未儲存的修改」，不以 A 的成功暗示 B 已儲存；保留 inline retry／原 guard |
+| [budgetMetadata.spec.js](../tests/budgetMetadata.spec.js) | 新增 10 項 Controller 案例，包含 controller 與真正 coalescer 的整合（非只有假 read callback）；35→45 |
+| [budgetSync.spec.js](../tests/budgetSync.spec.js) | 新增期限後重讀／晚到隔離、20 次 committed 共用期限且 dirty rerun 不重啟期限；4→6 |
+| [formalBudgetMetadata.spec.js](../tests/formalBudgetMetadata.spec.js) | 新增 13 項真 React 案例；32→45。pending read／虛擬時鐘、五種離開、接手、帳號、登出、offline/reconnect、未知 ACK 與 memory-only Demo |
+| [budgetMetadataMock.js](../tests/helpers/budgetMetadataMock.js) | 只能在指定 Patch 提交後 arm 的一次性 snapshot gate；回傳內容在等待前 clone，確保晚到的是舊 financial graph／lease hints，沒有用新內容假扮舊請求 |
+| CURRENT_TASK、本文件、[最新 QA JSON](qa/2026-10-29-budget-b3-snapshot-timeout-results.json) | 根因、reproduction、測試數量、native 回歸與 source hashes。舊 QA JSON 保留為歷史證據 |
+
+這是既有兩個等待位置的期限／fence 補強，不另建平行管理器。Patch request ID、signature、canonical ACK、submitted/local revision、每組單一 Patch transport、CAS、exact lease token/epoch release 都沒有改成 blind retry。沒有 SQL migration、RLS、權限、金融模型、依賴或環境檔變更。
+
+### 恢復與離開的具體結果
+
+- **A 已確認，B 排隊，read 不回應：** 10000ms 內等待，期限後結束 saveWork／readWork、保留 canonical A + local B + 原 base revision，request=null。沒有把成功 A 改成未知，也不重送 A；dirty draft 顯示重試，背景不無限重送。
+- **重試：** 先接受新 Snapshot，再確認當下 DB lease／epoch／版本。B 以 A 的成功 revision 為 base、新 request ID 提交；A/B 各一筆，最終 value/canonical/DB B、revision2。一組仍最多一個 Patch 在途；同時點 retry 共用 readWork／acquiring／saveWork。
+- **他人更新同組：** 新 read 得到較新 revision，就保留 B、顯示 conflict，不新發 acquire／Patch 強制覆蓋；另一個 tab 的 epoch 不會被原 tab 清掉。舊 captured Snapshot 回來不會覆蓋 financial graph、remote group 或本機 B。
+- **未知 Patch ACK：** 仍保留原 request，先以相同 ID/payload 查證；不因 Snapshot timeout 就視為已確認。這與 A 已成功但同步逾時時 request=null 的流程不同。
+- **關閉／側欄／完整編輯／旅程／項目切換：** pending work 會在期限內結束；dirty B 走現有 ActiveEditorGuard，繼續編輯保留 B，不能默默離開。恢復成功後再切換；完整編輯仍先精確 release，再讀 canonical／取得 whole-record lease。clean A 不需要重送，能在 timeout 後正常釋放並關閉。
+- **登出／換帳號／換旅程／項目：** generation／request guard 加上 retired read fence 阻擋舊結果；舊 finally 只清自己的 entry。timeout 後 offline 保留 B，Online/SUBSCRIBED 本身仍不授予 authority。
+
+底層請求未加 abort；不能假稱網路請求已取消。期限後退休的是 logical work，舊 transport 可自然完成，但結果沒有 apply／authority 路徑；只有原有 lease admission 保留 exact capability 的 late cleanup。使用者明確重試才建立新讀取，重複操作在同一次期限內共用 entry。正常 80ms invalidation coalescing 與 dirty rerun 保留；共用期限不因 rerun 延長。
+
+### 本次驗證與界線
+
+| 層級 | 結果／範圍 |
+| --- | --- |
+| 新增案例 | **25 項**：10 Controller + 2 coalescer + 13 UI。新期限案例用 Node mock timers／Playwright clock + Deferred gate，不以固定 sleep 等待 10 秒 |
+| 完整 Playwright 批次 | **241/241**；Controller45、群組 UI45、既有 Budget/通知121（含 coalescer6）、smoke30；同一批次無重複加總。另補 financial graph 在晚到 Snapshot 後仍顯示 B 的斷言，該受影響案例另驗，不重複加總 |
+| 原生 PostgreSQL 回歸 | **33/33**，20 組真實重疊觀察；run `b5a41fb0-c240-4425-baf0-ac410387273a`、PostgreSQL17.11、127.0.0.1:2427、全新隔離 cluster 已停止。使用實際 SQL RPC 的既有 B-3 adapter/queue/replay、RLS、交易與雙連線案例；本次無 SQL 變更，沒有新增 native case，不把 HTTP Snapshot gate 稱為新的 DB 並行驗證 |
+| PGlite | metadata23/23；budget-database、budget-safety-database 及既有 LF mirror 的 budget-leases-database 全部通過；不是多連線證據 |
+| Production build／syntax／diff | 通過；入口 bundle 約1.104MB，保留原有 bundle advisory |
+| Hosted | **未驗證／未操作**：沒有 hosted PostgREST/Realtime、migration、正式資料修改或部署 |
+
+初期 UI 接手案例仍選舊名稱 `JPY fare`，但 A 已提交 `Confirmed A`，因此找不到列；改為明確選 DB 已確認的新名稱，沒有降低 ownership／revision／Patch 數量斷言。原版兩個 red tests 的失敗與此 locator 失敗分別記錄，不能混稱修復根因。
+
+Browser plugin not available，使用既有 Playwright／Chromium，desktop1440×1000、`http://127.0.0.1:5180`（未佔用既有5174）。身份、非空頁、無框架 overlay、console 與操作檢查保留；timeout 截圖在本機 TEMP `travel-budget-b3-snapshot-timeout/formal-confirmed-A-queued-B-timeout.png`，文字可讀、無欄位重疊。Formal 使用隔離 Auth/RPC/Realtime/Storage mock；Demo 使用真共享 UI／memory transport 的測試 gate，零外部 API，沒有持久化 draft。新 Snapshot 尚未接受前，左側財務列表可保留上一份一致快照；編輯器不拿該舊 record 覆蓋 ACK canonical／B draft。
+
+旗標仍預設關閉；可依前述命令把 base URL 改成5180，執行 metadata、sync、Formal metadata 與既有 regression suites。Hosted latency／websocket、真裝置背景節流、實體 IME 與 screen-reader 語音仍不在本機驗收內。下一步為對此提交的 Code Review，未開金融／分類等後續階段。

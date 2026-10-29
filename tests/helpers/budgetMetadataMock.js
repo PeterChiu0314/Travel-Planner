@@ -8,6 +8,10 @@ export function metadataBackend() {
   const db = backend({ leases: true }), original = db.request.bind(db);
   db.groupStates = new Map(); db.groupCalls = []; db.groupRequests = new Map(); db.groupRevision = 0;
   db.metadataEnabled = true; db.metadataHold = null; db.metadataPending = [];
+  db.holdNextMetadataSnapshotAfterPatch = (actor = "A") => {
+    const gate = { actor, started: 0, pending: [], release() { this.pending.splice(0).forEach(resolve=>resolve()); } };
+    db.nextSnapshotGate = gate; return gate;
+  };
   db.releaseMetadata = () => { db.metadataHold = null; db.metadataPending.splice(0).forEach(resolve => resolve()); };
   const key = args => `${args.p_kind}:${args.p_id}:${args.p_group}`;
   const rowFor = args => (db.rows[args.p_kind === "budget" ? "budget_items" : "actual_expenses"] || []).find(r => r.id === args.p_id && r.trip_id === args.p_trip_id);
@@ -35,6 +39,10 @@ export function metadataBackend() {
       result.data = { ...result.data, metadataProtocol: { name: "metadata-prototype", schemaVersion: db.metadataMalformed ? 99 : 1, enabled: db.metadataEnabled, complete: false, groups: ["title", "note"] }, metadataRecords: records,
         serverNow: new Date(db.now).toISOString(), collaborationRevision: db.groupRevision, collaboration: { tripId: args.p_trip_id, selectionProtocol: 2, entries },
         nextRefreshAt: entries.length ? new Date(Math.min(...entries.map(e => Date.parse(e.expires_at)))).toISOString() : null };
+      if (db.snapshotGate?.actor === actor) {
+        const gate=db.snapshotGate;db.snapshotGate=null;gate.started++;const captured=structuredClone(result);
+        await new Promise(resolve=>gate.pending.push(resolve));return captured;
+      }
       return result;
     }
     if (["budget_metadata_group_lease", "patch_budget_metadata_group"].includes(name)) {
@@ -57,6 +65,7 @@ export function metadataBackend() {
         if (!owns || g.expires <= db.now) return { error: { code: "55P03" } };
         row[args.p_group] = args.p_patch[args.p_group]; row.updated_at = new Date(db.now + (++db.groupRevision)).toISOString(); g.revision++;
         const data = { id: row.id, kind: args.p_kind, group: args.p_group, revision: g.revision, value: row[args.p_group], request_id: args.p_request_id };
+        if(db.nextSnapshotGate?.actor===actor){db.snapshotGate=db.nextSnapshotGate;db.nextSnapshotGate=null;}
         db.groupRequests.set(args.p_request_id, data); await db.emit("budget_items"); await db.emit("budget_collaboration_signals");
         if (db.losePatchAck) { db.losePatchAck = false; return { error: { message: "ack lost" } }; }
         return { data };

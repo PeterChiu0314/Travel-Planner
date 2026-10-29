@@ -1,5 +1,5 @@
 import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./budgetMetadataConfig.js";
-import { validBudgetMetadataSnapshot } from "./budgetMetadataService.js";
+import { validBudgetMetadataSnapshot, withBudgetAuthorityTimeout, budgetSnapshotTimeoutError } from "./budgetMetadataService.js";
 export const emptyBudgetSnapshot = () => ({ tripId: null, budgetItems: [], budgetParticipants: [], actualExpenses: [], actualParticipants: [],
   itineraryBudgetLinks: [], budgetBaseline: null, items: [], members: [], attachments: [], tripBudgetRates: null });
 export const mergeBudgetAttachments = (attachments, snapshot) => [...attachments.filter(a => a.target_type !== "actual_expense"), ...snapshot.attachments];
@@ -30,7 +30,7 @@ export async function readBudgetSnapshot(supabase, tripId) {
 
 // One coalesced authority read for the complete financial graph. Invalidations
 // during a read discard its result and rerun once quiet; generations cover ABA.
-export function createBudgetRefresh({ guard, read, apply, onError = () => {}, onVerified = () => {}, delay = 80 }) {
+export function createBudgetRefresh({ guard, read, apply, onError = () => {}, onVerified = () => {}, delay = 80, timeoutMs = null }) {
   let entry = null, timer = null;
   function cancel() { clearTimeout(timer); timer = null; }
   function refresh() {
@@ -39,13 +39,14 @@ export function createBudgetRefresh({ guard, read, apply, onError = () => {}, on
     if (!context.key) return Promise.resolve({ ok: false });
     if (entry && guard.sameContext(entry.context)) return entry.promise;
     const work = { context, dirty: false };
-    work.promise = (async () => {
+    const run = (async () => {
       let result;
       do {
         work.dirty = false;
         const token = guard.begin("budget");
+        work.token = token;
         result = await read(context.key);
-        if (!guard.sameContext(context)) return { ok: false, stale: true };
+        if (work.expired || !guard.sameContext(context)) return { ok: false, stale: true };
         if (guard.valid(token) && !work.dirty) {
           if (result.error) { onError(result.error); return { ok: false, error: result.error }; }
           apply(result.data, context.key); onVerified(result); return { ok: true, data: result.data };
@@ -54,7 +55,18 @@ export function createBudgetRefresh({ guard, read, apply, onError = () => {}, on
         // wins; only a real invalidation requires another snapshot request.
       } while (work.dirty && guard.sameContext(context));
       return { ok: false, stale: true };
-    })().catch(error => {
+    })();
+    // One deadline includes invalidation reruns. Retiring the logical work also
+    // fences its uncancellable transport before a late result can apply.
+    work.promise = (timeoutMs == null ? run : withBudgetAuthorityTimeout(run, {
+      timeoutMs, error: budgetSnapshotTimeoutError(), onTimeout: () => { work.expired = true; },
+    })).then(result => {
+      if (result.error && result.ok == null) {
+        if (guard.sameContext(context) && (guard.valid(work.token) || work.dirty)) onError(result.error);
+        return { ok: false, error: result.error };
+      }
+      return result;
+    }).catch(error => {
       if (guard.sameContext(context)) onError(error);
       return { ok: false, error };
     }).finally(() => { if (entry === work) entry = null; });

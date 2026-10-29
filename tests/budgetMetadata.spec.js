@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { createBudgetMetadataEditor, validBudgetMetadataSnapshot, withoutBudgetMetadata } from "../src/lib/budgetMetadataService.js";
+import { mock } from "node:test";
+import { createBudgetMetadataEditor, validBudgetMetadataSnapshot, withoutBudgetMetadata, budgetAuthorityTimeoutMs } from "../src/lib/budgetMetadataService.js";
+import { createBudgetRefresh } from "../src/lib/budgetSync.js";
+import { createRequestGuard } from "../src/lib/luggageSync.js";
 import { createDemoBudgetMetadataService } from "../src/demo/budgetMetadata.js";
 import { primaryBudgetCollaborators } from "../src/lib/budgetCollaboration.js";
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
@@ -12,7 +15,7 @@ async function setup(options = {}) {
     onSaveMetadata(kind, id, group, value) { props.budgetItems[0] = { ...props.budgetItems[0], [group]: value }; } };
   const transport = createDemoBudgetMetadataService(() => props, () => time), calls = [], patches = [], reads = { fail: false };
   const service = { ...transport, lease: async args => { calls.push(args); return transport.lease(args); }, patch: async args => { patches.push(args); return transport.patch(args); } };
-  const client = createBudgetMetadataEditor({ service, read: trip => reads.fail ? {ok:false} : transport.read(trip), sessionId: "tab", now: () => time, makeId: () => `token-${++serial}`, storage, ...options });
+  const client = createBudgetMetadataEditor({ service, read: trip => reads.delegate ? reads.delegate(trip) : reads.gate ? reads.gate.promise : reads.fail ? {ok:false} : transport.read(trip), sessionId: "tab", now: () => time, makeId: () => `token-${++serial}`, storage, ...options });
   clients.push(client);
   client.configure("A", "trip", true, true); await client.refresh();
   return { client, props, calls, patches, reads, service, transport, values, storage, title: client.get("budget", "id", "title"), note: client.get("budget", "id", "note"), advance: ms => { time += ms; } };
@@ -241,4 +244,104 @@ test("finish freezes both groups while flushing and releasing, preserving the la
 test("first real focus after an idle inspection starts its own activity window",async()=>{
   const f=await setup();f.advance(180000);await f.client.focus(f.title);await f.client.tick();expect(f.title.token).toBeTruthy();
   f.advance(120001);await f.client.tick();expect(f.title.token).toBe(null);
+});
+
+const drain = async () => { for (let i=0;i<30;i++) await Promise.resolve(); };
+test("confirmed patch plus permanently pending snapshot times out without losing queued input",async()=>{
+  const f=await setup();await f.client.focus(f.title);mock.timers.enable({apis:["setTimeout"]});
+  try {
+    f.reads.gate=deferred();f.client.input(f.title,"A");let settled=false;
+    const work=f.client.save(f.title).then(ok=>{settled=true;return ok;});await drain();
+    expect(f.title.canonical).toBe("A");expect(f.title.request).toBe(null);f.client.input(f.title,"B");
+    mock.timers.tick(budgetAuthorityTimeoutMs+1);await drain();
+    expect(f.title.canonical).toBe("A");expect(f.title.value).toBe("B");expect(f.patches).toHaveLength(1);
+    expect(settled).toBe(true);expect(await work).toBe(false);expect(f.title.saveWork).toBe(null);
+    expect(f.client.status().verified).toBe(false);
+  }finally{mock.timers.reset();}
+});
+
+async function pendingConfirmed(f) {
+  const gate=deferred();f.reads.gate=gate;f.client.input(f.title,"A");const work=f.client.save(f.title);await drain();
+  expect(f.title.canonical).toBe("A");const captured=await f.transport.read("trip");f.client.input(f.title,"B");
+  return {gate,work,captured};
+}
+test("timeout retires readWork, concurrent explicit retries share authority and latest queued patch",async()=>{
+  const f=await setup();await f.client.focus(f.title);mock.timers.enable({apis:["setTimeout"]});
+  try {
+    const p=await pendingConfirmed(f);mock.timers.tick(budgetAuthorityTimeoutMs+1);await drain();expect(await p.work).toBe(false);
+    f.reads.gate=null;const retry=f.client.retry(f.title), same=f.client.retry(f.title);await drain();expect(await retry).toBe(true);expect(await same).toBe(true);
+    expect(f.patches.map(p=>p.p_patch.title)).toEqual(["A","B"]);expect(f.title.base).toBe(2);expect(f.title.value).toBe("B");
+    expect(f.calls.filter(c=>c.p_action==="acquire")).toHaveLength(2);expect(f.title.saveWork).toBe(null);
+    p.gate.resolve(p.captured);await drain();expect(f.title.value).toBe("B");expect(f.title.canonical).toBe("B");expect(f.title.remote.revision).toBe(2);
+    expect(f.client.status().snapshot.budgetItems[0].title).toBe("B");expect(f.client.status().verified).toBe(true);
+  }finally{mock.timers.reset();}
+});
+
+test("controller timeout also retires the actual coalescer slot; late transport cannot apply a financial graph",async()=>{
+  const f=await setup();await f.client.focus(f.title);const guard=createRequestGuard();guard.setContext("A:trip");
+  const gate=deferred(),applied=[],errors=[];let held=true,reads=0;
+  const sync=createBudgetRefresh({guard,timeoutMs:budgetAuthorityTimeoutMs,read:()=>{reads++;return held?gate.promise:f.transport.read("trip");},
+    apply:data=>applied.push(data.budgetItems[0].title),onError:error=>{errors.push(error);f.client.invalidate(error.message);}});
+  f.reads.delegate=()=>sync.committed();mock.timers.enable({apis:["setTimeout"]});
+  try {
+    f.client.input(f.title,"A");const work=f.client.save(f.title);await drain();const captured=await f.transport.read("trip");f.client.input(f.title,"B");
+    mock.timers.tick(budgetAuthorityTimeoutMs+1);await drain();expect(await work).toBe(false);expect(errors).toHaveLength(1);expect(reads).toBe(1);
+    held=false;expect(await f.client.retry(f.title)).toBe(true);expect(reads).toBe(3);expect(applied).toEqual(["A","B"]);
+    gate.resolve(captured);await drain();expect(applied).toEqual(["A","B"]);expect(f.title.value).toBe("B");expect(f.patches).toHaveLength(2);
+  }finally{mock.timers.reset();sync.cancel();}
+});
+
+test("another editor's newer version wins after timeout; queued B stays a conflicted draft",async()=>{
+  const f=await setup();await f.client.focus(f.title);mock.timers.enable({apis:["setTimeout"]});
+  try {
+    const p=await pendingConfirmed(f);mock.timers.tick(budgetAuthorityTimeoutMs+1);await drain();await p.work;
+    f.reads.gate=null;f.props.budgetItems[0].title="Other editor";
+    expect(await f.client.retry(f.title)).toBe(false);expect(f.title.conflict).toBe(true);expect(f.title.value).toBe("B");expect(f.title.base).toBe(1);
+    expect(f.patches).toHaveLength(1);expect(f.calls.filter(c=>c.p_action==="acquire")).toHaveLength(1);
+    p.gate.resolve(p.captured);await drain();expect(f.title.remote.value).toBe("Other editor");expect(f.title.conflict).toBe(true);
+  }finally{mock.timers.reset();}
+});
+
+test("pending snapshot cannot strand dirty prepare or finish; discard requires an explicit decision",async()=>{
+  const f=await setup();await f.client.focus(f.title);mock.timers.enable({apis:["setTimeout"]});
+  try {
+    const p=await pendingConfirmed(f);const exit=f.client.prepare("budget","id");
+    mock.timers.tick(budgetAuthorityTimeoutMs+1);await drain();expect(await p.work).toBe(false);expect(await exit).toBe(false);
+    expect(await f.client.finish("budget","id")).toBe(false);expect(f.title.value).toBe("B");expect(f.title.exiting).toBe(false);
+    const token=f.title.token,epoch=f.title.epoch;expect(await f.client.discard(f.title)).toBe(true);
+    expect(f.title.value).toBe("A");expect(f.calls.at(-1)).toMatchObject({p_action:"release",p_token:token,p_epoch:epoch});
+    p.gate.resolve(p.captured);await drain();expect(f.title.value).toBe("A");expect(f.title.token).toBe(null);
+  }finally{mock.timers.reset();}
+});
+
+test("clean confirmed patch can finish after snapshot deadline without submitting again",async()=>{
+  const f=await setup();await f.client.focus(f.title);mock.timers.enable({apis:["setTimeout"]});
+  try {
+    f.reads.gate=deferred();f.client.input(f.title,"A");const work=f.client.save(f.title);await drain();const exit=f.client.finish("budget","id");
+    mock.timers.tick(budgetAuthorityTimeoutMs+1);await drain();expect(await work).toBe(true);expect(await exit).toBe(true);
+    expect(f.title.value).toBe("A");expect(f.title.token).toBe(null);expect(f.title.syncPending).toBe(true);expect(f.patches).toHaveLength(1);
+  }finally{mock.timers.reset();}
+});
+
+for(const target of ["trip","account","logout"])test(`${target} context isolates a late pending snapshot before or after its deadline`,async()=>{
+  const f=await setup();await f.client.focus(f.title);mock.timers.enable({apis:["setTimeout"]});
+  try {
+    const p=await pendingConfirmed(f);f.reads.gate=null;
+    if(target==="logout")f.client.configure(null,null,false,false);
+    else {f.props.currentUserId=target==="account"?"B":"A";f.client.configure(f.props.currentUserId,target==="trip"?"other":"trip",true,true);await f.client.refresh();}
+    const status=f.client.status(),version=f.client.getVersion();p.gate.resolve(p.captured);await drain();expect(await p.work).toBe(false);
+    expect(f.client.status().snapshot).toBe(status.snapshot);expect(f.client.status().verified).toBe(status.verified);expect(f.client.getVersion()).toBe(version);
+    expect(f.patches).toHaveLength(1);
+  }finally{mock.timers.reset();}
+});
+
+test("offline after snapshot timeout keeps B and reconnect needs fresh read plus confirmed lease",async()=>{
+  const f=await setup();await f.client.focus(f.title);mock.timers.enable({apis:["setTimeout"]});
+  try {
+    const p=await pendingConfirmed(f);mock.timers.tick(budgetAuthorityTimeoutMs+1);await drain();await p.work;f.client.suspend();f.reads.gate=null;
+    expect(await f.client.retry(f.title)).toBe(false);expect(f.patches).toHaveLength(1);
+    await f.client.reconcile();expect(f.client.view(f.title).writable).toBe(false);expect(f.title.value).toBe("B");expect(f.patches).toHaveLength(1);
+    expect(await f.client.retry(f.title)).toBe(true);expect(f.props.budgetItems[0].title).toBe("B");expect(f.title.base).toBe(2);
+    p.gate.resolve(p.captured);await drain();expect(f.client.status().verified).toBe(true);
+  }finally{mock.timers.reset();}
 });

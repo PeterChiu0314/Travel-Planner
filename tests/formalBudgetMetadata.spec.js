@@ -2,11 +2,12 @@ import { expect, test } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { metadataBackend, boot, enableMetadata } from "./helpers/budgetMetadataMock.js";
+import { budgetAuthorityTimeoutMs } from "../src/lib/budgetMetadataService.js";
 const editor = page => page.getByRole("region", { name: "預算群組編輯" });
 const title = page => page.getByRole("textbox", { name: "項目名稱", exact: true });
 const note = page => page.getByRole("textbox", { name: "備註", exact: true });
 async function write(field, value) { await field.focus(); await field.fill(value); }
-async function ready(page, db, actor = "A") { await enableMetadata(page); await boot(page, db, actor); await page.getByRole("button", { name: "JPY fare", exact: true }).click(); await page.getByRole("tab", { name: "編輯項目", exact: true }).click(); await expect(title(page)).toBeVisible(); }
+async function ready(page, db, actor = "A", recordTitle = "JPY fare") { await enableMetadata(page); await boot(page, db, actor); await page.getByRole("button", { name: recordTitle, exact: true }).click(); await page.getByRole("tab", { name: "編輯項目", exact: true }).click(); await expect(title(page)).toBeVisible(); }
 test.afterEach(async ({ page }) => { if (page.qaErrors) expect(page.qaErrors).toEqual([]); });
 
 test("open has no lease; first focus buffers input until admission and same-group lock is exclusive", async ({ page, context }) => {
@@ -270,4 +271,117 @@ test("clean idle releases while focused; first Backspace reacquires and preserve
   await expect(title(page)).toBeFocused();await expect(title(page)).toHaveAttribute("readonly","");await title(page).press("End");await title(page).press("Backspace");
   await expect(title(page)).toHaveValue("JPY fare");await expect(title(page)).toBeEditable();
   await page.clock.fastForward(1001);await expect.poll(()=>db.rows.budget_items[0].title).toBe("JPY fare");
+});
+
+const patches = db => db.groupCalls.filter(c=>c.name==="patch_budget_metadata_group");
+async function pendingSnapshot(page,db,{queued=true}={}) {
+  await page.clock.install();await ready(page,db);const gate=db.holdNextMetadataSnapshotAfterPatch();
+  await write(title(page),"Confirmed A");await page.clock.fastForward(1001);await expect.poll(()=>gate.started).toBe(1);
+  expect(db.rows.budget_items[0].title).toBe("Confirmed A");
+  if(queued)await title(page).fill("Queued B");return gate;
+}
+async function snapshotDeadline(page) {await page.clock.fastForward(budgetAuthorityTimeoutMs+1);}
+
+test("snapshot deadline frees Formal queue; retry confirms authority and never resends committed A",async({page})=>{
+  const db=metadataBackend(),gate=await pendingSnapshot(page,db);
+  await expect(title(page).locator("..").locator(".bw-metadata-status")).toHaveText("已儲存，最新同步待確認；另有尚未儲存的修改");
+  await snapshotDeadline(page);await expect(title(page).locator("..").getByRole("button",{name:"重試",exact:true})).toBeVisible();
+  if(process.env.BUDGET_SNAPSHOT_EVIDENCE){await fs.mkdir(process.env.BUDGET_SNAPSHOT_EVIDENCE,{recursive:true});await page.screenshot({path:path.join(process.env.BUDGET_SNAPSHOT_EVIDENCE,"formal-confirmed-A-queued-B-timeout.png")});}
+  await expect(title(page)).toHaveValue("Queued B");expect(patches(db)).toHaveLength(1);expect(db.groupStates.get("budget:budget:title").revision).toBe(1);
+  const first=patches(db)[0].args;await title(page).locator("..").getByRole("button",{name:"重試",exact:true}).click();
+  await expect.poll(()=>db.rows.budget_items[0].title).toBe("Queued B");await expect(title(page)).toHaveValue("Queued B");
+  await expect(page.getByRole("button",{name:"Queued B",exact:true})).toBeVisible();
+  expect(patches(db)).toHaveLength(2);expect(patches(db)[1].args.p_base_revision).toBe(1);expect(patches(db)[1].args.p_request_id).not.toBe(first.p_request_id);
+  expect(db.groupCalls.filter(c=>c.args.p_action==="acquire"&&c.args.p_group==="title")).toHaveLength(2);
+  gate.release();await page.clock.runFor(100);await expect(title(page)).toHaveValue("Queued B");
+  await expect(page.getByRole("button",{name:"Queued B",exact:true})).toBeVisible();
+  if(process.env.BUDGET_SNAPSHOT_EVIDENCE)await page.screenshot({path:path.join(process.env.BUDGET_SNAPSHOT_EVIDENCE,"formal-recovered-B.png")});
+  expect(db.groupStates.get("budget:budget:title").revision).toBe(2);expect(patches(db)).toHaveLength(2);
+});
+
+for(const action of ["close","sidebar","full","trip","item"])test(`pending snapshot ${action} exit settles at deadline and preserves dirty B`,async({page})=>{
+  const db=metadataBackend(),gate=await pendingSnapshot(page,db);
+  const leave=()=>action==="close"?page.getByRole("button",{name:"關閉編輯",exact:true}).click()
+    :action==="sidebar"?page.getByRole("tab",{name:"旅程統計",exact:true}).click()
+    :page.getByRole("button",{name:action==="trip"?"Other QA":action==="item"?db.rows.budget_items.find(r=>r.id!=="budget").title:"編輯完整項目",exact:true}).click();
+  await leave();await expect(editor(page)).toBeVisible();await expect(page.getByRole("dialog")).toHaveCount(0);
+  await snapshotDeadline(page);await expect(page.getByRole("dialog")).toBeVisible();await page.getByRole("button",{name:"繼續編輯",exact:true}).click();
+  await expect(title(page)).toHaveValue("Queued B");expect(patches(db)).toHaveLength(1);expect(db.leaseCalls).toHaveLength(0);
+  await title(page).locator("..").getByRole("button",{name:"重試",exact:true}).click();await expect.poll(()=>db.rows.budget_items[0].title).toBe("Queued B");
+  await leave();
+  if(action==="full")await expect(page.getByRole("form",{name:"預算編輯",exact:true}).getByRole("textbox",{name:"項目",exact:true})).toHaveValue("Queued B");
+  else if(action==="item")await expect(title(page)).toHaveValue(db.rows.budget_items.find(r=>r.id!=="budget").title);
+  else await expect(editor(page)).toHaveCount(0);
+  await expect.poll(()=>db.groupStates.get("budget:budget:title").actor).toBe(null);expect(patches(db)).toHaveLength(2);
+  gate.release();await page.clock.runFor(100);
+  if(action==="item")await expect(title(page)).toHaveValue(db.rows.budget_items.find(r=>r.id!=="budget").title);
+});
+
+test("confirmed clean A can close after pending snapshot deadline with exact release and no duplicate patch",async({page})=>{
+  const db=metadataBackend(),gate=await pendingSnapshot(page,db,{queued:false});const first=patches(db)[0].args;
+  await page.getByRole("button",{name:"關閉編輯",exact:true}).click();await snapshotDeadline(page);await expect(editor(page)).toHaveCount(0);
+  expect(db.rows.budget_items[0].title).toBe("Confirmed A");expect(patches(db)).toHaveLength(1);
+  expect(db.groupCalls.some(c=>c.args.p_action==="release"&&c.args.p_token===first.p_token&&c.args.p_epoch===first.p_epoch)).toBe(true);
+  gate.release();await page.clock.runFor(100);await expect(editor(page)).toHaveCount(0);
+});
+
+test("timeout followed by offline and reconnect keeps B until a fresh snapshot and confirmed lease",async({page})=>{
+  const db=metadataBackend(),gate=await pendingSnapshot(page,db);await snapshotDeadline(page);
+  db.offline=true;await page.evaluate(()=>{Object.defineProperty(navigator,"onLine",{configurable:true,get:()=>false});window.dispatchEvent(new Event("offline"));});
+  await expect(title(page)).toHaveValue("Queued B");await expect(title(page)).toHaveAttribute("readonly","");expect(patches(db)).toHaveLength(1);
+  db.offline=false;await page.evaluate(()=>{Object.defineProperty(navigator,"onLine",{configurable:true,get:()=>true});window.dispatchEvent(new Event("online"));});
+  await title(page).locator("..").getByRole("button",{name:"重試",exact:true}).click();await expect.poll(()=>db.rows.budget_items[0].title).toBe("Queued B");
+  gate.release();await page.clock.runFor(100);await expect(title(page)).toHaveValue("Queued B");expect(patches(db)).toHaveLength(2);
+});
+
+test("another tab takes over after timeout; old snapshot cannot replace its committed version or local B",async({page,context})=>{
+  const db=metadataBackend(),gate=await pendingSnapshot(page,db);await snapshotDeadline(page);db.now+=420001;
+  const other=await context.newPage();try {
+    await ready(other,db,"B","Confirmed A");await write(title(other),"Other tab canonical");await expect.poll(()=>db.rows.budget_items[0].title).toBe("Other tab canonical");
+    gate.release();await page.evaluate(()=>window.dispatchEvent(new Event("focus")));await page.clock.runFor(100);
+    await expect(title(page)).toHaveValue("Queued B");await expect(page.getByRole("alert").filter({hasText:/草稿已保留/})).toBeVisible();
+    expect(db.rows.budget_items[0].title).toBe("Other tab canonical");expect(patches(db).filter(c=>c.actor==="A")).toHaveLength(1);
+    expect(db.groupStates.get("budget:budget:title")).toMatchObject({actor:"B",revision:2});expect(other.qaErrors).toEqual([]);
+  }finally{await other.close();}
+});
+
+for(const change of ["account","logout"])test(`${change} during pending snapshot fences late graph and never sends queued B`,async({page})=>{
+  const db=metadataBackend(),gate=await pendingSnapshot(page,db);
+  await page.evaluate(change=>change==="logout"?window.budgetMock.client.auth.signOut():window.budgetMock.switchAccount("B"),change);
+  if(change==="logout")await expect(page.getByRole("button",{name:/Google/})).toBeVisible();
+  else await expect(page.getByRole("button",{name:"帳號選單"})).toContainText("B");
+  gate.release();await snapshotDeadline(page);await expect(editor(page)).toHaveCount(0);expect(patches(db)).toHaveLength(1);
+});
+
+test("unknown patch acknowledgement with a pending snapshot replays the original request instead of treating it as confirmed",async({page})=>{
+  const db=metadataBackend();db.losePatchAck=true;const gate=await pendingSnapshot(page,db,{queued:false});await snapshotDeadline(page);
+  const first=patches(db)[0].args;await page.getByRole("button",{name:"確認儲存結果",exact:true}).click();
+  await expect(page.getByRole("button",{name:"確認儲存結果",exact:true})).toHaveCount(0);expect(patches(db)).toHaveLength(2);
+  expect(patches(db)[1].args).toEqual(first);expect(db.groupStates.get("budget:budget:title").revision).toBe(1);gate.release();
+});
+
+test("Demo uses the same snapshot deadline and queued recovery without connecting to any service",async({page})=>{
+  await page.clock.install();await enableMetadata(page);const requests=[],errors=[];
+  page.on("request",r=>{if(/\.supabase\.co|\/auth\/v1|\/rest\/v1|\/realtime\/v1|open.er-api.com/.test(r.url()))requests.push(r.url());});
+  page.on("pageerror",e=>errors.push(e.message));page.on("console",m=>{if(m.type()==="error")errors.push(m.text());});
+  await page.route("**/src/demo/budgetMetadata.js*",route=>{
+    if(new URL(route.request().url()).searchParams.has("snapshot_original"))return route.fallback();
+    return route.fulfill({contentType:"text/javascript",body:`
+      import {createDemoBudgetMetadataService as original} from "/src/demo/budgetMetadata.js?snapshot_original=1";
+      export function createDemoBudgetMetadataService(...args) {
+        const service=original(...args),gate=window.demoSnapshotTest={arm:true,hold:false,pending:false,patches:[]};
+        return {...service,async patch(args){const result=await service.patch(args);gate.patches.push({id:args.p_request_id,value:args.p_patch.title});
+          if(gate.arm){gate.arm=false;gate.hold=true;}return result;},
+          async read(trip){const result=await service.read(trip);if(!gate.hold)return result;gate.hold=false;gate.pending=true;
+            return new Promise(resolve=>{gate.release=()=>{gate.pending=false;resolve(result);};});}};
+      }`});
+  });
+  await page.setViewportSize({width:1440,height:1000});await page.goto("/demo/budget");await page.getByRole("button",{name:"租車加油",exact:true}).click();
+  await page.getByRole("tab",{name:"編輯項目",exact:true}).click();await write(title(page),"Demo A");await page.clock.fastForward(1001);
+  await expect.poll(()=>page.evaluate(()=>window.demoSnapshotTest.pending)).toBe(true);await title(page).fill("Demo B");await snapshotDeadline(page);
+  await expect(title(page).locator("..").locator(".bw-metadata-status")).toHaveText("已儲存，最新同步待確認；另有尚未儲存的修改");
+  await title(page).locator("..").getByRole("button",{name:"重試",exact:true}).click();await expect(title(page)).toHaveValue("Demo B");
+  await expect(title(page).locator("..").locator(".bw-metadata-status")).toHaveText("已儲存");await page.evaluate(()=>window.demoSnapshotTest.release());
+  await expect(title(page)).toHaveValue("Demo B");expect((await page.evaluate(()=>window.demoSnapshotTest.patches)).map(p=>p.value)).toEqual(["Demo A","Demo B"]);
+  expect(requests).toEqual([]);expect(errors).toEqual([]);
 });

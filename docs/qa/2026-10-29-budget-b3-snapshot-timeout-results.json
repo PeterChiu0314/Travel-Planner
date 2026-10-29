@@ -1,0 +1,551 @@
+{
+  "recordedOn": "2026-10-29",
+  "baseCommit": "d72bcabf085594863b05bd40350ee30f41afd4c0",
+  "scope": "B-3 title/note Snapshot timeout and queue recovery only; metadata flag remains false by default",
+  "reproduction": {
+    "beforeProductionEdits": true,
+    "actualResult": "Both new Deferred/mock-clock regression cases failed at settled=true: actual false after 10001ms.",
+    "tests": [
+      {
+        "file": "tests/budgetMetadata.spec.js",
+        "name": "confirmed patch plus permanently pending snapshot times out without losing queued input",
+        "confirmedBeforeDeadline": [
+          "DB-model patch A acknowledged",
+          "canonical A",
+          "request null",
+          "local queued B",
+          "one Patch"
+        ]
+      },
+      {
+        "file": "tests/budgetSync.spec.js",
+        "name": "pending coalesced snapshot releases its read slot after the authority deadline"
+      }
+    ],
+    "cause": "metadata.refresh awaited read with no bound; Formal createBudgetRefresh also kept its pending entry forever. Existing 10000ms timeout applied only to lease and Patch."
+  },
+  "correction": {
+    "timeoutMs": 10000,
+    "policy": "Reuse existing authority timeout; bound metadata readWork and the complete opt-in coalescer logical work including dirty reruns; flag expired before accepting late results.",
+    "legacyFlagOff": "App supplies null deadline when metadata flag is false; no new timeout policy for legacy budget reads.",
+    "cancellation": "No network abort promised. Retire logical work and isolate its eventual transport result; late lease admission retains its original exact-capability cleanup.",
+    "writes": "No new mutation fallback; confirmed A request not resent; B requires fresh Snapshot plus DB lease/base/epoch checks. Unknown Patch retains the same original request identity."
+  },
+  "verification": {
+    "combinedPlaywright": {
+      "passed": 241,
+      "failed": 0,
+      "groupController": 45,
+      "groupRenderedUI": 45,
+      "budgetNotificationAndSync": 121,
+      "smoke": 30,
+      "coalescerCasesIncludedIn121": 6,
+      "renderedSonnerCasesIncludedIn121": 11,
+      "additionalLateFinancialGraphAssertion": {
+        "passed": 1,
+        "note": "Affected case strengthened and rechecked after the complete batch; not a new distinct test."
+      }
+    },
+    "newCases": {
+      "total": 25,
+      "controller": 10,
+      "coalescer": 2,
+      "renderedUI": 13
+    },
+    "metadataPGlite": {
+      "passed": 23
+    },
+    "otherPGlite": [
+      "budget-database passed",
+      "budget-safety-database passed",
+      "budget-leases-database passed via existing LF disposable mirror"
+    ],
+    "nativeRegression": {
+      "marker": "b5a41fb0-c240-4425-baf0-ac410387273a",
+      "host": "127.0.0.1",
+      "port": 2427,
+      "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+      "passed": 33,
+      "failed": 0,
+      "observations": 20,
+      "pids": [
+        48664,
+        23092,
+        50820
+      ],
+      "serverStopped": true,
+      "allMigrationHashesUnchanged": true,
+      "hashes": [
+        {
+          "file": "001_collaborative_travel_planner.sql",
+          "sha256": "2c559727546f568179f6752262361f721c34acc69f657acdf5504236f99a3e70"
+        },
+        {
+          "file": "002_core_mvp_schema.sql",
+          "sha256": "cf93fb48deca5bc12dcbc8cb5d34dbae422689e4fb6a008f3c4c255e032d28d4"
+        },
+        {
+          "file": "003_trip_name_compat.sql",
+          "sha256": "0229879cde2b7ac212a917216ad45a8fb2ab23daaf3aa657123e915cd852c7da"
+        },
+        {
+          "file": "004_harden_rls_rpc_permissions.sql",
+          "sha256": "fca57bbbd326a961ad35ca65735781199ba8045a456383519fb90e535b751e68"
+        },
+        {
+          "file": "005_revoke_public_rpc_execute.sql",
+          "sha256": "e2efd8bb24451133442819b798b09b7afe11c69c17e6e01b41c7e7217e474d2d"
+        },
+        {
+          "file": "006_move_rls_helpers_private.sql",
+          "sha256": "5fdaec34cf98a73fbfe852772475ad4c2e6e580d52a0fc71ecd89350e6eca332"
+        },
+        {
+          "file": "007_create_attachments_storage.sql",
+          "sha256": "28760121ea7b4c39fa21984c23cedec49848d4b160556ed69383fe7e34a73aa1"
+        },
+        {
+          "file": "008_share_snapshot_rpc.sql",
+          "sha256": "1f53688fdb65878c9723c5ca6644b6aad5992a044332f59c97e5a51a5e516252"
+        },
+        {
+          "file": "009_add_edit_locks.sql",
+          "sha256": "1c5dfd46196ffafe923b7ba3eff2d947a86e9c9c759149c393c71c56c16a6548"
+        },
+        {
+          "file": "010_add_transportation_card_fields.sql",
+          "sha256": "0738b2c408b34015aac1e01177c9c47b94aa934f0669d73d5f74ff69ad75f3f6"
+        },
+        {
+          "file": "011_add_transport_card_pair_fields.sql",
+          "sha256": "de18b98a802061202031d66119cb0eff0f97bb72a367de98e41d015e77b34fe5"
+        },
+        {
+          "file": "012_add_transport_review_snapshots.sql",
+          "sha256": "0218850d70659172558e9f692e9760a9822b6f83c142d287f1c7c05da3096a18"
+        },
+        {
+          "file": "013_add_itinerary_alternative_visit_fields.sql",
+          "sha256": "4c81260113596f1a62b565db92a7fe03257eb8601b2ad22eeb444bfea7424406"
+        },
+        {
+          "file": "014_add_itinerary_item_fixed_fields.sql",
+          "sha256": "27c4c0e2710d92421714711b617dbfae7d381e6c4ed4224b1d70be92cba35d6e"
+        },
+        {
+          "file": "015_add_trip_destination_fields.sql",
+          "sha256": "fcdcc2336af1b32ec305372872f4d6ad7cf2c23d5ac201343b8a2688f80930a1"
+        },
+        {
+          "file": "016_apply_trip_date_change.sql",
+          "sha256": "88c9096bc5a0d6243c10d90dcb380de54b5cd203cbc551a3cddd4eec4bf42e05"
+        },
+        {
+          "file": "017_confirm_trip_date_shortening.sql",
+          "sha256": "57cdf997aab42914cfc6ade6bdce0078d6c648c55dc471527532b9f2d62ead75"
+        },
+        {
+          "file": "018_filter_share_snapshot_timeline.sql",
+          "sha256": "dbe86281388fbe5e9f8f972ece6934214b27396a370bfd0fa888f684745acdfb"
+        },
+        {
+          "file": "019_swap_itinerary_destination_packages.sql",
+          "sha256": "9695497ad7b391655d0a2213e657c4b2294075deee139d636308f75daa83c329"
+        },
+        {
+          "file": "020_reorder_itinerary_destination_packages.sql",
+          "sha256": "940b82a1f51c00cc68968bd330f440bca56a28c7b9b3cc17cba3fdb287b4a57e"
+        },
+        {
+          "file": "021_fix_reorder_baseline_count.sql",
+          "sha256": "707efa2e0170ecc6badfb2832be8611ddf2a480dde7fdb4b89dfb1f191ed7b5b"
+        },
+        {
+          "file": "022_add_transport_role_to_itinerary_items.sql",
+          "sha256": "88ccb063b79b72ae8cf0a41760e1401eb019c6f34777346aa88da63db27e165c"
+        },
+        {
+          "file": "023_reorder_itinerary_timed_auto_continuation.sql",
+          "sha256": "040ad6378d5c4f12de98216c625f5068312a2dd82dc5a2253a2266cdbf925999"
+        },
+        {
+          "file": "024_reorder_itinerary_fixed_anchor_continuation.sql",
+          "sha256": "05695715d0b5ad0c7e0139a7d9c81e3d1d7f0619e9036fd9051ee56c76f9f3ad"
+        },
+        {
+          "file": "20260708063744_add_itinerary_route_overrides.sql",
+          "sha256": "147bf943762e4416b11d6b4a544b72075505303bc7d11357532082dc2cd5c4c0"
+        },
+        {
+          "file": "20260710125337_add_itinerary_route_override_nodes.sql",
+          "sha256": "a30eb87abebae0f0b648e3a23f7dbe903090fb4a91739a80ab98bfc1dc93218a"
+        },
+        {
+          "file": "20260712033758_add_route_tables_to_realtime.sql",
+          "sha256": "4308e1c0fe6a8ec11170968fc73a33465ad15f0ab4e3d2b89c64cf271086e052"
+        },
+        {
+          "file": "20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+          "sha256": "c37f7935db8661f106e642ad60e776687bef877b3b7f9eebe3d72896148fd7c2"
+        },
+        {
+          "file": "20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+          "sha256": "ccd5c78833a68f069dad0218ae8537aeded7d64fb461fccb2c7f0ef2c703ce5f"
+        },
+        {
+          "file": "20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+          "sha256": "58edf5399e8e7689b156a1fc1967ef3a84f54a977c0fca57f88c940f83c39d31"
+        },
+        {
+          "file": "20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+          "sha256": "0697ce63ce72e9daed3838271f444a3a68681cec4808755a16aa7210fc808594"
+        },
+        {
+          "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+          "sha256": "989aaf7a7ef59156b1ee123d6e53dd07f8579acd60252e3eb818947e3299bb0e"
+        },
+        {
+          "file": "20260819125851_phase_7_import_trip_timeline_v1.sql",
+          "sha256": "5b058ad0d9801d3255d5ed8e226aa22a44313496e2350b96e66d47532366b9ff"
+        },
+        {
+          "file": "20261022090000_budget_workspace_baseline_and_pricing.sql",
+          "sha256": "5192af80043e7f528427869d9794a1a776d71dc959ccf3c2caf7d8909566bfba"
+        },
+        {
+          "file": "20261022100000_trip_budget_exchange_rates.sql",
+          "sha256": "fdbb06c2ea236063bd0cac358e23b8836890f13f2618401323b2f7b85159f825"
+        },
+        {
+          "file": "20261022110000_budget_payment_safety_and_actual_cost.sql",
+          "sha256": "cfe8cc1299ac1ae3691893f423397625d0485483c6bb59ab67259789c9e8ba4a"
+        },
+        {
+          "file": "20261022120000_unified_planning_payments.sql",
+          "sha256": "b273373f79b4c3bc03855d98b1dd8e90bc73a4c7f2c1fe5acd4132f73103c020"
+        },
+        {
+          "file": "20261022162015_luggage_collaboration_state_safety.sql",
+          "sha256": "e3bd393e4bb7a0440112bc6b15e20b9d4fa1e21362010f0477990d4b810ae316"
+        },
+        {
+          "file": "20261023120000_luggage_notes.sql",
+          "sha256": "03507634da292437b7b3c9206e17af892b9cd7cee7cd683d9df8ae854a3e357a"
+        },
+        {
+          "file": "20261024054121_luggage_drag_assignment.sql",
+          "sha256": "8672ee2dd183dce21d7fd8b90c5633882a8078de3d36ecbd9357b089e1df8b66"
+        },
+        {
+          "file": "20261024063828_luggage_private_return.sql",
+          "sha256": "62b3533f949fd9a5e95ebe62dbc4f4c61821f22b9c1ad0ee1191be694b481224"
+        },
+        {
+          "file": "20261024112902_luggage_item_ordering.sql",
+          "sha256": "e160fc6dd44f89cfc0e8b79152f3696a2265f34a879ec1793e59a2b980c2f125"
+        },
+        {
+          "file": "20261026120000_luggage_required_assignee.sql",
+          "sha256": "308d75bdcd54610012594b19da4266b22a9939b2353c46129f764517bb7fbc8a"
+        },
+        {
+          "file": "20261027140044_budget_atomic_edit_leases.sql",
+          "sha256": "83d996db64fbfc47613ba22c18dc5a6c7b523dcb8828c77f8c7c93676e63403f"
+        },
+        {
+          "file": "20261027145613_budget_consistent_snapshot.sql",
+          "sha256": "83e184ef986ad003481a1cb43c072f8e1e4409068e38e0aa13dc6754d3a07447"
+        },
+        {
+          "file": "20261027152539_budget_collaboration_state.sql",
+          "sha256": "0912cf21fdd0af0a43e737d38afce1409ef14e97057e445f01475d7513d7e4f5"
+        },
+        {
+          "file": "20261028104333_budget_selection_activity.sql",
+          "sha256": "f0377e4ad41c12d0f3d51295ec296f4fc29b773edaebd20a77803f3bfcbf5f52"
+        },
+        {
+          "file": "20261029020551_budget_group_metadata_prototype.sql",
+          "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+        },
+        {
+          "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+          "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+        }
+      ],
+      "runner": "tests/budget-metadata-parallel.mjs",
+      "runnerHash": "583de956d8205007b5510552728b1d38d045b118871223cd204b954a0e00c0f2",
+      "runnerUnchanged": true,
+      "cases": [
+        {
+          "name": "snapshot extension migration failure is atomic and dormant reverse preserves old definitions/signals",
+          "status": "passed"
+        },
+        {
+          "name": "metadata snapshot keeps the complete invoker financial graph and exposes explicit limited readiness",
+          "status": "passed"
+        },
+        {
+          "name": "group hints preserve both editors plus legacy selection ordering without leaking secrets",
+          "status": "passed"
+        },
+        {
+          "name": "lease acquire/renew/release notify through opaque signals without touching financial rows or group revisions",
+          "status": "passed"
+        },
+        {
+          "name": "expired and revoked ownership is hidden on refresh and stale release cannot disturb takeover",
+          "status": "passed"
+        },
+        {
+          "name": "natural expiry produces no event and uses statement time even inside a long transaction",
+          "status": "passed"
+        },
+        {
+          "name": "one STABLE statement retains graph/group/signal snapshot across an overlapping committed patch",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "uncommitted patch and its signal remain invisible; injected failure rolls both back",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "legacy metadata mutations and delete/recreate invalidate without emitting tombstone resources",
+          "status": "passed"
+        },
+        {
+          "name": "paused protocol is notified and remains readable with active ownership; linked records report unsupported",
+          "status": "passed"
+        },
+        {
+          "name": "snapshot auth/RLS, publication and signal grants preserve private boundaries",
+          "status": "passed"
+        },
+        {
+          "name": "trip deletion retains only its opaque signal and does not resurrect metadata or authorized reads",
+          "status": "passed"
+        },
+        {
+          "name": "B-2 JavaScript adapters/controllers use real named RPCs and independently commit title/note",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "B-3 debounced queued typing overlaps another real writer without losing either group",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "B-3 confirmed patch survives failed snapshot and unknown ack replays after document reload without capability",
+          "status": "passed"
+        },
+        {
+          "name": "B-3 dirty flush and exact group release admit a legacy whole-record lease using fresh canonical",
+          "status": "passed"
+        },
+        {
+          "name": "same group exclusive across two simultaneously active user sessions",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "same account different tab sessions cannot share a group capability",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "different groups acquire in overlapping transactions and both remain held",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "overlapping partial patches preserve both fields and hide uncommitted data",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "standalone Actual partial patches overlap without changing known debit or provenance",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "new group wins overlapping legacy whole-record admission",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "legacy whole-record lease wins overlapping group admission",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "expiry is rechecked after real advisory-lock waiting",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "late old release overlaps takeover without clearing the new epoch",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "failed transaction rolls back value/revision/request while overlapping another writer",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "deferred unfinished-effect commit failure rolls back before an overlapping writer succeeds",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "concurrent duplicate request commits once and returns the original result",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "budget: row-first legacy transaction versus group patch fails safely without deadlock",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "actual: row-first legacy transaction versus group patch fails safely without deadlock",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "bounded lock timeout aborts without a partial patch and can retry",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "membership revocation committed during lock wait prevents stale-authority writes",
+          "status": "passed",
+          "overlap": true
+        },
+        {
+          "name": "real-server RLS and grants retain viewer/pending/outsider/anon and private-table boundaries",
+          "status": "passed"
+        }
+      ],
+      "scope": "Existing actual PostgreSQL named-RPC, independent backend/session and RLS/transaction regression. No new native test; the new pending Snapshot scenarios are JS/React gate tests, not hosted or new SQL concurrency certification."
+    },
+    "productionBuild": "passed; existing >500KB chunk advisory remains; main bundle approx 1.104MB",
+    "syntax": "passed",
+    "diffCheck": "passed"
+  },
+  "newCaseMatrix": [
+    {
+      "scenario": "Permanent pending Snapshot after confirmed A and queued B",
+      "evidence": "Node fake clock: expires logical save/read at 10000ms, keeps A/B, one Patch, no unknown request"
+    },
+    {
+      "scenario": "New authority read and concurrent retries",
+      "evidence": "Fresh read + confirmed acquire, A/B only, base1 to revision2; no overlapping Patch or duplicate acquire"
+    },
+    {
+      "scenario": "Real metadata-controller/coalescer integration",
+      "evidence": "Shared logical slot retired; fresh A/B graphs applied, late old financial graph never applied"
+    },
+    {
+      "scenario": "20 repeated committed operations and dirty rerun",
+      "evidence": "One deadline covers rerun; no restarted timeout or retry read storm"
+    },
+    {
+      "scenario": "Other editor / tab takeover",
+      "evidence": "Latest remote revision preserved; local B retained as conflict; A cannot write/release newer epoch"
+    },
+    {
+      "scenario": "Dirty close/sidebar/full/trip/item",
+      "evidence": "Bounded wait reaches existing guard; Continue preserves B; safe retry then exact release/transition"
+    },
+    {
+      "scenario": "Clean A exit",
+      "evidence": "After deadline may close/release; no duplicate Patch"
+    },
+    {
+      "scenario": "Trip/account/logout late read",
+      "evidence": "Existing generations reject old context results and never submit B"
+    },
+    {
+      "scenario": "Timeout then offline/reconnect",
+      "evidence": "B retained, online alone does not grant authority; fresh read and lease confirmation required"
+    },
+    {
+      "scenario": "Unknown Patch ACK plus pending Snapshot",
+      "evidence": "Original request ID/payload replayed; one committed revision, unlike confirmed A path"
+    },
+    {
+      "scenario": "Shared memory-only Demo",
+      "evidence": "Same timeout/retry/queued behavior, A and B each submitted once; no Supabase/Auth/Realtime/Storage/exchange API requests"
+    },
+    {
+      "scenario": "Feature flag off",
+      "evidence": "Legacy Budget/notification/financial/rate/receipt and route smoke regression passed"
+    }
+  ],
+  "environment": {
+    "browser": "Playwright Chromium",
+    "browserPlugin": "not available",
+    "baseURL": "http://127.0.0.1:5180",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "formal": "Actual React UI with isolated shared Auth/RPC/Realtime/Storage mocks",
+    "demo": "Actual shared UI and memory transport with Deferred module-boundary test gate; no persistent drafts",
+    "nodeTimers": "node:test mock.timers; Deferred gates and microtask drains",
+    "browserTimers": "Playwright clock; snapshot content cloned before gate holds",
+    "screenshots": "C:/Users/Administrator/AppData/Local/Temp/travel-budget-b3-snapshot-timeout/formal-confirmed-A-queued-B-timeout.png and formal-recovered-B.png"
+  },
+  "initialTestFixtureCorrection": "Takeover UI originally selected JPY fare after A had committed Confirmed A; locator now selects the explicitly confirmed DB value. Ownership/version/Patch assertions preserved.",
+  "sourceHashes": [
+    {
+      "file": "src/App.jsx",
+      "sha256": "a55509bb0addb6f2e7d504630776d171c3a928a900f142fe9fbc4569f2ac2ec3",
+      "gitLfSha256": "d07cdc0199f3f4f3890de21926ae2b67f8371bfb46f2de56e0e76f7262734899"
+    },
+    {
+      "file": "src/components/budget/BudgetMetadataEditor.jsx",
+      "sha256": "58bca5f350532c0c5565c52c12451c8f3a4b87b5dc06b885d9e3deb9b359e8f2",
+      "gitLfSha256": "58bca5f350532c0c5565c52c12451c8f3a4b87b5dc06b885d9e3deb9b359e8f2"
+    },
+    {
+      "file": "src/lib/budgetMetadataService.js",
+      "sha256": "b032f9ea356c629d9d0a8e7ff1166e291c2cdf13c36d94411e035064b9af3c03",
+      "gitLfSha256": "b032f9ea356c629d9d0a8e7ff1166e291c2cdf13c36d94411e035064b9af3c03"
+    },
+    {
+      "file": "src/lib/budgetSync.js",
+      "sha256": "ac674d5d93204695ac568b87b9d1125bf488e65c784c41ee51ffcc45b874aa08",
+      "gitLfSha256": "babf4c7794d290adfd5f470ac2684491c3f53ab89c0934e24f4d7e71d4622e46"
+    },
+    {
+      "file": "tests/budgetMetadata.spec.js",
+      "sha256": "1daa9f552a54f87cb5100f92830d1bffccd71a86467934b23dfa3f9afa261471",
+      "gitLfSha256": "1daa9f552a54f87cb5100f92830d1bffccd71a86467934b23dfa3f9afa261471"
+    },
+    {
+      "file": "tests/budgetSync.spec.js",
+      "sha256": "26222da1601d45e1b3025fc5d9835d6aad3f9359704c78c627296b4e35f5f1f0",
+      "gitLfSha256": "f294866c30cfbbf0213254eac6569910716b454c9cfd2b43c3d11c0dc2510ed8"
+    },
+    {
+      "file": "tests/formalBudgetMetadata.spec.js",
+      "sha256": "a21ad2a2a950e086862f4a3ed4f9861523394fb492d225b636369b555dea924c",
+      "gitLfSha256": "a21ad2a2a950e086862f4a3ed4f9861523394fb492d225b636369b555dea924c"
+    },
+    {
+      "file": "tests/helpers/budgetMetadataMock.js",
+      "sha256": "a727af6bbf25b5b0c06f8ab36c45fe0e9bb0b5807f2e7a39a970819690078de3",
+      "gitLfSha256": "a727af6bbf25b5b0c06f8ab36c45fe0e9bb0b5807f2e7a39a970819690078de3"
+    }
+  ],
+  "limitations": [
+    "No hosted project/migration/data/deployment/main merge; native cluster isolated and stopped.",
+    "No category/payer/pricing/payment/blank-record/Undo expansion. No physical-device, actual IME/screen-reader or hosted latency certification.",
+    "A retired uncancellable network operation may physically outlive its logical deadline; its response cannot apply or confer authority."
+  ]
+}
