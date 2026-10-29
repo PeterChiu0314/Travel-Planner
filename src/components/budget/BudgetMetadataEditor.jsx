@@ -21,9 +21,11 @@ function PricingGroup({ client, field, view, record, kind, members }) {
       shares: mode === "custom" ? custom.current || pricing?.shares || form.shares : form.shares });
     if (mode === "custom") setOpen(true);
   }
-  return <BudgetPricingFields form={form} pricing={pricing} members={members} locked={!view.acceptsIntent} historical={retained}
+  return <><BudgetPricingFields form={form} pricing={pricing} members={members} locked={!view.acceptsIntent} historical={retained}
     tripRates={snapshot?.tripBudgetRates} setForm={input} update={(key, value) => input({ ...form, [key]: value })}
-    membersOpen={open} setMembersOpen={setOpen} changeMode={changeMode} groupMode editRate={kind === "actual"} fixedCurrency={retained} />;
+    membersOpen={open} setMembersOpen={setOpen} changeMode={changeMode} groupMode editRate={kind === "actual"} fixedCurrency={retained} />
+    {kind === "budget" && !retained && form.currency !== "TWD" && snapshot?.tripBudgetRates?.rates?.[form.currency]
+      && Number(form.exchange_rate) !== Number(snapshot.tripBudgetRates.rates[form.currency]) ? <button type="button" className="ghost-button compact" disabled={view.saving || Boolean(view.request)} onClick={() => void client.useLatestPricingRate(field)}>套用最新旅程匯率</button> : null}</>;
 }
 
 // Formal and memory-only Demo share the controller's serial autosave flow.

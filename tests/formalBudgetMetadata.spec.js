@@ -14,12 +14,16 @@ test("open has no lease; first focus buffers input until admission and same-grou
   const db = metadataBackend(); await ready(page, db); expect(db.groupCalls).toHaveLength(0); expect(db.leaseCalls).toHaveLength(0);
   db.metadataHold = { actor: "A", action: "acquire" }; await title(page).focus(); await expect.poll(() => db.metadataPending.length).toBe(1);
   await title(page).fill("Buffered first input"); await expect(page.getByRole("button", { name: "儲存名稱", exact: true })).toHaveCount(0);
-  expect(db.rows.budget_items[0].title).toBe("JPY fare"); db.releaseMetadata(); await expect(title(page)).toBeEditable();
+  expect(db.rows.budget_items[0].title).toBe("JPY fare"); db.releaseMetadata();
+  // Hold the first autosave at its transaction boundary while the second
+  // browser boots; browser startup may legitimately exceed the 1s debounce.
+  db.metadataHold = { actor: "A", action: "patch" }; await expect(title(page)).toBeEditable();
   await expect(title(page)).toHaveValue("Buffered first input");
   const other = await context.newPage(); try { await ready(other, db, "B"); await title(other).focus();
     await expect(other.getByText("A 正在編輯項目名稱", { exact: true })).toBeVisible(); await expect(title(other)).toHaveAttribute("readonly", "");
     expect(db.rows.budget_items[0].title).toBe("JPY fare"); expect(other.qaErrors).toEqual([]);
-  } finally { await other.close(); }
+  } finally { db.releaseMetadata(); await other.close(); }
+  await expect.poll(() => db.rows.budget_items[0].title).toBe("Buffered first input");
 });
 test("different groups save narrow patches and remote commits preserve a dirty local group", async ({ page, context }) => {
   const db = metadataBackend(); await ready(page, db); const other = await context.newPage();

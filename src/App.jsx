@@ -1,4 +1,6 @@
 import { applyDemoPricing } from "./lib/budgetPricingGroups.js";
+import { createBudgetPaymentController, createBudgetPaymentService } from "./lib/budgetPaymentGroups.js";
+import { applyDemoPaymentChanges } from "./demo/budgetPaymentGroups.js";
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
 import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
 import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
@@ -9205,6 +9207,7 @@ function DemoApp({ initialSection }) {
               const setter = kind === "budget" ? setBudgetItems : setActualExpenses;
               setter(current => current.map(row => row.id === id ? { ...row, [group === "payer" ? "payer_id" : group]: value, updated_at: new Date().toISOString() } : row));
             }}
+            onSavePayment={change => setDemoBudgetByTrip(current => ({ ...current, [demoActiveTrip.id]: applyDemoPaymentChanges(current[demoActiveTrip.id], change) }))}
             onUploadAttachment={uploadDemoAttachment}
             restoreDrafts={false}
             useEditLocks={false}
@@ -13269,15 +13272,20 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 function BudgetPanel(props) {
   const leases = useMemo(() => createBudgetEditLeaseClient({ supabase, sessionId: budgetMetadataEnabled ? getBudgetMetadataSessionId() : undefined }), []);
   const metadataProps = useRef(props); metadataProps.current = props;
-  const metadata = useMemo(() => {
+  const { metadata, payments } = useMemo(() => {
     const demo = props.useEditLocks === false;
     const service = demo ? createDemoBudgetMetadataService(() => metadataProps.current) : createBudgetMetadataService(supabase);
-    return createBudgetMetadataEditor({ service, sessionId: leases.sessionId,
+    const metadata = createBudgetMetadataEditor({ service, sessionId: leases.sessionId,
       storage: demo ? null : { getItem: key => sessionStorage.getItem(key), setItem: (key, value) => sessionStorage.setItem(key, value), removeItem: key => sessionStorage.removeItem(key) },
       read: trip => demo ? service.read(trip) : metadataProps.current.onRefreshBudget?.(trip) || Promise.resolve({ ok: false }),
     });
+    const payments = createBudgetPaymentController({ metadata, sessionId: leases.sessionId,
+      service: demo ? { authorized: service.authorized, lease: service.paymentLease, mutate: service.mutatePayment } : createBudgetPaymentService(supabase),
+      storage: demo ? null : { getItem: key => sessionStorage.getItem(key), setItem: (key, value) => sessionStorage.setItem(key, value), removeItem: key => sessionStorage.removeItem(key) } });
+    return { metadata, payments };
   }, [leases, props.useEditLocks]);
   useSyncExternalStore(metadata.subscribe, metadata.getProjectionVersion);
+  useSyncExternalStore(payments.subscribe, payments.getVersion);
   const [remoteCollaborators, setRemoteCollaborators] = useState([]);
   const [collaborationRevision, setCollaborationRevision] = useState(0);
   const collaboration = useMemo(() => createBudgetCollaboration({ supabase, sessionId: leases.sessionId, onChange: setRemoteCollaborators,
@@ -13304,6 +13312,8 @@ function BudgetPanel(props) {
   }
   const workspaceActive = props.restoreDrafts !== false;
   const metadataActive = props.useEditLocks === false || workspaceActive;
+  useEffect(() => { payments.configure(props.currentUserId, props.activeTrip.id, budgetMetadataEnabled && metadataActive && props.canEdit); }, [payments, props.currentUserId, props.activeTrip.id, metadataActive, props.canEdit]);
+  useEffect(() => () => { void payments.dispose(); }, [payments]);
   useEffect(() => {
     if (!budgetMetadataEnabled) return;
     metadata.configure(props.currentUserId, props.activeTrip.id, metadataActive, props.canEdit);
@@ -13343,7 +13353,7 @@ function BudgetPanel(props) {
   }, [leases, props.currentUserId, props.activeTrip.id, props.canEdit, workspaceActive]);
   useEffect(() => () => { void leases.dispose(); }, [leases]);
   return <BudgetWorkspace {...props} workspaceActive={workspaceActive} baseline={props.budgetBaseline} services={services}
-    metadataRequested={budgetMetadataEnabled} metadataClient={metadata.matches(props.currentUserId, props.activeTrip.id) ? metadata : null}
+    metadataRequested={budgetMetadataEnabled} metadataClient={metadata.matches(props.currentUserId, props.activeTrip.id) ? metadata : null} paymentClient={payments}
     collaborationRevision={collaborationRevision} remoteCollaborators={props.useEditLocks === false ? [] : budgetMetadataEnabled
       ? primaryBudgetCollaborators(metadata.status().verified ? metadata.status().snapshot?.collaboration?.entries || [] : []).filter(e => !e.own_session)
       : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}

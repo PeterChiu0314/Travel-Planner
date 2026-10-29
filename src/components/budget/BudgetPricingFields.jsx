@@ -11,8 +11,9 @@ export default function BudgetPricingFields({ form, pricing, members, locked, hi
       disabled={!groupMode && locked || form.pricing_mode === "custom"} readOnly={groupMode && locked} value={form.pricing_mode === "custom" ? pricing?.amount ?? "" : form.pricing_mode === "per_person" ? form.unit_amount ?? "" : form.amount}
       onChange={event => update(form.pricing_mode === "per_person" ? "unit_amount" : "amount", event.target.value)} /></label>
       <div className="bw-field"><span>幣別</span><MenuSelect disabled={fixedCurrency || !groupMode && locked} readOnly={locked} metadataPortal={groupMode} label="幣別" value={form.currency}
-        onValueChange={value => { if (!locked) setForm({ ...form, currency: value, exchange_rate: value === "TWD" ? 1 : tripRates?.rates?.[value] || (form.exchange_rate === 1 ? "" : form.exchange_rate) }); }}
+        onValueChange={value => { if (!locked) setForm({ ...form, currency: value, exchange_rate: value === "TWD" ? 1 : tripRates?.rates?.[value] ?? "" }); }}
         options={[...new Set(["TWD", "JPY", "USD", "EUR", "KRW", "HKD", form.currency])].filter(Boolean).map(value => ({ value, label: value }))} /></div></div>
+    {form.currency !== "TWD" && !form.exchange_rate ? <p className="bw-warning" role="status">尚無此幣別的旅程匯率</p> : null}
     {form.currency !== "TWD" ? editRate ? <label>參考匯率<input name="exchange_rate" type="number" min="0.000001" step="0.000001" readOnly={locked} value={form.exchange_rate} onChange={e => update("exchange_rate", e.target.value)} /></label> : <div className="bw-trip-rate"><span>{historical ? "歷史匯率" : "旅程估算匯率"}</span><b>1 {form.currency} = {form.exchange_rate || "—"} TWD</b></div> : null}
     <details className="bw-member-options" open={membersOpen} onToggle={event => setMembersOpen(event.currentTarget.open)}><summary>參與成員 · {form.participantIds.length} 人</summary>
       <fieldset className="bw-participants"><legend>各人負擔 · {form.pricing_mode === "custom" ? form.currency : "TWD"}</legend>{options.map(member => <label key={member.user_id}>

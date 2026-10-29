@@ -26,7 +26,7 @@ export function metadataBackend() {
     if (name === "budget_edit_lease" && args.p_action === "acquire" && [...db.groupStates.entries()].some(([key,g])=>key.startsWith(`${args.p_kind}:${args.p_id}:`) && g.actor && g.expires > db.now)) {
       db.leaseCalls.push({args,actor});return {data:{granted:false,reason:"group_locked"}};
     }
-    if (["read_budget_metadata_snapshot", "read_budget_metadata_snapshot_v2", "read_budget_metadata_snapshot_v3"].includes(name)) {
+    if (["read_budget_metadata_snapshot", "read_budget_metadata_snapshot_v2", "read_budget_metadata_snapshot_v3", "read_budget_metadata_snapshot_v4"].includes(name)) {
       if (db.metadataMissing) return { error: { code: "PGRST202" } };
       const result = await original({ ...req, name: "read_budget_snapshot" }); if (!result.data || result.error) return result;
       const legacy = await original({ ...req, name: "read_budget_collaboration" });

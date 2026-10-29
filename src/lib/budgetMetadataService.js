@@ -1,5 +1,6 @@
 import { metadataGroupKeys as groups, metadataValue as patchValue, sameMetadataValue, validMetadataValue, recordMetadataValue } from "./budgetMetadataValues.js";
 import { pricingInputs, pricingInputError, validPricingVersions } from "./budgetPricingGroups.js";
+import { validPaymentSnapshot } from "./budgetPaymentValues.js";
 export const budgetAuthorityTimeoutMs = 10000;
 export const budgetSnapshotTimeoutError = () => ({ code: "BUDGET_SNAPSHOT_TIMEOUT", message: "最新同步逾時，草稿已保留。請重新確認後重試。" });
 // The settled race owns the result. An uncancellable transport may finish later,
@@ -16,12 +17,13 @@ export async function withBudgetAuthorityTimeout(work, { timeoutMs = budgetAutho
 const version = value => Number.isSafeInteger(value) && value >= 0;
 // Match PostgreSQL btrim(text): normalize ordinary spaces, preserving other text.
 export function validBudgetMetadataSnapshot(data, tripId) {
-  const keys = data?.metadataProtocol?.schemaVersion === 3 ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
+  const keys = [3, 4].includes(data?.metadataProtocol?.schemaVersion) ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
   return data?.tripId === tripId && data.metadataProtocol?.name === "metadata-prototype"
-    && [1, 2, 3].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
+    && [1, 2, 3, 4].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
     && data.metadataProtocol.complete === false && JSON.stringify(data.metadataProtocol.groups) === JSON.stringify(keys)
     && Number.isFinite(Date.parse(data.serverNow)) && version(data.collaborationRevision)
     && Array.isArray(data.budgetItems) && Array.isArray(data.actualExpenses)
+    && (data.metadataProtocol.schemaVersion !== 4 || validPaymentSnapshot(data))
     && Array.isArray(data.metadataRecords) && Array.isArray(data.collaboration?.entries)
     && data.metadataRecords.length === data.budgetItems.length + data.actualExpenses.length
     && new Set(data.metadataRecords.map(r => `${r.kind}:${r.id}`)).size === data.metadataRecords.length
@@ -42,7 +44,7 @@ export function validBudgetMetadataSnapshot(data, tripId) {
 }
 export function withoutBudgetMetadata(data) {
   const { metadataProtocol, metadataRecords, metadataVerified, metadataReadStartedAt, metadataError, metadataUserId,
-    collaboration, collaborationRevision, serverNow, nextRefreshAt, ...financial } = data;
+    paymentProtocol, paymentRecords, collaboration, collaborationRevision, serverNow, nextRefreshAt, ...financial } = data;
   return financial;
 }
 export function createBudgetMetadataService(supabase) {
@@ -303,6 +305,18 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     matches: (actor, trip) => context?.actor === actor && context?.trip === trip,
     reconcile() { suspended = false; renewAt = 0; return refresh(); },
     get, ingest, refresh, focus, input, save, discard, release,
+    async useLatestPricingRate(g) {
+      if (!g || g.kind !== "budget" || g.group !== "pricing" || g.request || g.saving || g.composing || !current(g)) return false;
+      const draft = localValue(g), previous = g.canonical.versions;
+      if (!(await refresh()).ok || !current(g)) return false;
+      const remote = g.remote, versions = remote?.value?.versions, rate = draft.currency === "TWD" ? 1 : snapshot?.tripBudgetRates?.rates?.[draft.currency];
+      if (!rate || remote.revision !== g.base || !versions || versions.graph !== previous.graph || versions.members !== previous.members
+        || JSON.stringify(versions.targets) !== JSON.stringify(previous.targets) || snapshot.actualExpenses.some(a => (a.budget_origin_id || a.budget_item_id) === g.id)) return false;
+      if (!(await release(g)) || !current(g)) return false;
+      g.canonical = remote.value; g.value = remote.value; g.staged = { ...draft, exchange_rate: rate, versions };
+      g.conflict = false; g.failed = false; g.invalid = false; g.error = ""; g.lastActivity = now(); g.dueAt = now() + debounceMs;
+      persist(g); emit(); return focus(g);
+    },
     groupKeys: kind => (snapshot?.metadataProtocol.groups || ["title", "note"]).filter(key => kind === "budget" || key !== "links"),
     composition(g, active) { if (!g || !current(g)) return; g.composing = active;
       if (active) cancelTimer(g); else { g.dueAt = g.focused ? now() + debounceMs : now(); schedule(g); } },

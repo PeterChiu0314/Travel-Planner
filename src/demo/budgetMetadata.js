@@ -2,10 +2,17 @@ import { pricingInputs, normalizePricingInputs, applyDemoPricing } from "../lib/
 // Demo transport: memory and local callbacks only. No Auth, RPC, channel or storage.
 import { metadataGroupKeys, recordMetadataValue, sameMetadataValue, metadataField } from "../lib/budgetMetadataValues.js";
 import { budgetStage } from "../lib/budgetFinance.js";
-export function createDemoBudgetMetadataService(getProps, now = Date.now) {
+import { attachDemoPayments, applyDemoPaymentChanges, paymentChangesApplied } from "./budgetPaymentGroups.js";
+export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now) {
+  let paymentOverlay = null, pricingGraph = 0;
+  const getProps = () => {
+    const p = getOriginalProps();
+    if (paymentOverlay && (paymentOverlay.tripId !== p.activeTrip?.id || paymentChangesApplied(p, paymentOverlay))) paymentOverlay = null;
+    return paymentOverlay ? { ...p, ...applyDemoPaymentChanges(p, paymentOverlay) } : p;
+  };
   const states = new Map(), requests = new Map(); let revision = 0;
   const key = (kind, id, group) => `${kind}:${id}:${group}`;
-  const versions = (kind, id, revision) => ({ graph: 0, rates: 0, members: 0, targets: [{ kind, id, revision }] });
+  const versions = (kind, id, revision) => ({ graph: pricingGraph, rates: 0, members: 0, targets: [{ kind, id, revision }] });
   function valueFor(kind, row, group) { return group === "pricing" ? pricingInputs(row, (getProps()[kind === "budget" ? "budgetParticipants" : "actualParticipants"] || []).filter(p => p[kind === "budget" ? "budget_item_id" : "actual_expense_id"] === row.id), versions(kind,row.id,states.get(key(kind,row.id,group))?.revision || 0)) : recordMetadataValue(kind,row,group,getProps().itineraryBudgetLinks); }
   function state(kind, row, group) {
     const value = valueFor(kind, row, group);
@@ -13,6 +20,7 @@ export function createDemoBudgetMetadataService(getProps, now = Date.now) {
     if (!s) { s = { revision: 0, epoch: 0, value }; states.set(k, s); }
     if (sameMetadataValue(group, s.override, value)) delete s.override;
     if (s.override === undefined && !sameMetadataValue(group, s.value, value)) { s.value = value; s.revision++; revision++; }
+    if (group === "pricing") s.value = { ...s.value, versions: versions(kind, row.id, s.revision) };
     return s;
   }
   function find(args) { return (args.p_kind === "budget" ? getProps().budgetItems : getProps().actualExpenses).find(r => r.id === args.p_id); }
@@ -21,8 +29,8 @@ export function createDemoBudgetMetadataService(getProps, now = Date.now) {
   function canPrice(kind, row) { try { const p=getProps(), stage=p.demoStage || budgetStage(p.activeTrip);
     if(kind === "budget" && stage !== "planning" && (row.currency !== "TWD" || p.actualExpenses.some(a=>(a.budget_origin_id || a.budget_item_id)===row.id))) return false;
     applyDemoPricing({budgetItems:p.budgetItems,actualExpenses:p.actualExpenses,budgetParticipants:p.budgetParticipants||[],actualParticipants:p.actualParticipants||[]},kind,row.id,valueFor(kind,row,"pricing")); return true; } catch { return false; } }
-  const supports = (kind,row,group) => group === "pricing" ? canPrice(kind,row) : supported(kind,row);
-  return {
+  const supports = (kind,row,group) => group === "pricing" ? canPrice(kind,row) : kind === "budget" && ["title","note"].includes(group) && !row.is_fixed || supported(kind,row);
+  const transport = {
     authorized: async actor => actor === getProps().currentUserId,
     async read(trip) {
       const p = getProps(), records = [], entries = [];
@@ -77,4 +85,6 @@ export function createDemoBudgetMetadataService(getProps, now = Date.now) {
       requests.set(args.p_request_id, result); return { data: result };
     },
   };
+  return attachDemoPayments(transport, getProps, { state, changed(graph) { revision++; if (graph) pricingGraph++; },
+    commit(change) { paymentOverlay = change; getOriginalProps().onSavePayment?.(change); } }, now);
 }
