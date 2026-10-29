@@ -1,12 +1,14 @@
 // Demo transport: memory and local callbacks only. No Auth, RPC, channel or storage.
+import { metadataGroupKeys, recordMetadataValue, sameMetadataValue, metadataField } from "../lib/budgetMetadataValues.js";
 export function createDemoBudgetMetadataService(getProps, now = Date.now) {
   const states = new Map(), requests = new Map(); let revision = 0;
   const key = (kind, id, group) => `${kind}:${id}:${group}`;
   function state(kind, row, group) {
+    const value = recordMetadataValue(kind, row, group, getProps().itineraryBudgetLinks);
     const k = key(kind, row.id, group); let s = states.get(k);
-    if (!s) { s = { revision: 0, epoch: 0, value: row[group] || "" }; states.set(k, s); }
-    if (s.override === (row[group] ?? "")) delete s.override;
-    if (s.override == null && s.value !== (row[group] || "")) { s.value = row[group] || ""; s.revision++; revision++; }
+    if (!s) { s = { revision: 0, epoch: 0, value }; states.set(k, s); }
+    if (sameMetadataValue(group, s.override, value)) delete s.override;
+    if (s.override === undefined && !sameMetadataValue(group, s.value, value)) { s.value = value; s.revision++; revision++; }
     return s;
   }
   function find(args) { return (args.p_kind === "budget" ? getProps().budgetItems : getProps().actualExpenses).find(r => r.id === args.p_id); }
@@ -16,19 +18,22 @@ export function createDemoBudgetMetadataService(getProps, now = Date.now) {
     authorized: async actor => actor === getProps().currentUserId,
     async read(trip) {
       const p = getProps(), records = [], entries = [];
+      let links = [...p.itineraryBudgetLinks || []];
       const budgets = p.budgetItems.filter(r => r.trip_id === trip).map(r => ({ ...r }));
       const actuals = p.actualExpenses.filter(r => r.trip_id === trip).map(r => ({ ...r }));
       for (const kind of ["budget", "actual"]) for (const row of kind === "budget" ? budgets : actuals) {
         if (row.trip_id !== trip) continue;
         records.push({ kind, id: row.id, trip_id: trip, supported: supported(kind, row), state_ready: true,
-          groups: ["title", "note"].map(group => { const s = state(kind, row, group), held = Boolean(s.owner && s.expires > now());
-            row[group] = s.value;
+          groups: metadataGroupKeys.filter(g => kind === "budget" || g !== "links").map(group => { const s = state(kind, row, group), held = Boolean(s.owner && s.expires > now());
+            if (group === "links") links = [...links.filter(link => link.budget_item_id !== row.id), ...s.value.map(id => ({ budget_item_id: row.id, itinerary_item_id: id }))];
+            else row[metadataField(group)] = s.value;
             if (held) entries.push({ kind, resource_id: row.id, group_key: group, user_id: s.owner, mode: "edit", expires_at: new Date(s.expires).toISOString(), own_session: true });
             return { group, value: s.value, revision: s.revision, epoch: s.epoch, held, owner_id: held ? s.owner : null,
               own_session: held, expires_at: held ? new Date(s.expires).toISOString() : null }; }) });
       }
       return { ok: true, data: { tripId: trip, budgetItems: budgets, actualExpenses: actuals, metadataVerified: true, metadataReadStartedAt: now(), serverNow: new Date(now()).toISOString(),
-        metadataProtocol: { name: "metadata-prototype", schemaVersion: 1, enabled: true, complete: false, groups: ["title", "note"] }, metadataRecords: records,
+        itineraryBudgetLinks: links,
+        metadataProtocol: { name: "metadata-prototype", schemaVersion: 2, enabled: true, complete: false, groups: metadataGroupKeys }, metadataRecords: records,
         collaborationRevision: revision, collaboration: { tripId: trip, selectionProtocol: 2, entries },
         nextRefreshAt: entries.length ? new Date(Math.min(...entries.map(e => Date.parse(e.expires_at)))).toISOString() : null } };
     },
@@ -50,10 +55,12 @@ export function createDemoBudgetMetadataService(getProps, now = Date.now) {
     async patch(args) {
       if (requests.has(args.p_request_id)) return { data: requests.get(args.p_request_id) };
       const row = find(args), s = row && state(args.p_kind, row, args.p_group);
-      if (!s || s.token !== args.p_token || s.session !== args.p_session_id || s.epoch !== args.p_epoch || s.expires <= now()) return { error: { code: "55P03" } };
+      if (!s || !supported(args.p_kind, row) || s.token !== args.p_token || s.session !== args.p_session_id || s.epoch !== args.p_epoch || s.expires <= now()) return { error: { code: "55P03" } };
       if (s.revision !== args.p_base_revision) return { error: { code: "40001" } };
       const value = args.p_patch[args.p_group];
-      if (s.value !== (value ?? "")) { s.revision++; revision++; } s.value = value ?? ""; s.override = s.value;
+      if (args.p_group === "payer" && value && !getProps().members.some(m => m.user_id === value && m.status === "approved")) return { error: { code: "22023", message: "付款人已不在旅程中。" } };
+      if (args.p_group === "links" && (args.p_kind !== "budget" || value.some(id => !getProps().items.some(i => i.id === id && i.trip_id === row.trip_id)))) return { error: { code: "22023", message: "關聯行程不屬於此旅程。" } };
+      if (!sameMetadataValue(args.p_group, s.value, value)) { s.revision++; revision++; } s.value = value; s.override = s.value;
       getProps().onSaveMetadata(args.p_kind, row.id, args.p_group, value);
       const result = { id: row.id, kind: args.p_kind, group: args.p_group, value, revision: s.revision, request_id: args.p_request_id };
       requests.set(args.p_request_id, result); return { data: result };

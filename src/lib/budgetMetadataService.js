@@ -1,4 +1,4 @@
-const groups = ["title", "note"];
+import { metadataGroupKeys as groups, metadataValue as patchValue, sameMetadataValue, validMetadataValue, recordMetadataValue } from "./budgetMetadataValues.js";
 export const budgetAuthorityTimeoutMs = 10000;
 export const budgetSnapshotTimeoutError = () => ({ code: "BUDGET_SNAPSHOT_TIMEOUT", message: "最新同步逾時，草稿已保留。請重新確認後重試。" });
 // The settled race owns the result. An uncancellable transport may finish later,
@@ -14,11 +14,11 @@ export async function withBudgetAuthorityTimeout(work, { timeoutMs = budgetAutho
 }
 const version = value => Number.isSafeInteger(value) && value >= 0;
 // Match PostgreSQL btrim(text): normalize ordinary spaces, preserving other text.
-const patchValue = (group, value) => group === "note" ? value.replace(/^ +| +$/g, "") || null : value.replace(/^ +| +$/g, "");
 export function validBudgetMetadataSnapshot(data, tripId) {
+  const keys = data?.metadataProtocol?.schemaVersion === 2 ? groups : ["title", "note"];
   return data?.tripId === tripId && data.metadataProtocol?.name === "metadata-prototype"
-    && data.metadataProtocol.schemaVersion === 1 && typeof data.metadataProtocol.enabled === "boolean"
-    && data.metadataProtocol.complete === false && JSON.stringify(data.metadataProtocol.groups) === JSON.stringify(groups)
+    && [1, 2].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
+    && data.metadataProtocol.complete === false && JSON.stringify(data.metadataProtocol.groups) === JSON.stringify(keys)
     && Number.isFinite(Date.parse(data.serverNow)) && version(data.collaborationRevision)
     && Array.isArray(data.budgetItems) && Array.isArray(data.actualExpenses)
     && Array.isArray(data.metadataRecords) && Array.isArray(data.collaboration?.entries)
@@ -26,12 +26,13 @@ export function validBudgetMetadataSnapshot(data, tripId) {
     && new Set(data.metadataRecords.map(r => `${r.kind}:${r.id}`)).size === data.metadataRecords.length
     && data.metadataRecords.every(r => {
       const canonical = (r.kind === "budget" ? data.budgetItems : data.actualExpenses).find(row => row.id === r.id && row.trip_id === tripId);
-      return canonical && r.groups?.every(g => String(g.value ?? "") === String(canonical[g.group] ?? ""));
+      return canonical && Array.isArray(r.groups) && r.groups.every(g => validMetadataValue(g.group, g.value)
+        && sameMetadataValue(g.group, g.value, recordMetadataValue(r.kind, canonical, g.group, data.itineraryBudgetLinks)));
     })
     && data.metadataRecords.every(r => ["budget", "actual"].includes(r.kind) && r.trip_id === tripId
-      && typeof r.supported === "boolean" && typeof r.state_ready === "boolean" && r.groups?.length === 2
-      && groups.every(key => r.groups.filter(g => g.group === key).length === 1)
-      && r.groups.every(g => (typeof g.value === "string" || g.value === null) && typeof g.held === "boolean"
+      && typeof r.supported === "boolean" && typeof r.state_ready === "boolean" && r.groups?.length === keys.filter(k => r.kind === "budget" || k !== "links").length
+      && keys.filter(k => r.kind === "budget" || k !== "links").every(key => r.groups.filter(g => g.group === key).length === 1)
+      && r.groups.every(g => validMetadataValue(g.group, g.value) && typeof g.held === "boolean"
         && typeof g.own_session === "boolean" && (!r.state_ready || version(g.revision) && version(g.epoch))
         && (!g.held || typeof g.owner_id === "string" && Number.isFinite(Date.parse(g.expires_at)))));
 }
@@ -60,7 +61,8 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
   const key = (kind, id, group) => `${kind}:${id}:${group}`;
   const current = g => g.generation === generation && g.actor === context?.actor && g.trip === context?.trip && entries.get(g.key) === g;
   const draftKey = g => `travel-planner-metadata:${g.actor}:${g.trip}:${g.key}`;
-  const dirty = g => patchValue(g.group, g.staged ?? g.value) !== patchValue(g.group, g.canonical);
+  const localValue = g => Object.hasOwn(g, "staged") ? g.staged : g.value;
+  const dirty = g => !sameMetadataValue(g.group, localValue(g), g.canonical);
   const cancelTimer = g => { clearTimeout(g.timer); g.timer = null; };
   function schedule(g) {
     cancelTimer(g);
@@ -74,7 +76,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       else {
         const pending = g.request ? { id: g.request.p_request_id, session: g.request.p_session_id,
           base: g.request.p_base_revision, value: g.request.p_patch[g.group] } : undefined;
-        storage?.setItem(draftKey(g), JSON.stringify({ version: 2, value: g.staged ?? g.value, base: g.base, pending }));
+        storage?.setItem(draftKey(g), JSON.stringify({ version: 2, value: localValue(g), base: g.base, pending }));
       }
     } catch { /* In-memory input remains available if storage is blocked. */ }
   }
@@ -141,16 +143,16 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         canonical: remote?.value ?? initialValue, value: remote?.value ?? initialValue, base: remote?.revision, remote,
         state: "idle", localRevision: 0, supported: record?.supported, ready: record?.state_ready, lastActivity: now() };
       try { const saved = JSON.parse(storage?.getItem(draftKey(g)) || "null");
-        if ([1, 2].includes(saved?.version) && typeof saved.value === "string" && version(saved.base)) {
+        if ([1, 2].includes(saved?.version) && validMetadataValue(group, saved.value) && version(saved.base)) {
           g.staged = saved.value; g.base = saved.base; g.conflict = Boolean(remote && remote.revision !== saved.base);
           g.error = g.conflict ? "遠端版本已更新，已保留此分頁草稿。" : "已恢復此分頁草稿，請先確認編輯權限。";
           const p = saved.pending;
           if (saved.version === 2 && p && typeof p.id === "string" && typeof p.session === "string" && version(p.base)
-            && (typeof p.value === "string" || group === "note" && p.value === null)) {
+            && validMetadataValue(group, p.value)) {
             g.request = { ...args(g, "patch"), p_request_id: p.id, p_session_id: p.session,
               p_base_revision: p.base, p_token: null, p_epoch: null, p_patch: { [group]: p.value } };
             g.value = saved.value; delete g.staged;
-            g.submittedRevision = patchValue(group, saved.value) === p.value ? 0 : -1;
+            g.submittedRevision = sameMetadataValue(group, saved.value, p.value) ? 0 : -1;
             g.conflict = false; g.failed = true; g.error = "先前儲存結果待確認，請重試原請求。";
           }
         }
@@ -200,7 +202,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         emit(); void refresh(); return false;
       }
       g.epoch = data.epoch; g.expires = Date.parse(data.expires_at) - offset;
-      g.canonical = data.value ?? ""; g.value = g.staged ?? g.value; delete g.staged;
+      g.canonical = data.value ?? ""; g.value = localValue(g); delete g.staged;
       g.state = "held";
       persist(g); emit(); schedule(g); return true;
     })().finally(() => { g.acquiring = null; if (current(g) && g.state === "pending") {
@@ -208,12 +210,12 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     } });
     g.acquiring = work; return work;
   }
-  function input(g, value) {
-    if (!g || !allowed(g) || g.conflict || g.releasing || g.exiting || typeof value !== "string") return;
+  function input(g, value, { immediate = ["payer", "links", "category"].includes(g?.group) } = {}) {
+    if (!g || !allowed(g) || g.conflict || g.releasing || g.exiting || !validMetadataValue(g.group, value)) return;
     if (g.state === "pending") g.staged = value; // Intent buffer, never a committable value before admission.
     else if (owns(g)) g.value = value;
     else return;
-    g.localRevision++; g.lastActivity = now(); g.dueAt = now() + debounceMs;
+    g.localRevision++; g.lastActivity = now(); g.dueAt = now() + (immediate ? 0 : debounceMs);
     g.activity = (g.activity || 0) + 1;
     if (g.invalid) { g.failed = false; g.invalid = false; g.error = ""; }
     persist(g); emit(); schedule(g);
@@ -231,7 +233,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     if (g.acquiring) await g.acquiring;
     if (!current(g) || g.composing || suspended || !verified) return false;
     if (!g.request && (!owns(g) || g.conflict || !dirty(g))) return !dirty(g);
-    if (g.group === "title" && !g.value.trim() && !g.request) { g.invalid = true; g.failed = true; g.error = "請填寫項目名稱。"; emit(); return false; }
+    if (["title", "category"].includes(g.group) && !g.value.trim() && !g.request) { g.invalid = true; g.failed = true; g.error = g.group === "title" ? "請填寫項目名稱。" : "請填寫分類。"; emit(); return false; }
     if (!(await service.authorized(g.actor))) {
       if (current(g)) { g.failed = true; g.state = "uncertain"; g.error = "登入狀態尚未確認，草稿已保留。"; emit(); }
       return false;
@@ -253,9 +255,9 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     g.saving = false;
     const data = result.data;
     if (result.error || data?.id !== g.id || data?.kind !== g.kind || data?.group !== g.group || data?.request_id !== request.p_request_id
-      || data?.value !== request.p_patch[g.group] || !version(data?.revision) || ![request.p_base_revision, request.p_base_revision + 1].includes(data.revision)) {
+      || !sameMetadataValue(g.group, data?.value, request.p_patch[g.group]) || !version(data?.revision) || ![request.p_base_revision, request.p_base_revision + 1].includes(data.revision)) {
       const code = result.error?.code;
-      if (["40001", "40P01", "55P03", "42501", "55000", "22023", "0A000"].includes(code)) {
+      if (["40001", "40P01", "55P03", "42501", "55000", "22023", "22P02", "0A000"].includes(code)) {
         g.request = null; g.state = "lost"; g.conflict = code === "40001";
       }
       g.error = code === "55P03" ? "編輯權限或交易忙碌，草稿已保留。請重新確認後重試。"
@@ -289,6 +291,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     matches: (actor, trip) => context?.actor === actor && context?.trip === trip,
     reconcile() { suspended = false; renewAt = 0; return refresh(); },
     get, ingest, refresh, focus, input, save, discard, release,
+    groupKeys: kind => (snapshot?.metadataProtocol.groups || ["title", "note"]).filter(key => kind === "budget" || key !== "links"),
     composition(g, active) { if (!g || !current(g)) return; g.composing = active;
       if (active) cancelTimer(g); else { g.dueAt = g.focused ? now() + debounceMs : now(); schedule(g); } },
     async retry(g) {
@@ -309,7 +312,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       for (const g of entries.values()) if (g.state === "held") g.state = "uncertain";
       emit(true);
     },
-    view(g) { return { ...g, display: g.staged ?? g.value, dirty: dirty(g), writable: owns(g),
+    view(g) { return { ...g, display: localValue(g), dirty: dirty(g), writable: owns(g),
       acceptsIntent: allowed(g) && !g.conflict && !g.releasing && !g.exiting && (owns(g) || g.state === "pending") }; },
     blur(g) { if (!g) return; g.focused = false; g.dueAt = now(); cancelTimer(g);
       if (g.composing) return;

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { X } from "lucide-react";
 import { memberLabel } from "../../lib/budgetFinance.js";
+import MenuSelect from "../MenuSelect.jsx";
+import { recordMetadataValue } from "../../lib/budgetMetadataValues.js";
 
 // Formal and memory-only Demo share the controller's serial autosave flow.
-export default function BudgetMetadataEditor({ client, record, kind, members, services, onClose, onLegacy }) {
+export default function BudgetMetadataEditor({ client, record, kind, members, services, items, categoryOptions, ItineraryPicker, onClose, onLegacy }) {
   const version = useSyncExternalStore(client.subscribe, client.getVersion);
-  const fields = [client.get(kind, record.id, "title", record.title || ""), client.get(kind, record.id, "note", record.note || "")];
+  const fields = client.groupKeys(kind).map(group => client.get(kind, record.id, group, recordMetadataValue(kind, record, group, client.status().snapshot?.itineraryBudgetLinks)));
   const views = fields.map(g => client.view(g));
   const { message, verified, editable } = client.status();
   const hasDraft = views.some(g => g.dirty || g.request || g.saving);
@@ -14,16 +16,16 @@ export default function BudgetMetadataEditor({ client, record, kind, members, se
   services.useGuard(`budget-metadata:${kind}:${record.id}:${record.trip_id}`, useMemo(() => ({ isActive: true,
     isDirty: hasDraft, prepare: () => client.prepare(kind, record.id), finish: () => client.finish(kind, record.id), save: saveAll, discard: discardAll }), [client, record.id, kind, version, hasDraft]));
   useEffect(() => {
-    const captured = fields;
-    return () => { for (const g of captured) void client.release(g); };
+    return () => { void client.close(kind, record.id); };
   }, [client, record.id, kind]);
   return <section className="bw-editor bw-metadata-editor" aria-label={kind === "actual" ? "實付群組編輯" : "預算群組編輯"}>
     <div className="bw-detail-heading"><h3>編輯{kind === "actual" ? "實付" : "預算"}</h3>
       <button className="bw-icon" type="button" aria-label="關閉編輯" onClick={onClose}><X size={17} /></button></div>
-    <p className="bw-muted">名稱與備註會自動儲存。</p>
+    <p className="bw-muted">有效修改會自動儲存。</p>
     {message ? <p className="bw-warning" role="status">{message}<button className="ghost-button compact" type="button" onClick={() => void client.refresh()}>重新整理</button></p> : null}
     {views.map((g, index) => {
-      const field = fields[index], title = g.group === "title", label = title ? "項目名稱" : "備註";
+      const field = fields[index], title = g.group === "title", choice = ["category", "payer", "links"].includes(g.group);
+      const label = { title: "項目名稱", note: "備註", category: "分類", payer: "付款人", links: "關聯行程" }[g.group];
       const hintId = `metadata-${kind}-${record.id}-${g.group}`;
       const owner = g.remote?.held && !g.remote.own_session ? memberLabel(members.find(m => m.user_id === g.remote.owner_id)) : null;
       const text = g.saved && g.syncPending ? g.dirty ? "已儲存，最新同步待確認；另有尚未儲存的修改" : "已儲存，最新同步待確認"
@@ -37,7 +39,7 @@ export default function BudgetMetadataEditor({ client, record, kind, members, se
         onPointerDown: () => { if (!g.acceptsIntent) void client.focus(field); },
         onKeyDown: event => {
           if (g.acceptsIntent || !["idle", "lost"].includes(g.state) || !verified || g.conflict || event.ctrlKey || event.metaKey || event.altKey) return;
-          if (event.key.length === 1 || ["Backspace", "Delete"].includes(event.key) || !title && event.key === "Enter") {
+          if (event.key.length === 1 || ["Backspace", "Delete"].includes(event.key) || g.group === "note" && event.key === "Enter") {
             let { selectionStart: start, selectionEnd: end } = event.currentTarget;
             const insertion = event.key.length === 1 ? event.key : event.key === "Enter" ? "\n" : "";
             if (start === end && ["Backspace", "Delete"].includes(event.key)) {
@@ -46,21 +48,29 @@ export default function BudgetMetadataEditor({ client, record, kind, members, se
               else end = boundaries.find(index => index > end) ?? g.display.length;
             }
             void client.focus(field);
-            client.input(field, g.display.slice(0, start) + insertion + g.display.slice(end));
+            client.input(field, g.display.slice(0, start) + insertion + g.display.slice(end), { immediate: false });
             event.preventDefault();
           }
         },
         onPaste: event => {
           if (g.acceptsIntent || !["idle", "lost"].includes(g.state) || !verified || g.conflict) return;
           const { selectionStart: start, selectionEnd: end } = event.currentTarget;
-          void client.focus(field); client.input(field, g.display.slice(0, start) + event.clipboardData.getData("text") + g.display.slice(end)); event.preventDefault();
+          void client.focus(field); client.input(field, g.display.slice(0, start) + event.clipboardData.getData("text") + g.display.slice(end), { immediate: false }); event.preventDefault();
         },
         onChange: event => client.input(field, event.target.value),
         onCompositionStart: () => client.composition(field, true), onCompositionEnd: () => client.composition(field, false) };
       return <div key={g.group} className={`bw-metadata-group${owner || !g.acceptsIntent ? " is-readonly" : ""}`}
-        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) client.blur(field); }}>
+        onFocusCapture={() => { if (choice) void client.focus(field); }}
+        onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget) && !event.relatedTarget?.closest("[data-budget-metadata-portal]")) client.blur(field); }}>
         <label htmlFor={input.id}>{label}</label>
-        {title ? <input {...input} /> : <textarea {...input} rows={4} />}
+        {g.group === "links" ? <ItineraryPicker items={items} category={record.category} selectedIds={g.display} readOnly={!g.acceptsIntent}
+          onChange={ids => client.input(field, ids)} />
+          : choice ? <MenuSelect label={label} value={g.display || ""} editable={g.group === "category"} readOnly={!g.acceptsIntent} metadataPortal
+            inputProps={{ id: input.id, onKeyDown: input.onKeyDown, onPaste: input.onPaste, onCompositionStart: input.onCompositionStart, onCompositionEnd: input.onCompositionEnd, "aria-describedby": hintId }}
+            onValueChange={(value, action) => client.input(field, g.group === "payer" ? value || null : value, { immediate: g.group !== "category" || Boolean(action?.selected) })}
+            options={g.group === "payer" ? [{ value: "", label: "未指定" }, ...members.map(m => ({ value: m.user_id, label: memberLabel(m) }))]
+              : [...new Set([...categoryOptions, g.display].filter(Boolean))].map(value => ({ value, label: value }))} />
+          : title ? <input {...input} /> : <textarea {...input} rows={4} />}
         <span id={hintId} className="bw-metadata-status" aria-live={g.dirty && !g.failed && !g.conflict && !g.saving ? "off" : "polite"} aria-atomic="true">{text}</span>
         {g.error ? <p role="alert" className="bw-warning">{g.error}</p> : null}
         <div className="bw-metadata-actions">

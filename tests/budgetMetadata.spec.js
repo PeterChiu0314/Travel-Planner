@@ -23,7 +23,7 @@ async function setup(options = {}) {
 test("initial inspection has no authority; snapshot readiness/schema are strictly checked", async () => {
   const f = await setup(); expect(f.calls).toEqual([]); expect(f.client.view(f.title).writable).toBe(false);
   const good = (await f.transport.read("trip")).data; expect(validBudgetMetadataSnapshot(good, "trip")).toBe(true);
-  for (const data of [{ ...good, tripId: "other" }, { ...good, metadataProtocol: { ...good.metadataProtocol, schemaVersion: 2 } }, { ...good, metadataRecords: [{ ...good.metadataRecords[0], groups: [] }] }]) expect(validBudgetMetadataSnapshot(data, "trip")).toBe(false);
+  for (const data of [{ ...good, tripId: "other" }, { ...good, metadataProtocol: { ...good.metadataProtocol, schemaVersion: 99 } }, { ...good, metadataRecords: [{ ...good.metadataRecords[0], groups: [] }] }]) expect(validBudgetMetadataSnapshot(data, "trip")).toBe(false);
 });
 test("pending typing is an intent buffer, promoted only after the actual grant", async () => {
   const f = await setup(), gate = deferred(), original = f.service.lease; f.service.lease = async args => args.p_action === "acquire" ? gate.promise : original(args);

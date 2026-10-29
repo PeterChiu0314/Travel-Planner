@@ -9193,8 +9193,12 @@ function DemoApp({ initialSection }) {
             onSave={saveBudgetItem}
             onSaveActual={saveActualExpense}
             onSaveMetadata={(kind, id, group, value) => {
+              if (group === "links") {
+                setItineraryBudgetLinks(current => [...current.filter(link => link.budget_item_id !== id), ...value.map(itemId => ({ budget_item_id: id, itinerary_item_id: itemId }))]);
+                return;
+              }
               const setter = kind === "budget" ? setBudgetItems : setActualExpenses;
-              setter(current => current.map(row => row.id === id ? { ...row, [group]: value, updated_at: new Date().toISOString() } : row));
+              setter(current => current.map(row => row.id === id ? { ...row, [group === "payer" ? "payer_id" : group]: value, updated_at: new Date().toISOString() } : row));
             }}
             onUploadAttachment={uploadDemoAttachment}
             restoreDrafts={false}

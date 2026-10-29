@@ -314,7 +314,7 @@ function itinerarySuggestionScore(item, category) {
   return (typeMatch ? 100 : 0) + (hintMatch ? 30 : 0);
 }
 
-function ItineraryPicker({ items, selectedIds, category, onChange }) {
+function ItineraryPicker({ items, selectedIds, category, onChange, readOnly = false }) {
   const [query, setQuery] = useState("");
   const [day, setDay] = useState("");
   const [open, setOpen] = useState(false);
@@ -323,7 +323,7 @@ function ItineraryPicker({ items, selectedIds, category, onChange }) {
     .sort((a, b) => Number(a.day_index) - Number(b.day_index) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
   const suggested = matches.filter((item) => itinerarySuggestionScore(item, category) > 0)
     .sort((a, b) => itinerarySuggestionScore(b, category) - itinerarySuggestionScore(a, category)).slice(0, 5);
-  function toggle(id) { onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]); }
+  function toggle(id) { if (!readOnly) onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]); }
   function option(item) { return <label key={item.id}><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} /><span>{item.title}</span></label>; }
   return <section className="bw-link-picker" aria-label="關聯行程">
     <button className="bw-link-heading" type="button" aria-expanded={open} aria-controls="budget-link-options" onClick={() => setOpen(!open)}><span>{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}關聯行程</span><small>{selectedIds.length} 項</small></button>
@@ -651,7 +651,7 @@ export default function BudgetWorkspace(incoming) {
   const actualTotal = actualExpenses.reduce((sum, row) => sum + Number(row.twd_amount), 0);
   const metadataEditor = props.metadataRequested && !activeEditor && selectedRecord ? props.metadataClient ? <BudgetMetadataEditor
     key={`${props.currentUserId}:${activeTrip.id}:${selected.kind}:${selected.id}`} client={props.metadataClient} record={selectedRecord}
-    kind={selected.kind} members={members} services={services}
+    kind={selected.kind} members={members} services={services} items={items} categoryOptions={categoryOrder} ItineraryPicker={ItineraryPicker}
     onClose={async () => { const scope = workspaceScope.current; if (await services.handoff({ tripId: activeTrip.id }) && scope === workspaceScope.current) finishEditor(selected.kind, selected.id); }}
     onLegacy={async () => { const scope = workspaceScope.current; if (!(await services.handoff({ tripId: activeTrip.id })) || scope !== workspaceScope.current) return;
       if (!(await props.metadataClient.refresh()).ok || scope !== workspaceScope.current) return;

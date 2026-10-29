@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID as uuid,createHash } from 'node:crypto';
 import {createBudgetMetadataEditor,createBudgetMetadataService} from '../src/lib/budgetMetadataService.js';
 import {metadataUndoCases} from './budget-metadata-undo-cases.mjs';
+import {metadataChoiceCases} from './budget-metadata-choice-cases.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -113,6 +114,15 @@ try{
   const migrationDir=new URL('../supabase/migrations/',import.meta.url),hashes=[];
   for(const file of (await fs.readdir(migrationDir)).filter(f=>f.endsWith('.sql')).sort()){
     const source=await fs.readFile(new URL(file,migrationDir),'utf8');
+    if(file==='20261029114817_budget_category_payer_links_groups.sql'){
+      await test('choice expand failure and unused reverse preserve business contents and old definitions',async()=>{
+        const defs=()=>admin("select p.oid::regprocedure::text name,pg_get_functiondef(p.oid) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
+        const business=()=>admin("select * from (select 'budget' k,to_jsonb(t) v from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'baseline',to_jsonb(t) from trip_budget_baselines t) x order by k,v::text");
+        const before=await defs(),rows=await business();await assert.rejects(()=>control.query(source.replace(/commit;\s*$/i,'select 1/0;commit;')),e=>e.code==='22012');await control.query('rollback');assert.deepEqual(await defs(),before);assert.deepEqual(await business(),rows);
+        await control.query(source);assert.deepEqual(await business(),rows);
+        await control.query(await fs.readFile(new URL('../docs/qa/2026-10-29-budget-choice-groups-rollback.sql',import.meta.url),'utf8'));assert.deepEqual(await defs(),before);assert.deepEqual(await business(),rows);
+      });
+    }
     if(file==='20261029091435_budget_metadata_undo_prototype.sql'){
       const definitions=()=>admin("select p.oid::regprocedure::text name,pg_get_functiondef(p.oid) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
       const financial=()=>admin("select * from (select 'budget' kind,to_jsonb(t) data from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'metadata',to_jsonb(t) from app_private.budget_metadata_groups t union all select 'signals',to_jsonb(t) from budget_collaboration_signals t) originals order by kind,data::text");
@@ -639,6 +649,16 @@ try{
       observations.push({name:'undo-member-row-first-nowait',proof:await activity(),outcome});
     }finally{await admin('select pg_advisory_unlock($1::bigint)',[heldGate]);await gateB;await b.query('rollback');await admin('drop function budget_test.hold_member_revocation(uuid,uuid,bigint)');}
     await undoQA.undo(a,saved.operation,f.lease);await undoQA.release(f);return {overlap:true,nowait:true};
+  });
+  await metadataChoiceCases({test,admin,query,a,b,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,legacyAction});
+  await test('links child row-first holder is observed during safe NOWAIT rejection',async()=>{
+    const id=await fixture(),item=uuid();await admin("insert into itinerary_items(id,trip_id,title,type,date,day_index,sort_order) values($1,$2,'Locked link','attraction',current_date+10,0,0)",[item,trip]);
+    await admin('insert into itinerary_budget_items(budget_item_id,itinerary_item_id) values($1,$2)',[id,item]);
+    const l=await call(a,leaseAction(a,id,'links','acquire',{base:1})),heldGate=++gate;await admin('select pg_advisory_lock($1::bigint)',[heldGate]);await b.query('begin');await query(b,'select 1 from itinerary_budget_items where budget_item_id=$1 for update',[id]);
+    const work=query(b,'select budget_test.hold_result(\'{}\'::jsonb,$1::bigint)',[heldGate]);
+    try{await waitUntil(async()=>{const rows=await activity();return rows.find(r=>r.pid===pidB)?.blocking_pids.includes(observerPid);},'choice child lock held');
+      const outcome=await transaction(a,()=>call(a,patchAction(a,id,'links',[],{base:1,epoch:l.epoch})));assert.equal(outcome.code,'55P03');observations.push({name:'choice-links-child-row-nowait',proof:await activity(),outcome});
+    }finally{await admin('select pg_advisory_unlock($1::bigint)',[heldGate]);await work;await b.query('rollback');await call(a,leaseAction(a,id,'links','release',{epoch:l.epoch}));}return {overlap:true,nowait:true};
   });
 }catch(error){results.push({name:'harness/bootstrap',status:'failed',message:error.message,code:error.code});console.error(error.message);}
 finally{
