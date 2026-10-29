@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import { randomUUID as uuid,createHash } from 'node:crypto';
 import {createBudgetMetadataEditor,createBudgetMetadataService} from '../src/lib/budgetMetadataService.js';
+import {metadataUndoCases} from './budget-metadata-undo-cases.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -112,6 +113,17 @@ try{
   const migrationDir=new URL('../supabase/migrations/',import.meta.url),hashes=[];
   for(const file of (await fs.readdir(migrationDir)).filter(f=>f.endsWith('.sql')).sort()){
     const source=await fs.readFile(new URL(file,migrationDir),'utf8');
+    if(file==='20261029091435_budget_metadata_undo_prototype.sql'){
+      const definitions=()=>admin("select p.oid::regprocedure::text name,pg_get_functiondef(p.oid) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
+      const financial=()=>admin("select * from (select 'budget' kind,to_jsonb(t) data from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'metadata',to_jsonb(t) from app_private.budget_metadata_groups t union all select 'signals',to_jsonb(t) from budget_collaboration_signals t) originals order by kind,data::text");
+      await test('Undo expand failure is atomic and dormant reverse preserves previous functions and full financial originals',async()=>{
+        const before=await definitions(),beforeRows=await financial();await assert.rejects(()=>control.query(source.replace(/commit;\s*$/i,'select 1/0;commit;')),e=>e.code==='22012');await control.query('rollback');
+        assert.deepEqual(await definitions(),before);assert.deepEqual(await financial(),beforeRows);await control.query(source);
+        assert.deepEqual((await definitions()).filter(f=>before.some(old=>old.name===f.name)),before);assert.deepEqual(await financial(),beforeRows);
+        await control.query(await fs.readFile(new URL('../docs/qa/2026-10-29-budget-metadata-undo-rollback.sql',import.meta.url),'utf8'));
+        assert.deepEqual(await definitions(),before);assert.deepEqual(await financial(),beforeRows);
+      });
+    }
     if(file==='20261029031137_budget_metadata_snapshot_signals.sql'){
       const preservedUser=uuid(),preservedTrip=uuid();
       await admin('insert into auth.users(id) values($1)',[preservedUser]);
@@ -554,6 +566,79 @@ try{
     try{await anonymous.connect();await anonymous.query('set role anon');const denied=await transaction(anonymous,()=>call(anonymous,leaseAction(a,id,'title')));assert.equal(denied.code,'42501');}
     finally{await anonymous.end();}
     return {checks:'viewer read-only, pending/outsider/anon denied, four private tables denied'};
+  });
+  const undoQA=await metadataUndoCases({test,admin,query,a,b,identities,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction});
+  await test('Undo: two active same-tab requests for one target have one pop and one safe conflict',async()=>{
+    const f=await undoQA.setup(),saved=await undoQA.write(f,'One'),identityA=identities.get(a),identityB=identities.get(b);
+    await query(b,"select set_config('request.jwt.claim.sub',$1,false)",[actorA]);
+    try{const options={session:identityA.session,token:identityA.token};
+      const result=await overlap('undo-same-target',undoQA.undoAction(a,saved.operation,f.lease),undoQA.undoAction(b,saved.operation,f.lease,options));
+      assert(result.outcomes[0].ok);assert.equal(result.outcomes[1].code,'40001');assert.equal((await undoQA.read()).count,0);
+      assert.equal((await record(f.id)).title,'Initial');assert.equal(Number((await state(f.id,'title')).revision),2);await undoQA.release(f);
+      return {overlap:true,outcomes:result.outcomes,pops:1};
+    }finally{await query(b,"select set_config('request.jwt.claim.sub',$1,false)",[identityB.actor]);}
+  });
+  await test('Undo: overlapping identical request replays original inverse and cannot pop a second operation',async()=>{
+    const f=await undoQA.setup();await undoQA.write(f,'One');const saved=await undoQA.write(f,'Two'),request=uuid(),identity=identities.get(a);
+    await query(b,"select set_config('request.jwt.claim.sub',$1,false)",[actorA]);
+    try{const result=await overlap('undo-duplicate-request',undoQA.undoAction(a,saved.operation,f.lease,{request}),undoQA.undoAction(b,saved.operation,f.lease,{request,session:identity.session,token:identity.token}));
+      assert(result.outcomes.every(r=>r.ok));assert.deepEqual(result.outcomes[0].data,result.outcomes[1].data);assert.equal((await undoQA.read()).count,1);
+      assert.equal((await record(f.id)).title,'One');assert.equal(Number((await state(f.id,'title')).revision),3);await undoQA.release(f);
+      return {overlap:true,outcomes:result.outcomes,pops:1,replay:true};
+    }finally{await query(b,"select set_config('request.jwt.claim.sub',$1,false)",[actorB]);}
+  });
+  await test('Undo: different actors inversely patch title and note in genuinely overlapping transactions',async()=>{
+    const f=await undoQA.setup(),title=await undoQA.write(f,'A title'),noteLease=await call(b,leaseAction(b,f.id,'note')),noteOp=uuid();
+    await call(b,patchAction(b,f.id,'note','B note',{epoch:noteLease.epoch,request:noteOp}));
+    const result=await overlap('undo-independent-groups',undoQA.undoAction(a,title.operation,f.lease),undoQA.undoAction(b,noteOp,noteLease),{
+      inspect:async()=>{const visible=await record(f.id);assert.equal(visible.title,'A title');assert.equal(visible.note,'B note');}});
+    assert(result.outcomes.every(r=>r.ok));const final=await record(f.id);assert.equal(final.title,'Initial');assert.equal(final.note,'Initial note');assert.equal(Number(final.twd_amount),900);
+    await undoQA.release(f);await call(b,leaseAction(b,f.id,'note','release',{epoch:noteLease.epoch}));return {overlap:true,outcomes:result.outcomes,financialPreserved:true};
+  });
+  await test('Undo: rollback after inverse leaves stack and original result while another writer is actually waiting',async()=>{
+    const f=await undoQA.setup(),saved=await undoQA.write(f,'A title'),noteLease=await call(b,leaseAction(b,f.id,'note')),request=uuid();
+    const before=await undoQA.read(),heldGate=++gate;await admin('select pg_advisory_lock($1::bigint)',[heldGate]);
+    await a.query('begin');await call(a,undoQA.undoAction(a,saved.operation,f.lease,{request}));
+    const gateA=query(a,"select budget_test.hold_result('{}'::jsonb,$1)",[heldGate]);let workB,proof;
+    try{await waitUntil(async()=>{const rows=await activity();return rows.find(r=>r.pid===pidA)?.blocking_pids.includes(observerPid);},'undo rollback A barrier');
+      workB=transaction(b,()=>call(b,patchAction(b,f.id,'note','B survived',{epoch:noteLease.epoch})));
+      proof=await waitUntil(async()=>{const rows=await activity();return rows.find(r=>r.pid===pidB)?.blocking_pids.includes(pidA)?rows:false;},'undo rollback B actual wait');
+      observations.push({name:'undo-inverse-rollback',proof});assert.equal((await record(f.id)).title,'A title');
+    }finally{await admin('select pg_advisory_unlock($1::bigint)',[heldGate]);await gateA;await assert.rejects(()=>query(a,'select 1/0'),e=>e.code==='22012');await a.query('rollback');}
+    assert((await workB).ok);assert.deepEqual(await undoQA.read(),before);assert.equal((await record(f.id)).title,'A title');assert.equal((await record(f.id)).note,'B survived');
+    assert.equal((await admin('select count(*)::int n from app_private.budget_metadata_requests where request_id=$1',[request]))[0].n,0);
+    await undoQA.release(f);await call(b,leaseAction(b,f.id,'note','release',{epoch:noteLease.epoch}));return {overlap:true,rolledBack:true};
+  });
+  await test('Undo: membership revocation committed during lock wait rejects a formerly valid inverse',async()=>{
+    const id=await fixture(),held=await call(b,leaseAction(b,id,'title')),op=uuid();await call(b,patchAction(b,id,'title','B title',{epoch:held.epoch,request:op}));
+    try{const result=await overlap('undo-revocation-after-wait',{text:'budget_test.revoke_member($1,$2)',values:[trip,actorB]},undoQA.undoAction(b,op,held));
+      assert(result.outcomes[0].ok);assert.equal(result.outcomes[1].code,'42501');assert.equal((await record(id)).title,'B title');return {overlap:true,outcomes:result.outcomes};
+    }finally{await admin("update trip_members set status='approved' where trip_id=$1 and user_id=$2",[trip,actorB]);await call(b,leaseAction(b,id,'title','release',{epoch:held.epoch}));}
+  });
+  await test('Undo: parent row-first legacy writer safely NOWAIT-rejects inverse instead of deadlocking',async()=>{
+    const f=await undoQA.setup(),saved=await undoQA.write(f,'A title'),heldGate=++gate;
+    await admin('select pg_advisory_lock($1::bigint)',[heldGate]);await b.query('begin');await query(b,'select id from budget_items where id=$1 for update',[f.id]);
+    const gateB=query(b,"select budget_test.hold_result('{}'::jsonb,$1)",[heldGate]);
+    let proof;try{
+      await waitUntil(async()=>{const rows=await activity();return rows.find(r=>r.pid===pidB)?.blocking_pids.includes(observerPid);},'undo row-first B gate');
+      const outcome=await transaction(a,()=>call(a,undoQA.undoAction(a,saved.operation,f.lease)));assert.equal(outcome.code,'55P03');
+      proof=await activity();observations.push({name:'undo-row-first-nowait',proof,outcome});assert.equal((await record(f.id)).title,'A title');assert.equal((await undoQA.read()).count,1);
+    }finally{await admin('select pg_advisory_unlock($1::bigint)',[heldGate]);await gateB;await b.query('rollback');}
+    await undoQA.undo(a,saved.operation,f.lease);await undoQA.release(f);return {overlap:true,nowait:true,proof};
+  });
+  await test('Undo: membership row-first revocation cannot deadlock a waiting metadata inverse',async()=>{
+    const f=await undoQA.setup(),saved=await undoQA.write(f,'A title'),heldGate=++gate;
+    await admin(`create function budget_test.hold_member_revocation(trip uuid,actor uuid,gate bigint) returns jsonb
+      language plpgsql security definer set search_path='' as $$begin
+      update public.trip_members set status='pending' where trip_id=trip and user_id=actor;
+      perform pg_advisory_xact_lock(gate);return '{}'::jsonb;end$$`);
+    await admin('select pg_advisory_lock($1::bigint)',[heldGate]);await b.query('begin');
+    const gateB=query(b,'select budget_test.hold_member_revocation($1,$2,$3)',[trip,actorA,heldGate]);
+    try{await waitUntil(async()=>{const rows=await activity();return rows.find(r=>r.pid===pidB)?.blocking_pids.includes(observerPid);},'undo membership row-first B gate');
+      const outcome=await transaction(a,()=>call(a,undoQA.undoAction(a,saved.operation,f.lease)));assert.equal(outcome.code,'55P03');
+      observations.push({name:'undo-member-row-first-nowait',proof:await activity(),outcome});
+    }finally{await admin('select pg_advisory_unlock($1::bigint)',[heldGate]);await gateB;await b.query('rollback');await admin('drop function budget_test.hold_member_revocation(uuid,uuid,bigint)');}
+    await undoQA.undo(a,saved.operation,f.lease);await undoQA.release(f);return {overlap:true,nowait:true};
   });
 }catch(error){results.push({name:'harness/bootstrap',status:'failed',message:error.message,code:error.code});console.error(error.message);}
 finally{

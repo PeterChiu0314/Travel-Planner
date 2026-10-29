@@ -8,6 +8,8 @@
 
 後續使用者要求的 Snapshot timeout 補強見本文末節及[最新驗證紀錄](qa/2026-10-29-budget-b3-snapshot-timeout-results.json)。以下原始 B-3 數量與 native run 是 `d72bcab` 的歷史 checkpoint；最新狀態以末節及 CURRENT_TASK 為準。
 
+之後已依使用者要求進入[五步 Undo 的名稱／備註 DB 切片](2026-10-29-budget-metadata-undo-db-handoff.md)，預設停用，尚未接 UI／Ctrl+Z；本文的自動儲存程式沒有因此改動。
+
 ## 實際行為
 
 - 名稱／備註各自停止輸入約 1 秒提交，失焦有有效修改立即 flush。普通空白按 PostgreSQL btrim 規則 canonicalize；無實質變更不送 Patch。IME composition 中不提交，compositionend 才重新排程。

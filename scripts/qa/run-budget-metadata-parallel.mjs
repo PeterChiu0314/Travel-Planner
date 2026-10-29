@@ -40,6 +40,18 @@ try {
     child.on('error',reject);child.on('exit',code=>resolve(code??1));
   });
   process.exitCode=exit;
+  if(exit===0&&process.argv.includes('--advisors')){
+    const url=`postgresql://budget_local_admin@127.0.0.1:${port}/postgres?sslmode=disable`;
+    for(const [name,args] of [['advisors',['db','advisors','--db-url',url,'--type','all','--fail-on','none']],
+      ['migration-list',['migration','list','--db-url',url]]]){
+      try {
+        const result=await run(process.execPath,['node_modules/supabase/dist/supabase.js',...args],{cwd:root,windowsHide:true,timeout:30000,maxBuffer:3e6});
+        await fs.writeFile(path.join(work,`${name}.json`),JSON.stringify({ok:true,stdout:result.stdout,stderr:result.stderr},null,2));console.log(`Local CLI ${name}: completed; details saved with isolated evidence.`);
+      }catch(error){
+        await fs.writeFile(path.join(work,`${name}.json`),JSON.stringify({ok:false,message:error.message,stdout:error.stdout,stderr:error.stderr},null,2));console.log(`Local CLI ${name}: unavailable; diagnostics saved with isolated evidence.`);
+      }
+    }
+  }
 } catch(error) {
   console.error({message:error.message,stderr:error.stderr});process.exitCode=1;
 } finally {
