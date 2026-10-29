@@ -10,7 +10,7 @@ export function primaryBudgetCollaborators(entries) {
     const candidates = edits.length ? edits : rows.filter(row => row.mode === "selection").sort((a,b) =>
       (b.selected_at || "").localeCompare(a.selected_at || "") || `${a.kind}:${a.resource_id}`.localeCompare(`${b.kind}:${b.resource_id}`) || Number(b.own_session)-Number(a.own_session)).slice(0,1);
     const resources = new Map();
-    for (const row of candidates) { const key = `${row.kind}:${row.resource_id}`; if (!resources.has(key) || row.own_session) resources.set(key, row); }
+    for (const row of candidates) { const key = `${row.kind}:${row.resource_id}:${row.group_key || "*"}`; if (!resources.has(key) || row.own_session) resources.set(key, row); }
     return [...resources.values()];
   }).sort((a,b) => `${a.user_id}:${a.kind}:${a.resource_id}`.localeCompare(`${b.user_id}:${b.kind}:${b.resource_id}`));
 }

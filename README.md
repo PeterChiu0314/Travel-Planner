@@ -5,7 +5,7 @@ React + Supabase collaborative travel planner with Google login, owner-approved 
 ## Project documents
 
 - [AGENT.md](AGENT.md): project operating guide.
-- [CURRENT_TASK.md](CURRENT_TASK.md): current handoff and phase records.
+- [CURRENT_TASK.md](CURRENT_TASK.md): concise current handoff, rollout status and links to historical phase records.
 - [DESIGN.md](DESIGN.md): current Formal desktop design rules; mobile/tablet design is deferred.
 - [UX rules](docs/UX_RULES.md) and [Timeline card specification](docs/timeline-card-ui-spec.md): detailed interaction and component contracts.
 

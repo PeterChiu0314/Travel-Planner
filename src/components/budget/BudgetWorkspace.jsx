@@ -5,6 +5,7 @@ import { collaboratorColor } from "../../lib/collaboratorColors.js";
 import { BedDouble, Car, ChartColumn, ChevronDown, ChevronRight, Circle, CircleCheck, List, Package, Pencil, Plane, Plus, Search, ShoppingBag, Ticket, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
 import MenuSelect from "../MenuSelect.jsx";
+import BudgetMetadataEditor from "./BudgetMetadataEditor.jsx";
 import { budgetDay, budgetStage, calculateActualPricing, calculatePricing, historicalForeignBudget, preservesBudgetPricing, comparisonRows, memberLabel, money, participantsFor, pricingLabels, recordAllocations, recordForm } from "../../lib/budgetFinance.js";
 import { calculateEntryPricing, isPaymentActive, planningBudgetData } from "../../lib/planningBudget.js";
 import { preparePaymentChange } from "../../lib/budgetPayment.js";
@@ -575,26 +576,29 @@ export default function BudgetWorkspace(incoming) {
     const scope = workspaceScope.current;
     panelTransition.current = true;
     try {
+      if (next !== "edit" && props.metadataRequested && !activeEditor && panel === "edit" && !(await services.handoff({ tripId: activeTrip.id }))) return;
       if (next !== "edit" && activeEditor && !(await activeEditor.close(false, { sidebar: true }))) return;
       if (scope !== workspaceScope.current) return;
       panelChosen.current = true; setPanel(next);
-      if (next === "edit" && !activeEditor && selectedRecord) await (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord);
+      if (next === "edit" && !props.metadataRequested && !activeEditor && selectedRecord) await (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord);
     } finally { panelTransition.current = false; }
   }
   async function editSelected() {
     if (!selectedRecord) return;
+    if (props.metadataRequested && !activeEditor) { setPanel("edit"); return; }
     if (await (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord)) setPanel("edit");
   }
   async function select(row, event) {
     if (event?.detail > 1) return;
     const same = selected?.id === row.id;
-    if (same && (panel !== "edit" || activeEditor?.context?.id === row.id)) {
+    if (same && (panel !== "edit" || activeEditor?.context?.id === row.id || props.metadataRequested && !activeEditor)) {
       if (!(await services.handoff({ tripId: activeTrip.id }))) return;
       if (activeEditor && !(await activeEditor.close(true))) return;
       setSelected(null); return;
     }
     if (panel === "edit") {
-      if (!(await (actual ? actualEditor : budgetEditor).open(row))) return;
+      if (props.metadataRequested && !activeEditor) { if (!(await services.handoff({ tripId: activeTrip.id }))) return; }
+      else if (!(await (actual ? actualEditor : budgetEditor).open(row))) return;
     } else if (activeEditor?.context?.id !== row.id && !(await services.handoff({ tripId: activeTrip.id }))) return;
     setSelected({ kind: actual ? "actual" : "budget", id: row.id });
     if (!panelChosen.current && panel !== "edit") setPanel("detail");
@@ -645,6 +649,13 @@ export default function BudgetWorkspace(incoming) {
   const statsRecords = (actual || compare ? actualExpenses : budgetItems).map((row) => ({ ...row, hasActual: actualExpenses.some((expense) => expense.budget_item_id === row.id) }));
   const baselineTotal = baseline?.payload?.items?.reduce((sum, row) => sum + Number(row.twd_amount), 0) || 0;
   const actualTotal = actualExpenses.reduce((sum, row) => sum + Number(row.twd_amount), 0);
+  const metadataEditor = props.metadataRequested && !activeEditor && selectedRecord ? props.metadataClient ? <BudgetMetadataEditor
+    key={`${props.currentUserId}:${activeTrip.id}:${selected.kind}:${selected.id}`} client={props.metadataClient} record={selectedRecord}
+    kind={selected.kind} members={members} services={services}
+    onClose={async () => { const scope = workspaceScope.current; if (await services.handoff({ tripId: activeTrip.id }) && scope === workspaceScope.current) finishEditor(selected.kind, selected.id); }}
+    onLegacy={async () => { const scope = workspaceScope.current; if (!(await services.handoff({ tripId: activeTrip.id })) || scope !== workspaceScope.current) return;
+      if (await (selected.kind === "actual" ? actualEditor : budgetEditor).open(selectedRecord)) setPanel("edit"); }} />
+    : <p className="bw-muted" role="status">正在確認協作狀態…</p> : null;
   const ratesControl = { tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates: () => void refreshRates() };
   return <section className="budget-panel budget-workspace" aria-label="預算工作區" data-stage={stage}>{dialog}
     <div className="bw-main"><div className="bw-toolbar"><h3>預算</h3>{!planning ? <div className="bw-tabs" role="tablist" aria-label="費用資料檢視">
@@ -688,7 +699,7 @@ export default function BudgetWorkspace(incoming) {
     <aside className="bw-side" ref={sideRef}><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[["stats","旅程統計",ChartColumn],["detail","項目明細",List],["edit","編輯項目",Pencil]].map(([key,label,Icon]) => <button key={key} role="tab" type="button" aria-label={label} aria-selected={panel === key} onClick={() => void changePanel(key)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span>{label}{key === "edit" && activeEditor?.hasUnsavedChanges ? <span aria-hidden="true"> ·</span> : null}</span></button>)}</div>
       {panel !== "edit" && (budgetEditor.error || actualEditor.error) ? <p className="bw-warning" role="alert">{budgetEditor.error || actualEditor.error}</p> : null}
       {planning && allExpenses.some((row) => !row.budget_item_id) ? <section className="bw-retained"><h4>其他付款紀錄</h4>{allExpenses.filter((row) => !row.budget_item_id).map((row) => <button className="ghost-button compact" key={row.id} onClick={async () => { if (await actualEditor.open(row)) { setSelected({kind:"actual",id:row.id}); setPanel("edit"); } }}>{row.title} · NT$ {money(row.twd_amount)}</button>)}</section> : null}
-      {panel === "stats" ? <Stats ratesControl={ratesControl} viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : panel === "edit" ? activeEditor ? <RecordEditor readOnlyPayments={!editingActual && Boolean(budgetItems.find((row) => row.id === activeEditor.context?.id)?.payment_readonly)} historical={!editingActual && historicalForeignBudget(budgetItems.find((row) => row.id === activeEditor.context?.id), stage)} {...ratesControl} key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} onCancel={() => void cancelEditing()} /> : <div className="bw-empty">{budgetEditor.error || actualEditor.error ? <p role="alert" className="bw-warning">{budgetEditor.error || actualEditor.error}</p> : null}{!canEdit ? "目前沒有編輯權限" : "選取項目開始編輯"}</div> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} payments={actualExpenses.filter((expense) => expense.budget_item_id === selectedRecord.id)} canEdit={canEdit && !paymentBusy && (!props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} paymentBusy={paymentBusy} paymentError={paymentError} onEdit={() => void editSelected()} onDelete={() => void remove()} onPaidChange={(paid) => void togglePayment(paid)} renderAttachments={selected.kind === "actual" ? props.renderAttachments : renderBudgetAttachments} /> : <div className="bw-empty">選取項目查看明細</div>}
+      {panel === "stats" ? <Stats ratesControl={ratesControl} viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : panel === "edit" ? metadataEditor ? metadataEditor : activeEditor ? <RecordEditor readOnlyPayments={!editingActual && Boolean(budgetItems.find((row) => row.id === activeEditor.context?.id)?.payment_readonly)} historical={!editingActual && historicalForeignBudget(budgetItems.find((row) => row.id === activeEditor.context?.id), stage)} {...ratesControl} key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} onCancel={() => void cancelEditing()} /> : <div className="bw-empty">{budgetEditor.error || actualEditor.error ? <p role="alert" className="bw-warning">{budgetEditor.error || actualEditor.error}</p> : null}{!canEdit ? "目前沒有編輯權限" : "選取項目開始編輯"}</div> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} payments={actualExpenses.filter((expense) => expense.budget_item_id === selectedRecord.id)} canEdit={canEdit && !paymentBusy && (props.metadataRequested || !props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} paymentBusy={paymentBusy} paymentError={paymentError} onEdit={() => void editSelected()} onDelete={() => void remove()} onPaidChange={(paid) => void togglePayment(paid)} renderAttachments={selected.kind === "actual" ? props.renderAttachments : renderBudgetAttachments} /> : <div className="bw-empty">選取項目查看明細</div>}
     </aside>
     {remoteTooltip && remoteFor((remoteTooltip.kind === "actual" ? allExpenses : budgetItems).find(r => r.id === remoteTooltip.id),remoteTooltip.kind).length ? createPortal(
       <div role="tooltip" id={`bw-collaboration-${remoteTooltip.kind}-${remoteTooltip.id}`} className="bw-collaboration-tooltip" style={{left:remoteTooltip.left,top:remoteTooltip.top}}>

@@ -1,17 +1,30 @@
+import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./budgetMetadataConfig.js";
+import { validBudgetMetadataSnapshot } from "./budgetMetadataService.js";
 export const emptyBudgetSnapshot = () => ({ tripId: null, budgetItems: [], budgetParticipants: [], actualExpenses: [], actualParticipants: [],
   itineraryBudgetLinks: [], budgetBaseline: null, items: [], members: [], attachments: [], tripBudgetRates: null });
 export const mergeBudgetAttachments = (attachments, snapshot) => [...attachments.filter(a => a.target_type !== "actual_expense"), ...snapshot.attachments];
 
 export async function readBudgetSnapshot(supabase, tripId) {
   try {
-    const result = await supabase.rpc("read_budget_snapshot", { p_trip_id: tripId });
+    const started = Date.now();
+    let result = await supabase.rpc(budgetMetadataEnabled ? "read_budget_metadata_snapshot" : "read_budget_snapshot",
+      { p_trip_id: tripId, ...(budgetMetadataEnabled ? { p_session_id: getBudgetMetadataSessionId() } : {}) });
+    let metadataMissing = false;
+    if (budgetMetadataEnabled && ["PGRST202", "42883"].includes(result.error?.code)) {
+      // Read-only financial fallback; the new editor stays fail-closed.
+      result = await supabase.rpc("read_budget_snapshot", { p_trip_id: tripId }); metadataMissing = true;
+    }
     if (result.error) return result;
     const data = result.data;
     if (!data) return { error: { code: "42501", message: "目前無法讀取此旅程預算。" } };
     if (data.tripId !== tripId || ["budgetItems", "budgetParticipants", "actualExpenses", "actualParticipants", "itineraryBudgetLinks", "items", "members", "attachments"].some(key => !Array.isArray(data[key]))) {
       return { error: { code: "BUDGET_SNAPSHOT_INVALID", message: "預算資料尚未確認，請重新連線。" } };
     }
-    return { data, error: null };
+    if (budgetMetadataEnabled && !metadataMissing && !validBudgetMetadataSnapshot(data, tripId)) {
+      return { error: { code: "BUDGET_METADATA_INVALID", message: "群組協作資料尚未確認，請重新整理。" } };
+    }
+    return { data: budgetMetadataEnabled ? { ...data, metadataVerified: !metadataMissing, metadataReadStartedAt: started,
+      ...(metadataMissing ? { metadataError: "群組協作尚未啟用，目前僅供檢視。" } : {}) } : data, error: null };
   } catch (error) { return { error }; }
 }
 
@@ -35,7 +48,7 @@ export function createBudgetRefresh({ guard, read, apply, onError = () => {}, on
         if (!guard.sameContext(context)) return { ok: false, stale: true };
         if (guard.valid(token) && !work.dirty) {
           if (result.error) { onError(result.error); return { ok: false, error: result.error }; }
-          apply(result.data, context.key); onVerified(result); return { ok: true };
+          apply(result.data, context.key); onVerified(result); return { ok: true, data: result.data };
         }
         // A full-trip read may advance this scope too. Its guarded application
         // wins; only a real invalidation requires another snapshot request.

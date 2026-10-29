@@ -253,3 +253,12 @@
 
 .bw-filters > label, .bw-filters > .menu-select > .menu-select-trigger, .bw-toolbar > .bw-add { height: 36px; min-height: 36px; }
 .bw-filters > label input { height: 32px; min-height: 32px; }
+.bw-metadata-group { display: grid; gap: 7px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.bw-metadata-group > label { font-size: 12px; color: var(--muted); }
+.bw-metadata-group.is-readonly input, .bw-metadata-group.is-readonly textarea { color: var(--muted); background: var(--surface-soft, #f4f3ee); border-color: var(--line); }
+.bw-metadata-group input:focus-visible, .bw-metadata-group textarea:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.bw-metadata-group textarea { height: auto; min-height: 90px; resize: vertical; }
+.bw-metadata-status { color: var(--muted); font-size: 11px; line-height: 1.6; }
+.bw-metadata-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.bw-metadata-summary { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.bw-metadata-editor .bw-warning button { display: block; margin-top: 7px; }

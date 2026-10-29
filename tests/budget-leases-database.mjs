@@ -70,7 +70,14 @@ try {
     if(actor===viewer) { assert.equal(snapshot.tripId,trip); assert.equal(snapshot.budgetItems.length,2); assert.equal(snapshot.budgetParticipants.length,2); assert.equal(snapshot.members.length,3); }
     else assert.equal(snapshot,null);
     if(actor===viewer) {await selectRecord();assert.equal((await collab()).entries[0].user_id,viewer);await selectRecord(s1,null,null);}
-    else {assert.equal(await collab(),null);await deny(()=>selectRecord(),"42501");assert.equal((await query("select * from budget_collaboration_signals")).length,0);}
+    else {
+      assert.equal(await collab(),null);await deny(()=>selectRecord(),"42501");
+      assert.equal((await query("select * from budget_collaboration_signals where trip_id=$1",[trip])).length,0);
+      // Metadata/member notifications can create a signal for the outsider's
+      // OWN approved trip. Assert exact scope rather than assuming no own signal.
+      const visible=await query("select trip_id from budget_collaboration_signals order by trip_id");
+      assert.deepEqual(visible.map(s=>s.trip_id),actor===outsider?[secretTrip]:[]);
+    }
   }
   await login(null); await deny(() => lease("acquire", s1, t1, id, "budget", original.updated_at), "42501");
   await deny(()=>query("select read_budget_snapshot($1)",[trip]),"42501");

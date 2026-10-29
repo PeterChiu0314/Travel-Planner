@@ -8,6 +8,7 @@ Root Markdown files are entry points:
 
 - `AGENT.md`: agent operating guide.
 - `CURRENT_TASK.md`: current project status and active phase handoff.
+- Keep `CURRENT_TASK.md` concise: current branch/phase, protected contracts, latest verified rollout state, validation limits and next step. Link implementation/QA details from active `docs/` handoffs; replace superseded status instead of prepending repeated checkpoint logs.
 - `DESIGN.md`: current Formal desktop design rules. Desktop is the current development and acceptance priority; mobile/tablet design is deferred.
 - `README.md`: general project README.
 
@@ -21,6 +22,7 @@ Current working documents live in `docs/`:
 Historical documents live in `docs/archive/`, grouped by project area:
 
 - Old discussions, superseded handoffs, completed layout audits, and obsolete drafts belong in `docs/archive/`.
+- Completed `CURRENT_TASK.md` checkpoint logs are archived by project area, with an archive notice and working links. The live ledger links those archives; dated approvals and pending-rollout statements there are historical, not authorization or current status.
 - Do not read `docs/archive/` by default when starting a task.
 - Consult archived files only when the current task requires historical context that is not available in `CURRENT_TASK.md` or the active `docs/` files.
 - The old `docs/gpt/` folder has been removed. Do not recreate it; place active documents in `docs/` and historical documents in `docs/archive/`.

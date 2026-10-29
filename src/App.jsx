@@ -5,7 +5,7 @@ import { luggageLengthError } from "./lib/luggageLimits.js";
 import { useSiteDialog } from "./components/SiteDialog.jsx";
 import { notify, friendlyError } from "./lib/notifications.js";
 import { createSyncNotifications } from "./lib/syncNotifications.js";
-import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { WorkspaceActions, WorkspaceHeading, WorkspaceProgress, WorkspaceSearch, WorkspaceSummary, workspaceMoney } from "./components/workspace/TravelWorkspace.jsx";
 import { createDemoGuides, createDemoStays, createDemoTodos } from "./components/workspace/demoWorkspaceData.js";
@@ -21,7 +21,10 @@ import { persistBudgetWorkspace } from "./lib/budgetWorkspaceService.js";
 import { createBudgetEditLeaseClient } from "./lib/budgetEditLeases.js";
 import { deleteBudgetReceipt } from "./lib/budgetReceipts.js";
 import { collaboratorColors as timelineCardSelectionColors } from "./lib/collaboratorColors.js";
-import { createBudgetCollaboration } from "./lib/budgetCollaboration.js";
+import { createBudgetCollaboration, primaryBudgetCollaborators } from "./lib/budgetCollaboration.js";
+import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./lib/budgetMetadataConfig.js";
+import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata } from "./lib/budgetMetadataService.js";
+import { createDemoBudgetMetadataService } from "./demo/budgetMetadata.js";
 import { demoBudgetQuote } from "./lib/tripBudgetRates.js";
 import { createDemoBudgetState, demoBudgetMembers, hydrateDemoBudgetScenario } from "./demo/budgetFixtures.js";
 import {
@@ -644,6 +647,7 @@ export function ActiveEditorGuardDialog() {
           <button className="ghost-button" type="button" onClick={() => choose("discard")}>
             不儲存
           </button>
+          <button className="ghost-button" type="button" onClick={() => choose(null)}>繼續編輯</button>
         </div>
       </div>
     </div>
@@ -2440,6 +2444,8 @@ export default function App() {
   const budgetSnapshotRef = useRef({ key: null, data: emptyBudgetSnapshot() });
   if (budgetSnapshotRef.current.key !== tripDataContext.key) budgetSnapshotRef.current = { key: tripDataContext.key, data: emptyBudgetSnapshot() };
   function applyBudgetSnapshot(data, key, cache = true) {
+    if (!cache) data = withoutBudgetMetadata(data);
+    else if (data.metadataVerified) data = { ...data, metadataUserId: JSON.parse(key)[0] };
     for (const receipt of data.attachments) budgetReceiptIdsRef.current.ids.add(receipt.id);
     while (budgetReceiptIdsRef.current.ids.size > 1000) budgetReceiptIdsRef.current.ids.delete(budgetReceiptIdsRef.current.ids.values().next().value);
     budgetSnapshotRef.current = { key, data }; setBudgetSnapshot(data);
@@ -2448,7 +2454,7 @@ export default function App() {
       setBudgetSchemaAvailable(true);
       if (cache) {
         const [userId, tripId] = JSON.parse(key);
-        updateOfflineBudget(tripId, userId, data);
+        updateOfflineBudget(tripId, userId, withoutBudgetMetadata(data));
       }
       if (data.tripBudgetRates) setTrips(current => current.map(t => t.id === data.tripId ? { ...t, budget_exchange_rates: data.tripBudgetRates } : t));
     }
@@ -2462,7 +2468,10 @@ export default function App() {
     },
     apply: applyBudgetSnapshot,
     onVerified: result => syncFeedback.verified("budget", result.feedbackCheckpoint),
-    onError: error => syncFeedback.failure("budget", error.code === "PGRST202" ? "預算快照尚未啟用，需先套用預算同步 migration。" : error),
+    onError: error => {
+      if (budgetMetadataEnabled) setBudgetSnapshot(current => ({ ...current, metadataVerified: false, metadataError: "群組協作狀態尚未確認，草稿已保留。" }));
+      syncFeedback.failure("budget", error.code === "PGRST202" ? "預算快照尚未啟用，需先套用預算同步 migration。" : error);
+    },
   });
   const refreshBudget = useCallback((tripId) => {
     if (!requestGuard.sameContext(tripDataContext) || !tripDataContext.key || JSON.parse(tripDataContext.key)[1] !== tripId) return Promise.resolve({ ok: false, stale: true });
@@ -3169,7 +3178,7 @@ export default function App() {
     setPackItems(packResult.data || []);
     setMembers(membersResult.data || []);
     writeOfflineTripData(tripId, userId, {
-      budgetSnapshot: budgetSnapshotRef.current.data,
+      budgetSnapshot: withoutBudgetMetadata(budgetSnapshotRef.current.data),
       budgetBaseline: budgetSnapshotRef.current.data.budgetBaseline,
       items: nextItems,
       alternatives: nextAlternatives,
@@ -3921,6 +3930,7 @@ export default function App() {
       { event: "DELETE", schema: "public", table }, payload => {
         if (!payload.old?.trip_id || payload.old.trip_id === activeTripId) invalidateBudget();
       });
+    if (budgetMetadataEnabled) channel.on("postgres_changes", { event: "*", schema: "public", table: "budget_collaboration_signals", filter: `trip_id=eq.${activeTripId}` }, invalidateBudget);
     subscribeSharedLuggage(channel, activeTripId, luggageRefreshRef.current);
     channel.subscribe(status => {
       if (!subscriptionActive || !requestGuard.sameContext(tripDataContext)) return;
@@ -6370,6 +6380,7 @@ export default function App() {
             alternatives={alternatives}
             attachments={attachments}
             budgetSnapshot={budgetSnapshot.tripId === activeTrip.id ? budgetSnapshot : null}
+            onRefreshBudget={refreshBudget}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
             budgetBaseline={budgetBaseline?.trip_id === activeTrip.id ? budgetBaseline : null}
@@ -9175,6 +9186,10 @@ function DemoApp({ initialSection }) {
             onOpenAttachment={(attachment) => window.open(attachment.file_url, "_blank", "noopener,noreferrer")}
             onSave={saveBudgetItem}
             onSaveActual={saveActualExpense}
+            onSaveMetadata={(kind, id, group, value) => {
+              const setter = kind === "budget" ? setBudgetItems : setActualExpenses;
+              setter(current => current.map(row => row.id === id ? { ...row, [group]: value, updated_at: new Date().toISOString() } : row));
+            }}
             onUploadAttachment={uploadDemoAttachment}
             restoreDrafts={false}
             useEditLocks={false}
@@ -9371,6 +9386,7 @@ function TripWorkspace(props) {
     budgetParticipants,
     budgetBaseline,
     budgetSnapshot,
+    onRefreshBudget,
     canEditBudget,
     canEdit,
     dayItems,
@@ -9704,6 +9720,8 @@ function TripWorkspace(props) {
           budgetParticipants={budgetParticipants}
           budgetBaseline={budgetBaseline}
           tripBudgetRates={budgetSnapshot?.tripBudgetRates}
+          metadataSnapshot={budgetSnapshot}
+          onRefreshBudget={onRefreshBudget}
           canEdit={canEditBudget ?? canEdit}
           actualExpenses={actualExpenses}
           actualParticipants={actualParticipants}
@@ -13234,7 +13252,17 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 }
 
 function BudgetPanel(props) {
-  const leases = useMemo(() => createBudgetEditLeaseClient({ supabase }), []);
+  const leases = useMemo(() => createBudgetEditLeaseClient({ supabase, sessionId: budgetMetadataEnabled ? getBudgetMetadataSessionId() : undefined }), []);
+  const metadataProps = useRef(props); metadataProps.current = props;
+  const metadata = useMemo(() => {
+    const demo = props.useEditLocks === false;
+    const service = demo ? createDemoBudgetMetadataService(() => metadataProps.current) : createBudgetMetadataService(supabase);
+    return createBudgetMetadataEditor({ service, sessionId: leases.sessionId,
+      storage: demo ? null : { getItem: key => sessionStorage.getItem(key), setItem: (key, value) => sessionStorage.setItem(key, value), removeItem: key => sessionStorage.removeItem(key) },
+      read: trip => demo ? service.read(trip) : metadataProps.current.onRefreshBudget?.(trip) || Promise.resolve({ ok: false }),
+    });
+  }, [leases, props.useEditLocks]);
+  useSyncExternalStore(metadata.subscribe, metadata.getProjectionVersion);
   const [remoteCollaborators, setRemoteCollaborators] = useState([]);
   const [collaborationRevision, setCollaborationRevision] = useState(0);
   const collaboration = useMemo(() => createBudgetCollaboration({ supabase, sessionId: leases.sessionId, onChange: setRemoteCollaborators,
@@ -13260,6 +13288,25 @@ function BudgetPanel(props) {
     } catch (error) { setReceiptError(friendlyError(error)); }
   }
   const workspaceActive = props.restoreDrafts !== false;
+  const metadataActive = props.useEditLocks === false || workspaceActive;
+  useEffect(() => {
+    if (!budgetMetadataEnabled) return;
+    metadata.configure(props.currentUserId, props.activeTrip.id, metadataActive, props.canEdit);
+    if (metadataActive) void metadata.refresh();
+    const refresh = event => {
+      if (event?.type === "offline" || navigator.onLine === false || document.visibilityState === "hidden") metadata.suspend();
+      else { metadata.reconcile(); }
+    };
+    const timer = setInterval(() => { void metadata.tick(); }, 1000);
+    window.addEventListener("focus", refresh); window.addEventListener("online", refresh); window.addEventListener("offline", refresh); document.addEventListener("visibilitychange", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh); window.removeEventListener("offline", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [metadata, props.currentUserId, props.activeTrip.id, metadataActive, props.canEdit]);
+  useEffect(() => {
+    if (!budgetMetadataEnabled || props.metadataSnapshot?.tripId !== props.activeTrip.id) return;
+    if (props.metadataSnapshot.metadataVerified && props.metadataSnapshot.metadataUserId === props.currentUserId) metadata.ingest(props.metadataSnapshot);
+    else metadata.invalidate(props.metadataSnapshot.metadataError);
+  }, [metadata, props.metadataSnapshot, props.currentUserId]);
+  useEffect(() => () => { void metadata.dispose(); }, [metadata]);
   useEffect(() => {
     if (props.useEditLocks === false) return;
     void collaboration.configure(props.currentUserId, props.activeTrip.id, workspaceActive && props.members.some(m => m.user_id === props.currentUserId && m.status === "approved"));
@@ -13281,7 +13328,10 @@ function BudgetPanel(props) {
   }, [leases, props.currentUserId, props.activeTrip.id, props.canEdit, workspaceActive]);
   useEffect(() => () => { void leases.dispose(); }, [leases]);
   return <BudgetWorkspace {...props} workspaceActive={workspaceActive} baseline={props.budgetBaseline} services={services}
-    collaborationRevision={collaborationRevision} remoteCollaborators={props.useEditLocks === false ? [] : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}
+    metadataRequested={budgetMetadataEnabled} metadataClient={metadata.matches(props.currentUserId, props.activeTrip.id) ? metadata : null}
+    collaborationRevision={collaborationRevision} remoteCollaborators={props.useEditLocks === false ? [] : budgetMetadataEnabled
+      ? primaryBudgetCollaborators(metadata.status().verified ? metadata.status().snapshot?.collaboration?.entries || [] : []).filter(e => !e.own_session)
+      : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}
     renderAttachments={props.enableAttachments === false ? null : (expense) => <>{receiptError ? <p role="alert" className="bw-warning">{receiptError}</p> : null}<AttachmentList
       attachments={props.attachments.filter((attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id)}
       canEdit={props.canEdit} targetId={expense.id} targetType="actual_expense"

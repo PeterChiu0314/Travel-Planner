@@ -18,7 +18,9 @@ export const notify = {
   info: (message, options) => show("info", message, options),
   warning: (message, options) => show("warning", message, options),
   error: (error, options) => show("error", error, options),
-  dismiss: id => toast.dismiss(id),
+  // Dismissing a nonexistent ID queues a Sonner removal that can race with the
+  // first fast authoritative failure. Only remove a toast that actually exists.
+  dismiss: id => toast.getToasts().some(item => item.id === id) ? toast.dismiss(id) : id,
   clear: () => toast.dismiss(),
   onTransportError(handler) { transportHandler = handler; return () => { if (transportHandler === handler) transportHandler = null; }; },
 };

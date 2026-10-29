@@ -1,7 +1,7 @@
 // Budget-only capabilities live in memory per tab, never in drafts/storage or
 // financial rows. The database validates the same capability again at Save.
-export function createBudgetEditLeaseClient({ supabase, makeId = () => crypto.randomUUID(), setTimer = setInterval, clearTimer = clearInterval, intervalMs = 60000, releaseTimeoutMs = 10000 }) {
-  const sessionId = makeId(), entries = new Map(), watchers = new Map();
+export function createBudgetEditLeaseClient({ supabase, sessionId: suppliedSessionId, makeId = () => crypto.randomUUID(), setTimer = setInterval, clearTimer = clearInterval, intervalMs = 60000, releaseTimeoutMs = 10000 }) {
+  const sessionId = suppliedSessionId || makeId(), entries = new Map(), watchers = new Map();
   let userId = null, tripId = null, generation = 0, timer = null, pendingReleases = [];
   const kind = table => table === "budget_items" ? "budget" : table === "actual_expenses" ? "actual" : null;
   const key = (table, id) => `${table}:${id}`;
