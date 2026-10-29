@@ -1,3 +1,4 @@
+import BudgetPricingFields from "./BudgetPricingFields.jsx";
 import { useSiteDialog } from "../SiteDialog.jsx";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -324,12 +325,12 @@ function ItineraryPicker({ items, selectedIds, category, onChange, readOnly = fa
   const suggested = matches.filter((item) => itinerarySuggestionScore(item, category) > 0)
     .sort((a, b) => itinerarySuggestionScore(b, category) - itinerarySuggestionScore(a, category)).slice(0, 5);
   function toggle(id) { if (!readOnly) onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]); }
-  function option(item) { return <label key={item.id}><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} /><span>{item.title}</span></label>; }
+  function option(item) { return <label key={item.id}><input type="checkbox" disabled={readOnly} checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} /><span>{item.title}</span></label>; }
   return <section className="bw-link-picker" aria-label="關聯行程">
     <button className="bw-link-heading" type="button" aria-expanded={open} aria-controls="budget-link-options" onClick={() => setOpen(!open)}><span>{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}關聯行程</span><small>{selectedIds.length} 項</small></button>
     {selectedIds.length ? <ul className="bw-linked-items">{selectedIds.map((id) => {
       const item = items.find((row) => row.id === id);
-      return <li key={id}><span>{item ? `Day ${Number(item.day_index) + 1} · ${item.title}` : "已移除的行程"}</span><button type="button" className="bw-icon" aria-label={`取消關聯 ${item?.title || "已移除的行程"}`} onClick={() => toggle(id)}><X size={13} /></button></li>;
+      return <li key={id}><span>{item ? `Day ${Number(item.day_index) + 1} · ${item.title}` : "已移除的行程"}</span><button type="button" className="bw-icon" disabled={readOnly} aria-label={`取消關聯 ${item?.title || "已移除的行程"}`} onClick={() => toggle(id)}><X size={13} /></button></li>;
     })}</ul> : null}
     <div className="bw-link-options" id="budget-link-options" hidden={!open}>
       <div className="bw-link-filters"><input aria-label="搜尋關聯行程" placeholder="搜尋行程" value={query} onChange={(event) => setQuery(event.target.value)} /><MenuSelect label="關聯行程日期" value={day} onValueChange={setDay} options={[{value:"",label:"全部 Day"},...days.map(value=>({value:String(value),label:`Day ${value+1}`}))]} /></div>
@@ -348,19 +349,19 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
   const { setForm, context, error, saving } = editor;
   const form = !actual && !historical && tripRates?.rates?.[editor.form.currency] ? { ...editor.form, exchange_rate: tripRates.rates[editor.form.currency] } : editor.form;
   const [membersOpen, setMembersOpen] = useState(false);
-  const participantOptions = [...members, ...form.participantIds.filter((id) => !members.some((member) => member.user_id === id))
-    .map((id) => ({ user_id: id, display_name: `未列成員 · ${id.slice(0, 6)}` }))];
   let pricing;
   try { pricing = actual ? calculateEntryPricing(form) : historical ? calculateActualPricing(form) : calculatePricing(form); } catch { pricing = null; }
   function update(key, value) { setForm({ ...form, [key]: value, ...(actual && ["amount", "unit_amount", "currency", "exchange_rate", "shares"].includes(key) ? { twd_amount_source: "estimated", actual_twd_amount: "" } : {}) }); }
-  function toggle(key, value) { update(key, form[key].includes(value) ? form[key].filter((id) => id !== value) : [...form[key], value]); }
   const payer = <div className="bw-field"><span>付款人</span><MenuSelect disabled={locked} label="付款人" value={form.payer_id} onValueChange={(value)=>update("payer_id",value)} options={[{value:"",label:"未指定"},...members.map(member=>({value:member.user_id,label:memberLabel(member)}))]} /></div>;
+  const customShares = useRef(null);
   function changeMode(mode) {
+    if (mode === form.pricing_mode) return;
+    if (form.pricing_mode === "custom") customShares.current = { ...form.shares };
     const next = { ...form, pricing_mode: mode };
     if (pricing) {
       next.amount = pricing.amount;
       if (mode === "per_person") next.unit_amount = Math.round(pricing.amount / form.participantIds.length * 100) / 100;
-      if (mode === "custom") next.shares = pricing.shares;
+      if (mode === "custom") next.shares = customShares.current || pricing.shares;
     }
     setForm(next);
     if (mode === "custom") setMembersOpen(true);
@@ -371,12 +372,9 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
     {error ? <p role="alert" className="bw-warning">{friendlyError(error)}</p> : null}
     <label>項目<input name="title" required value={form.title} onChange={(event) => update("title", event.target.value)} /></label>
     {!actual ? <div className="bw-two-fields"><div className="bw-field"><span>分類</span><MenuSelect editable label="分類" value={form.category} onValueChange={(value)=>update("category",value)} options={categoryOrder.map(value=>({value,label:value}))} /></div>{payer}</div> : null}
-    {!actual ? <fieldset disabled={locked} className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset> : null}
-    <div className="bw-two-fields"><label>{form.pricing_mode === "per_person" ? "每人單價" : "總額"}<input name="amount" required min="0" step="0.01" type="number" disabled={locked || form.pricing_mode === "custom"} value={form.pricing_mode === "custom" ? pricing?.amount ?? "" : form.pricing_mode === "per_person" ? form.unit_amount : form.amount} onChange={(event) => update(form.pricing_mode === "per_person" ? "unit_amount" : "amount", event.target.value)} /></label>
-      <div className="bw-field"><span>幣別</span><MenuSelect disabled={locked} label="幣別" value={form.currency} onValueChange={(value)=>setForm({...form,currency:value,exchange_rate:value === "TWD" ? 1 : tripRates?.rates?.[value] || (form.exchange_rate === 1 ? "" : form.exchange_rate), ...(actual ? { twd_amount_source: "estimated" } : {})})} options={[...new Set(["TWD","JPY","USD","EUR","KRW","HKD",form.currency])].filter(Boolean).map(value=>({value,label:value}))} /></div></div>
-    {form.currency !== "TWD" ? <div className="bw-trip-rate"><span>{historical ? "歷史匯率" : "旅程估算匯率"}</span><b>1 {form.currency} = {form.exchange_rate || "—"} TWD</b></div> : null}
-    <details className="bw-member-options" open={membersOpen} onToggle={(event) => setMembersOpen(event.currentTarget.open)}><summary>參與成員 · {form.participantIds.length} 人</summary><fieldset className="bw-participants"><legend>各人負擔 · {form.pricing_mode === "custom" ? form.currency : "TWD"}</legend>{participantOptions.map((member) => <label key={member.user_id}><input disabled={locked} type="checkbox" checked={form.participantIds.includes(member.user_id)} onChange={() => toggle("participantIds", member.user_id)} />{memberLabel(member)}{form.pricing_mode === "custom" && form.participantIds.includes(member.user_id) ? <input aria-label={`${memberLabel(member)} 分攤金額`} disabled={locked} required min="0" step="0.01" type="number" value={form.shares[member.user_id] ?? ""} onChange={(event) => update("shares", { ...form.shares, [member.user_id]: event.target.value })} /> : <b>{pricing ? money(pricing.allocations[member.user_id] || 0) : "—"}</b>}</label>)}</fieldset></details>
-    {pricing ? <PricingSummary amount={pricing.amount} twdAmount={pricing.twd_amount} currency={form.currency} mode={form.pricing_mode} count={form.participantIds.length} /> : null}
+    <BudgetPricingFields form={form} pricing={pricing} members={members} locked={locked} historical={historical} tripRates={tripRates} update={update}
+      setForm={next => setForm({ ...next, ...(actual ? { twd_amount_source: "estimated", actual_twd_amount: "" } : {}) })}
+      membersOpen={membersOpen} setMembersOpen={setMembersOpen} changeMode={changeMode} showModes={!actual} />
     {actual ? payer : null}
     {readOnlyPayments ? <p className="bw-muted">此項目保留多筆付款或待確認分攤，請在下方付款紀錄修改金額。</p> : null}
     {actual ? <>

@@ -1,4 +1,5 @@
 import { metadataGroupKeys as groups, metadataValue as patchValue, sameMetadataValue, validMetadataValue, recordMetadataValue } from "./budgetMetadataValues.js";
+import { pricingInputs, pricingInputError, validPricingVersions } from "./budgetPricingGroups.js";
 export const budgetAuthorityTimeoutMs = 10000;
 export const budgetSnapshotTimeoutError = () => ({ code: "BUDGET_SNAPSHOT_TIMEOUT", message: "最新同步逾時，草稿已保留。請重新確認後重試。" });
 // The settled race owns the result. An uncancellable transport may finish later,
@@ -15,9 +16,9 @@ export async function withBudgetAuthorityTimeout(work, { timeoutMs = budgetAutho
 const version = value => Number.isSafeInteger(value) && value >= 0;
 // Match PostgreSQL btrim(text): normalize ordinary spaces, preserving other text.
 export function validBudgetMetadataSnapshot(data, tripId) {
-  const keys = data?.metadataProtocol?.schemaVersion === 2 ? groups : ["title", "note"];
+  const keys = data?.metadataProtocol?.schemaVersion === 3 ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
   return data?.tripId === tripId && data.metadataProtocol?.name === "metadata-prototype"
-    && [1, 2].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
+    && [1, 2, 3].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
     && data.metadataProtocol.complete === false && JSON.stringify(data.metadataProtocol.groups) === JSON.stringify(keys)
     && Number.isFinite(Date.parse(data.serverNow)) && version(data.collaborationRevision)
     && Array.isArray(data.budgetItems) && Array.isArray(data.actualExpenses)
@@ -27,12 +28,15 @@ export function validBudgetMetadataSnapshot(data, tripId) {
     && data.metadataRecords.every(r => {
       const canonical = (r.kind === "budget" ? data.budgetItems : data.actualExpenses).find(row => row.id === r.id && row.trip_id === tripId);
       return canonical && Array.isArray(r.groups) && r.groups.every(g => validMetadataValue(g.group, g.value)
-        && sameMetadataValue(g.group, g.value, recordMetadataValue(r.kind, canonical, g.group, data.itineraryBudgetLinks)));
+        && sameMetadataValue(g.group, g.value, g.group === "pricing" ? pricingInputs(canonical,
+          ((r.kind === "budget" ? data.budgetParticipants : data.actualParticipants) || []).filter(p => p[r.kind === "budget" ? "budget_item_id" : "actual_expense_id"] === r.id))
+          : recordMetadataValue(r.kind, canonical, g.group, data.itineraryBudgetLinks)));
     })
     && data.metadataRecords.every(r => ["budget", "actual"].includes(r.kind) && r.trip_id === tripId
       && typeof r.supported === "boolean" && typeof r.state_ready === "boolean" && r.groups?.length === keys.filter(k => r.kind === "budget" || k !== "links").length
       && keys.filter(k => r.kind === "budget" || k !== "links").every(key => r.groups.filter(g => g.group === key).length === 1)
-      && r.groups.every(g => validMetadataValue(g.group, g.value) && typeof g.held === "boolean"
+      && r.groups.every(g => validMetadataValue(g.group, g.value) && (g.group !== "pricing" || validPricingVersions(g.value.versions)
+        && (g.supported === false || g.value.versions.targets.some(t => t.kind === r.kind && t.id === r.id && t.revision === g.revision))) && typeof g.held === "boolean"
         && typeof g.own_session === "boolean" && (!r.state_ready || version(g.revision) && version(g.epoch))
         && (!g.held || typeof g.owner_id === "string" && Number.isFinite(Date.parse(g.expires_at)))));
 }
@@ -102,12 +106,12 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     for (const g of entries.values()) {
       const record = data.metadataRecords.find(r => r.kind === g.kind && r.id === g.id);
       const remote = record?.groups.find(r => r.group === g.group);
-      g.deleted = !record; g.supported = record?.supported; g.ready = record?.state_ready;
+      g.deleted = !record; g.supported = remote?.supported ?? record?.supported; g.ready = record?.state_ready;
       if (!remote) { g.state = "lost"; g.error = "項目已移除，未提交內容仍保留。"; continue; }
       if (remote.revision < g.base) continue; // A response predating our confirmed patch cannot roll it back.
       g.syncPending = false;
       g.remote = remote;
-      if (remote.revision !== g.base && (dirty(g) || g.request)) {
+      if ((remote.revision !== g.base || g.group === "pricing" && JSON.stringify(remote.value.versions) !== JSON.stringify(g.canonical.versions)) && (dirty(g) || g.request)) {
         if (!g.request) { g.conflict = true; g.error = "此欄位已由其他人更新，草稿已保留。請確認最新內容。"; }
       } else if (!dirty(g) && !g.request) {
         g.canonical = remote.value ?? ""; g.value = g.canonical; g.base = remote.revision;
@@ -141,10 +145,11 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       const record = snapshot?.metadataRecords.find(r => r.kind === kind && r.id === id), remote = record?.groups.find(r => r.group === group);
       g = { key: k, kind, id, group, actor: context.actor, trip: context.trip, generation,
         canonical: remote?.value ?? initialValue, value: remote?.value ?? initialValue, base: remote?.revision, remote,
-        state: "idle", localRevision: 0, supported: record?.supported, ready: record?.state_ready, lastActivity: now() };
+        state: "idle", localRevision: 0, supported: remote?.supported ?? record?.supported, ready: record?.state_ready, lastActivity: now() };
       try { const saved = JSON.parse(storage?.getItem(draftKey(g)) || "null");
         if ([1, 2].includes(saved?.version) && validMetadataValue(group, saved.value) && version(saved.base)) {
-          g.staged = saved.value; g.base = saved.base; g.conflict = Boolean(remote && remote.revision !== saved.base);
+          g.staged = saved.value; g.base = saved.base; g.conflict = Boolean(remote && (remote.revision !== saved.base
+            || group === "pricing" && JSON.stringify(remote.value.versions) !== JSON.stringify(saved.value.versions)));
           g.error = g.conflict ? "遠端版本已更新，已保留此分頁草稿。" : "已恢復此分頁草稿，請先確認編輯權限。";
           const p = saved.pending;
           if (saved.version === 2 && p && typeof p.id === "string" && typeof p.session === "string" && version(p.base)
@@ -233,6 +238,10 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     if (g.acquiring) await g.acquiring;
     if (!current(g) || g.composing || suspended || !verified) return false;
     if (!g.request && (!owns(g) || g.conflict || !dirty(g))) return !dirty(g);
+    if (g.group === "pricing" && !g.request) {
+      const error = pricingInputError(g.value);
+      if (error) { g.invalid = true; g.failed = true; g.error = error; emit(); return false; }
+    }
     if (["title", "category"].includes(g.group) && !g.value.trim() && !g.request) { g.invalid = true; g.failed = true; g.error = g.group === "title" ? "請填寫項目名稱。" : "請填寫分類。"; emit(); return false; }
     if (!(await service.authorized(g.actor))) {
       if (current(g)) { g.failed = true; g.state = "uncertain"; g.error = "登入狀態尚未確認，草稿已保留。"; emit(); }
@@ -255,7 +264,9 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     g.saving = false;
     const data = result.data;
     if (result.error || data?.id !== g.id || data?.kind !== g.kind || data?.group !== g.group || data?.request_id !== request.p_request_id
-      || !sameMetadataValue(g.group, data?.value, request.p_patch[g.group]) || !version(data?.revision) || ![request.p_base_revision, request.p_base_revision + 1].includes(data.revision)) {
+      || !sameMetadataValue(g.group, data?.value, request.p_patch[g.group]) || g.group === "pricing" && (!validPricingVersions(data?.value?.versions)
+        || !data.value.versions.targets.some(t => t.kind === g.kind && t.id === g.id && t.revision === data.revision))
+      || !version(data?.revision) || ![request.p_base_revision, request.p_base_revision + 1].includes(data.revision)) {
       const code = result.error?.code;
       if (["40001", "40P01", "55P03", "42501", "55000", "22023", "22P02", "0A000"].includes(code)) {
         g.request = null; g.state = "lost"; g.conflict = code === "40001";
@@ -265,6 +276,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       g.failed = true; persist(g); emit(); void refresh(); return false;
     }
     g.canonical = data.value ?? ""; g.base = data.revision;
+    if (g.group === "pricing" && g.localRevision !== g.submittedRevision) g.value = { ...g.value, versions: data.value.versions };
     if (g.localRevision === g.submittedRevision) g.value = g.canonical;
     g.request = null; g.conflict = false; g.error = ""; g.failed = false; g.saved = true; g.syncPending = true; persist(g); emit();
     await refresh();

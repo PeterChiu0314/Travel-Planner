@@ -7,6 +7,7 @@ import { randomUUID as uuid,createHash } from 'node:crypto';
 import {createBudgetMetadataEditor,createBudgetMetadataService} from '../src/lib/budgetMetadataService.js';
 import {metadataUndoCases} from './budget-metadata-undo-cases.mjs';
 import {metadataChoiceCases} from './budget-metadata-choice-cases.mjs';
+import {pricingGroupCases} from './budget-pricing-group-cases.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -114,6 +115,14 @@ try{
   const migrationDir=new URL('../supabase/migrations/',import.meta.url),hashes=[];
   for(const file of (await fs.readdir(migrationDir)).filter(f=>f.endsWith('.sql')).sort()){
     const source=await fs.readFile(new URL(file,migrationDir),'utf8');
+    if(file==='20261029123907_budget_pricing_participant_groups.sql'){
+      await test('Pricing migration injected failure and dormant reverse restore prior functions and business rows',async()=>{
+        const defs=()=>admin("select p.oid::regprocedure::text name,pg_get_functiondef(p.oid) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
+        const rows=()=>admin("select * from (select 'budget' k,to_jsonb(t) v from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'baseline',to_jsonb(t) from trip_budget_baselines t union all select 'people',to_jsonb(t) from budget_item_participants t) s order by k,v::text");
+        const before=await defs(),data=await rows();await assert.rejects(()=>control.query(source.replace(/commit;\s*$/i,()=> 'select 1/0;commit;')),e=>e.code==='22012');await control.query('rollback');assert.deepEqual(await defs(),before);assert.deepEqual(await rows(),data);
+        await control.query(source);assert.deepEqual(await rows(),data);await control.query(await fs.readFile(new URL('../docs/qa/2026-10-29-budget-pricing-groups-rollback.sql',import.meta.url),'utf8'));assert.deepEqual(await defs(),before);assert.deepEqual(await rows(),data);
+      });
+    }
     if(file==='20261029114817_budget_category_payer_links_groups.sql'){
       await test('choice expand failure and unused reverse preserve business contents and old definitions',async()=>{
         const defs=()=>admin("select p.oid::regprocedure::text name,pg_get_functiondef(p.oid) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
@@ -659,6 +668,29 @@ try{
     try{await waitUntil(async()=>{const rows=await activity();return rows.find(r=>r.pid===pidB)?.blocking_pids.includes(observerPid);},'choice child lock held');
       const outcome=await transaction(a,()=>call(a,patchAction(a,id,'links',[],{base:1,epoch:l.epoch})));assert.equal(outcome.code,'55P03');observations.push({name:'choice-links-child-row-nowait',proof:await activity(),outcome});
     }finally{await admin('select pg_advisory_unlock($1::bigint)',[heldGate]);await work;await b.query('rollback');await call(a,leaseAction(a,id,'links','release',{epoch:l.epoch}));}return {overlap:true,nowait:true};
+  });
+  await pricingGroupCases({test,admin,query,a,b,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,undoQA,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});
+  await test('used Pricing protocol refuses dormant reverse without losing committed financial rows',async()=>{
+    const before=await admin('select id,amount,twd_amount from budget_items order by id');
+    assert((await admin("select count(*)::int n from app_private.budget_metadata_requests where result->>'group'='pricing'"))[0].n>0);
+    await admin('update app_private.budget_metadata_protocol set enabled=false;update app_private.budget_metadata_groups set expires_at=null');
+    const source=await fs.readFile(new URL('../docs/qa/2026-10-29-budget-pricing-groups-rollback.sql',import.meta.url),'utf8');
+    await assert.rejects(()=>control.query(source),/Pricing used or active/);await control.query('rollback');assert.deepEqual(await admin('select id,amount,twd_amount from budget_items order by id'),before);
+    await admin('update app_private.budget_metadata_protocol set enabled=true');
+  });
+  await test('Pricing private generations have RLS no client grants no publication and narrow invoker public patch',async()=>{
+    const rows=await admin("select c.relrowsecurity,has_table_privilege('authenticated',c.oid,'select,insert,update,delete') client from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='app_private' and c.relname='budget_pricing_trip_versions'");assert.equal(rows[0].relrowsecurity,true);assert.equal(rows[0].client,false);
+    assert.equal((await admin("select count(*)::int n from pg_publication_tables where schemaname='app_private' and tablename='budget_pricing_trip_versions'"))[0].n,0);
+    assert.equal((await admin("select prosecdef from pg_proc where oid='public.patch_budget_pricing_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)'::regprocedure"))[0].prosecdef,false);
+  });
+  await test('real pricing controller validates v3 financial snapshot and commits only atomic pricing RPC intent',async()=>{
+    const id=await fixture(),identity=identities.get(a),calls=[];
+    const service={authorized:async actor=>actor===identity.actor,
+      lease:async args=>{try{return {data:await call(a,leaseAction(a,args.p_id,args.p_group,args.p_action,{kind:args.p_kind,base:args.p_base_revision,epoch:args.p_epoch,session:args.p_session_id,token:args.p_token}))};}catch(error){return {error};}},
+      patch:async args=>{calls.push(args);try{return {data:await call(a,patchAction(a,args.p_id,args.p_group,args.p_patch[args.p_group],{kind:args.p_kind,base:args.p_base_revision,epoch:args.p_epoch,session:args.p_session_id,token:args.p_token,request:args.p_request_id}))};}catch(error){return {error};}}};
+    const client=createBudgetMetadataEditor({service,sessionId:identity.session,read:async()=>({ok:true,data:{...(await query(a,'select public.read_budget_metadata_snapshot_v3($1,$2) d',[trip,identity.session]))[0].d,metadataVerified:true}})});
+    try{client.configure(actorA,trip,true,true);assert((await client.refresh()).ok);const g=client.get('budget',id,'pricing');assert(await client.focus(g));client.input(g,{...g.value,amount:'1200'});assert(await client.save(g));assert.equal((await record(id)).amount,1200);assert.equal(calls.length,1);assert.deepEqual(Object.keys(calls[0].p_patch),['pricing']);}
+    finally{await client.dispose();}
   });
 }catch(error){results.push({name:'harness/bootstrap',status:'failed',message:error.message,code:error.code});console.error(error.message);}
 finally{

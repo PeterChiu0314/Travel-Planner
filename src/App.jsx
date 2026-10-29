@@ -1,3 +1,4 @@
+import { applyDemoPricing } from "./lib/budgetPricingGroups.js";
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
 import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
 import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
@@ -9193,6 +9194,10 @@ function DemoApp({ initialSection }) {
             onSave={saveBudgetItem}
             onSaveActual={saveActualExpense}
             onSaveMetadata={(kind, id, group, value) => {
+              if (group === "pricing") {
+                setDemoBudgetByTrip(current => ({...current, [demoActiveTrip.id]: applyDemoPricing(current[demoActiveTrip.id],kind,id,value)}));
+                return;
+              }
               if (group === "links") {
                 setItineraryBudgetLinks(current => [...current.filter(link => link.budget_item_id !== id), ...value.map(itemId => ({ budget_item_id: id, itinerary_item_id: itemId }))]);
                 return;
