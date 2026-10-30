@@ -1,5 +1,6 @@
 // Money is calculated in original-currency cents and six-decimal FX, then
 // rounded once to whole TWD. Stable largest-remainder allocations reconcile.
+import {isBudgetComplete} from './budgetLifecycleValues.js';
 export const pricingLabels = { per_person: "每人計價", split_total: "總額均分", custom: "自訂分攤" };
 export const money = (value) => Math.round(Number(value || 0)).toLocaleString("zh-TW");
 export const memberLabel = (member) => member?.display_name || member?.email || member?.user_id || "未指定";
@@ -83,6 +84,7 @@ export function preservesBudgetPricing(form, record, participantRows, members = 
 }
 
 export function participantsFor(record, rows, key, members) {
+  if(!isBudgetComplete(record))return rows.filter(row=>row[key]===record.id);
   const matches = rows.filter((row) => row[key] === record.id);
   // Legacy records with no join rows used all approved members. Explicitly
   // empty selections in new forms are rejected, never silently expanded.
@@ -90,6 +92,7 @@ export function participantsFor(record, rows, key, members) {
 }
 
 export function recordAllocations(record, participants) {
+  if(!isBudgetComplete(record))return null;
   if ((record.twd_amount_source || "legacy") === "legacy" && !Number.isInteger(Number(record.twd_amount))) return null;
   const custom = record.pricing_mode === "custom" || record.split_type === "custom";
   const weights = participants.map((row) => [row.user_id, record.pricing_mode === "custom" || record.split_type === "custom"
@@ -115,6 +118,7 @@ export function recordForm(record, rows, key, members, links = []) {
   };
 }
 export function localDateTime(value = new Date()) {
+  if(value===null)return '';
   const date = new Date(value);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
@@ -135,8 +139,8 @@ export function budgetStage(trip, today = new Date()) {
 }
 
 export function comparisonRows(baseline, expenses) {
-  expenses = expenses.filter((row) => row.payment_active !== false);
-  const planned = baseline?.payload?.items || [];
+  expenses = expenses.filter((row) => isBudgetComplete(row)&&row.payment_active !== false);
+  const planned = (baseline?.payload?.items || []).filter(isBudgetComplete);
   const plannedIds = new Set(planned.map((row) => row.id));
   const rows = planned.map((row) => {
     const actual = expenses.filter((expense) => (expense.budget_origin_id || expense.budget_item_id) === row.id).reduce((sum, expense) => sum + Number(expense.twd_amount), 0);
@@ -149,7 +153,7 @@ export function comparisonRows(baseline, expenses) {
 export function settlementBalances(expenses, participants, members) {
   const totals = Object.fromEntries(members.map((member) => [member.user_id, { ...member, paid: 0, shouldPay: 0 }]));
   let incomplete = false;
-  expenses.filter((row) => row.payment_active !== false).forEach((expense) => {
+  expenses.filter((row) => isBudgetComplete(row)&&row.payment_active !== false).forEach((expense) => {
     const people = participantsFor(expense, participants, "actual_expense_id", members);
     const shares = recordAllocations(expense, people);
     if (!shares || !totals[expense.payer_id]) incomplete = true;

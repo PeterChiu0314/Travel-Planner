@@ -1,4 +1,5 @@
 import { calculateActualPricing, calculatePricing, participantsFor, recordAllocations } from "./budgetFinance.js";
+import {isBudgetComplete} from './budgetLifecycleValues.js';
 
 export const isPaymentActive = (expense) => expense.payment_active !== false;
 
@@ -7,7 +8,7 @@ export const isPaymentActive = (expense) => expense.payment_active !== false;
 export function planningBudgetData(budgets, expenses, people, members) {
   const rows = [], participants = [];
   for (const budget of budgets) {
-    const retained = expenses.filter((expense) => expense.budget_item_id === budget.id);
+    const retained = expenses.filter((expense) => isBudgetComplete(expense)&&expense.budget_item_id === budget.id);
     if (!retained.length) { rows.push(budget); continue; }
     const active = retained.filter(isPaymentActive);
     const payments = active.length ? active : retained;

@@ -1,4 +1,5 @@
 import BudgetPricingFields from "./BudgetPricingFields.jsx";
+import {isBudgetComplete} from '../../lib/budgetLifecycleValues.js';
 import { useSiteDialog } from "../SiteDialog.jsx";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -206,7 +207,7 @@ function useWorkspaceEditor(kind, props) {
   useEffect(() => {
     if (props.workspaceActive === false || !restoreDrafts || disableDraftAutosave || context || !activeTrip?.id || !currentUserId || !canEdit) return;
     const latest = loadLatestDraftForEntity({ entityType, tripId: activeTrip.id, userId: currentUserId });
-    if (!latest || (latest.entityId !== "new" && !records.some((row) => row.id === latest.entityId))) return;
+    if (!latest || props.lifecycleRequested&&latest.entityId==='new' || (latest.entityId !== "new" && !records.some((row) => row.id === latest.entityId))) return;
     // A restored draft keeps its original conflict baseline, not the latest
     // server timestamp. Locks are reacquired and checked before saving.
     const recorded = !isActual && props.actualExpenses.some((expense) => expense.budget_item_id === latest.entityId && isPaymentActive(expense));
@@ -259,6 +260,7 @@ function useWorkspaceEditor(kind, props) {
 }
 
 function Stats({ records, rows, members, actual, budgets, viewpoint, setViewpoint, ratesControl }) {
+  records=records.filter(isBudgetComplete);budgets=budgets.filter(isBudgetComplete);
   const validView = ["average", "all", ...members.map((member) => member.user_id)].includes(viewpoint) ? viewpoint : "average";
   const allocations = records.map((record) => recordAllocations(record, participantsFor(record, rows, actual ? "actual_expense_id" : "budget_item_id", members)));
   const total = records.reduce((sum, row) => sum + Number(row.twd_amount || 0), 0);
@@ -415,7 +417,7 @@ function RecordDetail({ record, actual, participants, members, links, items, pay
   const shares = recordAllocations(record, participants);
   const mode = record.pricing_mode || (record.split_type === "custom" ? "custom" : "split_total");
   return <section className="bw-detail"><div className="bw-detail-heading"><div className="bw-detail-title"><span>{record.category || "其他"}{record.subcategory ? ` · ${record.subcategory}` : ""}</span><h3>{record.title}</h3></div><button className="bw-icon bw-edit-item" aria-label="編輯項目" type="button" disabled={!canEdit} onClick={onEdit}><Pencil size={18} /></button></div>
-    <PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />
+    {isBudgetComplete(record)?<PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />:<p role="status">未完成，尚未計入財務統計</p>}
     {paymentError ? <p className="bw-warning" role="alert">{friendlyError(paymentError)}</p> : null}
     {paymentPending ? <button type="button" className="ghost-button compact" disabled={paymentBusy} onClick={onPaymentRetry}>確認付款結果</button> : null}
     <dl><div><dt>計價方式</dt><dd>{pricingLabels[mode]}</dd></div>{mode === "per_person" ? <div><dt>每人單價</dt><dd>{record.currency} {money(record.unit_amount)}</dd></div> : null}<div><dt>參與成員</dt><dd>{participants.length} 人</dd></div>
@@ -423,12 +425,12 @@ function RecordDetail({ record, actual, participants, members, links, items, pay
       {actual ? <div><dt>台幣金額來源</dt><dd>{record.twd_amount_source === "actual" ? "實際扣款" : record.twd_amount_source === "estimated" ? "匯率估算" : "既有紀錄（來源未註記）"}</dd></div> : null}
       {record.currency !== "TWD" && record.exchange_rate ? <div><dt>{actual ? "參考匯率" : "換算匯率"}</dt><dd>1 {record.currency} = {record.exchange_rate} TWD</dd></div> : null}
       <div><dt>關聯行程</dt><dd>{budgetDay(record, links, items)}</dd></div>
-      {actual ? <div><dt>付款時間</dt><dd>{new Date(record.paid_at).toLocaleString("zh-TW", { hour12: false })}</dd></div> : null}
+      {actual ? <div><dt>付款時間</dt><dd>{record.paid_at?new Date(record.paid_at).toLocaleString("zh-TW", { hour12: false }):'尚未填寫'}</dd></div> : null}
     </dl><section><h4>各人負擔 <small>TWD</small></h4>{participants.map((participant) => <div className="bw-stat-line" key={participant.user_id}><span>{memberLabel(members.find((member) => member.user_id === participant.user_id))}</span><b>{shares ? money(shares[participant.user_id]) : "待確認"}</b></div>)}</section>
     {record.note ? <section><h4>備註</h4><p>{record.note}</p></section> : null}
     {renderAttachments?.(record)}
     {paymentTime}
-    <div className="bw-detail-actions">{!actual ? <PaymentToggle checked={payments.some(isPaymentActive)} disabled={!canEdit || paymentBusy || paymentPending} busy={paymentBusy} onChange={onPaidChange} /> : null}<button className="bw-icon bw-danger" aria-label="刪除項目" disabled={!canEdit || paymentBusy || paymentPending} type="button" onClick={onDelete}><Trash2 size={16} /></button></div>
+    <div className="bw-detail-actions">{!actual ? <PaymentToggle checked={payments.some(isPaymentActive)} disabled={!isBudgetComplete(record)||!canEdit || paymentBusy || paymentPending} busy={paymentBusy} onChange={onPaidChange} /> : null}<button className="bw-icon bw-danger" aria-label="刪除項目" disabled={!canEdit || paymentBusy || paymentPending} type="button" onClick={onDelete}><Trash2 size={16} /></button></div>
   </section>;
 }
 
@@ -440,7 +442,7 @@ export default function BudgetWorkspace(incoming) {
   const [stage, setStage] = useState(() => props.demoStage || budgetStage(activeTrip));
   const planning = stage === "planning";
   const allExpenses = props.actualExpenses;
-  const actualExpenses = allExpenses.filter(isPaymentActive);
+  const actualExpenses = allExpenses.filter(row=>isBudgetComplete(row)&&isPaymentActive(row));
   const projected = planning ? planningBudgetData(props.budgetItems, allExpenses, actualParticipants, members) : null;
   const budgetItems = projected?.rows || props.budgetItems;
   const budgetParticipants = projected ? [...props.budgetParticipants.filter((row) => !projected.participants.some((person) => person.budget_item_id === row.budget_item_id)), ...projected.participants] : props.budgetParticipants;
@@ -574,7 +576,7 @@ export default function BudgetWorkspace(incoming) {
 
   const actual = view === "actual";
   const compare = view === "compare" && stage === "settled";
-  const rows = actual ? actualExpenses : budgetItems;
+  const rows = actual ? allExpenses.filter(r=>!isBudgetComplete(r)||isPaymentActive(r)) : budgetItems;
   const participantRows = actual ? actualParticipants : budgetParticipants;
   const joinKey = actual ? "actual_expense_id" : "budget_item_id";
   const comparedRows = compare && baseline ? comparisonRows(baseline, actualExpenses) : [];
@@ -599,7 +601,7 @@ export default function BudgetWorkspace(incoming) {
     const scope = workspaceScope.current;
     panelTransition.current = true;
     try {
-        if((props.receiptPending||props.ratesPending)&&next!==panel&&!(await services.handoff({tripId:activeTrip.id})))return;
+        if((props.receiptPending||props.ratesPending||props.lifecyclePending)&&next!==panel&&!(await services.handoff({tripId:activeTrip.id})))return;
       if (next !== "edit" && props.metadataRequested && !activeEditor && panel === "edit" && !(await services.handoff({ tripId: activeTrip.id }))) return;
       if (next !== "edit" && activeEditor && !(await activeEditor.close(false, { sidebar: true }))) return;
       if (scope !== workspaceScope.current) return;
@@ -642,14 +644,18 @@ export default function BudgetWorkspace(incoming) {
     setView(next); setSelected(null); setCategory(""); setQuery("");
   }
   async function add() {
+    if(props.lifecycleRequested){const scope=workspaceScope.current,kind=actual||compare?'actual':'budget';const pending=props.lifecycleClient.view('trip',activeTrip.id).active;if(!pending&&!(await services.handoff({tripId:activeTrip.id})))return;
+      const old=loadLatestDraftForEntity({entityType:kind==='actual'?'actual_expense':'budget_item',tripId:activeTrip.id,userId:props.currentUserId});if(!pending&&old?.entityId==='new'&&!await ask({title:'保留舊的本機草稿',message:'原草稿仍保留於本機，不會自動提交。繼續會建立一筆空白正式項目，原草稿不會刪除或匯入。',confirmLabel:'保留草稿並新增'}))return;
+      const result=await props.lifecycleClient.create(activeTrip.id,kind);if(scope!==workspaceScope.current)return;if(result.ok){if(compare)setView('actual');setSelected({kind:result.kind,id:result.id});setPanel('edit');}return;}
     const editor = actual || compare ? actualEditor : budgetEditor;
     if (await editor.open(null, actual || compare ? { payer_id: props.currentUserId || "" } : {})) { if (compare) setView("actual"); setPanel("edit"); setSelected(null); }
   }
   async function remove() {
-    if (!(await services.handoff({ tripId: activeTrip.id }))) return;
+    const pending=props.lifecycleRequested&&props.lifecycleClient.view(selected.kind,selectedRecord.id).active;
+    if (!pending&&!(await services.handoff({ tripId: activeTrip.id }))) return;
     if (!await ask({ title: "刪除項目？", message: `刪除「${selectedRecord.title}」？此操作無法復原。`, confirmLabel: "刪除", danger: true })) return;
     const run = (leaseMeta = {}) => (selected.kind === "actual" ? props.onDeleteActual : props.onDelete)(selectedRecord.id, { baseUpdatedAt: selectedRecord.updated_at, tripId: activeTrip.id, ...leaseMeta });
-    const result = services.leaseProtocol && props.useEditLocks
+    const result = props.lifecycleRequested?{ok:await(pending?props.lifecycleClient.retry(selected.kind,selectedRecord.id):props.lifecycleClient.remove(selected.kind,selectedRecord.id)),error:new Error(props.lifecycleClient.view(selected.kind,selectedRecord.id).error||'刪除未完成。')}:services.leaseProtocol && props.useEditLocks
       ? await services.withLease(selected.kind === "actual" ? "actual_expenses" : "budget_items", selectedRecord, props.currentUserId, run) : await run();
     if (result?.ok === false) { setPaymentError(result.error?.message || "刪除失敗，資料已保留。"); return; }
     setSelected(null);
@@ -676,13 +682,14 @@ export default function BudgetWorkspace(incoming) {
     return <section className="bw-retained"><h4>既有分筆</h4>{retained.map((row) => <div key={row.id}><button type="button" className="ghost-button compact" onClick={() => void openActual(row)}>{row.title} · NT$ {money(row.twd_amount)}</button>{props.renderAttachments?.(row)}</div>)}</section>;
   }
   const paymentState = props.metadataRequested && selectedRecord ? props.paymentClient.view(selected.kind, selectedRecord.id) : {};
+  const lifecycleTimeState=props.lifecycleRequested&&selected?.kind==='actual'&&selectedRecord&&!isBudgetComplete(selectedRecord)?props.lifecycleClient.view('actual',selectedRecord.id):null;
   const paymentRecord = props.metadataClient?.status().snapshot?.paymentRecords?.find(r => r.kind === selected?.kind && r.id === selectedRecord?.id);
   const paymentDetails = { paymentBusy: paymentBusy || paymentState.busy, paymentError: paymentState.error || paymentError,
     paymentPending: paymentState.active && !paymentState.busy,
     onPaymentRetry: () => void props.paymentClient.retry(selected.kind, selectedRecord.id),
     paymentTime: props.metadataRequested && selected?.kind === "actual" && selectedRecord ? <ActualPaymentTime key={selectedRecord.id} record={selectedRecord} services={services}
-      disabled={!canEdit || !paymentRecord?.supported || paymentState.active && !paymentState.busy} busy={paymentState.busy}
-      onSubmit={date => props.paymentClient.execute("actual", selectedRecord.id, { action: "set_paid_at", paid_at: date })} /> : null };
+      disabled={!canEdit || isBudgetComplete(selectedRecord)&&!paymentRecord?.supported || paymentState.active && !paymentState.busy || lifecycleTimeState?.active&&!lifecycleTimeState?.busy} busy={paymentState.busy||lifecycleTimeState?.busy}
+      onSubmit={date => props.lifecycleRequested&&!isBudgetComplete(selectedRecord)?props.lifecycleClient.time(selectedRecord.id,date):props.paymentClient.execute("actual", selectedRecord.id, { action: "set_paid_at", paid_at: date })} /> : null };
   const statsRecords = (actual || compare ? actualExpenses : budgetItems).map((row) => ({ ...row, hasActual: actualExpenses.some((expense) => expense.budget_item_id === row.id) }));
   const baselineTotal = baseline?.payload?.items?.reduce((sum, row) => sum + Number(row.twd_amount), 0) || 0;
   const actualTotal = actualExpenses.reduce((sum, row) => sum + Number(row.twd_amount), 0);
@@ -702,12 +709,16 @@ export default function BudgetWorkspace(incoming) {
       {[['budget', '預算'], ...(!planning ? [['actual', '實付']] : []), ...(stage === "settled" ? [['compare', '對照']] : [])].map(([key, label]) => <button role="tab" key={key} type="button" aria-selected={view === key} onClick={() => void changeView(key)}>{label}</button>)}
     </div> : null}
       <div className="bw-filters"><label><Search size={15} /><input aria-label="搜尋項目" placeholder="搜尋項目" value={query} onChange={(event) => setQuery(event.target.value)} /></label>{planning ? <MenuSelect label="付款篩選" value={paymentFilter} onValueChange={setPaymentFilter} options={[{value:"",label:"全部項目"},{value:"unpaid",label:"未付款"},{value:"paid",label:"已付款"}]} /> : <MenuSelect label="費用分類" value={category} onValueChange={setCategory} options={[{value:"",label:"全部分類"},...categories.map(value=>({value,label:value}))]} />}<span>{displayRows.length} 筆</span></div>
-      <button className="primary-button compact bw-add" disabled={!canEdit} type="button" onClick={() => void add()}><Plus size={15} />{actual || compare ? "新增實付" : "新增預算"}</button></div>
+      <button className="primary-button compact bw-add" disabled={!canEdit||props.lifecycleRequested&&props.lifecycleClient.view('trip',activeTrip.id).busy} type="button" onClick={() => void add()}><Plus size={15} />{actual || compare ? "新增實付" : "新增預算"}</button></div>
+      {rows.some(r=>!isBudgetComplete(r))?<p role="status" className="bw-muted">未完成 {rows.filter(r=>!isBudgetComplete(r)).length} 筆，尚未計入財務統計。</p>:null}
+      {props.lifecycleRequested&&props.lifecycleClient.view('trip',activeTrip.id).error?<p role="alert" className="bw-warning">{props.lifecycleClient.view('trip',activeTrip.id).error}<button type="button" onClick={()=>void add()}>確認新增結果</button></p>:null}
+      {props.lifecycleRequested&&selected&&props.lifecycleClient.view(selected.kind,selected.id).error?<p role="alert" className="bw-warning">{props.lifecycleClient.view(selected.kind,selected.id).error}<button type="button" onClick={()=>void props.lifecycleClient.retry(selected.kind,selected.id)}>確認操作結果</button></p>:null}
+      {props.lifecycleRequested?props.lifecycleClient.pendingOperations().filter(r=>r.kind!=='trip'&&r.id!==selected?.id&&r.error).map(r=><p role="alert" key={`${r.kind}:${r.id}`} className="bw-warning">{r.error}<button type="button" disabled={r.busy} onClick={()=>void props.lifecycleClient.retry(r.kind,r.id)}>確認先前操作結果</button></p>):null}
       {compare ? <div className="bw-comparison-summary">{baseline ? <><span>出發前預算<b>NT$ {money(baselineTotal)}</b></span><span>實際支出<b>NT$ {money(actualTotal)}</b></span><span>差額<b>{actualTotal - baselineTotal > 0 ? "+" : ""}{money(actualTotal - baselineTotal)}</b></span></> : <p>無出發前快照，無法還原當時預算。</p>}</div> : null}
       <div className="bw-table-scroll"><table className="bw-table" aria-label={compare ? "出發前預算對照" : actual ? "實付明細" : "預算明細"}><thead><tr title={allCollapsed ? "展開所有分類" : "收合所有分類"} onClick={() => void toggleCategories(visibleCategories, !allCollapsed)}><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{compare ? "出發前預算" : actual ? "每人負擔" : "每人預算"}<small>TWD</small></th><th className="bw-number">{compare ? "實付" : "總額"}<small>TWD</small></th><th><button className="bw-fold-all" type="button" aria-label={allCollapsed ? "展開所有分類" : "收合所有分類"} aria-expanded={!allCollapsed} onClick={(event) => { event.stopPropagation(); void toggleCategories(visibleCategories, !allCollapsed); }}>{compare ? "差額" : actual ? "來源" : "狀態"}</button></th></tr></thead>
         <tbody>{visibleCategories.map((value) => {
           const grouped = displayRows.filter((row) => row.category === value);
-          const total = grouped.reduce((sum, row) => sum + Number(compare ? row.actual : row.twd_amount), 0);
+          const total = grouped.filter(isBudgetComplete).reduce((sum, row) => sum + Number(compare ? row.actual : row.twd_amount), 0);
           const person = members.some((member) => member.user_id === viewpoint) ? viewpoint : null;
           const allocations = !compare && person ? grouped.map((row) => recordAllocations(row, participantsFor(row, participantRows, joinKey, members))) : [];
           const perPerson = person ? allocations.some((allocation) => allocation === null) ? null : allocations.reduce((sum, allocation) => sum + (allocation[person] || 0), 0) : members.length ? total / members.length : null;
@@ -728,9 +739,9 @@ export default function BudgetWorkspace(incoming) {
               <td className="bw-day">{budgetDay(row, compare ? baseline?.payload?.links || [] : links, compare ? baseline?.payload?.itinerary || [] : items)}
                 {remote.length > 4 ? <span className="bw-collaboration-outline is-segmented" aria-hidden="true" style={{ inset: "1px 1px 1px 5px", "--bw-remote-gradient": remote.map((entry,index) => `${collaboratorColor(entry.user_id)} ${index*100/remote.length}% ${(index+1)*100/remote.length}%`).join(",") }} />
                   : remote.map((entry,index) => <span key={entry.user_id} className="bw-collaboration-outline" data-user={entry.user_id} data-mode={entry.mode} aria-hidden="true" style={{ "--bw-remote-color": collaboratorColor(entry.user_id), inset: `${1+index*3}px ${1+index*3}px ${1+index*3}px ${5+index*3}px` }} />)}
-              </td><td>{compare ? <span>{row.title}{row.extra ? <small className="bw-muted"> · 預算外</small> : null}</span> : cell("title", row.title)}</td>
-              <td className="bw-number">{compare ? money(row.planned) : cell("person", custom ? "依成員" : people.length ? `${Number(row.twd_amount) % people.length ? "≈ " : ""}${money(Number(row.twd_amount) / people.length)}` : "—")}</td>
-              <td className="bw-number bw-total">{compare ? money(row.actual) : cell("total", money(row.twd_amount))}</td>
+              </td><td>{compare ? <span>{row.title}{row.extra ? <small className="bw-muted"> · 預算外</small> : null}</span> : cell("title", row.title||'未命名項目')}{!isBudgetComplete(row)?<small> · 未完成</small>:null}</td>
+              <td className="bw-number">{!isBudgetComplete(row)?'—':compare ? money(row.planned) : cell("person", custom ? "依成員" : people.length ? `${Number(row.twd_amount) % people.length ? "≈ " : ""}${money(Number(row.twd_amount) / people.length)}` : "—")}</td>
+              <td className="bw-number bw-total">{!isBudgetComplete(row)?'尚未填寫':compare ? money(row.actual) : cell("total", money(row.twd_amount))}</td>
               <td>{compare ? <span className={row.difference > 0 ? "bw-danger" : ""}>{row.difference > 0 ? "+" : ""}{money(row.difference)}{row.unrecorded ? <small className="bw-muted"> 未記錄</small> : null}</span> : <span className={`bw-status${actual || actualExpenses.some((expense) => expense.budget_item_id === row.id) ? " paid" : ""}`}>{actual ? row.twd_amount_source === "actual" ? "實扣" : row.twd_amount_source === "estimated" ? "估算" : "既有" : actualExpenses.some((expense) => expense.budget_item_id === row.id) ? "已付款" : "未付款"}</span>}</td>
             </tr>;
           })}</Fragment>; })}</tbody></table></div>

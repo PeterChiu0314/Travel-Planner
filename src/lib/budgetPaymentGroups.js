@@ -145,6 +145,7 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
     get, execute, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, getVersion: () => revision,
     view(kind, id) { const e = get(kind, id); return e ? { ...e, active: active(e), unknown: Boolean(e.request) } : {}; },
     hasPending: () => [...entries.values()].some(e=>active(e)&&!e.parked),
+    pendingOperations:()=>[...entries.values()].filter(e=>active(e)).map(e=>({kind:e.kind,id:e.id,error:e.error,busy:e.busy})),
     async prepare() { for (const e of entries.values()) { if(e.parked)continue;if (e.work) await e.work; if (active(e)) return false; } return true; },
     park(kind,id){const e=get(kind,id);if(!operation?.allowPark||!e||!active(e))return false;persist(e);e.parked=true;if(e.token)void cleanup(e);emit();return true;},
     async retry(kind, id) {

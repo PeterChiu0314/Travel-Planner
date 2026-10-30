@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { memberLabel } from "../../lib/budgetFinance.js";
 import MenuSelect from "../MenuSelect.jsx";
 import { recordMetadataValue } from "../../lib/budgetMetadataValues.js";
+import {isBudgetComplete} from '../../lib/budgetLifecycleValues.js';
 import BudgetPricingFields from "./BudgetPricingFields.jsx";
 import { pricingPreview } from "../../lib/budgetPricingGroups.js";
 import BudgetSourceEditor from './BudgetSourceEditor.jsx';
@@ -114,7 +115,7 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
         </div>
       </div>;
     })}
-    <div className="bw-metadata-summary"><span>分類 · {record.category || "其他"}</span><span>金額 · {record.currency} {record.amount}</span></div>
-    <button type="button" className="ghost-button" disabled={!editable} onClick={onLegacy}>編輯完整項目</button>
+    <div className="bw-metadata-summary"><span>分類 · {record.category || "其他"}</span><span>金額 · {isBudgetComplete(record)||record.pricing_ready?`${record.currency} ${record.amount}`:'尚未填寫'}</span></div>
+    {isBudgetComplete(record)?<button type="button" className="ghost-button" disabled={!editable} onClick={onLegacy}>編輯完整項目</button>:null}
   </section>;
 }

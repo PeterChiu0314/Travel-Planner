@@ -1,7 +1,7 @@
 import { calculatePricing, calculateActualPricing } from "./budgetFinance.js";
 
 export const pricingInputs = (row, people = [], versions = null) => ({
-  pricing_mode: row.pricing_mode || "split_total", amount: row.amount ?? "", unit_amount: row.unit_amount ?? null,
+  pricing_mode: row.pricing_mode || "split_total", amount: row.record_status==='incomplete'&&!row.pricing_ready?'':row.amount ?? "", unit_amount: row.unit_amount ?? null,
   currency: row.currency || "TWD", exchange_rate: row.exchange_rate ?? "",
   participantIds: people.map(p => p.user_id).sort(),
   shares: row.pricing_mode === "custom" ? Object.fromEntries(people.map(p => [p.user_id, p.share_amount])) : {}, versions,
@@ -15,6 +15,7 @@ export function normalizePricingInputs(value, includeVersions = true) {
 }
 export function pricingInputError(value) { try { normalizePricingInputs(value); return ""; } catch (error) { return error.message; } }
 export function pricingPreview(value, record, kind) {
+  if(record.record_status==='incomplete')return calculatePricing(value);
   return kind === "actual" ? calculateActualPricing({ ...value, twd_amount_source: record.twd_amount_source || "legacy", actual_twd_amount: record.actual_twd_amount ?? record.twd_amount }) : calculatePricing(value);
 }
 export const validPricingInputShape = value => value && typeof value === "object" && !Array.isArray(value)
@@ -46,8 +47,9 @@ export function applyDemoPricing(finance, kind, id, value) {
     const parent = targetKind === "budget" ? "budget_item_id" : "actual_expense_id", row = next[rows].find(r => r.id === targetId);
     if (!row || targetKind === "actual" && !budget && (row.budget_item_id || row.budget_origin_id || row.payment_origin && row.payment_origin !== "manual")) throw new Error("請從來源預算編輯計價群組。");
     const computed = calculatePricing(value), pricing = pricingPreview(value, row, targetKind);
-    if (targetKind === "actual" && (row.twd_amount_source || "legacy") !== "estimated" && (budget || value.currency === "TWD") && computed.twd_amount !== Number(row.actual_twd_amount ?? row.twd_amount)) throw new Error("此修改會改變已知台幣扣款，請保留付款成本。");
+    if (targetKind === "actual" && row.record_status!=='incomplete' && (row.twd_amount_source || "legacy") !== "estimated" && (budget || value.currency === "TWD") && computed.twd_amount !== Number(row.actual_twd_amount ?? row.twd_amount)) throw new Error("此修改會改變已知台幣扣款，請保留付款成本。");
     const fields = Object.fromEntries(["pricing_mode", "amount", "unit_amount", "currency", "exchange_rate", "split_type", "twd_amount"].map(k => [k, k === "currency" ? value.currency : pricing[k]]));
+    if(targetKind==='actual'&&row.record_status==='incomplete')Object.assign(fields,{twd_amount_source:value.currency==='TWD'?'actual':'estimated',actual_twd_amount:value.currency==='TWD'?computed.twd_amount:null});
     next[rows] = next[rows].map(r => r.id === targetId ? { ...r, ...fields } : r);
     const existing = next[people] || [];
     next[people] = [...existing.filter(p => p[parent] !== targetId), ...value.participantIds.map(user_id => ({

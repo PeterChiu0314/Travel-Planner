@@ -7,10 +7,12 @@ import { attachDemoSources } from './budgetSourceGroups.js';
 import {attachDemoReceipts} from './budgetReceipts.js';
 import {attachDemoFinance} from './budgetFinanceGroups.js';
 import {budgetFinanceGroupsEnabled} from '../lib/budgetFinanceValues.js';
+import {budgetLifecycleEnabled} from '../lib/budgetLifecycleValues.js';
+import {attachDemoLifecycle} from './budgetLifecycle.js';
 export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now) {
   let paymentOverlay = null, pricingGraph = 0;
   const getProps = () => {
-    const p = getOriginalProps();
+    const original = getOriginalProps();const p=transport.lifecycleOverlay?.(original)||original;
     if (paymentOverlay && (paymentOverlay.tripId !== p.activeTrip?.id || paymentChangesApplied(p, paymentOverlay))) paymentOverlay = null;
     return paymentOverlay ? { ...p, ...applyDemoPaymentChanges(p, paymentOverlay) } : p;
   };
@@ -32,6 +34,7 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
   function supported(kind, row) { return kind === "budget" ? !row.is_fixed && !row.auto_created_actual_expense_id && !getProps().actualExpenses.some(a => a.budget_item_id === row.id)
     : !row.budget_item_id && (!row.payment_origin || row.payment_origin === "manual"); }
   function canPrice(kind, row) { try { const p=getProps(), stage=p.demoStage || budgetStage(p.activeTrip);
+    if(row.record_status==='incomplete')return kind==='budget'?supported(kind,row):!row.budget_item_id&&!row.budget_origin_id&&(!row.payment_origin||row.payment_origin==='manual');
     if(kind === "budget" && stage !== "planning" && (row.currency !== "TWD" || p.actualExpenses.some(a=>(a.budget_origin_id || a.budget_item_id)===row.id))) return false;
     applyDemoPricing({budgetItems:p.budgetItems,actualExpenses:p.actualExpenses,budgetParticipants:p.budgetParticipants||[],actualParticipants:p.actualParticipants||[]},kind,row.id,valueFor(kind,row,"pricing")); return true; } catch { return false; } }
   const supports = (kind,row,group) => group === "pricing" ? canPrice(kind,row) : kind === 'actual' && ['title','note'].includes(group) || kind === "budget" && ["title","note"].includes(group) && !row.is_fixed || supported(kind,row);
@@ -96,5 +99,6 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
     commit(change) { paymentOverlay = change; getOriginalProps().onSavePayment?.(change); } }, now);
   attachDemoSources(transport,getProps,{state,changed,commit(change){paymentOverlay=change;getOriginalProps().onSaveSource?.(change);}},now);
   attachDemoReceipts(transport,getProps,{state,changed},now);
-  return budgetFinanceGroupsEnabled?attachDemoFinance(transport,getProps,{state,changed,graphVersion:()=>pricingGraph},now):transport;
+  if(budgetFinanceGroupsEnabled||budgetLifecycleEnabled)attachDemoFinance(transport,getProps,{state,changed,graphVersion:()=>pricingGraph},now);
+  return budgetLifecycleEnabled?attachDemoLifecycle(transport,getProps,{state,changed},now):transport;
 }

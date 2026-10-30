@@ -16,6 +16,7 @@ import {createBudgetPaymentController} from '../src/lib/budgetPaymentGroups.js';
 import {createBudgetSourceController,createBudgetSourceService} from '../src/lib/budgetSourceGroups.js';
 import {receiptCases} from './budget-receipts-cases.mjs';
 import {financeCases} from './budget-finance-cases.mjs';
+import {lifecycleCases} from './budget-lifecycle-cases.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -73,6 +74,7 @@ const fixture=async()=>{
 const test=async(name,run)=>{
   if(process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'&&!name.startsWith('Receipt'))return;
   if(process.env.BUDGET_NATIVE_FINANCE_ONLY==='1'&&!name.startsWith('Finance'))return;
+  if(process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'&&!name.startsWith('Lifecycle'))return;
   const started=Date.now();
   try{const detail=await run();results.push({name,status:'passed',ms:Date.now()-started,...detail});console.log(`PASS ${name}`);}
   catch(error){results.push({name,status:'failed',ms:Date.now()-started,message:error.message,code:error.code});console.error(`FAIL ${name}: ${error.message}`);}
@@ -128,6 +130,13 @@ try{
     // PostgreSQL stores function body line endings verbatim. Compare the same
     // logical source on LF and Windows CRLF checkouts without editing migrations.
     const source=(await fs.readFile(new URL(file,migrationDir),'utf8')).replace(/\r\n/g,'\n');
+    if(file==='20261030064703_budget_workspace_lifecycle.sql'&&process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'){
+      await test('Lifecycle forward fault and dormant reverse preserve old definitions permissions and financial identities',async()=>{
+        const u=uuid(),t=uuid(),bid=uuid();await admin('insert into auth.users(id) values($1)',[u]);await admin("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Lifecycle QA','Lifecycle QA','Japan','2090-01-01','2090-01-05',$2)",[t,u]);await admin("insert into budget_items(id,trip_id,title,category,amount,twd_amount) values($1,$2,'Keep existing','其他',10,10)",[bid,t]);
+        const catalog=async()=>({defs:await definitions(),acl:await admin("select oid::regprocedure::text name,proacl::text acl from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) and prokind='f' order by name"),policies:await admin('select * from pg_policies order by schemaname,tablename,policyname'),rows:await admin("select * from (select 'budget' k,to_jsonb(t) v from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'groups',to_jsonb(t) from app_private.budget_metadata_groups t) q order by k,v::text")});
+        const before=await catalog();await assert.rejects(()=>admin(source.replace(/commit;\s*$/i,'select 1/0;commit;')),e=>e.code==='22012');await admin('rollback');assert.deepEqual(await catalog(),before);await admin(source);await admin(await fs.readFile(new URL('../docs/qa/2026-10-30-budget-lifecycle-rollback.sql',import.meta.url),'utf8'));assert.deepEqual(await catalog(),before);await admin('delete from trips where id=$1',[t]);await admin('delete from auth.users where id=$1',[u]);
+      });
+    }
     if(file==='20261030054628_budget_financial_dependencies.sql'&&process.env.BUDGET_NATIVE_FINANCE_ONLY==='1'){
       await test('Finance forward failure and unused reverse preserve definitions ACLs policies and existing financial rows',async()=>{
         const user=uuid(),tid=uuid(),bid=uuid(),aid=uuid();await admin('insert into auth.users(id) values($1)',[user]);await admin("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Finance migration','Finance migration','Japan','2090-01-01','2090-01-06',$2)",[tid,user]);await admin("insert into budget_items(id,trip_id,title,category,amount,twd_amount,payer_id) values($1,$2,'Keep budget','交通',900,900,$3)",[bid,tid,user]);await admin("insert into actual_expenses(id,trip_id,budget_item_id,title,category,amount,twd_amount,payer_id) values($1,$2,$3,'Keep actual','交通',900,777,$4)",[aid,tid,bid,user]);
@@ -244,7 +253,9 @@ try{
   const sessions=await Promise.all([a,b].map(c=>query(c,"select pg_backend_pid() pid,session_user,current_user,auth.uid() actor,current_setting('transaction_isolation') isolation")));
   await fs.writeFile(path.join(process.env.BUDGET_NATIVE_EVIDENCE,'bootstrap.json'),JSON.stringify({server:(await admin('select version() version'))[0].version,pids:[pidA,pidB,observerPid],sessions,hashes},null,2));
 
-  if(process.env.BUDGET_NATIVE_FINANCE_ONLY==='1'){
+  if(process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'){
+    await lifecycleCases({test,admin,query,a,b,actorA,actorB,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});
+  }else if(process.env.BUDGET_NATIVE_FINANCE_ONLY==='1'){
     await financeCases({test,admin,query,a,b,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});
   }else if(process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'){
     await receiptCases({test,admin,query,a,b,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});

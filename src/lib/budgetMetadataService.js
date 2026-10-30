@@ -4,6 +4,7 @@ import { validPaymentSnapshot } from "./budgetPaymentValues.js";
 import { validSourceSnapshot } from "./budgetSourceValues.js";
 import {validReceiptSnapshot} from './budgetReceiptValues.js';
 import {budgetFinanceGroupsEnabled,validFinanceSnapshot,sameFinanceVersions} from './budgetFinanceValues.js';
+import {validLifecycleSnapshot} from './budgetLifecycleValues.js';
 export const budgetAuthorityTimeoutMs = 10000;
 export const budgetSnapshotTimeoutError = () => ({ code: "BUDGET_SNAPSHOT_TIMEOUT", message: "最新同步逾時，草稿已保留。請重新確認後重試。" });
 // The settled race owns the result. An uncancellable transport may finish later,
@@ -20,16 +21,17 @@ export async function withBudgetAuthorityTimeout(work, { timeoutMs = budgetAutho
 const version = value => Number.isSafeInteger(value) && value >= 0;
 // Match PostgreSQL btrim(text): normalize ordinary spaces, preserving other text.
 export function validBudgetMetadataSnapshot(data, tripId) {
-  const keys = [3, 4, 5, 6, 7, 8].includes(data?.metadataProtocol?.schemaVersion) ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
+  const keys = [3, 4, 5, 6, 7, 8, 9].includes(data?.metadataProtocol?.schemaVersion) ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
   return data?.tripId === tripId && data.metadataProtocol?.name === "metadata-prototype"
-    && [1, 2, 3, 4, 5, 6, 7, 8].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
+    && [1, 2, 3, 4, 5, 6, 7, 8, 9].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
     && data.metadataProtocol.complete === false && JSON.stringify(data.metadataProtocol.groups) === JSON.stringify(keys)
     && Number.isFinite(Date.parse(data.serverNow)) && version(data.collaborationRevision)
     && Array.isArray(data.budgetItems) && Array.isArray(data.actualExpenses)
-    && (![4, 5, 6, 7, 8].includes(data.metadataProtocol.schemaVersion) || validPaymentSnapshot(data))
-    && (![6,7,8].includes(data.metadataProtocol.schemaVersion) || validSourceSnapshot(data))
-    && (![7,8].includes(data.metadataProtocol.schemaVersion) || validReceiptSnapshot(data))
-    && (data.metadataProtocol.schemaVersion !== 8 || validFinanceSnapshot(data))
+    && (![4, 5, 6, 7, 8, 9].includes(data.metadataProtocol.schemaVersion) || validPaymentSnapshot(data))
+    && (![6,7,8,9].includes(data.metadataProtocol.schemaVersion) || validSourceSnapshot(data))
+    && (![7,8,9].includes(data.metadataProtocol.schemaVersion) || validReceiptSnapshot(data))
+    && (![8,9].includes(data.metadataProtocol.schemaVersion) || validFinanceSnapshot(data))
+    && (data.metadataProtocol.schemaVersion !== 9 || validLifecycleSnapshot(data))
     && Array.isArray(data.metadataRecords) && Array.isArray(data.collaboration?.entries)
     && data.metadataRecords.length === data.budgetItems.length + data.actualExpenses.length
     && new Set(data.metadataRecords.map(r => `${r.kind}:${r.id}`)).size === data.metadataRecords.length
@@ -50,7 +52,7 @@ export function validBudgetMetadataSnapshot(data, tripId) {
 }
 export function withoutBudgetMetadata(data) {
   const { metadataProtocol, metadataRecords, metadataVerified, metadataReadStartedAt, metadataError, metadataUserId,
-    paymentProtocol, paymentRecords, sourceProtocol, sourceRecords,receiptProtocol,receiptRecords,financeProtocol,ratesRecords, collaboration, collaborationRevision, serverNow, nextRefreshAt, ...financial } = data;
+    paymentProtocol, paymentRecords, sourceProtocol, sourceRecords,receiptProtocol,receiptRecords,financeProtocol,ratesRecords,lifecycleProtocol,lifecycleRecords, collaboration, collaborationRevision, serverNow, nextRefreshAt, ...financial } = data;
   return financial;
 }
 export function createBudgetMetadataService(supabase) {

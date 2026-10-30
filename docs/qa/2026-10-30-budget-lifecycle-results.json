@@ -1,0 +1,3599 @@
+{
+  "date": "2026-10-30",
+  "timezone": "Asia/Taipei",
+  "branch": "codex/budget-collaboration-redesign",
+  "baseCommit": "889b09f0f1ed6d745186c604664f5e3eae397af3",
+  "scope": "B-5 placeholders/readiness/conservative standalone delete and direct dependencies only; no Hosted/main/deployment",
+  "native": {
+    "marker": "51703419-8f2c-46d0-b02d-fd7d51036fcb",
+    "host": "127.0.0.1",
+    "port": 4774,
+    "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+    "results": [
+      {
+        "name": "Lifecycle forward fault and dormant reverse preserve old definitions permissions and financial identities",
+        "status": "passed",
+        "ms": 72
+      },
+      {
+        "name": "Lifecycle dormant flag and private RLS remain closed until isolated activation",
+        "status": "passed",
+        "ms": 5
+      },
+      {
+        "name": "Lifecycle budget create has stable UUID exact replay empty children and DB incomplete status",
+        "status": "passed",
+        "ms": 40
+      },
+      {
+        "name": "Lifecycle actual create has stable UUID exact replay empty children and DB incomplete status",
+        "status": "passed",
+        "ms": 30
+      },
+      {
+        "name": "Lifecycle Budget becomes complete only after validated pricing and title and accepts explicit zero",
+        "status": "passed",
+        "ms": 119
+      },
+      {
+        "name": "Lifecycle Actual requires explicitly committed payment time after title and pricing",
+        "status": "passed",
+        "ms": 156
+      },
+      {
+        "name": "Lifecycle incomplete is absent from baseline and cannot admit payment or Receipt",
+        "status": "passed",
+        "ms": 37
+      },
+      {
+        "name": "Lifecycle deletes standalone placeholder atomically preserves tombstone and success replay",
+        "status": "passed",
+        "ms": 84
+      },
+      {
+        "name": "Lifecycle raw authenticated INSERT DELETE and readiness spoof cannot bypass protocol",
+        "status": "passed",
+        "ms": 4
+      },
+      {
+        "name": "Lifecycle two independent actors truly overlap creating different stable placeholders",
+        "status": "passed",
+        "ms": 120,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "id": "eb903f27-681e-4c83-9795-6a0a19c8a61e",
+              "kind": "trip",
+              "group": "lifecycle",
+              "value": {
+                "exists": true,
+                "versions": {}
+              },
+              "revision": 0,
+              "created_id": "d3e1e2af-4ab6-496a-bb78-f023f2df77be",
+              "request_id": "3118e4bf-38f5-4201-b3a4-10747dadedac",
+              "create_fence": {
+                "groups": [
+                  {
+                    "graph": 0,
+                    "group": "category",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "lifecycle",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "links",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "note",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "payer",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "payment",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "pricing",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "source",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "title",
+                    "revision": 0
+                  }
+                ],
+                "lifecycle": 0
+              },
+              "created_kind": "budget",
+              "undo_supported": false
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "id": "eb903f27-681e-4c83-9795-6a0a19c8a61e",
+              "kind": "trip",
+              "group": "lifecycle",
+              "value": {
+                "exists": true,
+                "versions": {}
+              },
+              "revision": 0,
+              "created_id": "f8f3989f-6631-42ea-94c4-b755fd6b9dbd",
+              "request_id": "424dc0d5-2739-48c7-a2c0-914cd5188363",
+              "create_fence": {
+                "groups": [
+                  {
+                    "graph": 0,
+                    "group": "category",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "lifecycle",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "note",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "payer",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "payment",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "pricing",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "receipts",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "source",
+                    "revision": 0
+                  },
+                  {
+                    "graph": 0,
+                    "group": "title",
+                    "revision": 0
+                  }
+                ],
+                "lifecycle": 0
+              },
+              "created_kind": "actual",
+              "undo_supported": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "Lifecycle title and Pricing overlap on same placeholder and atomically complete explicit zero",
+        "status": "passed",
+        "ms": 201,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "id": "2f718d80-5b52-42b7-8033-71a3d5e5e3b2",
+              "kind": "budget",
+              "group": "title",
+              "value": "Both actors complete",
+              "effects": [
+                {
+                  "id": "2f718d80-5b52-42b7-8033-71a3d5e5e3b2",
+                  "kind": "budget",
+                  "group": "title",
+                  "revision": 1
+                }
+              ],
+              "revision": 1,
+              "versions": {
+                "targets": [
+                  {
+                    "id": "2f718d80-5b52-42b7-8033-71a3d5e5e3b2",
+                    "kind": "budget",
+                    "graph": 0,
+                    "revision": 1
+                  }
+                ]
+              },
+              "request_id": "cea98fc5-56b1-4893-876f-89fa3ad84dfa",
+              "undo_reason": null,
+              "undo_supported": false
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "id": "2f718d80-5b52-42b7-8033-71a3d5e5e3b2",
+              "kind": "budget",
+              "group": "pricing",
+              "value": {
+                "amount": 0,
+                "shares": {},
+                "currency": "TWD",
+                "versions": {
+                  "graph": 0,
+                  "rates": 0,
+                  "members": 4,
+                  "targets": [
+                    {
+                      "id": "2f718d80-5b52-42b7-8033-71a3d5e5e3b2",
+                      "kind": "budget",
+                      "revision": 1
+                    }
+                  ]
+                },
+                "unit_amount": null,
+                "pricing_mode": "split_total",
+                "exchange_rate": 1,
+                "participantIds": [
+                  "40244d4d-a7fa-40cd-b465-34b613c04cea",
+                  "90ea3b5b-de94-49ea-92d0-188d2d9a243b"
+                ]
+              },
+              "revision": 1,
+              "request_id": "5edf5b98-a22c-4ac0-acf6-e9627079dca7",
+              "undo_supported": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "Lifecycle held group and same-account second document cannot delete or take authority",
+        "status": "passed",
+        "ms": 177
+      },
+      {
+        "name": "Lifecycle edit transaction and Delete admission truly overlap and old vector rejects",
+        "status": "passed",
+        "ms": 166,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "id": "8ae835f2-568a-4079-ad40-f52e89fbb597",
+              "kind": "budget",
+              "group": "title",
+              "value": "Concurrent survivor",
+              "effects": [
+                {
+                  "id": "8ae835f2-568a-4079-ad40-f52e89fbb597",
+                  "kind": "budget",
+                  "group": "title",
+                  "revision": 1
+                }
+              ],
+              "revision": 1,
+              "versions": {
+                "targets": [
+                  {
+                    "id": "8ae835f2-568a-4079-ad40-f52e89fbb597",
+                    "kind": "budget",
+                    "graph": 0,
+                    "revision": 1
+                  }
+                ]
+              },
+              "request_id": "130a1066-62a8-4d2f-b11c-022e9dad7ece",
+              "undo_reason": null,
+              "undo_supported": false
+            }
+          },
+          {
+            "ok": false,
+            "code": "40001",
+            "message": "Lifecycle version changed"
+          }
+        ]
+      },
+      {
+        "name": "Lifecycle delete expiry takeover fences late token and old release cannot clear new holder",
+        "status": "passed",
+        "ms": 149
+      },
+      {
+        "name": "Lifecycle child deletion fault rolls back participants parent versions ledger and tombstones",
+        "status": "passed",
+        "ms": 289
+      },
+      {
+        "name": "Lifecycle retained Source and Receipt identities are refused without deleting any historical row",
+        "status": "passed",
+        "ms": 233
+      },
+      {
+        "name": "Lifecycle approved actor and cross-trip binding checked before create or mutate",
+        "status": "passed",
+        "ms": 86
+      },
+      {
+        "name": "Lifecycle incomplete raw Participants and Receipt cannot fabricate readiness and completed fields cannot regress",
+        "status": "passed",
+        "ms": 375
+      },
+      {
+        "name": "Lifecycle post-departure completion never backfills a frozen Budget baseline",
+        "status": "passed",
+        "ms": 290
+      },
+      {
+        "name": "Lifecycle successful use refuses destructive reverse while preserving immutable ledger",
+        "status": "passed",
+        "ms": 1
+      },
+      {
+        "name": "Lifecycle real named RPC Controller strict v9 creates and deletes one stable UUID without whole-record lease",
+        "status": "passed",
+        "ms": 583
+      },
+      {
+        "name": "Lifecycle standalone complete Actual may be explicitly deleted but historical payment array remains protected",
+        "status": "passed",
+        "ms": 205
+      },
+      {
+        "name": "Lifecycle standalone complete text Undo remains valid while incomplete edits and delete preserve other actors pointers",
+        "status": "passed",
+        "ms": 882
+      },
+      {
+        "name": "Lifecycle unknown FK cascades and pending Receipt cleanup refuse deletion before any SQL effect",
+        "status": "passed",
+        "ms": 235
+      },
+      {
+        "name": "Lifecycle real Metadata Controller commits explicit zero pricing and safely completes the same placeholder",
+        "status": "passed",
+        "ms": 377
+      },
+      {
+        "name": "Lifecycle incomplete Actual accepts explicit cost corrections but completed known TWD debit stays protected",
+        "status": "passed",
+        "ms": 1016
+      },
+      {
+        "name": "Lifecycle direct helper DML cannot smuggle nonblank data or forged financial history into a placeholder",
+        "status": "passed",
+        "ms": 3
+      }
+    ],
+    "observations": [
+      {
+        "name": "lifecycle-create-create",
+        "proof": [
+          {
+            "pid": 27432,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "874",
+            "xact_start": "2026-10-30T08:12:16.473Z",
+            "query_start": "2026-10-30T08:12:16.473Z",
+            "observed_at": "2026-10-30T08:12:16.537Z",
+            "blocking_pids": [
+              21720
+            ]
+          },
+          {
+            "pid": 62660,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-30T08:12:16.507Z",
+            "query_start": "2026-10-30T08:12:16.507Z",
+            "observed_at": "2026-10-30T08:12:16.537Z",
+            "blocking_pids": [
+              27432
+            ]
+          }
+        ]
+      },
+      {
+        "name": "lifecycle-title-pricing",
+        "proof": [
+          {
+            "pid": 27432,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "882",
+            "xact_start": "2026-10-30T08:12:16.703Z",
+            "query_start": "2026-10-30T08:12:16.703Z",
+            "observed_at": "2026-10-30T08:12:16.770Z",
+            "blocking_pids": [
+              21720
+            ]
+          },
+          {
+            "pid": 62660,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-30T08:12:16.738Z",
+            "query_start": "2026-10-30T08:12:16.738Z",
+            "observed_at": "2026-10-30T08:12:16.770Z",
+            "blocking_pids": [
+              27432
+            ]
+          }
+        ]
+      },
+      {
+        "name": "lifecycle-edit-delete",
+        "proof": [
+          {
+            "pid": 27432,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "898",
+            "xact_start": "2026-10-30T08:12:17.095Z",
+            "query_start": "2026-10-30T08:12:17.095Z",
+            "observed_at": "2026-10-30T08:12:17.129Z",
+            "blocking_pids": [
+              21720
+            ]
+          },
+          {
+            "pid": 62660,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-30T08:12:17.128Z",
+            "query_start": "2026-10-30T08:12:17.128Z",
+            "observed_at": "2026-10-30T08:12:17.129Z",
+            "blocking_pids": [
+              27432
+            ]
+          }
+        ]
+      }
+    ],
+    "passed": 27,
+    "failed": 0,
+    "environment": {
+      "version": "postgres (PostgreSQL) 17.11",
+      "host": "127.0.0.1",
+      "port": 4774,
+      "marker": "51703419-8f2c-46d0-b02d-fd7d51036fcb",
+      "startedAt": "2026-10-30T08:12:15.509Z",
+      "isolated": true,
+      "stopped": true
+    },
+    "bootstrap": {
+      "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+      "pids": [
+        27432,
+        62660,
+        21720
+      ],
+      "sessions": [
+        [
+          {
+            "pid": 27432,
+            "session_user": "budget_actor_a",
+            "current_user": "authenticated",
+            "actor": "90ea3b5b-de94-49ea-92d0-188d2d9a243b",
+            "isolation": "read committed"
+          }
+        ],
+        [
+          {
+            "pid": 62660,
+            "session_user": "budget_actor_b",
+            "current_user": "authenticated",
+            "actor": "40244d4d-a7fa-40cd-b465-34b613c04cea",
+            "isolation": "read committed"
+          }
+        ]
+      ],
+      "hashes": [
+        {
+          "file": "001_collaborative_travel_planner.sql",
+          "sha256": "2c559727546f568179f6752262361f721c34acc69f657acdf5504236f99a3e70"
+        },
+        {
+          "file": "002_core_mvp_schema.sql",
+          "sha256": "cf93fb48deca5bc12dcbc8cb5d34dbae422689e4fb6a008f3c4c255e032d28d4"
+        },
+        {
+          "file": "003_trip_name_compat.sql",
+          "sha256": "0229879cde2b7ac212a917216ad45a8fb2ab23daaf3aa657123e915cd852c7da"
+        },
+        {
+          "file": "004_harden_rls_rpc_permissions.sql",
+          "sha256": "fca57bbbd326a961ad35ca65735781199ba8045a456383519fb90e535b751e68"
+        },
+        {
+          "file": "005_revoke_public_rpc_execute.sql",
+          "sha256": "e2efd8bb24451133442819b798b09b7afe11c69c17e6e01b41c7e7217e474d2d"
+        },
+        {
+          "file": "006_move_rls_helpers_private.sql",
+          "sha256": "5fdaec34cf98a73fbfe852772475ad4c2e6e580d52a0fc71ecd89350e6eca332"
+        },
+        {
+          "file": "007_create_attachments_storage.sql",
+          "sha256": "28760121ea7b4c39fa21984c23cedec49848d4b160556ed69383fe7e34a73aa1"
+        },
+        {
+          "file": "008_share_snapshot_rpc.sql",
+          "sha256": "1f53688fdb65878c9723c5ca6644b6aad5992a044332f59c97e5a51a5e516252"
+        },
+        {
+          "file": "009_add_edit_locks.sql",
+          "sha256": "1c5dfd46196ffafe923b7ba3eff2d947a86e9c9c759149c393c71c56c16a6548"
+        },
+        {
+          "file": "010_add_transportation_card_fields.sql",
+          "sha256": "1a609fb3f49a9fbbe68a243bd930c03340985eea2b4b438a1a22d1cc30af34e5"
+        },
+        {
+          "file": "011_add_transport_card_pair_fields.sql",
+          "sha256": "996c34cba082958424254d5f334633f8271e052c66d4ad2a168e4ce2a1fad031"
+        },
+        {
+          "file": "012_add_transport_review_snapshots.sql",
+          "sha256": "973b801e4ac8fffa9cf76d66eb6ac3688b4abb99e8d9a8f9d5c98a176d57e2e1"
+        },
+        {
+          "file": "013_add_itinerary_alternative_visit_fields.sql",
+          "sha256": "1cd01d1cdac8614328778ca406fe2bb11646921d854bfa6eed9c4a71cedef089"
+        },
+        {
+          "file": "014_add_itinerary_item_fixed_fields.sql",
+          "sha256": "27c4c0e2710d92421714711b617dbfae7d381e6c4ed4224b1d70be92cba35d6e"
+        },
+        {
+          "file": "015_add_trip_destination_fields.sql",
+          "sha256": "6aeb50673fc096a5e9fbc656b90694a6a329ff8479b5836d61dfe97377260668"
+        },
+        {
+          "file": "016_apply_trip_date_change.sql",
+          "sha256": "c99fed79f49eeca8d707f204148f40be81e8b70c82faebbb57204ca1cca47992"
+        },
+        {
+          "file": "017_confirm_trip_date_shortening.sql",
+          "sha256": "850366e7233e3334efba8581487c1dea2cbdc131c1388e75074ea27d14a51d7c"
+        },
+        {
+          "file": "018_filter_share_snapshot_timeline.sql",
+          "sha256": "dc6b32ba70cfa9112af7f778e550d32933639d93200e36654944b60c16da65a4"
+        },
+        {
+          "file": "019_swap_itinerary_destination_packages.sql",
+          "sha256": "0b8b266681fa0c4a40a227d1a605f71523fe2a3ede26c507b8153a9b231eb725"
+        },
+        {
+          "file": "020_reorder_itinerary_destination_packages.sql",
+          "sha256": "0d49be65931fbfd2853a553369073f138cf6d481571265c601818097e861d45d"
+        },
+        {
+          "file": "021_fix_reorder_baseline_count.sql",
+          "sha256": "9f7c6d6fb545fda47c79c98b58ea8fc75d33c53541fcbd6c759312d4d38831ba"
+        },
+        {
+          "file": "022_add_transport_role_to_itinerary_items.sql",
+          "sha256": "14d763db953dd4516d6496e3064b6d79a3bc6a06b8ef156bb099e8c915ab291a"
+        },
+        {
+          "file": "023_reorder_itinerary_timed_auto_continuation.sql",
+          "sha256": "91ae805d1abbb37e647a614f5226cbf8fee5c06b91f72a9764398f0e03658c32"
+        },
+        {
+          "file": "024_reorder_itinerary_fixed_anchor_continuation.sql",
+          "sha256": "e5b9602300ff2e84d21b70a2ed1599eaaa29d9072205b3db3753e5d59162de79"
+        },
+        {
+          "file": "20260708063744_add_itinerary_route_overrides.sql",
+          "sha256": "27672c8a7f3a0a7241a583b3b1d91386f9ea76751cc7c2dd681905b03bc11289"
+        },
+        {
+          "file": "20260710125337_add_itinerary_route_override_nodes.sql",
+          "sha256": "b028b9bd07ec271cb0d10d8f69d812a8ea321b14b25a7154fe0d166875172dd4"
+        },
+        {
+          "file": "20260712033758_add_route_tables_to_realtime.sql",
+          "sha256": "e1f082339d5f7b6715024032336d01c9d4cd6f7af487ba920603fe147132fc5d"
+        },
+        {
+          "file": "20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+          "sha256": "32b6683c21dd20a20c0402e336b5737130e49e34d7a50fbc477e897a5bb72c10"
+        },
+        {
+          "file": "20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+          "sha256": "50026a093d158ee7053c09fd485367052d20e37bff1e1dbb9828d2187697e810"
+        },
+        {
+          "file": "20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+          "sha256": "6e82e3a2fe7936dbbd2e792af8f3218cf86ad25d9087b31c76e77e97c60b858a"
+        },
+        {
+          "file": "20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+          "sha256": "22d8a682a6e59cd2f260212ef539260349f6d4faa9d6c76a3f5d88e13461407b"
+        },
+        {
+          "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+          "sha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+        },
+        {
+          "file": "20260819125851_phase_7_import_trip_timeline_v1.sql",
+          "sha256": "d6706de32644a91ebc5e88cd94e54a8823f3363f12feabb8ead0638f890ae2c9"
+        },
+        {
+          "file": "20261022090000_budget_workspace_baseline_and_pricing.sql",
+          "sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+        },
+        {
+          "file": "20261022100000_trip_budget_exchange_rates.sql",
+          "sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+        },
+        {
+          "file": "20261022110000_budget_payment_safety_and_actual_cost.sql",
+          "sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+        },
+        {
+          "file": "20261022120000_unified_planning_payments.sql",
+          "sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+        },
+        {
+          "file": "20261022162015_luggage_collaboration_state_safety.sql",
+          "sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+        },
+        {
+          "file": "20261023120000_luggage_notes.sql",
+          "sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+        },
+        {
+          "file": "20261024054121_luggage_drag_assignment.sql",
+          "sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+        },
+        {
+          "file": "20261024063828_luggage_private_return.sql",
+          "sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+        },
+        {
+          "file": "20261024112902_luggage_item_ordering.sql",
+          "sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+        },
+        {
+          "file": "20261026120000_luggage_required_assignee.sql",
+          "sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+        },
+        {
+          "file": "20261027140044_budget_atomic_edit_leases.sql",
+          "sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+        },
+        {
+          "file": "20261027145613_budget_consistent_snapshot.sql",
+          "sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+        },
+        {
+          "file": "20261027152539_budget_collaboration_state.sql",
+          "sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+        },
+        {
+          "file": "20261028104333_budget_selection_activity.sql",
+          "sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+        },
+        {
+          "file": "20261029020551_budget_group_metadata_prototype.sql",
+          "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+        },
+        {
+          "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+          "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+        },
+        {
+          "file": "20261029091435_budget_metadata_undo_prototype.sql",
+          "sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd"
+        },
+        {
+          "file": "20261029114817_budget_category_payer_links_groups.sql",
+          "sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262"
+        },
+        {
+          "file": "20261029123907_budget_pricing_participant_groups.sql",
+          "sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d"
+        },
+        {
+          "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+          "sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3"
+        },
+        {
+          "file": "20261030012554_budget_payment_minimal_bundle.sql",
+          "sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011"
+        },
+        {
+          "file": "20261030021719_budget_source_atomic_groups.sql",
+          "sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c"
+        },
+        {
+          "file": "20261030034351_budget_receipts_lifecycle.sql",
+          "sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80"
+        },
+        {
+          "file": "20261030054628_budget_financial_dependencies.sql",
+          "sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55"
+        },
+        {
+          "file": "20261030064703_budget_workspace_lifecycle.sql",
+          "sha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea"
+        }
+      ]
+    }
+  },
+  "directFinanceNative": {
+    "marker": "b9344172-de3b-40d2-9b87-72139c1b801c",
+    "host": "127.0.0.1",
+    "port": 4796,
+    "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+    "results": [
+      {
+        "name": "Finance forward failure and unused reverse preserve definitions ACLs policies and existing financial rows",
+        "status": "passed",
+        "ms": 73
+      },
+      {
+        "name": "Finance dormant flag and narrow invoker ACL retain all prior protocol schemas",
+        "status": "passed",
+        "ms": 62
+      },
+      {
+        "name": "Finance title without retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 40
+      },
+      {
+        "name": "Finance note without retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 40
+      },
+      {
+        "name": "Finance category without retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 45
+      },
+      {
+        "name": "Finance payer without retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 48
+      },
+      {
+        "name": "Finance title single retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 128
+      },
+      {
+        "name": "Finance note single retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 134
+      },
+      {
+        "name": "Finance category single retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 162
+      },
+      {
+        "name": "Finance payer single retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 173
+      },
+      {
+        "name": "Finance title inactive retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 289
+      },
+      {
+        "name": "Finance note inactive retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 313
+      },
+      {
+        "name": "Finance category inactive retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 348
+      },
+      {
+        "name": "Finance payer inactive retained changes only exact group atomically",
+        "status": "passed",
+        "ms": 369
+      },
+      {
+        "name": "Finance rates update preserves retained history and successful replay no-op has stable revision",
+        "status": "passed",
+        "ms": 539
+      },
+      {
+        "name": "Finance second endpoint fault rolls back both rows versions ledger and Undo capture",
+        "status": "passed",
+        "ms": 295
+      },
+      {
+        "name": "Finance Title and Payer retained bundles really overlap and preserve both narrow effects",
+        "status": "passed",
+        "ms": 565,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "id": "99735de1-c4c7-46b7-b84a-3fd5541cae28",
+              "kind": "budget",
+              "group": "title",
+              "value": "Parallel title",
+              "effects": [
+                {
+                  "id": "d8b39d7b-1bea-4af1-b9dd-e5afd1b1b68d",
+                  "kind": "actual",
+                  "group": "title",
+                  "revision": 1
+                },
+                {
+                  "id": "99735de1-c4c7-46b7-b84a-3fd5541cae28",
+                  "kind": "budget",
+                  "group": "title",
+                  "revision": 1
+                }
+              ],
+              "revision": 1,
+              "versions": {
+                "targets": [
+                  {
+                    "id": "d8b39d7b-1bea-4af1-b9dd-e5afd1b1b68d",
+                    "kind": "actual",
+                    "graph": 1,
+                    "revision": 1
+                  },
+                  {
+                    "id": "99735de1-c4c7-46b7-b84a-3fd5541cae28",
+                    "kind": "budget",
+                    "graph": 3,
+                    "revision": 1
+                  }
+                ]
+              },
+              "request_id": "729f4c8b-7c61-4f24-b655-7e9eb90b338a",
+              "undo_reason": "mirrored_text_not_supported",
+              "undo_supported": false
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "id": "99735de1-c4c7-46b7-b84a-3fd5541cae28",
+              "kind": "budget",
+              "group": "payer",
+              "value": "083dcfb9-e1e8-4abd-b370-cb35466af49a",
+              "effects": [
+                {
+                  "id": "d8b39d7b-1bea-4af1-b9dd-e5afd1b1b68d",
+                  "kind": "actual",
+                  "group": "payer",
+                  "revision": 1
+                },
+                {
+                  "id": "99735de1-c4c7-46b7-b84a-3fd5541cae28",
+                  "kind": "budget",
+                  "group": "payer",
+                  "revision": 1
+                }
+              ],
+              "revision": 1,
+              "versions": {
+                "targets": [
+                  {
+                    "id": "d8b39d7b-1bea-4af1-b9dd-e5afd1b1b68d",
+                    "kind": "actual",
+                    "graph": 1,
+                    "revision": 1
+                  },
+                  {
+                    "id": "99735de1-c4c7-46b7-b84a-3fd5541cae28",
+                    "kind": "budget",
+                    "graph": 3,
+                    "revision": 1
+                  }
+                ]
+              },
+              "request_id": "762bcc5f-e0ab-4de5-9d1d-4a2db4c3afde",
+              "undo_reason": "mirrored_text_not_supported",
+              "undo_supported": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "Finance same group real contention has one winner and exact late release cannot clear takeover",
+        "status": "passed",
+        "ms": 516,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "epoch": 1,
+              "value": "Initial note",
+              "granted": true,
+              "targets": [
+                {
+                  "id": "25e2ef0f-ac49-41ce-a86f-b67df79bbf0c",
+                  "kind": "actual",
+                  "epoch": 1
+                },
+                {
+                  "id": "68a31fe2-466d-4def-9d7c-8327c13db789",
+                  "kind": "budget",
+                  "epoch": 1
+                }
+              ],
+              "revision": 0,
+              "versions": {
+                "targets": [
+                  {
+                    "id": "25e2ef0f-ac49-41ce-a86f-b67df79bbf0c",
+                    "kind": "actual",
+                    "graph": 1,
+                    "revision": 0
+                  },
+                  {
+                    "id": "68a31fe2-466d-4def-9d7c-8327c13db789",
+                    "kind": "budget",
+                    "graph": 3,
+                    "revision": 0
+                  }
+                ]
+              },
+              "expires_at": "2026-10-30T16:15:12.006437+08:00"
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "reason": "group_locked",
+              "granted": false,
+              "owner_id": "61517f68-6650-47bf-b12b-c5d7c053ebbf",
+              "expires_at": "2026-10-30T16:15:12.006437+08:00"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Finance Actual direct edits stay one-way and held Actual same group prevents Budget bundle",
+        "status": "passed",
+        "ms": 1545
+      },
+      {
+        "name": "Finance same-account other document cannot acquire or release the mirrored group",
+        "status": "passed",
+        "ms": 541
+      },
+      {
+        "name": "Finance multiple retained and unknown backlink graphs reject every Budget field without partial leases",
+        "status": "passed",
+        "ms": 1192
+      },
+      {
+        "name": "Finance approved payer and actor revocation are checked again after admission",
+        "status": "passed",
+        "ms": 435
+      },
+      {
+        "name": "Finance metadata vector rejects retained collection changes instead of expanding a held bundle",
+        "status": "passed",
+        "ms": 627
+      },
+      {
+        "name": "Finance native v8 controller autosaves mirrored queued values and rates strategy uses named RPCs",
+        "status": "passed",
+        "ms": 2445
+      },
+      {
+        "name": "Finance text Undo stays five-step on one endpoint and explicitly blocks mirrored inverse without clearing unrelated pointers",
+        "status": "passed",
+        "ms": 2169
+      },
+      {
+        "name": "Finance legacy rates and direct metadata cannot bypass activation even after pause",
+        "status": "passed",
+        "ms": 449
+      },
+      {
+        "name": "Finance used reverse refuses to erase request or financial evidence",
+        "status": "passed",
+        "ms": 4
+      },
+      {
+        "name": "Finance rates and live Pricing really overlap and reject the whole affected set without stealing another tab",
+        "status": "passed",
+        "ms": 973,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "epoch": 1,
+              "value": {
+                "amount": 100,
+                "shares": {},
+                "currency": "JPY",
+                "versions": {
+                  "graph": 1,
+                  "rates": 3,
+                  "members": 6,
+                  "targets": [
+                    {
+                      "id": "e1c41404-f1a0-44a4-a803-5b18c6961920",
+                      "kind": "budget",
+                      "revision": 3
+                    }
+                  ]
+                },
+                "unit_amount": null,
+                "pricing_mode": "split_total",
+                "exchange_rate": 0.26,
+                "participantIds": [
+                  "083dcfb9-e1e8-4abd-b370-cb35466af49a",
+                  "61517f68-6650-47bf-b12b-c5d7c053ebbf"
+                ]
+              },
+              "granted": true,
+              "revision": 3,
+              "expires_at": "2026-10-30T16:15:22.510879+08:00"
+            }
+          },
+          {
+            "ok": true,
+            "data": {
+              "reason": "pricing_locked",
+              "granted": false
+            }
+          }
+        ]
+      },
+      {
+        "name": "Finance rates second-row failure rolls back trip quote all prices revisions and request",
+        "status": "passed",
+        "ms": 1436
+      },
+      {
+        "name": "Finance rates waiting behind payment revalidates retained graph and rejects stale vector",
+        "status": "passed",
+        "ms": 526,
+        "overlap": true,
+        "outcomes": [
+          {
+            "ok": true,
+            "data": {
+              "id": "3d74d00f-1e89-4ddd-91c4-ed96bfe84e30",
+              "kind": "budget",
+              "group": "payment",
+              "value": {
+                "active": true,
+                "paid_at": null,
+                "versions": {
+                  "graph": 3,
+                  "rates": 3,
+                  "checks": [
+                    {
+                      "id": "592e8c28-9945-4829-b70b-ddf64982321f",
+                      "kind": "actual",
+                      "graph": 0,
+                      "group": "payer",
+                      "revision": 0
+                    },
+                    {
+                      "id": "592e8c28-9945-4829-b70b-ddf64982321f",
+                      "kind": "actual",
+                      "graph": 1,
+                      "group": "pricing",
+                      "revision": 2
+                    },
+                    {
+                      "id": "3d74d00f-1e89-4ddd-91c4-ed96bfe84e30",
+                      "kind": "budget",
+                      "graph": 0,
+                      "group": "payer",
+                      "revision": 0
+                    },
+                    {
+                      "id": "3d74d00f-1e89-4ddd-91c4-ed96bfe84e30",
+                      "kind": "budget",
+                      "graph": 3,
+                      "group": "pricing",
+                      "revision": 2
+                    }
+                  ],
+                  "source": 0,
+                  "members": 6,
+                  "targets": [
+                    {
+                      "id": "592e8c28-9945-4829-b70b-ddf64982321f",
+                      "kind": "actual",
+                      "group": "payment",
+                      "revision": 1
+                    },
+                    {
+                      "id": "3d74d00f-1e89-4ddd-91c4-ed96bfe84e30",
+                      "kind": "budget",
+                      "group": "payment",
+                      "revision": 1
+                    }
+                  ]
+                }
+              },
+              "revision": 1,
+              "created_id": "592e8c28-9945-4829-b70b-ddf64982321f",
+              "request_id": "d701b432-19b9-46f9-b261-2a3e63f60d9b",
+              "undo_supported": false
+            }
+          },
+          {
+            "ok": false,
+            "code": "40001",
+            "message": "Rates dependencies changed"
+          }
+        ]
+      },
+      {
+        "name": "Finance departed and settled rates reject without touching saved foreign or known debit history",
+        "status": "passed",
+        "ms": 1929
+      }
+    ],
+    "observations": [
+      {
+        "name": "finance-title-payer",
+        "proof": [
+          {
+            "pid": 35232,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "971",
+            "xact_start": "2026-10-30T08:13:11.590Z",
+            "query_start": "2026-10-30T08:13:11.591Z",
+            "observed_at": "2026-10-30T08:13:11.654Z",
+            "blocking_pids": [
+              16796
+            ]
+          },
+          {
+            "pid": 54056,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-30T08:13:11.622Z",
+            "query_start": "2026-10-30T08:13:11.622Z",
+            "observed_at": "2026-10-30T08:13:11.654Z",
+            "blocking_pids": [
+              35232
+            ]
+          }
+        ]
+      },
+      {
+        "name": "finance-same-note",
+        "proof": [
+          {
+            "pid": 35232,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "980",
+            "xact_start": "2026-10-30T08:13:12.005Z",
+            "query_start": "2026-10-30T08:13:12.005Z",
+            "observed_at": "2026-10-30T08:13:12.032Z",
+            "blocking_pids": [
+              16796
+            ]
+          },
+          {
+            "pid": 54056,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-30T08:13:12.032Z",
+            "query_start": "2026-10-30T08:13:12.032Z",
+            "observed_at": "2026-10-30T08:13:12.032Z",
+            "blocking_pids": [
+              35232
+            ]
+          }
+        ]
+      },
+      {
+        "name": "finance-rates-pricing",
+        "proof": [
+          {
+            "pid": 35232,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "1100",
+            "xact_start": "2026-10-30T08:13:22.508Z",
+            "query_start": "2026-10-30T08:13:22.508Z",
+            "observed_at": "2026-10-30T08:13:22.566Z",
+            "blocking_pids": [
+              16796
+            ]
+          },
+          {
+            "pid": 54056,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-30T08:13:22.533Z",
+            "query_start": "2026-10-30T08:13:22.534Z",
+            "observed_at": "2026-10-30T08:13:22.566Z",
+            "blocking_pids": [
+              35232
+            ]
+          }
+        ]
+      },
+      {
+        "name": "finance-rates-payment",
+        "proof": [
+          {
+            "pid": 35232,
+            "application_name": "metadata-test-A",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": "1117",
+            "xact_start": "2026-10-30T08:13:24.505Z",
+            "query_start": "2026-10-30T08:13:24.505Z",
+            "observed_at": "2026-10-30T08:13:24.540Z",
+            "blocking_pids": [
+              16796
+            ]
+          },
+          {
+            "pid": 54056,
+            "application_name": "metadata-test-B",
+            "state": "active",
+            "wait_event_type": "Lock",
+            "wait_event": "advisory",
+            "backend_xid": null,
+            "xact_start": "2026-10-30T08:13:24.539Z",
+            "query_start": "2026-10-30T08:13:24.540Z",
+            "observed_at": "2026-10-30T08:13:24.540Z",
+            "blocking_pids": [
+              35232
+            ]
+          }
+        ]
+      }
+    ],
+    "passed": 31,
+    "failed": 0,
+    "environment": {
+      "version": "postgres (PostgreSQL) 17.11",
+      "host": "127.0.0.1",
+      "port": 4796,
+      "marker": "b9344172-de3b-40d2-9b87-72139c1b801c",
+      "startedAt": "2026-10-30T08:13:07.635Z",
+      "isolated": true,
+      "stopped": true
+    },
+    "bootstrap": {
+      "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+      "pids": [
+        35232,
+        54056,
+        16796
+      ],
+      "sessions": [
+        [
+          {
+            "pid": 35232,
+            "session_user": "budget_actor_a",
+            "current_user": "authenticated",
+            "actor": "61517f68-6650-47bf-b12b-c5d7c053ebbf",
+            "isolation": "read committed"
+          }
+        ],
+        [
+          {
+            "pid": 54056,
+            "session_user": "budget_actor_b",
+            "current_user": "authenticated",
+            "actor": "083dcfb9-e1e8-4abd-b370-cb35466af49a",
+            "isolation": "read committed"
+          }
+        ]
+      ],
+      "hashes": [
+        {
+          "file": "001_collaborative_travel_planner.sql",
+          "sha256": "2c559727546f568179f6752262361f721c34acc69f657acdf5504236f99a3e70"
+        },
+        {
+          "file": "002_core_mvp_schema.sql",
+          "sha256": "cf93fb48deca5bc12dcbc8cb5d34dbae422689e4fb6a008f3c4c255e032d28d4"
+        },
+        {
+          "file": "003_trip_name_compat.sql",
+          "sha256": "0229879cde2b7ac212a917216ad45a8fb2ab23daaf3aa657123e915cd852c7da"
+        },
+        {
+          "file": "004_harden_rls_rpc_permissions.sql",
+          "sha256": "fca57bbbd326a961ad35ca65735781199ba8045a456383519fb90e535b751e68"
+        },
+        {
+          "file": "005_revoke_public_rpc_execute.sql",
+          "sha256": "e2efd8bb24451133442819b798b09b7afe11c69c17e6e01b41c7e7217e474d2d"
+        },
+        {
+          "file": "006_move_rls_helpers_private.sql",
+          "sha256": "5fdaec34cf98a73fbfe852772475ad4c2e6e580d52a0fc71ecd89350e6eca332"
+        },
+        {
+          "file": "007_create_attachments_storage.sql",
+          "sha256": "28760121ea7b4c39fa21984c23cedec49848d4b160556ed69383fe7e34a73aa1"
+        },
+        {
+          "file": "008_share_snapshot_rpc.sql",
+          "sha256": "1f53688fdb65878c9723c5ca6644b6aad5992a044332f59c97e5a51a5e516252"
+        },
+        {
+          "file": "009_add_edit_locks.sql",
+          "sha256": "1c5dfd46196ffafe923b7ba3eff2d947a86e9c9c759149c393c71c56c16a6548"
+        },
+        {
+          "file": "010_add_transportation_card_fields.sql",
+          "sha256": "1a609fb3f49a9fbbe68a243bd930c03340985eea2b4b438a1a22d1cc30af34e5"
+        },
+        {
+          "file": "011_add_transport_card_pair_fields.sql",
+          "sha256": "996c34cba082958424254d5f334633f8271e052c66d4ad2a168e4ce2a1fad031"
+        },
+        {
+          "file": "012_add_transport_review_snapshots.sql",
+          "sha256": "973b801e4ac8fffa9cf76d66eb6ac3688b4abb99e8d9a8f9d5c98a176d57e2e1"
+        },
+        {
+          "file": "013_add_itinerary_alternative_visit_fields.sql",
+          "sha256": "1cd01d1cdac8614328778ca406fe2bb11646921d854bfa6eed9c4a71cedef089"
+        },
+        {
+          "file": "014_add_itinerary_item_fixed_fields.sql",
+          "sha256": "27c4c0e2710d92421714711b617dbfae7d381e6c4ed4224b1d70be92cba35d6e"
+        },
+        {
+          "file": "015_add_trip_destination_fields.sql",
+          "sha256": "6aeb50673fc096a5e9fbc656b90694a6a329ff8479b5836d61dfe97377260668"
+        },
+        {
+          "file": "016_apply_trip_date_change.sql",
+          "sha256": "c99fed79f49eeca8d707f204148f40be81e8b70c82faebbb57204ca1cca47992"
+        },
+        {
+          "file": "017_confirm_trip_date_shortening.sql",
+          "sha256": "850366e7233e3334efba8581487c1dea2cbdc131c1388e75074ea27d14a51d7c"
+        },
+        {
+          "file": "018_filter_share_snapshot_timeline.sql",
+          "sha256": "dc6b32ba70cfa9112af7f778e550d32933639d93200e36654944b60c16da65a4"
+        },
+        {
+          "file": "019_swap_itinerary_destination_packages.sql",
+          "sha256": "0b8b266681fa0c4a40a227d1a605f71523fe2a3ede26c507b8153a9b231eb725"
+        },
+        {
+          "file": "020_reorder_itinerary_destination_packages.sql",
+          "sha256": "0d49be65931fbfd2853a553369073f138cf6d481571265c601818097e861d45d"
+        },
+        {
+          "file": "021_fix_reorder_baseline_count.sql",
+          "sha256": "9f7c6d6fb545fda47c79c98b58ea8fc75d33c53541fcbd6c759312d4d38831ba"
+        },
+        {
+          "file": "022_add_transport_role_to_itinerary_items.sql",
+          "sha256": "14d763db953dd4516d6496e3064b6d79a3bc6a06b8ef156bb099e8c915ab291a"
+        },
+        {
+          "file": "023_reorder_itinerary_timed_auto_continuation.sql",
+          "sha256": "91ae805d1abbb37e647a614f5226cbf8fee5c06b91f72a9764398f0e03658c32"
+        },
+        {
+          "file": "024_reorder_itinerary_fixed_anchor_continuation.sql",
+          "sha256": "e5b9602300ff2e84d21b70a2ed1599eaaa29d9072205b3db3753e5d59162de79"
+        },
+        {
+          "file": "20260708063744_add_itinerary_route_overrides.sql",
+          "sha256": "27672c8a7f3a0a7241a583b3b1d91386f9ea76751cc7c2dd681905b03bc11289"
+        },
+        {
+          "file": "20260710125337_add_itinerary_route_override_nodes.sql",
+          "sha256": "b028b9bd07ec271cb0d10d8f69d812a8ea321b14b25a7154fe0d166875172dd4"
+        },
+        {
+          "file": "20260712033758_add_route_tables_to_realtime.sql",
+          "sha256": "e1f082339d5f7b6715024032336d01c9d4cd6f7af487ba920603fe147132fc5d"
+        },
+        {
+          "file": "20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+          "sha256": "32b6683c21dd20a20c0402e336b5737130e49e34d7a50fbc477e897a5bb72c10"
+        },
+        {
+          "file": "20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+          "sha256": "50026a093d158ee7053c09fd485367052d20e37bff1e1dbb9828d2187697e810"
+        },
+        {
+          "file": "20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+          "sha256": "6e82e3a2fe7936dbbd2e792af8f3218cf86ad25d9087b31c76e77e97c60b858a"
+        },
+        {
+          "file": "20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+          "sha256": "22d8a682a6e59cd2f260212ef539260349f6d4faa9d6c76a3f5d88e13461407b"
+        },
+        {
+          "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+          "sha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+        },
+        {
+          "file": "20260819125851_phase_7_import_trip_timeline_v1.sql",
+          "sha256": "d6706de32644a91ebc5e88cd94e54a8823f3363f12feabb8ead0638f890ae2c9"
+        },
+        {
+          "file": "20261022090000_budget_workspace_baseline_and_pricing.sql",
+          "sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+        },
+        {
+          "file": "20261022100000_trip_budget_exchange_rates.sql",
+          "sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+        },
+        {
+          "file": "20261022110000_budget_payment_safety_and_actual_cost.sql",
+          "sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+        },
+        {
+          "file": "20261022120000_unified_planning_payments.sql",
+          "sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+        },
+        {
+          "file": "20261022162015_luggage_collaboration_state_safety.sql",
+          "sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+        },
+        {
+          "file": "20261023120000_luggage_notes.sql",
+          "sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+        },
+        {
+          "file": "20261024054121_luggage_drag_assignment.sql",
+          "sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+        },
+        {
+          "file": "20261024063828_luggage_private_return.sql",
+          "sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+        },
+        {
+          "file": "20261024112902_luggage_item_ordering.sql",
+          "sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+        },
+        {
+          "file": "20261026120000_luggage_required_assignee.sql",
+          "sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+        },
+        {
+          "file": "20261027140044_budget_atomic_edit_leases.sql",
+          "sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+        },
+        {
+          "file": "20261027145613_budget_consistent_snapshot.sql",
+          "sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+        },
+        {
+          "file": "20261027152539_budget_collaboration_state.sql",
+          "sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+        },
+        {
+          "file": "20261028104333_budget_selection_activity.sql",
+          "sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+        },
+        {
+          "file": "20261029020551_budget_group_metadata_prototype.sql",
+          "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+        },
+        {
+          "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+          "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+        },
+        {
+          "file": "20261029091435_budget_metadata_undo_prototype.sql",
+          "sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd"
+        },
+        {
+          "file": "20261029114817_budget_category_payer_links_groups.sql",
+          "sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262"
+        },
+        {
+          "file": "20261029123907_budget_pricing_participant_groups.sql",
+          "sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d"
+        },
+        {
+          "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+          "sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3"
+        },
+        {
+          "file": "20261030012554_budget_payment_minimal_bundle.sql",
+          "sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011"
+        },
+        {
+          "file": "20261030021719_budget_source_atomic_groups.sql",
+          "sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c"
+        },
+        {
+          "file": "20261030034351_budget_receipts_lifecycle.sql",
+          "sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80"
+        },
+        {
+          "file": "20261030054628_budget_financial_dependencies.sql",
+          "sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55"
+        },
+        {
+          "file": "20261030064703_budget_workspace_lifecycle.sql",
+          "sha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea"
+        }
+      ]
+    }
+  },
+  "frontend": {
+    "stats": {
+      "startTime": "2026-10-30T07:59:52.965Z",
+      "duration": 24301.915,
+      "expected": 150,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "counts": {
+      "budgetFinanceGroups.spec.js": 3,
+      "budgetLifecycleGroups.spec.js": 3,
+      "budgetMetadata.spec.js": 45,
+      "budgetPaymentGroups.spec.js": 19,
+      "budgetPricingGroups.spec.js": 9,
+      "budgetReceiptGroups.spec.js": 17,
+      "budgetSourceGroups.spec.js": 14,
+      "budgetSync.spec.js": 6,
+      "demo-budget.spec.js": 6,
+      "formalBudgetLifecycle.spec.js": 10,
+      "formalBudgetPricingGroups.spec.js": 7,
+      "formalBudgetRates.spec.js": 8,
+      "unified-budget.spec.js": 3
+    },
+    "cases": [
+      {
+        "file": "budgetFinanceGroups.spec.js",
+        "title": "Finance v8 strict projection and rates controller converge canonical quote and preserve successful Request replay",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 24
+          }
+        ]
+      },
+      {
+        "file": "budgetFinanceGroups.spec.js",
+        "title": "Finance metadata mirror queue preserves newer input and field vectors without legacy whole Save",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 7
+          }
+        ]
+      },
+      {
+        "file": "budgetFinanceGroups.spec.js",
+        "title": "Finance Snapshot timeout keeps confirmed rates request from being submitted twice and later retry only reads",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 34
+          }
+        ]
+      },
+      {
+        "file": "budgetLifecycleGroups.spec.js",
+        "title": "Lifecycle create ACK loss replays original request without duplicate placeholder and no whole-row lease",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 24
+          }
+        ]
+      },
+      {
+        "file": "budgetLifecycleGroups.spec.js",
+        "title": "Lifecycle strict v9 keeps placeholders and metadata autosave while every allocation settlement comparison excludes incomplete",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 12
+          }
+        ]
+      },
+      {
+        "file": "budgetLifecycleGroups.spec.js",
+        "title": "Lifecycle deletes placeholder through tombstone Snapshot and does not issue Storage or legacy Delete",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 5
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "initial inspection has no authority; snapshot readiness/schema are strictly checked",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 5
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "pending typing is an intent buffer, promoted only after the actual grant",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "denied pending input stays uncommittable and recoverable",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "narrow saves retain focused authority and never mutate amount or another group",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "save adopts the DB canonical title and nullable cleared note",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "dirty group survives remote updates while clean groups merge canonical values",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "same group remote revision creates conflict, not an automatic base replacement",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "clean blur releases and dirty blur flushes before release",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 111
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "real idle releases clean leases and heartbeats do not count as human activity",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "suspension disables writes; a fresh read alone cannot manufacture capability confirmation",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "expired ownership is never renewed or saved without reacquisition",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "failed release remains retryable and cannot be reacquired until cleanup",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "lost acknowledgement uses the exact request id and payload for replay",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "NOWAIT abort keeps the draft and requires explicit reacquisition",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "ABA context changes reject late admission and release only its original capability",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "draft persistence contains value/base only and restoration grants no authority",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "unanswered admission cannot report a confirmed release; late grant is cleaned with its epoch",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 138
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "viewer and disabled/unsupported protocols never attempt group admission",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "group-aware account deduplication retains two edits on the same record",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 0
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "offline graph caching strips metadata authority and transient hints",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 0
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "debounce coalesces rapid input and ignores canonical no-ops",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 158
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "composition suppresses debounce and blur until composition ends",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 146
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "in-flight acknowledgement confirms only submitted revision; latest input drains serially",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "committed canonical survives a failed snapshot and is not resubmitted",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "queued input survives successful first patch plus failed refresh",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "unknown result preserves original payload while newer input queues",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "transport timeout never overlaps a second patch before the original settles",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 63
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "unknown result persists an inert replay ledger without capability and survives new document session",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "dirty prepare drains final patch before exact cleanup; failed patch cannot prepare",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "invalid draft uses ten minute idle; heartbeat, snapshots and saved responses do not reset activity",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "late patch after ABA cannot replace the new context or submit queued input",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "unknown result at ten minute idle releases exact capability but keeps replay intent",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "failed auth confirmation stops autosave without busy retrying or issuing a patch",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 171
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "finish freezes both groups while flushing and releasing, preserving the last accepted revision",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 119
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "first real focus after an idle inspection starts its own activity window",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "confirmed patch plus permanently pending snapshot times out without losing queued input",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "timeout retires readWork, concurrent explicit retries share authority and latest queued patch",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 5
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "controller timeout also retires the actual coalescer slot; late transport cannot apply a financial graph",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "another editor's newer version wins after timeout; queued B stays a conflicted draft",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "pending snapshot cannot strand dirty prepare or finish; discard requires an explicit decision",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "clean confirmed patch can finish after snapshot deadline without submitting again",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "trip context isolates a late pending snapshot before or after its deadline",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "account context isolates a late pending snapshot before or after its deadline",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "logout context isolates a late pending snapshot before or after its deadline",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetMetadata.spec.js",
+        "title": "offline after snapshot timeout keeps B and reconnect needs fresh read plus confirmed lease",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "inspection has no lease and explicit payment uses committed DB shape without full form",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 12
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "explicit unpaid and paid preserve record joins history receipt and known debit",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 18
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "duplicate click shares one in-flight operation and unknown ACK retries original request",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 9
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "mutation timeout keeps exact transport and cannot admit a second payment while unsettled",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 112
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "confirmed payment with pending Snapshot retries read only and preserves request identity",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 44
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "restored pending request has no capability and replays original origin session",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 6
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "old account/trip late ACK cannot mark a new context successful or call its refresh",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 119
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "missing Payment RPC fails closed and never falls back to financial save",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "P2 missing currency quote rejects pricing draft and explicit latest quote preserves other input",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "v5 payment snapshot rejects missing records mismatched active state and forged dependency readiness",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "retained Payment leaves live Pricing capability and newer local draft intact then refuses stale pricing",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 12
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "bound intent and exact minimal target epochs are required before submitting a payment",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 8
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "strict v5 rejects extra retained Pricing leases and missing committed dependency checks",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 5
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "unpaid without retained is an intent-bound payment-only no-op with no financial changes",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "previous protocol inert request can only replay its old receipt then converge through strict v5",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 7
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "Demo v5 keeps one canonical pricing snapshot while React props are still behind the acknowledged override",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 6
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "account switch during authorization cannot acquire or mutate with old actor",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "late payment admission timeout releases exact capability and failed release remains retryable",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 150
+          }
+        ]
+      },
+      {
+        "file": "budgetPaymentGroups.spec.js",
+        "title": "committed Payment converges when latest authoritative snapshot has a newer independent rates generation",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "pricing canonical structured snapshot binds financial graph and dependency vectors",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "pricing custom total is sum of every share and patch preserves nonfinancial fields",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 114
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "invalid blank and precision drafts never issue requests and valid correction autosaves",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 117
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "structured queue rebases only its confirmed ACK vector and saves newest amount once",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 117
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "unknown pricing ACK retries exact request without issuing legacy save or second effect",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 6
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "rates vector change retains local pricing intent and blocks automatic rebase",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "all invalid numerics fail preview validation while original cents and rate precision reconcile",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "pricing ACK survives ten second snapshot deadline with queued value and ignores late stale snapshot",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 6
+          }
+        ]
+      },
+      {
+        "file": "budgetPricingGroups.spec.js",
+        "title": "Demo safe inactive retained transition preserves identities and known debit rejects entire amount change",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 5
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt Auth failure or timeout stays inline before any intent and a later explicit upload can recover",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 34
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt upload confirms bytes before metadata and replacement/deletion preserve finance and all existing identities",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 6
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt failed upload retries one original request and rejects illegal type and oversized file before any intent",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt Storage success followed by metadata failure retries commit without uploading again or losing old valid receipt",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt upload or commit ACK loss confirms same journal; no duplicate upload metadata or capability acquisition",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt committed metadata with Storage deletion failure leaves durable exact-object cleanup and original bytes accessible",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt hung cleanup cannot hide confirmed metadata behind an unknown mutation or block editor forever",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 37
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt Storage bytes confirmed with never-resolving HTTP ACK can commit once without a second upload",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 25
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt unresolved upload before bytes shares one Storage transport across retry and preserves original request",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 59
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt pending transport uses one operation and guards exit; explicit cancellation journals orphan instead of one-shot compensation",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 93
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt timeout Snapshot and offline retry preserve confirmed canonical without another upload or commit",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 35
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt reload restores no capability; pending operation requires exact original file then fresh lease validation",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 7
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt changed Source prevents blind retry; explicit abandon uses fresh dependencies and preserves draft bytes for worker",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt late ACK after account trip ABA cannot mark returned context successful",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 111
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt strict v7 validator rejects missing group forged attachment set and mixed snapshot",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt explicit park preserves unresolved request without capability and permits exit after withdrawal",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetReceiptGroups.spec.js",
+        "title": "Receipt durable worker retries failure later and uses only claimed path; it never deletes metadata via SQL",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "Source inspection and authoritative preview acquire nothing; relink changes only source identity",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 12
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "Apply is a separate explicit action with all changed groups and preserved known cost history and joins",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 8
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "historical origin is retained on detach and cannot be overwritten by a new association",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 14
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "known debit refusal never partially copies source text or participants",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "changed authoritative source after confirmation requires a new preview with no automatic rebase",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 5
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "unknown ACK retries the same request once and reload restores no capability",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 9
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "pending mutation timeout and repeated click share a single transport and preserve exit guard",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 179
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "confirmed Source with pending Snapshot retries reads only; old read cannot roll back canonical",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 44
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "late Source ACK after account trip switch never refreshes or marks the new context successful",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 118
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "strict v6 rejects missing Source projection wrong identity forged epochs and altered protected cost",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 5
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "same current source no-op creates no operation revision and exact release leaves other groups alone",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 7
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "missing Source RPC fails closed and never invokes an older whole-record save",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 4
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "confirmed Source release failure guards exit; retry releases without resending or reacquiring",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 8
+          }
+        ]
+      },
+      {
+        "file": "budgetSourceGroups.spec.js",
+        "title": "offline after confirmed Source keeps pending receipt and recovers by authoritative read only",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 8
+          }
+        ]
+      },
+      {
+        "file": "budgetSync.spec.js",
+        "title": "burst invalidations discard an in-flight mixed graph and share one authoritative rerun",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "file": "budgetSync.spec.js",
+        "title": "account/trip ABA and scheduled old-generation work never apply or advance the new context",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 0
+          }
+        ]
+      },
+      {
+        "file": "budgetSync.spec.js",
+        "title": "read failures retain authority and later retries can recover",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "file": "budgetSync.spec.js",
+        "title": "adapter fails closed on missing RPC, forbidden, malformed and cross-trip snapshots",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "file": "budgetSync.spec.js",
+        "title": "pending coalesced snapshot releases its read slot after the authority deadline",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "file": "budgetSync.spec.js",
+        "title": "the shared deadline bounds dirty reruns and repeated retries instead of restarting",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "demo-budget.spec.js",
+        "title": "Kyoto fixture graph reconciles all modes, members, categories and real Timeline links",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 25
+          }
+        ]
+      },
+      {
+        "file": "demo-budget.spec.js",
+        "title": "scenario hydration never resurrects edited/deleted test expenses or makes dangling source links",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2
+          }
+        ]
+      },
+      {
+        "file": "demo-budget.spec.js",
+        "title": "member viewpoint changes burden and categories and remains selected after detail viewing",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 785
+          }
+        ]
+      },
+      {
+        "file": "demo-budget.spec.js",
+        "title": "scenario controls show readonly stages, unique expenses, frozen comparison and balances",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1480
+          }
+        ]
+      },
+      {
+        "file": "demo-budget.spec.js",
+        "title": "navigation protects drafts, isolates trip data and restores local edits when returning",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1130
+          }
+        ]
+      },
+      {
+        "file": "demo-budget.spec.js",
+        "title": "receipts upload open locally and delete through the Formal attachment component",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 834
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle Formal new creates persistent UUID immediately enters existing autosave editor and marks incomplete outside totals",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1185
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle Formal unknown create ACK has explicit same-request retry and no second UUID",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 763
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle Demo uses shared blank creation UI without external Auth Storage RPC Realtime",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 690
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle Formal delete keeps existing confirmation and tombstone recovery survives lost ACK and reload",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1256
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle legacy new draft stays in local storage and requires explicit retain decision before a blank DB create",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1060
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle Pricing sentinel is blank and only explicit zero with valid people completes the existing form",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1152
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle Actual blank creation never substitutes a payment timestamp",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 831
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle positive validated pricing without a title stays incomplete and does not alter financial totals",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1046
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle Formal Actual completes only after explicit amount people title and payment time",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1446
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetLifecycle.spec.js",
+        "title": "Lifecycle Demo placeholder edits complete and explicit delete use memory without external services",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1453
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetPricingGroups.spec.js",
+        "title": "pricing and remote note autosave independently with financial graph convergence",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 3468
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetPricingGroups.spec.js",
+        "title": "custom 600 300 300 totals 1200 and mode revisit preserves edited shares",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2829
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetPricingGroups.spec.js",
+        "title": "same pricing owner makes participant choices disabled and prevents peer writes",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1764
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetPricingGroups.spec.js",
+        "title": "blank amount stays local and guarded full editor handoff offers save or discard",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1167
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetPricingGroups.spec.js",
+        "title": "links readonly disables checkbox and remove while keeping historical links visible",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1858
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetPricingGroups.spec.js",
+        "title": "payer options exclude pending departed and keep historical payer disabled without rewriting",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 968
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetPricingGroups.spec.js",
+        "title": "Demo pricing changes in shared UI without authenticated or persisted traffic",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 2179
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetRates.spec.js",
+        "title": "existing trip rates survive reload and feed both new and existing budget editors",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1425
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetRates.spec.js",
+        "title": "empty JSON initializes once despite its own RPC refresh and repeated trip events",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1025
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetRates.spec.js",
+        "title": "A's manual quote refresh reaches B's already open Formal budget and totals",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1321
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetRates.spec.js",
+        "title": "offline trip cache preserves rates; a later authoritative event updates them",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1037
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetRates.spec.js",
+        "title": "delayed trip list response cannot replace fresh rates after A -> B -> A",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 949
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetRates.spec.js",
+        "title": "delayed account list response cannot replace fresh rates after A -> B -> A",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 672
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetRates.spec.js",
+        "title": "logout clears rate caches and discards an in-flight previous-account list",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 623
+          }
+        ]
+      },
+      {
+        "file": "formalBudgetRates.spec.js",
+        "title": "departed empty-rate trips never fetch or initialize a quote",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 666
+          }
+        ]
+      },
+      {
+        "file": "unified-budget.spec.js",
+        "title": "planning has one list; paid amount edits, receipts and status round-trip without deletion",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1304
+          }
+        ]
+      },
+      {
+        "file": "unified-budget.spec.js",
+        "title": "travel entry takes only currency and amount; TWD and JPY can be corrected",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 1250
+          }
+        ]
+      },
+      {
+        "file": "unified-budget.spec.js",
+        "title": "unpaid retained payments do not enter settlement and legacy multiple records remain intact",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "duration": 44
+          }
+        ]
+      }
+    ],
+    "environment": "Chromium Playwright localhost5180; Browser plugin unavailable; Formal controlled Auth/RPC/Storage mock, Demo memory-only; not actual PostgREST/Realtime",
+    "screenshot": "budget-lifecycle-b5.png 1440x1000 visually inspected outside repo; incomplete row/amount placeholder and 400 category total; no console errors/overlay"
+  },
+  "sql": {
+    "metadata": {
+      "passed": 23,
+      "engine": "PGlite serial existing metadata contract"
+    },
+    "undo": {
+      "passed": 28,
+      "engine": "PGlite serial existing Undo contract"
+    }
+  },
+  "checks": {
+    "build": true,
+    "syntax": [
+      "scripts/qa/run-budget-metadata-parallel.mjs",
+      "src/demo/budgetFinanceGroups.js",
+      "src/demo/budgetLifecycle.js",
+      "src/demo/budgetMetadata.js",
+      "src/lib/budgetFinance.js",
+      "src/lib/budgetLifecycleGroups.js",
+      "src/lib/budgetLifecycleValues.js",
+      "src/lib/budgetMetadataService.js",
+      "src/lib/budgetPaymentGroups.js",
+      "src/lib/budgetPricingGroups.js",
+      "src/lib/budgetSync.js",
+      "src/lib/planningBudget.js",
+      "tests/budget-lifecycle-cases.mjs",
+      "tests/budget-metadata-parallel.mjs",
+      "tests/budgetLifecycleGroups.spec.js",
+      "tests/formalBudgetLifecycle.spec.js",
+      "tests/helpers/budgetLifecycleMock.js"
+    ],
+    "diffCheck": true
+  },
+  "oldMigrationPreservation": [
+    {
+      "file": "supabase/migrations/001_collaborative_travel_planner.sql",
+      "sha256": "2c559727546f568179f6752262361f721c34acc69f657acdf5504236f99a3e70"
+    },
+    {
+      "file": "supabase/migrations/002_core_mvp_schema.sql",
+      "sha256": "cf93fb48deca5bc12dcbc8cb5d34dbae422689e4fb6a008f3c4c255e032d28d4"
+    },
+    {
+      "file": "supabase/migrations/003_trip_name_compat.sql",
+      "sha256": "0229879cde2b7ac212a917216ad45a8fb2ab23daaf3aa657123e915cd852c7da"
+    },
+    {
+      "file": "supabase/migrations/004_harden_rls_rpc_permissions.sql",
+      "sha256": "fca57bbbd326a961ad35ca65735781199ba8045a456383519fb90e535b751e68"
+    },
+    {
+      "file": "supabase/migrations/005_revoke_public_rpc_execute.sql",
+      "sha256": "e2efd8bb24451133442819b798b09b7afe11c69c17e6e01b41c7e7217e474d2d"
+    },
+    {
+      "file": "supabase/migrations/006_move_rls_helpers_private.sql",
+      "sha256": "5fdaec34cf98a73fbfe852772475ad4c2e6e580d52a0fc71ecd89350e6eca332"
+    },
+    {
+      "file": "supabase/migrations/007_create_attachments_storage.sql",
+      "sha256": "28760121ea7b4c39fa21984c23cedec49848d4b160556ed69383fe7e34a73aa1"
+    },
+    {
+      "file": "supabase/migrations/008_share_snapshot_rpc.sql",
+      "sha256": "1f53688fdb65878c9723c5ca6644b6aad5992a044332f59c97e5a51a5e516252"
+    },
+    {
+      "file": "supabase/migrations/009_add_edit_locks.sql",
+      "sha256": "1c5dfd46196ffafe923b7ba3eff2d947a86e9c9c759149c393c71c56c16a6548"
+    },
+    {
+      "file": "supabase/migrations/010_add_transportation_card_fields.sql",
+      "sha256": "1a609fb3f49a9fbbe68a243bd930c03340985eea2b4b438a1a22d1cc30af34e5"
+    },
+    {
+      "file": "supabase/migrations/011_add_transport_card_pair_fields.sql",
+      "sha256": "996c34cba082958424254d5f334633f8271e052c66d4ad2a168e4ce2a1fad031"
+    },
+    {
+      "file": "supabase/migrations/012_add_transport_review_snapshots.sql",
+      "sha256": "973b801e4ac8fffa9cf76d66eb6ac3688b4abb99e8d9a8f9d5c98a176d57e2e1"
+    },
+    {
+      "file": "supabase/migrations/013_add_itinerary_alternative_visit_fields.sql",
+      "sha256": "1cd01d1cdac8614328778ca406fe2bb11646921d854bfa6eed9c4a71cedef089"
+    },
+    {
+      "file": "supabase/migrations/014_add_itinerary_item_fixed_fields.sql",
+      "sha256": "27c4c0e2710d92421714711b617dbfae7d381e6c4ed4224b1d70be92cba35d6e"
+    },
+    {
+      "file": "supabase/migrations/015_add_trip_destination_fields.sql",
+      "sha256": "6aeb50673fc096a5e9fbc656b90694a6a329ff8479b5836d61dfe97377260668"
+    },
+    {
+      "file": "supabase/migrations/016_apply_trip_date_change.sql",
+      "sha256": "c99fed79f49eeca8d707f204148f40be81e8b70c82faebbb57204ca1cca47992"
+    },
+    {
+      "file": "supabase/migrations/017_confirm_trip_date_shortening.sql",
+      "sha256": "850366e7233e3334efba8581487c1dea2cbdc131c1388e75074ea27d14a51d7c"
+    },
+    {
+      "file": "supabase/migrations/018_filter_share_snapshot_timeline.sql",
+      "sha256": "dc6b32ba70cfa9112af7f778e550d32933639d93200e36654944b60c16da65a4"
+    },
+    {
+      "file": "supabase/migrations/019_swap_itinerary_destination_packages.sql",
+      "sha256": "0b8b266681fa0c4a40a227d1a605f71523fe2a3ede26c507b8153a9b231eb725"
+    },
+    {
+      "file": "supabase/migrations/020_reorder_itinerary_destination_packages.sql",
+      "sha256": "0d49be65931fbfd2853a553369073f138cf6d481571265c601818097e861d45d"
+    },
+    {
+      "file": "supabase/migrations/021_fix_reorder_baseline_count.sql",
+      "sha256": "9f7c6d6fb545fda47c79c98b58ea8fc75d33c53541fcbd6c759312d4d38831ba"
+    },
+    {
+      "file": "supabase/migrations/022_add_transport_role_to_itinerary_items.sql",
+      "sha256": "14d763db953dd4516d6496e3064b6d79a3bc6a06b8ef156bb099e8c915ab291a"
+    },
+    {
+      "file": "supabase/migrations/023_reorder_itinerary_timed_auto_continuation.sql",
+      "sha256": "91ae805d1abbb37e647a614f5226cbf8fee5c06b91f72a9764398f0e03658c32"
+    },
+    {
+      "file": "supabase/migrations/024_reorder_itinerary_fixed_anchor_continuation.sql",
+      "sha256": "e5b9602300ff2e84d21b70a2ed1599eaaa29d9072205b3db3753e5d59162de79"
+    },
+    {
+      "file": "supabase/migrations/20260708063744_add_itinerary_route_overrides.sql",
+      "sha256": "27672c8a7f3a0a7241a583b3b1d91386f9ea76751cc7c2dd681905b03bc11289"
+    },
+    {
+      "file": "supabase/migrations/20260710125337_add_itinerary_route_override_nodes.sql",
+      "sha256": "b028b9bd07ec271cb0d10d8f69d812a8ea321b14b25a7154fe0d166875172dd4"
+    },
+    {
+      "file": "supabase/migrations/20260712033758_add_route_tables_to_realtime.sql",
+      "sha256": "e1f082339d5f7b6715024032336d01c9d4cd6f7af487ba920603fe147132fc5d"
+    },
+    {
+      "file": "supabase/migrations/20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+      "sha256": "32b6683c21dd20a20c0402e336b5737130e49e34d7a50fbc477e897a5bb72c10"
+    },
+    {
+      "file": "supabase/migrations/20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+      "sha256": "50026a093d158ee7053c09fd485367052d20e37bff1e1dbb9828d2187697e810"
+    },
+    {
+      "file": "supabase/migrations/20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+      "sha256": "6e82e3a2fe7936dbbd2e792af8f3218cf86ad25d9087b31c76e77e97c60b858a"
+    },
+    {
+      "file": "supabase/migrations/20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+      "sha256": "22d8a682a6e59cd2f260212ef539260349f6d4faa9d6c76a3f5d88e13461407b"
+    },
+    {
+      "file": "supabase/migrations/20260811150000_atomic_apply_itinerary_alternative.sql",
+      "sha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+    },
+    {
+      "file": "supabase/migrations/20260819125851_phase_7_import_trip_timeline_v1.sql",
+      "sha256": "d6706de32644a91ebc5e88cd94e54a8823f3363f12feabb8ead0638f890ae2c9"
+    },
+    {
+      "file": "supabase/migrations/20261022090000_budget_workspace_baseline_and_pricing.sql",
+      "sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+    },
+    {
+      "file": "supabase/migrations/20261022100000_trip_budget_exchange_rates.sql",
+      "sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+    },
+    {
+      "file": "supabase/migrations/20261022110000_budget_payment_safety_and_actual_cost.sql",
+      "sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+    },
+    {
+      "file": "supabase/migrations/20261022120000_unified_planning_payments.sql",
+      "sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+    },
+    {
+      "file": "supabase/migrations/20261022162015_luggage_collaboration_state_safety.sql",
+      "sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+    },
+    {
+      "file": "supabase/migrations/20261023120000_luggage_notes.sql",
+      "sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+    },
+    {
+      "file": "supabase/migrations/20261024054121_luggage_drag_assignment.sql",
+      "sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+    },
+    {
+      "file": "supabase/migrations/20261024063828_luggage_private_return.sql",
+      "sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+    },
+    {
+      "file": "supabase/migrations/20261024112902_luggage_item_ordering.sql",
+      "sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+    },
+    {
+      "file": "supabase/migrations/20261026120000_luggage_required_assignee.sql",
+      "sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+    },
+    {
+      "file": "supabase/migrations/20261027140044_budget_atomic_edit_leases.sql",
+      "sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+    },
+    {
+      "file": "supabase/migrations/20261027145613_budget_consistent_snapshot.sql",
+      "sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+    },
+    {
+      "file": "supabase/migrations/20261027152539_budget_collaboration_state.sql",
+      "sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+    },
+    {
+      "file": "supabase/migrations/20261028104333_budget_selection_activity.sql",
+      "sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+    },
+    {
+      "file": "supabase/migrations/20261029020551_budget_group_metadata_prototype.sql",
+      "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+    },
+    {
+      "file": "supabase/migrations/20261029031137_budget_metadata_snapshot_signals.sql",
+      "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+    },
+    {
+      "file": "supabase/migrations/20261029091435_budget_metadata_undo_prototype.sql",
+      "sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd"
+    },
+    {
+      "file": "supabase/migrations/20261029114817_budget_category_payer_links_groups.sql",
+      "sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262"
+    },
+    {
+      "file": "supabase/migrations/20261029123907_budget_pricing_participant_groups.sql",
+      "sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d"
+    },
+    {
+      "file": "supabase/migrations/20261029134206_budget_payment_lifecycle_groups.sql",
+      "sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3"
+    },
+    {
+      "file": "supabase/migrations/20261030012554_budget_payment_minimal_bundle.sql",
+      "sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011"
+    },
+    {
+      "file": "supabase/migrations/20261030021719_budget_source_atomic_groups.sql",
+      "sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c"
+    },
+    {
+      "file": "supabase/migrations/20261030034351_budget_receipts_lifecycle.sql",
+      "sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80"
+    },
+    {
+      "file": "supabase/migrations/20261030054628_budget_financial_dependencies.sql",
+      "sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55"
+    }
+  ],
+  "sourceHashAlgorithm": "sha256 UTF8 CRLF normalized LF",
+  "sourceHashes": {
+    "docs/qa/2026-10-30-budget-lifecycle-rollback.sql": "c156382b8bb627cbf64a653ae159888cb9ac428135d378c52e73284ddc0f72d0",
+    "scripts/qa/run-budget-metadata-parallel.mjs": "1b72e868dd68117cb5a00ba6614b217ee9122dc66eff03143e14c056a2460f24",
+    "src/App.jsx": "b039e828e496451f94eea6d0fb3ac4528521030437d01d0b0cce42c7a4b8a208",
+    "src/components/budget/BudgetMetadataEditor.jsx": "941629e7d48d025c47720a1677cefaa21ebb8038fd26f10a8ff00194f4183df0",
+    "src/components/budget/BudgetWorkspace.jsx": "9818b35b6fef24a7a22419e13857c620956f40addb67b3c503197a1ead4e7d23",
+    "src/demo/budgetFinanceGroups.js": "6c7ea487aa1b0d705bfafdfb695f671e4aa92e2629866e05e3ca03cb754e502b",
+    "src/demo/budgetLifecycle.js": "20b999be432464f282e06bb1c232a864c7226c4d9142189f2632d4d38c67c81d",
+    "src/demo/budgetMetadata.js": "1987b2358ae361f2ca08c2bfaa8de44d3faf1ae30e8453c60bf9fec4e28a3481",
+    "src/lib/budgetFinance.js": "9d279b51faefe49f447f4940189fe13bcfc76d976306a1d82f6576bbdd8b50e1",
+    "src/lib/budgetLifecycleGroups.js": "46a0e914f1ff31133ad8cd132ccc1df591df3a6a249f10efcab829c8f620e939",
+    "src/lib/budgetLifecycleValues.js": "a95e97e7a34f0b842041db5f68b1bb1a5aa67f71f4b16266a485c0a9e973c675",
+    "src/lib/budgetMetadataService.js": "d92e1d4216ece76f82b047d3a76d006539b914c58b5e2f1ccfecd1131a965ae2",
+    "src/lib/budgetPaymentGroups.js": "34fb94cc51b46f9506dc57f9fd2a0cb76783e36d26f94cab62489dec82a0cab8",
+    "src/lib/budgetPricingGroups.js": "4c1b21d54c3b9c152b3a167d07b50a2f627f7a045fef320a0bc2731313098821",
+    "src/lib/budgetSync.js": "f1a981788f053cd2f8ab49670275a76cf3a79eca3242b078b315286fb4611f0c",
+    "src/lib/planningBudget.js": "b6bae4957013b00ecc827b4c3fa34d5d754a3cdf5d9077df50087ee3a4dde592",
+    "supabase/migrations/20261030064703_budget_workspace_lifecycle.sql": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+    "tests/budget-lifecycle-cases.mjs": "afa4a1d4b20de288a689ec2f719306da6349abc7ca343e289ac6b49d0b98e1c0",
+    "tests/budget-metadata-parallel.mjs": "fce93f4bffeee77be002bcc0681bd9907c45dc3901529726851fa3441b5cfdab",
+    "tests/budgetLifecycleGroups.spec.js": "1228c5b725d137ec7e29756acddd2906eedfec93ac6f7bbe41f51b5238ca0a03",
+    "tests/formalBudgetLifecycle.spec.js": "1d5557ba1702c94e7a6974b1adefe4dbbdf5ce01aba1a726e579ac31ab9ed17f",
+    "tests/helpers/budgetLifecycleMock.js": "2a7968cf000f1bf3fa7447df2b99c7f1dbf8748485f9f86b686af2d86096f020"
+  },
+  "advisorAttempt": {
+    "marker": "4d87302f-f05c-41f1-a772-eb7d41e66ef9",
+    "environment": "Earlier B-5 local loopback-only run; no Hosted, not final source certification",
+    "advisors": {
+      "ok": false,
+      "message": "Command failed: C:\\Program Files\\nodejs\\node.exe node_modules/supabase/dist/supabase.js db advisors --db-url postgresql://budget_local_admin@127.0.0.1:1649/postgres?sslmode=disable --type all --fail-on none\nConnecting to remote database...\nfailed to connect to postgres: failed to connect to `host=127.0.0.1 user=budget_local_admin database=postgres`: tls error (server refused TLS connection)\nTry rerunning the command with --debug to troubleshoot the error.\n",
+      "stdout": "",
+      "stderr": "Connecting to remote database...\nfailed to connect to postgres: failed to connect to `host=127.0.0.1 user=budget_local_admin database=postgres`: tls error (server refused TLS connection)\nTry rerunning the command with --debug to troubleshoot the error.\n"
+    },
+    "migrationList": {
+      "ok": false,
+      "message": "Command failed: C:\\Program Files\\nodejs\\node.exe node_modules/supabase/dist/supabase.js migration list --db-url postgresql://budget_local_admin@127.0.0.1:1649/postgres?sslmode=disable\nConnecting to remote database...\nfailed to connect to postgres: failed to connect to `host=127.0.0.1 user=budget_local_admin database=postgres`: tls error (server refused TLS connection)\nTry rerunning the command with --debug to troubleshoot the error.\n",
+      "stdout": "",
+      "stderr": "Connecting to remote database...\nfailed to connect to postgres: failed to connect to `host=127.0.0.1 user=budget_local_admin database=postgres`: tls error (server refused TLS connection)\nTry rerunning the command with --debug to troubleshoot the error.\n"
+    }
+  },
+  "issuesResolved": [
+    "Adversarial native helper plus raw DML reproduced forged placeholder (26 pass/1 fail); exact per-column/timestamp create manifest now rejects it",
+    "Payment generated Actual JSON manifest required explicit new NOT NULL fields; validations retained",
+    "Blank numeric sentinel projected as empty Pricing input, explicit zero remains valid",
+    "Incomplete Actual initial cost allowed only via exact server Pricing manifest, complete known debit protection retained",
+    "Demo Pricing support no longer calculated from incomplete sentinel; valid submit still uses existing calculator",
+    "Lifecycle-only mock reflects native Actual Pricing support and post-commit target revision; no security assertion removed",
+    "Initial sandbox pg_ctl restricted-token/browser local-network failures excluded from pass counts; isolated runs completed with local execution access"
+  ],
+  "limits": [
+    "All new flags/protocols default off; legacy activated latch prevents unsafe fallback after pause",
+    "No actual Hosted PostgREST/Realtime two-account/two-tab acceptance or production Storage HTTP/Worker tests",
+    "Retained/source/history/Receipt/pending cleanup/unknown FK delete graphs fail closed",
+    "New legacy-local draft handling retains original values only, no automatic importer",
+    "Trip/other parent cascades after activation fail closed pending a separately defined integration contract",
+    "Create returns a future Undo fence but no Create inverse/Undo UI; complete delete is irreversible",
+    "Demo memory operations and PGlite serial SQL are not native DB concurrency/RLS evidence",
+    "Loopback Advisor/list TLS failure is not security certification",
+    "No old migration changes, main merge, Hosted changes, production data/Storage access, deployment or settings changes"
+  ],
+  "publication": "Commit and feature-branch push verified separately; no Hosted activation"
+}
