@@ -17,6 +17,7 @@ import {createBudgetSourceController,createBudgetSourceService} from '../src/lib
 import {receiptCases} from './budget-receipts-cases.mjs';
 import {financeCases} from './budget-finance-cases.mjs';
 import {lifecycleCases} from './budget-lifecycle-cases.mjs';
+import {workspaceUndoCases} from './budget-workspace-undo-cases.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -75,6 +76,7 @@ const test=async(name,run)=>{
   if(process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'&&!name.startsWith('Receipt'))return;
   if(process.env.BUDGET_NATIVE_FINANCE_ONLY==='1'&&!name.startsWith('Finance'))return;
   if(process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'&&!name.startsWith('Lifecycle'))return;
+  if(process.env.BUDGET_NATIVE_UNDO_FULL_ONLY==='1'&&!name.startsWith('WorkspaceUndo'))return;
   const started=Date.now();
   try{const detail=await run();results.push({name,status:'passed',ms:Date.now()-started,...detail});console.log(`PASS ${name}`);}
   catch(error){results.push({name,status:'failed',ms:Date.now()-started,message:error.message,code:error.code});console.error(`FAIL ${name}: ${error.message}`);}
@@ -130,6 +132,12 @@ try{
     // PostgreSQL stores function body line endings verbatim. Compare the same
     // logical source on LF and Windows CRLF checkouts without editing migrations.
     const source=(await fs.readFile(new URL(file,migrationDir),'utf8')).replace(/\r\n/g,'\n');
+    if(file==='20261030082712_budget_workspace_undo.sql'&&process.env.BUDGET_NATIVE_UNDO_FULL_ONLY==='1'){
+      await test('WorkspaceUndo forward fault and dormant reverse preserve complete definitions ACL and private rows',async()=>{
+        const catalog=async()=>({defs:await definitions(),acl:await admin("select oid::regprocedure::text name,proacl::text acl from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) and prokind='f' order by name"),rows:await admin("select * from app_private.budget_metadata_undo_operations order by operation_id"),policies:await admin('select * from pg_policies order by schemaname,tablename,policyname')});
+        const before=await catalog();await assert.rejects(()=>admin(source.replace(/commit;\s*$/i,'select 1/0;commit;')),e=>e.code==='22012');await admin('rollback');assert.deepEqual(await catalog(),before);await admin(source);await admin(await fs.readFile(new URL('../docs/qa/2026-10-30-budget-workspace-undo-rollback.sql',import.meta.url),'utf8'));assert.deepEqual(await catalog(),before);
+      });
+    }
     if(file==='20261030064703_budget_workspace_lifecycle.sql'&&process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'){
       await test('Lifecycle forward fault and dormant reverse preserve old definitions permissions and financial identities',async()=>{
         const u=uuid(),t=uuid(),bid=uuid();await admin('insert into auth.users(id) values($1)',[u]);await admin("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Lifecycle QA','Lifecycle QA','Japan','2090-01-01','2090-01-05',$2)",[t,u]);await admin("insert into budget_items(id,trip_id,title,category,amount,twd_amount) values($1,$2,'Keep existing','其他',10,10)",[bid,t]);
@@ -253,7 +261,9 @@ try{
   const sessions=await Promise.all([a,b].map(c=>query(c,"select pg_backend_pid() pid,session_user,current_user,auth.uid() actor,current_setting('transaction_isolation') isolation")));
   await fs.writeFile(path.join(process.env.BUDGET_NATIVE_EVIDENCE,'bootstrap.json'),JSON.stringify({server:(await admin('select version() version'))[0].version,pids:[pidA,pidB,observerPid],sessions,hashes},null,2));
 
-  if(process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'){
+  if(process.env.BUDGET_NATIVE_UNDO_FULL_ONLY==='1'){
+    await workspaceUndoCases({test,admin,query,a,b,actorA,actorB,viewer,pending,trip,secretTrip,fixture,record,call,overlap,identities,transaction,observations});
+  }else if(process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'){
     await lifecycleCases({test,admin,query,a,b,actorA,actorB,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});
   }else if(process.env.BUDGET_NATIVE_FINANCE_ONLY==='1'){
     await financeCases({test,admin,query,a,b,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});

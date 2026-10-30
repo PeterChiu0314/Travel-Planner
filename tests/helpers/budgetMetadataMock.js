@@ -4,7 +4,7 @@ import { metadataGroupKeys, recordMetadataValue, metadataField } from "../../src
 export { boot };
 export async function enableMetadata(page) {
   await page.route("**/src/lib/budgetMetadataConfig.js*", route => route.fulfill({ contentType: "text/javascript",
-    body: "export const budgetMetadataEnabled=true;let id;export const getBudgetMetadataSessionId=()=>id ||= crypto.randomUUID();" }));
+    body: "export const budgetMetadataEnabled=true;let id,context;export const getBudgetMetadataSessionId=()=>id ||= crypto.randomUUID();export const rotateBudgetMetadataSessionId=()=>id=crypto.randomUUID();export const getBudgetMetadataDocumentSessionId=next=>{if(context!==next){context=next;rotateBudgetMetadataSessionId();}return getBudgetMetadataSessionId();};" }));
 }
 export function metadataBackend() {
   const db = backend({ leases: true }), original = db.request.bind(db);
