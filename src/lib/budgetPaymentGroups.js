@@ -1,5 +1,5 @@
 import { withBudgetAuthorityTimeout, budgetAuthorityTimeoutMs } from './budgetMetadataService.js';
-import { validPaymentValue } from './budgetPaymentValues.js';
+import { validPaymentValue, paymentLeaseTargets, validPaymentAdmission } from './budgetPaymentValues.js';
 export { validPaymentValue } from './budgetPaymentValues.js';
 
 const version = n => Number.isSafeInteger(n) && n >= 0;
@@ -7,7 +7,7 @@ export function createBudgetPaymentService(supabase) {
   const rpc = async (name, args) => { try { return await supabase.rpc(name, args); } catch (error) { return { error }; } };
   return {
     authorized: async actor => { try { return (await supabase.auth.getSession()).data?.session?.user?.id === actor; } catch { return false; } },
-    lease: args => rpc('budget_payment_lease', args), mutate: args => rpc('mutate_budget_payment_v2', args),
+    lease: args => rpc('budget_payment_lease_v2', args), mutate: args => rpc('mutate_budget_payment_v2', args),
   };
 }
 
@@ -19,10 +19,10 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
   const emit = () => { revision++; listeners.forEach(fn => fn()); };
   const current = e => e.generation === generation && context?.actor === e.actor && context?.trip === e.trip && entries.get(`${e.kind}:${e.id}`) === e;
   const key = e => `travel-planner-payment:${e.actor}:${e.trip}:${e.kind}:${e.id}`;
-  function persist(e) { try { if (e.request) storage?.setItem(key(e), JSON.stringify({ version: 1, request: { ...e.request, p_token: null, p_epoch: null } })); else storage?.removeItem(key(e)); } catch { /* Memory keeps unresolved intent. */ } }
+  function persist(e) { try { if (e.request) storage?.setItem(key(e), JSON.stringify({ version: e.legacyPending ? 1 : 2, request: { ...e.request, p_token: null, p_epoch: null } })); else storage?.removeItem(key(e)); } catch { /* Memory keeps unresolved intent. */ } }
   const bounded = (work, late) => withBudgetAuthorityTimeout(work, { timeoutMs, late });
   const leaseArgs = (e, action, epoch = e.epoch) => ({ p_trip_id: e.trip, p_kind: e.kind, p_id: e.id, p_session_id: sessionId,
-    p_token: e.token, p_action: action, p_base_revision: e.base, p_epoch: epoch ?? null, p_versions: e.versions });
+    p_token: e.token, p_action: action, p_base_revision: e.base, p_epoch: epoch ?? null, p_versions: e.versions, p_intent: e.intent ?? null });
   async function cleanup(e, epoch = e.epoch) {
     if (!e.token || epoch == null) return !e.token;
     if (!(await service.authorized(e.actor))) return false;
@@ -37,9 +37,9 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
       e = { kind, id, ...context, generation, error: '', busy: false };
       try {
         const saved = JSON.parse(storage?.getItem(key(e)) || 'null'), r = saved?.request;
-        if (saved?.version === 1 && r?.p_kind === kind && r.p_id === id && r.p_trip_id === context.trip && typeof r.p_request_id === 'string'
+        if ([1, 2].includes(saved?.version) && r?.p_kind === kind && r.p_id === id && r.p_trip_id === context.trip && typeof r.p_request_id === 'string'
           && typeof r.p_session_id === 'string' && version(r.p_base_revision) && ['paid', 'unpaid', 'set_paid_at'].includes(r.p_value?.action)) {
-          e.request = { ...r, p_token: null, p_epoch: null }; e.error = '先前付款結果待確認，請重試原請求。';
+          e.request = { ...r, p_token: null, p_epoch: null }; e.legacyPending = saved.version === 1; e.error = '先前付款結果待確認，請重試原請求。';
         }
       } catch { /* Stored input never grants capability. */ }
       entries.set(k, e);
@@ -55,9 +55,10 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
       if (!e.request && !e.receipt) {
         if (!(await metadata.refresh()).ok || !current(e)) throw new Error('付款協作狀態尚未確認，原狀態已保留。');
         const snapshot = metadata.status().snapshot, row = snapshot?.paymentRecords?.find(r => r.kind === e.kind && r.id === e.id);
-        if (snapshot?.paymentProtocol?.name !== 'budget-payment' || snapshot.paymentProtocol.schemaVersion !== 1 || !snapshot.paymentProtocol.enabled) throw new Error('付款群組尚未啟用，資料未變更。');
+        if (snapshot?.paymentProtocol?.name !== 'budget-payment' || snapshot.paymentProtocol.schemaVersion !== 2 || !snapshot.paymentProtocol.enabled) throw new Error('付款群組尚未啟用，資料未變更。');
         if (!row?.supported || !version(row.revision) || !validPaymentValue(row.value) || !row.value.versions.targets.some(t => t.kind === e.kind && t.id === e.id && t.group === 'payment' && t.revision === row.revision)) throw new Error('此來源或付款關聯尚未支援安全付款操作。');
-        e.base = row.revision; e.versions = row.value.versions; e.token = makeId();
+        e.base = row.revision; e.versions = row.value.versions; e.intent = intent.action; e.legacyPending = false;
+        e.targets = paymentLeaseTargets(e.kind, e.id, e.versions, e.intent); e.token = makeId();
         const admissionScope = { ...e }, admissionToken = e.token;
         const admission = await bounded(service.lease(leaseArgs(e, 'acquire')), result => {
           if (result.data?.granted && version(result.data.epoch)) void cleanup(admissionScope, result.data.epoch).then(ok => {
@@ -67,10 +68,10 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
         if (!current(e)) { if (admission.data?.granted) await cleanup(e, admission.data.epoch); return false; }
         if (admission.error || !admission.data?.granted) {
           if (admission.error?.code !== 'METADATA_TIMEOUT') e.token = null; else e.releasePending = true;
-          throw new Error(admission.error?.message || '其他成員正在編輯付款所需的計價／付款人，請稍後重試。');
+          throw new Error(admission.error?.message || '其他成員正在編輯此付款操作所需的群組，請稍後重試。');
         }
         e.epoch = admission.data.epoch;
-        if (!version(admission.data.epoch) || admission.data.revision !== e.base || !validPaymentValue(admission.data.value)
+        if (!validPaymentAdmission(admission.data, e.kind, e.id, e.intent, e.targets) || admission.data.revision !== e.base || !validPaymentValue(admission.data.value)
           || JSON.stringify(admission.data.value.versions) !== JSON.stringify(e.versions)) throw new Error('付款權限或版本尚未確認。');
         e.epoch = admission.data.epoch;
         e.request = { p_trip_id: e.trip, p_kind: e.kind, p_id: e.id, p_session_id: sessionId, p_token: e.token,
@@ -85,7 +86,7 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
         if (!current(e)) return false;
         const data = result.data, action = request.p_value.action;
         const valid = data?.group === 'payment' && data.id === e.id && data.kind === e.kind && data.request_id === request.p_request_id
-          && version(data.revision) && [request.p_base_revision, request.p_base_revision + 1].includes(data.revision) && validPaymentValue(data.value)
+          && version(data.revision) && [request.p_base_revision, request.p_base_revision + 1].includes(data.revision) && validPaymentValue(data.value, e.legacyPending)
           && (action === 'set_paid_at' ? Date.parse(data.value.paid_at) === Date.parse(request.p_value.paid_at) : data.value.active === (action === 'paid'));
         if (result.error || !valid) {
           if (['40001', '40P01', '55P03', '42501', '55000', '22023', '22P02', '0A000'].includes(result.error?.code)) {

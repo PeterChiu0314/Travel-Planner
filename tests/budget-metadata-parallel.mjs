@@ -9,6 +9,7 @@ import {metadataUndoCases} from './budget-metadata-undo-cases.mjs';
 import {metadataChoiceCases} from './budget-metadata-choice-cases.mjs';
 import {pricingGroupCases} from './budget-pricing-group-cases.mjs';
 import {paymentGroupCases} from './budget-payment-group-cases.mjs';
+import {paymentMinimalCases} from './budget-payment-minimal-cases.mjs';
 import {createBudgetPaymentController} from '../src/lib/budgetPaymentGroups.js';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
@@ -23,6 +24,7 @@ const actorA=uuid(),actorB=uuid(),viewer=uuid(),pending=uuid(),outsider=uuid(),t
 const identities=new Map([[a,{actor:actorA,session:uuid(),token:uuid()}],[b,{actor:actorB,session:uuid(),token:uuid()}]]);
 let pidA,pidB,observerPid,gate=910000;
 const query=async(client,sql,values=[])=>{const result=await client.query(sql,values);return result.rows;};
+const definitions=()=>admin("select p.oid::regprocedure::text name,replace(pg_get_functiondef(p.oid),chr(13),'') body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
 const admin=(sql,values=[])=>query(control,sql,values);
 const waitUntil=async(check,label,timeout=8000)=>{
   const deadline=Date.now()+timeout;
@@ -116,10 +118,21 @@ try{
     grant execute on function budget_test.hold_result(jsonb,bigint),budget_test.await_gate(bigint),budget_test.revoke_member(uuid,uuid) to authenticated;`);
   const migrationDir=new URL('../supabase/migrations/',import.meta.url),hashes=[];
   for(const file of (await fs.readdir(migrationDir)).filter(f=>f.endsWith('.sql')).sort()){
-    const source=await fs.readFile(new URL(file,migrationDir),'utf8');
+    // PostgreSQL stores function body line endings verbatim. Compare the same
+    // logical source on LF and Windows CRLF checkouts without editing migrations.
+    const source=(await fs.readFile(new URL(file,migrationDir),'utf8')).replace(/\r\n/g,'\n');
+    if(file==='20261030012554_budget_payment_minimal_bundle.sql'){
+      await test('minimal Payment migration failure and dormant reverse preserve definitions grants and original business content',async()=>{
+        const before=await definitions(),rows=await admin('select to_jsonb(g) v from app_private.budget_metadata_groups g order by kind,resource_id,group_key');
+        const grants=()=>admin("select p.oid::regprocedure::text name,p.proacl::text acl from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");const acl=await grants();
+        await assert.rejects(()=>control.query(source.replace(/commit;\s*$/i,'select 1/0;commit;')),e=>e.code==='22012');await control.query('rollback');assert.deepEqual(await definitions(),before);assert.deepEqual(await grants(),acl);
+        await control.query(source);await control.query(await fs.readFile(new URL('../docs/qa/2026-10-30-budget-payment-minimal-bundle-rollback.sql',import.meta.url),'utf8'));
+        assert.deepEqual(await definitions(),before);assert.deepEqual(await grants(),acl);assert.deepEqual(await admin('select to_jsonb(g) v from app_private.budget_metadata_groups g order by kind,resource_id,group_key'),rows);
+      });
+    }
     if(file==='20261029134206_budget_payment_lifecycle_groups.sql'){
       await test('B-4a injected migration failure and unused reverse restore complete prior definitions and rows',async()=>{
-        const defs=()=>admin("select p.oid::regprocedure::text name,pg_get_functiondef(p.oid) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
+        const defs=definitions;
         const business=()=>admin("select * from (select 'budget' k,to_jsonb(t) v from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'budget-people',to_jsonb(t) from budget_item_participants t union all select 'actual-people',to_jsonb(t) from actual_expense_participants t union all select 'links',to_jsonb(t) from itinerary_budget_items t union all select 'receipts',to_jsonb(t) from attachments t union all select 'baseline',to_jsonb(t) from trip_budget_baselines t) originals order by k,v::text");
         const before=await defs(),data=await business();
         await assert.rejects(()=>control.query(source.replace(/commit;\s*$/i,()=> 'select 1/0;commit;')),e=>e.code==='22012');await control.query('rollback');assert.deepEqual(await defs(),before);assert.deepEqual(await business(),data);
@@ -128,7 +141,7 @@ try{
     }
     if(file==='20261029123907_budget_pricing_participant_groups.sql'){
       await test('Pricing migration injected failure and dormant reverse restore prior functions and business rows',async()=>{
-        const defs=()=>admin("select p.oid::regprocedure::text name,pg_get_functiondef(p.oid) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
+        const defs=definitions;
         const rows=()=>admin("select * from (select 'budget' k,to_jsonb(t) v from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'baseline',to_jsonb(t) from trip_budget_baselines t union all select 'people',to_jsonb(t) from budget_item_participants t) s order by k,v::text");
         const before=await defs(),data=await rows();await assert.rejects(()=>control.query(source.replace(/commit;\s*$/i,()=> 'select 1/0;commit;')),e=>e.code==='22012');await control.query('rollback');assert.deepEqual(await defs(),before);assert.deepEqual(await rows(),data);
         await control.query(source);assert.deepEqual(await rows(),data);await control.query(await fs.readFile(new URL('../docs/qa/2026-10-29-budget-pricing-groups-rollback.sql',import.meta.url),'utf8'));assert.deepEqual(await defs(),before);assert.deepEqual(await rows(),data);
@@ -136,7 +149,7 @@ try{
     }
     if(file==='20261029114817_budget_category_payer_links_groups.sql'){
       await test('choice expand failure and unused reverse preserve business contents and old definitions',async()=>{
-        const defs=()=>admin("select p.oid::regprocedure::text name,pg_get_functiondef(p.oid) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
+        const defs=definitions;
         const business=()=>admin("select * from (select 'budget' k,to_jsonb(t) v from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'baseline',to_jsonb(t) from trip_budget_baselines t) x order by k,v::text");
         const before=await defs(),rows=await business();await assert.rejects(()=>control.query(source.replace(/commit;\s*$/i,'select 1/0;commit;')),e=>e.code==='22012');await control.query('rollback');assert.deepEqual(await defs(),before);assert.deepEqual(await business(),rows);
         await control.query(source);assert.deepEqual(await business(),rows);
@@ -246,7 +259,9 @@ try{
   });
   await test('natural expiry produces no event and uses statement time even inside a long transaction',async()=>{
     const id=await fixture();await call(a,leaseAction(a,id,'title'));
-    const expiry=(await admin("update app_private.budget_metadata_groups set expires_at=clock_timestamp()+interval '600 milliseconds' where kind='budget' and resource_id=$1 and group_key='title' returning expires_at",[id]))[0].expires_at;
+    // Preserve PostgreSQL microseconds across the observer barrier. pg's Date
+    // decoder truncates to milliseconds and can announce expiry too early.
+    const expiry=(await admin("update app_private.budget_metadata_groups set expires_at=clock_timestamp()+interval '600 milliseconds' where kind='budget' and resource_id=$1 and group_key='title' returning expires_at::text",[id]))[0].expires_at;
     const rev=await signal();await a.query('begin');
     try{
       const first=await snapshot();assert.equal(metadataRecord(first,id).groups.find(g=>g.group==='title').held,true);
@@ -704,10 +719,11 @@ try{
     finally{await client.dispose();}
   });
   const paymentQA=await paymentGroupCases({test,admin,query,a,b,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,undoQA,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});
-  await test('B-4a real v4 Snapshot explicit Payment controller named RPC and canonical reconciliation',async()=>{
+  await paymentMinimalCases({test,admin,query,a,b,actorA,actorB,trip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations},paymentQA);
+  await test('B-4a real v5 Snapshot explicit Payment controller named RPC and canonical reconciliation',async()=>{
     const id=await fixture(),identity=identities.get(a),rpc=async action=>{try{return {data:await call(a,action)};}catch(error){return {error};}};
-    const metadata=createBudgetMetadataEditor({service:{authorized:async()=>true},sessionId:identity.session,read:async()=>({ok:true,data:{...(await query(a,'select public.read_budget_metadata_snapshot_v4($1,$2) d',[trip,identity.session]))[0].d,metadataVerified:true}})});
-    const service={authorized:async actor=>actor===actorA,lease:args=>rpc(paymentQA.lease(a,args.p_id,args.p_action,{kind:args.p_kind,base:args.p_base_revision,epoch:args.p_epoch,versions:args.p_versions,token:args.p_token,session:args.p_session_id})),mutate:args=>rpc({text:'public.mutate_budget_payment_v2($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)',values:[args.p_trip_id,args.p_kind,args.p_id,args.p_session_id,args.p_token,args.p_epoch,args.p_base_revision,JSON.stringify(args.p_value),args.p_request_id]})};
+    const metadata=createBudgetMetadataEditor({service:{authorized:async()=>true},sessionId:identity.session,read:async()=>({ok:true,data:{...(await query(a,'select public.read_budget_metadata_snapshot_v5($1,$2) d',[trip,identity.session]))[0].d,metadataVerified:true}})});
+    const service={authorized:async actor=>actor===actorA,lease:args=>rpc(paymentQA.lease(a,args.p_id,args.p_action,{kind:args.p_kind,base:args.p_base_revision,epoch:args.p_epoch,versions:args.p_versions,token:args.p_token,session:args.p_session_id,intent:args.p_intent})),mutate:args=>rpc({text:'public.mutate_budget_payment_v2($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)',values:[args.p_trip_id,args.p_kind,args.p_id,args.p_session_id,args.p_token,args.p_epoch,args.p_base_revision,JSON.stringify(args.p_value),args.p_request_id]})};
     const payment=createBudgetPaymentController({metadata,service,sessionId:identity.session});
     try{metadata.configure(actorA,trip,true,true);payment.configure(actorA,trip,true);assert(await payment.execute('budget',id,{action:'paid'}),payment.view('budget',id).error);assert.equal(payment.hasPending(),false);const actual=(await admin('select id from actual_expenses where budget_item_id=$1',[id]))[0].id;assert(await payment.execute('budget',id,{action:'unpaid'}),payment.view('budget',id).error);assert(await payment.execute('budget',id,{action:'paid'}),payment.view('budget',id).error);assert.equal((await admin('select id from actual_expenses where budget_item_id=$1',[id]))[0].id,actual);}
     finally{await payment.dispose();await metadata.dispose();}

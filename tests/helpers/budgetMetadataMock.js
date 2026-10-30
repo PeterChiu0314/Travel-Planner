@@ -20,13 +20,13 @@ export function metadataBackend() {
   const state = (kind, row, group) => {
     const k = `${kind}:${row.id}:${group}`; if (!db.groupStates.has(k)) db.groupStates.set(k, { revision: 0, epoch: 0 }); return db.groupStates.get(k);
   };
-  const valueFor = (kind,row,group) => group === "pricing" ? pricingInputs(row,(db.rows[kind === "budget" ? "budget_item_participants" : "actual_expense_participants"] || []).filter(p=>p[kind === "budget" ? "budget_item_id" : "actual_expense_id"] === row.id),{graph:0,rates:0,members:0,targets:[{kind,id:row.id,revision:state(kind,row,group).revision}]}) : recordMetadataValue(kind,row,group,db.rows.itinerary_budget_items);
+  const valueFor = (kind,row,group) => group === "pricing" ? pricingInputs(row,(db.rows[kind === "budget" ? "budget_item_participants" : "actual_expense_participants"] || []).filter(p=>p[kind === "budget" ? "budget_item_id" : "actual_expense_id"] === row.id),{graph:db.paymentGraph||0,rates:0,members:0,targets:[{kind,id:row.id,revision:state(kind,row,group).revision}]}) : recordMetadataValue(kind,row,group,db.rows.itinerary_budget_items);
   db.request = async req => {
     const { name, args, actor } = req;
     if (name === "budget_edit_lease" && args.p_action === "acquire" && [...db.groupStates.entries()].some(([key,g])=>key.startsWith(`${args.p_kind}:${args.p_id}:`) && g.actor && g.expires > db.now)) {
       db.leaseCalls.push({args,actor});return {data:{granted:false,reason:"group_locked"}};
     }
-    if (["read_budget_metadata_snapshot", "read_budget_metadata_snapshot_v2", "read_budget_metadata_snapshot_v3", "read_budget_metadata_snapshot_v4"].includes(name)) {
+    if (["read_budget_metadata_snapshot", "read_budget_metadata_snapshot_v2", "read_budget_metadata_snapshot_v3", "read_budget_metadata_snapshot_v4", "read_budget_metadata_snapshot_v5"].includes(name)) {
       if (db.metadataMissing) return { error: { code: "PGRST202" } };
       const result = await original({ ...req, name: "read_budget_snapshot" }); if (!result.data || result.error) return result;
       const legacy = await original({ ...req, name: "read_budget_collaboration" });

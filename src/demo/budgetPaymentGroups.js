@@ -31,22 +31,28 @@ export function attachDemoPayments(service, getProps, { state, commit, changed }
     if (row.is_fixed || payments.some(a => a.trip_id !== row.trip_id || a.budget_item_id !== id) || row.auto_created_actual_expense_id && !payments.some(a => a.id === row.auto_created_actual_expense_id)) return null;
     return [{ kind, id }, ...payments.map(a => ({ kind: 'actual', id: a.id }))];
   }
-  const deps = (kind, id) => (targets(kind, id) || []).flatMap(t => (kind === 'budget' ? ['payment', 'pricing', 'payer'] : ['payment']).map(group => ({ ...t, group })));
+  const deps = (kind, id, intent = 'paid') => (targets(kind, id) || []).flatMap(t => (kind === 'budget' && targets(kind, id).length === 1 && intent === 'paid' ? ['payment', 'pricing', 'payer'] : ['payment']).map(group => ({ ...t, group })));
   const get = d => state(d.kind, rows(d.kind).find(r => r.id === d.id), d.group);
-  function value(kind, id) {
+  function value(kind, id, records = null) {
     const p = getProps(), row = rows(kind).find(r => r.id === id);
+    // The metadata reader may project a just-ACKed pricing override before
+    // React props catch up. Reuse that statement's revisions; rereading state
+    // from the older props here would invalidate the snapshot we just built.
+    const revision = d => records?.find(r => r.kind === d.kind && r.id === d.id)?.groups.find(g => g.group === d.group)?.revision ?? get(d).revision;
     return { active: kind === 'actual' ? row.payment_active !== false : p.actualExpenses.some(a => a.budget_item_id === id && a.payment_active !== false), paid_at: kind === 'actual' ? row.paid_at : null,
-      versions: { graph, rates: 0, members: 0, source: 0, targets: deps(kind, id).map(d => ({ ...d, revision: get(d).revision })) } };
+      versions: { graph, rates: 0, members: 0, source: 0, targets: deps(kind, id).map(d => ({ ...d, revision: revision(d) })),
+        checks: [...targets(kind, id) || [], ...(kind === 'actual' && row.budget_item_id ? [{ kind: 'budget', id: row.budget_item_id }] : [])]
+          .flatMap(t => ['pricing', 'payer'].map(group => ({ ...t, group, revision: revision({ ...t, group }), graph }))) } };
   }
   const originalRead = service.read.bind(service);
   service.read = async trip => {
     const result = await originalRead(trip); if (!result.ok) return result;
     const p = getProps(), data = result.data;
-    data.metadataProtocol.schemaVersion = 4;
-    data.paymentProtocol = { name: 'budget-payment', schemaVersion: 1, enabled: true };
+    data.metadataProtocol.schemaVersion = 5;
+    data.paymentProtocol = { name: 'budget-payment', schemaVersion: 2, enabled: true };
     data.paymentRecords = ['budget', 'actual'].flatMap(kind => rows(kind).filter(r => r.trip_id === trip).map(row => {
       const g = state(kind, row, 'payment'), held = Boolean(g.owner && g.expires > now());
-      return { kind, id: row.id, trip_id: trip, supported: Boolean(targets(kind, row.id)) && (kind !== 'actual' || Number.isFinite(Date.parse(row.paid_at))), revision: g.revision, epoch: g.epoch, value: value(kind, row.id), held, owner_id: held ? g.owner : null, own_session: held, expires_at: held ? new Date(g.expires).toISOString() : null };
+      return { kind, id: row.id, trip_id: trip, supported: Boolean(targets(kind, row.id)) && (kind !== 'actual' || Number.isFinite(Date.parse(row.paid_at))), revision: g.revision, epoch: g.epoch, value: value(kind, row.id, data.metadataRecords), held, owner_id: held ? g.owner : null, own_session: held, expires_at: held ? new Date(g.expires).toISOString() : null };
     }));
     for (const r of data.metadataRecords) if (r.kind === 'budget' && !p.budgetItems.find(b => b.id === r.id)?.is_fixed) for (const g of r.groups) if (['title', 'note'].includes(g.group)) g.supported = true;
     return result;
@@ -54,19 +60,23 @@ export function attachDemoPayments(service, getProps, { state, commit, changed }
   service.paymentLease = async args => {
     const row = rows(args.p_kind).find(r => r.id === args.p_id && r.trip_id === args.p_trip_id); if (!row) return { error: { code: '42501' } };
     const root = state(args.p_kind, row, 'payment'), owns = g => g.owner === getProps().currentUserId && g.session === args.p_session_id && g.token === args.p_token;
-    if (args.p_action === 'release') { if (owns(root) && root.epoch === args.p_epoch) for (const d of root.bundle || []) { const g = get(d); if (owns(g)) g.owner = null; } changed(); return { data: { granted: true } }; }
-    const dependencies = deps(args.p_kind, row.id); if (!targets(args.p_kind, row.id)) return { error: { code: '0A000' } };
+    if (args.p_action === 'release') { if (owns(root) && root.epoch === args.p_epoch) for (const d of root.bundle || []) { const g = get(d); if (owns(g) && g.epoch === d.epoch) g.owner = null; } changed(); return { data: { granted: true } }; }
+    if (!(args.p_kind === 'budget' ? ['paid', 'unpaid'] : ['set_paid_at']).includes(args.p_intent)) return { error: { code: '22023' } };
+    if (owns(root) && root.expires > now() && root.intent !== args.p_intent) return { error: { code: '40001' } };
+    const dependencies = deps(args.p_kind, row.id, args.p_intent); if (!targets(args.p_kind, row.id)) return { error: { code: '0A000' } };
     if (root.revision !== args.p_base_revision || JSON.stringify(args.p_versions) !== JSON.stringify(value(args.p_kind, row.id).versions)) return { error: { code: '40001' } };
     if (dependencies.some(d => { const g = get(d); return g.owner && g.expires > now() && !owns(g); })) return { data: { granted: false } };
     for (const d of dependencies) { const g = get(d); if (!g.owner || g.expires <= now()) g.epoch++; Object.assign(g, { owner: getProps().currentUserId, session: args.p_session_id, token: args.p_token, expires: now() + 120000 }); }
-    root.bundle = dependencies; changed(); return { data: { granted: true, revision: root.revision, epoch: root.epoch, value: value(args.p_kind, row.id), expires_at: new Date(root.expires).toISOString() } };
+    root.bundle = dependencies.map(d => ({ ...d, epoch: get(d).epoch })); root.intent = args.p_intent;
+    changed(); return { data: { granted: true, revision: root.revision, epoch: root.epoch, intent: root.intent, targets: root.bundle, value: value(args.p_kind, row.id), expires_at: new Date(root.expires).toISOString() } };
   };
   service.mutatePayment = async args => {
     const signature = JSON.stringify([args.p_trip_id, args.p_kind, args.p_id, args.p_session_id, args.p_base_revision, args.p_value]);
     const cached = requests.get(args.p_request_id); if (cached) return cached.signature === signature ? { data: structuredClone(cached.data) } : { error: { code: '22023' } };
     const p = getProps(), row = rows(args.p_kind).find(r => r.id === args.p_id), root = row && state(args.p_kind, row, 'payment');
     if (!root || root.owner !== p.currentUserId || root.token !== args.p_token || root.session !== args.p_session_id || root.epoch !== args.p_epoch || root.expires <= now()) return { error: { code: '55P03' } };
-    if (root.revision !== args.p_base_revision || JSON.stringify(args.p_value.versions) !== JSON.stringify(value(args.p_kind, row.id).versions)) return { error: { code: '40001' } };
+    if (root.intent !== args.p_value.action || root.revision !== args.p_base_revision || JSON.stringify(args.p_value.versions) !== JSON.stringify(value(args.p_kind, row.id).versions)) return { error: { code: '40001' } };
+    if (root.bundle.some(d => { const g = get(d); return g.owner !== p.currentUserId || g.session !== args.p_session_id || g.token !== args.p_token || g.epoch !== d.epoch || g.expires <= now(); })) return { error: { code: '55P03' } };
     try {
       let change = { tripId: row.trip_id, actuals: [], people: [], created: null, budget: null };
       if (args.p_kind === 'actual') {

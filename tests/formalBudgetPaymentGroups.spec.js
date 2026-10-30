@@ -35,3 +35,21 @@ test('Actual paid_at is an explicit narrow operation and changing the input alon
 test('Payment commits converge on another account Detail and retained title remains independently editable',async({page,context})=>{
  const db=paymentBackend();await ready(page,db);const other=await context.newPage();try{await ready(other,db,'B');await toggle(page).click();await expect(toggle(page)).toBeEnabled();await expect(toggle(other)).toHaveAttribute('aria-pressed','true');await other.getByRole('tab',{name:'編輯項目',exact:true}).click();const title=other.getByRole('textbox',{name:'項目名稱',exact:true});await title.focus();await expect(title).toBeEditable();await title.fill('Retained title');await expect.poll(()=>db.rows.budget_items[0].title).toBe('Retained title');expect(db.rows.actual_expenses[0].title).toBe('JPY fare');expect(other.qaErrors).toEqual([]);}finally{await other.close();}
 });
+for(const desired of [false,true])test(`retained Payment ${desired?'Paid':'Unpaid'} succeeds beside Pricing draft without overwriting it`,async({page,context})=>{
+ if(process.env.BUDGET_PAYMENT_MINIMAL_SCREENSHOT)await page.setViewportSize({width:1440,height:1000});
+ const db=paymentBackend();await ready(page,db);await toggle(page).click();await expect(toggle(page)).toBeEnabled();
+ if(desired){await toggle(page).click();await expect(toggle(page)).toBeEnabled();}
+ // Retained pricing support is already a DB feature. This mock must expose it
+ // explicitly without enabling retained category/payer synchronization.
+ const b=await context.newPage();try{await ready(b,db,'B');await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
+  const pricing=page.getByRole('group',{name:'計價與分攤',exact:true}),amount=pricing.getByRole('spinbutton',{name:'總額',exact:true});await amount.focus();await expect(amount).toBeEditable();
+  await amount.dispatchEvent('compositionstart');await amount.fill('1200');const held=structuredClone(db.groupStates.get('budget:budget:pricing'));
+  const original=structuredClone(db.rows.actual_expenses),joins=structuredClone(db.rows.actual_expense_participants);
+  await toggle(b).click();await expect(toggle(b)).toHaveAttribute('aria-pressed',String(desired));await expect(toggle(b)).toBeEnabled();
+  await expect(amount).toHaveValue('1200');expect(db.rows.budget_items[0].amount).toBe(1000);expect(db.groupStates.get('budget:budget:pricing')).toMatchObject({actor:held.actor,token:held.token,epoch:held.epoch});
+  const {updated_at,...preserved}=original[0];expect(db.rows.actual_expenses[0]).toMatchObject({...preserved,payment_active:desired});expect(db.rows.actual_expense_participants).toEqual(joins);
+  const acquire=db.paymentCalls.filter(c=>c.name==='budget_payment_lease_v2'&&c.args.p_action==='acquire').at(-1);expect(acquire.args.p_intent).toBe(desired?'paid':'unpaid');expect(acquire.args.p_versions.targets.every(t=>t.group==='payment')).toBe(true);
+  await amount.dispatchEvent('compositionend');await expect(pricing).toContainText(/版本|變更|衝突/);await expect(amount).toHaveValue('1200');expect(db.rows.budget_items[0].amount).toBe(1000);expect(b.qaErrors).toEqual([]);
+  if(!desired&&process.env.BUDGET_PAYMENT_MINIMAL_SCREENSHOT)await page.screenshot({path:process.env.BUDGET_PAYMENT_MINIMAL_SCREENSHOT});
+ }finally{await b.close();}
+});

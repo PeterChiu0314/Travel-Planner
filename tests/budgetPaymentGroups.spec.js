@@ -54,9 +54,46 @@ test('P2 missing currency quote rejects pricing draft and explicit latest quote 
  f.metadata.input(g,{...g.value,currency:'USD',exchange_rate:'',amount:'1200'});expect(await f.metadata.save(g)).toBe(false);expect(f.props.budgetItems[0].amount).toBe(900);f.props.tripBudgetRates={rates:{JPY:0.2,USD:32}};
  const applied=await f.metadata.useLatestPricingRate(g);expect(applied,JSON.stringify({error:g.error,state:g.state,base:g.base,canonical:g.canonical,remote:g.remote})).toBe(true);expect(f.metadata.view(g).display).toMatchObject({currency:'USD',amount:'1200',exchange_rate:32});
 });
-test('v4 payment snapshot rejects missing records mismatched active state and forged dependency readiness',async()=>{
+test('v5 payment snapshot rejects missing records mismatched active state and forged dependency readiness',async()=>{
  const f=await setup(),good=(await f.transport.read('trip')).data;expect(validBudgetMetadataSnapshot(good,'trip')).toBe(true);
  for(const change of [d=>d.paymentRecords.pop(),d=>d.paymentRecords[0].value.active=true,d=>d.paymentRecords[0].value.versions.targets=[],d=>d.paymentProtocol.enabled='yes']){const bad=structuredClone(good);change(bad);expect(validBudgetMetadataSnapshot(bad,'trip')).toBe(false);}
+});
+test('retained Payment leaves live Pricing capability and newer local draft intact then refuses stale pricing',async()=>{
+ const f=await setup();expect(await f.payment.execute('budget','id',{action:'paid'})).toBe(true);await f.metadata.refresh();
+ const pricing=f.metadata.get('budget','id','pricing');expect(await f.metadata.focus(pricing)).toBe(true);f.metadata.composition(pricing,true);f.metadata.input(pricing,{...pricing.value,amount:'1200'});
+ const epoch=pricing.epoch,token=pricing.token;expect(await f.payment.execute('budget','id',{action:'unpaid'}),f.payment.view('budget','id').error).toBe(true);
+ expect(f.metadata.view(pricing).display.amount).toBe('1200');expect(pricing.epoch).toBe(epoch);expect(pricing.token).toBe(token);expect(f.leases.filter(l=>l.p_action==='acquire').at(-1).p_intent).toBe('unpaid');
+ expect(f.leases.filter(l=>l.p_action==='acquire').at(-1).p_versions.targets.every(t=>t.group==='payment')).toBe(true);
+ f.metadata.composition(pricing,false);expect(await f.metadata.save(pricing)).toBe(false);expect(f.metadata.view(pricing).display.amount).toBe('1200');expect(f.props.budgetItems[0].amount).toBe(900);
+ expect(f.props.actualExpenses[0].payment_active).toBe(false);
+});
+test('bound intent and exact minimal target epochs are required before submitting a payment',async()=>{
+ for(const tamper of [r=>r.data.intent='unpaid',r=>r.data.targets.pop(),r=>r.data.targets[0].epoch=-1]){
+  const f=await setup(),lease=f.service.lease;f.service.lease=async args=>{const r=await lease(args);if(args.p_action==='acquire')tamper(r);return r;};
+  expect(await f.payment.execute('budget','id',{action:'paid'})).toBe(false);expect(f.calls).toHaveLength(0);expect(f.props.actualExpenses).toHaveLength(0);
+ }
+});
+test('strict v5 rejects extra retained Pricing leases and missing committed dependency checks',async()=>{
+ const f=await setup();expect(await f.payment.execute('budget','id',{action:'paid'})).toBe(true);const good=(await f.transport.read('trip')).data;expect(validBudgetMetadataSnapshot(good,'trip')).toBe(true);
+ for(const tamper of [r=>r.value.versions.targets.push({kind:'budget',id:'id',group:'pricing',revision:0}),r=>r.value.versions.checks.pop(),r=>r.value.versions.checks[0].graph=-1]){
+  const bad=structuredClone(good);tamper(bad.paymentRecords.find(r=>r.kind==='budget'));expect(validBudgetMetadataSnapshot(bad,'trip')).toBe(false);
+ }
+});
+test('unpaid without retained is an intent-bound payment-only no-op with no financial changes',async()=>{
+ const f=await setup();expect(await f.payment.execute('budget','id',{action:'unpaid'}),f.payment.view('budget','id').error).toBe(true);expect(f.props.actualExpenses).toHaveLength(0);
+ const l=f.leases.find(l=>l.p_action==='acquire');expect(l.p_intent).toBe('unpaid');expect(f.calls).toHaveLength(1);expect(f.metadata.status().snapshot.paymentRecords[0].revision).toBe(0);
+});
+test('previous protocol inert request can only replay its old receipt then converge through strict v5',async()=>{
+ const f=await setup(),mutate=f.service.mutate;let oldReceipt;
+ f.service.mutate=async args=>{const r=await mutate(args);oldReceipt=structuredClone(r);delete oldReceipt.data.value.versions.checks;return {error:{message:'lost old ACK'}};};
+ expect(await f.payment.execute('budget','id',{action:'paid'})).toBe(false);const [key]=f.values.keys(),saved=JSON.parse(f.values.get(key));saved.version=1;f.values.set(key,JSON.stringify(saved));
+ let leases=0;const next=createBudgetPaymentController({metadata:f.metadata,service:{authorized:async()=>true,lease:async()=>{leases++;throw Error('no reacquire');},mutate:async args=>{expect(args.p_token).toBe(null);expect(args.p_epoch).toBe(null);expect(args.p_request_id).toBe(saved.request.p_request_id);return oldReceipt;}},storage:f.storage,sessionId:'new-document'});clients.push(next);next.configure('A','trip',true);
+ expect(await next.retry('budget','id'),next.view('budget','id').error).toBe(true);expect(leases).toBe(0);expect(f.props.actualExpenses).toHaveLength(1);expect(next.hasPending()).toBe(false);
+});
+test('Demo v5 keeps one canonical pricing snapshot while React props are still behind the acknowledged override',async()=>{
+ const f=await setup();f.props.onSaveMetadata=()=>{};const g=f.metadata.get('budget','id','pricing');expect(await f.metadata.focus(g)).toBe(true);
+ f.metadata.input(g,{...g.value,amount:'1200'});expect(await f.metadata.save(g)).toBe(true);expect(f.props.budgetItems[0].amount).toBe(900);
+ for(let i=0;i<3;i++){const snapshot=(await f.transport.read('trip')).data;expect(validBudgetMetadataSnapshot(snapshot,'trip')).toBe(true);expect(snapshot.budgetItems[0].amount).toBe(1200);expect(snapshot.metadataRecords[0].groups.find(g=>g.group==='pricing').value.amount).toBe(1200);}
 });
 test('account switch during authorization cannot acquire or mutate with old actor',async()=>{
  const f=await setup(),gate=deferred();f.service.authorized=()=>gate.promise;const work=f.payment.execute('budget','id',{action:'paid'});expect(f.payment.view('budget','id').busy).toBe(true);expect(f.payment.hasPending()).toBe(true);f.payment.configure('B','other',true);gate.resolve(true);expect(await work).toBe(false);expect(f.leases).toHaveLength(0);expect(f.calls).toHaveLength(0);
@@ -66,7 +103,7 @@ test('late payment admission timeout releases exact capability and failed releas
  expect(await f.payment.execute('budget','id',{action:'paid'})).toBe(false);expect(f.payment.hasPending()).toBe(true);const acquisition=f.leases.find(c=>c.p_action==='acquire');
  // The test adapter sees the authoritative late grant, then transport delivers
  // it after the UI has already timed out.
- const e=f.payment.get('budget','id');const admission=await f.transport.paymentLease({p_trip_id:'trip',p_kind:'budget',p_id:'id',p_session_id:'tab',p_token:e.token,p_action:'acquire',p_base_revision:e.base,p_epoch:null,p_versions:e.versions});gate.resolve(admission);
+ const e=f.payment.get('budget','id');const admission=await f.transport.paymentLease({p_trip_id:'trip',p_kind:'budget',p_id:'id',p_session_id:'tab',p_token:e.token,p_action:'acquire',p_base_revision:e.base,p_epoch:null,p_versions:e.versions,p_intent:e.intent});gate.resolve(admission);
  await expect.poll(()=>f.payment.hasPending()).toBe(false);expect(f.calls).toHaveLength(0);expect(f.leases.at(-1).p_action).toBe('release');expect(f.leases.at(-1).p_epoch).toBe(admission.data.epoch);
  f.service.lease=original;let denied=true;f.service.lease=async args=>args.p_action==='release'&&denied?{error:{message:'release lost'}}:original(args);
  expect(await f.payment.execute('budget','id',{action:'paid'})).toBe(false);expect(f.payment.view('budget','id').syncPending).toBe(true);denied=false;expect(await f.payment.retry('budget','id')).toBe(true);expect(f.props.actualExpenses).toHaveLength(1);

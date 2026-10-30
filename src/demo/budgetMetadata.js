@@ -18,7 +18,8 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
     const value = valueFor(kind, row, group);
     const k = key(kind, row.id, group); let s = states.get(k);
     if (!s) { s = { revision: 0, epoch: 0, value }; states.set(k, s); }
-    if (sameMetadataValue(group, s.override, value)) delete s.override;
+    const propsRow = (kind === 'budget' ? getProps().budgetItems : getProps().actualExpenses).find(r => r.id === row.id);
+    if (propsRow && sameMetadataValue(group, s.override, valueFor(kind, propsRow, group))) delete s.override;
     if (s.override === undefined && !sameMetadataValue(group, s.value, value)) { s.value = value; s.revision++; revision++; }
     if (group === "pricing") s.value = { ...s.value, versions: versions(kind, row.id, s.revision) };
     return s;
@@ -76,7 +77,8 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
       if (!s || !supports(args.p_kind, row,args.p_group) || s.token !== args.p_token || s.session !== args.p_session_id || s.epoch !== args.p_epoch || s.expires <= now()) return { error: { code: "55P03" } };
       if (s.revision !== args.p_base_revision) return { error: { code: "40001" } };
       let value = args.p_patch[args.p_group];
-      if (args.p_group === "pricing") { try { value=normalizePricingInputs(value); const p=getProps(); if (value.participantIds.some(id=>!p.members?.some(m=>m.user_id===id&&m.status==="approved"))) throw new Error("參與成員已不在旅程中。"); applyDemoPricing(p,args.p_kind,row.id,value); } catch(error) { return {error:{code:"22023",message:error.message}}; } }
+      if (args.p_group === "pricing") { if (JSON.stringify(value.versions) !== JSON.stringify(s.value.versions)) return {error:{code:'40001',message:'計價相依版本已變更，草稿已保留。'}};
+        try { value=normalizePricingInputs(value); const p=getProps(); if (value.participantIds.some(id=>!p.members?.some(m=>m.user_id===id&&m.status==="approved"))) throw new Error("參與成員已不在旅程中。"); applyDemoPricing(p,args.p_kind,row.id,value); } catch(error) { return {error:{code:"22023",message:error.message}}; } }
       if (args.p_group === "payer" && value && !getProps().members.some(m => m.user_id === value && m.status === "approved")) return { error: { code: "22023", message: "付款人已不在旅程中。" } };
       if (args.p_group === "links" && (args.p_kind !== "budget" || value.some(id => !getProps().items.some(i => i.id === id && i.trip_id === row.trip_id)))) return { error: { code: "22023", message: "關聯行程不屬於此旅程。" } };
       if (!sameMetadataValue(args.p_group, s.value, value)) { s.revision++; revision++; } if(args.p_group === "pricing") value={...value,versions:versions(args.p_kind,row.id,s.revision)}; s.value = value; s.override = s.value;

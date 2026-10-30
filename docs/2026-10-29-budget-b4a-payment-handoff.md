@@ -1,5 +1,7 @@
 # Issue #15 B-4a — Payment lifecycle
 
+2026-10-30 後續：[Payment 最小相依 Bundle](2026-10-30-budget-payment-minimal-bundle-handoff.md) 取代下方舊的「每端 payment/pricing/payer」租約矩陣；新 intent-bound lease-v2 / Snapshot-v5 讓 retained 切換僅持有 Payment，保留 financial dependency checks。下文為原 B-4a checkpoint。
+
 起點 `abee7c0be9a45c1cd034caaa395d3db5737220b8`，feature branch `codex/budget-collaboration-redesign`，pull 已確認 0/0；原有五個 untracked files 保留。只做本機 forward migration、隔離 QA、文件與 feature commit/push，所有新 flags/protocol default off，不連 Hosted、不改 main／Storage／Issue。
 
 ## SQL 前動作與相依矩陣

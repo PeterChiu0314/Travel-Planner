@@ -17,13 +17,13 @@ export async function withBudgetAuthorityTimeout(work, { timeoutMs = budgetAutho
 const version = value => Number.isSafeInteger(value) && value >= 0;
 // Match PostgreSQL btrim(text): normalize ordinary spaces, preserving other text.
 export function validBudgetMetadataSnapshot(data, tripId) {
-  const keys = [3, 4].includes(data?.metadataProtocol?.schemaVersion) ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
+  const keys = [3, 4, 5].includes(data?.metadataProtocol?.schemaVersion) ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
   return data?.tripId === tripId && data.metadataProtocol?.name === "metadata-prototype"
-    && [1, 2, 3, 4].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
+    && [1, 2, 3, 4, 5].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
     && data.metadataProtocol.complete === false && JSON.stringify(data.metadataProtocol.groups) === JSON.stringify(keys)
     && Number.isFinite(Date.parse(data.serverNow)) && version(data.collaborationRevision)
     && Array.isArray(data.budgetItems) && Array.isArray(data.actualExpenses)
-    && (data.metadataProtocol.schemaVersion !== 4 || validPaymentSnapshot(data))
+    && (![4, 5].includes(data.metadataProtocol.schemaVersion) || validPaymentSnapshot(data))
     && Array.isArray(data.metadataRecords) && Array.isArray(data.collaboration?.entries)
     && data.metadataRecords.length === data.budgetItems.length + data.actualExpenses.length
     && new Set(data.metadataRecords.map(r => `${r.kind}:${r.id}`)).size === data.metadataRecords.length
