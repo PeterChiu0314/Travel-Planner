@@ -3,6 +3,7 @@ import { pricingInputs, pricingInputError, validPricingVersions } from "./budget
 import { validPaymentSnapshot } from "./budgetPaymentValues.js";
 import { validSourceSnapshot } from "./budgetSourceValues.js";
 import {validReceiptSnapshot} from './budgetReceiptValues.js';
+import {budgetFinanceGroupsEnabled,validFinanceSnapshot,sameFinanceVersions} from './budgetFinanceValues.js';
 export const budgetAuthorityTimeoutMs = 10000;
 export const budgetSnapshotTimeoutError = () => ({ code: "BUDGET_SNAPSHOT_TIMEOUT", message: "最新同步逾時，草稿已保留。請重新確認後重試。" });
 // The settled race owns the result. An uncancellable transport may finish later,
@@ -19,15 +20,16 @@ export async function withBudgetAuthorityTimeout(work, { timeoutMs = budgetAutho
 const version = value => Number.isSafeInteger(value) && value >= 0;
 // Match PostgreSQL btrim(text): normalize ordinary spaces, preserving other text.
 export function validBudgetMetadataSnapshot(data, tripId) {
-  const keys = [3, 4, 5, 6, 7].includes(data?.metadataProtocol?.schemaVersion) ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
+  const keys = [3, 4, 5, 6, 7, 8].includes(data?.metadataProtocol?.schemaVersion) ? groups : data?.metadataProtocol?.schemaVersion === 2 ? groups.filter(g => g !== "pricing") : ["title", "note"];
   return data?.tripId === tripId && data.metadataProtocol?.name === "metadata-prototype"
-    && [1, 2, 3, 4, 5, 6, 7].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
+    && [1, 2, 3, 4, 5, 6, 7, 8].includes(data.metadataProtocol.schemaVersion) && typeof data.metadataProtocol.enabled === "boolean"
     && data.metadataProtocol.complete === false && JSON.stringify(data.metadataProtocol.groups) === JSON.stringify(keys)
     && Number.isFinite(Date.parse(data.serverNow)) && version(data.collaborationRevision)
     && Array.isArray(data.budgetItems) && Array.isArray(data.actualExpenses)
-    && (![4, 5, 6, 7].includes(data.metadataProtocol.schemaVersion) || validPaymentSnapshot(data))
-    && (![6,7].includes(data.metadataProtocol.schemaVersion) || validSourceSnapshot(data))
-    && (data.metadataProtocol.schemaVersion !== 7 || validReceiptSnapshot(data))
+    && (![4, 5, 6, 7, 8].includes(data.metadataProtocol.schemaVersion) || validPaymentSnapshot(data))
+    && (![6,7,8].includes(data.metadataProtocol.schemaVersion) || validSourceSnapshot(data))
+    && (![7,8].includes(data.metadataProtocol.schemaVersion) || validReceiptSnapshot(data))
+    && (data.metadataProtocol.schemaVersion !== 8 || validFinanceSnapshot(data))
     && Array.isArray(data.metadataRecords) && Array.isArray(data.collaboration?.entries)
     && data.metadataRecords.length === data.budgetItems.length + data.actualExpenses.length
     && new Set(data.metadataRecords.map(r => `${r.kind}:${r.id}`)).size === data.metadataRecords.length
@@ -48,15 +50,15 @@ export function validBudgetMetadataSnapshot(data, tripId) {
 }
 export function withoutBudgetMetadata(data) {
   const { metadataProtocol, metadataRecords, metadataVerified, metadataReadStartedAt, metadataError, metadataUserId,
-    paymentProtocol, paymentRecords, sourceProtocol, sourceRecords,receiptProtocol,receiptRecords, collaboration, collaborationRevision, serverNow, nextRefreshAt, ...financial } = data;
+    paymentProtocol, paymentRecords, sourceProtocol, sourceRecords,receiptProtocol,receiptRecords,financeProtocol,ratesRecords, collaboration, collaborationRevision, serverNow, nextRefreshAt, ...financial } = data;
   return financial;
 }
 export function createBudgetMetadataService(supabase) {
   const rpc = async (name, args) => { try { return await supabase.rpc(name, args); } catch (error) { return { error }; } };
   return {
     async authorized(actor) { try { return (await supabase.auth.getSession()).data?.session?.user?.id === actor; } catch { return false; } },
-    lease: args => rpc("budget_metadata_group_lease", args),
-    patch: args => rpc("patch_budget_metadata_group", args),
+    lease: ({p_versions,...args}) => rpc(budgetFinanceGroupsEnabled ? "budget_metadata_group_lease_v2" : "budget_metadata_group_lease", {...args,...(budgetFinanceGroupsEnabled?{p_versions:p_versions??null}:{})}),
+    patch: ({p_versions,...args}) => rpc(budgetFinanceGroupsEnabled ? "patch_budget_metadata_group_v2" : "patch_budget_metadata_group", {...args,...(budgetFinanceGroupsEnabled?{p_versions:p_versions??null}:{})}),
   };
 }
 
@@ -85,8 +87,8 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       if (!dirty(g) && !g.request) storage?.removeItem(draftKey(g));
       else {
         const pending = g.request ? { id: g.request.p_request_id, session: g.request.p_session_id,
-          base: g.request.p_base_revision, value: g.request.p_patch[g.group] } : undefined;
-        storage?.setItem(draftKey(g), JSON.stringify({ version: 2, value: localValue(g), base: g.base, pending }));
+          base: g.request.p_base_revision, value: g.request.p_patch[g.group],versions:g.request.p_versions } : undefined;
+        storage?.setItem(draftKey(g), JSON.stringify({ version: 2, value: localValue(g), base: g.base,versions:g.versions, pending }));
       }
     } catch { /* In-memory input remains available if storage is blocked. */ }
   }
@@ -95,7 +97,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
   const owns = g => allowed(g) && g.state === "held" && g.expires > now() && !g.releasing && !g.conflict;
   const args = (g, action) => ({ p_trip_id: g.trip, p_kind: g.kind, p_id: g.id, p_group: g.group,
     p_session_id: sessionId, p_token: g.token, p_action: action, p_base_revision: g.base,
-    p_epoch: g.epoch ?? null, p_activity_seq: g.activity || 0, p_dirty: dirty(g) });
+    p_epoch: g.epoch ?? null, p_activity_seq: g.activity || 0, p_dirty: dirty(g),...(g.versions?{p_versions:g.versions}:{}) });
   const bounded = (work, late) => withBudgetAuthorityTimeout(work, { timeoutMs, late });
   async function cleanup(g, epoch = g.epoch) {
     if (!g.token) return { ok: true };
@@ -117,10 +119,10 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       if (remote.revision < g.base) continue; // A response predating our confirmed patch cannot roll it back.
       g.syncPending = false;
       g.remote = remote;
-      if ((remote.revision !== g.base || g.group === "pricing" && JSON.stringify(remote.value.versions) !== JSON.stringify(g.canonical.versions)) && (dirty(g) || g.request)) {
+      if ((remote.revision !== g.base || remote.versions&&!sameFinanceVersions(remote.versions,g.versions) || g.group === "pricing" && JSON.stringify(remote.value.versions) !== JSON.stringify(g.canonical.versions)) && (dirty(g) || g.request)) {
         if (!g.request) { g.conflict = true; g.error = "此欄位已由其他人更新，草稿已保留。請確認最新內容。"; }
       } else if (!dirty(g) && !g.request) {
-        g.canonical = remote.value ?? ""; g.value = g.canonical; g.base = remote.revision;
+        g.canonical = remote.value ?? ""; g.value = g.canonical; g.base = remote.revision;g.versions=remote.versions;
       }
       if (g.state === "held" && (!remote.own_session || remote.epoch !== g.epoch || !remote.held)) g.state = "lost";
     }
@@ -150,18 +152,18 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     if (!g) {
       const record = snapshot?.metadataRecords.find(r => r.kind === kind && r.id === id), remote = record?.groups.find(r => r.group === group);
       g = { key: k, kind, id, group, actor: context.actor, trip: context.trip, generation,
-        canonical: remote?.value ?? initialValue, value: remote?.value ?? initialValue, base: remote?.revision, remote,
+        canonical: remote?.value ?? initialValue, value: remote?.value ?? initialValue, base: remote?.revision,versions:remote?.versions, remote,
         state: "idle", localRevision: 0, supported: remote?.supported ?? record?.supported, ready: record?.state_ready, lastActivity: now() };
       try { const saved = JSON.parse(storage?.getItem(draftKey(g)) || "null");
         if ([1, 2].includes(saved?.version) && validMetadataValue(group, saved.value) && version(saved.base)) {
-          g.staged = saved.value; g.base = saved.base; g.conflict = Boolean(remote && (remote.revision !== saved.base
+          g.staged = saved.value; g.base = saved.base;g.versions=saved.versions??g.versions; g.conflict = Boolean(remote && (remote.revision !== saved.base||saved.versions&&!sameFinanceVersions(remote.versions,saved.versions)
             || group === "pricing" && JSON.stringify(remote.value.versions) !== JSON.stringify(saved.value.versions)));
           g.error = g.conflict ? "遠端版本已更新，已保留此分頁草稿。" : "已恢復此分頁草稿，請先確認編輯權限。";
           const p = saved.pending;
           if (saved.version === 2 && p && typeof p.id === "string" && typeof p.session === "string" && version(p.base)
             && validMetadataValue(group, p.value)) {
             g.request = { ...args(g, "patch"), p_request_id: p.id, p_session_id: p.session,
-              p_base_revision: p.base, p_token: null, p_epoch: null, p_patch: { [group]: p.value } };
+              p_base_revision: p.base, p_token: null, p_epoch: null, p_patch: { [group]: p.value },...(p.versions?{p_versions:p.versions}:{}) };
             g.value = saved.value; delete g.staged;
             g.submittedRevision = sameMetadataValue(group, saved.value, p.value) ? 0 : -1;
             g.conflict = false; g.failed = true; g.error = "先前儲存結果待確認，請重試原請求。";
@@ -213,7 +215,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         emit(); void refresh(); return false;
       }
       g.epoch = data.epoch; g.expires = Date.parse(data.expires_at) - offset;
-      g.canonical = data.value ?? ""; g.value = localValue(g); delete g.staged;
+      g.canonical = data.value ?? "";g.versions=data.versions??g.versions; g.value = localValue(g); delete g.staged;
       g.state = "held";
       persist(g); emit(); schedule(g); return true;
     })().finally(() => { g.acquiring = null; if (current(g) && g.state === "pending") {
@@ -281,7 +283,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         : code === "40001" ? "此欄位已更新，請確認最新內容；草稿已保留。" : result.error?.message || "儲存結果尚待確認，請以原請求重試。";
       g.failed = true; persist(g); emit(); void refresh(); return false;
     }
-    g.canonical = data.value ?? ""; g.base = data.revision;
+    g.canonical = data.value ?? ""; g.base = data.revision;g.versions=data.versions??g.versions;
     if (g.group === "pricing" && g.localRevision !== g.submittedRevision) g.value = { ...g.value, versions: data.value.versions };
     if (g.localRevision === g.submittedRevision) g.value = g.canonical;
     g.request = null; g.conflict = false; g.error = ""; g.failed = false; g.saved = true; g.syncPending = true; persist(g); emit();
@@ -300,7 +302,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     if (!(await release(g))) return false;
     if (!current(g)) return false;
     const remote = g.remote?.revision >= g.base ? g.remote : null;
-    g.value = remote?.value ?? g.canonical; g.canonical = g.value; g.base = remote?.revision ?? g.base;
+    g.value = remote?.value ?? g.canonical; g.canonical = g.value; g.base = remote?.revision ?? g.base;g.versions=remote?.versions??g.versions;
     cancelTimer(g); delete g.staged; g.conflict = false; g.failed = false; g.invalid = false; g.saved = false; persist(g); emit(); return true;
   }
   return {

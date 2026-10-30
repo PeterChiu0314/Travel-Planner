@@ -5,6 +5,7 @@ import {createBudgetReceiptController,createBudgetReceiptService} from './lib/bu
 import {receiptStorage} from './lib/budgetReceiptStorage.js';
 import {budgetReceiptsEnabled} from './lib/budgetReceiptConfig.js';
 import BudgetReceiptAttachments from './components/budget/BudgetReceiptAttachments.jsx';
+import {budgetFinanceGroupsEnabled,createBudgetRatesController,createBudgetRatesService} from './lib/budgetFinanceGroups.js';
 import { applyDemoPaymentChanges } from "./demo/budgetPaymentGroups.js";
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
 import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
@@ -2390,7 +2391,7 @@ export default function App() {
   const [shareError, setShareError] = useState("");
   const [activeSection, setActiveSection] = useState("today");
   async function receiptSafeSection(section){
-    if(budgetMetadataEnabled&&budgetReceiptsEnabled&&getActiveEditorGuardEntries({tripId:activeTripId}).some(([id,g])=>id.startsWith('budget-receipts:')&&g.isDirty)&&!await requestActiveEditorHandoff({tripId:activeTripId}))return;
+    if(budgetMetadataEnabled&&(budgetReceiptsEnabled||budgetFinanceGroupsEnabled)&&getActiveEditorGuardEntries({tripId:activeTripId}).some(([id,g])=>(id.startsWith('budget-receipts:')||id.startsWith('budget-finance-rates:'))&&g.isDirty)&&!await requestActiveEditorHandoff({tripId:activeTripId}))return;
     setActiveSection(section);
   }
   const [luggageTab, setLuggageTab] = useState("personal");
@@ -9219,6 +9220,7 @@ function DemoApp({ initialSection }) {
             onSavePayment={change => setDemoBudgetByTrip(current => ({ ...current, [demoActiveTrip.id]: applyDemoPaymentChanges(current[demoActiveTrip.id], change) }))}
             onSaveSource={change => setDemoBudgetByTrip(current => ({ ...current, [demoActiveTrip.id]: applyDemoPaymentChanges(current[demoActiveTrip.id], change) }))}
             onSaveReceipts={rows=>setFinanceField('attachments',()=>rows)}
+            onSaveRates={change=>setDemoBudgetByTrip(current=>({...current,[change.tripId]:{...current[change.tripId],tripBudgetRates:change.quote,budgetItems:current[change.tripId].budgetItems.map(b=>({...b,...change.rows.find(r=>r.id===b.id)}))}}))}
             onUploadAttachment={uploadDemoAttachment}
             restoreDrafts={false}
             useEditLocks={false}
@@ -13283,7 +13285,7 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 function BudgetPanel(props) {
   const leases = useMemo(() => createBudgetEditLeaseClient({ supabase, sessionId: budgetMetadataEnabled ? getBudgetMetadataSessionId() : undefined }), []);
   const metadataProps = useRef(props); metadataProps.current = props;
-  const { metadata, payments, sources, receipts, demoReceiptDispose } = useMemo(() => {
+  const { metadata, payments, sources, receipts, rates, demoReceiptDispose } = useMemo(() => {
     const demo = props.useEditLocks === false;
     const service = demo ? createDemoBudgetMetadataService(() => metadataProps.current) : createBudgetMetadataService(supabase);
     const metadata = createBudgetMetadataEditor({ service, sessionId: leases.sessionId,
@@ -13297,12 +13299,14 @@ function BudgetPanel(props) {
       service:demo?{authorized:service.authorized,preview:service.previewSource,lease:service.sourceLease,mutate:service.mutateSource}:createBudgetSourceService(supabase),
       storage:demo?null:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)}});
     const receipts=createBudgetReceiptController({metadata,sessionId:leases.sessionId,service:demo?service.receiptService:createBudgetReceiptService(supabase,headers=>receiptStorage(supabase,headers)),storage:demo?null:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)}});
-    return { metadata, payments, sources,receipts,demoReceiptDispose:service.disposeReceipts };
+    const rates=createBudgetRatesController({metadata,sessionId:leases.sessionId,service:demo?service.ratesService:createBudgetRatesService(supabase),storage:demo?null:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)}});
+    return { metadata, payments, sources,receipts,rates,demoReceiptDispose:service.disposeReceipts };
   }, [leases, props.useEditLocks]);
   useSyncExternalStore(metadata.subscribe, metadata.getProjectionVersion);
   useSyncExternalStore(payments.subscribe, payments.getVersion);
   useSyncExternalStore(sources.subscribe,sources.getVersion);
   useSyncExternalStore(receipts.subscribe,receipts.getVersion);
+  useSyncExternalStore(rates.subscribe,rates.getVersion);
   const [remoteCollaborators, setRemoteCollaborators] = useState([]);
   const [collaborationRevision, setCollaborationRevision] = useState(0);
   const collaboration = useMemo(() => createBudgetCollaboration({ supabase, sessionId: leases.sessionId, onChange: setRemoteCollaborators,
@@ -13334,6 +13338,11 @@ function BudgetPanel(props) {
   services.useGuard(`budget-receipts:${props.activeTrip.id}`,useMemo(()=>({isActive:receiptsPending,isDirty:receiptsPending,prepare:()=>receipts.prepare(),finish:()=>receipts.prepare(),save:async()=>false,discard:async()=>false}),[receiptsPending,receipts]));
   useEffect(()=>{receipts.configure(props.currentUserId,props.activeTrip.id,budgetMetadataEnabled&&budgetReceiptsEnabled&&metadataActive&&props.canEdit);},[receipts,props.currentUserId,props.activeTrip.id,metadataActive,props.canEdit]);
   useEffect(()=>()=>{void receipts.dispose();demoReceiptDispose?.();},[receipts,demoReceiptDispose]);
+  if(budgetMetadataEnabled&&budgetFinanceGroupsEnabled)rates.view('trip',props.activeTrip.id);
+  const ratesPending=budgetMetadataEnabled&&budgetFinanceGroupsEnabled&&rates.hasPending();
+  services.useGuard(`budget-finance-rates:${props.activeTrip.id}`,useMemo(()=>({isActive:ratesPending,isDirty:ratesPending,prepare:()=>rates.prepare(),finish:()=>rates.prepare(),save:async()=>false,discard:async()=>false}),[ratesPending,rates]));
+  useEffect(()=>{rates.configure(props.currentUserId,props.activeTrip.id,budgetMetadataEnabled&&budgetFinanceGroupsEnabled&&metadataActive&&props.canEdit);},[rates,props.currentUserId,props.activeTrip.id,metadataActive,props.canEdit]);
+  useEffect(()=>()=>{void rates.dispose();},[rates]);
   useEffect(() => {
     // Demo has no Realtime feed: scenario hydration and memory finance deltas
     // must enter the same authoritative/coalesced reader as Formal snapshots.
@@ -13382,7 +13391,7 @@ function BudgetPanel(props) {
   }, [leases, props.currentUserId, props.activeTrip.id, props.canEdit, workspaceActive]);
   useEffect(() => () => { void leases.dispose(); }, [leases]);
   return <BudgetWorkspace {...props} workspaceActive={workspaceActive} baseline={props.budgetBaseline} services={services}
-    metadataRequested={budgetMetadataEnabled} metadataClient={metadata.matches(props.currentUserId, props.activeTrip.id) ? metadata : null} paymentClient={payments} sourceClient={sources} receiptPending={receiptsPending}
+    metadataRequested={budgetMetadataEnabled} metadataClient={metadata.matches(props.currentUserId, props.activeTrip.id) ? metadata : null} paymentClient={payments} sourceClient={sources} receiptPending={receiptsPending} ratesRequested={budgetMetadataEnabled&&budgetFinanceGroupsEnabled} ratesClient={rates} ratesPending={ratesPending}
     collaborationRevision={collaborationRevision} remoteCollaborators={props.useEditLocks === false ? [] : budgetMetadataEnabled
       ? primaryBudgetCollaborators(metadata.status().verified ? metadata.status().snapshot?.collaboration?.entries || [] : []).filter(e => !e.own_session)
       : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}

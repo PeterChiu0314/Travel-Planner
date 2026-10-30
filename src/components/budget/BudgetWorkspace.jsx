@@ -464,22 +464,27 @@ export default function BudgetWorkspace(incoming) {
   const [ratesBusy, setRatesBusy] = useState(false);
   const [ratesError, setRatesError] = useState("");
   const ratesBusyRef = useRef(false);
+  const ratesState=props.ratesRequested?props.ratesClient?.view('trip',activeTrip.id):null;
   const rateAttemptRef = useRef(null);
   const budgetPaymentRequest = useRef(null);
   const canRefreshRates = canEdit && stage === "planning" && Boolean(tripRates) && Boolean(props.onUpdateBudgetRates);
   async function refreshRates(initialize = false) {
     if (!canRefreshRates || ratesBusyRef.current) return;
-    if (!(await services.handoff({ tripId: activeTrip.id }))) return;
+    if (!ratesState?.active&&!(await services.handoff({ tripId: activeTrip.id }))) return;
     if (ratesBusyRef.current) return;
     ratesBusyRef.current = true; setRatesBusy(true); setRatesError("");
     const tripId = activeTrip.id;
+    const scope=workspaceScope.current;
     try {
+      if(props.ratesRequested&&ratesState?.active){const ok=await props.ratesClient.retry('trip',tripId);if(!ok&&scope===workspaceScope.current)throw new Error(props.ratesClient.view('trip',tripId).error||'匯率結果仍待確認，請重試原操作。');return;}
       const quote = props.disableDraftAutosave ? props.tripBudgetRates : await fetchBudgetQuote({ force: !initialize });
-      const result = await props.onUpdateBudgetRates(quote, { tripId, initialize });
+      if(scope!==workspaceScope.current)return;
+      const result = props.ratesRequested?{ok:await props.ratesClient.update(tripId,quote,initialize),error:new Error(props.ratesClient.view('trip',tripId).error||'匯率更新未完成。')}:await props.onUpdateBudgetRates(quote, { tripId, initialize });
       if (!result?.ok) throw result?.error || new Error("旅程匯率儲存失敗。");
-    } catch (error) { setRatesError(error.message || "匯率更新失敗，原匯率已保留。"); }
-    finally { ratesBusyRef.current = false; setRatesBusy(false); }
+    } catch (error) { if(scope===workspaceScope.current)setRatesError(error.message || "匯率更新失敗，原匯率已保留。"); }
+    finally { if(scope===workspaceScope.current){ratesBusyRef.current = false; setRatesBusy(false);} }
   }
+  useEffect(()=>{ratesBusyRef.current=false;setRatesBusy(false);setRatesError('');},[activeTrip.id,props.currentUserId]);
   useEffect(() => {
     setRatesError("");
     if (canRefreshRates && props.restoreDrafts && !tripRates?.rates && rateAttemptRef.current !== activeTrip.id) {
@@ -594,7 +599,7 @@ export default function BudgetWorkspace(incoming) {
     const scope = workspaceScope.current;
     panelTransition.current = true;
     try {
-        if(props.receiptPending&&next!==panel&&!(await services.handoff({tripId:activeTrip.id})))return;
+        if((props.receiptPending||props.ratesPending)&&next!==panel&&!(await services.handoff({tripId:activeTrip.id})))return;
       if (next !== "edit" && props.metadataRequested && !activeEditor && panel === "edit" && !(await services.handoff({ tripId: activeTrip.id }))) return;
       if (next !== "edit" && activeEditor && !(await activeEditor.close(false, { sidebar: true }))) return;
       if (scope !== workspaceScope.current) return;
@@ -691,7 +696,7 @@ export default function BudgetWorkspace(incoming) {
       const canonical = graph?.[selected.kind === "actual" ? "actualExpenses" : "budgetItems"]?.find(row => row.id === selected.id);
       if (canonical && await (selected.kind === "actual" ? actualEditor : budgetEditor).open(canonical) && scope === workspaceScope.current) setPanel("edit"); }} />
     : <p className="bw-muted" role="status">正在確認協作狀態…</p> : null;
-  const ratesControl = { tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates: () => void refreshRates() };
+  const ratesControl = { tripRates, ratesBusy:ratesBusy||Boolean(ratesState?.busy), ratesError:ratesError||ratesState?.error||'', canRefreshRates, onRefreshRates: () => void refreshRates() };
   return <section className="budget-panel budget-workspace" aria-label="預算工作區" data-stage={stage}>{dialog}
     <div className="bw-main"><div className="bw-toolbar"><h3>預算</h3>{!planning ? <div className="bw-tabs" role="tablist" aria-label="費用資料檢視">
       {[['budget', '預算'], ...(!planning ? [['actual', '實付']] : []), ...(stage === "settled" ? [['compare', '對照']] : [])].map(([key, label]) => <button role="tab" key={key} type="button" aria-selected={view === key} onClick={() => void changeView(key)}>{label}</button>)}

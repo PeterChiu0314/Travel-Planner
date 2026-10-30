@@ -5,6 +5,8 @@ import { budgetStage } from "../lib/budgetFinance.js";
 import { attachDemoPayments, applyDemoPaymentChanges, paymentChangesApplied } from "./budgetPaymentGroups.js";
 import { attachDemoSources } from './budgetSourceGroups.js';
 import {attachDemoReceipts} from './budgetReceipts.js';
+import {attachDemoFinance} from './budgetFinanceGroups.js';
+import {budgetFinanceGroupsEnabled} from '../lib/budgetFinanceValues.js';
 export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now) {
   let paymentOverlay = null, pricingGraph = 0;
   const getProps = () => {
@@ -14,7 +16,7 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
   };
   const states = new Map(), requests = new Map(); let revision = 0;
   const key = (kind, id, group) => `${kind}:${id}:${group}`;
-  const versions = (kind, id, revision) => ({ graph: pricingGraph, rates: 0, members: 0, targets: [{ kind, id, revision }] });
+  const versions = (kind, id, revision) => ({ graph: pricingGraph, rates: transport.financeRatesVersion?.()||0, members: 0, targets: [{ kind, id, revision }] });
   function valueFor(kind, row, group) { return group === "pricing" ? pricingInputs(row, (getProps()[kind === "budget" ? "budgetParticipants" : "actualParticipants"] || []).filter(p => p[kind === "budget" ? "budget_item_id" : "actual_expense_id"] === row.id), versions(kind,row.id,states.get(key(kind,row.id,group))?.revision || 0)) : recordMetadataValue(kind,row,group,getProps().itineraryBudgetLinks); }
   function state(kind, row, group) {
     const value = valueFor(kind, row, group);
@@ -93,5 +95,6 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
   attachDemoPayments(transport, getProps, { state, changed, graphVersion:()=>pricingGraph,
     commit(change) { paymentOverlay = change; getOriginalProps().onSavePayment?.(change); } }, now);
   attachDemoSources(transport,getProps,{state,changed,commit(change){paymentOverlay=change;getOriginalProps().onSaveSource?.(change);}},now);
-  return attachDemoReceipts(transport,getProps,{state,changed},now);
+  attachDemoReceipts(transport,getProps,{state,changed},now);
+  return budgetFinanceGroupsEnabled?attachDemoFinance(transport,getProps,{state,changed,graphVersion:()=>pricingGraph},now):transport;
 }
