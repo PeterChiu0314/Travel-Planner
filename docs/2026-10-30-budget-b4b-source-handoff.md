@@ -1,5 +1,7 @@
 # Issue #15 B-4b — Source 來源關聯與資料套用
 
+2026-10-30 後續：[B-4c Receipt 交接](2026-10-30-budget-b4c-receipts-handoff.md) 已新增本機 default-off 收據協定，並以新 forward migration 修正 Source-enabled Actual title/note revision／Undo capture 邊界。下列為 B-4b 當時的契約與證據；不代表 Receipt 已 Hosted 部署或正式驗證。
+
 起點 `c136244f4a039bfbc2de3ba3c93023c872a69288`，本機／GitHub 同步、工作區乾淨。只做本機 forward migration、隔離 QA、文件及 feature-branch commit/push；Source/Payment/Metadata/Undo DB protocols 與前端旗標保持 default-off，不連 Hosted／Storage、不改 main、不部署。
 
 ## 實作前相依矩陣與支援邊界

@@ -14,6 +14,7 @@ import {sourceBaselineCases} from './budget-source-baseline-cases.mjs';
 import {sourceGroupCases} from './budget-source-group-cases.mjs';
 import {createBudgetPaymentController} from '../src/lib/budgetPaymentGroups.js';
 import {createBudgetSourceController,createBudgetSourceService} from '../src/lib/budgetSourceGroups.js';
+import {receiptCases} from './budget-receipts-cases.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -69,6 +70,7 @@ const fixture=async()=>{
   await admin('insert into budget_item_participants(budget_item_id,user_id,share_amount) values($1,$2,300),($1,$3,600)',[id,actorA,actorB]);return id;
 };
 const test=async(name,run)=>{
+  if(process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'&&!name.startsWith('Receipt'))return;
   const started=Date.now();
   try{const detail=await run();results.push({name,status:'passed',ms:Date.now()-started,...detail});console.log(`PASS ${name}`);}
   catch(error){results.push({name,status:'failed',ms:Date.now()-started,message:error.message,code:error.code});console.error(`FAIL ${name}: ${error.message}`);}
@@ -124,6 +126,15 @@ try{
     // PostgreSQL stores function body line endings verbatim. Compare the same
     // logical source on LF and Windows CRLF checkouts without editing migrations.
     const source=(await fs.readFile(new URL(file,migrationDir),'utf8')).replace(/\r\n/g,'\n');
+    if(file==='20261030034351_budget_receipts_lifecycle.sql'&&process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'){
+      await test('Receipt forward migration fault and unused reverse preserve definitions ACLs Storage policies and existing receipt identities',async()=>{
+        const u=uuid(),t=uuid(),id=uuid(),receipt=uuid(),path=`trips/${t}/attachments/actual_expense/${id}/legacy.pdf`;
+        await admin('insert into auth.users(id) values($1)',[u]);await admin("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Receipt migration QA','Receipt migration QA','Japan','2090-01-01','2090-01-06',$2)",[t,u]);await admin("insert into actual_expenses(id,trip_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id) values($1,$2,'Legacy actual','交通',900,900,'TWD',1,$3)",[id,t,u]);await admin("insert into attachments(id,trip_id,target_type,target_id,file_name,file_url) values($1,$2,'actual_expense',$3,'legacy.pdf',$4)",[receipt,t,id,path]);await admin("insert into storage.objects(id,bucket_id,name,metadata) values($1,'trip-attachments',$2,'{\"size\":5,\"mimetype\":\"application/pdf\"}')",[uuid(),path]);
+        const catalog=async()=>({defs:await definitions(),acl:await admin("select oid::regprocedure::text name,proacl::text acl from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) and prokind='f' order by name"),policies:await admin("select * from pg_policies where schemaname='storage' order by policyname"),serviceUsage:(await admin("select has_schema_privilege('service_role','app_private','usage') v"))[0].v,rows:await admin("select * from (select 'actual' k,to_jsonb(t) v from actual_expenses t union all select 'receipt',to_jsonb(t) from attachments t union all select 'objects',to_jsonb(t) from storage.objects t union all select 'groups',to_jsonb(t) from app_private.budget_metadata_groups t) q order by k,v::text")});
+        const before=await catalog();await assert.rejects(()=>admin(source.replace(/commit;\s*$/i,'select 1/0;commit;')),e=>e.code==='22012');await admin('rollback');assert.deepEqual(await catalog(),before);await admin(source);await admin(await fs.readFile(new URL('../docs/qa/2026-10-30-budget-receipt-rollback.sql',import.meta.url),'utf8'));assert.deepEqual(await catalog(),before);
+        await admin('delete from storage.objects where name=$1',[path]);await admin('delete from trips where id=$1',[t]);await admin('delete from auth.users where id=$1',[u]);
+      });
+    }
     if(file==='20261030021719_budget_source_atomic_groups.sql'){
       await test('Source migration fault and dormant reverse preserve full definitions ACLs nonempty identities receipts and groups',async()=>{
         const user=uuid(),t=uuid(),bid=uuid(),aid=uuid(),receipt=uuid();
@@ -224,6 +235,9 @@ try{
   const sessions=await Promise.all([a,b].map(c=>query(c,"select pg_backend_pid() pid,session_user,current_user,auth.uid() actor,current_setting('transaction_isolation') isolation")));
   await fs.writeFile(path.join(process.env.BUDGET_NATIVE_EVIDENCE,'bootstrap.json'),JSON.stringify({server:(await admin('select version() version'))[0].version,pids:[pidA,pidB,observerPid],sessions,hashes},null,2));
 
+  if(process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'){
+    await receiptCases({test,admin,query,a,b,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});
+  }else{
   await test('metadata snapshot keeps the complete invoker financial graph and exposes explicit limited readiness',async()=>{
     const id=await fixture();
     const actual=uuid();await admin("insert into actual_expenses(id,trip_id,title,amount,currency,exchange_rate,twd_amount,payer_id,payment_origin) values($1,$2,'Standalone',71,'TWD',1,71,$3,'manual')",[actual,trip,actorA]);
@@ -754,6 +768,7 @@ try{
     try{metadata.configure(actorA,trip,true,true);payment.configure(actorA,trip,true);assert(await payment.execute('budget',id,{action:'paid'}),payment.view('budget',id).error);assert.equal(payment.hasPending(),false);const actual=(await admin('select id from actual_expenses where budget_item_id=$1',[id]))[0].id;assert(await payment.execute('budget',id,{action:'unpaid'}),payment.view('budget',id).error);assert(await payment.execute('budget',id,{action:'paid'}),payment.view('budget',id).error);assert.equal((await admin('select id from actual_expenses where budget_item_id=$1',[id]))[0].id,actual);}
     finally{await payment.dispose();await metadata.dispose();}
   });
+  }
 }catch(error){results.push({name:'harness/bootstrap',status:'failed',message:error.message,code:error.code});console.error(error.message);}
 finally{
   await Promise.allSettled([a.end(),b.end()]);

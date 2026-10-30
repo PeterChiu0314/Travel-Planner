@@ -1,6 +1,6 @@
 # B-4a Source／Receipt 相依盤點（分析，不實作新生命週期）
 
-2026-10-30 後續：Source 的本機 dormant 原子協定與共用 UI 已進入 [B-4b Source 交接](2026-10-30-budget-b4b-source-handoff.md)。下列是 B-4a 當時盤點，Source 當前支援／拒絕邊界以 B-4b 為準；Receipt Storage 新生命週期仍未實作或部署。
+2026-10-30 後續：Source 的本機 dormant 原子協定與共用 UI 見 [B-4b Source 交接](2026-10-30-budget-b4b-source-handoff.md)；Receipt 的上傳／替換／刪除與持久清理已完成本機 default-off 實作，見 [B-4c Receipt 交接](2026-10-30-budget-b4c-receipts-handoff.md)。下列保留 B-4a 當時盤點；目前支援／拒絕邊界以新交接為準。兩者均未 Hosted 部署／啟用，Receipt 尚待真正 Storage HTTP 與 worker readiness 驗證。
 
 本機來源基準 `abee7c0` 及 B-4a forward migration；沒有查詢／修改 Hosted 或 Storage。較早 Budget Safety 文件的 destructive unpaid 語意已由 Unified Planning 取代，不能回復。此次 Payment 只切 active／首次建立／明確 paid_at，不重新關聯來源或上傳、刪除檔案。
 

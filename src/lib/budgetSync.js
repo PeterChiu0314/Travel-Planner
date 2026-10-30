@@ -1,4 +1,5 @@
 import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./budgetMetadataConfig.js";
+import {budgetReceiptsEnabled} from './budgetReceiptConfig.js';
 import { validBudgetMetadataSnapshot, withBudgetAuthorityTimeout, budgetSnapshotTimeoutError } from "./budgetMetadataService.js";
 export const emptyBudgetSnapshot = () => ({ tripId: null, budgetItems: [], budgetParticipants: [], actualExpenses: [], actualParticipants: [],
   itineraryBudgetLinks: [], budgetBaseline: null, items: [], members: [], attachments: [], tripBudgetRates: null });
@@ -7,7 +8,7 @@ export const mergeBudgetAttachments = (attachments, snapshot) => [...attachments
 export async function readBudgetSnapshot(supabase, tripId) {
   try {
     const started = Date.now();
-    let result = await supabase.rpc(budgetMetadataEnabled ? "read_budget_metadata_snapshot_v6" : "read_budget_snapshot",
+    let result = await supabase.rpc(budgetMetadataEnabled ? budgetReceiptsEnabled ? "read_budget_metadata_snapshot_v7" : "read_budget_metadata_snapshot_v6" : "read_budget_snapshot",
       { p_trip_id: tripId, ...(budgetMetadataEnabled ? { p_session_id: getBudgetMetadataSessionId() } : {}) });
     let metadataMissing = false;
     if (budgetMetadataEnabled && ["PGRST202", "42883"].includes(result.error?.code)) {

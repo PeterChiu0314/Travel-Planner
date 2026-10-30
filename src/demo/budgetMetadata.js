@@ -4,6 +4,7 @@ import { metadataGroupKeys, recordMetadataValue, sameMetadataValue, metadataFiel
 import { budgetStage } from "../lib/budgetFinance.js";
 import { attachDemoPayments, applyDemoPaymentChanges, paymentChangesApplied } from "./budgetPaymentGroups.js";
 import { attachDemoSources } from './budgetSourceGroups.js';
+import {attachDemoReceipts} from './budgetReceipts.js';
 export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now) {
   let paymentOverlay = null, pricingGraph = 0;
   const getProps = () => {
@@ -91,5 +92,6 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
   const changed = graph => { revision++; if (graph) pricingGraph++; };
   attachDemoPayments(transport, getProps, { state, changed, graphVersion:()=>pricingGraph,
     commit(change) { paymentOverlay = change; getOriginalProps().onSavePayment?.(change); } }, now);
-  return attachDemoSources(transport,getProps,{state,changed,commit(change){paymentOverlay=change;getOriginalProps().onSaveSource?.(change);}},now);
+  attachDemoSources(transport,getProps,{state,changed,commit(change){paymentOverlay=change;getOriginalProps().onSaveSource?.(change);}},now);
+  return attachDemoReceipts(transport,getProps,{state,changed},now);
 }

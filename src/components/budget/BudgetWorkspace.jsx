@@ -594,6 +594,7 @@ export default function BudgetWorkspace(incoming) {
     const scope = workspaceScope.current;
     panelTransition.current = true;
     try {
+        if(props.receiptPending&&next!==panel&&!(await services.handoff({tripId:activeTrip.id})))return;
       if (next !== "edit" && props.metadataRequested && !activeEditor && panel === "edit" && !(await services.handoff({ tripId: activeTrip.id }))) return;
       if (next !== "edit" && activeEditor && !(await activeEditor.close(false, { sidebar: true }))) return;
       if (scope !== workspaceScope.current) return;

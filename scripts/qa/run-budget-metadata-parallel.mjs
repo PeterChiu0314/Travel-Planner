@@ -35,7 +35,7 @@ try {
   await fs.writeFile(path.join(work,'environment.json'),JSON.stringify({version,host:'127.0.0.1',port,marker,work,data,log,startedAt:new Date().toISOString()},null,2));
   const exit=await new Promise((resolve,reject)=>{
     const child=spawn(process.execPath,['tests/budget-metadata-parallel.mjs'],{cwd:root,windowsHide:true,stdio:'inherit',env:{...process.env,
-      BUDGET_NATIVE_PORT:String(port),BUDGET_NATIVE_MARKER:marker,BUDGET_NATIVE_EVIDENCE:work,
+      BUDGET_NATIVE_PORT:String(port),BUDGET_NATIVE_MARKER:marker,BUDGET_NATIVE_EVIDENCE:work,BUDGET_NATIVE_RECEIPTS_ONLY:process.argv.includes('--receipts')?'1':'',
       BUDGET_NATIVE_PG_MODULE:path.resolve('.tmp-budget-db-runtime/node_modules/pg/lib/index.js')}});
     child.on('error',reject);child.on('exit',code=>resolve(code??1));
   });

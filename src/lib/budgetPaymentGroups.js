@@ -24,7 +24,7 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
   const key = e => `travel-planner-${group}:${e.actor}:${e.trip}:${e.kind}:${e.id}`;
   function persist(e) { try { if (e.request) storage?.setItem(key(e), JSON.stringify({ version: e.legacyPending ? 1 : 2, request: { ...e.request, p_token: null, p_epoch: null } })); else storage?.removeItem(key(e)); } catch { /* Memory keeps unresolved intent. */ } }
   const bounded = (work, late) => withBudgetAuthorityTimeout(work, { timeoutMs, late });
-  const leaseArgs = (e, action, epoch = e.epoch) => ({ p_trip_id: e.trip, p_kind: e.kind, p_id: e.id, p_session_id: sessionId,
+  const leaseArgs = (e, action, epoch = e.epoch) => ({ p_trip_id: e.trip, p_kind: e.kind, p_id: e.id, p_session_id: operation ? e.operationSession || sessionId : sessionId,
     p_token: e.token, p_action: action, p_base_revision: e.base, p_epoch: epoch ?? null, p_versions: e.versions, p_intent: e.intent ?? null });
   async function cleanup(e, epoch = e.epoch) {
     if (!e.token || epoch == null) return !e.token;
@@ -43,6 +43,7 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
         if ((operation ? saved?.version === 2 : [1, 2].includes(saved?.version)) && r?.p_kind === kind && r.p_id === id && r.p_trip_id === context.trip && typeof r.p_request_id === 'string'
           && typeof r.p_session_id === 'string' && version(r.p_base_revision) && actions.includes(r.p_value?.action)) {
           e.request = { ...r, p_token: null, p_epoch: null }; e.legacyPending = saved.version === 1; e.error = `先前${label}結果待確認，請重試原請求。`;
+          if(operation)e.operationSession=r.p_session_id;
         }
       } catch { /* Stored input never grants capability. */ }
       entries.set(k, e);
@@ -51,10 +52,11 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
   }
   const active = e => e.busy || Boolean(e.request || e.syncPending || e.releasePending);
   async function run(e, intent) {
-    if (!current(e) || !context.editable || !(await service.authorized(e.actor))) return false;
-    if (!current(e) || !context.editable) return false;
-    e.busy = true; e.error = ''; emit();
     try {
+      if (!current(e) || !context.editable) return false;
+      if (!(await service.authorized(e.actor))) throw new Error(`登入授權尚未確認，請重新確認後重試${label}操作。`);
+      if (!current(e) || !context.editable) return false;
+      e.busy = true; e.parked=false; e.error = ''; emit();
       if (!e.request && !e.receipt) {
         if (!(await metadata.refresh()).ok || !current(e)) throw new Error(`${label}協作狀態尚未確認，原狀態已保留。`);
         const snapshot = metadata.status().snapshot;
@@ -62,7 +64,7 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
           const prepared = await bounded(operation.prepare({ snapshot, kind: e.kind, id: e.id, trip: e.trip, intent, service }));
           if (!current(e)) return false;
           if (prepared.error || !prepared.data) throw new Error(prepared.error?.message || '來源摘要尚未確認，請重新預覽。');
-          const p = prepared.data; e.base = p.revision; e.versions = p.versions; e.intent = { action: p.action, budget_id: p.budget_id }; e.targets = p.targets;
+          const p = prepared.data; e.base = p.revision; e.versions = p.versions; e.intent = p.intent || { action: p.action, budget_id: p.budget_id }; e.targets = p.targets;
         } else {
           const row = snapshot?.paymentRecords?.find(r => r.kind === e.kind && r.id === e.id);
           if (snapshot?.paymentProtocol?.name !== 'budget-payment' || snapshot.paymentProtocol.schemaVersion !== 2 || !snapshot.paymentProtocol.enabled) throw new Error('付款群組尚未啟用，資料未變更。');
@@ -90,6 +92,11 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
         persist(e);
       }
       if (e.request) {
+        if(operation?.recover&&!e.transport&&(!e.token||e.requestFailure==='55P03')){
+          const recovered=await bounded(operation.recover({entry:e,metadata,service,makeId}),result=>{if(result.data?.token)void cleanup({...e,token:result.data.token,operationSession:e.request?.p_session_id},result.data.epoch);});if(!current(e))return false;
+          if(recovered?.error)throw new Error(recovered.error.message||'收據權限尚未確認。');
+          if(recovered?.data){e.token=recovered.data.token;e.epoch=recovered.data.epoch;e.operationSession=e.request.p_session_id;e.request={...e.request,p_token:e.token,p_epoch:e.epoch};persist(e);}
+        }
         const request = e.request;
         const transport = e.transport ||= Promise.resolve().then(() => service.mutate(request)).catch(error => ({ error }));
         let settled = false; transport.then(() => { settled = true; });
@@ -100,12 +107,14 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
           && version(data.revision) && [request.p_base_revision, request.p_base_revision + 1].includes(data.revision) && validValue(data.value, e.legacyPending)
           && (operation ? operation.validReceipt(data, request) : action === 'set_paid_at' ? Date.parse(data.value.paid_at) === Date.parse(request.p_value.paid_at) : data.value.active === (action === 'paid'));
         if (result.error || !valid) {
-          if (['40001', '40P01', '55P03', '42501', '55000', '22023', '22P02', '0A000'].includes(result.error?.code)) {
+          e.requestFailure=result.error?.code;
+          if (['40001', '40P01', '55P03', '42501', '55000', '22023', '22P02', '0A000'].includes(result.error?.code)&&!operation?.retainRequestOnError?.(result.error.code)) {
             e.request = null; persist(e); e.releasePending = !(await cleanup(e));
           }
           throw new Error(result.error?.message || `${label}結果待確認，請以原請求重試。`);
         }
         e.receipt = data; e.request = null; e.syncPending = true; persist(e); emit();
+        if(operation?.afterConfirmed){await bounded(operation.afterConfirmed({request,receipt:data,service}));if(!current(e))return false;}
       }
       if (e.token) { e.releasePending = !(await cleanup(e)); if (e.releasePending) throw new Error(`${label}已提交，權限釋放仍待確認。`); }
       if (!(await metadata.refresh()).ok || !current(e)) throw new Error(`${label}已提交，最新同步待確認；請重新整理。`);
@@ -127,7 +136,7 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
     if (!e.request && !e.receipt && !actions.includes(intent?.action)) return Promise.resolve(false);
     // Authorization is asynchronous too: guard the user's explicit operation
     // immediately so an item switch cannot slip in before lease admission.
-    e.busy = true; e.error = ''; emit();
+    e.busy = true; e.parked=false; e.error = ''; emit();
     const work = run(e, intent).finally(() => {
       if (e.work === work) { e.work = null; if (current(e)) { e.busy = false; emit(); } }
     }); e.work = work; return work;
@@ -135,13 +144,22 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
   return {
     get, execute, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, getVersion: () => revision,
     view(kind, id) { const e = get(kind, id); return e ? { ...e, active: active(e), unknown: Boolean(e.request) } : {}; },
-    hasPending: () => [...entries.values()].some(active),
-    async prepare() { for (const e of entries.values()) { if (e.work) await e.work; if (active(e)) return false; } return true; },
+    hasPending: () => [...entries.values()].some(e=>active(e)&&!e.parked),
+    async prepare() { for (const e of entries.values()) { if(e.parked)continue;if (e.work) await e.work; if (active(e)) return false; } return true; },
+    park(kind,id){const e=get(kind,id);if(!operation?.allowPark||!e||!active(e))return false;persist(e);e.parked=true;if(e.token)void cleanup(e);emit();return true;},
     async retry(kind, id) {
       const e = get(kind, id); if (!e || e.work) return false;
       if (e.releasePending && !e.receipt && !e.request) { const ok = await cleanup(e); if (current(e) && ok) { e.error = ''; emit(); } return ok; }
       if (!e.request && !e.receipt) return false;
       return execute(kind, id);
+    },
+    async abandon(kind,id){
+      const e=get(kind,id);if(!operation?.abandon||!e?.request||e.work||e.transport)return false;
+      e.busy=true;emit();try{const result=await bounded(operation.abandon({entry:e,metadata,service,makeId}));if(!current(e))return false;
+        if(result.error||!result.aborted){e.error=result.error?.message||'結果尚未確認，不能放棄已提交操作。';return false;}
+        if(result.capability){e.token=result.capability.token;e.epoch=result.capability.epoch;e.operationSession=e.request.p_session_id;}
+        e.request=null;e.requestFailure=null;persist(e);e.releasePending=!(await cleanup(e));if(e.releasePending){e.error='收據已取消，編輯權釋放待確認。';return false;}e.error='';emit();return true;
+      }finally{if(current(e)){e.busy=false;emit();}}
     },
     configure(actor, trip, editable) {
       if (context?.actor === actor && context?.trip === trip && context?.editable === editable) return;

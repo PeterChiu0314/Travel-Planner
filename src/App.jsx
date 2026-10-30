@@ -1,6 +1,10 @@
 import { applyDemoPricing } from "./lib/budgetPricingGroups.js";
 import { createBudgetPaymentController, createBudgetPaymentService } from "./lib/budgetPaymentGroups.js";
 import { createBudgetSourceController, createBudgetSourceService } from './lib/budgetSourceGroups.js';
+import {createBudgetReceiptController,createBudgetReceiptService} from './lib/budgetReceiptGroups.js';
+import {receiptStorage} from './lib/budgetReceiptStorage.js';
+import {budgetReceiptsEnabled} from './lib/budgetReceiptConfig.js';
+import BudgetReceiptAttachments from './components/budget/BudgetReceiptAttachments.jsx';
 import { applyDemoPaymentChanges } from "./demo/budgetPaymentGroups.js";
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
 import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
@@ -2385,6 +2389,10 @@ export default function App() {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState("");
   const [activeSection, setActiveSection] = useState("today");
+  async function receiptSafeSection(section){
+    if(budgetMetadataEnabled&&budgetReceiptsEnabled&&getActiveEditorGuardEntries({tripId:activeTripId}).some(([id,g])=>id.startsWith('budget-receipts:')&&g.isDirty)&&!await requestActiveEditorHandoff({tripId:activeTripId}))return;
+    setActiveSection(section);
+  }
   const [luggageTab, setLuggageTab] = useState("personal");
   const routeOverrideCoordinateSnapshotRef = useRef(new Map());
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -6302,7 +6310,7 @@ export default function App() {
                 title={item.label}
                 aria-label={item.label}
                 aria-current={activeSection === item.id ? "page" : undefined}
-                onClick={() => setActiveSection(item.id)}
+                onClick={() => void receiptSafeSection(item.id)}
               >
                 <span className="section-nav-icon" aria-hidden="true">
                   <Icon size={15} strokeWidth={2.2} />
@@ -6460,7 +6468,7 @@ export default function App() {
             onReorderLuggage={reorderTripLuggage}
             onSaveTodo={saveTodo}
             onLuggageTabChange={setLuggageTab}
-            onSectionChange={setActiveSection}
+            onSectionChange={receiptSafeSection}
             onToggleLuggageItem={toggleLuggageItem}
             onToggleTodo={toggleTodo}
             onTogglePackItem={togglePackItem}
@@ -6478,7 +6486,7 @@ export default function App() {
             className={`bottom-nav-button${activeSection === item.id ? " active" : ""}`}
             key={item.id}
             type="button"
-            onClick={() => setActiveSection(item.id)}
+            onClick={() => void receiptSafeSection(item.id)}
           >
             {item.label}
           </button>
@@ -9210,6 +9218,7 @@ function DemoApp({ initialSection }) {
             }}
             onSavePayment={change => setDemoBudgetByTrip(current => ({ ...current, [demoActiveTrip.id]: applyDemoPaymentChanges(current[demoActiveTrip.id], change) }))}
             onSaveSource={change => setDemoBudgetByTrip(current => ({ ...current, [demoActiveTrip.id]: applyDemoPaymentChanges(current[demoActiveTrip.id], change) }))}
+            onSaveReceipts={rows=>setFinanceField('attachments',()=>rows)}
             onUploadAttachment={uploadDemoAttachment}
             restoreDrafts={false}
             useEditLocks={false}
@@ -13274,7 +13283,7 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 function BudgetPanel(props) {
   const leases = useMemo(() => createBudgetEditLeaseClient({ supabase, sessionId: budgetMetadataEnabled ? getBudgetMetadataSessionId() : undefined }), []);
   const metadataProps = useRef(props); metadataProps.current = props;
-  const { metadata, payments, sources } = useMemo(() => {
+  const { metadata, payments, sources, receipts, demoReceiptDispose } = useMemo(() => {
     const demo = props.useEditLocks === false;
     const service = demo ? createDemoBudgetMetadataService(() => metadataProps.current) : createBudgetMetadataService(supabase);
     const metadata = createBudgetMetadataEditor({ service, sessionId: leases.sessionId,
@@ -13287,11 +13296,13 @@ function BudgetPanel(props) {
     const sources = createBudgetSourceController({metadata,sessionId:leases.sessionId,
       service:demo?{authorized:service.authorized,preview:service.previewSource,lease:service.sourceLease,mutate:service.mutateSource}:createBudgetSourceService(supabase),
       storage:demo?null:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)}});
-    return { metadata, payments, sources };
+    const receipts=createBudgetReceiptController({metadata,sessionId:leases.sessionId,service:demo?service.receiptService:createBudgetReceiptService(supabase,headers=>receiptStorage(supabase,headers)),storage:demo?null:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)}});
+    return { metadata, payments, sources,receipts,demoReceiptDispose:service.disposeReceipts };
   }, [leases, props.useEditLocks]);
   useSyncExternalStore(metadata.subscribe, metadata.getProjectionVersion);
   useSyncExternalStore(payments.subscribe, payments.getVersion);
   useSyncExternalStore(sources.subscribe,sources.getVersion);
+  useSyncExternalStore(receipts.subscribe,receipts.getVersion);
   const [remoteCollaborators, setRemoteCollaborators] = useState([]);
   const [collaborationRevision, setCollaborationRevision] = useState(0);
   const collaboration = useMemo(() => createBudgetCollaboration({ supabase, sessionId: leases.sessionId, onChange: setRemoteCollaborators,
@@ -13318,6 +13329,11 @@ function BudgetPanel(props) {
   }
   const workspaceActive = props.restoreDrafts !== false;
   const metadataActive = props.useEditLocks === false || workspaceActive;
+  if(budgetMetadataEnabled&&budgetReceiptsEnabled)for(const row of props.actualExpenses)receipts.view('actual',row.id);
+  const receiptsPending=budgetMetadataEnabled&&budgetReceiptsEnabled&&receipts.hasPending();
+  services.useGuard(`budget-receipts:${props.activeTrip.id}`,useMemo(()=>({isActive:receiptsPending,isDirty:receiptsPending,prepare:()=>receipts.prepare(),finish:()=>receipts.prepare(),save:async()=>false,discard:async()=>false}),[receiptsPending,receipts]));
+  useEffect(()=>{receipts.configure(props.currentUserId,props.activeTrip.id,budgetMetadataEnabled&&budgetReceiptsEnabled&&metadataActive&&props.canEdit);},[receipts,props.currentUserId,props.activeTrip.id,metadataActive,props.canEdit]);
+  useEffect(()=>()=>{void receipts.dispose();demoReceiptDispose?.();},[receipts,demoReceiptDispose]);
   useEffect(() => {
     // Demo has no Realtime feed: scenario hydration and memory finance deltas
     // must enter the same authoritative/coalesced reader as Formal snapshots.
@@ -13366,11 +13382,11 @@ function BudgetPanel(props) {
   }, [leases, props.currentUserId, props.activeTrip.id, props.canEdit, workspaceActive]);
   useEffect(() => () => { void leases.dispose(); }, [leases]);
   return <BudgetWorkspace {...props} workspaceActive={workspaceActive} baseline={props.budgetBaseline} services={services}
-    metadataRequested={budgetMetadataEnabled} metadataClient={metadata.matches(props.currentUserId, props.activeTrip.id) ? metadata : null} paymentClient={payments} sourceClient={sources}
+    metadataRequested={budgetMetadataEnabled} metadataClient={metadata.matches(props.currentUserId, props.activeTrip.id) ? metadata : null} paymentClient={payments} sourceClient={sources} receiptPending={receiptsPending}
     collaborationRevision={collaborationRevision} remoteCollaborators={props.useEditLocks === false ? [] : budgetMetadataEnabled
       ? primaryBudgetCollaborators(metadata.status().verified ? metadata.status().snapshot?.collaboration?.entries || [] : []).filter(e => !e.own_session)
       : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}
-    renderAttachments={props.enableAttachments === false ? null : (expense) => <>{receiptError ? <p role="alert" className="bw-warning">{receiptError}</p> : null}<AttachmentList
+    renderAttachments={budgetMetadataEnabled&&budgetReceiptsEnabled?(expense)=><BudgetReceiptAttachments key={`${props.currentUserId}:${props.activeTrip.id}:${expense.id}`} client={receipts} metadata={metadata} record={expense} members={props.members} fallbackAttachments={props.attachments} AttachmentList={AttachmentList} onOpen={props.onOpenAttachment}/>:props.enableAttachments === false ? null : (expense) => <>{receiptError ? <p role="alert" className="bw-warning">{receiptError}</p> : null}<AttachmentList
       attachments={props.attachments.filter((attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id)}
       canEdit={props.canEdit} targetId={expense.id} targetType="actual_expense"
       onDelete={attachment => receiptAction(expense.id, meta => props.onDeleteAttachment(attachment, meta))} onOpen={props.onOpenAttachment}
@@ -13534,7 +13550,7 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses
   );
 }
 
-function AttachmentList({ attachments, canEdit, targetId, targetType, onDelete, onOpen, onUpload }) {
+function AttachmentList({ attachments, canEdit, targetId, targetType, onDelete, onOpen, onUpload,onReplace }) {
   async function handleUpload(event) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -13563,6 +13579,7 @@ function AttachmentList({ attachments, canEdit, targetId, targetType, onDelete, 
               {attachment.file_name}
             </button>
             <span>{attachment.file_size ? `${Math.round(attachment.file_size / 1024)} KB` : ""}</span>
+            {onReplace?<label className={`attachment-upload${!canEdit?' disabled':''}`}>替換<input aria-label={`替換 ${attachment.file_name}`} disabled={!canEdit} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={event=>{const file=event.target.files?.[0];if(file)void onReplace(attachment,file);event.target.value='';}}/></label>:null}
             <button className="mini-button" disabled={!canEdit} type="button" onClick={() => onDelete(attachment)}>
               X
             </button>
