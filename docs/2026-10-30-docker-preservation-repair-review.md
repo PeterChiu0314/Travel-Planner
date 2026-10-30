@@ -2,6 +2,8 @@
 
 起點 `87bdca5e26c12886c93260b96651a918aaebc099`，原 feature branch。範圍限 Docker 唯讀盤點、使用者指定獨立磁碟的備份及修復評估；**沒有啟動 Docker、執行安裝／資料位置修復或任何 Budget／Supabase 測試**。承接 [B-7 真服務交接](2026-10-30-budget-b7-service-acceptance-followup.md)。本摘要去除帳號、絕對私有路徑、ACL SID、原始診斷內容與憑證；完整 inventory／manifest 僅留本機私有備份。
 
+後續 Review 補強見 [原安裝／工作複本方案](2026-10-30-docker-original-install-working-copy-plan.md) 與 [英文官方詢問草稿（未寄送）](2026-10-30-docker-support-inquiry-draft.en.md)。本文件的 12/12 備份是既有位元比對證據，**不代表原始 WSL 磁碟已隔離**。文件規劃有條件 GO；工作複本、安裝修復、資料採用及首次啟動均未獲本輪執行授權，P0 隔離／採用程序仍 BLOCKED。
+
 ## 唯讀確認
 
 | 項目 | 結果 |
