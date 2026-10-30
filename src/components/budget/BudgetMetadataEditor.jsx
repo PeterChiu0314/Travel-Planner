@@ -5,6 +5,7 @@ import MenuSelect from "../MenuSelect.jsx";
 import { recordMetadataValue } from "../../lib/budgetMetadataValues.js";
 import BudgetPricingFields from "./BudgetPricingFields.jsx";
 import { pricingPreview } from "../../lib/budgetPricingGroups.js";
+import BudgetSourceEditor from './BudgetSourceEditor.jsx';
 
 function PricingGroup({ client, field, view, record, kind, members }) {
   const [open, setOpen] = useState(false), custom = useRef(null);
@@ -21,6 +22,9 @@ function PricingGroup({ client, field, view, record, kind, members }) {
       shares: mode === "custom" ? custom.current || pricing?.shares || form.shares : form.shares });
     if (mode === "custom") setOpen(true);
   }
+  // Unsupported retained/foreign pricing projections intentionally contain no
+  // editable form. Keep the shared editor usable without inventing authority.
+  if (!form || !Array.isArray(form.participantIds)) return <p className="bw-muted">{canonical.currency} {canonical.amount} · NT$ {canonical.twd_amount}</p>;
   return <><BudgetPricingFields form={form} pricing={pricing} members={members} locked={!view.acceptsIntent} historical={retained}
     tripRates={snapshot?.tripBudgetRates} setForm={input} update={(key, value) => input({ ...form, [key]: value })}
     membersOpen={open} setMembersOpen={setOpen} changeMode={changeMode} groupMode editRate={kind === "actual"} fixedCurrency={retained} />
@@ -29,7 +33,7 @@ function PricingGroup({ client, field, view, record, kind, members }) {
 }
 
 // Formal and memory-only Demo share the controller's serial autosave flow.
-export default function BudgetMetadataEditor({ client, record, kind, members, services, items, categoryOptions, ItineraryPicker, onClose, onLegacy }) {
+export default function BudgetMetadataEditor({ client, sourceClient, record, kind, members, services, items, categoryOptions, ItineraryPicker, onClose, onLegacy }) {
   const version = useSyncExternalStore(client.subscribe, client.getVersion);
   const fields = client.groupKeys(kind).map(group => client.get(kind, record.id, group, recordMetadataValue(kind, record, group, client.status().snapshot?.itineraryBudgetLinks)));
   const views = fields.map(g => client.view(g));
@@ -47,6 +51,7 @@ export default function BudgetMetadataEditor({ client, record, kind, members, se
       <button className="bw-icon" type="button" aria-label="關閉編輯" onClick={onClose}><X size={17} /></button></div>
     <p className="bw-muted">有效修改會自動儲存。</p>
     {message ? <p className="bw-warning" role="status">{message}<button className="ghost-button compact" type="button" onClick={() => void client.refresh()}>重新整理</button></p> : null}
+    {kind==='actual'&&sourceClient?<BudgetSourceEditor client={sourceClient} metadata={client} record={record} members={members} services={services}/>:null}
     {views.map((g, index) => {
       const field = fields[index], title = g.group === "title", choice = ["category", "payer", "links", "pricing"].includes(g.group);
       const label = { title: "項目名稱", note: "備註", category: "分類", payer: "付款人", links: "關聯行程", pricing: "計價與分攤" }[g.group];

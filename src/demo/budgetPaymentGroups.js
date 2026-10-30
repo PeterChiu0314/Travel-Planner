@@ -7,18 +7,20 @@ export function applyDemoPaymentChanges(finance, change) {
   next.budgetItems = finance.budgetItems.map(r => change.budget?.id === r.id ? { ...r, auto_created_actual_expense_id: change.budget.actualId } : r);
   next.actualExpenses = finance.actualExpenses.map(r => change.actuals.some(a => a.id === r.id) ? { ...r, ...change.actuals.find(a => a.id === r.id).fields } : r);
   if (change.created && !next.actualExpenses.some(r => r.id === change.created.id)) next.actualExpenses = [...next.actualExpenses, change.created];
-  next.actualParticipants = [...finance.actualParticipants, ...change.people.filter(p => !finance.actualParticipants.some(q => q.id === p.id))];
+  next.actualParticipants = change.replacePeople ? [...finance.actualParticipants.filter(p => !change.replacePeople.includes(p.actual_expense_id)), ...change.people]
+    : [...finance.actualParticipants, ...change.people.filter(p => !finance.actualParticipants.some(q => q.id === p.id))];
   return next;
 }
 export function paymentChangesApplied(p, change) {
   return (!change.created || p.actualExpenses.some(r => r.id === change.created.id))
     && change.actuals.every(a => p.actualExpenses.some(r => r.id === a.id && Object.entries(a.fields).every(([k, v]) => r[k] === v)))
-    && (!change.budget || p.budgetItems.some(r => r.id === change.budget.id && r.auto_created_actual_expense_id === change.budget.actualId));
+    && (!change.budget || p.budgetItems.some(r => r.id === change.budget.id && r.auto_created_actual_expense_id === change.budget.actualId))
+    && (!change.replacePeople || JSON.stringify(p.actualParticipants.filter(p=>change.replacePeople.includes(p.actual_expense_id)).sort((a,b)=>a.id.localeCompare(b.id)))===JSON.stringify([...change.people].sort((a,b)=>a.id.localeCompare(b.id))));
 }
 // Reuses the established pure payment transition and the metadata transport's
 // lease map. Only the operation adapter and minimal committed delta are new.
-export function attachDemoPayments(service, getProps, { state, commit, changed }, now = Date.now) {
-  const requests = new Map(); let graph = 0;
+export function attachDemoPayments(service, getProps, { state, commit, changed, graphVersion }, now = Date.now) {
+  const requests = new Map();
   const rows = (kind, p = getProps()) => kind === 'budget' ? p.budgetItems : p.actualExpenses;
   function targets(kind, id) {
     const p = getProps(), row = rows(kind).find(r => r.id === id); if (!row) return null;
@@ -35,6 +37,7 @@ export function attachDemoPayments(service, getProps, { state, commit, changed }
   const get = d => state(d.kind, rows(d.kind).find(r => r.id === d.id), d.group);
   function value(kind, id, records = null) {
     const p = getProps(), row = rows(kind).find(r => r.id === id);
+    const graph = graphVersion();
     // The metadata reader may project a just-ACKed pricing override before
     // React props catch up. Reuse that statement's revisions; rereading state
     // from the older props here would invalidate the snapshot we just built.
@@ -97,7 +100,7 @@ export function attachDemoPayments(service, getProps, { state, commit, changed }
         if (created) { change.people = result.nextState.actualParticipants.filter(j => j.actual_expense_id === created.id); change.budget = { id: row.id, actualId: created.id }; }
       }
       const didChange = Boolean(change.created || change.actuals.some(a => Object.entries(a.fields).some(([k, v]) => rows('actual').find(r => r.id === a.id)?.[k] !== v)));
-      commit(change); if (didChange) { graph++; for (const t of targets(args.p_kind, row.id)) state(t.kind, rows(t.kind).find(r => r.id === t.id), 'payment').revision++; changed(true); }
+      commit(change); if (didChange) { for (const t of targets(args.p_kind, row.id)) state(t.kind, rows(t.kind).find(r => r.id === t.id), 'payment').revision++; changed(true); }
       const data = { id: row.id, kind: args.p_kind, group: 'payment', request_id: args.p_request_id, revision: root.revision, value: value(args.p_kind, row.id), created_id: change.created?.id || null };
       requests.set(args.p_request_id, { signature, data }); return { data: structuredClone(data) };
     } catch (error) { return { error: { code: '22023', message: error.message } }; }

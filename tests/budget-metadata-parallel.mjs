@@ -10,7 +10,10 @@ import {metadataChoiceCases} from './budget-metadata-choice-cases.mjs';
 import {pricingGroupCases} from './budget-pricing-group-cases.mjs';
 import {paymentGroupCases} from './budget-payment-group-cases.mjs';
 import {paymentMinimalCases} from './budget-payment-minimal-cases.mjs';
+import {sourceBaselineCases} from './budget-source-baseline-cases.mjs';
+import {sourceGroupCases} from './budget-source-group-cases.mjs';
 import {createBudgetPaymentController} from '../src/lib/budgetPaymentGroups.js';
+import {createBudgetSourceController,createBudgetSourceService} from '../src/lib/budgetSourceGroups.js';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -121,6 +124,20 @@ try{
     // PostgreSQL stores function body line endings verbatim. Compare the same
     // logical source on LF and Windows CRLF checkouts without editing migrations.
     const source=(await fs.readFile(new URL(file,migrationDir),'utf8')).replace(/\r\n/g,'\n');
+    if(file==='20261030021719_budget_source_atomic_groups.sql'){
+      await test('Source migration fault and dormant reverse preserve full definitions ACLs nonempty identities receipts and groups',async()=>{
+        const user=uuid(),t=uuid(),bid=uuid(),aid=uuid(),receipt=uuid();
+        await admin('insert into auth.users(id) values($1)',[user]);await admin("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Migration fixture','Migration fixture','Japan','2090-01-01','2090-01-06',$2)",[t,user]);
+        await admin("insert into budget_items(id,trip_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id) values($1,$2,'Original source','交通',900,900,'TWD',1,$3)",[bid,t,user]);await admin("insert into actual_expenses(id,trip_id,budget_item_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id) values($1,$2,$3,'Historical actual','交通',900,777,'TWD',1,$4)",[aid,t,bid,user]);await admin('insert into actual_expense_participants(actual_expense_id,user_id) values($1,$2)',[aid,user]);await admin("insert into attachments(id,trip_id,target_type,target_id,file_name,file_url,file_type,file_size,uploaded_by) values($1,$2,'actual_expense',$3,'original.pdf','original.pdf','application/pdf',1,$4)",[receipt,t,aid,user]);
+        const grants=()=>admin("select p.oid::regprocedure::text name,p.proacl::text acl from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','app_private') and p.prokind='f' order by name");
+        const business=()=>admin("select * from (select 'budget' k,to_jsonb(t) v from budget_items t union all select 'actual',to_jsonb(t) from actual_expenses t union all select 'people',to_jsonb(t) from actual_expense_participants t union all select 'receipt',to_jsonb(t) from attachments t union all select 'groups',to_jsonb(t) from app_private.budget_metadata_groups t) rows order by k,v::text");
+        const before=await definitions(),acl=await grants(),rows=await business();
+        await assert.rejects(()=>admin(source.replace(/commit;\s*$/i,'select 1/0;commit;')),e=>e.code==='22012');await admin('rollback');assert.deepEqual(await definitions(),before);assert.deepEqual(await grants(),acl);assert.deepEqual(await business(),rows);
+        await admin(source);assert.equal((await admin("select count(*)::int n from app_private.budget_metadata_groups where group_key='source' and resource_id=$1",[aid]))[0].n,1);
+        await admin(await fs.readFile(new URL('../docs/qa/2026-10-30-budget-source-rollback.sql',import.meta.url),'utf8'));assert.deepEqual(await definitions(),before);assert.deepEqual(await grants(),acl);assert.deepEqual(await business(),rows);
+        await admin('delete from trips where id=$1',[t]);await admin('delete from auth.users where id=$1',[user]);
+      });
+    }
     if(file==='20261030012554_budget_payment_minimal_bundle.sql'){
       await test('minimal Payment migration failure and dormant reverse preserve definitions grants and original business content',async()=>{
         const before=await definitions(),rows=await admin('select to_jsonb(g) v from app_private.budget_metadata_groups g order by kind,resource_id,group_key');
@@ -720,6 +737,15 @@ try{
   });
   const paymentQA=await paymentGroupCases({test,admin,query,a,b,actorA,actorB,viewer,pending,outsider,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,undoQA,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});
   await paymentMinimalCases({test,admin,query,a,b,actorA,actorB,trip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations},paymentQA);
+  await sourceBaselineCases({test,admin,trip,fixture,actorA,record},paymentQA);
+  const sourceQA=await sourceGroupCases({test,admin,query,a,b,actorA,actorB,trip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations},paymentQA);
+  await test('B-4b real v6 strict Snapshot Source strategy named RPC relink and atomic Apply preserve identity',async()=>{
+    const id=await sourceQA.actual(),budget=await fixture(),identity=identities.get(a),calls=[];
+    const supabase={auth:{getSession:async()=>({data:{session:{user:{id:actorA}}}})},rpc:async(name,args)=>{calls.push({name,args});try{const keys=Object.keys(args),values=keys.map(k=>args[k]);const text=`public.${name}(${keys.map((k,i)=>`${k}=>$${i+1}`).join(',')})`;return {data:await call(a,{text,values})};}catch(error){return {error};}}};
+    const metadata=createBudgetMetadataEditor({service:{authorized:async()=>true},sessionId:identity.session,read:async()=>({ok:true,data:{...(await query(a,'select public.read_budget_metadata_snapshot_v6($1,$2) d',[trip,identity.session]))[0].d,metadataVerified:true}})}),source=createBudgetSourceController({metadata,service:createBudgetSourceService(supabase),sessionId:identity.session});
+    try{metadata.configure(actorA,trip,true,true);source.configure(actorA,trip,true);const before=await record(id,'actual');for(const action of ['relink_only','apply_source_data']){const p=await source.preview('actual',id,{action,budget_id:budget});assert(!p.error,p.error?.message);assert(await source.execute('actual',id,{action,budget_id:budget,versions:p.data.versions}),source.view('actual',id).error);assert.equal(source.hasPending(),false);}const after=await record(id,'actual');assert.equal(after.budget_item_id,budget);assert.equal(after.title,'Initial');assert.equal(after.actual_twd_amount,before.actual_twd_amount);assert.deepEqual(after.payment_history,before.payment_history);assert.equal(calls.filter(c=>c.name==='mutate_budget_source').length,2);assert(!calls.some(c=>c.name.startsWith('save_')));}
+    finally{await source.dispose();await metadata.dispose();}
+  });
   await test('B-4a real v5 Snapshot explicit Payment controller named RPC and canonical reconciliation',async()=>{
     const id=await fixture(),identity=identities.get(a),rpc=async action=>{try{return {data:await call(a,action)};}catch(error){return {error};}};
     const metadata=createBudgetMetadataEditor({service:{authorized:async()=>true},sessionId:identity.session,read:async()=>({ok:true,data:{...(await query(a,'select public.read_budget_metadata_snapshot_v5($1,$2) d',[trip,identity.session]))[0].d,metadataVerified:true}})});

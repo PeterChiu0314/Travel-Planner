@@ -3,6 +3,7 @@ import { pricingInputs, normalizePricingInputs, applyDemoPricing } from "../lib/
 import { metadataGroupKeys, recordMetadataValue, sameMetadataValue, metadataField } from "../lib/budgetMetadataValues.js";
 import { budgetStage } from "../lib/budgetFinance.js";
 import { attachDemoPayments, applyDemoPaymentChanges, paymentChangesApplied } from "./budgetPaymentGroups.js";
+import { attachDemoSources } from './budgetSourceGroups.js';
 export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now) {
   let paymentOverlay = null, pricingGraph = 0;
   const getProps = () => {
@@ -30,7 +31,7 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
   function canPrice(kind, row) { try { const p=getProps(), stage=p.demoStage || budgetStage(p.activeTrip);
     if(kind === "budget" && stage !== "planning" && (row.currency !== "TWD" || p.actualExpenses.some(a=>(a.budget_origin_id || a.budget_item_id)===row.id))) return false;
     applyDemoPricing({budgetItems:p.budgetItems,actualExpenses:p.actualExpenses,budgetParticipants:p.budgetParticipants||[],actualParticipants:p.actualParticipants||[]},kind,row.id,valueFor(kind,row,"pricing")); return true; } catch { return false; } }
-  const supports = (kind,row,group) => group === "pricing" ? canPrice(kind,row) : kind === "budget" && ["title","note"].includes(group) && !row.is_fixed || supported(kind,row);
+  const supports = (kind,row,group) => group === "pricing" ? canPrice(kind,row) : kind === 'actual' && ['title','note'].includes(group) || kind === "budget" && ["title","note"].includes(group) && !row.is_fixed || supported(kind,row);
   const transport = {
     authorized: async actor => actor === getProps().currentUserId,
     async read(trip) {
@@ -87,6 +88,8 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
       requests.set(args.p_request_id, result); return { data: result };
     },
   };
-  return attachDemoPayments(transport, getProps, { state, changed(graph) { revision++; if (graph) pricingGraph++; },
+  const changed = graph => { revision++; if (graph) pricingGraph++; };
+  attachDemoPayments(transport, getProps, { state, changed, graphVersion:()=>pricingGraph,
     commit(change) { paymentOverlay = change; getOriginalProps().onSavePayment?.(change); } }, now);
+  return attachDemoSources(transport,getProps,{state,changed,commit(change){paymentOverlay=change;getOriginalProps().onSaveSource?.(change);}},now);
 }

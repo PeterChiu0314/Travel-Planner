@@ -13,7 +13,7 @@ export function paymentBackend() {
  db.request=async req=>{
   const {name,args,actor}=req;
   if(name==='patch_budget_metadata_group'&&args.p_group==='pricing'&&args.p_patch.pricing.versions.graph!==db.paymentGraph)return {error:{code:'40001',message:'計價相依版本已變更，草稿已保留。'}};
-  if(name==='read_budget_metadata_snapshot_v5'){
+  if(['read_budget_metadata_snapshot_v5','read_budget_metadata_snapshot_v6'].includes(name)){
    const result=await original(req);if(result.error||!result.data)return result;const data=result.data;data.metadataProtocol.schemaVersion=5;data.paymentProtocol={name:'budget-payment',schemaVersion:2,enabled:db.paymentEnabled};
    for(const r of data.metadataRecords)for(const g of r.groups)if(g.group==='pricing'){g.value.versions.graph=db.paymentGraph;g.supported=r.kind==='budget'&&!rows('budget').find(b=>b.id===r.id).is_fixed;}
    for(const r of data.metadataRecords)if(r.kind==='budget')for(const g of r.groups)if(['title','note'].includes(g.group))g.supported=true;

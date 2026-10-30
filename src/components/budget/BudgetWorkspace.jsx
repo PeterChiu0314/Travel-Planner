@@ -355,7 +355,7 @@ function ActualPaymentTime({ record, services, disabled, busy, onSubmit }) {
   </form>;
 }
 
-function RecordEditor({ editor, actual, members, items, budgets, budgetParticipants, tripRates, ratesBusy, ratesError, onRefreshRates, canRefreshRates, onCancel, historical = false, readOnlyPayments = false }) {
+function RecordEditor({ editor, actual, members, items, budgets, budgetParticipants, tripRates, ratesBusy, ratesError, onRefreshRates, canRefreshRates, onCancel, historical = false, readOnlyPayments = false, sourceProtocolRequested = false }) {
   const locked = historical || readOnlyPayments;
   const { setForm, context, error, saving } = editor;
   const form = !actual && !historical && tripRates?.rates?.[editor.form.currency] ? { ...editor.form, exchange_rate: tripRates.rates[editor.form.currency] } : editor.form;
@@ -392,12 +392,13 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
       <details className="bw-secondary-fields"><summary>更多設定</summary>
         <div className="bw-field"><span>分類</span><MenuSelect editable label="分類" value={form.category} onValueChange={(value)=>update("category",value)} options={categoryOrder.map(value=>({value,label:value}))} /></div>
         <label>付款時間<input type="datetime-local" value={form.paid_at} onChange={(event) => update("paid_at", event.target.value)} /></label>
-        <div className="bw-field"><span>來源預算</span><MenuSelect label="來源預算" value={form.budget_item_id} onValueChange={(value) => {
+        <div className="bw-field"><span>來源預算</span><MenuSelect label="來源預算" value={form.budget_item_id} readOnly={sourceProtocolRequested} onValueChange={(value) => {
+          if(sourceProtocolRequested)return;
           const budget = budgets.find((row) => row.id === value);
           if (!budget) { update("budget_item_id", ""); return; }
           const seed = recordForm(budget, budgetParticipants, "budget_item_id", members);
           setForm({ ...form, ...seed, budget_item_id: budget.id, paid_at: form.paid_at, twd_amount_source: "estimated", actual_twd_amount: "" });
-        }} options={[{value:"",label:"直接新增"},...budgets.map(row=>({value:row.id,label:row.title}))]} /></div>
+        }} options={[{value:"",label:"直接新增"},...budgets.map(row=>({value:row.id,label:row.title}))]} />{sourceProtocolRequested?<small>請在分欄編輯中以「變更來源關聯」或「套用來源資料」操作。</small>:null}</div>
         <fieldset className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset>
       </details>
     </> : <>
@@ -548,6 +549,9 @@ export default function BudgetWorkspace(incoming) {
   const sideRef = useRef(null);
   if (props.metadataRequested && selected) props.paymentClient?.view(selected.kind, selected.id);
   const paymentPending = props.metadataRequested && props.paymentClient?.hasPending();
+  if(props.metadataRequested&&selected?.kind==='actual')props.sourceClient?.view('actual',selected.id);
+  const sourcePending=props.metadataRequested&&props.sourceClient?.hasPending();
+  services.useGuard(`budget-source-operation:${activeTrip.id}`,useMemo(()=>({isActive:Boolean(sourcePending),isDirty:Boolean(sourcePending),prepare:()=>props.sourceClient.prepare(),save:async()=>false,discard:async()=>false}),[sourcePending,props.sourceClient]));
   services.useGuard(`budget-payment:${activeTrip.id}`, useMemo(() => ({ isActive: paymentBusy || paymentPending, isDirty: paymentBusy || paymentPending,
     prepare: () => props.metadataRequested ? props.paymentClient.prepare() : false,
     save: async () => false, discard: async () => false }), [paymentBusy, paymentPending, props.paymentClient, props.metadataRequested]));
@@ -656,10 +660,14 @@ export default function BudgetWorkspace(incoming) {
       if (!result?.ok) setPaymentError(result?.error?.message || "付款狀態更新失敗，請重試。");
     } finally { paymentBusyRef.current = false; setPaymentBusy(false); }
   }
+  async function openActual(row) {
+    if(props.metadataRequested){const scope=workspaceScope.current;if(!(await services.handoff({tripId:activeTrip.id}))||scope!==workspaceScope.current)return;setSelected({kind:'actual',id:row.id});setPanel('edit');}
+    else if(await actualEditor.open(row)){setSelected({kind:'actual',id:row.id});setPanel('edit');}
+  }
   function renderBudgetAttachments(budget) {
     const retained = allExpenses.filter((row) => row.budget_item_id === budget.id);
-    if (retained.length <= 1) return retained[0] ? props.renderAttachments?.(retained[0]) : null;
-    return <section className="bw-retained"><h4>既有分筆</h4>{retained.map((row) => <div key={row.id}><button type="button" className="ghost-button compact" onClick={async () => { if (await actualEditor.open(row)) { setSelected({kind:"actual",id:row.id}); setPanel("edit"); } }}>{row.title} · NT$ {money(row.twd_amount)}</button>{props.renderAttachments?.(row)}</div>)}</section>;
+    if (retained.length <= 1) return retained[0] ? <>{props.metadataRequested&&canEdit?<button type="button" className="ghost-button compact" onClick={()=>void openActual(retained[0])}>編輯實付項目</button>:null}{props.renderAttachments?.(retained[0])}</> : null;
+    return <section className="bw-retained"><h4>既有分筆</h4>{retained.map((row) => <div key={row.id}><button type="button" className="ghost-button compact" onClick={() => void openActual(row)}>{row.title} · NT$ {money(row.twd_amount)}</button>{props.renderAttachments?.(row)}</div>)}</section>;
   }
   const paymentState = props.metadataRequested && selectedRecord ? props.paymentClient.view(selected.kind, selectedRecord.id) : {};
   const paymentRecord = props.metadataClient?.status().snapshot?.paymentRecords?.find(r => r.kind === selected?.kind && r.id === selectedRecord?.id);
@@ -673,7 +681,7 @@ export default function BudgetWorkspace(incoming) {
   const baselineTotal = baseline?.payload?.items?.reduce((sum, row) => sum + Number(row.twd_amount), 0) || 0;
   const actualTotal = actualExpenses.reduce((sum, row) => sum + Number(row.twd_amount), 0);
   const metadataEditor = props.metadataRequested && !activeEditor && selectedRecord ? props.metadataClient ? <BudgetMetadataEditor
-    key={`${props.currentUserId}:${activeTrip.id}:${selected.kind}:${selected.id}`} client={props.metadataClient} record={selectedRecord}
+    key={`${props.currentUserId}:${activeTrip.id}:${selected.kind}:${selected.id}`} client={props.metadataClient} sourceClient={props.sourceClient} record={selectedRecord}
     kind={selected.kind} members={members} services={services} items={items} categoryOptions={categoryOrder} ItineraryPicker={ItineraryPicker}
     onClose={async () => { const scope = workspaceScope.current; if (await services.handoff({ tripId: activeTrip.id }) && scope === workspaceScope.current) finishEditor(selected.kind, selected.id); }}
     onLegacy={async () => { const scope = workspaceScope.current; if (!(await services.handoff({ tripId: activeTrip.id })) || scope !== workspaceScope.current) return;
@@ -724,8 +732,8 @@ export default function BudgetWorkspace(incoming) {
     </div>
     <aside className="bw-side" ref={sideRef}><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[["stats","旅程統計",ChartColumn],["detail","項目明細",List],["edit","編輯項目",Pencil]].map(([key,label,Icon]) => <button key={key} role="tab" type="button" aria-label={label} aria-selected={panel === key} onClick={() => void changePanel(key)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span>{label}{key === "edit" && activeEditor?.hasUnsavedChanges ? <span aria-hidden="true"> ·</span> : null}</span></button>)}</div>
       {panel !== "edit" && (budgetEditor.error || actualEditor.error) ? <p className="bw-warning" role="alert">{budgetEditor.error || actualEditor.error}</p> : null}
-      {planning && allExpenses.some((row) => !row.budget_item_id) ? <section className="bw-retained"><h4>其他付款紀錄</h4>{allExpenses.filter((row) => !row.budget_item_id).map((row) => <button className="ghost-button compact" key={row.id} onClick={async () => { if (await actualEditor.open(row)) { setSelected({kind:"actual",id:row.id}); setPanel("edit"); } }}>{row.title} · NT$ {money(row.twd_amount)}</button>)}</section> : null}
-      {panel === "stats" ? <Stats ratesControl={ratesControl} viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : panel === "edit" ? metadataEditor ? metadataEditor : activeEditor ? <RecordEditor readOnlyPayments={!editingActual && Boolean(budgetItems.find((row) => row.id === activeEditor.context?.id)?.payment_readonly)} historical={!editingActual && historicalForeignBudget(budgetItems.find((row) => row.id === activeEditor.context?.id), stage)} {...ratesControl} key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} onCancel={() => void cancelEditing()} /> : <div className="bw-empty">{budgetEditor.error || actualEditor.error ? <p role="alert" className="bw-warning">{budgetEditor.error || actualEditor.error}</p> : null}{!canEdit ? "目前沒有編輯權限" : "選取項目開始編輯"}</div> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} payments={actualExpenses.filter((expense) => expense.budget_item_id === selectedRecord.id)} canEdit={canEdit && !paymentBusy && (props.metadataRequested || !props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} {...paymentDetails} onEdit={() => void editSelected()} onDelete={() => void remove()} onPaidChange={(paid) => void togglePayment(paid)} renderAttachments={selected.kind === "actual" ? props.renderAttachments : renderBudgetAttachments} /> : <div className="bw-empty">選取項目查看明細</div>}
+      {planning && allExpenses.some((row) => !row.budget_item_id) ? <section className="bw-retained"><h4>其他付款紀錄</h4>{allExpenses.filter((row) => !row.budget_item_id).map((row) => <button className="ghost-button compact" key={row.id} onClick={() => void openActual(row)}>{row.title} · NT$ {money(row.twd_amount)}</button>)}</section> : null}
+      {panel === "stats" ? <Stats ratesControl={ratesControl} viewpoint={viewpoint} setViewpoint={setViewpoint} records={statsRecords} rows={actual || compare ? actualParticipants : budgetParticipants} members={members} actual={actual || compare} budgets={budgetItems} /> : panel === "edit" ? metadataEditor ? metadataEditor : activeEditor ? <RecordEditor readOnlyPayments={!editingActual && Boolean(budgetItems.find((row) => row.id === activeEditor.context?.id)?.payment_readonly)} historical={!editingActual && historicalForeignBudget(budgetItems.find((row) => row.id === activeEditor.context?.id), stage)} {...ratesControl} key={`${editingActual ? "actual" : "budget"}:${activeEditor.context.id || "new"}`} sourceProtocolRequested={props.metadataRequested} editor={activeEditor} actual={editingActual} members={members} items={items} budgets={budgetItems} budgetParticipants={budgetParticipants} onCancel={() => void cancelEditing()} /> : <div className="bw-empty">{budgetEditor.error || actualEditor.error ? <p role="alert" className="bw-warning">{budgetEditor.error || actualEditor.error}</p> : null}{!canEdit ? "目前沒有編輯權限" : "選取項目開始編輯"}</div> : selectedRecord ? <RecordDetail record={selectedRecord} actual={selected.kind === "actual"} participants={participantsFor(selectedRecord, selected.kind === "actual" ? actualParticipants : budgetParticipants, selected.kind === "actual" ? "actual_expense_id" : "budget_item_id", members)} members={members} items={items} links={links} payments={actualExpenses.filter((expense) => expense.budget_item_id === selectedRecord.id)} canEdit={canEdit && !paymentBusy && (props.metadataRequested || !props.useEditLocks || !services.isLocked(selectedRecord, props.currentUserId))} {...paymentDetails} onEdit={() => void editSelected()} onDelete={() => void remove()} onPaidChange={(paid) => void togglePayment(paid)} renderAttachments={selected.kind === "actual" ? props.renderAttachments : renderBudgetAttachments} /> : <div className="bw-empty">選取項目查看明細</div>}
     </aside>
     {remoteTooltip && remoteFor((remoteTooltip.kind === "actual" ? allExpenses : budgetItems).find(r => r.id === remoteTooltip.id),remoteTooltip.kind).length ? createPortal(
       <div role="tooltip" id={`bw-collaboration-${remoteTooltip.kind}-${remoteTooltip.id}`} className="bw-collaboration-tooltip" style={{left:remoteTooltip.left,top:remoteTooltip.top}}>
