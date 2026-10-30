@@ -5008,7 +5008,7 @@ export default function App() {
     const ok = window.confirm(`刪除「${activeTrip.title}」？`);
     if (!ok) return;
     const { error } = await supabase.from("trips").delete().eq("id", activeTrip.id);
-    if (error) notify.error(error.message);
+    if (error) notify.error(error.details === "BUDGET_PARENT_DELETE_BLOCKED" ? "此旅程仍有預算、付款、收據或歷史快照，目前不支援連帶刪除，所有資料已保留。" : error.message);
     else await loadTrips();
   }
 
@@ -5523,7 +5523,7 @@ export default function App() {
   async function deleteAccommodation(accommodationId) {
     if (!activeTrip || !canEditActiveTripContent) return;
     const { error } = await supabase.from("accommodations").delete().eq("id", accommodationId);
-    if (error) notify.error(error.message);
+    if (error) notify.error(error.details === "BUDGET_PARENT_DELETE_BLOCKED" ? "此住宿仍關聯預算，目前不支援連帶刪除，請保留資料並確認預算關聯。" : error.message);
     else await loadTripData(activeTrip.id);
   }
 
@@ -5784,6 +5784,12 @@ export default function App() {
         plan,
         targetItemId: item.id,
       });
+      return;
+    }
+    if (item && !isTransportationCard(item) && budgetMetadataEnabled && budgetFinanceGroupsEnabled) {
+      const { error } = await supabase.rpc("delete_itinerary_item_budget_safe", { p_trip_id: activeTrip.id, p_id: itemId });
+      if (error) notify.error(error.details === "BUDGET_PARENT_DELETE_BLOCKED" ? "此行程或相鄰交通仍關聯預算，目前不支援連帶刪除，所有資料已保留。" : error.message);
+      else await loadTripData(activeTrip.id);
       return;
     }
     if (item && !isTransportationCard(item)) {

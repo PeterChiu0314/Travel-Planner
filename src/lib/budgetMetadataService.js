@@ -28,6 +28,7 @@ export function validBudgetMetadataSnapshot(data, tripId) {
     && data.metadataProtocol.complete === false && JSON.stringify(data.metadataProtocol.groups) === JSON.stringify(keys)
     && Number.isFinite(Date.parse(data.serverNow)) && version(data.collaborationRevision)
     && Array.isArray(data.budgetItems) && Array.isArray(data.actualExpenses)
+    && Array.isArray(data.metadataRecords) && data.metadataRecords.every(r => r && Array.isArray(r.groups))
     && (![4, 5, 6, 7, 8, 9, 10].includes(data.metadataProtocol.schemaVersion) || validPaymentSnapshot(data))
     && (![6,7,8,9,10].includes(data.metadataProtocol.schemaVersion) || validSourceSnapshot(data))
     && (![7,8,9,10].includes(data.metadataProtocol.schemaVersion) || validReceiptSnapshot(data))

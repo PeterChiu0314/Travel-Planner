@@ -11,7 +11,7 @@ export function receiptBackend(){
  const versions=id=>{const row=db.rows.actual_expenses.find(a=>a.id===id);return {source:db.groupStates.get(`actual:${id}:source`)?.revision||0,payment:db.groupStates.get(`actual:${id}:payment`)?.revision||0,graph:db.paymentGraph,current:row.budget_item_id??null,origin:row.budget_origin_id??null,budget_graph:db.paymentGraph};};
  const value=id=>({ids:db.rows.attachments.filter(a=>a.target_type==='actual_expense'&&a.target_id===id).map(a=>a.id).sort(),versions:versions(id)});
  const owns=(args,actor)=>{const g=state(args.p_id);return g.actor===actor&&g.session===args.p_session_id&&g.token===args.p_token&&g.epoch===args.p_epoch&&g.expires>db.now;};
- const inspect=i=>i?{request_id:i.request,status:i.status,path:i.path,attachment_id:i.id,object_ready:db.receiptObjects.has(i.path),result:i.result}:null;
+ const inspect=i=>i?{request_id:i.request,status:i.status,path:i.path,attachment_id:i.id,object_ready:db.receiptObjects.has(i.path),object_verified:db.receiptObjects.has(i.path)&&!db.receiptVerificationPending,verification_error:db.receiptVerificationError||null,result:i.result}:null;
  db.request=async req=>{
   const {name,args,actor}=req;
   if(req.op==='receipt-storage'){

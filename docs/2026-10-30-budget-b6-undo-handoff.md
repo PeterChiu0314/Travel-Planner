@@ -1,5 +1,7 @@
 # Issue #15 B-6 — 五步 Undo 完整整合與 B-5 P2
 
+2026-10-30 後續：[B-7 整合驗收](2026-10-30-budget-b7-integration-acceptance.md) 已補安全單筆 retained Budget Links＋Undo、舊版／Raw DML fencing、外部 Parent 與 protocol transition 規則。此檔保留 B-6 日期證據；目前上線結論為 Blocked/NO-GO，真 HTTP／Worker 未驗收，請依 B-7 runbook。
+
 2026-10-30，分支 `codex/budget-collaboration-redesign`，本機／GitHub 確認起點 `ed80aaec803d96c50c63204e8c528f7d99f54299`，開始時乾淨。使用者授權本機實作、隔離測試、文件、原分支 commit/push。沒有 Hosted Migration、正式資料／Storage／設定、main merge 或手動部署。
 
 ## 支援矩陣

@@ -1,5 +1,7 @@
 # Issue #15 B-4c Receipt 安全協定
 
+2026-10-30 B-7 後續：目前契約以 [B-7 驗收](2026-10-30-budget-b7-integration-acceptance.md)／[操作文件](2026-10-30-budget-b7-rollout-runbook.md) 為準。新增可信內容驗證與預設 false 的 content_worker_verified；Worker 改用專用 NOBYPASSRLS role＋exact claim headers，下面舊 service-role CLI 是歷史做法。真 Storage HTTP／排程仍 Blocked，不能據此啟用。
+
 2026-10-30；分支 `codex/budget-collaboration-redesign`；起點與 GitHub HEAD 均為 `2ba45ac691608afe76840493f3534e292956e35b`，工作區起初乾淨。只進行本機實作、隔離 QA、文件與本分支 commit/push；未連接 Hosted Supabase，沒有正式資料／Storage／設定／migration／main merge／手動部署。
 
 ## 實作盤點與差異

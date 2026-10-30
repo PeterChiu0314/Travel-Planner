@@ -468,7 +468,7 @@ export default function BudgetWorkspace(incoming) {
     let composing=false,active=true;
     const start=()=>{composing=true;},end=()=>{composing=false;};
     const key=event=>{
-      if(composing||!isBudgetUndoKey(event)||keepsNativeUndo(event.target)||document.querySelector('[role="dialog"]'))return;
+      if(composing||!isBudgetUndoKey(event)||keepsNativeUndo(event.target)||document.querySelector('[role="dialog"],dialog[open],[aria-modal="true"],[role="menu"],[role="listbox"]'))return;
       event.preventDefault();const scope=workspaceScope.current;
       void props.undoClient.undo(activeTrip.id,()=>services.handoff({tripId:activeTrip.id})).then(ok=>{
         if(!active||scope!==workspaceScope.current)return;

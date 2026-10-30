@@ -24,6 +24,7 @@ export function createBudgetReceiptService(supabase,storageFor,{timeoutMs=budget
     if(!confirmed.data?.object_ready)return uploaded.error?uploaded:{error:{message:'檔案上傳仍待確認，請重試原操作。'}};
     operation=confirmed.data;
    }
+   if(request.p_value.action!=='delete'&&operation.object_verified!==true)return {error:{code:'RECEIPT_VERIFICATION_PENDING',message:operation.verification_error?`收據內容驗證未通過：${operation.verification_error}。原有效收據保留；可重試或取消此操作。`:'收據已上傳，等待伺服器驗證內容。請稍後確認原操作；原有效收據仍保留。'}};
    const committed=await phase(request,'commit');if(committed.data)uploads.delete(request.p_request_id);return committed;
   },
   async cleanup(request,receipt){

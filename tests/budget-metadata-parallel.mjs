@@ -18,6 +18,7 @@ import {receiptCases} from './budget-receipts-cases.mjs';
 import {financeCases} from './budget-finance-cases.mjs';
 import {lifecycleCases} from './budget-lifecycle-cases.mjs';
 import {workspaceUndoCases} from './budget-workspace-undo-cases.mjs';
+import {integrationCases} from './budget-integration-cases.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -73,6 +74,7 @@ const fixture=async()=>{
   await admin('insert into budget_item_participants(budget_item_id,user_id,share_amount) values($1,$2,300),($1,$3,600)',[id,actorA,actorB]);return id;
 };
 const test=async(name,run)=>{
+  if(process.env.BUDGET_NATIVE_INTEGRATION_ONLY==='1'&&!name.startsWith('B7'))return;
   if(process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'&&!name.startsWith('Receipt'))return;
   if(process.env.BUDGET_NATIVE_FINANCE_ONLY==='1'&&!name.startsWith('Finance'))return;
   if(process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'&&!name.startsWith('Lifecycle'))return;
@@ -132,6 +134,16 @@ try{
     // PostgreSQL stores function body line endings verbatim. Compare the same
     // logical source on LF and Windows CRLF checkouts without editing migrations.
     const source=(await fs.readFile(new URL(file,migrationDir),'utf8')).replace(/\r\n/g,'\n');
+    if(file==='20261030125028_budget_workspace_integration_safety.sql'&&process.env.BUDGET_NATIVE_INTEGRATION_ONLY==='1'){
+      await test('B7 forward migration failure is fully atomic and successful expansion preserves known cost origin receipt and baseline',async()=>{
+        const u=uuid(),t=uuid(),bid=uuid(),aid=uuid();await admin('insert into auth.users(id) values($1)',[u]);await admin("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'B7 preservation','B7 preservation','Japan',current_date+10,current_date+15,$2)",[t,u]);await admin("insert into budget_items(id,trip_id,title,category,amount,twd_amount) values($1,$2,'Original Budget','交通',900,900)",[bid,t]);await admin("insert into actual_expenses(id,trip_id,budget_item_id,title,category,amount,twd_amount,currency,exchange_rate,payment_origin,twd_amount_source,actual_twd_amount,payment_history) values($1,$2,$3,'Original Actual','交通',900,777,'TWD',1,'manual','actual',777,'[{\"keep\":true}]')",[aid,t,bid]);await admin("insert into attachments(trip_id,target_type,target_id,file_name,file_url) values($1,'actual_expense',$2,'keep.pdf','original-receipt')",[t,aid]);
+        const rows=()=>admin("select k,v from(select 'budget' k,to_jsonb(x) v from budget_items x where trip_id=$1 union all select 'actual',to_jsonb(x) from actual_expenses x where trip_id=$1 union all select 'receipt',to_jsonb(x) from attachments x where trip_id=$1 union all select 'baseline',to_jsonb(x) from trip_budget_baselines x where trip_id=$1)q order by k,v::text",[t]);
+        const catalog=async()=>({defs:await definitions(),policies:await admin('select * from pg_policies order by schemaname,tablename,policyname'),rls:await admin("select c.oid::regclass::text n,relrowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='app_private' and relkind='r' order by 1"),roles:await admin('select rolname,rolsuper,rolbypassrls,rolcanlogin from pg_roles order by rolname')});
+        const before=await rows(),cat=await catalog();await assert.rejects(()=>admin(source.replace(/commit;\s*$/i,()=> 'select 1/0;commit;')),e=>e.code==='22012');await admin('rollback');assert.deepEqual(await catalog(),cat);assert.deepEqual(await rows(),before);await admin(source);assert.deepEqual(await rows(),before);await admin('delete from trips where id=$1',[t]);await admin('delete from auth.users where id=$1',[u]);
+      });
+      // The successful test expansion above already installed this migration.
+      hashes.push({file,sha256:createHash('sha256').update(source).digest('hex')});continue;
+    }
     if(file==='20261030082712_budget_workspace_undo.sql'&&process.env.BUDGET_NATIVE_UNDO_FULL_ONLY==='1'){
       await test('WorkspaceUndo forward fault and dormant reverse preserve complete definitions ACL and private rows',async()=>{
         const catalog=async()=>({defs:await definitions(),acl:await admin("select oid::regprocedure::text name,proacl::text acl from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) and prokind='f' order by name"),rows:await admin("select * from app_private.budget_metadata_undo_operations order by operation_id"),policies:await admin('select * from pg_policies order by schemaname,tablename,policyname')});
@@ -261,7 +273,9 @@ try{
   const sessions=await Promise.all([a,b].map(c=>query(c,"select pg_backend_pid() pid,session_user,current_user,auth.uid() actor,current_setting('transaction_isolation') isolation")));
   await fs.writeFile(path.join(process.env.BUDGET_NATIVE_EVIDENCE,'bootstrap.json'),JSON.stringify({server:(await admin('select version() version'))[0].version,pids:[pidA,pidB,observerPid],sessions,hashes},null,2));
 
-  if(process.env.BUDGET_NATIVE_UNDO_FULL_ONLY==='1'){
+  if(process.env.BUDGET_NATIVE_INTEGRATION_ONLY==='1'){
+    await integrationCases({test,admin,query,a,b,actorA,actorB,viewer,pending,trip,secretTrip,fixture,record,call,overlap,identities,transaction,observations});
+  }else if(process.env.BUDGET_NATIVE_UNDO_FULL_ONLY==='1'){
     await workspaceUndoCases({test,admin,query,a,b,actorA,actorB,viewer,pending,trip,secretTrip,fixture,record,call,overlap,identities,transaction,observations});
   }else if(process.env.BUDGET_NATIVE_LIFECYCLE_ONLY==='1'){
     await lifecycleCases({test,admin,query,a,b,actorA,actorB,trip,secretTrip,fixture,record,call,leaseAction,patchAction,overlap,identities,transaction,activity,waitUntil,pidA,pidB,observerPid,observations});

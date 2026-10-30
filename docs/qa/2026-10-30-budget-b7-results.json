@@ -1,0 +1,1370 @@
+{
+  "date": "2026-10-30",
+  "timezone": "Asia/Taipei",
+  "branch": "codex/budget-collaboration-redesign",
+  "baseHead": "227028573e2c45f3e774c7d1d3fb2a1656a8a899",
+  "releaseDecision": "BLOCKED_NO_GO",
+  "scope": "Local/isolated only; no Hosted operation, activation, main merge or manual deployment.",
+  "migrationChain": {
+    "total": 60,
+    "priorUnchanged": 59,
+    "normalization": "UTF-8 LF",
+    "newMigration": "20261030125028_budget_workspace_integration_safety.sql"
+  },
+  "native": [
+    {
+      "kind": "B7 integration",
+      "marker": "c7667979-eca3-4612-af93-35cef29796dc",
+      "host": "127.0.0.1",
+      "port": 59073,
+      "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+      "results": [
+        {
+          "name": "B7 forward migration failure is fully atomic and successful expansion preserves known cost origin receipt and baseline",
+          "status": "passed",
+          "ms": 150
+        },
+        {
+          "name": "B7 complete chain keeps new protocols dormant private ACL and a non-bypass worker",
+          "status": "passed",
+          "ms": 288
+        },
+        {
+          "name": "B7 placeholder independent title and note commit with real blocked backend graph",
+          "status": "passed",
+          "ms": 254,
+          "overlap": true
+        },
+        {
+          "name": "B7 title category payer links pricing participants completion then first payment preserve every identity",
+          "status": "passed",
+          "ms": 333
+        },
+        {
+          "name": "B7 retained cross-end fields and five-step Undo coexist with unrelated peer note",
+          "status": "passed",
+          "ms": 807
+        },
+        {
+          "name": "B7 same group contention then expiry takeover does not release new holder with late capability",
+          "status": "passed",
+          "ms": 161
+        },
+        {
+          "name": "B7 retained Payment conflicts with Pricing and Payer dependencies without changing history",
+          "status": "passed",
+          "ms": 326,
+          "overlap": true
+        },
+        {
+          "name": "B7 global Rates update reprices only eligible rows and preserves retained history and baseline identities",
+          "status": "passed",
+          "ms": 351
+        },
+        {
+          "name": "B7 Source relink of standalone Actual preserves known debit while historical origin rewrite rejects atomically",
+          "status": "passed",
+          "ms": 557
+        },
+        {
+          "name": "B7 v1 through v10 snapshots preserve the same committed financial graph and current v10 validates",
+          "status": "passed",
+          "ms": 521
+        },
+        {
+          "name": "B7 retained custom Participants Pricing Undo and Links Undo use authorized child effects on every endpoint",
+          "status": "passed",
+          "ms": 459
+        },
+        {
+          "name": "B7 Source apply committed data and safe complete deletion keep child guard strict without rejecting valid transactions",
+          "status": "passed",
+          "ms": 1112
+        },
+        {
+          "name": "B7 legacy whole-row API wildcard and raw participant or parent writes cannot cross activated group guards",
+          "status": "passed",
+          "ms": 16
+        },
+        {
+          "name": "B7 exact historical v2 v3 v4 Request replay survives activation without a lease or a new whole-form write",
+          "status": "passed",
+          "ms": 13
+        },
+        {
+          "name": "B7 receipt activation gates remain closed without actual operator attestations",
+          "status": "passed",
+          "ms": 4
+        },
+        {
+          "name": "B7 pending Receipt blocks unverified commit and lifecycle deletion while SQL fixture bytes are not HTTP evidence",
+          "status": "passed",
+          "ms": 198
+        },
+        {
+          "name": "B7 scoped verification role reads exact claim only and rejects wrong proof without enabling metadata",
+          "status": "passed",
+          "ms": 121
+        },
+        {
+          "name": "B7 raw legacy byte deletion and metadata alias cannot remove a committed receipt",
+          "status": "passed",
+          "ms": 7
+        },
+        {
+          "name": "B7 dedicated worker RLS deletes only its orphan claim and never a live receipt or other workspace object",
+          "status": "passed",
+          "ms": 8
+        },
+        {
+          "name": "B7 trip itinerary account external cascade reject at parent and preserve all committed business rows",
+          "status": "passed",
+          "ms": 5
+        },
+        {
+          "name": "B7 live editor blocks deletion of a new placeholder and a failed delete keeps actor Undo",
+          "status": "passed",
+          "ms": 437
+        },
+        {
+          "name": "B7 external itinerary RPC rolls back adjacent transport deletions and rejects stale cross-trip IDs",
+          "status": "passed",
+          "ms": 10
+        },
+        {
+          "name": "B7 operational activation refuses missing attestations and Pause Readback preserve financial hashes",
+          "status": "passed",
+          "ms": 104
+        },
+        {
+          "name": "B7 protocol transition waits for complete financial transactions instead of activating between statements",
+          "status": "passed",
+          "ms": 100
+        },
+        {
+          "name": "B7 pause preserves successful Request replay but prevents new writes raw DML and parent cascades",
+          "status": "passed",
+          "ms": 213
+        },
+        {
+          "name": "B7 revoked actor cannot mutate or replay while another approved account still reads v10",
+          "status": "passed",
+          "ms": 185
+        }
+      ],
+      "observations": [
+        {
+          "name": "b7-placeholder-two-groups",
+          "proof": [
+            {
+              "pid": 3092,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-30T13:45:04.476Z",
+              "query_start": "2026-10-30T13:45:04.476Z",
+              "observed_at": "2026-10-30T13:45:04.505Z",
+              "blocking_pids": [
+                25368
+              ]
+            },
+            {
+              "pid": 25368,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "845",
+              "xact_start": "2026-10-30T13:45:04.440Z",
+              "query_start": "2026-10-30T13:45:04.441Z",
+              "observed_at": "2026-10-30T13:45:04.505Z",
+              "blocking_pids": [
+                5900
+              ]
+            }
+          ]
+        },
+        {
+          "name": "b7-retained-pricing-payment",
+          "proof": [
+            {
+              "pid": 3092,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-30T13:45:05.998Z",
+              "query_start": "2026-10-30T13:45:05.998Z",
+              "observed_at": "2026-10-30T13:45:06.028Z",
+              "blocking_pids": [
+                25368
+              ]
+            },
+            {
+              "pid": 25368,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "910",
+              "xact_start": "2026-10-30T13:45:05.940Z",
+              "query_start": "2026-10-30T13:45:05.940Z",
+              "observed_at": "2026-10-30T13:45:06.028Z",
+              "blocking_pids": [
+                5900
+              ]
+            }
+          ]
+        }
+      ],
+      "passed": 26,
+      "failed": 0,
+      "bootstrap": {
+        "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+        "pids": [
+          25368,
+          3092,
+          5900
+        ],
+        "sessions": [
+          [
+            {
+              "pid": 25368,
+              "session_user": "budget_actor_a",
+              "current_user": "authenticated",
+              "actor": "1e9ff9fc-5a8a-4194-b988-cf0c07076acf",
+              "isolation": "read committed"
+            }
+          ],
+          [
+            {
+              "pid": 3092,
+              "session_user": "budget_actor_b",
+              "current_user": "authenticated",
+              "actor": "28f638f1-bcc4-4817-b819-c1bc8f783d5c",
+              "isolation": "read committed"
+            }
+          ]
+        ],
+        "hashes": [
+          {
+            "file": "001_collaborative_travel_planner.sql",
+            "sha256": "2c559727546f568179f6752262361f721c34acc69f657acdf5504236f99a3e70"
+          },
+          {
+            "file": "002_core_mvp_schema.sql",
+            "sha256": "cf93fb48deca5bc12dcbc8cb5d34dbae422689e4fb6a008f3c4c255e032d28d4"
+          },
+          {
+            "file": "003_trip_name_compat.sql",
+            "sha256": "0229879cde2b7ac212a917216ad45a8fb2ab23daaf3aa657123e915cd852c7da"
+          },
+          {
+            "file": "004_harden_rls_rpc_permissions.sql",
+            "sha256": "fca57bbbd326a961ad35ca65735781199ba8045a456383519fb90e535b751e68"
+          },
+          {
+            "file": "005_revoke_public_rpc_execute.sql",
+            "sha256": "e2efd8bb24451133442819b798b09b7afe11c69c17e6e01b41c7e7217e474d2d"
+          },
+          {
+            "file": "006_move_rls_helpers_private.sql",
+            "sha256": "5fdaec34cf98a73fbfe852772475ad4c2e6e580d52a0fc71ecd89350e6eca332"
+          },
+          {
+            "file": "007_create_attachments_storage.sql",
+            "sha256": "28760121ea7b4c39fa21984c23cedec49848d4b160556ed69383fe7e34a73aa1"
+          },
+          {
+            "file": "008_share_snapshot_rpc.sql",
+            "sha256": "1f53688fdb65878c9723c5ca6644b6aad5992a044332f59c97e5a51a5e516252"
+          },
+          {
+            "file": "009_add_edit_locks.sql",
+            "sha256": "1c5dfd46196ffafe923b7ba3eff2d947a86e9c9c759149c393c71c56c16a6548"
+          },
+          {
+            "file": "010_add_transportation_card_fields.sql",
+            "sha256": "1a609fb3f49a9fbbe68a243bd930c03340985eea2b4b438a1a22d1cc30af34e5"
+          },
+          {
+            "file": "011_add_transport_card_pair_fields.sql",
+            "sha256": "996c34cba082958424254d5f334633f8271e052c66d4ad2a168e4ce2a1fad031"
+          },
+          {
+            "file": "012_add_transport_review_snapshots.sql",
+            "sha256": "973b801e4ac8fffa9cf76d66eb6ac3688b4abb99e8d9a8f9d5c98a176d57e2e1"
+          },
+          {
+            "file": "013_add_itinerary_alternative_visit_fields.sql",
+            "sha256": "1cd01d1cdac8614328778ca406fe2bb11646921d854bfa6eed9c4a71cedef089"
+          },
+          {
+            "file": "014_add_itinerary_item_fixed_fields.sql",
+            "sha256": "27c4c0e2710d92421714711b617dbfae7d381e6c4ed4224b1d70be92cba35d6e"
+          },
+          {
+            "file": "015_add_trip_destination_fields.sql",
+            "sha256": "6aeb50673fc096a5e9fbc656b90694a6a329ff8479b5836d61dfe97377260668"
+          },
+          {
+            "file": "016_apply_trip_date_change.sql",
+            "sha256": "c99fed79f49eeca8d707f204148f40be81e8b70c82faebbb57204ca1cca47992"
+          },
+          {
+            "file": "017_confirm_trip_date_shortening.sql",
+            "sha256": "850366e7233e3334efba8581487c1dea2cbdc131c1388e75074ea27d14a51d7c"
+          },
+          {
+            "file": "018_filter_share_snapshot_timeline.sql",
+            "sha256": "dc6b32ba70cfa9112af7f778e550d32933639d93200e36654944b60c16da65a4"
+          },
+          {
+            "file": "019_swap_itinerary_destination_packages.sql",
+            "sha256": "0b8b266681fa0c4a40a227d1a605f71523fe2a3ede26c507b8153a9b231eb725"
+          },
+          {
+            "file": "020_reorder_itinerary_destination_packages.sql",
+            "sha256": "0d49be65931fbfd2853a553369073f138cf6d481571265c601818097e861d45d"
+          },
+          {
+            "file": "021_fix_reorder_baseline_count.sql",
+            "sha256": "9f7c6d6fb545fda47c79c98b58ea8fc75d33c53541fcbd6c759312d4d38831ba"
+          },
+          {
+            "file": "022_add_transport_role_to_itinerary_items.sql",
+            "sha256": "14d763db953dd4516d6496e3064b6d79a3bc6a06b8ef156bb099e8c915ab291a"
+          },
+          {
+            "file": "023_reorder_itinerary_timed_auto_continuation.sql",
+            "sha256": "91ae805d1abbb37e647a614f5226cbf8fee5c06b91f72a9764398f0e03658c32"
+          },
+          {
+            "file": "024_reorder_itinerary_fixed_anchor_continuation.sql",
+            "sha256": "e5b9602300ff2e84d21b70a2ed1599eaaa29d9072205b3db3753e5d59162de79"
+          },
+          {
+            "file": "20260708063744_add_itinerary_route_overrides.sql",
+            "sha256": "27672c8a7f3a0a7241a583b3b1d91386f9ea76751cc7c2dd681905b03bc11289"
+          },
+          {
+            "file": "20260710125337_add_itinerary_route_override_nodes.sql",
+            "sha256": "b028b9bd07ec271cb0d10d8f69d812a8ea321b14b25a7154fe0d166875172dd4"
+          },
+          {
+            "file": "20260712033758_add_route_tables_to_realtime.sql",
+            "sha256": "e1f082339d5f7b6715024032336d01c9d4cd6f7af487ba920603fe147132fc5d"
+          },
+          {
+            "file": "20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+            "sha256": "32b6683c21dd20a20c0402e336b5737130e49e34d7a50fbc477e897a5bb72c10"
+          },
+          {
+            "file": "20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+            "sha256": "50026a093d158ee7053c09fd485367052d20e37bff1e1dbb9828d2187697e810"
+          },
+          {
+            "file": "20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+            "sha256": "6e82e3a2fe7936dbbd2e792af8f3218cf86ad25d9087b31c76e77e97c60b858a"
+          },
+          {
+            "file": "20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+            "sha256": "22d8a682a6e59cd2f260212ef539260349f6d4faa9d6c76a3f5d88e13461407b"
+          },
+          {
+            "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+            "sha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+          },
+          {
+            "file": "20260819125851_phase_7_import_trip_timeline_v1.sql",
+            "sha256": "d6706de32644a91ebc5e88cd94e54a8823f3363f12feabb8ead0638f890ae2c9"
+          },
+          {
+            "file": "20261022090000_budget_workspace_baseline_and_pricing.sql",
+            "sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+          },
+          {
+            "file": "20261022100000_trip_budget_exchange_rates.sql",
+            "sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+          },
+          {
+            "file": "20261022110000_budget_payment_safety_and_actual_cost.sql",
+            "sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+          },
+          {
+            "file": "20261022120000_unified_planning_payments.sql",
+            "sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+          },
+          {
+            "file": "20261022162015_luggage_collaboration_state_safety.sql",
+            "sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+          },
+          {
+            "file": "20261023120000_luggage_notes.sql",
+            "sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+          },
+          {
+            "file": "20261024054121_luggage_drag_assignment.sql",
+            "sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+          },
+          {
+            "file": "20261024063828_luggage_private_return.sql",
+            "sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+          },
+          {
+            "file": "20261024112902_luggage_item_ordering.sql",
+            "sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+          },
+          {
+            "file": "20261026120000_luggage_required_assignee.sql",
+            "sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+          },
+          {
+            "file": "20261027140044_budget_atomic_edit_leases.sql",
+            "sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+          },
+          {
+            "file": "20261027145613_budget_consistent_snapshot.sql",
+            "sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+          },
+          {
+            "file": "20261027152539_budget_collaboration_state.sql",
+            "sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+          },
+          {
+            "file": "20261028104333_budget_selection_activity.sql",
+            "sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+          },
+          {
+            "file": "20261029020551_budget_group_metadata_prototype.sql",
+            "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+          },
+          {
+            "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+            "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+          },
+          {
+            "file": "20261029091435_budget_metadata_undo_prototype.sql",
+            "sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd"
+          },
+          {
+            "file": "20261029114817_budget_category_payer_links_groups.sql",
+            "sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262"
+          },
+          {
+            "file": "20261029123907_budget_pricing_participant_groups.sql",
+            "sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d"
+          },
+          {
+            "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+            "sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3"
+          },
+          {
+            "file": "20261030012554_budget_payment_minimal_bundle.sql",
+            "sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011"
+          },
+          {
+            "file": "20261030021719_budget_source_atomic_groups.sql",
+            "sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c"
+          },
+          {
+            "file": "20261030034351_budget_receipts_lifecycle.sql",
+            "sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80"
+          },
+          {
+            "file": "20261030054628_budget_financial_dependencies.sql",
+            "sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55"
+          },
+          {
+            "file": "20261030064703_budget_workspace_lifecycle.sql",
+            "sha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea"
+          },
+          {
+            "file": "20261030082712_budget_workspace_undo.sql",
+            "sha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27"
+          },
+          {
+            "file": "20261030125028_budget_workspace_integration_safety.sql",
+            "sha256": "87350e2bafd338345bd59cd0a4c71aaf58baccd57f8110c91eae6bd502ac713c"
+          }
+        ]
+      },
+      "clusterStopped": true,
+      "advisor": {
+        "advisors": {
+          "ok": false,
+          "message": "Command failed: C:\\Program Files\\nodejs\\node.exe node_modules/supabase/dist/supabase.js db advisors --db-url postgresql://budget_local_admin@127.0.0.1:59073/postgres?sslmode=disable --type all --fail-on none\nConnecting to remote database...\nfailed to connect to postgres: failed to connect to `host=127.0.0.1 user=budget_local_admin database=postgres`: tls error (server refused TLS connection)\nTry rerunning the command with --debug to troubleshoot the error.\n",
+          "stdout": "",
+          "stderr": "Connecting to remote database...\nfailed to connect to postgres: failed to connect to `host=127.0.0.1 user=budget_local_admin database=postgres`: tls error (server refused TLS connection)\nTry rerunning the command with --debug to troubleshoot the error.\n"
+        },
+        "migration-list": {
+          "ok": false,
+          "message": "Command failed: C:\\Program Files\\nodejs\\node.exe node_modules/supabase/dist/supabase.js migration list --db-url postgresql://budget_local_admin@127.0.0.1:59073/postgres?sslmode=disable\nConnecting to remote database...\nfailed to connect to postgres: failed to connect to `host=127.0.0.1 user=budget_local_admin database=postgres`: tls error (server refused TLS connection)\nTry rerunning the command with --debug to troubleshoot the error.\n",
+          "stdout": "",
+          "stderr": "Connecting to remote database...\nfailed to connect to postgres: failed to connect to `host=127.0.0.1 user=budget_local_admin database=postgres`: tls error (server refused TLS connection)\nTry rerunning the command with --debug to troubleshoot the error.\n"
+        }
+      }
+    },
+    {
+      "kind": "Receipt directly affected regression",
+      "marker": "cd86c382-1ab2-4891-9c11-b6209d5e7ede",
+      "host": "127.0.0.1",
+      "port": 50863,
+      "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+      "results": [
+        {
+          "name": "Receipt forward migration fault and unused reverse preserve definitions ACLs Storage policies and existing receipt identities",
+          "status": "passed",
+          "ms": 227
+        },
+        {
+          "name": "Receipt protocol dormant private invoker ACL and protected Storage boundary",
+          "status": "passed",
+          "ms": 101
+        },
+        {
+          "name": "Receipt upload commits only confirmed Storage object and exact retry creates one immutable metadata row",
+          "status": "passed",
+          "ms": 86
+        },
+        {
+          "name": "Receipt invalid MIME size empty file foreign trip and altered request payload reject before bytes or metadata",
+          "status": "passed",
+          "ms": 53
+        },
+        {
+          "name": "Receipt raw legacy Storage upload overwrite delete signed-upload copy and forged paths cannot bypass the group",
+          "status": "passed",
+          "ms": 129
+        },
+        {
+          "name": "Receipt pending bytes are private to the exact tab; committed Signed URL lookup stays approved-member private",
+          "status": "passed",
+          "ms": 103
+        },
+        {
+          "name": "Receipt replacement second metadata write failure preserves original metadata and both objects; same request then commits once",
+          "status": "passed",
+          "ms": 172
+        },
+        {
+          "name": "Receipt delete journals cleanup before Storage; failed cleanup retains original bytes and exact retry never deletes another object",
+          "status": "passed",
+          "ms": 360
+        },
+        {
+          "name": "Receipt expired pending upload is durably swept and worker retry recognizes already removed object",
+          "status": "passed",
+          "ms": 102
+        },
+        {
+          "name": "Receipt unfinished metadata manifest cannot commit and revoked member cannot upload or finalize an intent",
+          "status": "passed",
+          "ms": 129
+        },
+        {
+          "name": "Receipt activation rejects old wildcard acquisition and old whole-row metadata delete",
+          "status": "passed",
+          "ms": 117
+        },
+        {
+          "name": "Receipt invalid origin-only payment graph remains readable but cannot admit a new write or repair its history",
+          "status": "passed",
+          "ms": 235
+        },
+        {
+          "name": "Receipt success clears only current-tab irreversible Undo pointers without fabricating Receipt inverses or erasing another editor",
+          "status": "passed",
+          "ms": 200
+        },
+        {
+          "name": "Receipt cleanup object identity change is quarantined and a referenced or foreign object is never deleted",
+          "status": "passed",
+          "ms": 259
+        },
+        {
+          "name": "Receipt group real concurrent admissions have one winner and wrong-tab late release cannot clear it",
+          "status": "passed",
+          "ms": 175,
+          "overlap": true,
+          "outcomes": [
+            {
+              "ok": true,
+              "data": {
+                "epoch": 1,
+                "value": {
+                  "ids": [],
+                  "versions": {
+                    "graph": 1,
+                    "origin": null,
+                    "source": 0,
+                    "current": null,
+                    "payment": 0,
+                    "budget_graph": 0
+                  }
+                },
+                "granted": true,
+                "targets": [
+                  {
+                    "id": "e1163d75-4622-4982-b546-742f303dfe98",
+                    "kind": "actual",
+                    "epoch": 1,
+                    "group": "receipts"
+                  }
+                ],
+                "revision": 0
+              }
+            },
+            {
+              "ok": true,
+              "data": {
+                "granted": false
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receipt expired lease takeover fences old upload capability commit and late release",
+          "status": "passed",
+          "ms": 279
+        },
+        {
+          "name": "Receipt commit and unrelated Actual title actually overlap and preserve both changes without title lease acquisition",
+          "status": "passed",
+          "ms": 224,
+          "overlap": true,
+          "outcomes": [
+            {
+              "ok": true,
+              "data": {
+                "id": "6cda5962-7c50-44e8-b38d-8e2fc011e023",
+                "kind": "actual",
+                "group": "receipts",
+                "value": {
+                  "ids": [
+                    "068f8289-21b0-4046-b158-e9f2fc31ac3f"
+                  ],
+                  "versions": {
+                    "graph": 1,
+                    "origin": null,
+                    "source": 0,
+                    "current": null,
+                    "payment": 0,
+                    "budget_graph": 0
+                  }
+                },
+                "revision": 1,
+                "request_id": "b2d6582c-723d-4d7f-b718-6fd814697cdb",
+                "undo_supported": false
+              }
+            },
+            {
+              "ok": true,
+              "data": {
+                "id": "6cda5962-7c50-44e8-b38d-8e2fc011e023",
+                "kind": "actual",
+                "group": "title",
+                "value": "Receipt coexists with title",
+                "revision": 1,
+                "request_id": "8dfc39c3-dba2-4793-960c-506122c670a1",
+                "updated_at": "2026-10-30T21:45:19.083775+08:00",
+                "undo_supported": false
+              }
+            }
+          ]
+        },
+        {
+          "name": "Receipt payment transaction overlaps receipt commit and rejects stale dependencies without deleting pending bytes",
+          "status": "passed",
+          "ms": 352,
+          "overlap": true,
+          "outcomes": [
+            {
+              "ok": true,
+              "data": {
+                "id": "c9bfa94e-cbaf-4ca4-92f0-c21131196181",
+                "kind": "actual",
+                "group": "payment",
+                "value": {
+                  "active": true,
+                  "paid_at": "2026-10-30T08:00:00+08:00",
+                  "versions": {
+                    "graph": 1,
+                    "rates": 0,
+                    "checks": [
+                      {
+                        "id": "c9bfa94e-cbaf-4ca4-92f0-c21131196181",
+                        "kind": "actual",
+                        "graph": 0,
+                        "group": "payer",
+                        "revision": 0
+                      },
+                      {
+                        "id": "c9bfa94e-cbaf-4ca4-92f0-c21131196181",
+                        "kind": "actual",
+                        "graph": 1,
+                        "group": "pricing",
+                        "revision": 0
+                      }
+                    ],
+                    "source": 0,
+                    "members": 8,
+                    "targets": [
+                      {
+                        "id": "c9bfa94e-cbaf-4ca4-92f0-c21131196181",
+                        "kind": "actual",
+                        "group": "payment",
+                        "revision": 1
+                      }
+                    ]
+                  }
+                },
+                "revision": 1,
+                "created_id": null,
+                "request_id": "f1223672-1601-4969-b00b-807837403ac2",
+                "undo_supported": false
+              }
+            },
+            {
+              "ok": false,
+              "code": "40001",
+              "message": "Receipt dependency changed; keep file and reconfirm"
+            }
+          ]
+        },
+        {
+          "name": "Receipt source transaction overlaps receipt commit and rejects stale dependencies without deleting pending bytes",
+          "status": "passed",
+          "ms": 235,
+          "overlap": true,
+          "outcomes": [
+            {
+              "ok": true,
+              "data": {
+                "id": "1f6b5294-d7d0-48cf-9ef4-3d946b668e54",
+                "kind": "actual",
+                "group": "source",
+                "value": {
+                  "budget_id": "0887878d-f6cd-4315-949e-31571622fbdc",
+                  "origin_id": "0887878d-f6cd-4315-949e-31571622fbdc",
+                  "payment_origin": "manual"
+                },
+                "revision": 1,
+                "request_id": "5b47e89f-c8ee-4028-ab0f-25d36315e31c",
+                "undo_supported": false
+              }
+            },
+            {
+              "ok": false,
+              "code": "40001",
+              "message": "Receipt dependency changed; keep file and reconfirm"
+            }
+          ]
+        },
+        {
+          "name": "Receipt pause stays latched against old Storage clients while unrelated workspace attachments keep their behavior",
+          "status": "passed",
+          "ms": 195
+        },
+        {
+          "name": "Receipt JavaScript strategy uses real named v7 RPCs Storage-policy adapter and canonical metadata convergence",
+          "status": "passed",
+          "ms": 1159
+        },
+        {
+          "name": "Receipt orphan sweep ignores UUID-shaped malformed paths without blocking valid cleanup inventory",
+          "status": "passed",
+          "ms": 9
+        },
+        {
+          "name": "Receipt successful or activated protocol refuses reverse without deleting any metadata or object journal",
+          "status": "passed",
+          "ms": 4
+        }
+      ],
+      "observations": [
+        {
+          "name": "receipt-exclusive",
+          "proof": [
+            {
+              "pid": 6388,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-30T13:45:18.616Z",
+              "query_start": "2026-10-30T13:45:18.617Z",
+              "observed_at": "2026-10-30T13:45:18.617Z",
+              "blocking_pids": [
+                22888
+              ]
+            },
+            {
+              "pid": 22888,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "1004",
+              "xact_start": "2026-10-30T13:45:18.579Z",
+              "query_start": "2026-10-30T13:45:18.579Z",
+              "observed_at": "2026-10-30T13:45:18.617Z",
+              "blocking_pids": [
+                12068
+              ]
+            }
+          ]
+        },
+        {
+          "name": "receipt-title",
+          "proof": [
+            {
+              "pid": 6388,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-30T13:45:19.083Z",
+              "query_start": "2026-10-30T13:45:19.084Z",
+              "observed_at": "2026-10-30T13:45:19.114Z",
+              "blocking_pids": [
+                22888
+              ]
+            },
+            {
+              "pid": 22888,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "1023",
+              "xact_start": "2026-10-30T13:45:19.052Z",
+              "query_start": "2026-10-30T13:45:19.052Z",
+              "observed_at": "2026-10-30T13:45:19.114Z",
+              "blocking_pids": [
+                12068
+              ]
+            }
+          ]
+        },
+        {
+          "name": "receipt-payment",
+          "proof": [
+            {
+              "pid": 6388,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-30T13:45:19.473Z",
+              "query_start": "2026-10-30T13:45:19.473Z",
+              "observed_at": "2026-10-30T13:45:19.474Z",
+              "blocking_pids": [
+                22888
+              ]
+            },
+            {
+              "pid": 22888,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "1034",
+              "xact_start": "2026-10-30T13:45:19.436Z",
+              "query_start": "2026-10-30T13:45:19.437Z",
+              "observed_at": "2026-10-30T13:45:19.474Z",
+              "blocking_pids": [
+                12068
+              ]
+            }
+          ]
+        },
+        {
+          "name": "receipt-source",
+          "proof": [
+            {
+              "pid": 6388,
+              "application_name": "metadata-test-B",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": null,
+              "xact_start": "2026-10-30T13:45:19.709Z",
+              "query_start": "2026-10-30T13:45:19.709Z",
+              "observed_at": "2026-10-30T13:45:19.709Z",
+              "blocking_pids": [
+                22888
+              ]
+            },
+            {
+              "pid": 22888,
+              "application_name": "metadata-test-A",
+              "state": "active",
+              "wait_event_type": "Lock",
+              "wait_event": "advisory",
+              "backend_xid": "1047",
+              "xact_start": "2026-10-30T13:45:19.679Z",
+              "query_start": "2026-10-30T13:45:19.679Z",
+              "observed_at": "2026-10-30T13:45:19.709Z",
+              "blocking_pids": [
+                12068
+              ]
+            }
+          ]
+        }
+      ],
+      "passed": 23,
+      "failed": 0,
+      "bootstrap": {
+        "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+        "pids": [
+          22888,
+          6388,
+          12068
+        ],
+        "sessions": [
+          [
+            {
+              "pid": 22888,
+              "session_user": "budget_actor_a",
+              "current_user": "authenticated",
+              "actor": "dd3a0383-4c06-44ac-b759-cd174df497e3",
+              "isolation": "read committed"
+            }
+          ],
+          [
+            {
+              "pid": 6388,
+              "session_user": "budget_actor_b",
+              "current_user": "authenticated",
+              "actor": "4c9e60c1-f107-441e-bce3-89133ecd1ecc",
+              "isolation": "read committed"
+            }
+          ]
+        ],
+        "hashes": [
+          {
+            "file": "001_collaborative_travel_planner.sql",
+            "sha256": "2c559727546f568179f6752262361f721c34acc69f657acdf5504236f99a3e70"
+          },
+          {
+            "file": "002_core_mvp_schema.sql",
+            "sha256": "cf93fb48deca5bc12dcbc8cb5d34dbae422689e4fb6a008f3c4c255e032d28d4"
+          },
+          {
+            "file": "003_trip_name_compat.sql",
+            "sha256": "0229879cde2b7ac212a917216ad45a8fb2ab23daaf3aa657123e915cd852c7da"
+          },
+          {
+            "file": "004_harden_rls_rpc_permissions.sql",
+            "sha256": "fca57bbbd326a961ad35ca65735781199ba8045a456383519fb90e535b751e68"
+          },
+          {
+            "file": "005_revoke_public_rpc_execute.sql",
+            "sha256": "e2efd8bb24451133442819b798b09b7afe11c69c17e6e01b41c7e7217e474d2d"
+          },
+          {
+            "file": "006_move_rls_helpers_private.sql",
+            "sha256": "5fdaec34cf98a73fbfe852772475ad4c2e6e580d52a0fc71ecd89350e6eca332"
+          },
+          {
+            "file": "007_create_attachments_storage.sql",
+            "sha256": "28760121ea7b4c39fa21984c23cedec49848d4b160556ed69383fe7e34a73aa1"
+          },
+          {
+            "file": "008_share_snapshot_rpc.sql",
+            "sha256": "1f53688fdb65878c9723c5ca6644b6aad5992a044332f59c97e5a51a5e516252"
+          },
+          {
+            "file": "009_add_edit_locks.sql",
+            "sha256": "1c5dfd46196ffafe923b7ba3eff2d947a86e9c9c759149c393c71c56c16a6548"
+          },
+          {
+            "file": "010_add_transportation_card_fields.sql",
+            "sha256": "1a609fb3f49a9fbbe68a243bd930c03340985eea2b4b438a1a22d1cc30af34e5"
+          },
+          {
+            "file": "011_add_transport_card_pair_fields.sql",
+            "sha256": "996c34cba082958424254d5f334633f8271e052c66d4ad2a168e4ce2a1fad031"
+          },
+          {
+            "file": "012_add_transport_review_snapshots.sql",
+            "sha256": "973b801e4ac8fffa9cf76d66eb6ac3688b4abb99e8d9a8f9d5c98a176d57e2e1"
+          },
+          {
+            "file": "013_add_itinerary_alternative_visit_fields.sql",
+            "sha256": "1cd01d1cdac8614328778ca406fe2bb11646921d854bfa6eed9c4a71cedef089"
+          },
+          {
+            "file": "014_add_itinerary_item_fixed_fields.sql",
+            "sha256": "27c4c0e2710d92421714711b617dbfae7d381e6c4ed4224b1d70be92cba35d6e"
+          },
+          {
+            "file": "015_add_trip_destination_fields.sql",
+            "sha256": "6aeb50673fc096a5e9fbc656b90694a6a329ff8479b5836d61dfe97377260668"
+          },
+          {
+            "file": "016_apply_trip_date_change.sql",
+            "sha256": "c99fed79f49eeca8d707f204148f40be81e8b70c82faebbb57204ca1cca47992"
+          },
+          {
+            "file": "017_confirm_trip_date_shortening.sql",
+            "sha256": "850366e7233e3334efba8581487c1dea2cbdc131c1388e75074ea27d14a51d7c"
+          },
+          {
+            "file": "018_filter_share_snapshot_timeline.sql",
+            "sha256": "dc6b32ba70cfa9112af7f778e550d32933639d93200e36654944b60c16da65a4"
+          },
+          {
+            "file": "019_swap_itinerary_destination_packages.sql",
+            "sha256": "0b8b266681fa0c4a40a227d1a605f71523fe2a3ede26c507b8153a9b231eb725"
+          },
+          {
+            "file": "020_reorder_itinerary_destination_packages.sql",
+            "sha256": "0d49be65931fbfd2853a553369073f138cf6d481571265c601818097e861d45d"
+          },
+          {
+            "file": "021_fix_reorder_baseline_count.sql",
+            "sha256": "9f7c6d6fb545fda47c79c98b58ea8fc75d33c53541fcbd6c759312d4d38831ba"
+          },
+          {
+            "file": "022_add_transport_role_to_itinerary_items.sql",
+            "sha256": "14d763db953dd4516d6496e3064b6d79a3bc6a06b8ef156bb099e8c915ab291a"
+          },
+          {
+            "file": "023_reorder_itinerary_timed_auto_continuation.sql",
+            "sha256": "91ae805d1abbb37e647a614f5226cbf8fee5c06b91f72a9764398f0e03658c32"
+          },
+          {
+            "file": "024_reorder_itinerary_fixed_anchor_continuation.sql",
+            "sha256": "e5b9602300ff2e84d21b70a2ed1599eaaa29d9072205b3db3753e5d59162de79"
+          },
+          {
+            "file": "20260708063744_add_itinerary_route_overrides.sql",
+            "sha256": "27672c8a7f3a0a7241a583b3b1d91386f9ea76751cc7c2dd681905b03bc11289"
+          },
+          {
+            "file": "20260710125337_add_itinerary_route_override_nodes.sql",
+            "sha256": "b028b9bd07ec271cb0d10d8f69d812a8ea321b14b25a7154fe0d166875172dd4"
+          },
+          {
+            "file": "20260712033758_add_route_tables_to_realtime.sql",
+            "sha256": "e1f082339d5f7b6715024032336d01c9d4cd6f7af487ba920603fe147132fc5d"
+          },
+          {
+            "file": "20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+            "sha256": "32b6683c21dd20a20c0402e336b5737130e49e34d7a50fbc477e897a5bb72c10"
+          },
+          {
+            "file": "20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+            "sha256": "50026a093d158ee7053c09fd485367052d20e37bff1e1dbb9828d2187697e810"
+          },
+          {
+            "file": "20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+            "sha256": "6e82e3a2fe7936dbbd2e792af8f3218cf86ad25d9087b31c76e77e97c60b858a"
+          },
+          {
+            "file": "20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+            "sha256": "22d8a682a6e59cd2f260212ef539260349f6d4faa9d6c76a3f5d88e13461407b"
+          },
+          {
+            "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+            "sha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+          },
+          {
+            "file": "20260819125851_phase_7_import_trip_timeline_v1.sql",
+            "sha256": "d6706de32644a91ebc5e88cd94e54a8823f3363f12feabb8ead0638f890ae2c9"
+          },
+          {
+            "file": "20261022090000_budget_workspace_baseline_and_pricing.sql",
+            "sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+          },
+          {
+            "file": "20261022100000_trip_budget_exchange_rates.sql",
+            "sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+          },
+          {
+            "file": "20261022110000_budget_payment_safety_and_actual_cost.sql",
+            "sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+          },
+          {
+            "file": "20261022120000_unified_planning_payments.sql",
+            "sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+          },
+          {
+            "file": "20261022162015_luggage_collaboration_state_safety.sql",
+            "sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+          },
+          {
+            "file": "20261023120000_luggage_notes.sql",
+            "sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+          },
+          {
+            "file": "20261024054121_luggage_drag_assignment.sql",
+            "sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+          },
+          {
+            "file": "20261024063828_luggage_private_return.sql",
+            "sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+          },
+          {
+            "file": "20261024112902_luggage_item_ordering.sql",
+            "sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+          },
+          {
+            "file": "20261026120000_luggage_required_assignee.sql",
+            "sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+          },
+          {
+            "file": "20261027140044_budget_atomic_edit_leases.sql",
+            "sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+          },
+          {
+            "file": "20261027145613_budget_consistent_snapshot.sql",
+            "sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+          },
+          {
+            "file": "20261027152539_budget_collaboration_state.sql",
+            "sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+          },
+          {
+            "file": "20261028104333_budget_selection_activity.sql",
+            "sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+          },
+          {
+            "file": "20261029020551_budget_group_metadata_prototype.sql",
+            "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+          },
+          {
+            "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+            "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+          },
+          {
+            "file": "20261029091435_budget_metadata_undo_prototype.sql",
+            "sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd"
+          },
+          {
+            "file": "20261029114817_budget_category_payer_links_groups.sql",
+            "sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262"
+          },
+          {
+            "file": "20261029123907_budget_pricing_participant_groups.sql",
+            "sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d"
+          },
+          {
+            "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+            "sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3"
+          },
+          {
+            "file": "20261030012554_budget_payment_minimal_bundle.sql",
+            "sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011"
+          },
+          {
+            "file": "20261030021719_budget_source_atomic_groups.sql",
+            "sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c"
+          },
+          {
+            "file": "20261030034351_budget_receipts_lifecycle.sql",
+            "sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80"
+          },
+          {
+            "file": "20261030054628_budget_financial_dependencies.sql",
+            "sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55"
+          },
+          {
+            "file": "20261030064703_budget_workspace_lifecycle.sql",
+            "sha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea"
+          },
+          {
+            "file": "20261030082712_budget_workspace_undo.sql",
+            "sha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27"
+          },
+          {
+            "file": "20261030125028_budget_workspace_integration_safety.sql",
+            "sha256": "87350e2bafd338345bd59cd0a4c71aaf58baccd57f8110c91eae6bd502ac713c"
+          }
+        ]
+      },
+      "clusterStopped": true,
+      "advisor": {}
+    }
+  ],
+  "frontend": {
+    "uniquePassed": 45,
+    "primary": 19,
+    "receipt": 26,
+    "extendedDemoRetainedLinks": 1,
+    "extendedCaseAlreadyCounted": true,
+    "formalBackend": "controlled mocks, NOT Auth/PostgREST/Realtime/Storage HTTP",
+    "demoBackend": "real memory adapter",
+    "viewports": [
+      {
+        "width": 1440,
+        "height": 1000
+      },
+      {
+        "width": 820,
+        "height": 1000
+      },
+      {
+        "width": 390,
+        "height": 1000
+      }
+    ],
+    "logs": [
+      ".tmp-b7-ui-delivery.log",
+      ".tmp-b7-receipt-second.log",
+      ".tmp-b7-demo-links.log"
+    ]
+  },
+  "blocked": [
+    {
+      "id": "H01",
+      "status": "blocked",
+      "reason": "Docker Desktop backend crashed before Linux engine: inaccessible sailor-ingest.sock reparse point; no actual Auth/PostgREST/Realtime sessions."
+    },
+    {
+      "id": "H02",
+      "status": "blocked",
+      "reason": "No isolated Storage HTTP service; SQL storage.objects fixtures and adapters are not HTTP/bytes/signed URL acceptance."
+    },
+    {
+      "id": "H03",
+      "status": "blocked",
+      "reason": "Custom-role/header forwarding, real HTTP worker retry and supervisor scheduling unverified."
+    },
+    {
+      "id": "O03",
+      "status": "blocked",
+      "reason": "CLI Advisor and migration-list force TLS against isolated native PG despite sslmode=disable; targeted catalog checks are not full Advisor."
+    }
+  ],
+  "checks": {
+    "syntaxPassed": [
+      "scripts/maintenance/budget-receipt-cleanup.mjs",
+      "scripts/qa/run-budget-metadata-parallel.mjs",
+      "src/demo/budgetMetadata.js",
+      "src/demo/budgetReceipts.js",
+      "src/lib/budgetMetadataService.js",
+      "src/lib/budgetReceiptGroups.js",
+      "tests/budget-metadata-parallel.mjs",
+      "tests/budget-receipts-cases.mjs",
+      "tests/budget-workspace-undo-cases.mjs",
+      "tests/budgetReceiptGroups.spec.js",
+      "tests/helpers/budgetReceiptMock.js",
+      "scripts/maintenance/budget-receipt-content.mjs",
+      "tests/budget-integration-cases.mjs",
+      "tests/budgetIntegration.spec.js",
+      "tests/helpers/budgetReceiptSqlFixture.mjs"
+    ],
+    "jsx": "Production Vite build",
+    "build": {
+      "passed": true,
+      "log": ".tmp-b7-build-delivery.log",
+      "advisory": "Existing >500 kB chunk warning"
+    },
+    "diffCheck": true
+  },
+  "proofsAreNot": {
+    "authJWT": "SQL request claims are fixture identities, not Auth-issued tokens",
+    "storageBytes": "Native storage.objects contains SQL catalog fixtures only; trusted-proof helper is explicitly fixture-only",
+    "activation": "Fixture evidence digest/verified flags only exercise DB gates; never certify release",
+    "devices": "Chromium viewport, not physical mobile/PWA or screen-reader speech"
+  },
+  "sourceHashes": [
+    {
+      "file": "scripts/maintenance/budget-receipt-cleanup.mjs",
+      "sha256": "75918885dad81c8d64326782bc52f6f5685d97c3947b89b48a1bffa114709b76"
+    },
+    {
+      "file": "scripts/qa/run-budget-metadata-parallel.mjs",
+      "sha256": "93b501fe6bacb4723aae49da2d5680be51d0247f6666101e9de6a460b8499803"
+    },
+    {
+      "file": "src/App.jsx",
+      "sha256": "695c1ed8f02d914309155ef948af5ead3690785f351fab8bc5c33c32d3e317ff"
+    },
+    {
+      "file": "src/components/budget/BudgetWorkspace.jsx",
+      "sha256": "301e6cee98721f303a095709929c11578d6f04b921f19a440cab6f9548c6099e"
+    },
+    {
+      "file": "src/demo/budgetMetadata.js",
+      "sha256": "607b9a45d1ce37eff065017d60bc0e6b19d753afbef174ad401874b067798747"
+    },
+    {
+      "file": "src/demo/budgetReceipts.js",
+      "sha256": "fd985177b61cb69c6df010667ff5935892f4f889e60032b53fa90159184560ae"
+    },
+    {
+      "file": "src/lib/budgetMetadataService.js",
+      "sha256": "f60ded5d25e8a2be9b111d0d2a54e6e6843976e3d66e234a0b9ae8ce28b03a17"
+    },
+    {
+      "file": "src/lib/budgetReceiptGroups.js",
+      "sha256": "b9ef42ee44d6aed10baa7c920c6263987c379a10273bdf0ed5808f9cd9fa0aa6"
+    },
+    {
+      "file": "tests/budget-metadata-parallel.mjs",
+      "sha256": "38abcf95b55f5942c8f2d0f0e3a69cb58dda85eaa39140238fb288edea8221ac"
+    },
+    {
+      "file": "tests/budget-receipts-cases.mjs",
+      "sha256": "7c1d30a7dbc7bd9659ba35c7431c20ff502cfe2dcd46dfa918b4293309559fd0"
+    },
+    {
+      "file": "tests/budget-workspace-undo-cases.mjs",
+      "sha256": "58dfdd0fd205753d0be1b792b2d3feca166e2a7ad61d5941436ef57aef1cce41"
+    },
+    {
+      "file": "tests/budgetReceiptGroups.spec.js",
+      "sha256": "841fc9384f613337e0e1c9467195591e43afee082de005853cfd45fde66a3e1f"
+    },
+    {
+      "file": "tests/helpers/budgetReceiptMock.js",
+      "sha256": "15da336f82e5a0766dcb14f76a5828684ec39152cb3b79d908e11cd4901c8825"
+    },
+    {
+      "file": "scripts/maintenance/budget-receipt-content.mjs",
+      "sha256": "c2590a8d82f156f405d182eddd6458de55adea4f82d2160b1529a1f4480e0f9d"
+    },
+    {
+      "file": "tests/budget-integration-cases.mjs",
+      "sha256": "669bc710d9015669df2ce9b859d3117d4efdc955818ea05ff278f5824130073e"
+    },
+    {
+      "file": "tests/budgetIntegration.spec.js",
+      "sha256": "82851c3f3efb07a8016a2daf11b38e399504de98bdb31ba160a313a6e3300160"
+    },
+    {
+      "file": "tests/helpers/budgetReceiptSqlFixture.mjs",
+      "sha256": "84ebb8cb4eb9453d42d246a07ec8049ae2a2f44cc5f967b00d57a3107937160e"
+    },
+    {
+      "file": "supabase/migrations/20261030125028_budget_workspace_integration_safety.sql",
+      "sha256": "87350e2bafd338345bd59cd0a4c71aaf58baccd57f8110c91eae6bd502ac713c"
+    },
+    {
+      "file": "docs/operations/budget-b7-activate.sql",
+      "sha256": "ab12203dad0bf71894055f9ea4656954ac33e1dff1396b84f2244c6b5997d36c"
+    },
+    {
+      "file": "docs/operations/budget-b7-pause.sql",
+      "sha256": "fb4fd4c8c75133a7d70f5dd593be24a6975cdac91be82039a47b2fdc674b0077"
+    },
+    {
+      "file": "docs/operations/budget-b7-preflight.sql",
+      "sha256": "d76da0ecdc40c62fed7bd40c0038922674102ad2344397dbad882a3c2bf6609d"
+    },
+    {
+      "file": "docs/operations/budget-b7-readback.sql",
+      "sha256": "96c73c8d49f12debeefc1985b0a85eeecfdffc1c05f5e8796bda988b27adc918"
+    }
+  ]
+}

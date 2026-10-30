@@ -6,7 +6,7 @@ import { attachDemoPayments, applyDemoPaymentChanges, paymentChangesApplied } fr
 import { attachDemoSources } from './budgetSourceGroups.js';
 import {attachDemoReceipts} from './budgetReceipts.js';
 import {attachDemoFinance} from './budgetFinanceGroups.js';
-import {budgetFinanceGroupsEnabled} from '../lib/budgetFinanceValues.js';
+import {budgetFinanceGroupsEnabled,financeFieldTargets} from '../lib/budgetFinanceValues.js';
 import {budgetLifecycleEnabled} from '../lib/budgetLifecycleValues.js';
 import {attachDemoLifecycle} from './budgetLifecycle.js';
 import {budgetUndoEnabled} from '../lib/budgetUndoGroups.js';
@@ -39,7 +39,7 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
     if(row.record_status==='incomplete')return kind==='budget'?supported(kind,row):!row.budget_item_id&&!row.budget_origin_id&&(!row.payment_origin||row.payment_origin==='manual');
     if(kind === "budget" && stage !== "planning" && (row.currency !== "TWD" || p.actualExpenses.some(a=>(a.budget_origin_id || a.budget_item_id)===row.id))) return false;
     applyDemoPricing({budgetItems:p.budgetItems,actualExpenses:p.actualExpenses,budgetParticipants:p.budgetParticipants||[],actualParticipants:p.actualParticipants||[]},kind,row.id,valueFor(kind,row,"pricing")); return true; } catch { return false; } }
-  const supports = (kind,row,group) => group === "pricing" ? canPrice(kind,row) : kind === 'actual' && ['title','note'].includes(group) || kind === "budget" && ["title","note"].includes(group) && !row.is_fixed || supported(kind,row);
+  const supports = (kind,row,group) => group === "pricing" ? canPrice(kind,row) : kind === 'actual' && ['title','note'].includes(group) || kind === "budget" && ["title","note"].includes(group) && !row.is_fixed || kind==='budget'&&group==='links'&&(budgetFinanceGroupsEnabled||budgetLifecycleEnabled)&&Boolean(financeFieldTargets(getProps(),kind,row.id,'title')) || supported(kind,row);
   const transport = {
     authorized: async actor => actor === getProps().currentUserId,
     async read(trip) {

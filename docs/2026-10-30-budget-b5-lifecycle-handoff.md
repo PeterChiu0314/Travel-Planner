@@ -1,5 +1,7 @@
 # Issue #15 B-5 — 正式空白新增、完整性與安全刪除
 
+2026-10-30 後續：[B-7 驗收](2026-10-30-budget-b7-integration-acceptance.md) 已明定外部 Parent／整旅程／帳號／相鄰交通刪除的 fail-closed 規則與 atomic itinerary RPC。以下保留 B-5 日期證據；目前全鏈與 protocol transition 證據、NO-GO 結論以 B-7 為準。
+
 2026-10-30，分支 `codex/budget-collaboration-redesign`。起點本機／GitHub `889b09f0f1ed6d745186c604664f5e3eae397af3`，開始時乾淨。此次只做本機實作、隔離驗證、文件及原分支 commit/push；沒有 Hosted Migration、正式 DB／Storage／設定操作、main merge 或手動部署。
 
 ## 實際支援

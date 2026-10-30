@@ -63,6 +63,11 @@ test('Receipt explicit park preserves unresolved request without capability and 
 });
 test('Receipt durable worker retries failure later and uses only claimed path; it never deletes metadata via SQL',async()=>{
  const job={id:'job',path:'exact/old.pdf',object_id:'object',token:'claim'},calls=[];let done=false,fail=true;
- const client={rpc:async(name,args)=>{calls.push([name,args]);if(name==='sweep_budget_receipts')return {data:0};if(name==='claim_budget_receipt_worker')return {data:done?null:job};if(name==='finish_budget_receipt_cleanup'){done=!args.p_error;return {data:done};}throw Error(name);},storage:{from:bucket=>({remove:async paths=>{expect(bucket).toBe('trip-attachments');expect(paths).toEqual([job.path]);return fail?{error:{message:'Storage failed'}}:{data:paths};}})}};
- expect((await reconcileBudgetReceipts(client))[0].done).toBe(false);fail=false;expect((await reconcileBudgetReceipts(client))[0].done).toBe(true);expect(calls.filter(([name])=>name==='sweep_budget_receipts')).toHaveLength(2);
+ const client={rpc:async(name,args)=>{calls.push([name,args]);if(name==='sweep_budget_receipts')return {data:0};if(name==='claim_budget_receipt_verification')return {data:null};if(name==='claim_budget_receipt_worker')return {data:done?null:job};if(name==='finish_budget_receipt_cleanup'){done=!args.p_error;return {data:done};}throw Error(name);}};
+ const storageForJob=async claim=>{expect(claim).toEqual(job);return {remove:async paths=>{expect(paths).toEqual([job.path]);return fail?{error:{message:'Storage failed'}}:{data:paths};}};};
+ expect((await reconcileBudgetReceipts(client,{storageForJob}))[0].done).toBe(false);fail=false;expect((await reconcileBudgetReceipts(client,{storageForJob}))[0].done).toBe(true);expect(calls.filter(([name])=>name==='sweep_budget_receipts')).toHaveLength(2);
+});
+
+test('Receipt content verification waits without committing or reuploading; original request resumes after trusted proof',async()=>{
+ const f=await setup();f.db.receiptVerificationPending=true;expect(await f.receipt.upload(id,file())).toBe(false);expect(f.receipt.view('actual',id).error).toContain('等待伺服器驗證');expect(f.db.rows.attachments).toEqual([]);const first=f.db.receiptCalls.find(c=>c.args.p_phase==='begin').args.p_request_id;expect(f.db.receiptCalls.filter(c=>c.args.p_phase==='commit')).toHaveLength(0);f.db.receiptVerificationPending=false;expect(await f.receipt.retry('actual',id)).toBe(true);expect(f.db.receiptCalls.find(c=>c.args.p_phase==='commit').args.p_request_id).toBe(first);expect(f.db.receiptStorageCalls.filter(c=>c.action==='upload')).toHaveLength(1);
 });
