@@ -2,10 +2,12 @@
 
 本文件是可審閱的操作程序，**不是 Hosted 操作授權**。目前所有新前端旗標／DB protocol 預設關閉；真 HTTP 與排程未驗收，結論為 **NO-GO**。請先讀 [驗收矩陣](2026-10-30-budget-b7-integration-acceptance.md)。
 
+最新 B-7 [真服務補驗交接](2026-10-30-budget-b7-service-acceptance-followup.md)：本機 Docker 的 AppData namespace 與缺少 vendor registry 阻擋尚未安全修復，保留 package 私有資料 VHDX；不得改用 Hosted 繞過。CLI Advisor 已用 per-cluster TLS 成功執行，但 managed Supabase／HTTP／Worker 排程仍未通過。以下未執行的部署步驟仍需日後另行授權；本機全部通過後也須先 ChatGPT Review。
+
 ## 1. 環境與發行前檢查
 
 1. 確認 feature branch commit／working tree，安裝既有 lockfile 依賴；不可把 `.env`、service-role、Worker JWT、claims、測試 cluster 或原始財務截圖提交 Git。
-2. 新建隔離 Supabase（本機 Docker 或另外授權的獨立 Hosted project/branch），不得借用 Production。真實 HTTP 必須使用該環境 Auth 建立的兩帳號、各自獨立 browser context/session，再加同帳號第二 tab；SQL `set_config`、fixture 與 Mock 都不能取代這一步。
+2. 本輪僅可新建本機 Docker 隔離 Supabase；不能以 Hosted 繞過 Docker 修復，也不得借用 Production。真實 HTTP 必須使用該環境 Auth 建立的兩帳號、各自獨立 browser context/session，再加同帳號第二 tab；SQL `set_config`、fixture 與 Mock 都不能取代這一步。
 3. 核對目標 migration history 與 repository 全 chain。不得假設舊交接所載 Hosted checkpoint 仍是實際狀態，不重放／修改既有已套用檔。隔離原生 PG runner 套用全部 SQL，但其 Auth／Storage bootstrap 是 schema fixture，不能代表完整 Supabase 服務相容性。
 4. 使用同一個經審閱的版本部署 frontend、RPC/schema 與專用 Worker。所有前端 flag 先維持 false，所有 DB enabled=false。儲存 API、Graph／lease、部分 Snapshot 缺失時只讀／保留草稿，不退回 whole-form Save。
 5. 真 HTTP 矩陣須包含九項雙帳號情境、Signed URL／standard upload／replace／delete、upsert／copy／move／signed-upload／TUS／S3 拒絕、斷線／late response、舊客戶端、Worker 故障／重試／跨 job 不可讀刪與仍引用物件保護。核對 actual bytes SHA-256、MIME、size、object UUID；輸出可重現的環境版本、session 身分雜湊、HTTP 狀態與 DB readback，不輸出 token。

@@ -19,11 +19,12 @@ import {financeCases} from './budget-finance-cases.mjs';
 import {lifecycleCases} from './budget-lifecycle-cases.mjs';
 import {workspaceUndoCases} from './budget-workspace-undo-cases.mjs';
 import {integrationCases} from './budget-integration-cases.mjs';
+import {securityAuditCases} from './budget-security-audit.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
 const {Client}=imported.default||imported;
-const config={host:'127.0.0.1',port,database:'postgres',ssl:false,connectionTimeoutMillis:5000};
+const config={host:'127.0.0.1',port,database:'postgres',ssl:process.env.BUDGET_NATIVE_TLS_CA?{ca:await fs.readFile(process.env.BUDGET_NATIVE_TLS_CA,'utf8'),rejectUnauthorized:true}:false,connectionTimeoutMillis:5000};
 const control=new Client({...config,user:'budget_local_admin',application_name:'metadata-test-observer'});
 const a=new Client({...config,user:'budget_actor_a',application_name:'metadata-test-A'});
 const b=new Client({...config,user:'budget_actor_b',application_name:'metadata-test-B'});
@@ -74,6 +75,7 @@ const fixture=async()=>{
   await admin('insert into budget_item_participants(budget_item_id,user_id,share_amount) values($1,$2,300),($1,$3,600)',[id,actorA,actorB]);return id;
 };
 const test=async(name,run)=>{
+  if(process.env.BUDGET_NATIVE_AUDIT_ONLY==='1'&&!name.startsWith('B7 Security audit'))return;
   if(process.env.BUDGET_NATIVE_INTEGRATION_ONLY==='1'&&!name.startsWith('B7'))return;
   if(process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'&&!name.startsWith('Receipt'))return;
   if(process.env.BUDGET_NATIVE_FINANCE_ONLY==='1'&&!name.startsWith('Finance'))return;
@@ -259,7 +261,7 @@ try{
     await control.query(source);hashes.push({file,sha256:createHash('sha256').update(source).digest('hex')});
   }
   assert.equal((await admin('select enabled from app_private.budget_metadata_protocol'))[0].enabled,false);
-  await admin('update app_private.budget_metadata_protocol set enabled=true');
+  if(process.env.BUDGET_NATIVE_AUDIT_ONLY!=='1')await admin('update app_private.budget_metadata_protocol set enabled=true');
   await admin('insert into auth.users(id) select unnest($1::uuid[])',[[actorA,actorB,viewer,pending,outsider]]);
   await admin("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Native isolated','Native isolated','Japan',current_date+10,current_date+15,$3),($2,'Private','Private','Japan',current_date+10,current_date+15,$4)",[trip,secretTrip,actorA,outsider]);
   await admin("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved'),($1,$3,'editor','approved'),($1,$4,'viewer','approved'),($1,$5,'editor','pending'),($6,$7,'owner','approved')",[trip,actorA,actorB,viewer,pending,secretTrip,outsider]);
@@ -273,7 +275,9 @@ try{
   const sessions=await Promise.all([a,b].map(c=>query(c,"select pg_backend_pid() pid,session_user,current_user,auth.uid() actor,current_setting('transaction_isolation') isolation")));
   await fs.writeFile(path.join(process.env.BUDGET_NATIVE_EVIDENCE,'bootstrap.json'),JSON.stringify({server:(await admin('select version() version'))[0].version,pids:[pidA,pidB,observerPid],sessions,hashes},null,2));
 
-  if(process.env.BUDGET_NATIVE_INTEGRATION_ONLY==='1'){
+  if(process.env.BUDGET_NATIVE_AUDIT_ONLY==='1'){
+    await securityAuditCases({test,admin,query,a,b,trip,actorA,actorB,identities});
+  }else if(process.env.BUDGET_NATIVE_INTEGRATION_ONLY==='1'){
     await integrationCases({test,admin,query,a,b,actorA,actorB,viewer,pending,trip,secretTrip,fixture,record,call,overlap,identities,transaction,observations});
   }else if(process.env.BUDGET_NATIVE_UNDO_FULL_ONLY==='1'){
     await workspaceUndoCases({test,admin,query,a,b,actorA,actorB,viewer,pending,trip,secretTrip,fixture,record,call,overlap,identities,transaction,observations});

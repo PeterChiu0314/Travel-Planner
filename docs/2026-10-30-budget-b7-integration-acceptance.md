@@ -2,7 +2,9 @@
 
 起點 `227028573e2c45f3e774c7d1d3fb2a1656a8a899`，分支 `codex/budget-collaboration-redesign`。僅本機／新建隔離環境、必要修正、原分支 commit/push；所有新旗標預設關閉。Hosted、main、正式 Storage／排程／部署未授權。
 
-本文件是本次驗收矩陣與結果入口。**發行結論：Blocked／NO-GO**。本機程式修正、DB 整合與可控 UI 已通過；真 Auth/PostgREST/Realtime/Storage HTTP、Worker 排程與 full Advisor 未通過驗收，不能宣稱正式上線就緒。歷史 B-1～B-6 的通過數字不計入此次結果。
+本文件是本次驗收矩陣與結果入口。**發行結論：Blocked／NO-GO**。本機程式修正、DB 整合與可控 UI 已通過；真 Auth/PostgREST/Realtime/Storage HTTP、Worker 排程與完整 Supabase managed 環境安全驗收未完成，不能宣稱正式上線就緒。歷史 B-1～B-6 的通過數字不計入此次結果。
+
+最新補驗自 `a28232ebc051c40c0741907d4e1c44a55f1df701` 接續：見 [Docker／真服務補驗交接](2026-10-30-budget-b7-service-acceptance-followup.md) 與 [去敏證據](qa/2026-10-30-budget-b7-service-followup.json)。新增 9/9 TLS／catalog 查核，CLI Advisor TLS 已排除；真 HTTP／排程仍 Blocked。本節以下歷史 DB／UI 數字沒有重跑或重算為本輪結果。
 
 ## 跨功能矩陣
 
@@ -25,13 +27,14 @@
 | U02 | 1440/820/390px 新增與完成計價、Portal／Modal／IME／鍵盤 | screenshot/DOM/console；IME 為 composition event，非實體輸入法 | Passed（瀏覽器） |
 | O01 | Preflight／Activation／Pause／Readback／Forward repair | 四份 SQL gate／財務影像在隔離 DB 通過；修復程序有 fail-closed 邊界 | Passed（本機程序） |
 | O02 | Production build／syntax／diff | 本次 source 與直接相依 | Passed |
-| O03 | full Security Advisor／CLI migration list | 原生 loopback 仍被 CLI 強制 TLS；沒有 Hosted audit | Blocked |
+| O03 | Security Advisor／CLI migration list | 新 TLS cluster 的 CLI Advisor 實跑成功：64 WARN / 0 ERROR；9/9 catalog 查核。migration list 可連線但無 managed ledger，完整服務／history 對齊未驗收 | Passed（原生 CLI/catalog）；Blocked（完整 Supabase） |
 
 ## 環境界線
 
 - 開始時五個原有未追蹤檔保留，沒有已追蹤修改。
 - 本機已有 Docker CLI 29.7.2／Desktop 4.90.0；2026-10-30 啟動失敗：Ingest socket `sailor-ingest.sock` 無法 rename，backend crash，Linux Engine named pipe 不存在。沒有重設 Docker、刪除既有 volume、變更正式服務或憑證。真 HTTP 項目待環境確認，不能用 native SQL／Mock 改列 Passed。
 - 已安全停止 Desktop，再嘗試保留備份式 rename 該零位元 socket，仍收到「系統無法存取該檔案」，沒有移動成功、沒有刪除 socket 或重設系統。Docker 最後已停止；沒有本次建立的 Supabase HTTP 環境。
+- 補驗外部 probe 證明：正常 AppData 的 Docker 路徑不存在，明確 package 私有路徑的 AF_UNIX socket 可讀；Explorer 啟動另因 Docker 登錄缺失失敗。10,782,507,008-byte 既有資料 VHDX 保留在 package 路徑。修復涉及安裝／資料位置風險而停下；沒有重裝、搬檔或 registry hack，詳見補驗交接。
 - Browser plugin 未提供；使用專案 Playwright。財務測試截圖存 workspace 外，不提交私密畫面。
 
 ## 發現、修正與最終證據
@@ -58,6 +61,8 @@
 - 新 migration `20261030125028_budget_workspace_integration_safety.sql` 由 CLI 建立；59 份既有 migration 保持原來源。Expansion 的注入故障會整交易回滾 functions/roles/RLS/policies/既有財務影像；成功 expansion 也不改已提交成本／origin／receipt／baseline。
 - Build、JS/MJS syntax、diff 檢查通過；僅既有 >500kB chunk advisory。CLI Advisor/migration list 在真 loopback 重試仍回 `tls error (server refused TLS connection)`，不列為通過。全部 native clusters 已停止。
 - [完整案例、observations、版本與 source hashes](qa/2026-10-30-budget-b7-results.json)。[可執行操作與 Forward Repair 程序](2026-10-30-budget-b7-rollout-runbook.md)。
+
+以上 TLS 失敗為原 checkpoint 紀錄，已由補驗的新 per-cluster TLS／verify-full 修正：只重跑新增 9 項安全查核，CLI Advisor 成功而保留 64 WARN 的分類及限制，沒有修改既有產品 RLS。詳見 [補驗證據](qa/2026-10-30-budget-b7-service-followup.json)。這不解除 H01–H03，也不代表原生 fixture 的 migration list Remote 空欄已對齊 managed history。
 
 復現命令：
 
@@ -89,9 +94,9 @@ git diff --check
 
 ## 尚需額外授權／外部條件
 
-1. 先修復本機 Docker／WSL runtime 後可在現有「本機隔離驗證」授權內補 H01–H03；本次不做 factory reset、不刪既有 Docker volumes。
-2. 若改用 Hosted，需明確授權**新獨立測試 project/branch**，先查實際費用並取得同意；該隔離環境的全 chain、兩個 fixture Auth 帳號、private bucket、專用 Worker JWT／排程、測試檔案及清理需逐項列入授權。不得借 Production 資料／Storage 作測試。
-3. 真服務證據通過後，才另行申請 Production migration／Storage policies／Worker secrets與排程／前端及 DB flags；不包含 main merge／正式部署／切換，這些仍要明確授權。
+1. Docker 安裝／資料 namespace 修復須先有可審閱的備份／恢復計畫與明確授權；現有授權不包含資料移動、registry hack、重裝／reset。安全恢復後可依現有本機隔離授權補 H01–H03。
+2. 最新指示禁止改用 Hosted 繞過本機阻擋；沒有建立收費測試專案或使用任何正式服務。
+3. 本機真服務證據通過後先回報 ChatGPT Review，再另行申請 Hosted／Production migration、Storage policies、Worker secrets與排程、前端及 DB flags；main merge／正式部署／切換也各需明確授權。
 4. 本次不更新／關閉 GitHub Issue，不合併 main，不執行 Hosted SQL／Storage／RLS／Worker 排程／正式部署；push 原 feature branch 不能當作上線完成。
 
 ## 瀏覽器證據

@@ -29,19 +29,27 @@ let started=false;
 try {
   const version=(await run(path.join(bin,process.platform==='win32'?'postgres.exe':'postgres'),['--version'],{windowsHide:true})).stdout.trim();
   await run(initdb,['-D',data,'-U','budget_local_admin','--auth=trust','--encoding=UTF8','--no-locale'],{windowsHide:true,timeout:60000,maxBuffer:2e6});
-  const options=`-h 127.0.0.1 -p ${port} -c wal_level=logical -c deadlock_timeout=200ms -c log_lock_waits=on -c log_parameter_max_length=0 -c log_parameter_max_length_on_error=0 -c budget_metadata.test_cluster=${marker}`;
+  let tlsOptions='',tlsCA='';
+  if(process.argv.includes('--tls')){
+    const openssl=process.env.BUDGET_TEST_OPENSSL||(process.platform==='win32'?'C:/Program Files/Git/usr/bin/openssl.exe':'openssl'),cert=path.join(clusterRoot,'server.crt'),key=path.join(clusterRoot,'server.key');
+    await run(openssl,['req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1,DNS:localhost','-keyout',key,'-out',cert],{windowsHide:true,timeout:15000,maxBuffer:1e6});
+    tlsCA=cert;tlsOptions=` -c ssl=on -c ssl_cert_file=${cert.replaceAll('\\','/')} -c ssl_key_file=${key.replaceAll('\\','/')}`;
+  }
+  const options=`-h 127.0.0.1 -p ${port} -c wal_level=logical -c deadlock_timeout=200ms -c log_lock_waits=on -c log_parameter_max_length=0 -c log_parameter_max_length_on_error=0 -c budget_metadata.test_cluster=${marker}${tlsOptions}`;
   await run(pgctl,['-D',data,'-l',log,'-o',options,'-w','start'],{windowsHide:true,timeout:30000});started=true;
   console.log(`Native isolated cluster: ${version}; 127.0.0.1:${port}; marker ${marker}`);
-  await fs.writeFile(path.join(work,'environment.json'),JSON.stringify({version,host:'127.0.0.1',port,marker,work,data,log,startedAt:new Date().toISOString()},null,2));
+  await fs.writeFile(path.join(work,'environment.json'),JSON.stringify({version,host:'127.0.0.1',port,marker,work,data,log,tlsEnabled:Boolean(tlsCA),auditOnly:process.argv.includes('--security-audit'),startedAt:new Date().toISOString()},null,2));
   const exit=await new Promise((resolve,reject)=>{
     const child=spawn(process.execPath,['tests/budget-metadata-parallel.mjs'],{cwd:root,windowsHide:true,stdio:'inherit',env:{...process.env,
       BUDGET_NATIVE_PORT:String(port),BUDGET_NATIVE_MARKER:marker,BUDGET_NATIVE_EVIDENCE:work,BUDGET_NATIVE_RECEIPTS_ONLY:process.argv.includes('--receipts')?'1':'',BUDGET_NATIVE_FINANCE_ONLY:process.argv.includes('--finance')?'1':'',BUDGET_NATIVE_LIFECYCLE_ONLY:process.argv.includes('--lifecycle')?'1':'',BUDGET_NATIVE_UNDO_FULL_ONLY:process.argv.includes('--undo-full')?'1':'',
+      BUDGET_NATIVE_AUDIT_ONLY:process.argv.includes('--security-audit')?'1':'',BUDGET_NATIVE_TLS_CA:tlsCA,
       BUDGET_NATIVE_INTEGRATION_ONLY:process.argv.includes('--integration')?'1':'',BUDGET_NATIVE_PG_MODULE:path.resolve('.tmp-budget-db-runtime/node_modules/pg/lib/index.js')}});
     child.on('error',reject);child.on('exit',code=>resolve(code??1));
   });
   process.exitCode=exit;
   if(exit===0&&process.argv.includes('--advisors')){
-    const url=`postgresql://budget_local_admin@127.0.0.1:${port}/postgres?sslmode=disable`;
+    const ssl=tlsCA?`sslmode=verify-full&sslrootcert=${encodeURIComponent(tlsCA.replaceAll('\\','/'))}`:'sslmode=disable';
+    const url=`postgresql://budget_local_admin@127.0.0.1:${port}/postgres?${ssl}`;
     for(const [name,args] of [['advisors',['db','advisors','--db-url',url,'--type','all','--fail-on','none']],
       ['migration-list',['migration','list','--db-url',url]]]){
       try {
