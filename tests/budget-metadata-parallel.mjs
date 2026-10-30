@@ -20,6 +20,7 @@ import {lifecycleCases} from './budget-lifecycle-cases.mjs';
 import {workspaceUndoCases} from './budget-workspace-undo-cases.mjs';
 import {integrationCases} from './budget-integration-cases.mjs';
 import {securityAuditCases} from './budget-security-audit.mjs';
+import {businessConflictCases} from './rpc-business-conflicts-cases.mjs';
 const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER;
 assert(Number.isInteger(port)&&port>1024&&port<65536&&/^[a-f0-9-]{36}$/.test(marker||''),'Use the isolated runner, not a database URL');
 const imported=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href);
@@ -75,6 +76,7 @@ const fixture=async()=>{
   await admin('insert into budget_item_participants(budget_item_id,user_id,share_amount) values($1,$2,300),($1,$3,600)',[id,actorA,actorB]);return id;
 };
 const test=async(name,run)=>{
+  if(process.env.BUDGET_NATIVE_CONFLICT_ONLY==='1'&&!name.startsWith('Conflict hotfix'))return;
   if(process.env.BUDGET_NATIVE_AUDIT_ONLY==='1'&&!name.startsWith('B7 Security audit'))return;
   if(process.env.BUDGET_NATIVE_INTEGRATION_ONLY==='1'&&!name.startsWith('B7'))return;
   if(process.env.BUDGET_NATIVE_RECEIPTS_ONLY==='1'&&!name.startsWith('Receipt'))return;
@@ -132,7 +134,7 @@ try{
         update public.trip_members set status='pending' where trip_id=trip and user_id=actor;return '{}'::jsonb;end $$;
     grant execute on function budget_test.hold_result(jsonb,bigint),budget_test.await_gate(bigint),budget_test.revoke_member(uuid,uuid) to authenticated;`);
   const migrationDir=new URL('../supabase/migrations/',import.meta.url),hashes=[];
-  for(const file of (await fs.readdir(migrationDir)).filter(f=>f.endsWith('.sql')).sort()){
+  for(const file of (await fs.readdir(migrationDir)).filter(f=>f.endsWith('.sql')&&(process.env.BUDGET_NATIVE_CONFLICT_ONLY!=='1'||f<='20261028104333_budget_selection_activity.sql'||f==='20261031003000_rpc_business_conflicts_no_retry.sql')).sort()){
     // PostgreSQL stores function body line endings verbatim. Compare the same
     // logical source on LF and Windows CRLF checkouts without editing migrations.
     const source=(await fs.readFile(new URL(file,migrationDir),'utf8')).replace(/\r\n/g,'\n');
@@ -260,8 +262,8 @@ try{
     }
     await control.query(source);hashes.push({file,sha256:createHash('sha256').update(source).digest('hex')});
   }
-  assert.equal((await admin('select enabled from app_private.budget_metadata_protocol'))[0].enabled,false);
-  if(process.env.BUDGET_NATIVE_AUDIT_ONLY!=='1')await admin('update app_private.budget_metadata_protocol set enabled=true');
+  if(process.env.BUDGET_NATIVE_CONFLICT_ONLY!=='1')assert.equal((await admin('select enabled from app_private.budget_metadata_protocol'))[0].enabled,false);
+  if(process.env.BUDGET_NATIVE_AUDIT_ONLY!=='1'&&process.env.BUDGET_NATIVE_CONFLICT_ONLY!=='1')await admin('update app_private.budget_metadata_protocol set enabled=true');
   await admin('insert into auth.users(id) select unnest($1::uuid[])',[[actorA,actorB,viewer,pending,outsider]]);
   await admin("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Native isolated','Native isolated','Japan',current_date+10,current_date+15,$3),($2,'Private','Private','Japan',current_date+10,current_date+15,$4)",[trip,secretTrip,actorA,outsider]);
   await admin("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved'),($1,$3,'editor','approved'),($1,$4,'viewer','approved'),($1,$5,'editor','pending'),($6,$7,'owner','approved')",[trip,actorA,actorB,viewer,pending,secretTrip,outsider]);
@@ -275,7 +277,9 @@ try{
   const sessions=await Promise.all([a,b].map(c=>query(c,"select pg_backend_pid() pid,session_user,current_user,auth.uid() actor,current_setting('transaction_isolation') isolation")));
   await fs.writeFile(path.join(process.env.BUDGET_NATIVE_EVIDENCE,'bootstrap.json'),JSON.stringify({server:(await admin('select version() version'))[0].version,pids:[pidA,pidB,observerPid],sessions,hashes},null,2));
 
-  if(process.env.BUDGET_NATIVE_AUDIT_ONLY==='1'){
+  if(process.env.BUDGET_NATIVE_CONFLICT_ONLY==='1'){
+    await businessConflictCases({test,admin,query,a,b,trip,actorA,fixture,record});
+  }else if(process.env.BUDGET_NATIVE_AUDIT_ONLY==='1'){
     await securityAuditCases({test,admin,query,a,b,trip,actorA,actorB,identities});
   }else if(process.env.BUDGET_NATIVE_INTEGRATION_ONLY==='1'){
     await integrationCases({test,admin,query,a,b,actorA,actorB,viewer,pending,trip,secretTrip,fixture,record,call,overlap,identities,transaction,observations});

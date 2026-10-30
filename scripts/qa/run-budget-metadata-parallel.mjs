@@ -42,7 +42,7 @@ try {
   const exit=await new Promise((resolve,reject)=>{
     const child=spawn(process.execPath,['tests/budget-metadata-parallel.mjs'],{cwd:root,windowsHide:true,stdio:'inherit',env:{...process.env,
       BUDGET_NATIVE_PORT:String(port),BUDGET_NATIVE_MARKER:marker,BUDGET_NATIVE_EVIDENCE:work,BUDGET_NATIVE_RECEIPTS_ONLY:process.argv.includes('--receipts')?'1':'',BUDGET_NATIVE_FINANCE_ONLY:process.argv.includes('--finance')?'1':'',BUDGET_NATIVE_LIFECYCLE_ONLY:process.argv.includes('--lifecycle')?'1':'',BUDGET_NATIVE_UNDO_FULL_ONLY:process.argv.includes('--undo-full')?'1':'',
-      BUDGET_NATIVE_AUDIT_ONLY:process.argv.includes('--security-audit')?'1':'',BUDGET_NATIVE_TLS_CA:tlsCA,
+      BUDGET_NATIVE_AUDIT_ONLY:process.argv.includes('--security-audit')?'1':'',BUDGET_NATIVE_TLS_CA:tlsCA,BUDGET_NATIVE_CONFLICT_ONLY:process.argv.includes('--conflicts')?'1':'',
       BUDGET_NATIVE_INTEGRATION_ONLY:process.argv.includes('--integration')?'1':'',BUDGET_NATIVE_PG_MODULE:path.resolve('.tmp-budget-db-runtime/node_modules/pg/lib/index.js')}});
     child.on('error',reject);child.on('exit',code=>resolve(code??1));
   });

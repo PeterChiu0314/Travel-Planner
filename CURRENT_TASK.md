@@ -1,6 +1,13 @@
 # CURRENT_TASK.md
 
-Updated 2026-10-30. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
+Updated 2026-10-31. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
+
+## Production incident — narrow authorized hotfix, 2026-10-31
+
+- [Incident, verification and recovery record](docs/2026-10-31-postgrest-business-conflict-hotfix.md). Production PostgREST 14.5 repeatedly retried deterministic business `40001 / Record changed` from Budget Delete. The identified runaway backend was terminated with PID + backend-start + role/application guards; no project restart.
+- User explicitly authorized **only** `20261031003000_rpc_business_conflicts_no_retry` on Production `lqvuqamzmchepgxkftcw` and its ledger entry. Applied successfully: 13 inventoried baseline routines now use `PT409`; OID/owner/ACL/security/search_path unchanged, transaction public-table DML counters zero, ledger registered, original backend absent. This is the sole exception to the B-7 Hosted-write restriction below; no B-7 protocols/flags, financial data, Storage, schedules or frontend deployment were changed.
+- Targeted verification: native PostgreSQL **7/7**, client handling **6/6**, build/syntax/diff passed. Staging resumed **Healthy**, but lacks the Budget RPC baseline: its rolled-back SQL probe is not hosted feature parity or Auth/PostgREST/Realtime acceptance. Frontend `PT409` reconciliation is feature-branch source only. Production logs show `PT409` after the fix; CPU recovery is not yet certified (Dashboard still reports 100%). [Sanitized results](docs/qa/2026-10-31-rpc-business-conflict-results.json).
+- **Budget B-7 remains BLOCKED / NO-GO.** Dormant B-7 migrations were deliberately excluded from this standalone hotfix; later migrations can reintroduce custom `40001` and need a separate audit/forward fix before activation. Do not blindly push the entire migration chain to reconcile the new ledger head. Docker repair remains NO-GO. Finish incident review before any further hosted changes.
 
 ## Current work — Budget collaboration, Issue #15
 
@@ -48,10 +55,11 @@ These describe the existing implementation, before Issue #15:
 
 ## Recorded hosted migration state
 
-Production project: lqvuqamzmchepgxkftcw. This is prior verified evidence, not a fresh hosted audit on 2026-10-29. Never replay or edit applied migrations in place; inspect actual remote history before any separately authorized rollout.
+Production project: lqvuqamzmchepgxkftcw. Historical rows retain their dated evidence; the incident hotfix row is freshly verified on 2026-10-31. Never replay or edit applied migrations in place; inspect actual remote history before any separately authorized rollout.
 
 | Area | Latest recorded application / evidence |
 | --- | --- |
+| Incident hotfix | `20261031003000_rpc_business_conflicts_no_retry` explicitly authorized and applied 2026-10-31; 13 baseline bodies only, ledger/readback verified. Intervening B-1–B-7 migrations remain unapplied. [Incident record](docs/2026-10-31-postgrest-business-conflict-hotfix.md) |
 | Timeline | Through 20260811150000 atomic alternative; Phase 7 import RPC applied as 20260819134935. [Timeline history](docs/archive/Timeline_Phase7/2026-10-29-current-task-timeline-history.md) retains exact older migration checkpoints. |
 | Budget baseline/rates | 20261022090000 and 20261022100000 applied 2026-10-22. [Budget handoff](docs/2026-10-22-budget-workspace-handoff.md) |
 | Budget safety/planning | 20261022110000 and 20261022120000 applied 2026-10-27; original financial data verified and authorized fixture cleanup completed. [Budget history](docs/archive/Budget/2026-10-29-current-task-collaboration-history.md) |
@@ -59,7 +67,7 @@ Production project: lqvuqamzmchepgxkftcw. This is prior verified evidence, not a
 | Budget selection #14 | 20261028104333 applied 2026-10-28, source registered and independent 8/8 checks passed; eleven original business tables unchanged by that transaction. [Hosted record](docs/2026-10-28-budget-editor-lifecycle-followups.md) |
 | Luggage | Collaboration 20261022162015, notes 20261023120000, conversions 20261024054121/20261024063828, ordering 20261024112902 and required assignee 20261026120000 recorded applied. Required-assignee cleanup removed exactly two authorized unassigned rows, preserving assigned/private content; 11 readback checks passed. [Luggage history](docs/archive/Luggage/2026-10-29-current-task-luggage-history.md) |
 
-Staging uyqdopksfysbobhjcepk has only historical verification records; latest October work recorded it inactive. Do not assume Production parity. Historical local Staging Maps key restrictions excluded 127.0.0.1:5174; no key/configuration change is authorized here. Supabase connector/CLI access was unavailable for recent Production rollouts; the authenticated Dashboard SQL Editor was used. Targeted catalog checks are not a full Security Advisor audit.
+Staging uyqdopksfysbobhjcepk was resumed at the user's request on 2026-10-31 and observed Healthy. Its ledger ends at historical `phase_7_import_trip_timeline_v1`, without the Budget RPC baseline. A transient SQL-only hotfix probe was rolled back and its removal verified; no prerequisite chain installed. Do not assume Production parity. Historical local Staging Maps key restrictions excluded 127.0.0.1:5174; no key/configuration change is authorized here. Supabase connector/CLI access was unavailable for this incident; the authenticated Dashboard SQL Editor was used. Targeted catalog checks are not a full Security Advisor audit.
 
 ## Verification and remaining limits
 

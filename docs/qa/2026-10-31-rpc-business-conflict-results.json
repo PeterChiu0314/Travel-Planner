@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Taipei",
+  "scope": "Standalone deployed-baseline business-conflict hotfix; not B-7 activation",
+  "migration": "20261031003000_rpc_business_conflicts_no_retry",
+  "native": {
+    "server": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35229, 64-bit",
+    "passed": 7,
+    "failed": 0,
+    "cases": [
+      {
+        "name": "Conflict hotfix stale Save and lease admission retain their business guards",
+        "status": "passed"
+      },
+      {
+        "name": "Conflict hotfix stale delete missing version rejects without financial writes",
+        "status": "passed"
+      },
+      {
+        "name": "Conflict hotfix stale delete old version rejects without financial writes",
+        "status": "passed"
+      },
+      {
+        "name": "Conflict hotfix missing record is a bounded business rejection",
+        "status": "passed"
+      },
+      {
+        "name": "Conflict hotfix original permission and valid-delete behavior remain intact",
+        "status": "passed"
+      },
+      {
+        "name": "Conflict hotfix maps all thirteen baseline routines and is idempotent without changing attributes or Budget rows",
+        "status": "passed"
+      },
+      {
+        "name": "Conflict hotfix leaves genuine database serialization failures unchanged",
+        "status": "passed"
+      }
+    ],
+    "realIndependentConnections": true,
+    "clusterStopped": true
+  },
+  "client": {
+    "command": "node --test tests/rpc-business-conflicts.test.mjs",
+    "passed": 6,
+    "failed": 0,
+    "mutationRetries": 0
+  },
+  "production": {
+    "explicitAuthorization": true,
+    "changedRoutines": 13,
+    "allOtherPgProcAttributesPreserved": true,
+    "transactionPublicTableDml": 0,
+    "ledgerRegistered": true,
+    "projectRestarted": false,
+    "financialDataRewritten": false,
+    "frontendDeployed": false,
+    "postApplyLogCode": "PT409",
+    "lastObservedOldCodeLocal": "00:31:38",
+    "postApplyCodeLocal": "00:31:39",
+    "finalReadback": {
+      "observedAtUtc": "2026-10-30T16:39:22.789874Z",
+      "activeAuthenticatorBackends": 0,
+      "originalBackendCount": 0,
+      "custom40001Definitions": 0,
+      "otherActiveBackends": null
+    },
+    "resourceRecovery": {
+      "status": "UNRESOLVED",
+      "lastOverviewCpuPercent": 100,
+      "overviewLocalTimeApprox": "00:36",
+      "projectStatus": "Healthy",
+      "metricLagNotConfirmed": true,
+      "observabilityAtLocal": "00:41",
+      "cpuChart": "Unable to load data for CPU usage"
+    }
+  },
+  "staging": {
+    "resumed": true,
+    "status": "Healthy",
+    "budgetBaselinePresent": false,
+    "transactionalSqlProbePassed": true,
+    "probeRolledBack": true,
+    "probeRemoved": true,
+    "fullHttpParityVerified": false
+  },
+  "checks": {
+    "build": "passed; existing large-chunk advisory",
+    "syntax": "passed",
+    "diff": "passed"
+  },
+  "limits": [
+    "No controlled hosted HTTP status or Auth/Realtime/Storage/Worker E2E",
+    "Frontend source remains feature-branch only",
+    "CPU recovery not certified",
+    "Dormant B-7 migrations require additional business-error audit before activation",
+    "No Docker or WSL start or repair"
+  ],
+  "b7ReleaseDecision": "BLOCKED / NO-GO"
+}

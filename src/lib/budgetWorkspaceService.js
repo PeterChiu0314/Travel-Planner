@@ -1,4 +1,5 @@
 // Formal persistence boundary: one RPC, no follow-up payment writes or fallback.
+import { isBudgetConflict } from './budgetErrors.js';
 export async function persistBudgetWorkspace({ supabase, tripId, reload }, kind, payload, id, meta = {}) {
   let response;
   try {
@@ -12,7 +13,7 @@ export async function persistBudgetWorkspace({ supabase, tripId, reload }, kind,
   } catch (error) { return { ok: false, error }; }
   const { data, error } = response;
   if (error) {
-    const conflict = ["40001", "40P01"].includes(error.code);
+    const conflict = isBudgetConflict(error);
     if (conflict) { try { await reload(tripId); } catch { /* Original conflict and draft remain authoritative. */ } }
     return { ok: false, error: /PGRST202|42883/.test(error.code || "")
       ? { ...error, message: "安全儲存尚未啟用，需先套用預算修正 migration。資料未變更，草稿已保留。" } : error, conflict };

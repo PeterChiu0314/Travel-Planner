@@ -30,6 +30,7 @@ import { budgetStage, recordForm, settlementBalances } from "./lib/budgetFinance
 import { planningBudgetData } from "./lib/planningBudget.js";
 import { saveDemoBudgetRecord } from "./demo/saveBudgetRecord.js";
 import { persistBudgetWorkspace } from "./lib/budgetWorkspaceService.js";
+import { isBudgetConflict } from "./lib/budgetErrors.js";
 import { createBudgetEditLeaseClient } from "./lib/budgetEditLeases.js";
 import { deleteBudgetReceipt } from "./lib/budgetReceipts.js";
 import { collaboratorColors as timelineCardSelectionColors } from "./lib/collaboratorColors.js";
@@ -5471,7 +5472,7 @@ export default function App() {
       ...(meta.leaseProtocol ? { p_edit_session_id: meta.editLease?.sessionId || null, p_edit_token: meta.editLease?.token || null } : {}),
     });
     if (error) {
-      if (error.code === "40001") await refreshBudget(activeTrip.id);
+      if (isBudgetConflict(error)) await refreshBudget(activeTrip.id);
       return { ok: false, error };
     }
     const refreshed = await refreshBudget(activeTrip.id);
