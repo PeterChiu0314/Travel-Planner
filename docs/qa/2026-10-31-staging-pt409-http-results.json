@@ -1,0 +1,518 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Taipei",
+  "project": "uyqdopksfysbobhjcepk",
+  "scope": "PT409 hotfix real HTTP and independent Auth sessions only",
+  "authorization": {
+    "explicitStagingMigrationsAndFixtures": true,
+    "productionAccess": false,
+    "b7Activation": false
+  },
+  "services": {
+    "auth": "2.197.0",
+    "postgrest": "14.15",
+    "postgres": "17.6.1.155"
+  },
+  "installation": {
+    "rollbackRehearsal": "passed",
+    "commit": "passed",
+    "originalColumnPublicDataPreserved": true,
+    "sources": [
+      {
+        "file": "20261022090000_budget_workspace_baseline_and_pricing.sql",
+        "sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+      },
+      {
+        "file": "20261022100000_trip_budget_exchange_rates.sql",
+        "sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+      },
+      {
+        "file": "20261022110000_budget_payment_safety_and_actual_cost.sql",
+        "sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+      },
+      {
+        "file": "20261022120000_unified_planning_payments.sql",
+        "sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+      },
+      {
+        "file": "20261022162015_luggage_collaboration_state_safety.sql",
+        "sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+      },
+      {
+        "file": "20261023120000_luggage_notes.sql",
+        "sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+      },
+      {
+        "file": "20261024054121_luggage_drag_assignment.sql",
+        "sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+      },
+      {
+        "file": "20261024063828_luggage_private_return.sql",
+        "sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+      },
+      {
+        "file": "20261024112902_luggage_item_ordering.sql",
+        "sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+      },
+      {
+        "file": "20261026120000_luggage_required_assignee.sql",
+        "sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+      },
+      {
+        "file": "20261027140044_budget_atomic_edit_leases.sql",
+        "sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+      },
+      {
+        "file": "20261027145613_budget_consistent_snapshot.sql",
+        "sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+      },
+      {
+        "file": "20261027152539_budget_collaboration_state.sql",
+        "sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+      },
+      {
+        "file": "20261028104333_budget_selection_activity.sql",
+        "sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+      },
+      {
+        "file": "20261031003000_rpc_business_conflicts_no_retry.sql",
+        "sha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2"
+      }
+    ],
+    "ledgerHashesMatch": true
+  },
+  "acceptance": {
+    "realHttp": true,
+    "realAuth": true,
+    "accountsPerRun": 2,
+    "independentSessionsPerRun": 3,
+    "acceptanceUsesServiceRole": false,
+    "adminOnlyForFixtures": true,
+    "distinctPassed": 20,
+    "finalUnresolvedFailures": 0,
+    "cases": [
+      {
+        "name": "Real Auth verifies two accounts and three distinct sessions",
+        "status": "passed"
+      },
+      {
+        "name": "Authenticated HTTP creates Budget with participants and a retained payment",
+        "status": "passed"
+      },
+      {
+        "name": "Two account sessions race the same base: exactly one commit and one HTTP 409",
+        "status": "passed"
+      },
+      {
+        "name": "Legacy Delete missing base returns bounded HTTP 409 with graph unchanged",
+        "status": "passed"
+      },
+      {
+        "name": "Legacy Delete stale base returns HTTP 409 with graph unchanged",
+        "status": "passed"
+      },
+      {
+        "name": "Legacy Delete missing record returns HTTP 409",
+        "status": "passed"
+      },
+      {
+        "name": "Stale Save request and identical replay both reject without writes",
+        "status": "passed"
+      },
+      {
+        "name": "Payment expected-version conflict preserves retained payment and financial graph",
+        "status": "passed"
+      },
+      {
+        "name": "Successful request replay returns its original receipt without repeating financial writes",
+        "status": "passed"
+      },
+      {
+        "name": "Independent tab capabilities contend without overwriting or accepting stale admission",
+        "status": "passed"
+      },
+      {
+        "name": "Selection v1 rejects a removed record with HTTP 409",
+        "status": "passed"
+      },
+      {
+        "name": "Selection v2 rejects a removed record with HTTP 409",
+        "status": "passed"
+      },
+      {
+        "name": "Receipt RPC rejects a missing expense with HTTP 409 before metadata changes",
+        "status": "passed"
+      },
+      {
+        "name": "Client persistence boundary reconciles a real HTTP 409 once and preserves its draft",
+        "status": "passed"
+      },
+      {
+        "name": "Luggage Save stale version returns HTTP 409 and preserves both luggage scopes",
+        "status": "passed"
+      },
+      {
+        "name": "Luggage Assign stale version returns HTTP 409 and preserves both luggage scopes",
+        "status": "passed"
+      },
+      {
+        "name": "Luggage Privatize stale version returns HTTP 409 and preserves both luggage scopes",
+        "status": "passed"
+      },
+      {
+        "name": "Luggage Reorder stale version returns HTTP 409 and preserves both luggage scopes",
+        "status": "passed"
+      },
+      {
+        "name": "Unapproved member receives HTTP 403 / 42501, never a business conflict",
+        "status": "passed"
+      },
+      {
+        "name": "A valid legacy Delete still succeeds and retains payment origin and historical cost",
+        "status": "passed"
+      }
+    ],
+    "requests": 109,
+    "pt409Responses": 18,
+    "maxPt409Ms": 160,
+    "maxRequestMs": 583,
+    "timeoutMs": 10000,
+    "original40001Responses": 0,
+    "httpGroups": [
+      {
+        "endpoint": "/auth/v1/token",
+        "httpStatus": 200,
+        "code": null,
+        "count": 9,
+        "minMs": 142,
+        "maxMs": 583
+      },
+      {
+        "endpoint": "/auth/v1/user",
+        "httpStatus": 200,
+        "code": null,
+        "count": 9,
+        "minMs": 65,
+        "maxMs": 152
+      },
+      {
+        "endpoint": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "httpStatus": 200,
+        "code": null,
+        "count": 6,
+        "minMs": 87,
+        "maxMs": 289
+      },
+      {
+        "endpoint": "/rest/v1/rpc/read_budget_snapshot",
+        "httpStatus": 200,
+        "code": null,
+        "count": 39,
+        "minMs": 66,
+        "maxMs": 127
+      },
+      {
+        "endpoint": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 6,
+        "minMs": 66,
+        "maxMs": 160
+      },
+      {
+        "endpoint": "/rest/v1/rpc/delete_budget_workspace_record",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 3,
+        "minMs": 63,
+        "maxMs": 64
+      },
+      {
+        "endpoint": "/rest/v1/rpc/budget_edit_lease",
+        "httpStatus": 200,
+        "code": null,
+        "count": 5,
+        "minMs": 68,
+        "maxMs": 110
+      },
+      {
+        "endpoint": "/rest/v1/rpc/budget_edit_lease",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 2,
+        "minMs": 62,
+        "maxMs": 92
+      },
+      {
+        "endpoint": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "httpStatus": 500,
+        "code": "55P03",
+        "count": 2,
+        "minMs": 79,
+        "maxMs": 81
+      },
+      {
+        "endpoint": "/rest/v1/rpc/update_budget_selection",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 1,
+        "minMs": 68,
+        "maxMs": 68
+      },
+      {
+        "endpoint": "/rest/v1/rpc/update_budget_selection_v2",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 1,
+        "minMs": 72,
+        "maxMs": 72
+      },
+      {
+        "endpoint": "/rest/v1/rpc/mutate_budget_receipt",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 1,
+        "minMs": 77,
+        "maxMs": 77
+      },
+      {
+        "endpoint": "/rest/v1/rpc/mutate_luggage_item",
+        "httpStatus": 200,
+        "code": null,
+        "count": 2,
+        "minMs": 75,
+        "maxMs": 101
+      },
+      {
+        "endpoint": "/rest/v1/luggage_items",
+        "httpStatus": 200,
+        "code": null,
+        "count": 8,
+        "minMs": 65,
+        "maxMs": 95
+      },
+      {
+        "endpoint": "/rest/v1/shared_luggage_items",
+        "httpStatus": 200,
+        "code": null,
+        "count": 8,
+        "minMs": 66,
+        "maxMs": 75
+      },
+      {
+        "endpoint": "/rest/v1/rpc/mutate_luggage_item",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 1,
+        "minMs": 69,
+        "maxMs": 69
+      },
+      {
+        "endpoint": "/rest/v1/rpc/assign_luggage_item",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 1,
+        "minMs": 75,
+        "maxMs": 75
+      },
+      {
+        "endpoint": "/rest/v1/rpc/privatize_luggage_item",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 1,
+        "minMs": 74,
+        "maxMs": 74
+      },
+      {
+        "endpoint": "/rest/v1/rpc/reorder_luggage_items",
+        "httpStatus": 409,
+        "code": "PT409",
+        "count": 1,
+        "minMs": 82,
+        "maxMs": 82
+      },
+      {
+        "endpoint": "/rest/v1/rpc/delete_budget_workspace_record",
+        "httpStatus": 403,
+        "code": "42501",
+        "count": 1,
+        "minMs": 70,
+        "maxMs": 70
+      },
+      {
+        "endpoint": "/rest/v1/rpc/delete_budget_workspace_record",
+        "httpStatus": 204,
+        "code": null,
+        "count": 2,
+        "minMs": 71,
+        "maxMs": 91
+      }
+    ]
+  },
+  "attempts": [
+    {
+      "passed": 9,
+      "failed": 1,
+      "reason": "Incorrect 409 expectation for documented 55P03 -> 500; no product behavior changed",
+      "cleanup": [
+        {
+          "resource": "fixture trip",
+          "removed": true
+        },
+        {
+          "resource": "fixture auth user",
+          "removed": true
+        },
+        {
+          "resource": "fixture auth user",
+          "removed": true
+        }
+      ]
+    },
+    {
+      "passed": 13,
+      "failed": 1,
+      "reason": "Incorrect immutable payment_origin assumption for valid detach; source confirms budget_toggle -> manual, historical budget_origin_id and financial invariants preserved",
+      "cleanup": [
+        {
+          "resource": "fixture trip",
+          "removed": true
+        },
+        {
+          "resource": "fixture auth user",
+          "removed": true
+        },
+        {
+          "resource": "fixture auth user",
+          "removed": true
+        }
+      ]
+    },
+    {
+      "passed": 3,
+      "failed": 0,
+      "scope": "Valid Delete and necessary Auth/create setup only",
+      "cleanup": [
+        {
+          "resource": "fixture trip",
+          "removed": true
+        },
+        {
+          "resource": "fixture auth user",
+          "removed": true
+        },
+        {
+          "resource": "fixture auth user",
+          "removed": true
+        }
+      ]
+    }
+  ],
+  "finalReadback": {
+    "trips": 2,
+    "leases": 0,
+    "luggage": 0,
+    "qa_users": 0,
+    "b7_absent": true,
+    "active_api": 0,
+    "auth_users": 1,
+    "selections": 0,
+    "ledger_head": "20261031003000",
+    "observed_at": "2026-10-31T03:29:50.999131+00:00",
+    "budget_items": 0,
+    "custom_40001": 0,
+    "ledger_hashes": [
+      {
+        "sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1",
+        "version": "20261022090000"
+      },
+      {
+        "sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650",
+        "version": "20261022100000"
+      },
+      {
+        "sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9",
+        "version": "20261022110000"
+      },
+      {
+        "sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd",
+        "version": "20261022120000"
+      },
+      {
+        "sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3",
+        "version": "20261022162015"
+      },
+      {
+        "sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76",
+        "version": "20261023120000"
+      },
+      {
+        "sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68",
+        "version": "20261024054121"
+      },
+      {
+        "sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90",
+        "version": "20261024063828"
+      },
+      {
+        "sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db",
+        "version": "20261024112902"
+      },
+      {
+        "sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6",
+        "version": "20261026120000"
+      },
+      {
+        "sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127",
+        "version": "20261027140044"
+      },
+      {
+        "sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07",
+        "version": "20261027145613"
+      },
+      {
+        "sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361",
+        "version": "20261027152539"
+      },
+      {
+        "sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661",
+        "version": "20261028104333"
+      },
+      {
+        "sha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2",
+        "version": "20261031003000"
+      }
+    ],
+    "new_migrations": 15,
+    "orphan_signals": 0,
+    "pt409_routines": 13,
+    "shared_luggage": 0,
+    "actual_expenses": 0,
+    "anon_rpc_denied": true,
+    "request_receipts": 0,
+    "public_invoker_rpc_count": 9,
+    "private_ledger_direct_read": false,
+    "ledger_source_hashes_match": true
+  },
+  "qaTombstones": {
+    "found": 2,
+    "guardedCleanupCompleted": true,
+    "remaining": 0,
+    "exactFixtureHttpDeleteStatus": 200,
+    "exactFixtureHttpReadbackStatus": 200
+  },
+  "p2": [
+    {
+      "issue": "Legacy lease-held Save returns HTTP 500 / 55P03 as documented by PostgREST",
+      "dataSafety": "passed",
+      "scope": "Unchanged historical transport classification; no retry incident reproduced"
+    }
+  ],
+  "limits": [
+    "No rendered two-tab browser UI or Playwright acceptance",
+    "No Realtime, Storage bytes, Worker or full Advisor acceptance",
+    "No Production access or CPU recovery recheck",
+    "No B-7 migrations or activation"
+  ],
+  "b7Decision": "BLOCKED / NO-GO"
+}

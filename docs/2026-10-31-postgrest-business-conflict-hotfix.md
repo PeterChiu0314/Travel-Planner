@@ -2,6 +2,8 @@
 
 Scope: `codex/budget-collaboration-redesign`, starting HEAD `5e45e4dca8c6ed2450647c3d45ce81ddb2ec5d84`. This is an incident fix, not Budget B-7 activation or certification. Times below use Asia/Taipei unless UTC is explicit. No private logs, credentials, account/record identifiers or workstation paths are included.
 
+Later same-day update: the separately authorized [Staging HTTP / independent-session follow-up](2026-10-31-staging-pt409-http-acceptance.md) installed the required historical baseline and passed 20 distinct real HTTP cases. It supersedes the Staging missing-baseline limitation below for this scoped hotfix only. The Production observations below retain their original timestamp; Production was not accessed again during that follow-up.
+
 ## Finding and authorization
 
 Production PostgREST 14.5 repeatedly executed the same Budget Delete transaction. PostgreSQL logged custom SQLSTATE `40001`, message `Record changed`, from `delete_budget_workspace_record(uuid,text,uuid,timestamptz)` line 10. Repeated events shared one backend identity and increasing session line numbers; the dashboard error count must not be read as thousands of distinct user actions. A null/stale base version or missing record deterministically fails this business guard. The logs establish the failing guard, not which original client payload caused it.
