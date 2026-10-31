@@ -16,20 +16,20 @@ This document now separates:
 ## BUG-029 | Cold Budget INSERT Realtime delivery absent in Staging service acceptance
 
 Priority: P1
-Status: Open / Staging reproduced / root cause unconfirmed
+Status: Fixed locally / real Staging service regression passed / frontend not deployed
 Discovered: 2026-10-31
 
-Two independent ordinary-user JWT clients reached SUBSCRIBED before a successful legacy Budget create, but neither received its first INSERT within the fixed 10-second acceptance bound in two separate QA runs. Later UPDATE delivery works, as does an explicitly reconstructed subscription. Publication permits INSERT; this does not establish whether the cause is service subscription admission, RLS/WAL processing or the client. No Hosted schema/publication/Grant change or timeout workaround was made. Activation remains NO-GO pending diagnosis and cold-event regression. [Service evidence and limits](2026-10-31-budget-b7-staging-preactivation-acceptance.md).
+The two original failures were caused by treating Phoenix JOIN/SUBSCRIBED as Postgres Changes readiness. Real wire controls show asynchronous system readiness arriving after the first committed insert. Waiting for extension=postgres_changes/status=ok makes both real JWT clients receive RPC/REST INSERT across INSERT/* and filtered/unfiltered variants; six targeted service cases pass, including UPDATE/rejoin/unsubscribe/nonmember isolation. The old Runner now uses this gate; the local product also catches up via its guarded Budget reader when CDC becomes ready. Two local tests and Build pass. No Hosted publication/RLS/Grant or Timeout workaround; no frontend deployment or full UI acceptance claimed. [Root cause and evidence](2026-10-31-budget-b7-p1-repair-review.md).
 
 ---
 
 ## BUG-028 | Dormant participant Guard rejects normal parent FK cascade
 
 Priority: P1
-Status: Local forward draft verified / Hosted unresolved
+Status: Local official Forward verified / pending ChatGPT Review / Hosted unresolved
 Discovered: 2026-10-31
 
-Deleting a QA trip with a Budget participant returns55000 because the child's BEFORE DELETE trigger queries a parent already removed by the FK cascade, interprets it as incomplete and requires validated Pricing. Both real Staging runs reproduce this with all protocols OFF. A non-auto-apply, exact-body-hash draft restores only DELETE with an absent parent before any financial/lifecycle/receipt activation; existing incomplete parents and activated/paused parent protection remain guarded. Eight targeted native cases pass; no applied migration, Hosted Guard or ledger was changed. Version ordering and Staging execution need separate Review/authorization. QA graph retention and the corrected cleanup ordering are recorded in the [acceptance report](2026-10-31-budget-b7-staging-preactivation-acceptance.md).
+Deleting a QA trip with a Budget participant returns55000 because the child's BEFORE DELETE trigger queries a parent already removed by the FK cascade, interprets it as incomplete and requires validated Pricing. Both real Staging runs reproduce this with all protocols OFF. A non-auto-apply, exact-body-hash draft restores only DELETE with an absent parent before any financial/lifecycle/receipt activation; existing incomplete parents and activated/paused parent protection remain guarded. Fifteen native cases pass: the original eight plus strict child UPDATE/DELETE, three paused-latch fences, protocol concurrency, full-source ledger/repeat/collision/version and atomic rollback boundaries. New full source preserves exact function hashes and properties. After the authorized21:01 local continuation, official CLI2.106.0 issued 20261031130414 later than head20261031130000; exact full source/wrapper and actual-version15/15 native regression pass. Earlier time-blocked/unfinished CLI attempts remain historical; no clock/version fabrication. Old draft/migrations remain unchanged; Hosted Guard/ledger were not changed. [Source, official version and scope](2026-10-31-budget-b7-p1-repair-review.md).
 
 ---
 

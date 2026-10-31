@@ -1,5 +1,7 @@
 # Budget B-7｜H01～H03 Staging 啟用前服務驗收
 
+> 後續兩項P1的[根因／修正與回歸](2026-10-31-budget-b7-p1-repair-review.md)另有更新：Realtime readiness修正後6／6真服務通過；Cascade官方Forward `20261031130414`及實際版號15／15隔離通過，待Review／另行授權，尚未部署。本文與其25／2／3／10矩陣保留原checkpoint，不改寫當時失敗或擴張H01～H03通過範圍。
+
 2026-10-31，起點 `548075f13437871a7eb3176b5be54f6a9361149e`，分支 `codex/budget-collaboration-redesign`。唯一目標：`Travel-Planner-Staging`／`uyqdopksfysbobhjcepk`。
 
 **結論：啟用前服務能力已有真實證據，但 Activation 仍 NO-GO。** 存在兩項 P1：兩輪測試均遺失首次 Budget INSERT 的 Realtime 事件，以及 Dormant 父列刪除的 Participant Guard 相容缺陷。後者已有本機 Forward 草案與 **8／8** 隔離回歸，尚未套用 Hosted。沒有重跑 Dormant 封包、寫入 Ledger、變更 Hosted Schema／RLS／Grants、啟用任何協定／Latch／readiness／前端旗標，亦未啟動 Worker、排程或操作 Production。

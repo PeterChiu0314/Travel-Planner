@@ -1,0 +1,20 @@
+{
+  "projectRef": "uyqdopksfysbobhjcepk",
+  "version": "20261031130414",
+  "file": "20261031130414_budget_dormant_parent_cascade_guard.sql",
+  "name": "budget_dormant_parent_cascade_guard",
+  "sourceSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+  "sourceBytes": 3546,
+  "wrapperSha256": "e6db59ea72d45e21e4e7860f37d70cfab1e6d35e483847deba533495d45118a6",
+  "previousHead": "20261031130000",
+  "ledgerBefore": 62,
+  "ledgerAfter": 63,
+  "beforeFunctionSha256": "c3667a091954ed67ea677ff73aed85a5aa57cf292bb02519fcea155521a4a3d5",
+  "afterFunctionSha256": "ecd7888508e91b6df351a9ab4e95cf1a3facc426316ee68a868e622b1cdfda51",
+  "issuedByOfficialCli": true,
+  "cliVersion": "2.106.0",
+  "issuedAt": "2026-10-31T13:04:15.977Z",
+  "cliOutputConfirmedFile": "20261031130414_budget_dormant_parent_cascade_guard.sql",
+  "hostedApplied": false,
+  "deploymentAuthorized": false
+}

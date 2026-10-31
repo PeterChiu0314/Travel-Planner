@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
+import {isPostgresChangesReady} from '../../src/lib/realtimePostgresReadiness.js';
 
 const project='uyqdopksfysbobhjcepk',work='.tmp-b7-preactivation';
 if(!process.argv.includes('--authorized-disposable-fixtures'))throw Error('Explicit Staging fixture authorization required');
@@ -122,8 +123,10 @@ try{
  good(await http(admin,'/rest/v1/trip_members','POST',{trip_id:trip,user_id:users[1].id,role:'editor',status:'approved',display_name:'B7 QA B'},{fixture:true}));
  const subscribe=async(token,label)=>{
   const client=createClient(url,anon,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{headers:{Authorization:`Bearer ${token}`}}});clients.push(client);await client.realtime.setAuth(token);
-  const seen=[];const channel=client.channel(`qa-b7-${run}-${label}`).on('postgres_changes',{event:'*',schema:'public',table:'budget_items',filter:`trip_id=eq.${trip}`},event=>{seen.push(event);events.push({client:label,type:event.eventType,recordHash:hash(event.new?.id||event.old?.id||''),at:new Date().toISOString()});});channels.push(channel);
+  let postgresReady=false;
+  const seen=[];const channel=client.channel(`qa-b7-${run}-${label}`).on('system',{},payload=>{if(isPostgresChangesReady(payload)){postgresReady=true;events.push({client:label,type:'POSTGRES_READY',at:new Date().toISOString()});}}).on('postgres_changes',{event:'*',schema:'public',table:'budget_items',filter:`trip_id=eq.${trip}`},event=>{seen.push(event);events.push({client:label,type:event.eventType,recordHash:hash(event.new?.id||event.old?.id||''),at:new Date().toISOString()});});channels.push(channel);
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Realtime SUBSCRIBED absent within bounded 10s')),10000);channel.subscribe(status=>{events.push({client:label,type:status,at:new Date().toISOString()});if(status==='SUBSCRIBED'){clearTimeout(timer);resolve();}else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){clearTimeout(timer);reject(Error(`Realtime ${status}`));}});});
+  await waitUntil(()=>postgresReady);
   return {client,channel,seen};
  };
  let ra,rb;

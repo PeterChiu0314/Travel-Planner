@@ -12,6 +12,7 @@ import {budgetUndoEnabled,createBudgetUndoController,createBudgetUndoService} fr
 import { applyDemoPaymentChanges } from "./demo/budgetPaymentGroups.js";
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
 import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
+import { onPostgresChangesReady } from "./lib/realtimePostgresReadiness.js";
 import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
 import { luggageLengthError } from "./lib/luggageLimits.js";
 import { useSiteDialog } from "./components/SiteDialog.jsx";
@@ -3955,6 +3956,11 @@ export default function App() {
       });
     if (budgetMetadataEnabled) channel.on("postgres_changes", { event: "*", schema: "public", table: "budget_collaboration_signals", filter: `trip_id=eq.${activeTripId}` }, invalidateBudget);
     subscribeSharedLuggage(channel, activeTripId, luggageRefreshRef.current);
+    // JOIN can succeed before Postgres Changes is live. Re-read through the
+    // existing guarded/coalesced path when CDC becomes ready, including rejoin.
+    onPostgresChangesReady(channel, () => {
+      if (subscriptionActive && requestGuard.sameContext(tripDataContext)) invalidateBudget();
+    });
     channel.subscribe(status => {
       if (!subscriptionActive || !requestGuard.sameContext(tripDataContext)) return;
       if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) syncFeedback.failure("realtime", "即時連線暫時中斷，資料同步尚未確認。");
