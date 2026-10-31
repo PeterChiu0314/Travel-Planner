@@ -1,0 +1,155 @@
+-- NON-AUTO-APPLY. Local BUG-030 candidate; no Hosted authorization.
+-- Complements deployed20261031130414. Never edits/replays previous sources.
+begin;
+set local lock_timeout='5s';set local statement_timeout='30s';
+lock table app_private.budget_metadata_protocol,app_private.budget_payment_protocol,app_private.budget_source_protocol,app_private.budget_finance_protocol,app_private.budget_lifecycle_protocol,app_private.budget_receipt_protocol,app_private.budget_metadata_undo_protocol in share mode nowait;
+do $repair$
+declare r record;body text;attr jsonb;attr_after jsonb;is_fresh boolean;fresh_count int:=0;done_count int:=0;guard_owner oid;ctx oid;cleanup oid;cols jsonb;begin
+ if coalesce((select enabled from app_private.budget_metadata_protocol where singleton),true) or coalesce((select enabled from app_private.budget_payment_protocol where singleton),true) or coalesce((select enabled from app_private.budget_source_protocol where singleton),true) or coalesce((select enabled or activated from app_private.budget_finance_protocol where singleton),true) or coalesce((select enabled or activated from app_private.budget_lifecycle_protocol where singleton),true) or coalesce((select enabled or activated from app_private.budget_receipt_protocol where singleton),true) or coalesce((select enabled or full_enabled from app_private.budget_metadata_undo_protocol where singleton),true) then raise exception 'Dormant-only Trip repair refused after activation';end if;
+ if (select encode(sha256(convert_to(replace(prosrc,chr(13),''),'UTF8')),'hex') from pg_proc where oid=to_regprocedure('app_private.guard_incomplete_child()')) is distinct from 'ecd7888508e91b6df351a9ab4e95cf1a3facc426316ee68a868e622b1cdfda51' then raise exception 'Deployed incomplete-child Forward required';end if;
+ for r in select * from (values ('app_private.guard_budget_external_parent()','339372306c750fb35c826502db586f8760c9d98c6ce157885cc4c42adf66a32a','33250f5f38a512114aff9577caf01d4f2e87a9492f212311cf760c8d21df7d8a'),
+('app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)','4a128561f030302b54889c2e91c0a867ae87c9d091ab07ff81c0377ef264d780','a198a9f151ae29474341fac43e517c3e2d0bb09d75f2322133586ef8383cec0f')) s(signature,before_hash,after_hash) loop
+  select replace(prosrc,chr(13),'') into body from pg_proc where oid=to_regprocedure(r.signature);
+  if body is null then raise exception 'Missing reviewed Trip routine';end if;
+  if encode(sha256(convert_to(body,'UTF8')),'hex')=r.before_hash then fresh_count:=fresh_count+1;
+  elsif encode(sha256(convert_to(body,'UTF8')),'hex')=r.after_hash then done_count:=done_count+1;
+  else raise exception 'Unreviewed Trip routine hash';end if;
+ end loop;
+ if fresh_count=2 then is_fresh:=true;elsif done_count=2 then is_fresh:=false;else raise exception 'Partially applied Trip repair';end if;
+ select proowner into guard_owner from pg_proc where oid='app_private.guard_budget_external_parent()'::regprocedure;
+ if is_fresh then
+  if to_regclass('app_private.budget_trip_delete_admissions') is not null or to_regprocedure('app_private.cleanup_budget_trip_delete_admissions()') is not null or exists(select 1 from pg_trigger where tgrelid='public.trips'::regclass and tgname='zzz_budget_trip_delete_cleanup') then raise exception 'Unreviewed Trip admission object exists';end if;
+  create table app_private.budget_trip_delete_admissions(transaction_id bigint not null,backend_id integer not null,trip_id uuid not null,user_id uuid not null,trigger_depth integer not null check(trigger_depth>0),primary key(transaction_id,backend_id,trip_id));
+  alter table app_private.budget_trip_delete_admissions enable row level security;
+  revoke all on app_private.budget_trip_delete_admissions from public,anon,authenticated,service_role,budget_receipt_worker;
+  execute $definition$create function app_private.cleanup_budget_trip_delete_admissions() returns trigger language plpgsql security definer set search_path='' as $tripbody$
+begin
+ delete from app_private.budget_trip_delete_admissions
+ where transaction_id=txid_current() and backend_id=pg_backend_pid()
+  and trigger_depth=pg_trigger_depth();
+ return null;
+end $tripbody$;$definition$;
+  revoke all on function app_private.cleanup_budget_trip_delete_admissions() from public,anon,authenticated,service_role,budget_receipt_worker;
+  create trigger zzz_budget_trip_delete_cleanup after delete on public.trips for each statement execute function app_private.cleanup_budget_trip_delete_admissions();
+ end if;
+ select to_jsonb(p)-'prosrc' into attr from pg_proc p where oid='app_private.guard_budget_external_parent()'::regprocedure;
+ if is_fresh then execute $definition$create or replace function app_private.guard_budget_external_parent() returns trigger language plpgsql security definer set search_path='' as $tripbody$
+declare protected boolean:=false;
+begin
+ if not (app_private.budget_finance_activated() or app_private.budget_lifecycle_activated() or app_private.receipts_activated()) then
+  if tg_table_schema='public' and tg_table_name='trips' and auth.uid() is not null then
+   -- The ordinary owner's authority is checked before membership FK cascades.
+   if not pg_try_advisory_xact_lock(hashtextextended(old.id::text,0)) then raise exception 'Trip edit transaction in progress' using errcode='55P03';end if;
+   if not public.is_trip_owner(old.id,auth.uid()) then raise exception 'Forbidden' using errcode='42501';end if;
+   perform 1 from public.trip_members where trip_id=old.id and user_id=auth.uid() and status='approved' and role in('owner','editor') for share nowait;
+   if not found and (exists(select 1 from public.budget_items where trip_id=old.id) or exists(select 1 from public.actual_expenses where trip_id=old.id)) then raise exception 'Forbidden' using errcode='42501';end if;
+   -- Lock current singleton rows: activation cannot race this admitted DELETE.
+   perform 1 from app_private.budget_metadata_protocol where singleton for share nowait;
+   perform 1 from app_private.budget_payment_protocol where singleton for share nowait;
+   perform 1 from app_private.budget_source_protocol where singleton for share nowait;
+   perform 1 from app_private.budget_finance_protocol where singleton for share nowait;
+   perform 1 from app_private.budget_lifecycle_protocol where singleton for share nowait;
+   perform 1 from app_private.budget_receipt_protocol where singleton for share nowait;
+   perform 1 from app_private.budget_metadata_undo_protocol where singleton for share nowait;
+   if coalesce((select enabled from app_private.budget_metadata_protocol where singleton),true)
+    or coalesce((select enabled from app_private.budget_payment_protocol where singleton),true)
+    or coalesce((select enabled from app_private.budget_source_protocol where singleton),true)
+    or coalesce((select enabled or activated from app_private.budget_finance_protocol where singleton),true)
+    or coalesce((select enabled or activated from app_private.budget_lifecycle_protocol where singleton),true)
+    or coalesce((select enabled or activated from app_private.budget_receipt_protocol where singleton),true)
+    or coalesce((select enabled or full_enabled from app_private.budget_metadata_undo_protocol where singleton),true)
+    then raise exception 'Trip cascade requires never-activated dormant protocols' using errcode='0A000';end if;
+   if exists(select 1 from app_private.budget_edit_leases where trip_id=old.id and expires_at>clock_timestamp())
+    or exists(select 1 from app_private.budget_metadata_groups where trip_id=old.id and expires_at>clock_timestamp())
+    or exists(select 1 from app_private.budget_rates_leases where trip_id=old.id and expires_at>clock_timestamp())
+    or exists(select 1 from public.budget_items where trip_id=old.id and locked_by is not null and locked_at>clock_timestamp()-interval '7 minutes')
+    or exists(select 1 from public.actual_expenses where trip_id=old.id and locked_by is not null and locked_at>clock_timestamp()-interval '7 minutes')
+    then raise exception 'Active Budget editor prevents Trip deletion' using errcode='55P03';end if;
+   -- The Trip row is already locked by DELETE. Fail fast rather than waiting
+   -- on a peer that holds child rows and needs our advisory/parent lock.
+   perform 1 from public.budget_items where trip_id=old.id order by id for update nowait;
+   perform 1 from public.actual_expenses where trip_id=old.id order by id for update nowait;
+   perform 1 from public.budget_item_participants where budget_item_id in(select id from public.budget_items where trip_id=old.id) order by budget_item_id,user_id for update nowait;
+   perform 1 from public.actual_expense_participants where actual_expense_id in(select id from public.actual_expenses where trip_id=old.id) order by actual_expense_id,user_id for update nowait;
+   perform 1 from public.itinerary_budget_items where budget_item_id in(select id from public.budget_items where trip_id=old.id) order by id for update nowait;
+   perform 1 from public.attachments where trip_id=old.id and target_type='actual_expense' order by id for update nowait;
+   insert into app_private.budget_trip_delete_admissions(transaction_id,backend_id,trip_id,user_id,trigger_depth)
+    values(txid_current(),pg_backend_pid(),old.id,auth.uid(),pg_trigger_depth());
+  end if;
+  return old;
+ end if;
+ if tg_table_name='trips' then
+  protected:=exists(select 1 from public.budget_items where trip_id=old.id)
+   or exists(select 1 from public.actual_expenses where trip_id=old.id)
+   or exists(select 1 from public.trip_budget_baselines where trip_id=old.id)
+   or exists(select 1 from app_private.budget_receipt_intents where trip_id=old.id)
+   or exists(select 1 from app_private.budget_receipt_cleanup where trip_id=old.id);
+ elsif tg_table_name='itinerary_items' then
+  protected:=exists(select 1 from public.itinerary_budget_items where itinerary_item_id in(old.id,old.from_item_id,old.to_item_id));
+ elsif tg_table_name='accommodations' then protected:=old.budget_item_id is not null;
+ elsif tg_table_schema='auth' and tg_table_name='users' then
+  protected:=exists(select 1 from public.trips where owner_id=old.id)
+   or exists(select 1 from public.budget_items where payer_id=old.id)
+   or exists(select 1 from public.actual_expenses where payer_id=old.id)
+   or exists(select 1 from public.budget_item_participants where user_id=old.id)
+   or exists(select 1 from public.actual_expense_participants where user_id=old.id)
+   or exists(select 1 from app_private.budget_receipt_intents where user_id=old.id)
+   or exists(select 1 from public.attachments where target_type='actual_expense' and uploaded_by=old.id)
+   or exists(select 1 from public.trip_members m where m.user_id=old.id and
+    (exists(select 1 from public.budget_items where trip_id=m.trip_id) or exists(select 1 from public.actual_expenses where trip_id=m.trip_id)));
+ end if;
+ if protected then raise exception 'Budget dependencies prevent parent deletion' using errcode='0A000',
+  detail='BUDGET_PARENT_DELETE_BLOCKED',hint='預算協作資料仍有財務、來源、收據或分攤相依；目前不支援連帶刪除，所有資料已保留。';end if;
+ return old;
+end $tripbody$;$definition$;end if;
+ select to_jsonb(p)-'prosrc' into attr_after from pg_proc p where oid='app_private.guard_budget_external_parent()'::regprocedure;
+ if attr is distinct from attr_after then raise exception 'Trip repair changed existing routine attributes';end if;
+ select to_jsonb(p)-'prosrc' into attr from pg_proc p where oid='app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)'::regprocedure;
+ if is_fresh then execute $definition$create or replace function app_private.assert_budget_edit_lease(p_kind text,p_id uuid,p_required boolean default false,p_session_id uuid default null,p_token uuid default null) returns void language plpgsql security definer set search_path='' as $tripbody$
+declare held app_private.budget_edit_leases; trip uuid; actor uuid:=auth.uid();
+begin
+  -- Only privileged administrative sessions bypass leases; unauthenticated API
+  -- roles do not. Existing RLS/EXECUTE permissions still govern the mutation.
+  if actor is null and current_setting('role') in ('none','postgres','service_role') then return; end if;
+  if actor is null or p_kind is null or p_kind not in ('budget','actual') then raise exception 'Forbidden' using errcode='42501'; end if;
+  if p_kind='budget' then select trip_id into trip from public.budget_items where id=p_id;
+  else select trip_id into trip from public.actual_expenses where id=p_id; end if;
+  if trip is not null then
+    if not app_private.can_edit_trip(trip,actor) and not (
+      -- Only a server-created admission from this same actor/transaction/backend
+      -- and an active nested FK cascade can substitute for removed membership.
+      not exists(select 1 from public.trips where id=trip)
+      and exists(select 1 from app_private.budget_trip_delete_admissions a
+        where a.transaction_id=txid_current() and a.backend_id=pg_backend_pid()
+         and a.trip_id=trip and a.user_id=actor and pg_trigger_depth()>a.trigger_depth)
+    ) then raise exception 'Forbidden' using errcode='42501'; end if;
+    perform pg_advisory_xact_lock(hashtextextended(trip::text,0));
+  end if;
+  select * into held from app_private.budget_edit_leases where kind=p_kind and resource_id=p_id;
+  if not p_required and (held.resource_id is null or held.expires_at<=clock_timestamp()) then return; end if;
+  if held.resource_id is null or held.expires_at<=clock_timestamp() or held.user_id is distinct from actor
+    or held.session_id is distinct from p_session_id or p_token is null
+    or held.token_hash is distinct from sha256(convert_to(p_token::text,'UTF8')) then
+    raise exception '編輯權限已到期或由另一分頁持有，草稿已保留。' using errcode='55P03';
+  end if;
+end $tripbody$;$definition$;end if;
+ select to_jsonb(p)-'prosrc' into attr_after from pg_proc p where oid='app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)'::regprocedure;
+ if attr is distinct from attr_after then raise exception 'Trip repair changed existing routine attributes';end if;
+ -- TRIP_FORWARD_POST_REPLACE_CHECK
+ for r in select * from (values ('app_private.guard_budget_external_parent()','339372306c750fb35c826502db586f8760c9d98c6ce157885cc4c42adf66a32a','33250f5f38a512114aff9577caf01d4f2e87a9492f212311cf760c8d21df7d8a'),
+('app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)','4a128561f030302b54889c2e91c0a867ae87c9d091ab07ff81c0377ef264d780','a198a9f151ae29474341fac43e517c3e2d0bb09d75f2322133586ef8383cec0f')) s(signature,before_hash,after_hash) loop
+  if (select encode(sha256(convert_to(replace(prosrc,chr(13),''),'UTF8')),'hex') from pg_proc where oid=to_regprocedure(r.signature)) is distinct from r.after_hash then raise exception 'Trip after-body hash mismatch';end if;
+ end loop;
+ ctx:=to_regclass('app_private.budget_trip_delete_admissions');cleanup:=to_regprocedure('app_private.cleanup_budget_trip_delete_admissions()');
+ if ctx is null or cleanup is null then raise exception 'Missing admission objects';end if;
+ if not exists(select 1 from pg_class where oid=ctx and relkind='r' and relrowsecurity and not relforcerowsecurity and relowner=guard_owner) then raise exception 'Trip admission table attributes drift';end if;
+ select jsonb_agg(jsonb_build_array(attname,format_type(atttypid,atttypmod),attnotnull) order by attnum) into cols from pg_attribute where attrelid=ctx and attnum>0 and not attisdropped;
+ if cols is distinct from '[ ["transaction_id","bigint",true],["backend_id","integer",true],["trip_id","uuid",true],["user_id","uuid",true],["trigger_depth","integer",true] ]'::jsonb then raise exception 'Admission columns drift';end if;
+ if (select count(*) from pg_constraint where conrelid=ctx)<>2 or not exists(select 1 from pg_constraint where conrelid=ctx and contype='p' and pg_get_constraintdef(oid)='PRIMARY KEY (transaction_id, backend_id, trip_id)') or not exists(select 1 from pg_constraint where conrelid=ctx and contype='c' and pg_get_constraintdef(oid)='CHECK ((trigger_depth > 0))') then raise exception 'Admission constraints drift';end if;
+ if exists(select 1 from pg_policy where polrelid=ctx) or exists(select 1 from pg_trigger where tgrelid=ctx and not tgisinternal) or exists(select 1 from app_private.budget_trip_delete_admissions) then raise exception 'Admission policy/state drift';end if;
+ if not exists(select 1 from pg_proc where oid=cleanup and proowner=guard_owner and prosecdef and proconfig=array['search_path=""'] and prorettype='trigger'::regtype and encode(sha256(convert_to(replace(prosrc,chr(13),''),'UTF8')),'hex')='a795d1e739fe7b74d6c8e27a07765147ce50eb52754b08adcc91266f3245d2f1') then raise exception 'Admission cleanup function drift';end if;
+ if not exists(select 1 from pg_trigger where tgrelid='public.trips'::regclass and tgname='zzz_budget_trip_delete_cleanup' and tgenabled='O' and not tgisinternal and pg_get_triggerdef(oid)='CREATE TRIGGER zzz_budget_trip_delete_cleanup AFTER DELETE ON public.trips FOR EACH STATEMENT EXECUTE FUNCTION app_private.cleanup_budget_trip_delete_admissions()') then raise exception 'Admission cleanup trigger drift';end if;
+ if exists(select 1 from pg_class c,lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a where c.oid=ctx and a.grantee<>guard_owner) or exists(select 1 from pg_proc p,lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where p.oid=cleanup and a.grantee<>guard_owner) then raise exception 'Admission ACL drift';end if;
+ if exists(select 1 from unnest(array['anon','authenticated','service_role','budget_receipt_worker']) u(role_name) where has_table_privilege(role_name,ctx,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') or has_any_column_privilege(role_name,ctx,'SELECT,INSERT,UPDATE,REFERENCES') or has_function_privilege(role_name,cleanup,'EXECUTE')) then raise exception 'Admission object privilege drift';end if;
+end $repair$;
+commit;

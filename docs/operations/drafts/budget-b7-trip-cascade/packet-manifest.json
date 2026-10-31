@@ -1,0 +1,36 @@
+{
+  "projectRef": "uyqdopksfysbobhjcepk",
+  "version": "20261031140648",
+  "file": "20261031140648_budget_trip_cascade_lease_admission.sql",
+  "name": "budget_trip_cascade_lease_admission",
+  "sourceSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+  "sourceBytes": 17987,
+  "wrapperSha256": "032a2498b1677cbb7c99b0d38c388a9e707043fb6184823aa3a9d936b74653f1",
+  "wrapperBytes": 37600,
+  "previousHead": "20261031130414",
+  "ledgerBefore": 63,
+  "ledgerAfter": 64,
+  "functions": [
+    {
+      "signature": "app_private.guard_budget_external_parent()",
+      "beforeSha256": "339372306c750fb35c826502db586f8760c9d98c6ce157885cc4c42adf66a32a",
+      "afterSha256": "33250f5f38a512114aff9577caf01d4f2e87a9492f212311cf760c8d21df7d8a"
+    },
+    {
+      "signature": "app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)",
+      "beforeSha256": "4a128561f030302b54889c2e91c0a867ae87c9d091ab07ff81c0377ef264d780",
+      "afterSha256": "a198a9f151ae29474341fac43e517c3e2d0bb09d75f2322133586ef8383cec0f"
+    }
+  ],
+  "newObjects": [
+    "app_private.budget_trip_delete_admissions",
+    "app_private.cleanup_budget_trip_delete_admissions()",
+    "public.trips.zzz_budget_trip_delete_cleanup"
+  ],
+  "issuedByOfficialCli": true,
+  "cliVersion": "2.106.0",
+  "issuedAt": "2026-10-31T14:06:49.790Z",
+  "cliOutputConfirmedFile": "20261031140648_budget_trip_cascade_lease_admission.sql",
+  "hostedApplied": false,
+  "deploymentAuthorized": false
+}

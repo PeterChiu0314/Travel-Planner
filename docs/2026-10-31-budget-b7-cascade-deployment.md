@@ -1,5 +1,7 @@
 # Budget B-7｜Staging Cascade Forward 部署與真實 HTTP 回歸
 
+> 後續[BUG-030本機候選與22項隔離回歸](2026-10-31-budget-b7-trip-cascade-local-repair.md)已完成，尚未部署／未重驗Hosted；本文保留實際COMMIT與Trip HTTP失敗證據，不能因native通過改寫為已結案。
+
 2026-10-31，分支 `codex/budget-collaboration-redesign`，起點 `03204d767a38054094d89e612d3c35290eeca9dc`。唯一目標 Travel-Planner-Staging／`uyqdopksfysbobhjcepk`。
 
 **核准 Forward 已 COMMIT，Ledger62→63及獨立讀回全部正確。Budget／Actual Parent Cascade真HTTP通過；整Trip DELETE仍403／42501，P1-CASCADE不能結案。** 已停止後續寫入，保留完整剩餘QA Graph，不回滾已提交修復、不強制清理。Activation／Worker／Production為NO-GO，等待ChatGPT Review。

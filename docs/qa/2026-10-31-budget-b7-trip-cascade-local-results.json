@@ -1,0 +1,264 @@
+{
+  "date": "2026-10-31",
+  "startingCommit": "24d2c5580875da9e18f98dacc278ac9dcb4f2041",
+  "branch": "codex/budget-collaboration-redesign",
+  "scope": "Local BUG-030 fix and isolated validation only; no Hosted access this round",
+  "artifact": {
+    "projectRef": "uyqdopksfysbobhjcepk",
+    "version": "20261031140648",
+    "file": "20261031140648_budget_trip_cascade_lease_admission.sql",
+    "name": "budget_trip_cascade_lease_admission",
+    "sourceSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+    "sourceBytes": 17987,
+    "wrapperSha256": "032a2498b1677cbb7c99b0d38c388a9e707043fb6184823aa3a9d936b74653f1",
+    "wrapperBytes": 37600,
+    "previousHead": "20261031130414",
+    "ledgerBefore": 63,
+    "ledgerAfter": 64,
+    "functions": [
+      {
+        "signature": "app_private.guard_budget_external_parent()",
+        "beforeSha256": "339372306c750fb35c826502db586f8760c9d98c6ce157885cc4c42adf66a32a",
+        "afterSha256": "33250f5f38a512114aff9577caf01d4f2e87a9492f212311cf760c8d21df7d8a"
+      },
+      {
+        "signature": "app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)",
+        "beforeSha256": "4a128561f030302b54889c2e91c0a867ae87c9d091ab07ff81c0377ef264d780",
+        "afterSha256": "a198a9f151ae29474341fac43e517c3e2d0bb09d75f2322133586ef8383cec0f"
+      }
+    ],
+    "newObjects": [
+      "app_private.budget_trip_delete_admissions",
+      "app_private.cleanup_budget_trip_delete_admissions()",
+      "public.trips.zzz_budget_trip_delete_cleanup"
+    ],
+    "issuedByOfficialCli": true,
+    "cliVersion": "2.106.0",
+    "issuedAt": "2026-10-31T14:06:49.790Z",
+    "cliOutputConfirmedFile": "20261031140648_budget_trip_cascade_lease_admission.sql",
+    "hostedApplied": false,
+    "deploymentAuthorized": false
+  },
+  "native": {
+    "scope": "Native authenticated SQL role/claim sessions only; not real Supabase Auth/HTTP",
+    "results": [
+      {
+        "name": "Reproduce ordinary authenticated owner Trip FK cascade42501 after first Forward",
+        "status": "Passed"
+      },
+      {
+        "name": "Compiled pre-repair bodies match exact inventoried Staging hashes",
+        "status": "Passed"
+      },
+      {
+        "name": "Late Forward failure rolls back functions, added objects, ledger and finance graph",
+        "status": "Passed"
+      },
+      {
+        "name": "Install candidate preserves existing OID owner ACL security search_path RLS triggers data",
+        "status": "Passed"
+      },
+      {
+        "name": "Ordinary owner Trip DELETE now cascades both financial parents and all children",
+        "status": "Passed"
+      },
+      {
+        "name": "Multi-row owner DELETE has per-trip authority and statement cleanup",
+        "status": "Passed"
+      },
+      {
+        "name": "Nonmember editor revoked and anonymous cannot delete or forge an admission",
+        "status": "Passed"
+      },
+      {
+        "name": "Revoked owner Budget authority and concurrent membership edits remain fail-closed",
+        "status": "Passed"
+      },
+      {
+        "name": "Forged GUC cannot authorize another trip or bypass ordinary child editing",
+        "status": "Passed"
+      },
+      {
+        "name": "Real peer legacy lease blocks Trip DELETE before leases or memberships disappear",
+        "status": "Passed"
+      },
+      {
+        "name": "Active group rates and legacy raw locks fence whole Trip deletion",
+        "status": "Passed"
+      },
+      {
+        "name": "Expired lease entries do not strand a legitimate dormant owner delete",
+        "status": "Passed"
+      },
+      {
+        "name": "Single Budget and Actual deletes retain deployed participant cascade behavior",
+        "status": "Passed"
+      },
+      {
+        "name": "Live incomplete Budget/Actual children remain guarded for INSERT UPDATE DELETE",
+        "status": "Passed"
+      },
+      {
+        "name": "Activated then paused finance lifecycle receipt still reject owner Trip DELETE",
+        "status": "Passed"
+      },
+      {
+        "name": "Metadata-only activation and concurrent protocol writers cannot race admission",
+        "status": "Passed"
+      },
+      {
+        "name": "Peer advisory parent and child row writers get fail-fast deletion refusal",
+        "status": "Passed"
+      },
+      {
+        "name": "Concurrent peer lease acquisition cannot survive an admitted Trip cascade",
+        "status": "Passed"
+      },
+      {
+        "name": "Nested zero-row Trip statement cannot clear outer cascade authority",
+        "status": "Passed"
+      },
+      {
+        "name": "Late child error atomically restores Trip membership parents children and admission state",
+        "status": "Passed"
+      },
+      {
+        "name": "Repeated source rejects unknown body cleanup grant and trigger drift atomically",
+        "status": "Passed"
+      },
+      {
+        "name": "Exact full source atomic ledger63-to64 replay and NULL/source collision rules",
+        "status": "Passed"
+      }
+    ],
+    "version": "20261031140648",
+    "officialCandidate": true,
+    "sourceSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+    "wrapperSha256": "032a2498b1677cbb7c99b0d38c388a9e707043fb6184823aa3a9d936b74653f1",
+    "flags": [
+      {
+        "k": "metadata",
+        "v": false
+      },
+      {
+        "k": "finance",
+        "v": false
+      },
+      {
+        "k": "lifecycle",
+        "v": false
+      },
+      {
+        "k": "receipts",
+        "v": false
+      },
+      {
+        "k": "payment",
+        "v": false
+      },
+      {
+        "k": "source",
+        "v": false
+      },
+      {
+        "k": "undo",
+        "v": false
+      }
+    ],
+    "admissionRows": 0,
+    "hostedApplied": false,
+    "functions": [
+      {
+        "signature": "app_private.guard_budget_external_parent()",
+        "beforeSha256": "339372306c750fb35c826502db586f8760c9d98c6ce157885cc4c42adf66a32a",
+        "afterSha256": "33250f5f38a512114aff9577caf01d4f2e87a9492f212311cf760c8d21df7d8a"
+      },
+      {
+        "signature": "app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)",
+        "beforeSha256": "4a128561f030302b54889c2e91c0a867ae87c9d091ab07ff81c0377ef264d780",
+        "afterSha256": "a198a9f151ae29474341fac43e517c3e2d0bb09d75f2322133586ef8383cec0f"
+      }
+    ],
+    "clusterStopped": true,
+    "authenticationBoundary": "Actual PostgreSQL authenticated role/RLS/NO SUPERUSER/NO BYPASSRLS and independent connections; auth.uid claims modeled via GUC. Not actual token verification or PostgREST."
+  },
+  "securityDesign": {
+    "admissionAuthority": "Before Trip deletion, genuine owner and approved Budget editor role checked, approved membership row locked",
+    "binding": [
+      "transaction_id",
+      "backend_id",
+      "trip_id",
+      "user_id",
+      "trigger_depth"
+    ],
+    "untrustedGucIgnored": true,
+    "admissionTable": "Private RLS enabled, owner-only ACL; no policies or API publication",
+    "activeLeaseFence": [
+      "legacy edit lease",
+      "metadata group lease",
+      "rates lease",
+      "legacy raw financial lock"
+    ],
+    "concurrency": "try advisory lock + ordered NOWAIT financial parent/child locks; FOR SHARE NOWAIT singleton protocol/membership locks",
+    "cleanup": "AFTER DELETE STATEMENT at matching trigger depth; same transaction, successful statements and rollbacks leave zero rows",
+    "oldProtection": "Exact already-installed incomplete Guard required; activated/paused protection unchanged; lease checks remain after permission substitution"
+  },
+  "preservation": {
+    "previousMigrationSourcesUnchanged": true,
+    "deployedCascadeSourceUnchanged": true,
+    "old38FinalHashesAndAttributesPreservedInNative": true,
+    "existingFunctionOidOwnerAclSecuritySearchPathPreserved": true,
+    "existingRlsTriggersAndDataPreservedInNative": true,
+    "serviceWorkerPrivilegesExpanded": false,
+    "noFinancialDmlInForward": true
+  },
+  "developmentNotes": [
+    {
+      "status": "Rejected draft",
+      "reason": "Initial CREATE OR REPLACE omitted existing argument names/defaults; native42P13 refused before injected fault; corrected signature, no DROP"
+    },
+    {
+      "status": "Corrected fixture expectations",
+      "reason": "Native anon lacks table grant so expect42501 rather than RLS-zero. Revoked editor and owner financial authority separately verified; microsecond timestamps passed as text."
+    },
+    {
+      "status": "Rejected unreviewed prototype",
+      "version": "20261031140342",
+      "sourceSha256": "9c6eeba63d632ac24e9ad563c793bb27d734233c25e315919ea37f6b8cc7c7cd",
+      "reason": "Prototype archived before Review; final candidate adds try-advisory and ordered NOWAIT parent/child fences. Never deployed."
+    },
+    {
+      "status": "Corrected test-only SQL syntax",
+      "reason": "Nested fixture dollar quotes were collapsed by JS replacement; corrected quoting, not assertions."
+    }
+  ],
+  "hosted": {
+    "accessedThisRound": false,
+    "writtenThisRound": false,
+    "latestVerifiedCheckpoint": "Previous round2026-10-31T13:34:42.109168Z",
+    "lastKnownLedger": {
+      "count": 63,
+      "head": "20261031130414"
+    },
+    "lastKnownProtocolsOff": 7,
+    "existingRetainedQaUntouchedThisRound": true,
+    "tripHttpRegression": "Pending exact-artifact Review, explicit Staging authorization, deployment and real HTTP rerun",
+    "incompleteHttp": "Blocked previous round; future test needs safe legitimate QA fixture, no activation or raw guard bypass",
+    "pt409Http": "Not run; previous round stopped after Trip failure",
+    "workerStorageActivation": "Not authorized/not tested"
+  },
+  "decisions": {
+    "localCandidate": "Passed22/22; GO ChatGPT Review",
+    "p1CascadeHosted": "Still open, previous real Trip HTTP42501 not superseded by native results",
+    "stagingDeployment": "NO-GO until exact candidate Review and separate explicit authority",
+    "activationWorkerProduction": "NO-GO"
+  },
+  "checks": {
+    "syntax": "Passed",
+    "sourceAndWrapperSha": "Verified",
+    "realOfficialVersion": true,
+    "oneTopLevelTransaction": "Verified offline",
+    "historicalUnaffectedTestsRerun": false,
+    "build": "Not rerun: no frontend/product build dependency change"
+  }
+}
