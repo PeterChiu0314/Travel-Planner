@@ -1,6 +1,6 @@
 # B-7 Staging Managed-compatible Dormant Schema Runbook
 
-**2026-10-31：已取得此新 Hash／M0 supersession 的 Staging-only 明確授權，並已完成 COMMIT 及獨立唯讀驗收。Ledger 62、38 個最終 Hash 相符、七組 Protocol／Latch OFF。禁止在已安裝環境重播此封包。** 唯一目標是 Travel-Planner-Staging／uyqdopksfysbobhjcepk。[實際部署報告](../../2026-10-31-budget-b7-staging-managed-deployment.md)、[去敏部署證據](../../qa/2026-10-31-budget-b7-staging-managed-deployment-results.json)。H01～H03／Activation／Worker 排程仍未授權，完整 B-7 上線 NO-GO。
+**2026-10-31：已取得此新 Hash／M0 supersession 的 Staging-only 明確授權，並已完成 COMMIT 及獨立唯讀驗收。Ledger 62、38 個最終 Hash 相符、七組 Protocol／Latch OFF。禁止在已安裝環境重播此封包。** 唯一目標是 Travel-Planner-Staging／uyqdopksfysbobhjcepk。[實際部署報告](../../2026-10-31-budget-b7-staging-managed-deployment.md)、[去敏部署證據](../../qa/2026-10-31-budget-b7-staging-managed-deployment-results.json)。後續已另獲 H01～H03 啟用前 QA 授權，見[本輪服務驗收](../../2026-10-31-budget-b7-staging-preactivation-acceptance.md)：真 Auth／HTTP／UPDATE 與部分 Storage 能力通過，首次 INSERT／Parent Cascade 有 P1，完整 B-7 Activation／上線仍 NO-GO；Worker 執行／排程未授權。
 
 封包仍為 NON-AUTO-APPLY；SQL 註解與 manifest 的 `deploymentAuthorization:false` 是產出時的歷史狀態，不是 runtime flag。後續明確授權與實際執行另記於部署報告；不修改 artifact 以維持核准 Hash。`realStorageHttpVerified`／`workerScheduleVerified` 仍未實測。
 
@@ -62,4 +62,4 @@ Builder `scripts/qa/build-b7-managed-packet.mjs` 僅離線輸出此候選，拒�
 
 交易失敗應整筆回滾，先核對舊47基線、舊Hotfix、Catalog／資料及Worker不存在。不要修掉報錯SQL後接著跑後半包。已COMMIT則保持Dormant，只準備經Review的新Forward Repair；不刪Ledger、不drop協定／角色、不重計價、不還原撤銷已提交財務操作。
 
-本次新 Dormant 安裝已成功；仍未授權建立 H01～H03 fixtures、Storage files、簽發／讀取 JWT signing secrets、啟動 Worker 排程或 Activation。DB 密碼僅以本機遮罩輸入、記憶體傳遞，helper 已停止，沒有持久保存。下一步是 ChatGPT Review；不要重開 helper 或再執行封包。
+Dormant 安裝已成功；之後另行授權的啟用前 QA 已完成其可測範圍，部分測試圖因 Guard 拒絕清理而保留，詳見服務驗收。首次 INSERT 與 Parent Cascade P1 未於 Hosted 修復。未授權簽發／讀取 JWT signing secrets、Worker 排程或 Activation。DB 密碼 helper 已停止且未保存密碼；不要重開部署 helper 或再執行封包。下一步是 ChatGPT Review及最小必要修復／憑證／測試範圍審核。

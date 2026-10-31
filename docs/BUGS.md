@@ -13,6 +13,26 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-029 | Cold Budget INSERT Realtime delivery absent in Staging service acceptance
+
+Priority: P1
+Status: Open / Staging reproduced / root cause unconfirmed
+Discovered: 2026-10-31
+
+Two independent ordinary-user JWT clients reached SUBSCRIBED before a successful legacy Budget create, but neither received its first INSERT within the fixed 10-second acceptance bound in two separate QA runs. Later UPDATE delivery works, as does an explicitly reconstructed subscription. Publication permits INSERT; this does not establish whether the cause is service subscription admission, RLS/WAL processing or the client. No Hosted schema/publication/Grant change or timeout workaround was made. Activation remains NO-GO pending diagnosis and cold-event regression. [Service evidence and limits](2026-10-31-budget-b7-staging-preactivation-acceptance.md).
+
+---
+
+## BUG-028 | Dormant participant Guard rejects normal parent FK cascade
+
+Priority: P1
+Status: Local forward draft verified / Hosted unresolved
+Discovered: 2026-10-31
+
+Deleting a QA trip with a Budget participant returns55000 because the child's BEFORE DELETE trigger queries a parent already removed by the FK cascade, interprets it as incomplete and requires validated Pricing. Both real Staging runs reproduce this with all protocols OFF. A non-auto-apply, exact-body-hash draft restores only DELETE with an absent parent before any financial/lifecycle/receipt activation; existing incomplete parents and activated/paused parent protection remain guarded. Eight targeted native cases pass; no applied migration, Hosted Guard or ledger was changed. Version ordering and Staging execution need separate Review/authorization. QA graph retention and the corrected cleanup ordering are recorded in the [acceptance report](2026-10-31-budget-b7-staging-preactivation-acceptance.md).
+
+---
+
 ## BUG-027 | Transport-aware continuation bypasses the five-minute Timeline ceiling
 
 Priority: P0

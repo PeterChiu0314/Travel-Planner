@@ -1,0 +1,8 @@
+{
+  "signature": "app_private.guard_incomplete_child()",
+  "beforeSha256": "c3667a091954ed67ea677ff73aed85a5aa57cf292bb02519fcea155521a4a3d5",
+  "afterSha256": "ecd7888508e91b6df351a9ab4e95cf1a3facc426316ee68a868e622b1cdfda51",
+  "draftFile": "20261031100434_budget_dormant_parent_cascade_guard.sql",
+  "hostedApplied": false,
+  "versionOrderRequiresReview": true
+}

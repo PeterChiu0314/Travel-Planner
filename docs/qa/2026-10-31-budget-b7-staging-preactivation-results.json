@@ -1,0 +1,1385 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Taipei",
+  "scope": "H01-H03 preactivation only",
+  "startingCommit": "548075f13437871a7eb3176b5be54f6a9361149e",
+  "projectRef": "uyqdopksfysbobhjcepk",
+  "sdk": {
+    "supabaseJs": "2.106.1",
+    "realtimeJs": "2.106.1",
+    "node": "24.16.0"
+  },
+  "initialRun": {
+    "project": "uyqdopksfysbobhjcepk",
+    "startedAt": "2026-10-31T09:41:08.109Z",
+    "realAuth": true,
+    "realHttp": true,
+    "realRealtime": true,
+    "acceptanceUsesServiceRole": false,
+    "adminForFixtureOnly": true,
+    "results": [
+      {
+        "id": "H01-01",
+        "name": "Two real Auth accounts and distinct sessions",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-02",
+        "name": "Member sees QA trip; nonmember cannot read or mutate it",
+        "status": "Passed"
+      },
+      {
+        "id": "H02-01",
+        "name": "Live private bucket MIME and size configuration",
+        "status": "Passed",
+        "details": {
+          "source": "fresh Managed database read-only catalog; not an HTTP mutation proof"
+        }
+      },
+      {
+        "id": "H02-02",
+        "name": "Ordinary member uploads QA PNG via real Storage HTTP",
+        "status": "Passed"
+      },
+      {
+        "id": "H02-03",
+        "name": "Authenticated download bytes equal uploaded PNG",
+        "status": "Passed",
+        "details": {
+          "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea",
+          "bytes": 68
+        }
+      },
+      {
+        "id": "H02-04",
+        "name": "Nonmember and anonymous cannot read/sign/delete QA bytes",
+        "status": "Passed"
+      },
+      {
+        "id": "H02-05",
+        "name": "Wrong path, anonymous and nonmember uploads rejected",
+        "status": "Passed"
+      },
+      {
+        "id": "H02-06",
+        "name": "Bucket rejects disallowed MIME and over-limit upload",
+        "status": "Failed",
+        "error": "The operation was aborted due to timeout"
+      },
+      {
+        "id": "H02-07",
+        "name": "Signed URL reads actual private bytes",
+        "status": "Passed",
+        "details": {
+          "ttlSeconds": 30,
+          "actualBytesMatched": true,
+          "expiryNotTested": true
+        }
+      },
+      {
+        "id": "H02-08",
+        "name": "Receipt namespace fails closed while receipt protocol OFF",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-03",
+        "name": "Two independent JWT Realtime subscriptions become SUBSCRIBED",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-04",
+        "name": "Legacy Budget save remains available with protocols OFF",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-05",
+        "name": "Both Realtime clients receive the actual Budget INSERT",
+        "status": "Failed",
+        "error": "Expected Realtime event absent within bounded 10s"
+      },
+      {
+        "id": "H01-06",
+        "name": "Successful original Request Replay does not duplicate rows",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-07",
+        "name": "Second ordinary account updates legacy Budget and produces UPDATE",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-08",
+        "name": "Deterministic stale save is bounded HTTP409/PT409, no mutation",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-09",
+        "name": "Anonymous and invalid JWT denied protected RPC",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-10",
+        "name": "Metadata OFF refuses group acquisition without draft overwrite",
+        "status": "Passed",
+        "details": {
+          "http": 500,
+          "code": "55000",
+          "reason": null
+        }
+      },
+      {
+        "id": "H01-11",
+        "name": "B-7 placeholder creation OFF rejects and preserves graph",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-12",
+        "name": "Snapshot v10 is callable but reports dormant capabilities",
+        "status": "Passed",
+        "details": {
+          "metadataProtocolEnabled": false
+        }
+      },
+      {
+        "id": "H01-13",
+        "name": "Realtime disconnect/reconnect receives later committed update",
+        "status": "Failed",
+        "error": "Expected Realtime event absent within bounded 10s"
+      },
+      {
+        "id": "H01-14",
+        "name": "Realtime unsubscribe stops delivery while authoritative read remains usable",
+        "status": "Passed"
+      },
+      {
+        "id": "H02-09",
+        "name": "Ordinary member deletes exact QA object via Storage HTTP",
+        "status": "Failed",
+        "error": "Expected rejection, got 200"
+      },
+      {
+        "id": "H03-01",
+        "name": "Ordinary user cannot execute dedicated Worker RPCs",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-15",
+        "name": "Observed deterministic HTTP conflicts contain no custom 40001",
+        "status": "Passed",
+        "details": {
+          "observedRequests": 50,
+          "scope": "Only this preactivation HTTP run; not proof against every possible engine serialization failure"
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "route": "/auth/v1/token",
+        "status": 200,
+        "code": null,
+        "ms": 462
+      },
+      {
+        "method": "POST",
+        "route": "/auth/v1/token",
+        "status": 200,
+        "code": null,
+        "ms": 159
+      },
+      {
+        "method": "GET",
+        "route": "/auth/v1/user",
+        "status": 200,
+        "code": null,
+        "ms": 163
+      },
+      {
+        "method": "GET",
+        "route": "/auth/v1/user",
+        "status": 200,
+        "code": null,
+        "ms": 64
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/trips",
+        "status": 200,
+        "code": null,
+        "ms": 292
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/trips",
+        "status": 200,
+        "code": null,
+        "ms": 145
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 111
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 403,
+        "code": "42501",
+        "ms": 108
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 200,
+        "code": null,
+        "ms": 363
+      },
+      {
+        "method": "GET",
+        "route": "/storage/v1/object/authenticated/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 200,
+        "code": null,
+        "ms": 610
+      },
+      {
+        "method": "GET",
+        "route": "/storage/v1/object/authenticated/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 400,
+        "code": null,
+        "ms": 167
+      },
+      {
+        "method": "GET",
+        "route": "/storage/v1/object/authenticated/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 400,
+        "code": null,
+        "ms": 292
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/sign/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 400,
+        "code": "NoSuchKey",
+        "ms": 149
+      },
+      {
+        "method": "DELETE",
+        "route": "/storage/v1/object/trip-attachments",
+        "status": 200,
+        "code": null,
+        "ms": 108
+      },
+      {
+        "method": "GET",
+        "route": "/storage/v1/object/authenticated/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 200,
+        "code": null,
+        "ms": 33
+      },
+      {
+        "method": "GET",
+        "route": "/storage/v1/object/public/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 400,
+        "code": "NoSuchBucket",
+        "ms": 285
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/trip-attachments/invalid/:uuid/pixel.png",
+        "status": 400,
+        "code": "AccessDenied",
+        "ms": 113
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/anonymous.png",
+        "status": 400,
+        "code": "AccessDenied",
+        "ms": 223
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/nonmember.png",
+        "status": 400,
+        "code": "AccessDenied",
+        "ms": 143
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/text.txt",
+        "status": 400,
+        "code": "InvalidMimeType",
+        "ms": 77
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/sign/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 200,
+        "code": null,
+        "ms": 521
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/trip-attachments/trips/:uuid/attachments/actual_expense/:uuid/receipts/:uuid/pixel.png",
+        "status": 400,
+        "code": "AccessDenied",
+        "ms": 144
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 200,
+        "code": null,
+        "ms": 165
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 73
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 146
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 200,
+        "code": null,
+        "ms": 91
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 88
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 200,
+        "code": null,
+        "ms": 169
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 89
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 131
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 409,
+        "code": "PT409",
+        "ms": 169
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 136
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 401,
+        "code": "42501",
+        "ms": 99
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 401,
+        "code": "PGRST301",
+        "ms": 76
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 71
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/budget_metadata_group_lease",
+        "status": 500,
+        "code": "55000",
+        "ms": 78
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 92
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 101
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/create_budget_workspace_placeholder",
+        "status": 500,
+        "code": "55000",
+        "ms": 81
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 136
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_metadata_snapshot_v10",
+        "status": 200,
+        "code": null,
+        "ms": 164
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 79
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 200,
+        "code": null,
+        "ms": 98
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 133
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 200,
+        "code": null,
+        "ms": 111
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 111
+      },
+      {
+        "method": "DELETE",
+        "route": "/storage/v1/object/trip-attachments",
+        "status": 200,
+        "code": null,
+        "ms": 189
+      },
+      {
+        "method": "GET",
+        "route": "/storage/v1/object/authenticated/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 200,
+        "code": null,
+        "ms": 118
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/claim_budget_receipt_verification",
+        "status": 403,
+        "code": "42501",
+        "ms": 88
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/claim_budget_receipt_worker",
+        "status": 403,
+        "code": "42501",
+        "ms": 85
+      },
+      {
+        "method": "DELETE",
+        "route": "/storage/v1/object/trip-attachments",
+        "status": 200,
+        "code": null,
+        "ms": 380
+      },
+      {
+        "method": "GET",
+        "route": "/storage/v1/object/authenticated/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 200,
+        "code": null,
+        "ms": 99
+      }
+    ],
+    "events": [
+      {
+        "client": "A",
+        "type": "SUBSCRIBED",
+        "at": "2026-10-31T09:41:28.646Z"
+      },
+      {
+        "client": "B",
+        "type": "SUBSCRIBED",
+        "at": "2026-10-31T09:41:29.004Z"
+      },
+      {
+        "client": "A",
+        "type": "UPDATE",
+        "recordHash": "a8db2834fbbcabeb93c2066a6f62d809add00023d480dd2db5f8c09d48a4b0f5",
+        "at": "2026-10-31T09:41:40.395Z"
+      },
+      {
+        "client": "B",
+        "type": "UPDATE",
+        "recordHash": "a8db2834fbbcabeb93c2066a6f62d809add00023d480dd2db5f8c09d48a4b0f5",
+        "at": "2026-10-31T09:41:40.396Z"
+      },
+      {
+        "client": "B",
+        "type": "INTENTIONAL_DISCONNECT",
+        "at": "2026-10-31T09:41:41.762Z"
+      },
+      {
+        "client": "B",
+        "type": "RECONNECTED",
+        "at": "2026-10-31T09:41:41.762Z"
+      },
+      {
+        "client": "A",
+        "type": "UPDATE",
+        "recordHash": "a8db2834fbbcabeb93c2066a6f62d809add00023d480dd2db5f8c09d48a4b0f5",
+        "at": "2026-10-31T09:41:42.227Z"
+      },
+      {
+        "client": "A",
+        "type": "UPDATE",
+        "recordHash": "a8db2834fbbcabeb93c2066a6f62d809add00023d480dd2db5f8c09d48a4b0f5",
+        "at": "2026-10-31T09:41:52.677Z"
+      },
+      {
+        "client": "B",
+        "type": "UNSUBSCRIBED_NO_FURTHER_EVENT",
+        "at": "2026-10-31T09:41:53.421Z"
+      }
+    ],
+    "cleanup": [
+      {
+        "resource": "QA Storage object",
+        "removed": false,
+        "reason": "Expected rejection, got 200"
+      },
+      {
+        "resource": "QA trip",
+        "removed": false,
+        "reason": "HTTP 500: 55000 Incomplete participants require validated Pricing",
+        "retained": true
+      },
+      {
+        "resource": "QA account A",
+        "removed": true
+      },
+      {
+        "resource": "QA account B",
+        "removed": true
+      }
+    ],
+    "identities": [
+      {
+        "label": "A",
+        "userHash": "c3b70820d8d95e19bb91099d14fefc8740fad1844ccd7b0209ffd3e06a70fb95",
+        "sessionHash": "a260ca8cb6b459428c5ce174b384963cdeb341f610f44c1bf412f44af3604df2"
+      },
+      {
+        "label": "B",
+        "userHash": "30a1ab7793bcbed01cb2c495489d5be052908069fa1b8161e6b5dbceef175b0f",
+        "sessionHash": "bf5e28140c69c967088e8db2658f1bfc730b046bcb1c84386e0af5b20e556b41"
+      }
+    ],
+    "finishedAt": "2026-10-31T09:41:55.455Z",
+    "passed": 21,
+    "failed": 4,
+    "fatal": null,
+    "fixtureHashes": {
+      "trip": "997123dea265589f6cd013201c85be3f6c377b28f2ac1debae0553b72c15bde2",
+      "users": [
+        "c3b70820d8d95e19bb91099d14fefc8740fad1844ccd7b0209ffd3e06a70fb95",
+        "30a1ab7793bcbed01cb2c495489d5be052908069fa1b8161e6b5dbceef175b0f"
+      ],
+      "objects": [
+        "df2860d5ff48f9d69ea162f1cabf5414f7c536c2843c73aab0c86fbc6f06f9a5"
+      ]
+    },
+    "pendingPostActivation": [
+      "Group concurrency/lease takeover",
+      "Pricing/Payment/Source/retained Actual/FX",
+      "Undo and peer conflict",
+      "Lifecycle create/delete competition",
+      "Unknown ACK/Replay/Snapshot delay with B-7 mutations",
+      "Receipt Begin/Commit/Replace and verifier SHA256 pipeline",
+      "Legacy-client activated fencing"
+    ],
+    "blocked": [
+      "Dedicated Worker JWT not supplied; signing secret not accessed",
+      "Worker scheduler/cleanup loop not authorized"
+    ]
+  },
+  "affectedFollowup": {
+    "project": "uyqdopksfysbobhjcepk",
+    "followup": true,
+    "startedAt": "2026-10-31T10:08:53.224Z",
+    "realAuth": true,
+    "realHttp": true,
+    "realRealtime": true,
+    "acceptanceUsesServiceRole": false,
+    "adminForFixtureOnly": true,
+    "results": [
+      {
+        "id": "H01-01",
+        "name": "Two real Auth accounts and distinct sessions",
+        "status": "Passed"
+      },
+      {
+        "id": "H02-06",
+        "name": "Bucket rejects disallowed MIME and over-limit upload",
+        "status": "Failed",
+        "error": "Over-limit HTTP header response timeout"
+      },
+      {
+        "id": "H01-03",
+        "name": "Two independent JWT Realtime subscriptions become SUBSCRIBED",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-04",
+        "name": "Legacy Budget save remains available with protocols OFF",
+        "status": "Passed"
+      },
+      {
+        "id": "H01-05",
+        "name": "Both Realtime clients receive the actual Budget INSERT",
+        "status": "Failed",
+        "error": "Expected Realtime event absent within bounded 10s"
+      },
+      {
+        "id": "H01-13",
+        "name": "Realtime disconnect/reconnect receives later committed update",
+        "status": "Passed"
+      },
+      {
+        "id": "H02-09",
+        "name": "Ordinary member deletes exact QA object via Storage HTTP",
+        "status": "Passed"
+      }
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "route": "/auth/v1/token",
+        "status": 200,
+        "code": null,
+        "ms": 493
+      },
+      {
+        "method": "POST",
+        "route": "/auth/v1/token",
+        "status": 200,
+        "code": null,
+        "ms": 238
+      },
+      {
+        "method": "GET",
+        "route": "/auth/v1/user",
+        "status": 200,
+        "code": null,
+        "ms": 78
+      },
+      {
+        "method": "GET",
+        "route": "/auth/v1/user",
+        "status": 200,
+        "code": null,
+        "ms": 70
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/text.txt",
+        "status": 400,
+        "code": "InvalidMimeType",
+        "ms": 206
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 200,
+        "code": null,
+        "ms": 246
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 149
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 274
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/save_budget_workspace_record_v3",
+        "status": 200,
+        "code": null,
+        "ms": 153
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/rpc/read_budget_snapshot",
+        "status": 200,
+        "code": null,
+        "ms": 132
+      },
+      {
+        "method": "POST",
+        "route": "/storage/v1/object/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 200,
+        "code": null,
+        "ms": 274
+      },
+      {
+        "method": "DELETE",
+        "route": "/storage/v1/object/trip-attachments",
+        "status": 200,
+        "code": null,
+        "ms": 169
+      },
+      {
+        "method": "GET",
+        "route": "/storage/v1/object/authenticated/trip-attachments/trips/:uuid/attachments/qa-preactivation/:uuid/pixel.png",
+        "status": 400,
+        "code": null,
+        "ms": 605
+      }
+    ],
+    "events": [
+      {
+        "client": "A",
+        "type": "SUBSCRIBED",
+        "at": "2026-10-31T10:09:09.956Z"
+      },
+      {
+        "client": "B",
+        "type": "SUBSCRIBED",
+        "at": "2026-10-31T10:09:10.336Z"
+      },
+      {
+        "client": "B",
+        "type": "CHANNEL_ERROR",
+        "at": "2026-10-31T10:09:20.836Z"
+      },
+      {
+        "client": "B",
+        "type": "INTENTIONAL_DISCONNECT",
+        "at": "2026-10-31T10:09:20.904Z"
+      },
+      {
+        "client": "B",
+        "type": "CLOSED",
+        "at": "2026-10-31T10:09:20.904Z"
+      },
+      {
+        "client": "B-reconnected",
+        "type": "SUBSCRIBED",
+        "at": "2026-10-31T10:09:21.273Z"
+      },
+      {
+        "client": "B-reconnected",
+        "type": "RECONNECTED",
+        "at": "2026-10-31T10:09:21.273Z"
+      },
+      {
+        "client": "A",
+        "type": "UPDATE",
+        "recordHash": "a6a3982c82e6715854641a9bf2d369bb019829e6609877ac96d4fa2f07b81c2a",
+        "at": "2026-10-31T10:09:22.252Z"
+      },
+      {
+        "client": "B-reconnected",
+        "type": "UPDATE",
+        "recordHash": "a6a3982c82e6715854641a9bf2d369bb019829e6609877ac96d4fa2f07b81c2a",
+        "at": "2026-10-31T10:09:22.252Z"
+      },
+      {
+        "client": "A",
+        "type": "CLOSED",
+        "at": "2026-10-31T10:09:23.493Z"
+      },
+      {
+        "client": "B-reconnected",
+        "type": "CLOSED",
+        "at": "2026-10-31T10:09:23.813Z"
+      }
+    ],
+    "cleanup": [
+      {
+        "resource": "QA trip",
+        "removed": false,
+        "reason": "HTTP 500: 55000 Incomplete participants require validated Pricing",
+        "retained": true
+      },
+      {
+        "resource": "QA account A",
+        "removed": false,
+        "retained": true,
+        "reason": "Trip cleanup rejected; do not cascade through Auth deletion"
+      },
+      {
+        "resource": "QA account B",
+        "removed": false,
+        "retained": true,
+        "reason": "Trip cleanup rejected; do not cascade through Auth deletion"
+      }
+    ],
+    "identities": [
+      {
+        "label": "A",
+        "userHash": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+        "sessionHash": "a0a1cb0e4b0fa248816cacd271293c1b30b16c023422940c630fce8886c9a5ef"
+      },
+      {
+        "label": "B",
+        "userHash": "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95",
+        "sessionHash": "4754305fd55c49a2ed3c60917daaec16c26c2904c3b313ccd9995272e75e9c36"
+      }
+    ],
+    "finishedAt": "2026-10-31T10:09:24.297Z",
+    "passed": 5,
+    "failed": 2,
+    "fatal": null,
+    "fixtureHashes": {
+      "trip": "320a357760e4700aa88e9c0d60de588183b301fa76a53d566afea73cbd2a9dcc",
+      "users": [
+        "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+        "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95"
+      ],
+      "objects": [
+        "7a152abf90d30141005caf7308019fa8b8963d4761601700e929c4c20b89b996"
+      ]
+    },
+    "pendingPostActivation": [
+      "Group concurrency/lease takeover",
+      "Pricing/Payment/Source/retained Actual/FX",
+      "Undo and peer conflict",
+      "Lifecycle create/delete competition",
+      "Unknown ACK/Replay/Snapshot delay with B-7 mutations",
+      "Receipt Begin/Commit/Replace and verifier SHA256 pipeline",
+      "Legacy-client activated fencing"
+    ],
+    "blocked": [
+      "Dedicated Worker JWT not supplied; signing secret not accessed",
+      "Worker scheduler/cleanup loop not authorized"
+    ]
+  },
+  "matrix": [
+    {
+      "id": "H01-01",
+      "name": "Two real Auth accounts and distinct sessions",
+      "status": "Passed",
+      "evidenceRun": "affected-followup"
+    },
+    {
+      "id": "H01-02",
+      "name": "Member sees QA trip; nonmember cannot read or mutate it",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-01",
+      "name": "Live private bucket MIME and size configuration",
+      "status": "Passed",
+      "details": {
+        "source": "fresh Managed database read-only catalog; not an HTTP mutation proof"
+      },
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-02",
+      "name": "Ordinary member uploads QA PNG via real Storage HTTP",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-03",
+      "name": "Authenticated download bytes equal uploaded PNG",
+      "status": "Passed",
+      "details": {
+        "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea",
+        "bytes": 68
+      },
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-04",
+      "name": "Nonmember and anonymous cannot read/sign/delete QA bytes",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-05",
+      "name": "Wrong path, anonymous and nonmember uploads rejected",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-06",
+      "name": "Over-limit Storage HTTP rejection",
+      "status": "Blocked",
+      "reason": "No bounded response for 10485761-byte upload or Expect:100-continue probe; catalog limit confirmed, HTTP413 not observed",
+      "originalAttemptsRetained": true
+    },
+    {
+      "id": "H02-07",
+      "name": "Signed URL reads actual private bytes",
+      "status": "Passed",
+      "details": {
+        "ttlSeconds": 30,
+        "actualBytesMatched": true,
+        "expiryNotTested": true
+      },
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-08",
+      "name": "Receipt namespace fails closed while receipt protocol OFF",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-03",
+      "name": "Two independent JWT Realtime subscriptions become SUBSCRIBED",
+      "status": "Passed",
+      "evidenceRun": "affected-followup"
+    },
+    {
+      "id": "H01-04",
+      "name": "Legacy Budget save remains available with protocols OFF",
+      "status": "Passed",
+      "evidenceRun": "affected-followup"
+    },
+    {
+      "id": "H01-05",
+      "name": "Both Realtime clients receive the actual Budget INSERT",
+      "status": "Failed",
+      "error": "Expected Realtime event absent within bounded 10s",
+      "evidenceRun": "affected-followup"
+    },
+    {
+      "id": "H01-06",
+      "name": "Successful original Request Replay does not duplicate rows",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-07",
+      "name": "Second ordinary account updates legacy Budget and produces UPDATE",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-08",
+      "name": "Deterministic stale save is bounded HTTP409/PT409, no mutation",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-09",
+      "name": "Anonymous and invalid JWT denied protected RPC",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-10",
+      "name": "Metadata OFF refuses group acquisition without draft overwrite",
+      "status": "Passed",
+      "details": {
+        "http": 500,
+        "code": "55000",
+        "reason": null
+      },
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-11",
+      "name": "B-7 placeholder creation OFF rejects and preserves graph",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-12",
+      "name": "Snapshot v10 is callable but reports dormant capabilities",
+      "status": "Passed",
+      "details": {
+        "metadataProtocolEnabled": false
+      },
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-13",
+      "name": "Realtime disconnect/reconnect receives later committed update",
+      "status": "Passed",
+      "evidenceRun": "affected-followup"
+    },
+    {
+      "id": "H01-14",
+      "name": "Realtime unsubscribe stops delivery while authoritative read remains usable",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-09",
+      "name": "Ordinary member deletes exact QA object via Storage HTTP",
+      "status": "Passed",
+      "evidenceRun": "affected-followup"
+    },
+    {
+      "id": "H03-01",
+      "name": "Ordinary user cannot execute dedicated Worker RPCs",
+      "status": "Passed",
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H01-15",
+      "name": "Observed deterministic HTTP conflicts contain no custom 40001",
+      "status": "Passed",
+      "details": {
+        "observedRequests": 50,
+        "scope": "Only this preactivation HTTP run; not proof against every possible engine serialization failure"
+      },
+      "evidenceRun": "initial"
+    },
+    {
+      "id": "H02-06-MIME",
+      "name": "Disallowed text/plain MIME rejected by real Storage HTTP",
+      "status": "Passed",
+      "httpStatuses": [
+        400,
+        400
+      ]
+    },
+    {
+      "id": "H03-02",
+      "name": "Live dedicated Worker role and minimal-grant catalog",
+      "status": "Passed",
+      "evidence": "fresh Managed read-only before and after",
+      "httpExecution": false
+    },
+    {
+      "id": "H03-03",
+      "name": "Dedicated Worker JWT/Headers and exact-claim HTTP scope",
+      "status": "Blocked",
+      "reason": "No dedicated JWT provisioned; no signing secret accessed, no service_role substitution"
+    },
+    {
+      "id": "H03-04",
+      "name": "Worker scheduler, persistent retries and restart recovery",
+      "status": "Blocked",
+      "reason": "Not authorized to start Worker or schedule; current CLI loopback guard retained"
+    },
+    {
+      "id": "CLEANUP-01",
+      "name": "QA trip parent cascade with participant children",
+      "status": "Failed",
+      "priority": "P1",
+      "reason": "55000 Incomplete participants require validated Pricing; local repair 7/7, not Hosted-applied"
+    },
+    {
+      "id": "POST-1",
+      "name": "Group concurrency/lease takeover",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-2",
+      "name": "Pricing/Payment/Source/retained Actual/FX",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-3",
+      "name": "Undo and peer conflict",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-4",
+      "name": "Lifecycle create/delete competition",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-5",
+      "name": "Unknown ACK/Replay/Snapshot delay with B-7 mutations",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-6",
+      "name": "Receipt Begin/Commit/Replace and verifier SHA256 pipeline",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-7",
+      "name": "Legacy-client activated fencing",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-8",
+      "name": "Account revocation/logout/trip switch/reload/late response",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-9",
+      "name": "Rendered dual-browser Portal/IME/native Ctrl+Z and background-focus recovery",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "POST-10",
+      "name": "v1-v10 snapshots, legacy client and Timeline/Links integrated parity",
+      "status": "Pending Post-Activation"
+    }
+  ],
+  "matrixCounts": {
+    "Passed": 25,
+    "Failed": 2,
+    "Blocked": 3,
+    "Pending Post-Activation": 10
+  },
+  "finalReadOnly": {
+    "observedAt": "2026-10-31T10:12:00.252677+00:00",
+    "ledger": {
+      "head": "20261031130000",
+      "count": 62
+    },
+    "originalScopedProjectionCount": 28,
+    "originalScopedDataHashesMatch": true,
+    "protocolRowsUnchanged": true,
+    "protocols": {
+      "budget_source_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_finance_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true
+      },
+      "budget_payment_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_receipt_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true,
+        "storage_verified": false,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": false,
+        "content_worker_verified": false,
+        "legacy_grants_expire_at": null
+      },
+      "budget_metadata_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_lifecycle_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true
+      },
+      "budget_metadata_undo_protocol": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      }
+    },
+    "finalFunctionHashCount": 38,
+    "finalFunctionHashesMatch": true,
+    "workerRoleAndGrantsUnchanged": true,
+    "storagePoliciesUnchanged": true,
+    "queue": {
+      "cleanup": 0,
+      "intents": 0
+    },
+    "qaRetainedCounts": {
+      "users": 2,
+      "groups": 8,
+      "budgets": 1,
+      "objects": 0,
+      "signals": 2,
+      "baselines": 1,
+      "tripCount": 1,
+      "participants": 1,
+      "legacyRequests": 4
+    },
+    "localForwardNotApplied": true
+  },
+  "retention": {
+    "initialRun": {
+      "tripAndUsersRemovedByAuthOwnerCascade": true,
+      "normalTripDeleteRejectedFirst": true,
+      "storageObjectsRemaining": 0,
+      "opaqueSignalMayRemain": true,
+      "runnerSequencingCorrected": true
+    },
+    "followup": {
+      "tripRetained": true,
+      "usersRetained": 2,
+      "budgetRetained": 1,
+      "participantsRetained": 1,
+      "qaBaselineRetained": 1,
+      "storageObjectsRemaining": 0,
+      "noForcedCleanup": true
+    },
+    "qaIdentifiersHashOnly": true,
+    "rawManifestGitIgnored": true,
+    "credentialHandoff": {
+      "temporaryFileCurrentUserAclOnly": true,
+      "removedBeforeNetworkExecution": true,
+      "presentAtEnd": false
+    },
+    "jwtSigningSecretRead": false,
+    "qaAccessTokensSaved": false,
+    "existingQaAccessTokenRevocationVerified": false
+  },
+  "nativeRepair": {
+    "scope": "Native fixture only; no real HTTP claim",
+    "results": [
+      {
+        "name": "Reproduce dormant Budget and Actual FK cascade rejection without altering rows",
+        "status": "Passed"
+      },
+      {
+        "name": "Draft matches sealed old body, preserves routine attributes and all seven OFF flags",
+        "status": "Passed"
+      },
+      {
+        "name": "Dormant Budget and Actual parent cascades remove only their participant children",
+        "status": "Passed"
+      },
+      {
+        "name": "Normal dormant trip cascade succeeds after repair",
+        "status": "Passed"
+      },
+      {
+        "name": "Incomplete live parent still rejects raw participant INSERT",
+        "status": "Passed"
+      },
+      {
+        "name": "Enabled metadata protocol refuses the dormant-only repair without changes",
+        "status": "Passed"
+      },
+      {
+        "name": "Paused activated finance still blocks external parent cascade and repair",
+        "status": "Passed"
+      },
+      {
+        "name": "Repeated draft preserves repaired body and rejects unknown body drift atomically",
+        "status": "Passed"
+      }
+    ],
+    "flags": [
+      {
+        "k": "metadata",
+        "v": false
+      },
+      {
+        "k": "finance",
+        "v": false
+      },
+      {
+        "k": "lifecycle",
+        "v": false
+      },
+      {
+        "k": "receipts",
+        "v": false
+      },
+      {
+        "k": "payment",
+        "v": false
+      },
+      {
+        "k": "source",
+        "v": false
+      },
+      {
+        "k": "undo",
+        "v": false
+      }
+    ],
+    "hostedApplied": false
+  },
+  "p0": [],
+  "p1": [
+    {
+      "id": "P1-RT-INSERT",
+      "status": "Unresolved",
+      "evidence": "Cold Budget INSERT not delivered to both subscribed ordinary JWT clients in two real runs; UPDATE and reconstructed subscription work; root cause not confirmed"
+    },
+    {
+      "id": "P1-CASCADE",
+      "status": "Locally fixed, Hosted unresolved",
+      "evidence": "Native reproduced missing-parent Guard failure; 7 targeted cases pass with non-auto-apply draft; activation repair refuses"
+    }
+  ],
+  "decision": {
+    "activation": "NO-GO",
+    "hostedSchemaRepair": "Requires separate Review and explicit authorization",
+    "next": "Stop for ChatGPT Review; preserve retained QA graph and all OFF values"
+  },
+  "limits": [
+    "Node independent Auth sessions, not rendered dual-browser product acceptance",
+    "No Worker JWT or Headers acceptance; catalog is not HTTP proof",
+    "No receipt Begin/Commit/Replace or actual verification/cleanup loop",
+    "No signed URL expiry test",
+    "Over-limit HTTP413 not observed; do not infer from configured limit",
+    "Initial failures and exact targeted rerun kept separately; no timeout increase or assertion relaxation",
+    "No new Hosted DDL/RLS/Grants/ledger changes, no Production access",
+    "QA access tokens were not saved; deletion of first-run Auth users is not proof of immediate JWT revocation"
+  ],
+  "localChecks": {
+    "nativeTargeted": "8/8 passed; cluster stopped",
+    "syntaxFiles": 3,
+    "originalAndManagedPacketOfflineCheckers": "passed; approved hashes unchanged",
+    "productionBuild": "passed; existing >500kB chunk advisory retained",
+    "localMarkdownLinks": 60,
+    "jsonAndSensitiveContentScan": "passed",
+    "gitDiffCheck": "passed",
+    "historicalUnaffectedSuitesRerun": false
+  }
+}
