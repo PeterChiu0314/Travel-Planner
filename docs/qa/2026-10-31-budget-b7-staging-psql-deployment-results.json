@@ -1,0 +1,443 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Taipei",
+  "startCommit": "2da16221a42f0ecaad10ff21cb7b113078407fd3",
+  "branch": "codex/budget-collaboration-redesign",
+  "target": {
+    "name": "Travel-Planner-Staging",
+    "ref": "uyqdopksfysbobhjcepk",
+    "database": "postgres",
+    "sqlCurrentUser": "postgres",
+    "databaseVersion": "17.6"
+  },
+  "connection": {
+    "psqlVersion": "17.11",
+    "mode": "session pooler",
+    "port": 5432,
+    "host": "aws-0-ap-northeast-1.pooler.supabase.com",
+    "loginRole": "postgres.uyqdopksfysbobhjcepk",
+    "directIpv6Available": false,
+    "directReason": "AAAA available but no Windows IPv6 default route; Direct connection unavailable",
+    "sslmode": "verify-full",
+    "rootCaSha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7",
+    "clientTls": "TLSv1.3",
+    "clientCipher": "TLS_AES_256_GCM_SHA384",
+    "serverPgStatSslRepresents": "pooler-to-backend, not client-to-pooler",
+    "passwordInput": "user entered local masked form",
+    "passwordSaved": false,
+    "helperStopped": true
+  },
+  "packet": {
+    "sha256": "4d43bddf6ed7853daa3008c51b58d76b868553330b919f885d82a200f546698b",
+    "bytes": 1488439,
+    "sources": 15,
+    "compiledFunctions": 38,
+    "classifiedSites": 78,
+    "pt409": 54,
+    "pt500": 24,
+    "modified": false,
+    "resealed": false
+  },
+  "preflight": {
+    "observedAt": "2026-10-31T08:21:31.168184+00:00",
+    "backendPid": 77588,
+    "passed": [
+      "postgres role / database / read-only / client TLS",
+      "ledger equals sealed prior live state",
+      "data equals sealed prior live state",
+      "catalog equals sealed prior live state",
+      "hotfix equals sealed prior live state",
+      "schemas equals sealed prior live state",
+      "functions equals sealed prior live state",
+      "storage_policies equals sealed prior live state",
+      "deployment-owner default ACL equals all three sealed records",
+      "execution-principal memberships equal all thirteen sealed records",
+      "47 ledger / head / dormant absence",
+      "no leases / writer transactions / prepared transactions / custom40001 / raw private grants",
+      "role and managed policy grants preserved",
+      "required managed grants and lock capability"
+    ],
+    "scopeCorrections": {
+      "tls": "Client-to-pooler verify-full TLS confirmed by psql conninfo; pg_stat_ssl is pooler-to-backend, not client TLS",
+      "defaultAcls": "Prior scope is deployment owner postgres; expanded query also observed three supabase_admin defaults",
+      "memberships": "Prior scope is execution principals; expanded query also observed three supabase_realtime_admin memberships"
+    },
+    "ledger": 47,
+    "head": "20261031003000",
+    "hotfixHashesMatched": 13,
+    "catalogSections": [
+      {
+        "section": "columns",
+        "count": 280,
+        "sha256": "4aa6e18c12c5da4e8e6b763d034c30691d57322fb4710109dd79043f9c8202d8"
+      },
+      {
+        "section": "constraints",
+        "count": 147,
+        "sha256": "f592db42acb7897d028981c9b51af25539d1d13765794bde4c94ab6e4232a400"
+      },
+      {
+        "section": "functions",
+        "count": 82,
+        "sha256": "8e4f5637f0a2cc9e994e0f46b741d3a3be3a2febe48430ea2d790a381d905334"
+      },
+      {
+        "section": "indexes",
+        "count": 83,
+        "sha256": "2c56666b9776746560f8f50436d907bfe935ad7aa0ee41e674861901d5302046"
+      },
+      {
+        "section": "policies",
+        "count": 57,
+        "sha256": "c7f2bc02a8bc4d7b99f0dcddfc6bb7f883a6b7381c483d9c410237f9516fca63"
+      },
+      {
+        "section": "publication",
+        "count": 21,
+        "sha256": "ccd2199aa591a12120dbe1fafbc1c55e8f8ab643eba1362026aa9495619ce20e"
+      },
+      {
+        "section": "tables",
+        "count": 25,
+        "sha256": "83f136fee52e2c987528627b5262a5b8e79aff8c4972455ca1157aa382013a3a"
+      },
+      {
+        "section": "triggers",
+        "count": 45,
+        "sha256": "0b191cfe0c98969a4d6cfa5df876ce5e9c582e3dec6328376f2cfdea2b13f854"
+      }
+    ],
+    "catalogAggregateSha256": "2c8ce9f96412531031b21bc10e48b0ee337645ab75c4ebdbb5f9bd2bacd4b3fc",
+    "functionsAttributesMatched": 82,
+    "dataProjectionsMatched": 28,
+    "activeLeases": 0,
+    "otherTransactions": 0,
+    "preparedTransactions": 0,
+    "managedReservedRoleCapability": "not established by CREATEROLE/ACL/lock checks; subsequently failed"
+  },
+  "deployment": {
+    "attempted": true,
+    "attempts": 1,
+    "psqlExitCode": 3,
+    "onErrorStop": true,
+    "singlePersistentSession": true,
+    "originalBeginCommitRetained": true,
+    "psqlSingleTransactionOptionUsed": false,
+    "targetGucSetInSameSession": true,
+    "originalHotfixReplayed": false,
+    "packetErrorLine": 13692,
+    "failingSource": "20261030125028_budget_workspace_integration_safety.sql",
+    "sourceLines": "20-24",
+    "error": "\"supabase_storage_admin\" is a reserved role, only superusers can modify it",
+    "statement": "grant budget_receipt_worker to supabase_storage_admin",
+    "sqlstate": "not captured; not inferred as live evidence",
+    "commitReached": false,
+    "commitConfirmed": false,
+    "f0Reached": false,
+    "split": false,
+    "retried": false,
+    "destructiveRollback": false
+  },
+  "rollback": {
+    "observedAt": "2026-10-31T08:23:00.006825+00:00",
+    "backendPid": 77596,
+    "newIndependentPsqlProcess": true,
+    "transactionReadOnly": "on",
+    "ledger": 47,
+    "head": "20261031003000",
+    "newVersionsPresent": [],
+    "t0Absent": true,
+    "workerRoleAbsent": true,
+    "protocolTables": [
+      {
+        "name": "budget_finance_protocol",
+        "absent": true
+      },
+      {
+        "name": "budget_lifecycle_protocol",
+        "absent": true
+      },
+      {
+        "name": "budget_metadata_protocol",
+        "absent": true
+      },
+      {
+        "name": "budget_metadata_undo_protocol",
+        "absent": true
+      },
+      {
+        "name": "budget_payment_protocol",
+        "absent": true
+      },
+      {
+        "name": "budget_receipt_protocol",
+        "absent": true
+      },
+      {
+        "name": "budget_source_protocol",
+        "absent": true
+      }
+    ],
+    "comparisons": [
+      {
+        "field": "ledger",
+        "equal": true
+      },
+      {
+        "field": "data",
+        "equal": true
+      },
+      {
+        "field": "catalog",
+        "equal": true
+      },
+      {
+        "field": "functions",
+        "equal": true
+      },
+      {
+        "field": "hotfix",
+        "equal": true
+      },
+      {
+        "field": "schemas",
+        "equal": true
+      },
+      {
+        "field": "default_acls",
+        "equal": true
+      },
+      {
+        "field": "role_memberships",
+        "equal": true
+      },
+      {
+        "field": "storage_policies",
+        "equal": true
+      },
+      {
+        "field": "role",
+        "equal": true
+      },
+      {
+        "field": "policy_grants",
+        "equal": true
+      },
+      {
+        "field": "b7_absent",
+        "equal": true
+      },
+      {
+        "field": "f0_absent",
+        "equal": true
+      },
+      {
+        "field": "worker_absent",
+        "equal": true
+      },
+      {
+        "field": "custom40001",
+        "equal": true
+      },
+      {
+        "field": "private_raw_grants",
+        "equal": true
+      }
+    ],
+    "complete": true,
+    "dataCounts": [
+      {
+        "name": "app_private.budget_edit_leases",
+        "rows": 0
+      },
+      {
+        "name": "app_private.budget_selections",
+        "rows": 0
+      },
+      {
+        "name": "app_private.budget_workspace_requests",
+        "rows": 0
+      },
+      {
+        "name": "auth.users",
+        "rows": 1
+      },
+      {
+        "name": "public.accommodations",
+        "rows": 0
+      },
+      {
+        "name": "public.actual_expense_participants",
+        "rows": 0
+      },
+      {
+        "name": "public.actual_expenses",
+        "rows": 0
+      },
+      {
+        "name": "public.attachments",
+        "rows": 0
+      },
+      {
+        "name": "public.budget_collaboration_signals",
+        "rows": 0
+      },
+      {
+        "name": "public.budget_item_participants",
+        "rows": 0
+      },
+      {
+        "name": "public.budget_items",
+        "rows": 0
+      },
+      {
+        "name": "public.guide_items",
+        "rows": 0
+      },
+      {
+        "name": "public.itinerary_alternatives",
+        "rows": 3
+      },
+      {
+        "name": "public.itinerary_budget_items",
+        "rows": 0
+      },
+      {
+        "name": "public.itinerary_items",
+        "rows": 25
+      },
+      {
+        "name": "public.itinerary_route_override_nodes",
+        "rows": 0
+      },
+      {
+        "name": "public.itinerary_route_overrides",
+        "rows": 0
+      },
+      {
+        "name": "public.luggage_items",
+        "rows": 0
+      },
+      {
+        "name": "public.pack_items",
+        "rows": 7
+      },
+      {
+        "name": "public.share_links",
+        "rows": 0
+      },
+      {
+        "name": "public.shared_luggage_items",
+        "rows": 0
+      },
+      {
+        "name": "public.todo_items",
+        "rows": 0
+      },
+      {
+        "name": "public.trip_budget_baselines",
+        "rows": 1
+      },
+      {
+        "name": "public.trip_invites",
+        "rows": 0
+      },
+      {
+        "name": "public.trip_members",
+        "rows": 2
+      },
+      {
+        "name": "public.trips",
+        "rows": 2
+      },
+      {
+        "name": "storage.buckets",
+        "rows": 1
+      },
+      {
+        "name": "storage.objects",
+        "rows": 0
+      }
+    ],
+    "custom40001": 0,
+    "activeLeases": 0,
+    "otherOpenTransactions": 0,
+    "preparedTransactions": 0,
+    "privateRawClientWorkerTableGrants": 0
+  },
+  "advisor": {
+    "connector": "permission denied",
+    "method": "existing authenticated Staging Dashboard / Refresh",
+    "before": {
+      "errors": 0,
+      "warnings": 9,
+      "infos": 2
+    },
+    "after": {
+      "errors": 0,
+      "warnings": 9,
+      "infos": 2
+    },
+    "delta": {
+      "errors": 0,
+      "warnings": 0,
+      "infos": 0
+    },
+    "warnings": "8 existing signed-in SECURITY DEFINER APIs and leaked-password protection disabled",
+    "infos": "2 existing private lease/selection RLS-enabled/no-policy tables"
+  },
+  "acceptance": {
+    "connection": "Passed",
+    "immutablePacket": "Passed",
+    "freshCatalogDataLedger": "Passed",
+    "managedInstall": "Failed",
+    "commitLedger62": "Failed",
+    "independentAtomicRollback": "Passed",
+    "installed38Hashes54PT40924PT500": "Blocked: not installed",
+    "installedPreflightReadback": "Blocked: B-7 schema absent",
+    "managedAdvisorDelta": "Passed",
+    "h01": "Blocked: not started",
+    "h02": "Blocked: not started",
+    "h03": "Blocked: not started"
+  },
+  "issues": [
+    {
+      "priority": "P0",
+      "id": "managed-reserved-role-worker-membership",
+      "status": "Unresolved; stop for Review",
+      "description": "Packet requires modifying reserved supabase_storage_admin membership; Hosted postgres is not superuser. Native fixture lacks Managed hook."
+    }
+  ],
+  "boundaries": {
+    "productionAccess": false,
+    "agentPasswordReset": false,
+    "activation": false,
+    "protocolsInstalled": false,
+    "latchesInstalled": false,
+    "frontendFlagsSourceDefaultOff": true,
+    "localEnvOptInFound": false,
+    "remoteVercelEnvRead": false,
+    "qaFixturesCreated": false,
+    "storageBytesChanged": false,
+    "workerStarted": false,
+    "scheduleStarted": false,
+    "backupCreated": false,
+    "backupRestoreClaimed": false,
+    "sourceMigrationChanged": false,
+    "packetManifestSealChanged": false,
+    "dockerWslChanged": false,
+    "mainMerge": false,
+    "frontendDeployment": false
+  },
+  "checks": {
+    "offlinePacket": true,
+    "unaffectedHistoricalTestsRerun": false,
+    "buildRerun": false,
+    "reason": "documentation/evidence only; unchanged product and SQL sources",
+    "documentLinks": true,
+    "json": true,
+    "diff": true
+  },
+  "decision": "NO-GO; complete atomic rollback proven. Review Managed-compatible Worker/Storage identity and a separately reviewed/authorized replacement packet before retry.",
+  "next": "Stop for ChatGPT Review; do not retry original packet, bypass reserved-role protection, remove grants, substitute service_role, activate protocols or start H01-H03."
+}

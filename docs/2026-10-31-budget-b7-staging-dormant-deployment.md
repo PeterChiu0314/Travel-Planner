@@ -1,6 +1,6 @@
 # B-7 Staging Dormant Schema 部署嘗試與獨立讀回
 
-後續：[psql連線準備](2026-10-31-budget-b7-staging-psql-readiness.md)。原生psql17.11可用，但未找到可用憑證；依使用者要求停止，沒有再試SQL Editor或送出部署。本頁保留前次大小限制及獨立讀回證據，不能當成新一輪即時狀態。
+最新：[psql實際部署失敗與完整回滾](2026-10-31-budget-b7-staging-psql-deployment.md)。原生連線已成功，原封包因 Managed reserved-role Grant 失敗而退出，未COMMIT；新唯讀連線已確認原狀。**本頁以下是較早 SQL Editor 大小拒絕的歷史證據**，不能當作目前仍缺憑證或只有工具大小問題。
 
 2026-10-31，起點 `bb6274ad6b85246005aba3a207a86de0e8e68653`，分支 `codex/budget-collaboration-redesign`。唯一目標為`Travel-Planner-Staging`／`uyqdopksfysbobhjcepk`。本輪使用者明確授權指定15來源、必要DDL／Role／Grant／Policy／Trigger與ledger寫入，**不包含Activation、前端旗標、QA fixtures、Worker／排程或Production**。
 

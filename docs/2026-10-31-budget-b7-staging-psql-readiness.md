@@ -1,5 +1,7 @@
 # B-7 Staging psql 連線準備與停止紀錄
 
+歷史紀錄：本頁的缺少憑證暫停已由[後續真實 psql 部署與回滾驗證](2026-10-31-budget-b7-staging-psql-deployment.md)取代。使用者自行重設後連線成功，但原封包碰到 Managed reserved-role Grant 而失敗，完整回滾確認；目前仍 NO-GO，原因已非缺少密碼。
+
 2026-10-31，起點`49e60d428836df716c2b8e7965ed0014e58e1dff`，原分支`codex/budget-collaboration-redesign`。唯一允許目標`Travel-Planner-Staging`／`uyqdopksfysbobhjcepk`。既有指定15來源Dormant DDL／Role／Grant／ledger授權沿用，不含Activation、QA fixtures、Worker／排程、Production、憑證重設或權限擴張。
 
 **結果：psql工具可用，但沒有可用資料庫連線憑證；依使用者指示停止部署，NO-GO。** 沒有嘗試SQL Editor、connector、瀏覽器Session Token或其他部署通道，也沒有啟動Docker／WSL或安裝軟體。
