@@ -40,8 +40,9 @@ try {
   console.log(`Native isolated cluster: ${version}; 127.0.0.1:${port}; marker ${marker}`);
   await fs.writeFile(path.join(work,'environment.json'),JSON.stringify({version,host:'127.0.0.1',port,marker,work,data,log,tlsEnabled:Boolean(tlsCA),auditOnly:process.argv.includes('--security-audit'),startedAt:new Date().toISOString()},null,2));
   const exit=await new Promise((resolve,reject)=>{
-    const child=spawn(process.execPath,[process.argv.includes('--forward')?'tests/budget-forward-install.mjs':'tests/budget-metadata-parallel.mjs'],{cwd:root,windowsHide:true,stdio:'inherit',env:{...process.env,
+    const child=spawn(process.execPath,[process.argv.includes('--staging-catalog')?'tests/budget-staging-catalog.mjs':process.argv.includes('--forward')?'tests/budget-forward-install.mjs':'tests/budget-metadata-parallel.mjs'],{cwd:root,windowsHide:true,stdio:'inherit',env:{...process.env,
       BUDGET_FORWARD_CHAIN:process.argv.includes('--fresh-chain')?'fresh':'staging',BUDGET_FORWARD_SEAL:process.argv.includes('--seal')?'1':'',
+      BUDGET_STAGING_DEFAULTS:process.argv.includes('--managed-defaults-rehearsal')?'1':'',
       BUDGET_NATIVE_PORT:String(port),BUDGET_NATIVE_MARKER:marker,BUDGET_NATIVE_EVIDENCE:work,BUDGET_NATIVE_RECEIPTS_ONLY:process.argv.includes('--receipts')?'1':'',BUDGET_NATIVE_FINANCE_ONLY:process.argv.includes('--finance')?'1':'',BUDGET_NATIVE_LIFECYCLE_ONLY:process.argv.includes('--lifecycle')?'1':'',BUDGET_NATIVE_UNDO_FULL_ONLY:process.argv.includes('--undo-full')?'1':'',
       BUDGET_NATIVE_AUDIT_ONLY:process.argv.includes('--security-audit')?'1':'',BUDGET_NATIVE_TLS_CA:tlsCA,BUDGET_NATIVE_CONFLICT_ONLY:process.argv.includes('--conflicts')?'1':'',
       BUDGET_NATIVE_INTEGRATION_ONLY:process.argv.includes('--integration')?'1':'',BUDGET_NATIVE_PG_MODULE:path.resolve('.tmp-budget-db-runtime/node_modules/pg/lib/index.js')}});

@@ -1,0 +1,356 @@
+{
+  "date": "2026-10-31",
+  "startCommit": "6c98e610e07c6bb637dac7597005b0c2961efe76",
+  "target": {
+    "name": "Travel-Planner-Staging",
+    "ref": "uyqdopksfysbobhjcepk",
+    "plan": "FREE",
+    "observedWindowTaipei": "13:16-13:34",
+    "database": "PostgreSQL 17.6",
+    "currentUser": "postgres",
+    "sessionUser": "postgres",
+    "readOnlyConfirmed": true
+  },
+  "access": {
+    "connectorProjectAndSql": "permission denied",
+    "dashboard": "Authorized existing login; unsaved SQL toolbar; READ ONLY SELECT transactions",
+    "hostedWrites": false,
+    "savedSnippets": false,
+    "productionAccess": false
+  },
+  "ledger": {
+    "count": 47,
+    "head": "20261031003000",
+    "versionsNamesAndKnownSourceHashesMatchPrevious": true,
+    "comparisonSha256": "024371b5c5d7b56252211865757ea92231f10d319fbb4c6b9f48841dbf484a40",
+    "multiStatementHistoryRows": 31,
+    "singleSourceRows": 16,
+    "byteParityFor31": "not claimed; necessary current catalog parity verified",
+    "b7Absent": true,
+    "forwardAbsent": true,
+    "forwardVersionCollision": false
+  },
+  "hotfix": {
+    "functions": 13,
+    "allBodyHashesMatchBaselineSeal": true,
+    "custom40001": 0,
+    "comparisonSha256": "40ed0da836e8301bf2e93d4d9dc89bc1489ff0b9c865965112fdc1a8d28b843f"
+  },
+  "dataProtection": {
+    "tables": [
+      {
+        "name": "actual_expense_participants",
+        "rows": 0,
+        "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "actual_expenses",
+        "rows": 0,
+        "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "attachments",
+        "rows": 0,
+        "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "budget_item_participants",
+        "rows": 0,
+        "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "budget_items",
+        "rows": 0,
+        "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "itinerary_alternatives",
+        "rows": 3,
+        "rowset_sha256": "a6f90744b303df7679c9bdc90cc4739f8ea92563df0cb5917e086a27ab3ac83a"
+      },
+      {
+        "name": "itinerary_budget_items",
+        "rows": 0,
+        "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "itinerary_items",
+        "rows": 25,
+        "rowset_sha256": "00943b973d3d470b17bb5bd6e993a36284042d9fe8a15693da0c83f4d36a24b5"
+      },
+      {
+        "name": "luggage_items",
+        "rows": 0,
+        "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "shared_luggage_items",
+        "rows": 0,
+        "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "trip_budget_baselines",
+        "rows": 1,
+        "rowset_sha256": "6d451ff219e1e8404c68ec2e6805a46cbb482de84c1219875a746c8413586c21"
+      },
+      {
+        "name": "trip_members",
+        "rows": 2,
+        "rowset_sha256": "4164878c26addb5bc85a8e43afc897746a2bb49c33b014dab32ec33f4fb8a857"
+      },
+      {
+        "name": "trips",
+        "rows": 2,
+        "rowset_sha256": "ccb841ca4b518ee8a7027886e70dc157ee105627cfad7a04186b9fbebd648764"
+      }
+    ],
+    "matchesPrevious": 13,
+    "total": 13,
+    "comparisonSha256": "d1a529b9774df7dcff0f66fb4c135ec1d559a80408ecc673381a5b2c234457a7",
+    "authUsers": 1,
+    "authFullRowParity": "not claimed; no previous full-row auth hash",
+    "storageObjects": 0,
+    "storageBuckets": 1,
+    "privateBucket": true,
+    "fileSizeLimit": 10485760,
+    "mime": [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/pdf"
+    ]
+  },
+  "catalog": {
+    "scope": "public/app_private application objects; extension-owned functions excluded from native reference",
+    "live": [
+      {
+        "section": "columns",
+        "count": 280,
+        "sha256": "4aa6e18c12c5da4e8e6b763d034c30691d57322fb4710109dd79043f9c8202d8"
+      },
+      {
+        "section": "constraints",
+        "count": 147,
+        "sha256": "f592db42acb7897d028981c9b51af25539d1d13765794bde4c94ab6e4232a400"
+      },
+      {
+        "section": "functions",
+        "count": 82,
+        "sha256": "8e4f5637f0a2cc9e994e0f46b741d3a3be3a2febe48430ea2d790a381d905334"
+      },
+      {
+        "section": "indexes",
+        "count": 83,
+        "sha256": "2c56666b9776746560f8f50436d907bfe935ad7aa0ee41e674861901d5302046"
+      },
+      {
+        "section": "policies",
+        "count": 57,
+        "sha256": "c7f2bc02a8bc4d7b99f0dcddfc6bb7f883a6b7381c483d9c410237f9516fca63"
+      },
+      {
+        "section": "publication",
+        "count": 21,
+        "sha256": "ccd2199aa591a12120dbe1fafbc1c55e8f8ab643eba1362026aa9495619ce20e"
+      },
+      {
+        "section": "tables",
+        "count": 25,
+        "sha256": "83f136fee52e2c987528627b5262a5b8e79aff8c4972455ca1157aa382013a3a"
+      },
+      {
+        "section": "triggers",
+        "count": 45,
+        "sha256": "0b191cfe0c98969a4d6cfa5df876ce5e9c582e3dec6328376f2cfdea2b13f854"
+      }
+    ],
+    "reference": [
+      {
+        "section": "columns",
+        "count": 280,
+        "sha256": "4aa6e18c12c5da4e8e6b763d034c30691d57322fb4710109dd79043f9c8202d8"
+      },
+      {
+        "section": "constraints",
+        "count": 147,
+        "sha256": "f592db42acb7897d028981c9b51af25539d1d13765794bde4c94ab6e4232a400"
+      },
+      {
+        "section": "functions",
+        "count": 82,
+        "sha256": "8e4f5637f0a2cc9e994e0f46b741d3a3be3a2febe48430ea2d790a381d905334"
+      },
+      {
+        "section": "indexes",
+        "count": 83,
+        "sha256": "2c56666b9776746560f8f50436d907bfe935ad7aa0ee41e674861901d5302046"
+      },
+      {
+        "section": "policies",
+        "count": 57,
+        "sha256": "c7f2bc02a8bc4d7b99f0dcddfc6bb7f883a6b7381c483d9c410237f9516fca63"
+      },
+      {
+        "section": "publication",
+        "count": 21,
+        "sha256": "ccd2199aa591a12120dbe1fafbc1c55e8f8ab643eba1362026aa9495619ce20e"
+      },
+      {
+        "section": "tables",
+        "count": 25,
+        "sha256": "83f136fee52e2c987528627b5262a5b8e79aff8c4972455ca1157aa382013a3a"
+      },
+      {
+        "section": "triggers",
+        "count": 45,
+        "sha256": "0b191cfe0c98969a4d6cfa5df876ce5e9c582e3dec6328376f2cfdea2b13f854"
+      }
+    ],
+    "allSectionsMatch": true,
+    "referenceMarker": "3133b6c3-fd51-42ca-9bf5-9eae249edffe",
+    "referenceClusterStopped": true,
+    "firstDifference": "36 pgcrypto functions in native public versus managed extensions; application function count 82 matches after explicit extension classification",
+    "managedRequiredColumns": 11,
+    "managedRequiredTypesVerified": true,
+    "all82FunctionOwners": "postgres",
+    "nonOwnedFunctions": [],
+    "liveFunctionAclDigest": "cb7897aa937fe31fe51516deac997500a2c00a3035cc7feedf8cf03c6993be3c"
+  },
+  "privileges": {
+    "superuser": false,
+    "createRole": true,
+    "createDatabase": true,
+    "bypassRls": true,
+    "databaseCreate": true,
+    "createPublicPrivateLedgerSchemas": true,
+    "strongLockPrivilegeForAll17PacketTables": true,
+    "authTriggerAndReferences": true,
+    "authOwnerSet": false,
+    "storageOwnerSet": false,
+    "managedPolicyGrantForStorageObjectsAndBuckets": true,
+    "storageSelectDeleteGrantOptions": true,
+    "schemaUsageGrantOptions": true,
+    "privateRawClientGrants": 0,
+    "newWorkerRoleAbsent": true,
+    "untrustedPublicCreate": false,
+    "managedDdlExecuted": false,
+    "supautilsVersion": null,
+    "reservedRoleSettings": "read and respected; no role/ACL change",
+    "supautilsPolicyEvidence": "Actual policy_grants lists postgres for storage.objects and storage.buckets",
+    "scope": "catalog-based capability; not a managed DDL transaction rehearsal"
+  },
+  "managedDefaultsRehearsal": {
+    "scope": "Offline observed-default-ACL rehearsal only; no managed ownership or real data restore",
+    "unexpectedAnonNewPublicRpcs": [],
+    "privateRawClientWorkerGrants": [],
+    "tablesWithoutRls": [],
+    "flags": [
+      {
+        "k": "metadata",
+        "v": false
+      },
+      {
+        "k": "finance",
+        "v": false
+      },
+      {
+        "k": "payment",
+        "v": false
+      },
+      {
+        "k": "source",
+        "v": false
+      },
+      {
+        "k": "receipt",
+        "v": false
+      },
+      {
+        "k": "lifecycle",
+        "v": false
+      },
+      {
+        "k": "undo",
+        "v": false
+      }
+    ],
+    "marker": "d1f46311-9731-4614-ac82-3fe70496494a",
+    "clusterStopped": true,
+    "passed": true
+  },
+  "securityAdvisor": {
+    "source": "Direct Dashboard Security Advisor display; no rerun/reset/mutation",
+    "errors": 0,
+    "warnings": 9,
+    "infos": 2,
+    "signedInSecurityDefinerWarnings": 8,
+    "all8AnonExecuteDenied": true,
+    "all8FixedSearchPath": true,
+    "definerNames": [
+      "apply_timeline_schedule_operation",
+      "apply_trip_date_change",
+      "reorder_itinerary_destination_packages",
+      "reorder_itinerary_fixed_anchor_continuation",
+      "reorder_itinerary_timed_auto_continuation",
+      "request_trip_membership",
+      "swap_itinerary_destination_packages",
+      "update_trip_budget_rates"
+    ],
+    "leakedPasswordProtection": "disabled; existing P2 hardening risk, not changed",
+    "infoEntities": [
+      "app_private.budget_edit_leases",
+      "app_private.budget_selections"
+    ],
+    "acceptance": "requires Review; not a zero-warning certification"
+  },
+  "backup": {
+    "status": "BLOCKED",
+    "reason": "Free plan has no project backups; no direct/session-pooler credentials, confirmed unavailable by user",
+    "filesCreated": 0,
+    "destination": null,
+    "hashVerification": "not performed; no backup files",
+    "archiveReadability": "not tested",
+    "restore": "BLOCKED; no real backup",
+    "fixtureCountedAsBackup": false,
+    "storageBytes": "objects=0 in DB; no independent byte/orphan inventory",
+    "paidUpgrade": false,
+    "credentialReset": false
+  },
+  "packet": {
+    "sha256": "4d43bddf6ed7853daa3008c51b58d76b868553330b919f885d82a200f546698b",
+    "bytes": 1488439,
+    "unchanged": true,
+    "resealed": false,
+    "orderedSources": 15,
+    "topLevelBegin": 1,
+    "topLevelCommit": 1,
+    "compiledFunctions": 38,
+    "classifiedSites": 78,
+    "PT409": 54,
+    "PT500": 24,
+    "hostedAfterHashClaimed": false,
+    "lockTimeoutSeconds": 5,
+    "initialStatementTimeoutSeconds": 60,
+    "forwardStatementTimeoutSeconds": 30
+  },
+  "result": {
+    "catalog": "Passed",
+    "dataFingerprint": "Passed",
+    "catalogBasedPermissions": "Passed with stated execution limits",
+    "offlinePacket": "Passed",
+    "observedDefaultAclRehearsal": "Passed",
+    "backupRestore": "Blocked",
+    "dormantDeploy": "NO-GO",
+    "activationAndH01H03": "not authorized; not performed"
+  },
+  "checks": {
+    "syntax": true,
+    "diff": true,
+    "historyTestsRerun": false,
+    "productSourceChanged": false,
+    "activeMigrationsChanged": false,
+    "dockerWslAccess": false,
+    "featureFlagsChanged": false,
+    "workerScheduled": false
+  }
+}

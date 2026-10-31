@@ -1,5 +1,7 @@
 # Issue #15 B-7 Forward／Staging 封包驗證交接
 
+後續：[真實Staging最終預檢](2026-10-31-budget-b7-staging-final-predeploy-verification.md)補驗即時Catalog／Managed權限與資料Hash；Free方案／無匯出憑證導致真實備份還原BLOCKED，仍未部署。以下保留本輪原生Forward驗證證據。
+
 2026-10-31，從 `5c9e8ea07ddb9f95e748d9b2836f28e8c3790bb8`，分支 `codex/budget-collaboration-redesign`。本輪只有 source／測試／文件、原生 PostgreSQL 隔離驗證與本機受控瀏覽器；**沒有 Hosted 存取、部署、Protocol／旗標啟用、Docker／WSL 操作**。停止等待 ChatGPT Review。
 
 ## 決策與封包

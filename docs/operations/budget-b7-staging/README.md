@@ -2,6 +2,8 @@
 
 2026-10-31。**待 ChatGPT Review；禁止自動執行。** 只適用 `Travel-Planner-Staging`（`uyqdopksfysbobhjcepk`），不能用於 Production。完整結果見 [本輪交接](../../2026-10-31-budget-b7-forward-package-validation.md)。
 
+最新：[真實Staging最終預檢](../../2026-10-31-budget-b7-staging-final-predeploy-verification.md)已完成即時Ledger／八類Catalog／資料指紋與Managed權限查核、observed default ACL隔離補驗；原SQL封包與manifest未改。**Free專案無備份且使用者確認無匯出憑證，真實備份／還原BLOCKED，部署仍NO-GO。** 以下原始操作計畫保留，最新交接的具體查核狀態優先。
+
 ## 封包內容與重現
 
 - `dormant-schema.sql`：完整來源、單一外層交易、精確 ledger 登記、保護指紋和最後讀回。位於非自動套用目錄；沒有連線設定或執行器。
