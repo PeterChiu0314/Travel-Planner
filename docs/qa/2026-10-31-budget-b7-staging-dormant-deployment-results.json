@@ -1,0 +1,381 @@
+{
+  "date": "2026-10-31",
+  "startCommit": "bb6274ad6b85246005aba3a207a86de0e8e68653",
+  "projectRef": "uyqdopksfysbobhjcepk",
+  "authorization": {
+    "specified15SourcesAndLedger": true,
+    "backupPrerequisiteWaivedForDisposableStaging": true,
+    "backupPassed": false,
+    "activation": false,
+    "qaFixtures": false,
+    "workerSchedule": false,
+    "production": false
+  },
+  "deployment": {
+    "attempts": 1,
+    "status": "BLOCKED_TOOL_SIZE_LIMIT",
+    "message": "Query is too large to be run via the SQL Editor",
+    "packetBytes": 1488439,
+    "envelopeBytes": 1488629,
+    "split": false,
+    "retry": false,
+    "directConnectionAvailable": false,
+    "startedAt": "2026-10-31T06:00:29.016Z",
+    "envelopeSha256": "65ed4826eccc11dffc184b6a4fda3d4a72eea31237e2ed1f8d73ad90b7d32975",
+    "editorCopyProof": {
+      "lfPacketMatches": true,
+      "onlyClipboardCrLfRepresentationNormalized": true,
+      "lines": 14584
+    },
+    "committedSources": 0,
+    "committedLedgerRows": 0,
+    "backendPidReturned": false,
+    "explicitRollbackClaimed": false,
+    "destructiveRollback": false,
+    "applicableRule": "Stop when the tool cannot safely process the complete atomic packet"
+  },
+  "preflight": {
+    "observedAt": "2026-10-31T05:55:59.736957+00:00",
+    "pid": 66702,
+    "role": "postgres",
+    "sessionUser": "postgres",
+    "readOnly": "on",
+    "ledgerCount": 47,
+    "head": "20261031003000",
+    "ledgerIdentityAndKnownHashesMatch": true,
+    "hotfixBodyHashesMatch": 13,
+    "custom40001": 0,
+    "catalog": [
+      {
+        "count": 280,
+        "sha256": "4aa6e18c12c5da4e8e6b763d034c30691d57322fb4710109dd79043f9c8202d8",
+        "section": "columns"
+      },
+      {
+        "count": 147,
+        "sha256": "f592db42acb7897d028981c9b51af25539d1d13765794bde4c94ab6e4232a400",
+        "section": "constraints"
+      },
+      {
+        "count": 82,
+        "sha256": "8e4f5637f0a2cc9e994e0f46b741d3a3be3a2febe48430ea2d790a381d905334",
+        "section": "functions"
+      },
+      {
+        "count": 83,
+        "sha256": "2c56666b9776746560f8f50436d907bfe935ad7aa0ee41e674861901d5302046",
+        "section": "indexes"
+      },
+      {
+        "count": 57,
+        "sha256": "c7f2bc02a8bc4d7b99f0dcddfc6bb7f883a6b7381c483d9c410237f9516fca63",
+        "section": "policies"
+      },
+      {
+        "count": 21,
+        "sha256": "ccd2199aa591a12120dbe1fafbc1c55e8f8ab643eba1362026aa9495619ce20e",
+        "section": "publication"
+      },
+      {
+        "count": 25,
+        "sha256": "83f136fee52e2c987528627b5262a5b8e79aff8c4972455ca1157aa382013a3a",
+        "section": "tables"
+      },
+      {
+        "count": 45,
+        "sha256": "0b191cfe0c98969a4d6cfa5df876ce5e9c582e3dec6328376f2cfdea2b13f854",
+        "section": "triggers"
+      }
+    ],
+    "originalProtectedTablesMatch": 13,
+    "originalDataProjections": 28,
+    "maintenanceGate": {
+      "pid": 66745,
+      "observed_at": "2026-10-31T05:58:14.846674+00:00",
+      "auth_trigger": true,
+      "current_user": "postgres",
+      "auth_references": true,
+      "function_acl_digest": "cb7897aa937fe31fe51516deac997500a2c00a3035cc7feedf8cf03c6993be3c",
+      "non_owned_functions": 0,
+      "storage_usage_grant": true,
+      "strong_lock_missing": [],
+      "storage_delete_grant": true,
+      "storage_select_grant": true,
+      "prepared_transactions": 0,
+      "other_open_transactions": 0
+    },
+    "privateRawClientGrants": 0
+  },
+  "independentReadback": {
+    "observedAt": "2026-10-31T06:02:03.572929+00:00",
+    "pid": 66791,
+    "readOnly": "on",
+    "checks": {
+      "newReadOnlySession": true,
+      "ledger": true,
+      "catalog": true,
+      "all28DataProjections": true,
+      "functionOidsOwnerAclSecuritySettings": true,
+      "hotfix13": true,
+      "role": true,
+      "schemas": true,
+      "memberships": true,
+      "defaults": true,
+      "storagePolicies": true,
+      "policyGrants": true,
+      "noPartialInstall": true,
+      "noOpenTransactions": true
+    },
+    "ledgerCount": 47,
+    "head": "20261031003000",
+    "counts": [
+      {
+        "name": "app_private.budget_edit_leases",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "app_private.budget_selections",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "app_private.budget_workspace_requests",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "auth.users",
+        "rows": 1,
+        "unchanged": true
+      },
+      {
+        "name": "public.accommodations",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.actual_expense_participants",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.actual_expenses",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.attachments",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.budget_collaboration_signals",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.budget_item_participants",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.budget_items",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.guide_items",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.itinerary_alternatives",
+        "rows": 3,
+        "unchanged": true
+      },
+      {
+        "name": "public.itinerary_budget_items",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.itinerary_items",
+        "rows": 25,
+        "unchanged": true
+      },
+      {
+        "name": "public.itinerary_route_override_nodes",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.itinerary_route_overrides",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.luggage_items",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.pack_items",
+        "rows": 7,
+        "unchanged": true
+      },
+      {
+        "name": "public.share_links",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.shared_luggage_items",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.todo_items",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.trip_budget_baselines",
+        "rows": 1,
+        "unchanged": true
+      },
+      {
+        "name": "public.trip_invites",
+        "rows": 0,
+        "unchanged": true
+      },
+      {
+        "name": "public.trip_members",
+        "rows": 2,
+        "unchanged": true
+      },
+      {
+        "name": "public.trips",
+        "rows": 2,
+        "unchanged": true
+      },
+      {
+        "name": "storage.buckets",
+        "rows": 1,
+        "unchanged": true
+      },
+      {
+        "name": "storage.objects",
+        "rows": 0,
+        "unchanged": true
+      }
+    ],
+    "dataProjectionProofSha256": "55286e7d17d8940bc44b2925e79537da0f312570c54676babc2f7f7a6ab54230",
+    "functionMetadataProofSha256": "95adbdd8903ffefefdb44a14847c352e2a99e01fb1d871d53535714a545e8ae0",
+    "hotfixBodyHashesMatch": 13,
+    "custom40001": 0,
+    "scope": "public/app_private canonical metadata; 82 full pg_proc attribute rows; current postgres, selected memberships, five schema ACLs, defaults, four Storage policies; 28 original rowsets. Does not claim every managed internal object was exhaustively audited."
+  },
+  "terminalVerification": {
+    "observedAt": "2026-10-31T06:04:44.413182+00:00",
+    "pid": 67460,
+    "missingVersions": [
+      "20260811150000",
+      "20261029020551",
+      "20261029031137",
+      "20261029091435",
+      "20261029114817",
+      "20261029123907",
+      "20261029134206",
+      "20261030012554",
+      "20261030021719",
+      "20261030034351",
+      "20261030054628",
+      "20261030064703",
+      "20261030082712",
+      "20261030125028",
+      "20261031130000"
+    ],
+    "missingTerminalFunctions": 37,
+    "terminalHashMatches": 0,
+    "expectedTerminalFunctions": 38,
+    "PT409_PT500_newSites": "Blocked: F0 not installed; no Hosted 54/24 claim",
+    "protocolTables": [
+      {
+        "name": "app_private.budget_finance_protocol",
+        "exists": false
+      },
+      {
+        "name": "app_private.budget_lifecycle_protocol",
+        "exists": false
+      },
+      {
+        "name": "app_private.budget_metadata_protocol",
+        "exists": false
+      },
+      {
+        "name": "app_private.budget_metadata_undo_protocol",
+        "exists": false
+      },
+      {
+        "name": "app_private.budget_payment_protocol",
+        "exists": false
+      },
+      {
+        "name": "app_private.budget_receipt_protocol",
+        "exists": false
+      },
+      {
+        "name": "app_private.budget_source_protocol",
+        "exists": false
+      }
+    ],
+    "workerExists": false,
+    "oldLegacySaveStillPresent": true
+  },
+  "flags": {
+    "newProtocolsPresent": 0,
+    "newProtocolsActivated": false,
+    "frontEndTrackedConfigsChanged": false,
+    "localBudgetOptIns": [],
+    "anyLocalOptInEnabled": false,
+    "vercelAccess": false,
+    "meaning": "Seven protocol tables absent, not seven installed false rows"
+  },
+  "securityAdvisor": {
+    "before": {
+      "errors": 0,
+      "warnings": 9,
+      "infos": 2
+    },
+    "after": {
+      "errors": 0,
+      "warnings": 9,
+      "infos": 2
+    },
+    "scope": "Staging Dashboard viewed before and reloaded after refusal; no new schema objects, no remediation or full-linter certification"
+  },
+  "notRun": {
+    "b7DependentPreflight": "Blocked by absent schema; not claimed passed",
+    "b7DependentReadback": "Blocked by absent schema; independent original-state verification performed instead",
+    "h01": true,
+    "h02": true,
+    "h03": true,
+    "backup": true,
+    "tests": true,
+    "build": true
+  },
+  "decisions": {
+    "deployment": "BLOCKED / not installed",
+    "activation": "NO-GO",
+    "h01_h03": "Not started / needs later scope",
+    "backup": "Waived by user for this Staging only, not a passed backup",
+    "next": "Review then obtain a safe full same-session execution channel; no split/shrink/retry in this round"
+  },
+  "privacy": {
+    "rawSnapshotsAndScreenshot": "ignored local artifacts only, not committed",
+    "noCredentialsOrUserRowsCommitted": true
+  },
+  "packetUnmodified": true,
+  "productAndActiveMigrationsUnmodified": true
+}

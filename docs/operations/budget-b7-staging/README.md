@@ -1,8 +1,10 @@
 # B-7 Staging Dormant Schema 封包與操作 Runbook
 
-2026-10-31。**待 ChatGPT Review；禁止自動執行。** 只適用 `Travel-Planner-Staging`（`uyqdopksfysbobhjcepk`），不能用於 Production。完整結果見 [本輪交接](../../2026-10-31-budget-b7-forward-package-validation.md)。
+2026-10-31。只適用 `Travel-Planner-Staging`（`uyqdopksfysbobhjcepk`），不能用於 Production。[封包產出交接](../../2026-10-31-budget-b7-forward-package-validation.md)。**使用者已明確授權指定Dormant安裝，但本輪SQL Editor因完整query過大而拒絕；停止，不得自動重試。**
 
-最新：[真實Staging最終預檢](../../2026-10-31-budget-b7-staging-final-predeploy-verification.md)已完成即時Ledger／八類Catalog／資料指紋與Managed權限查核、observed default ACL隔離補驗；原SQL封包與manifest未改。**Free專案無備份且使用者確認無匯出憑證，真實備份／還原BLOCKED，部署仍NO-GO。** 以下原始操作計畫保留，最新交接的具體查核狀態優先。
+最新：[Dormant部署嘗試與獨立讀回](../../2026-10-31-budget-b7-staging-dormant-deployment.md)。本輪使用者因純測試資料取消**此Staging專案**的備份P0門檻；不是完成備份／還原。Ledger仍47，15來源未安裝，無部分套用；[前次預檢](../../2026-10-31-budget-b7-staging-final-predeploy-verification.md)的備份阻擋保留歷史效力，不能繼續當作本輪前置。原SQL、manifest與seals未改。**目前NO-GO原因：SQL Editor無法承載完整1,488,439-byte封包，connector無此專案權限且無direct連線；禁止拆分、縮減或另行擴權。**
+
+SQL註解中的「No Hosted authorization」是封包產出當時的備註，本輪使用者已另明確授權此ref的指定DDL／ledger；不修改註解以保持原Hash。既有執行授權已記錄，停止等待ChatGPT Review，後續需先解決完整同Session執行通道。
 
 ## 封包內容與重現
 
@@ -48,16 +50,16 @@ Staging 已有 `20261031003000`，**不重播**。封包依序安裝下列 15 �
 
 T0 是本來缺失的 Timeline 原子 alternative API，先於 Links／跨功能驗收補齊；不是 B-7 啟用。Fresh 測試依全部 61 個原始檔的時間排序安裝，再接 F0；舊 hotfix 在 B-7 後只執行一次。不能使用 `db push --include-all`。
 
-## 未來另行授權後的安裝 gate
+## 已授權Dormant安裝的 gate 與通道限制
 
-以下是操作計畫，**本輪未執行 Hosted 備份、安裝、啟用、Worker 或 HTTP 驗收**。
+本輪已嘗試完整送出，但工具大小限制拒絕，**沒有完成安裝**。沒有啟用／Worker／HTTP驗收。只有能安全承載完整原子封包的通道才可繼續；不能把下列程序改成逐檔部署。
 
-1. 明確確認專案 ref、維護時窗、執行角色；另外授權 dormant schema＋ledger 寫入。將前端維持舊版且所有 QA opt-in 關閉，停止新的寫入來源；檢查在途請求／lease，不能把一次活動連線為零當成維護保證。
+1. 明確確認專案ref、維護時窗、執行角色；本輪指定Dormant schema＋ledger已有授權，範圍不含Activation／QA／Worker。將前端維持舊版且所有QA opt-in關閉，檢查在途請求／lease；仍使用封包保護鎖，不能把一次活動連線為零當成未來維護保證。
 2. 重新唯讀讀取 Staging 的 47 筆 ledger、13 個基線 body、依賴 catalog／ACL／RLS／trigger／publication／role membership、Auth 使用者與 Storage 清單。檢查既有 31 筆無完整 source 的歷史記錄之必要依賴；原生 fixture 完整來源不證明遠端未知定義相同。**缺少這項對照時仍 NO-GO**。
-3. 建立授權範圍內的獨立加密 DB 備份（含 public／app_private／Auth 必要資料、ledger、角色與 ACL 清單）、Storage bytes＋object ID／路徑／metadata 清單；保留原件，雜湊核對並在另一個隔離目標驗證可讀／可還原。不要提交 dump、個人 ID、token、原始日誌。此項尚未完成。不能以本輪 rowset Hash 或 Docker 備份代替 Supabase 備份。
+3. **本輪純測試Staging由使用者明確取消備份／還原前置**；不建立備份、不重設密碼／升級方案，也不將rowset Hash當作備份。本決策不授權清庫／重建／刪資料，不適用任何Production或其他環境。沒有備份／還原通過證據，歷史紀錄保留。
 4. 逐項比對先前記錄的 **2 trips／1 user／25 itinerary items／3 alternatives／1 frozen Baseline／Storage objects 0** 與 13 表保護指紋。封包硬性綁定先前去敏預檢的指紋，任何 drift 都拒絕。不得為了安裝而改資料或盲目重封 Hash。必要時建立新版本封包並重驗。
 5. 封包最前方鎖住 ledger、13 個 public 保護表、Auth.users、Storage.objects／buckets，`SHARE ROW EXCLUSIVE` 允許普通 SELECT，阻擋其他 writer；DDL 可能進一步要求強鎖。lock timeout 5s／statement timeout 60s，任一步失敗全交易 rollback。必須先確認 managed Auth／Storage owner 權限允許鎖表；本機 admin 通過不保證 Hosted 執行角色相同。需要安靜維護時窗，無權限時不降級移除保護鎖。
-6. 經再次授權的 operator 在**同一資料庫 Session**明確設定 `app.b7_install_target='uyqdopksfysbobhjcepk'` 後，才可用 ON_ERROR_STOP 的 SQL client 將整個封包作為一個交易執行。這個 GUC 是防誤操作提示，**不是伺服器身分證明**；必須另核對連線專案。不提供可誤觸執行的連線命令。
+6. 在**同一資料庫Session**明確設定`app.b7_install_target='uyqdopksfysbobhjcepk'`後，以具ON_ERROR_STOP語意且能承載整個封包的SQL client一次執行。GUC不是伺服器身分證明，須另核對ref／role。**Dashboard已實測拒絕此完整封包；禁止再用SQL Editor或改成分段。** 若需新憑證、connector權限或其他擴權，另行提出方案；既有同範圍DDL授權不等於這些變更已授權。
 7. 封包會拒絕 ledger／known source／baseline body drift、重複安裝、非 dormant protocol、自訂未知 40001；交易內保存每張表的原始欄位投影，核對所有原始資料不變，允許新增 schema 欄位。T0／13 個 B-7／F0 的 exact source ledger 同交易提交；成功才發出 PostgREST reload NOTIFY。
 8. 提交後獨立唯讀連線逐項核對 ledger 62／F0 來源 Hash、38 個 after body Hash、未被 F0 涉及的 hotfix 原路徑、OID／owner／ACL／SECURITY／search_path、RLS／grants／private publication、原始欄位資料投影／Auth／Storage／Baseline／歷史成本。執行既有 [Preflight](../budget-b7-preflight.sql) 與 [Readback](../budget-b7-readback.sql)，再做 Managed Security Advisor。既有 Readback 是狀態摘要，不可取代部署前後逐欄位資料與 catalog 比較。未知缺失全部停止，不自動設置 readiness=true。
 
@@ -88,7 +90,7 @@ QA 清理先撤回 session、釋放 lease，正常 RPC 清除可清項目；有 
 | 階段 | 決策 | 邊界 |
 | --- | --- | --- |
 | 本機 Forward／controller／離線封包供 Review | GO（本輪結果見交接） | 原生 SQL＋受控 browser 證據；不代表真服務 |
-| Hosted dormant schema 安裝 | NO-GO，等待 Review＋明確授權 | 新鮮唯讀 catalog／備份還原／權限與維護 gate 未完成 |
+| Hosted dormant schema 安裝 | 已明確授權，但Blocked／NO-GO | 前置重驗通過；SQL Editor大小拒絕，須解決完整同Session執行通道並等待Review；此Staging備份門檻已取消 |
 | H01～H03 fixture／HTTP／Worker 能力驗證 | Blocked，未授權未實測 | 必須另授權 QA 保留、Storage、專用身分及排程範圍 |
 | Protocol／QA frontend opt-in／完整 E2E | NO-GO | readiness 語意、真 legacy expiry 和前述證據未完成 |
 | Production／main／Vercel | NO-GO | 本輪完全不在授權範圍 |

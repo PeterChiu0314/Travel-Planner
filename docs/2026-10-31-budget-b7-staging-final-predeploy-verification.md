@@ -1,5 +1,7 @@
 # B-7 Staging 最終部署前驗證
 
+後續：[Dormant部署嘗試](2026-10-31-budget-b7-staging-dormant-deployment.md)。使用者已因純測試Staging取消本頁備份P0前置並明確授權指定DDL；完整封包被SQL Editor大小限制拒絕，未部署，獨立讀回Ledger47及原狀。以下為先前預檢的歷史證據，備份不是已通過，也不再是本輪部署阻擋。
+
 2026-10-31，起點 `6c98e610e07c6bb637dac7597005b0c2961efe76`，分支 `codex/budget-collaboration-redesign`。唯一遠端目標 `Travel-Planner-Staging`／`uyqdopksfysbobhjcepk`。資料庫觀測時間 **13:16–13:34 Asia/Taipei**。本輪只有 READ ONLY 查詢、Dashboard 查閱、必要本機隔離／離線驗證及文件更新；沒有 Hosted DDL／DML／Migration／封包試跑，沒有 Production 操作、Protocol／旗標啟用、Worker／排程、Docker／WSL 或 Vercel 操作。
 
 **結論：Dormant Schema 部署仍 NO-GO。Catalog／資料指紋／封包核對已完成；獨立真實備份及還原因沒有連線憑證而 BLOCKED。** 使用者明確回覆沒有可供本機匯出的直接／Session Pooler 憑證。沒有因此重設密碼、擴權、升級方案或改用別的專案。
