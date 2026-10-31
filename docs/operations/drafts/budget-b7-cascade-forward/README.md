@@ -1,6 +1,6 @@
 # Cascade Forward：官方版本 20261031130414／本機驗證完成
 
-2026-10-31。**NON-AUTO-APPLY；本輪不授權 Hosted 寫入。** 唯一可能的後續目標為 `Travel-Planner-Staging`／`uyqdopksfysbobhjcepk`，並非 Production。
+2026-10-31。**NON-AUTO-APPLY；產出時不授權Hosted寫入。後續使用者已單獨明確授權並完成Staging COMMIT：Ledger63，禁止重播。** [實際部署／真HTTP與未結案P1](../../../2026-10-31-budget-b7-cascade-deployment.md)。Budget／Actual Cascade通過，整Trip仍42501；不得重送此Forward來修其他Guard。 唯一可能的後續目標為 `Travel-Planner-Staging`／`uyqdopksfysbobhjcepk`，並非 Production。
 
 本輪已驗證[完整 source.sql](source.sql)，3,546 bytes，LF SHA-256：
 

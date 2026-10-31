@@ -1,0 +1,657 @@
+{
+  "date": "2026-10-31",
+  "projectRef": "uyqdopksfysbobhjcepk",
+  "startingCommit": "03204d767a38054094d89e612d3c35290eeca9dc",
+  "authorizedVersion": "20261031130414",
+  "sourceSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+  "wrapperSha256": "e6db59ea72d45e21e4e7860f37d70cfab1e6d35e483847deba533495d45118a6",
+  "preflight": {
+    "passed": true,
+    "at": "2026-10-31T13:27:06.574835+00:00",
+    "ledger": {
+      "head": "20261031130000",
+      "count": 62
+    },
+    "sourceSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+    "wrapperSha256": "e6db59ea72d45e21e4e7860f37d70cfab1e6d35e483847deba533495d45118a6",
+    "functions38": true,
+    "original28": true,
+    "qaRetainedUnchanged": true,
+    "guardAttributes": true,
+    "sevenOff": true,
+    "catalogNoDrift": true,
+    "newVersionAbsent": true,
+    "transport": "Session pooler5432 / project-bound login / verify-full / TLS1.3"
+  },
+  "deployment": {
+    "committed": true,
+    "psqlExitCode": 0,
+    "transaction": "Single original wrapper BEGIN/COMMIT, ON_ERROR_STOP=1, no -1, no split",
+    "clientConnection": "New PostgreSQL17.11 psql process through Session pooler5432, Staging project-bound login, sslmode verify-full,TLS1.3",
+    "guardAndOneLedgerOnly": true
+  },
+  "independentReadback": {
+    "passed": true,
+    "observedAt": "2026-10-31T13:28:22.316484+00:00",
+    "ledger": {
+      "head": "20261031130414",
+      "count": 63
+    },
+    "source": {
+      "name": "budget_dormant_parent_cascade_guard",
+      "version": "20261031130414",
+      "source_count": 1,
+      "source_sha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22"
+    },
+    "guardBefore": "c3667a091954ed67ea677ff73aed85a5aa57cf292bb02519fcea155521a4a3d5",
+    "guardAfter": "ecd7888508e91b6df351a9ab4e95cf1a3facc426316ee68a868e622b1cdfda51",
+    "guardAttributesUnchanged": true,
+    "functions38Unchanged": true,
+    "original28Unchanged": true,
+    "retainedQaUnchanged": true,
+    "sevenOff": true,
+    "workerStorageRlsUnchanged": true,
+    "catalogChangedOnly": [
+      {
+        "section": "functions",
+        "key": "app_private.guard_incomplete_child()",
+        "before": "77c107d2547aae6a5c6898423c418d4b1c12e34a8f2532b2b2d6039ba5313c09",
+        "after": "b02f36b5e8c8099c493cb6f8ae6207c78c0df36abbec2620b7513f926d8288a2"
+      }
+    ],
+    "independentReadOnlyClients": 4,
+    "hostedActivation": false
+  },
+  "http": {
+    "project": "uyqdopksfysbobhjcepk",
+    "runHash": "c9bff5a029c898a1d9847914f454dce183bb2be2bb3045104515eadc8b95d3de",
+    "startedAt": "2026-10-31T13:32:42.571Z",
+    "realAuth": true,
+    "realHttp": true,
+    "acceptanceUsesServiceRole": false,
+    "adminScope": "Existing QA Auth generate_link + verify; narrowly scoped owner-membership QA bootstrap only; no acceptance/admin cleanup",
+    "results": [
+      {
+        "name": "Two real Auth sessions; owner JWT trip create plus scoped membership bootstrap",
+        "status": "Passed"
+      },
+      {
+        "name": "Normal Budget parent DELETE cascades participant through real PostgREST",
+        "status": "Passed"
+      },
+      {
+        "name": "Normal Actual parent DELETE cascades participant through real PostgREST",
+        "status": "Passed"
+      },
+      {
+        "name": "Nonmember and anonymous cannot delete QA Budget, Actual or Trip",
+        "status": "Passed"
+      },
+      {
+        "name": "Normal QA Trip DELETE cascades Budget/Actual participant graphs",
+        "status": "Failed",
+        "message": "HTTP403 Forbidden"
+      },
+      {
+        "name": "Existing Incomplete Parent child INSERT/UPDATE/DELETE negative HTTP checks",
+        "status": "Blocked",
+        "reason": "Stopped after Trip DELETE failure; retained QA has no Incomplete Parent; protocol remains OFF, no fixture bypass"
+      },
+      {
+        "name": "PT409 live version-conflict regression",
+        "status": "Blocked",
+        "reason": "Not executed because further mutations stopped after real Trip failure; deployed13hotfix/38final hashes unchanged, prior evidence not rerun"
+      },
+      {
+        "name": "Normal QA cleanup",
+        "status": "Blocked",
+        "reason": "Failed normal owner Trip DELETE; entire remaining QA graph retained, no administrative cascade or forced SQL cleanup"
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "route": "/rest/v1/trips",
+        "status": 200,
+        "code": null,
+        "ms": 127
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/trips",
+        "status": 200,
+        "code": null,
+        "ms": 164
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/trips",
+        "status": 201,
+        "code": null,
+        "ms": 84
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/trips",
+        "status": 200,
+        "code": null,
+        "ms": 102
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/trips",
+        "status": 200,
+        "code": null,
+        "ms": 104
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/budget_items",
+        "status": 201,
+        "code": null,
+        "ms": 144
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/budget_item_participants",
+        "status": 201,
+        "code": null,
+        "ms": 95
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/budget_item_participants",
+        "status": 200,
+        "code": null,
+        "ms": 80
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/budget_items",
+        "status": 200,
+        "code": null,
+        "ms": 138
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/budget_item_participants",
+        "status": 200,
+        "code": null,
+        "ms": 83
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/actual_expenses",
+        "status": 201,
+        "code": null,
+        "ms": 95
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/actual_expense_participants",
+        "status": 201,
+        "code": null,
+        "ms": 87
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/actual_expense_participants",
+        "status": 200,
+        "code": null,
+        "ms": 108
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/actual_expenses",
+        "status": 200,
+        "code": null,
+        "ms": 91
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/actual_expense_participants",
+        "status": 200,
+        "code": null,
+        "ms": 76
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/budget_items",
+        "status": 201,
+        "code": null,
+        "ms": 82
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/budget_item_participants",
+        "status": 201,
+        "code": null,
+        "ms": 89
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/budget_item_participants",
+        "status": 200,
+        "code": null,
+        "ms": 84
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/actual_expenses",
+        "status": 201,
+        "code": null,
+        "ms": 90
+      },
+      {
+        "method": "POST",
+        "route": "/rest/v1/actual_expense_participants",
+        "status": 201,
+        "code": null,
+        "ms": 106
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/actual_expense_participants",
+        "status": 200,
+        "code": null,
+        "ms": 85
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/budget_items",
+        "status": 200,
+        "code": null,
+        "ms": 95
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/actual_expenses",
+        "status": 200,
+        "code": null,
+        "ms": 92
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/trips",
+        "status": 200,
+        "code": null,
+        "ms": 77
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/budget_items",
+        "status": 200,
+        "code": null,
+        "ms": 87
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/actual_expenses",
+        "status": 200,
+        "code": null,
+        "ms": 79
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/trips",
+        "status": 200,
+        "code": null,
+        "ms": 100
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/budget_items",
+        "status": 200,
+        "code": null,
+        "ms": 80
+      },
+      {
+        "method": "GET",
+        "route": "/rest/v1/actual_expenses",
+        "status": 200,
+        "code": null,
+        "ms": 86
+      },
+      {
+        "method": "DELETE",
+        "route": "/rest/v1/trips",
+        "status": 403,
+        "code": "42501",
+        "ms": 92
+      }
+    ],
+    "createdTripHashes": [
+      "cbbeb4004441b57e4c411e2123941f0d4845d04d0bdbcd8595b5eff876ab5048",
+      "369f10880765104c26f48d732d00bf3fae2251237caa71c29f86b49e743b1d06"
+    ],
+    "identities": [
+      {
+        "userHash": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+        "sessionHash": "74f6ea4309eed05e00d3bb7bef193c9fbdbc89f120e764678054d87c40112350"
+      },
+      {
+        "userHash": "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95",
+        "sessionHash": "466830039ed662670d5780d77770883146c0a77d6e3b705e09e98923843f4cf8"
+      }
+    ],
+    "fatal": "HTTP403 Forbidden",
+    "completedAt": "2026-10-31T13:32:47.082Z",
+    "created": [
+      {
+        "kind": "budget",
+        "idHash": "c76aa452b57664f0b6db55fc1c95e507574ff6ab7c8d3528e162e432e620a4a5",
+        "tripHash": "cbbeb4004441b57e4c411e2123941f0d4845d04d0bdbcd8595b5eff876ab5048"
+      },
+      {
+        "kind": "actual",
+        "idHash": "d540aa6e84fab33de4cef2da17154b0b5fa81aa26723e735bba873ce3e4fb9d0",
+        "tripHash": "cbbeb4004441b57e4c411e2123941f0d4845d04d0bdbcd8595b5eff876ab5048"
+      },
+      {
+        "kind": "budget",
+        "idHash": "0dd2e0644aa29f378145c9dcc6a013da0b5670b5bf7a38f9ae252e730dca6d4a",
+        "tripHash": "369f10880765104c26f48d732d00bf3fae2251237caa71c29f86b49e743b1d06"
+      },
+      {
+        "kind": "actual",
+        "idHash": "fc16af628c87fe431f8ce16e629f7a7c00f095f2ece2742962ce0012b5d4e5f8",
+        "tripHash": "369f10880765104c26f48d732d00bf3fae2251237caa71c29f86b49e743b1d06"
+      }
+    ],
+    "cleanup": "Stopped at failure, retained entire remaining QA graph; no forced cleanup",
+    "logoutAttempted": true,
+    "logoutSuccessIndependentlyVerified": false,
+    "initialBootstrapFailure": {
+      "status": "Failed QA setup, retained separately",
+      "httpStatus": 403,
+      "code": "42501",
+      "table": "trip_members",
+      "resolution": "Only this run owner membership bootstrapped using service_role; all acceptance calls use ordinary JWT"
+    },
+    "finalIntegrity": {
+      "passed": true,
+      "orphanBudgetChildren": 0,
+      "orphanActualChildren": 0,
+      "originalFingerprints28Unchanged": true,
+      "preexistingQaUnchanged": true
+    },
+    "failureContext": {
+      "source": "Managed PostgreSQL log for2026-10-31T13:32:46.856Z",
+      "sqlstate": "42501",
+      "message": "Forbidden",
+      "chain": [
+        "Trip DELETE FK cascade to budget_items",
+        "app_private.guard_budget_edit_lease() line26",
+        "app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid) line11 at RAISE"
+      ],
+      "roleLookup": "can_edit_trip -> approved_trip_role reads trip_members approved role",
+      "nativeLimitation": "Native parent-delete cases ran privileged sessions with auth.uid null; helper bypass does not cover real ordinary JWT membership visibility during cascade"
+    },
+    "p1CascadeClosed": false,
+    "retainedThisRun": {
+      "trips": 2,
+      "ownerMemberships": 2,
+      "budgets": 1,
+      "actuals": 1,
+      "budgetParticipants": 1,
+      "actualParticipants": 1,
+      "baselines": 2,
+      "originalAccountsReused": 2,
+      "newAccounts": 0,
+      "storageObjectsCreated": 0
+    }
+  },
+  "finalReadback": {
+    "observedAt": "2026-10-31T13:34:42.109168+00:00",
+    "ledger": {
+      "head": "20261031130414",
+      "count": 63
+    },
+    "guardAfter": "ecd7888508e91b6df351a9ab4e95cf1a3facc426316ee68a868e622b1cdfda51",
+    "source": {
+      "name": "budget_dormant_parent_cascade_guard",
+      "version": "20261031130414",
+      "source_count": 1,
+      "source_sha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22"
+    },
+    "guardAttributesUnchanged": true,
+    "functions38Unchanged": true,
+    "original28": [
+      {
+        "name": "app_private.budget_edit_leases",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "app_private.budget_selections",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "app_private.budget_workspace_requests",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "auth.users",
+        "rows": 1,
+        "sha256": "2e43e82d9b13ea3f469f1675ebcc0cb232b04a54aee220f19eac5816d5535490"
+      },
+      {
+        "name": "public.accommodations",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.actual_expense_participants",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.actual_expenses",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.attachments",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_collaboration_signals",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_item_participants",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.guide_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_alternatives",
+        "rows": 3,
+        "sha256": "a6f90744b303df7679c9bdc90cc4739f8ea92563df0cb5917e086a27ab3ac83a"
+      },
+      {
+        "name": "public.itinerary_budget_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_items",
+        "rows": 25,
+        "sha256": "00943b973d3d470b17bb5bd6e993a36284042d9fe8a15693da0c83f4d36a24b5"
+      },
+      {
+        "name": "public.itinerary_route_override_nodes",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_route_overrides",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.luggage_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.pack_items",
+        "rows": 7,
+        "sha256": "d9519b2d91c5e6023323f7089c72c959b4e3046bc5fbc3bc7f5459492ab2950d"
+      },
+      {
+        "name": "public.share_links",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.shared_luggage_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.todo_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.trip_budget_baselines",
+        "rows": 1,
+        "sha256": "6d451ff219e1e8404c68ec2e6805a46cbb482de84c1219875a746c8413586c21"
+      },
+      {
+        "name": "public.trip_invites",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.trip_members",
+        "rows": 2,
+        "sha256": "4164878c26addb5bc85a8e43afc897746a2bb49c33b014dab32ec33f4fb8a857"
+      },
+      {
+        "name": "public.trips",
+        "rows": 2,
+        "sha256": "ccb841ca4b518ee8a7027886e70dc157ee105627cfad7a04186b9fbebd648764"
+      },
+      {
+        "name": "storage.buckets",
+        "rows": 1,
+        "sha256": "a67dc22edc0f770da506176d96a475d39a30f456a318e4a656595c82c020d830"
+      },
+      {
+        "name": "storage.objects",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ],
+    "protocols": {
+      "budget_source_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_finance_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true
+      },
+      "budget_payment_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_receipt_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true,
+        "storage_verified": false,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": false,
+        "content_worker_verified": false,
+        "legacy_grants_expire_at": null
+      },
+      "budget_metadata_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_lifecycle_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true
+      },
+      "budget_metadata_undo_protocol": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      }
+    },
+    "originalQa": {
+      "users": 2,
+      "groups": 72,
+      "budgets": 9,
+      "objects": 0,
+      "signals": 2,
+      "baselines": 1,
+      "tripCount": 1,
+      "participants": 5,
+      "legacyRequests": 12
+    },
+    "workerRlsAclTriggerStorageUnchanged": true,
+    "orphanCheck": {
+      "qa_incomplete_actual": 0,
+      "qa_incomplete_budget": 0,
+      "orphan_actual_children": 0,
+      "orphan_budget_children": 0
+    },
+    "noActiveLeasesOrOtherTransactions": true,
+    "qaExclusionRule": "Expected28hashes unchanged; exclude only exact new QA trip and parent IDs in local immutable fixture manifest, in addition to previous explicit QA exclusions. A first final projection included new participant rows; corrected QA scope, never expected hashes.",
+    "scope": "No Hosted writes after failed Trip DELETE; all remaining reads only"
+  },
+  "securityAdvisor": {
+    "managedLinterRerun": true,
+    "before": {
+      "errors": 0,
+      "warnings": 10,
+      "info": 22
+    },
+    "after": {
+      "errors": 0,
+      "warnings": 10,
+      "info": 22
+    },
+    "warningEntitiesUnchanged": true,
+    "newUnresolvedP0P1": false,
+    "limitation": "Advisor security checks do not certify business Cascade correctness; Trip failure remains P1",
+    "existingWarnings": "Nine intended authenticated SECURITY DEFINER RPC warnings plus leaked password protection disabled; no settings changed"
+  },
+  "checks": {
+    "qaRunnerSyntax": "Passed",
+    "originalPacketBytes": "Unchanged",
+    "historicalNative15": "Passed prior actual-version run, not repeated this round",
+    "realtimeFrontendChanged": false,
+    "build": "Not repeated; no product/build dependency changes",
+    "fullH01H03Rerun": false
+  },
+  "decisions": {
+    "forwardDeployment": "COMMIT Passed",
+    "budgetActualCascade": "Passed real HTTP",
+    "tripCascade": "Failed42501; P1 open",
+    "incompleteHttp": "Blocked, not tested this round",
+    "pt409Http": "Blocked after stop; catalog hashes preserved",
+    "p1CascadeClosed": false,
+    "activationWorkerProduction": "NO-GO",
+    "nextStep": "ChatGPT Review for minimal additional lease/membership cascade repair and true authenticated native regression; no extra Hosted authorization inferred"
+  }
+}

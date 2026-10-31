@@ -1,5 +1,7 @@
 # Budget B-7｜兩項 P1 調查、修正與 Staging 回歸準備
 
+> 後續明確授權的[Staging部署／HTTP驗收](2026-10-31-budget-b7-cascade-deployment.md)：本Forward已COMMIT／Ledger63，Budget與Actual Cascade通過，但普通JWT整Trip DELETE仍在另一個lease Guard回42501。P1-CASCADE仍未結案。本文保留先前本機Review checkpoint，不能代替後續真服務結論。
+
 2026-10-31，分支 `codex/budget-collaboration-redesign`，起點 `9ee883e30d0e881c087d322020daa7dbdb7e0c94`。唯一服務目標 `Travel-Planner-Staging`／`uyqdopksfysbobhjcepk`。
 
 **P1-RT-INSERT 已定位並修正，真服務6／6通過。P1-CASCADE正式Forward `20261031130414` 已由官方CLI產生，實際版號的15／15隔離回歸通過，可交ChatGPT Review；Hosted修復尚未授權／未執行。** 本輪沒有Hosted Schema／RLS／Publication／Role／Grant／Ledger／設定寫入，沒有重播Dormant、Activation、Worker、Production、main或Vercel部署。

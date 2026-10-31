@@ -13,6 +13,16 @@ This document now separates:
 
 # Confirmed Bugs
 
+## BUG-030 | Ordinary JWT Trip cascade loses Budget lease authorization
+
+Priority: P1
+Status: Confirmed / Staging graph preserved / separate repair Review required
+Discovered: 2026-10-31
+
+After approved guard_incomplete_child Forward committed (ledger63), individual Budget/Actual deletes cascade correctly. An approved owner JWT DELETE of a fresh QA Trip still returns403/42501 Forbidden. Managed PostgreSQL context confirms FK DELETE budget_items -> guard_budget_edit_lease line26 -> assert_budget_edit_lease line11 at can_edit_trip; approved_trip_role reads trip_members during the parent/membership cascade. Privileged native cases bypass this when auth.uid is null, so prior15/15 did not cover this real-user boundary. Failed transaction retains both parent/child graphs and Baselines; no orphan rows or forced cleanup. Further Hosted writes stopped; other requested negative/PT409 tests blocked. Only read-only diagnosis done, no extra function/RLS/grant changes. Requires an authenticated native reproduction and reviewed minimal transaction/lease repair before new exact-artifact Hosted authorization. [Deployment, runtime context and retained QA](2026-10-31-budget-b7-cascade-deployment.md).
+
+---
+
 ## BUG-029 | Cold Budget INSERT Realtime delivery absent in Staging service acceptance
 
 Priority: P1
@@ -26,10 +36,10 @@ The two original failures were caused by treating Phoenix JOIN/SUBSCRIBED as Pos
 ## BUG-028 | Dormant participant Guard rejects normal parent FK cascade
 
 Priority: P1
-Status: Local official Forward verified / pending ChatGPT Review / Hosted unresolved
+Status: Participant repair deployed / Budget-Actual HTTP passed / Trip cascade still P1 (BUG-030)
 Discovered: 2026-10-31
 
-Deleting a QA trip with a Budget participant returns55000 because the child's BEFORE DELETE trigger queries a parent already removed by the FK cascade, interprets it as incomplete and requires validated Pricing. Both real Staging runs reproduce this with all protocols OFF. A non-auto-apply, exact-body-hash draft restores only DELETE with an absent parent before any financial/lifecycle/receipt activation; existing incomplete parents and activated/paused parent protection remain guarded. Fifteen native cases pass: the original eight plus strict child UPDATE/DELETE, three paused-latch fences, protocol concurrency, full-source ledger/repeat/collision/version and atomic rollback boundaries. New full source preserves exact function hashes and properties. After the authorized21:01 local continuation, official CLI2.106.0 issued 20261031130414 later than head20261031130000; exact full source/wrapper and actual-version15/15 native regression pass. Earlier time-blocked/unfinished CLI attempts remain historical; no clock/version fabrication. Old draft/migrations remain unchanged; Hosted Guard/ledger were not changed. [Source, official version and scope](2026-10-31-budget-b7-p1-repair-review.md).
+Deleting a QA trip with a Budget participant returns55000 because the child's BEFORE DELETE trigger queries a parent already removed by the FK cascade, interprets it as incomplete and requires validated Pricing. Both real Staging runs reproduce this with all protocols OFF. A non-auto-apply, exact-body-hash draft restores only DELETE with an absent parent before any financial/lifecycle/receipt activation; existing incomplete parents and activated/paused parent protection remain guarded. Fifteen native cases pass: the original eight plus strict child UPDATE/DELETE, three paused-latch fences, protocol concurrency, full-source ledger/repeat/collision/version and atomic rollback boundaries. New full source preserves exact function hashes and properties. After the authorized21:01 local continuation, official CLI2.106.0 issued 20261031130414 later than head20261031130000; exact full source/wrapper and actual-version15/15 native regression pass. Earlier time-blocked/unfinished CLI attempts remain historical; no clock/version fabrication. Later explicitly authorized Forward committed to Staging (ledger63); Budget/Actual child cascades pass real HTTP. Whole Trip DELETE remains42501 in a different legacy lease/membership guard, tracked as BUG-030; this P1 is not closed. Old sources remain unchanged. [Source, official version and scope](2026-10-31-budget-b7-p1-repair-review.md).
 
 ---
 
