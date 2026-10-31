@@ -118,7 +118,7 @@ patch 請求例：`{kind:"budget", id, group:"note", patch:{note:"集合地點�
 5. 同交易記成功 result／before-image／effect versions／origin lineage，將可復原操作 push 至該 actor＋origin tab_session_id 的 stack，超過 5 筆只淘汰最舊 Undo 指標；不可復原操作依 §8 作安全邊界。淘汰指標不刪 request 冪等紀錄；Undo 自身不 push。必要 baseline 在交易最後只讀完整紀錄。任一步失敗全回滾；不做 client compensation。
 6. 回傳成功後可顯示已儲存；有較新 queued input 繼續序列提交。沒有 queued input 但仍聚焦同群組時保留編輯租約；已離開群組且沒有 pending／失敗修改，或 clean 真實閒置達兩分鐘時，才精確釋放對應編輯 bundle。只有 compound operation 臨時取得、未屬於持續編輯範圍的額外租約，才在操作結束後釋放；不釋放原本仍在編輯的群組。應釋放時 release 失敗顯示「已儲存，權限釋放待確認」，不重新送出 mutation。writer snapshot 與 events 共用 coalesced refresh。
 
-所有 DB 鎖只活在一次短交易；不要在 SQL 等使用者輸入、confirmation、外部匯率或 Storage。保留短 lock/statement timeout、40001/40P01 的有界重試；版本衝突不得改成 blind retry。API error reason 至少區分 forbidden/protocol_required/group_locked/lease_lost/group_conflict/dependency_changed/invalid_patch/invalid_pricing/request_mismatch/incomplete_record。
+所有 DB 鎖只活在一次短交易；不要在 SQL 等使用者輸入、confirmation、外部匯率或 Storage。保留短 lock/statement timeout；只有真正由 PostgreSQL 產生的 serialization_failure `40001`／deadlock `40P01` 才保留其交易語意與有界恢復，不把 engine code 全域改寫。自訂版本／依賴／lineage／effect 衝突須以不觸發 transport retry 的 code（本次草案為 `PT409`）拒絕；不得以自訂 `RAISE ... 40001` 模擬業務衝突或 blind retry。2026-10-31 [安全預檢與尚未執行的 Forward 草案](2026-10-31-budget-b7-staging-preflight.md)指出歷史實作仍待修正，這段契約更新不代表 migration 已部署。API error reason 至少區分 forbidden/protocol_required/group_locked/lease_lost/group_conflict/dependency_changed/invalid_patch/invalid_pricing/request_mismatch/incomplete_record。
 
 ## 6. 租約、autosave 與同步邊界
 

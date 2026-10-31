@@ -1,0 +1,3148 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Taipei",
+  "sourceCommit": "7b9f5a5c0c0408134d2a731ef2c65c2725cf674b",
+  "githubTrackingCommit": "7b9f5a5c0c0408134d2a731ef2c65c2725cf674b",
+  "scope": "Read-only Hosted checks and offline drafts only",
+  "hostedWrites": false,
+  "production": {
+    "source": "Authenticated Dashboard overview",
+    "observedLocalApprox": "2026-10-31 11:37",
+    "status": "Healthy",
+    "cpuPercent": 2,
+    "ramPercent": 52,
+    "connections": "6/60",
+    "postgresErrors": 0,
+    "errorWindowLocal": "10:37-11:37 (last 60 minutes)",
+    "highCpuBanner": false,
+    "claim": "Recovered in this observed window, not a continuous guarantee"
+  },
+  "staging": {
+    "observedAt": "2026-10-31T03:41:52.908195+00:00",
+    "ledgerHead": "20261031003000",
+    "ledgerRows": 47,
+    "repositoryMigrations": 61,
+    "exactSourceMatches": [
+      {
+        "version": "20261022090000",
+        "file": "20261022090000_budget_workspace_baseline_and_pricing.sql"
+      },
+      {
+        "version": "20261022100000",
+        "file": "20261022100000_trip_budget_exchange_rates.sql"
+      },
+      {
+        "version": "20261022110000",
+        "file": "20261022110000_budget_payment_safety_and_actual_cost.sql"
+      },
+      {
+        "version": "20261022120000",
+        "file": "20261022120000_unified_planning_payments.sql"
+      },
+      {
+        "version": "20261022162015",
+        "file": "20261022162015_luggage_collaboration_state_safety.sql"
+      },
+      {
+        "version": "20261023120000",
+        "file": "20261023120000_luggage_notes.sql"
+      },
+      {
+        "version": "20261024054121",
+        "file": "20261024054121_luggage_drag_assignment.sql"
+      },
+      {
+        "version": "20261024063828",
+        "file": "20261024063828_luggage_private_return.sql"
+      },
+      {
+        "version": "20261024112902",
+        "file": "20261024112902_luggage_item_ordering.sql"
+      },
+      {
+        "version": "20261026120000",
+        "file": "20261026120000_luggage_required_assignee.sql"
+      },
+      {
+        "version": "20261027140044",
+        "file": "20261027140044_budget_atomic_edit_leases.sql"
+      },
+      {
+        "version": "20261027145613",
+        "file": "20261027145613_budget_consistent_snapshot.sql"
+      },
+      {
+        "version": "20261027152539",
+        "file": "20261027152539_budget_collaboration_state.sql"
+      },
+      {
+        "version": "20261028104333",
+        "file": "20261028104333_budget_selection_activity.sql"
+      },
+      {
+        "version": "20261031003000",
+        "file": "20261031003000_rpc_business_conflicts_no_retry.sql"
+      }
+    ],
+    "sourceUnavailable": [
+      {
+        "version": "001",
+        "file": "001_collaborative_travel_planner.sql"
+      },
+      {
+        "version": "002",
+        "file": "002_core_mvp_schema.sql"
+      },
+      {
+        "version": "003",
+        "file": "003_trip_name_compat.sql"
+      },
+      {
+        "version": "004",
+        "file": "004_harden_rls_rpc_permissions.sql"
+      },
+      {
+        "version": "005",
+        "file": "005_revoke_public_rpc_execute.sql"
+      },
+      {
+        "version": "006",
+        "file": "006_move_rls_helpers_private.sql"
+      },
+      {
+        "version": "007",
+        "file": "007_create_attachments_storage.sql"
+      },
+      {
+        "version": "008",
+        "file": "008_share_snapshot_rpc.sql"
+      },
+      {
+        "version": "009",
+        "file": "009_add_edit_locks.sql"
+      },
+      {
+        "version": "010",
+        "file": "010_add_transportation_card_fields.sql"
+      },
+      {
+        "version": "011",
+        "file": "011_add_transport_card_pair_fields.sql"
+      },
+      {
+        "version": "012",
+        "file": "012_add_transport_review_snapshots.sql"
+      },
+      {
+        "version": "013",
+        "file": "013_add_itinerary_alternative_visit_fields.sql"
+      },
+      {
+        "version": "014",
+        "file": "014_add_itinerary_item_fixed_fields.sql"
+      },
+      {
+        "version": "015",
+        "file": "015_add_trip_destination_fields.sql"
+      },
+      {
+        "version": "016",
+        "file": "016_apply_trip_date_change.sql"
+      },
+      {
+        "version": "017",
+        "file": "017_confirm_trip_date_shortening.sql"
+      },
+      {
+        "version": "018",
+        "file": "018_filter_share_snapshot_timeline.sql"
+      },
+      {
+        "version": "019",
+        "file": "019_swap_itinerary_destination_packages.sql"
+      },
+      {
+        "version": "020",
+        "file": "020_reorder_itinerary_destination_packages.sql"
+      },
+      {
+        "version": "021",
+        "file": "021_fix_reorder_baseline_count.sql"
+      },
+      {
+        "version": "022",
+        "file": "022_add_transport_role_to_itinerary_items.sql"
+      },
+      {
+        "version": "023",
+        "file": "023_reorder_itinerary_timed_auto_continuation.sql"
+      },
+      {
+        "version": "024",
+        "file": "024_reorder_itinerary_fixed_anchor_continuation.sql"
+      },
+      {
+        "version": "20260708063744",
+        "file": "20260708063744_add_itinerary_route_overrides.sql"
+      },
+      {
+        "version": "20260710125337",
+        "file": "20260710125337_add_itinerary_route_override_nodes.sql"
+      },
+      {
+        "version": "20260712033758",
+        "file": "20260712033758_add_route_tables_to_realtime.sql"
+      },
+      {
+        "version": "20260809090000",
+        "file": "20260809090000_timeline_phase_6_unified_schedule_operation.sql"
+      },
+      {
+        "version": "20260809091000",
+        "file": "20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql"
+      },
+      {
+        "version": "20260811124500",
+        "file": "20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql"
+      },
+      {
+        "version": "20260811133000",
+        "file": "20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql"
+      }
+    ],
+    "byteHashMismatchResolvedAsWhitespace": {
+      "version": "20260819125851",
+      "file": "20260819125851_phase_7_import_trip_timeline_v1.sql",
+      "localChars": 22258,
+      "recordedChars": 22259,
+      "localBodySha256": "15bf3368cef00d10b9f45092bff68a562e6408f30de9adcdeeba326c36e34273",
+      "recordedBodySha256": "15bf3368cef00d10b9f45092bff68a562e6408f30de9adcdeeba326c36e34273",
+      "liveBodySha256": "15bf3368cef00d10b9f45092bff68a562e6408f30de9adcdeeba326c36e34273",
+      "lexicallyIdenticalIgnoringWhitespaceComments": true,
+      "exactWhenTrimmingOuterWhitespace": true,
+      "liveInvoker": true,
+      "anonDenied": true,
+      "authenticatedAllowed": true,
+      "searchPath": [
+        "search_path=pg_catalog, public, auth"
+      ]
+    },
+    "remoteOnly": [],
+    "missing": [
+      {
+        "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+        "version": "20260811150000",
+        "sha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8",
+        "pendingB7": false,
+        "raiseCount": 0
+      },
+      {
+        "file": "20261029020551_budget_group_metadata_prototype.sql",
+        "version": "20261029020551",
+        "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6",
+        "pendingB7": true,
+        "raiseCount": 6
+      },
+      {
+        "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+        "version": "20261029031137",
+        "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1",
+        "pendingB7": true,
+        "raiseCount": 0
+      },
+      {
+        "file": "20261029091435_budget_metadata_undo_prototype.sql",
+        "version": "20261029091435",
+        "sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd",
+        "pendingB7": true,
+        "raiseCount": 6
+      },
+      {
+        "file": "20261029114817_budget_category_payer_links_groups.sql",
+        "version": "20261029114817",
+        "sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262",
+        "pendingB7": true,
+        "raiseCount": 8
+      },
+      {
+        "file": "20261029123907_budget_pricing_participant_groups.sql",
+        "version": "20261029123907",
+        "sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d",
+        "pendingB7": true,
+        "raiseCount": 17
+      },
+      {
+        "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+        "version": "20261029134206",
+        "sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3",
+        "pendingB7": true,
+        "raiseCount": 11
+      },
+      {
+        "file": "20261030012554_budget_payment_minimal_bundle.sql",
+        "version": "20261030012554",
+        "sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011",
+        "pendingB7": true,
+        "raiseCount": 5
+      },
+      {
+        "file": "20261030021719_budget_source_atomic_groups.sql",
+        "version": "20261030021719",
+        "sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c",
+        "pendingB7": true,
+        "raiseCount": 10
+      },
+      {
+        "file": "20261030034351_budget_receipts_lifecycle.sql",
+        "version": "20261030034351",
+        "sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80",
+        "pendingB7": true,
+        "raiseCount": 12
+      },
+      {
+        "file": "20261030054628_budget_financial_dependencies.sql",
+        "version": "20261030054628",
+        "sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55",
+        "pendingB7": true,
+        "raiseCount": 20
+      },
+      {
+        "file": "20261030064703_budget_workspace_lifecycle.sql",
+        "version": "20261030064703",
+        "sha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+        "pendingB7": true,
+        "raiseCount": 18
+      },
+      {
+        "file": "20261030082712_budget_workspace_undo.sql",
+        "version": "20261030082712",
+        "sha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27",
+        "pendingB7": true,
+        "raiseCount": 23
+      },
+      {
+        "file": "20261030125028_budget_workspace_integration_safety.sql",
+        "version": "20261030125028",
+        "sha256": "87350e2bafd338345bd59cd0a4c71aaf58baccd57f8110c91eae6bd502ac713c",
+        "pendingB7": true,
+        "raiseCount": 5
+      }
+    ],
+    "ledger": [
+      {
+        "name": "collaborative_travel_planner",
+        "version": "001",
+        "source_sha256": null
+      },
+      {
+        "name": "core_mvp_schema",
+        "version": "002",
+        "source_sha256": null
+      },
+      {
+        "name": "trip_name_compat",
+        "version": "003",
+        "source_sha256": null
+      },
+      {
+        "name": "harden_rls_rpc_permissions",
+        "version": "004",
+        "source_sha256": null
+      },
+      {
+        "name": "revoke_public_rpc_execute",
+        "version": "005",
+        "source_sha256": null
+      },
+      {
+        "name": "move_rls_helpers_private",
+        "version": "006",
+        "source_sha256": null
+      },
+      {
+        "name": "create_attachments_storage",
+        "version": "007",
+        "source_sha256": null
+      },
+      {
+        "name": "share_snapshot_rpc",
+        "version": "008",
+        "source_sha256": null
+      },
+      {
+        "name": "add_edit_locks",
+        "version": "009",
+        "source_sha256": null
+      },
+      {
+        "name": "add_transportation_card_fields",
+        "version": "010",
+        "source_sha256": null
+      },
+      {
+        "name": "add_transport_card_pair_fields",
+        "version": "011",
+        "source_sha256": null
+      },
+      {
+        "name": "add_transport_review_snapshots",
+        "version": "012",
+        "source_sha256": null
+      },
+      {
+        "name": "add_itinerary_alternative_visit_fields",
+        "version": "013",
+        "source_sha256": null
+      },
+      {
+        "name": "add_itinerary_item_fixed_fields",
+        "version": "014",
+        "source_sha256": null
+      },
+      {
+        "name": "add_trip_destination_fields",
+        "version": "015",
+        "source_sha256": null
+      },
+      {
+        "name": "apply_trip_date_change",
+        "version": "016",
+        "source_sha256": null
+      },
+      {
+        "name": "confirm_trip_date_shortening",
+        "version": "017",
+        "source_sha256": null
+      },
+      {
+        "name": "filter_share_snapshot_timeline",
+        "version": "018",
+        "source_sha256": null
+      },
+      {
+        "name": "swap_itinerary_destination_packages",
+        "version": "019",
+        "source_sha256": null
+      },
+      {
+        "name": "reorder_itinerary_destination_packages",
+        "version": "020",
+        "source_sha256": null
+      },
+      {
+        "name": "fix_reorder_baseline_count",
+        "version": "021",
+        "source_sha256": null
+      },
+      {
+        "name": "add_transport_role_to_itinerary_items",
+        "version": "022",
+        "source_sha256": null
+      },
+      {
+        "name": "reorder_itinerary_timed_auto_continuation",
+        "version": "023",
+        "source_sha256": null
+      },
+      {
+        "name": "reorder_itinerary_fixed_anchor_continuation",
+        "version": "024",
+        "source_sha256": null
+      },
+      {
+        "name": "add_itinerary_route_overrides",
+        "version": "20260708063744",
+        "source_sha256": null
+      },
+      {
+        "name": "add_itinerary_route_override_nodes",
+        "version": "20260710125337",
+        "source_sha256": null
+      },
+      {
+        "name": "add_route_tables_to_realtime",
+        "version": "20260712033758",
+        "source_sha256": null
+      },
+      {
+        "name": "timeline_phase_6_unified_schedule_operation",
+        "version": "20260809090000",
+        "source_sha256": null
+      },
+      {
+        "name": "timeline_phase_6_cleanup_legacy_time_transport",
+        "version": "20260809091000",
+        "source_sha256": null
+      },
+      {
+        "name": "timeline_phase_6_defer_transport_pair_uniqueness",
+        "version": "20260811124500",
+        "source_sha256": null
+      },
+      {
+        "name": "timeline_phase_6_restore_five_minute_ceiling",
+        "version": "20260811133000",
+        "source_sha256": null
+      },
+      {
+        "name": "phase_7_import_trip_timeline_v1",
+        "version": "20260819125851",
+        "source_sha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c"
+      },
+      {
+        "name": "budget_workspace_baseline_and_pricing",
+        "version": "20261022090000",
+        "source_sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+      },
+      {
+        "name": "trip_budget_exchange_rates",
+        "version": "20261022100000",
+        "source_sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+      },
+      {
+        "name": "budget_payment_safety_and_actual_cost",
+        "version": "20261022110000",
+        "source_sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+      },
+      {
+        "name": "unified_planning_payments",
+        "version": "20261022120000",
+        "source_sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+      },
+      {
+        "name": "luggage_collaboration_state_safety",
+        "version": "20261022162015",
+        "source_sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+      },
+      {
+        "name": "luggage_notes",
+        "version": "20261023120000",
+        "source_sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+      },
+      {
+        "name": "luggage_drag_assignment",
+        "version": "20261024054121",
+        "source_sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+      },
+      {
+        "name": "luggage_private_return",
+        "version": "20261024063828",
+        "source_sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+      },
+      {
+        "name": "luggage_item_ordering",
+        "version": "20261024112902",
+        "source_sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+      },
+      {
+        "name": "luggage_required_assignee",
+        "version": "20261026120000",
+        "source_sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+      },
+      {
+        "name": "budget_atomic_edit_leases",
+        "version": "20261027140044",
+        "source_sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+      },
+      {
+        "name": "budget_consistent_snapshot",
+        "version": "20261027145613",
+        "source_sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+      },
+      {
+        "name": "budget_collaboration_state",
+        "version": "20261027152539",
+        "source_sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+      },
+      {
+        "name": "budget_selection_activity",
+        "version": "20261028104333",
+        "source_sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+      },
+      {
+        "name": "rpc_business_conflicts_no_retry",
+        "version": "20261031003000",
+        "source_sha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2"
+      }
+    ],
+    "counts": {
+      "trips": 2,
+      "users": 1,
+      "leases": 0,
+      "actuals": 0,
+      "budgets": 0,
+      "signals": 0,
+      "receipts": 0,
+      "baselines": 1,
+      "selections": 0,
+      "attachments": 0
+    },
+    "protection": {
+      "active_api": 0,
+      "auth_users": 1,
+      "observed_at": "2026-10-31T03:48:41.102528+00:00",
+      "storage_bytes": 0,
+      "storage_objects": 0,
+      "protected_tables": [
+        {
+          "name": "actual_expense_participants",
+          "rows": 0,
+          "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "actual_expenses",
+          "rows": 0,
+          "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "attachments",
+          "rows": 0,
+          "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "budget_item_participants",
+          "rows": 0,
+          "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "budget_items",
+          "rows": 0,
+          "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "itinerary_alternatives",
+          "rows": 3,
+          "rowset_sha256": "a6f90744b303df7679c9bdc90cc4739f8ea92563df0cb5917e086a27ab3ac83a"
+        },
+        {
+          "name": "itinerary_budget_items",
+          "rows": 0,
+          "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "itinerary_items",
+          "rows": 25,
+          "rowset_sha256": "00943b973d3d470b17bb5bd6e993a36284042d9fe8a15693da0c83f4d36a24b5"
+        },
+        {
+          "name": "luggage_items",
+          "rows": 0,
+          "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "shared_luggage_items",
+          "rows": 0,
+          "rowset_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        {
+          "name": "trip_budget_baselines",
+          "rows": 1,
+          "rowset_sha256": "6d451ff219e1e8404c68ec2e6805a46cbb482de84c1219875a746c8413586c21"
+        },
+        {
+          "name": "trip_members",
+          "rows": 2,
+          "rowset_sha256": "4164878c26addb5bc85a8e43afc897746a2bb49c33b014dab32ec33f4fb8a857"
+        },
+        {
+          "name": "trips",
+          "rows": 2,
+          "rowset_sha256": "ccb841ca4b518ee8a7027886e70dc157ee105627cfad7a04186b9fbebd648764"
+        }
+      ]
+    },
+    "bucket": {
+      "mime": [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf"
+      ],
+      "public": false,
+      "max_bytes": 10485760
+    },
+    "custom40001": 0,
+    "pt409Routines": 13,
+    "b7Absent": true,
+    "workerAbsent": true,
+    "timelineFunctions": null
+  },
+  "sourceAudit": {
+    "repositoryMigrations": 61,
+    "pendingB7Migrations": 13,
+    "pendingRaiseSites": 141,
+    "pendingDefinitionsWithRaises": 69,
+    "projectedTerminalDirectFunctions": 38,
+    "projectedTerminalRaiseSites": 78,
+    "hotfixSignatures": [
+      "public.delete_budget_workspace_record(uuid,text,uuid,timestamptz)",
+      "app_private.budget_edit_lease_action(text,uuid,uuid,uuid,text,timestamptz)",
+      "app_private.budget_workspace_request(uuid,uuid,text,text,uuid)",
+      "app_private.update_budget_selection(uuid,uuid,text,uuid)",
+      "app_private.update_budget_selection_v2(uuid,uuid,text,uuid,uuid,text)",
+      "public.assign_luggage_item(uuid,text,uuid,timestamptz,uuid)",
+      "public.mutate_budget_receipt(uuid,uuid,text,jsonb,uuid,uuid)",
+      "public.mutate_luggage_item(uuid,text,text,uuid,timestamptz,jsonb)",
+      "public.privatize_luggage_item(uuid,uuid,timestamptz,text)",
+      "public.reorder_luggage_items(uuid,text,uuid,uuid,text,jsonb)",
+      "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+      "public.save_budget_workspace_record_v2(uuid,text,uuid,timestamptz,jsonb,uuid)",
+      "public.save_budget_workspace_record_v3(uuid,text,uuid,timestamptz,jsonb,uuid)"
+    ],
+    "topLevelDoRaises": [],
+    "files": [
+      {
+        "file": "20261029020551_budget_group_metadata_prototype.sql",
+        "version": "20261029020551",
+        "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6",
+        "pendingB7": true,
+        "definitionCount": 15,
+        "raiseCount": 6,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+            "replace": false,
+            "line": 82,
+            "bodySha256": "e499e3c7180a9a4fc31f5d548644b70f57eb78bfd43ac4e302babf211dce60ce",
+            "raises": [
+              {
+                "offset": 2472,
+                "message": "group_state_missing",
+                "form": "explicit-errcode",
+                "line": 117
+              },
+              {
+                "offset": 3032,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 125
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": false,
+            "line": 169,
+            "bodySha256": "870118fedabeec5491c2d4da6759db405e0c066b9eff2bed035aa0e284a27c8b",
+            "raises": [
+              {
+                "offset": 4123,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 217
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_metadata_patch()",
+            "replace": false,
+            "line": 225,
+            "bodySha256": "ae7bd19f1fbda44e0f11d727e25ed09ba385c9450ff2f063ce497d140380f9fd",
+            "raises": [
+              {
+                "offset": 815,
+                "message": "group_effect_not_committed",
+                "form": "explicit-errcode",
+                "line": 234
+              }
+            ]
+          },
+          {
+            "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": false,
+            "line": 248,
+            "bodySha256": "96b1492541444454e46ed62752a234e2aed6de981a4e850505940ed5102d18d6",
+            "raises": [
+              {
+                "offset": 897,
+                "message": "Record missing",
+                "form": "explicit-errcode",
+                "line": 263
+              }
+            ]
+          },
+          {
+            "signature": "app_private.assert_budget_metadata_effect_finished()",
+            "replace": false,
+            "line": 347,
+            "bodySha256": "34bc147cc37462a09f30fb3f61748bee7d2e0e8196d1f6ebd51e0cf0ca9bd20f",
+            "raises": [
+              {
+                "offset": 196,
+                "message": "unfinished_group_patch",
+                "form": "explicit-errcode",
+                "line": 351
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+        "version": "20261029031137",
+        "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1",
+        "pendingB7": true,
+        "definitionCount": 4,
+        "raiseCount": 0,
+        "doRaises": [],
+        "functions": [],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261029091435_budget_metadata_undo_prototype.sql",
+        "version": "20261029091435",
+        "sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd",
+        "pendingB7": true,
+        "definitionCount": 12,
+        "raiseCount": 6,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": false,
+            "line": 120,
+            "bodySha256": "90b05e867eb17e9f17069d934de31f522c7ab2c035e8fa8652b39eeaf68fc08a",
+            "raises": [
+              {
+                "offset": 1812,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 141
+              },
+              {
+                "offset": 2428,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 147
+              },
+              {
+                "offset": 3742,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 161
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+            "replace": false,
+            "line": 195,
+            "bodySha256": "dd4fb8f8dd0cb1c417e8d19930120741ec594283356d779649eebc9b03a558af",
+            "raises": [
+              {
+                "offset": 1940,
+                "message": "undo_target_not_top",
+                "form": "explicit-errcode",
+                "line": 219
+              },
+              {
+                "offset": 2460,
+                "message": "undo_lineage_conflict",
+                "form": "explicit-errcode",
+                "line": 223
+              }
+            ]
+          },
+          {
+            "signature": "app_private.assert_budget_metadata_undo_finished()",
+            "replace": false,
+            "line": 282,
+            "bodySha256": "346a3cfe12bd9e9e98aaf58dd5fae786d1ca8b234094b0f87accec5f04cfa4e7",
+            "raises": [
+              {
+                "offset": 203,
+                "message": "unfinished_metadata_undo",
+                "form": "explicit-errcode",
+                "line": 286
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261029114817_budget_category_payer_links_groups.sql",
+        "version": "20261029114817",
+        "sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262",
+        "pendingB7": true,
+        "definitionCount": 14,
+        "raiseCount": 8,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+            "replace": true,
+            "line": 15,
+            "bodySha256": "3c308873ccee3ec3100cd6071832121dc90cc0581705bcc81c17c5ef43e5ba50",
+            "raises": [
+              {
+                "offset": 2547,
+                "message": "group_state_missing",
+                "form": "explicit-errcode",
+                "line": 50
+              },
+              {
+                "offset": 3107,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 58
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 79,
+            "bodySha256": "d8e1ed7fde212448e4374c80b40d42fb938ab7e965b82faae5bb74cd59a943d4",
+            "raises": [
+              {
+                "offset": 4988,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 136
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_metadata_patch()",
+            "replace": true,
+            "line": 151,
+            "bodySha256": "34f1be5f20b424804bf0f8b99839becf150b6cf3665e575409cdfe8494834fc4",
+            "raises": [
+              {
+                "offset": 876,
+                "message": "group_effect_not_committed",
+                "form": "explicit-errcode",
+                "line": 160
+              }
+            ]
+          },
+          {
+            "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 171,
+            "bodySha256": "48c629ed88ea115e9a4b91983dc95d8a715168c157d4d4f7780ca5d5972a51ca",
+            "raises": [
+              {
+                "offset": 1892,
+                "message": "Record missing",
+                "form": "explicit-errcode",
+                "line": 196
+              }
+            ]
+          },
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": true,
+            "line": 323,
+            "bodySha256": "cbd829d673fc6136c24d76c524c9b94a1aaa150646186854bb26570f45012d16",
+            "raises": [
+              {
+                "offset": 1890,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 345
+              },
+              {
+                "offset": 2506,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 351
+              },
+              {
+                "offset": 3820,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 365
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261029123907_budget_pricing_participant_groups.sql",
+        "version": "20261029123907",
+        "sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d",
+        "pendingB7": true,
+        "definitionCount": 22,
+        "raiseCount": 17,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.budget_pricing_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+            "replace": false,
+            "line": 89,
+            "bodySha256": "a7d9bf7486bf136e4e64390dd8a9ec2159f1cab01a8536ceade1a40c0ed5fb63",
+            "raises": [
+              {
+                "offset": 2341,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 108
+              },
+              {
+                "offset": 3364,
+                "message": "dependency_changed",
+                "form": "explicit-errcode",
+                "line": 116
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": false,
+            "line": 145,
+            "bodySha256": "b112ea0ad57cd3f9e75ba67fd8fabd64b5ab224adecccf5f59e9e67e110c6030",
+            "raises": [
+              {
+                "offset": 2746,
+                "message": "dependency_changed",
+                "form": "explicit-errcode",
+                "line": 163
+              },
+              {
+                "offset": 2846,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 164
+              },
+              {
+                "offset": 4065,
+                "message": "Trip exchange rate changed or unavailable",
+                "form": "explicit-errcode",
+                "line": 174
+              },
+              {
+                "offset": 5102,
+                "message": "Resource changed",
+                "form": "explicit-errcode",
+                "line": 183
+              },
+              {
+                "offset": 7550,
+                "message": "dependency_changed",
+                "form": "explicit-errcode",
+                "line": 201
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_pricing_patch()",
+            "replace": false,
+            "line": 210,
+            "bodySha256": "3fcc7354a7c2f8980059aabfaf6b33d2e067f8689d761cb83730b29d00b02977",
+            "raises": [
+              {
+                "offset": 1096,
+                "message": "Incomplete pricing effect",
+                "form": "explicit-errcode",
+                "line": 219
+              }
+            ]
+          },
+          {
+            "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+            "replace": true,
+            "line": 278,
+            "bodySha256": "328beeaad6e5dd5db5866670fcfef5665f84d935815b6d27af4fbbbb5ee47bcd",
+            "raises": [
+              {
+                "offset": 2735,
+                "message": "group_state_missing",
+                "form": "explicit-errcode",
+                "line": 314
+              },
+              {
+                "offset": 3295,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 322
+              }
+            ]
+          },
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": true,
+            "line": 507,
+            "bodySha256": "7abcc0c117b13768aa6a624deca0249a0e07c2866925fc238eb607e111fe85c9",
+            "raises": [
+              {
+                "offset": 1900,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 529
+              },
+              {
+                "offset": 2516,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 535
+              },
+              {
+                "offset": 3830,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 549
+              }
+            ]
+          },
+          {
+            "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 645,
+            "bodySha256": "3a93a7ed3778e4ce606165900d2767726bd9da51e1d6b9b595bb29b61b56a591",
+            "raises": [
+              {
+                "offset": 2066,
+                "message": "Record missing",
+                "form": "explicit-errcode",
+                "line": 671
+              }
+            ]
+          },
+          {
+            "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+            "replace": true,
+            "line": 746,
+            "bodySha256": "900e27fd2dad423ef5b0476c6058ea4e26e1e75fe7807cbefdefb84a18e27714",
+            "raises": [
+              {
+                "offset": 3058,
+                "message": "Budget missing",
+                "form": "explicit-errcode",
+                "line": 787
+              },
+              {
+                "offset": 3210,
+                "message": "Budget changed",
+                "form": "explicit-errcode",
+                "line": 788
+              },
+              {
+                "offset": 6386,
+                "message": "Expense changed",
+                "form": "explicit-errcode",
+                "line": 814
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+        "version": "20261029134206",
+        "sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3",
+        "pendingB7": true,
+        "definitionCount": 24,
+        "raiseCount": 11,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.budget_payment_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)",
+            "replace": false,
+            "line": 61,
+            "bodySha256": "0ec3ceac180d65d4e6cd313ef6d23a98e88e892546536b2cf1e9bfb6daffe8fa",
+            "raises": [
+              {
+                "offset": 2154,
+                "message": "payment_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 79
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+            "replace": false,
+            "line": 111,
+            "bodySha256": "5ad4b3ce4e87c34bf90edf0675870fa9f0cc9fb393936fc5fc6d370249606115",
+            "raises": [
+              {
+                "offset": 3093,
+                "message": "payment_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 130
+              },
+              {
+                "offset": 5244,
+                "message": "payment_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 141
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_payment()",
+            "replace": false,
+            "line": 185,
+            "bodySha256": "f76c8451c5ee0f4becedd817d3bfb67ea74b369ba1f47d329c30a45568bcfaa1",
+            "raises": [
+              {
+                "offset": 1853,
+                "message": "Incomplete payment effect",
+                "form": "explicit-errcode",
+                "line": 200
+              },
+              {
+                "offset": 2566,
+                "message": "Incomplete payment participants",
+                "form": "explicit-errcode",
+                "line": 208
+              }
+            ]
+          },
+          {
+            "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+            "replace": true,
+            "line": 269,
+            "bodySha256": "b741f32f933d1fa04fab1db7cc341d934951858037df3b2d6adcc1e68c1d4be9",
+            "raises": [
+              {
+                "offset": 2739,
+                "message": "group_state_missing",
+                "form": "explicit-errcode",
+                "line": 305
+              },
+              {
+                "offset": 3299,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 313
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 335,
+            "bodySha256": "e16e30558cc2b3aed89334b99ab87d1987c3e1fada19587f03c70e4bdac36748",
+            "raises": [
+              {
+                "offset": 4992,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 392
+              }
+            ]
+          },
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": true,
+            "line": 568,
+            "bodySha256": "6ce8395143fbc058a542ea33d3f060c4df1c219badfa8cc07c05cf6381379f41",
+            "raises": [
+              {
+                "offset": 1910,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 590
+              },
+              {
+                "offset": 2526,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 596
+              },
+              {
+                "offset": 3840,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 610
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261030012554_budget_payment_minimal_bundle.sql",
+        "version": "20261030012554",
+        "sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011",
+        "pendingB7": true,
+        "definitionCount": 9,
+        "raiseCount": 5,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.budget_payment_admission_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)",
+            "replace": true,
+            "line": 31,
+            "bodySha256": "8fbd53bfdeb4918f936297b479ff9ffe0c9bc0d536228958c116626a356387f7",
+            "raises": [
+              {
+                "offset": 2566,
+                "message": "payment_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 50
+              },
+              {
+                "offset": 2858,
+                "message": "payment_intent_changed",
+                "form": "explicit-errcode",
+                "line": 51
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 88,
+            "bodySha256": "b08e124992f28cdfe3ceb6b70393991a3f2b88563988249350247514629f87d5",
+            "raises": [
+              {
+                "offset": 3100,
+                "message": "payment_intent_changed",
+                "form": "explicit-errcode",
+                "line": 107
+              },
+              {
+                "offset": 3391,
+                "message": "payment_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 108
+              },
+              {
+                "offset": 5542,
+                "message": "payment_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 119
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261030021719_budget_source_atomic_groups.sql",
+        "version": "20261030021719",
+        "sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c",
+        "pendingB7": true,
+        "definitionCount": 24,
+        "raiseCount": 10,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.budget_source_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+            "replace": false,
+            "line": 88,
+            "bodySha256": "6b0ecb28028ad1f3e395fa7a79152fd67ff912631816aa43d8f106670c93c945",
+            "raises": [
+              {
+                "offset": 2602,
+                "message": "source_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 106
+              },
+              {
+                "offset": 4591,
+                "message": "Source bundle changed",
+                "form": "explicit-errcode",
+                "line": 116
+              },
+              {
+                "offset": 5250,
+                "message": "Source intent changed",
+                "form": "explicit-errcode",
+                "line": 118
+              },
+              {
+                "offset": 5584,
+                "message": "Source state missing",
+                "form": "explicit-errcode",
+                "line": 121
+              },
+              {
+                "offset": 6576,
+                "message": "source_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 126
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_source()",
+            "replace": false,
+            "line": 182,
+            "bodySha256": "2cd8673357e2af20b38d0d9466e822c44e2cf1fcf02c26c8301d0d8f91d6bbaf",
+            "raises": [
+              {
+                "offset": 1817,
+                "message": "Incomplete Source parent",
+                "form": "explicit-errcode",
+                "line": 194
+              },
+              {
+                "offset": 2120,
+                "message": "Incomplete Source participants",
+                "form": "explicit-errcode",
+                "line": 196
+              }
+            ]
+          },
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": true,
+            "line": 466,
+            "bodySha256": "7a9eabe7a646ffb625bd0164654b8e884352045741bfd3603a57e584e3bcad23",
+            "raises": [
+              {
+                "offset": 1919,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 488
+              },
+              {
+                "offset": 2535,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 494
+              },
+              {
+                "offset": 3849,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 508
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261030034351_budget_receipts_lifecycle.sql",
+        "version": "20261030034351",
+        "sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80",
+        "pendingB7": true,
+        "definitionCount": 35,
+        "raiseCount": 12,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.receipt_authority(uuid,uuid,uuid,uuid,bigint,bigint,jsonb)",
+            "replace": false,
+            "line": 45,
+            "bodySha256": "23ed70e3c00dc3f3aa02eef8aac7c4edfd98b785e0509ddcbdad08edafe0e9eb",
+            "raises": [
+              {
+                "offset": 1207,
+                "message": "Source missing",
+                "form": "explicit-errcode",
+                "line": 57
+              },
+              {
+                "offset": 1383,
+                "message": "Receipt dependency changed; keep file and reconfirm",
+                "form": "explicit-errcode",
+                "line": 58
+              },
+              {
+                "offset": 1647,
+                "message": "Receipt version changed",
+                "form": "explicit-errcode",
+                "line": 60
+              }
+            ]
+          },
+          {
+            "signature": "app_private.receipt_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)",
+            "replace": false,
+            "line": 66,
+            "bodySha256": "19f20f4395841705c9fb3936f583ccb91c5a1825a723fed743918cd7b3765a7d",
+            "raises": [
+              {
+                "offset": 1971,
+                "message": "Receipt dependencies changed",
+                "form": "explicit-errcode",
+                "line": 82
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)",
+            "replace": false,
+            "line": 119,
+            "bodySha256": "051cdee54f740f8175f81ebef150e624c7cf7c42ac86fdb1e5184c35be4e4731",
+            "raises": [
+              {
+                "offset": 2000,
+                "message": "Receipt changed",
+                "form": "explicit-errcode",
+                "line": 137
+              },
+              {
+                "offset": 2214,
+                "message": "Original object unavailable; no deletion performed",
+                "form": "explicit-errcode",
+                "line": 138
+              },
+              {
+                "offset": 4514,
+                "message": "Original receipt changed",
+                "form": "explicit-errcode",
+                "line": 152
+              },
+              {
+                "offset": 4856,
+                "message": "Uploaded object not confirmed",
+                "form": "explicit-errcode",
+                "line": 155
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_receipt()",
+            "replace": false,
+            "line": 162,
+            "bodySha256": "5d76fc63e2178c4fb0cfda307147fce86cdfa01393cf29a7bf103202507e2de4",
+            "raises": [
+              {
+                "offset": 963,
+                "message": "Incomplete receipt metadata",
+                "form": "explicit-errcode",
+                "line": 167
+              }
+            ]
+          },
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": true,
+            "line": 453,
+            "bodySha256": "4ae2000b71f35e6726c9855cd1d0ee9d3b0dd9c5ce68be9d8b385dedb627b289",
+            "raises": [
+              {
+                "offset": 1930,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 475
+              },
+              {
+                "offset": 2546,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 481
+              },
+              {
+                "offset": 3860,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 495
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261030054628_budget_financial_dependencies.sql",
+        "version": "20261030054628",
+        "sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55",
+        "pendingB7": true,
+        "definitionCount": 37,
+        "raiseCount": 20,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.lock_budget_field_parents(uuid,jsonb)",
+            "replace": false,
+            "line": 46,
+            "bodySha256": "a6a24707c1820434c347b1882a8668a045cd36cbf3a247f31d01b52e3df6165a",
+            "raises": [
+              {
+                "offset": 460,
+                "message": "Resource changed",
+                "form": "explicit-errcode",
+                "line": 52
+              }
+            ]
+          },
+          {
+            "signature": "app_private.budget_field_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)",
+            "replace": false,
+            "line": 56,
+            "bodySha256": "df99d2e4d5a67b9f5b8490213f45b52110c7301cfae6c01a502a3f48b55c1fa4",
+            "raises": [
+              {
+                "offset": 1827,
+                "message": "Field dependency changed",
+                "form": "explicit-errcode",
+                "line": 70
+              },
+              {
+                "offset": 2629,
+                "message": "Group state missing",
+                "form": "explicit-errcode",
+                "line": 75
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+            "replace": false,
+            "line": 94,
+            "bodySha256": "139efd4fb9f908cc3c4e7625c36df9b9e9be365647bf2857609ebadce1052ba9",
+            "raises": [
+              {
+                "offset": 2605,
+                "message": "Field dependency changed",
+                "form": "explicit-errcode",
+                "line": 114
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_field()",
+            "replace": false,
+            "line": 136,
+            "bodySha256": "39d2d7d248869445077f7704c15cb8d57d5731e68047bb0c2d79b648b32704b8",
+            "raises": [
+              {
+                "offset": 1133,
+                "message": "Incomplete field bundle",
+                "form": "explicit-errcode",
+                "line": 144
+              }
+            ]
+          },
+          {
+            "signature": "public.patch_budget_metadata_group_v2(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+            "replace": false,
+            "line": 155,
+            "bodySha256": "e82b4db4ff60c8fcfabb0d11161f108623c1e6af93f57ad4e05d6002fbb78125",
+            "raises": [
+              {
+                "offset": 1753,
+                "message": "Resource changed",
+                "form": "explicit-errcode",
+                "line": 175
+              }
+            ]
+          },
+          {
+            "signature": "app_private.budget_rates_admission(uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+            "replace": false,
+            "line": 219,
+            "bodySha256": "5f0edd0c690e625e30b0a97a3b14aa632ddbbf818a1c3e57aa35d70f91565aa9",
+            "raises": [
+              {
+                "offset": 1648,
+                "message": "Rates dependencies changed",
+                "form": "explicit-errcode",
+                "line": 233
+              },
+              {
+                "offset": 2835,
+                "message": "Pricing state missing",
+                "form": "explicit-errcode",
+                "line": 240
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_rates(uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+            "replace": false,
+            "line": 254,
+            "bodySha256": "03be8c05c546f794abd3b705cd2dfb935c8d7003d8c81f1df3e00fb32290e1d4",
+            "raises": [
+              {
+                "offset": 1802,
+                "message": "Rates dependencies changed",
+                "form": "explicit-errcode",
+                "line": 266
+              },
+              {
+                "offset": 3944,
+                "message": "Rates dependencies changed",
+                "form": "explicit-errcode",
+                "line": 278
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_rates()",
+            "replace": false,
+            "line": 284,
+            "bodySha256": "04e860d99441b26b362388f09c76cfb20855ac1850382f23771a6a3182216153",
+            "raises": [
+              {
+                "offset": 566,
+                "message": "Rates not committed",
+                "form": "explicit-errcode",
+                "line": 289
+              },
+              {
+                "offset": 950,
+                "message": "Incomplete rate reprice",
+                "form": "explicit-errcode",
+                "line": 292
+              },
+              {
+                "offset": 1503,
+                "message": "Rates revision mismatch",
+                "form": "explicit-errcode",
+                "line": 297
+              }
+            ]
+          },
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": true,
+            "line": 457,
+            "bodySha256": "6bfe817109dafbff0210fa9dd090c8b3b7725d8a0f41f5ab68bd58a7aef84c82",
+            "raises": [
+              {
+                "offset": 2175,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 480
+              },
+              {
+                "offset": 2791,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 486
+              },
+              {
+                "offset": 4105,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 500
+              }
+            ]
+          },
+          {
+            "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+            "replace": true,
+            "line": 578,
+            "bodySha256": "7837b5d898eda94335f1f526dfeeb3470c83263c87ac3ad18b645efcc47819dc",
+            "raises": [
+              {
+                "offset": 3123,
+                "message": "group_state_missing",
+                "form": "explicit-errcode",
+                "line": 618
+              },
+              {
+                "offset": 3683,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 626
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 648,
+            "bodySha256": "771ab2849eac54a4804daeacaa612997d69482fa46da95a3aa3dda06af5971eb",
+            "raises": [
+              {
+                "offset": 5175,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 706
+              }
+            ]
+          },
+          {
+            "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 722,
+            "bodySha256": "ed9fbf65da49ca228d93f38b72b5b4924a9ba5065816cf3036e6e74b24a26834",
+            "raises": [
+              {
+                "offset": 2404,
+                "message": "Record missing",
+                "form": "explicit-errcode",
+                "line": 751
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261030064703_budget_workspace_lifecycle.sql",
+        "version": "20261030064703",
+        "sha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+        "pendingB7": true,
+        "definitionCount": 43,
+        "raiseCount": 18,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.lifecycle_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+            "replace": false,
+            "line": 42,
+            "bodySha256": "fc4e406deb7031b2859091ae67be9fcb7e5308eadb3cf0f78036175b1ffa0bfb",
+            "raises": [
+              {
+                "offset": 1723,
+                "message": "Lifecycle version changed",
+                "form": "explicit-errcode",
+                "line": 53
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+            "replace": false,
+            "line": 73,
+            "bodySha256": "59a8dc37bb429121c7e14df4b9592e78704cc442036ffe7f92620144d15a6700",
+            "raises": [
+              {
+                "offset": 1886,
+                "message": "Identity already used",
+                "form": "explicit-errcode",
+                "line": 86
+              },
+              {
+                "offset": 2399,
+                "message": "Lifecycle version changed",
+                "form": "explicit-errcode",
+                "line": 90
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_lifecycle()",
+            "replace": false,
+            "line": 109,
+            "bodySha256": "0c47aa7dde0e01a9f725a7d89df020c293f86379a4447689a7cdc3bc95dba581",
+            "raises": [
+              {
+                "offset": 561,
+                "message": "Delete incomplete",
+                "form": "explicit-errcode",
+                "line": 115
+              },
+              {
+                "offset": 1551,
+                "message": "Lifecycle effect incomplete",
+                "form": "explicit-errcode",
+                "line": 120
+              }
+            ]
+          },
+          {
+            "signature": "app_private.reconcile_budget_readiness(text,uuid)",
+            "replace": false,
+            "line": 181,
+            "bodySha256": "61daa8aba6b1feb3066ced4c97e21ca1dbb2a5f03caf17b7dd9cfc651780307c",
+            "raises": [
+              {
+                "offset": 557,
+                "message": "Unfinished group before readiness",
+                "form": "explicit-errcode",
+                "line": 186
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 286,
+            "bodySha256": "a38a91560720beda9130fc01dcbb8221d9f28d15da0d32beae297042d8ee11ce",
+            "raises": [
+              {
+                "offset": 2746,
+                "message": "dependency_changed",
+                "form": "explicit-errcode",
+                "line": 304
+              },
+              {
+                "offset": 2846,
+                "message": "group_conflict",
+                "form": "explicit-errcode",
+                "line": 305
+              },
+              {
+                "offset": 4065,
+                "message": "Trip exchange rate changed or unavailable",
+                "form": "explicit-errcode",
+                "line": 315
+              },
+              {
+                "offset": 5102,
+                "message": "Resource changed",
+                "form": "explicit-errcode",
+                "line": 324
+              },
+              {
+                "offset": 7889,
+                "message": "dependency_changed",
+                "form": "explicit-errcode",
+                "line": 343
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_pricing_patch()",
+            "replace": true,
+            "line": 377,
+            "bodySha256": "48f635b7f13680e559e57c3c55c95fe6daf863cbe1196029de513982c5c36706",
+            "raises": [
+              {
+                "offset": 1334,
+                "message": "Incomplete pricing effect",
+                "form": "explicit-errcode",
+                "line": 386
+              }
+            ]
+          },
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": true,
+            "line": 555,
+            "bodySha256": "33b40cc2d6256ad73eea6c0986dcd1598a29cae8cddbca459ef2540b52afda63",
+            "raises": [
+              {
+                "offset": 2517,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 579
+              },
+              {
+                "offset": 3133,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 585
+              },
+              {
+                "offset": 4447,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 599
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+            "replace": true,
+            "line": 724,
+            "bodySha256": "1bfe84ceb5c5eb75ad2334749fecca823abd595d2b03dbc1ab40c9bedbebc280",
+            "raises": [
+              {
+                "offset": 3100,
+                "message": "payment_intent_changed",
+                "form": "explicit-errcode",
+                "line": 743
+              },
+              {
+                "offset": 3391,
+                "message": "payment_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 744
+              },
+              {
+                "offset": 5542,
+                "message": "payment_dependency_changed",
+                "form": "explicit-errcode",
+                "line": 755
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261030082712_budget_workspace_undo.sql",
+        "version": "20261030082712",
+        "sha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27",
+        "pendingB7": true,
+        "definitionCount": 23,
+        "raiseCount": 23,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.workspace_undo_top(uuid,uuid,uuid)",
+            "replace": false,
+            "line": 67,
+            "bodySha256": "3d1ec6e96683ebd25cd5c70b6258291e0d84758cad52e913c2d3c1267e6e0a79",
+            "raises": [
+              {
+                "offset": 928,
+                "message": "Undo target is not stack top",
+                "form": "explicit-errcode",
+                "line": 75
+              },
+              {
+                "offset": 1424,
+                "message": "Undo dependency changed",
+                "form": "explicit-errcode",
+                "line": 79
+              },
+              {
+                "offset": 1638,
+                "message": "Placeholder has changed",
+                "form": "explicit-errcode",
+                "line": 81
+              },
+              {
+                "offset": 2186,
+                "message": "Undo target graph changed",
+                "form": "explicit-errcode",
+                "line": 85
+              },
+              {
+                "offset": 3323,
+                "message": "Undo effect/lineage changed",
+                "form": "explicit-errcode",
+                "line": 91
+              }
+            ]
+          },
+          {
+            "signature": "app_private.workspace_inverse_manifest()",
+            "replace": false,
+            "line": 141,
+            "bodySha256": "f1339103161079ca8f77fb66156ffc15b781c57710da47bfd4b98ec59fbc51de",
+            "raises": [
+              {
+                "offset": 1151,
+                "message": "Inverse target mismatch",
+                "form": "explicit-errcode",
+                "line": 151
+              },
+              {
+                "offset": 2668,
+                "message": "Undo cannot restore a stale currency or rate",
+                "form": "explicit-errcode",
+                "line": 165
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+            "replace": false,
+            "line": 179,
+            "bodySha256": "9af52a36b066e755239cfbe099d5361e0192e1dfa280f4fc4f93187bb4e32068",
+            "raises": [
+              {
+                "offset": 1029,
+                "message": "Inverse target changed",
+                "form": "explicit-errcode",
+                "line": 186
+              },
+              {
+                "offset": 1291,
+                "message": "Placeholder inverse not committed",
+                "form": "explicit-errcode",
+                "line": 189
+              },
+              {
+                "offset": 1478,
+                "message": "Incomplete inverse effect",
+                "form": "explicit-errcode",
+                "line": 190
+              },
+              {
+                "offset": 2667,
+                "message": "Inverse predecessor lineage conflict",
+                "form": "explicit-errcode",
+                "line": 199
+              }
+            ]
+          },
+          {
+            "signature": "app_private.record_budget_metadata_undo()",
+            "replace": true,
+            "line": 222,
+            "bodySha256": "48158f5f52c3f67a4686b50ec6c0b9e460262e4f5a9e391cd6bfbdbe709a6f7f",
+            "raises": [
+              {
+                "offset": 3058,
+                "message": "invalid_undo_effect",
+                "form": "explicit-errcode",
+                "line": 251
+              },
+              {
+                "offset": 3674,
+                "message": "undo_predecessor_conflict",
+                "form": "explicit-errcode",
+                "line": 257
+              },
+              {
+                "offset": 4988,
+                "message": "missing_undo_before_image",
+                "form": "explicit-errcode",
+                "line": 271
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_field()",
+            "replace": true,
+            "line": 343,
+            "bodySha256": "9d940bc6fb2051aa8d831a4a57116225b561bdfd9040096995330ea176331c32",
+            "raises": [
+              {
+                "offset": 1133,
+                "message": "Incomplete field bundle",
+                "form": "explicit-errcode",
+                "line": 351
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_pricing_patch()",
+            "replace": true,
+            "line": 363,
+            "bodySha256": "5320042e420fc64780970aa8be0197c8426a0c5812dd941bdcef580d21efcf68",
+            "raises": [
+              {
+                "offset": 1334,
+                "message": "Incomplete pricing effect",
+                "form": "explicit-errcode",
+                "line": 372
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_lifecycle()",
+            "replace": true,
+            "line": 391,
+            "bodySha256": "ef53c7f9d7adecdd65e5219ec56235648c80303de65d60b21b19a263a24ba0d8",
+            "raises": [
+              {
+                "offset": 561,
+                "message": "Delete incomplete",
+                "form": "explicit-errcode",
+                "line": 397
+              },
+              {
+                "offset": 1723,
+                "message": "Lifecycle effect incomplete",
+                "form": "explicit-errcode",
+                "line": 402
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+            "replace": true,
+            "line": 412,
+            "bodySha256": "19b660c16c9b5276543392a63749810dbb9e77c9e4b8a2912ff1298cc6677719",
+            "raises": [
+              {
+                "offset": 2900,
+                "message": "Field dependency changed",
+                "form": "explicit-errcode",
+                "line": 432
+              }
+            ]
+          },
+          {
+            "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+            "replace": true,
+            "line": 445,
+            "bodySha256": "af18ef9e332231b6dc3fd7703129d30c2c810ee36ad18d983f5df2b2898166d8",
+            "raises": [
+              {
+                "offset": 1940,
+                "message": "undo_target_not_top",
+                "form": "explicit-errcode",
+                "line": 469
+              },
+              {
+                "offset": 2460,
+                "message": "undo_lineage_conflict",
+                "form": "explicit-errcode",
+                "line": 473
+              }
+            ]
+          },
+          {
+            "signature": "app_private.finish_budget_metadata_patch()",
+            "replace": true,
+            "line": 492,
+            "bodySha256": "76a4c98b31e930e6baddf2b2f097d8a02d639973c9fa9854e6d1ef201a868167",
+            "raises": [
+              {
+                "offset": 876,
+                "message": "group_effect_not_committed",
+                "form": "explicit-errcode",
+                "line": 501
+              }
+            ]
+          },
+          {
+            "signature": "public.undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+            "replace": false,
+            "line": 513,
+            "bodySha256": "a2504d57f6f11d7d3095e045c19f780be31d5fa180715e20e4056ddbf8c4654a",
+            "raises": [
+              {
+                "offset": 2209,
+                "message": "Resource changed",
+                "form": "explicit-errcode",
+                "line": 540
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": []
+      },
+      {
+        "file": "20261030125028_budget_workspace_integration_safety.sql",
+        "version": "20261030125028",
+        "sha256": "87350e2bafd338345bd59cd0a4c71aaf58baccd57f8110c91eae6bd502ac713c",
+        "pendingB7": true,
+        "definitionCount": 20,
+        "raiseCount": 5,
+        "doRaises": [],
+        "functions": [
+          {
+            "signature": "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)",
+            "replace": true,
+            "line": 241,
+            "bodySha256": "21077f5bb167b1aa477526d4d0a062977c0d681b47c18c4db6adff0a5e9ffe88",
+            "raises": [
+              {
+                "offset": 2000,
+                "message": "Receipt changed",
+                "form": "explicit-errcode",
+                "line": 259
+              },
+              {
+                "offset": 2214,
+                "message": "Original object unavailable; no deletion performed",
+                "form": "explicit-errcode",
+                "line": 260
+              },
+              {
+                "offset": 4514,
+                "message": "Original receipt changed",
+                "form": "explicit-errcode",
+                "line": 274
+              },
+              {
+                "offset": 4856,
+                "message": "Uploaded object not confirmed",
+                "form": "explicit-errcode",
+                "line": 277
+              }
+            ]
+          },
+          {
+            "signature": "public.delete_itinerary_item_budget_safe(uuid,uuid)",
+            "replace": false,
+            "line": 327,
+            "bodySha256": "58d2f85bf17847b68449138183151a3d8fe599af59efb068de162e4139dc1043",
+            "raises": [
+              {
+                "offset": 474,
+                "message": "Itinerary item unavailable",
+                "form": "explicit-errcode",
+                "line": 333
+              }
+            ]
+          }
+        ],
+        "dynamicRewrites": [
+          {
+            "line": 114,
+            "signatures": [
+              "app_private.guard_budget_metadata_children()",
+              "app_private.read_budget_metadata_state_v3(uuid,uuid)"
+            ],
+            "snippet": "declare body text;begin\n body:=pg_get_functiondef('app_private.guard_budget_metadata_children()'::regprocedure"
+          },
+          {
+            "line": 144,
+            "signatures": [
+              "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+              "public.save_budget_workspace_record_v4(uuid,text,uuid,timestamptz,jsonb,uuid,uuid,uuid)",
+              "public.save_budget_workspace_record_v3(uuid,text,uuid,timestamptz,jsonb,uuid)",
+              "public.save_budget_workspace_record_v2(uuid,text,uuid,timestamptz,jsonb,uuid)",
+              "app_private.budget_workspace_request(uuid,uuid,text,text,uuid)"
+            ],
+            "snippet": "declare name text;f regprocedure;body text;gate text;ver text;req text;begin\n foreach name in array array['sav"
+          }
+        ]
+      }
+    ],
+    "hotfixOverwrite": [
+      {
+        "file": "20261029123907_budget_pricing_participant_groups.sql",
+        "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+        "line": 746,
+        "raises": 3
+      }
+    ],
+    "terminal": [
+      {
+        "signature": "app_private.assert_budget_metadata_effect_finished()",
+        "replace": false,
+        "line": 347,
+        "bodySha256": "34bc147cc37462a09f30fb3f61748bee7d2e0e8196d1f6ebd51e0cf0ca9bd20f",
+        "raises": [
+          {
+            "offset": 196,
+            "message": "unfinished_group_patch",
+            "form": "explicit-errcode",
+            "line": 351
+          }
+        ],
+        "file": "20261029020551_budget_group_metadata_prototype.sql"
+      },
+      {
+        "signature": "app_private.assert_budget_metadata_undo_finished()",
+        "replace": false,
+        "line": 282,
+        "bodySha256": "346a3cfe12bd9e9e98aaf58dd5fae786d1ca8b234094b0f87accec5f04cfa4e7",
+        "raises": [
+          {
+            "offset": 203,
+            "message": "unfinished_metadata_undo",
+            "form": "explicit-errcode",
+            "line": 286
+          }
+        ],
+        "file": "20261029091435_budget_metadata_undo_prototype.sql"
+      },
+      {
+        "signature": "app_private.budget_field_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)",
+        "replace": false,
+        "line": 56,
+        "bodySha256": "df99d2e4d5a67b9f5b8490213f45b52110c7301cfae6c01a502a3f48b55c1fa4",
+        "raises": [
+          {
+            "offset": 1827,
+            "message": "Field dependency changed",
+            "form": "explicit-errcode",
+            "line": 70
+          },
+          {
+            "offset": 2629,
+            "message": "Group state missing",
+            "form": "explicit-errcode",
+            "line": 75
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+        "replace": true,
+        "line": 578,
+        "bodySha256": "7837b5d898eda94335f1f526dfeeb3470c83263c87ac3ad18b645efcc47819dc",
+        "raises": [
+          {
+            "offset": 3123,
+            "message": "group_state_missing",
+            "form": "explicit-errcode",
+            "line": 618
+          },
+          {
+            "offset": 3683,
+            "message": "group_conflict",
+            "form": "explicit-errcode",
+            "line": 626
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "app_private.budget_payment_admission_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)",
+        "replace": true,
+        "line": 31,
+        "bodySha256": "8fbd53bfdeb4918f936297b479ff9ffe0c9bc0d536228958c116626a356387f7",
+        "raises": [
+          {
+            "offset": 2566,
+            "message": "payment_dependency_changed",
+            "form": "explicit-errcode",
+            "line": 50
+          },
+          {
+            "offset": 2858,
+            "message": "payment_intent_changed",
+            "form": "explicit-errcode",
+            "line": 51
+          }
+        ],
+        "file": "20261030012554_budget_payment_minimal_bundle.sql"
+      },
+      {
+        "signature": "app_private.budget_pricing_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+        "replace": false,
+        "line": 89,
+        "bodySha256": "a7d9bf7486bf136e4e64390dd8a9ec2159f1cab01a8536ceade1a40c0ed5fb63",
+        "raises": [
+          {
+            "offset": 2341,
+            "message": "group_conflict",
+            "form": "explicit-errcode",
+            "line": 108
+          },
+          {
+            "offset": 3364,
+            "message": "dependency_changed",
+            "form": "explicit-errcode",
+            "line": 116
+          }
+        ],
+        "file": "20261029123907_budget_pricing_participant_groups.sql"
+      },
+      {
+        "signature": "app_private.budget_rates_admission(uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+        "replace": false,
+        "line": 219,
+        "bodySha256": "5f0edd0c690e625e30b0a97a3b14aa632ddbbf818a1c3e57aa35d70f91565aa9",
+        "raises": [
+          {
+            "offset": 1648,
+            "message": "Rates dependencies changed",
+            "form": "explicit-errcode",
+            "line": 233
+          },
+          {
+            "offset": 2835,
+            "message": "Pricing state missing",
+            "form": "explicit-errcode",
+            "line": 240
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "app_private.budget_source_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+        "replace": false,
+        "line": 88,
+        "bodySha256": "6b0ecb28028ad1f3e395fa7a79152fd67ff912631816aa43d8f106670c93c945",
+        "raises": [
+          {
+            "offset": 2602,
+            "message": "source_dependency_changed",
+            "form": "explicit-errcode",
+            "line": 106
+          },
+          {
+            "offset": 4591,
+            "message": "Source bundle changed",
+            "form": "explicit-errcode",
+            "line": 116
+          },
+          {
+            "offset": 5250,
+            "message": "Source intent changed",
+            "form": "explicit-errcode",
+            "line": 118
+          },
+          {
+            "offset": 5584,
+            "message": "Source state missing",
+            "form": "explicit-errcode",
+            "line": 121
+          },
+          {
+            "offset": 6576,
+            "message": "source_dependency_changed",
+            "form": "explicit-errcode",
+            "line": 126
+          }
+        ],
+        "file": "20261030021719_budget_source_atomic_groups.sql"
+      },
+      {
+        "signature": "app_private.finish_budget_field()",
+        "replace": true,
+        "line": 343,
+        "bodySha256": "9d940bc6fb2051aa8d831a4a57116225b561bdfd9040096995330ea176331c32",
+        "raises": [
+          {
+            "offset": 1133,
+            "message": "Incomplete field bundle",
+            "form": "explicit-errcode",
+            "line": 351
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.finish_budget_lifecycle()",
+        "replace": true,
+        "line": 391,
+        "bodySha256": "ef53c7f9d7adecdd65e5219ec56235648c80303de65d60b21b19a263a24ba0d8",
+        "raises": [
+          {
+            "offset": 561,
+            "message": "Delete incomplete",
+            "form": "explicit-errcode",
+            "line": 397
+          },
+          {
+            "offset": 1723,
+            "message": "Lifecycle effect incomplete",
+            "form": "explicit-errcode",
+            "line": 402
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.finish_budget_metadata_patch()",
+        "replace": true,
+        "line": 492,
+        "bodySha256": "76a4c98b31e930e6baddf2b2f097d8a02d639973c9fa9854e6d1ef201a868167",
+        "raises": [
+          {
+            "offset": 876,
+            "message": "group_effect_not_committed",
+            "form": "explicit-errcode",
+            "line": 501
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.finish_budget_payment()",
+        "replace": false,
+        "line": 185,
+        "bodySha256": "f76c8451c5ee0f4becedd817d3bfb67ea74b369ba1f47d329c30a45568bcfaa1",
+        "raises": [
+          {
+            "offset": 1853,
+            "message": "Incomplete payment effect",
+            "form": "explicit-errcode",
+            "line": 200
+          },
+          {
+            "offset": 2566,
+            "message": "Incomplete payment participants",
+            "form": "explicit-errcode",
+            "line": 208
+          }
+        ],
+        "file": "20261029134206_budget_payment_lifecycle_groups.sql"
+      },
+      {
+        "signature": "app_private.finish_budget_pricing_patch()",
+        "replace": true,
+        "line": 363,
+        "bodySha256": "5320042e420fc64780970aa8be0197c8426a0c5812dd941bdcef580d21efcf68",
+        "raises": [
+          {
+            "offset": 1334,
+            "message": "Incomplete pricing effect",
+            "form": "explicit-errcode",
+            "line": 372
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.finish_budget_rates()",
+        "replace": false,
+        "line": 284,
+        "bodySha256": "04e860d99441b26b362388f09c76cfb20855ac1850382f23771a6a3182216153",
+        "raises": [
+          {
+            "offset": 566,
+            "message": "Rates not committed",
+            "form": "explicit-errcode",
+            "line": 289
+          },
+          {
+            "offset": 950,
+            "message": "Incomplete rate reprice",
+            "form": "explicit-errcode",
+            "line": 292
+          },
+          {
+            "offset": 1503,
+            "message": "Rates revision mismatch",
+            "form": "explicit-errcode",
+            "line": 297
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "app_private.finish_budget_source()",
+        "replace": false,
+        "line": 182,
+        "bodySha256": "2cd8673357e2af20b38d0d9466e822c44e2cf1fcf02c26c8301d0d8f91d6bbaf",
+        "raises": [
+          {
+            "offset": 1817,
+            "message": "Incomplete Source parent",
+            "form": "explicit-errcode",
+            "line": 194
+          },
+          {
+            "offset": 2120,
+            "message": "Incomplete Source participants",
+            "form": "explicit-errcode",
+            "line": 196
+          }
+        ],
+        "file": "20261030021719_budget_source_atomic_groups.sql"
+      },
+      {
+        "signature": "app_private.finish_receipt()",
+        "replace": false,
+        "line": 162,
+        "bodySha256": "5d76fc63e2178c4fb0cfda307147fce86cdfa01393cf29a7bf103202507e2de4",
+        "raises": [
+          {
+            "offset": 963,
+            "message": "Incomplete receipt metadata",
+            "form": "explicit-errcode",
+            "line": 167
+          }
+        ],
+        "file": "20261030034351_budget_receipts_lifecycle.sql"
+      },
+      {
+        "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+        "replace": false,
+        "line": 179,
+        "bodySha256": "9af52a36b066e755239cfbe099d5361e0192e1dfa280f4fc4f93187bb4e32068",
+        "raises": [
+          {
+            "offset": 1029,
+            "message": "Inverse target changed",
+            "form": "explicit-errcode",
+            "line": 186
+          },
+          {
+            "offset": 1291,
+            "message": "Placeholder inverse not committed",
+            "form": "explicit-errcode",
+            "line": 189
+          },
+          {
+            "offset": 1478,
+            "message": "Incomplete inverse effect",
+            "form": "explicit-errcode",
+            "line": 190
+          },
+          {
+            "offset": 2667,
+            "message": "Inverse predecessor lineage conflict",
+            "form": "explicit-errcode",
+            "line": 199
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.lifecycle_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+        "replace": false,
+        "line": 42,
+        "bodySha256": "fc4e406deb7031b2859091ae67be9fcb7e5308eadb3cf0f78036175b1ffa0bfb",
+        "raises": [
+          {
+            "offset": 1723,
+            "message": "Lifecycle version changed",
+            "form": "explicit-errcode",
+            "line": 53
+          }
+        ],
+        "file": "20261030064703_budget_workspace_lifecycle.sql"
+      },
+      {
+        "signature": "app_private.lock_budget_field_parents(uuid,jsonb)",
+        "replace": false,
+        "line": 46,
+        "bodySha256": "a6a24707c1820434c347b1882a8668a045cd36cbf3a247f31d01b52e3df6165a",
+        "raises": [
+          {
+            "offset": 460,
+            "message": "Resource changed",
+            "form": "explicit-errcode",
+            "line": 52
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+        "replace": true,
+        "line": 412,
+        "bodySha256": "19b660c16c9b5276543392a63749810dbb9e77c9e4b8a2912ff1298cc6677719",
+        "raises": [
+          {
+            "offset": 2900,
+            "message": "Field dependency changed",
+            "form": "explicit-errcode",
+            "line": 432
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.prepare_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+        "replace": false,
+        "line": 73,
+        "bodySha256": "59a8dc37bb429121c7e14df4b9592e78704cc442036ffe7f92620144d15a6700",
+        "raises": [
+          {
+            "offset": 1886,
+            "message": "Identity already used",
+            "form": "explicit-errcode",
+            "line": 86
+          },
+          {
+            "offset": 2399,
+            "message": "Lifecycle version changed",
+            "form": "explicit-errcode",
+            "line": 90
+          }
+        ],
+        "file": "20261030064703_budget_workspace_lifecycle.sql"
+      },
+      {
+        "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+        "replace": true,
+        "line": 648,
+        "bodySha256": "771ab2849eac54a4804daeacaa612997d69482fa46da95a3aa3dda06af5971eb",
+        "raises": [
+          {
+            "offset": 5175,
+            "message": "group_conflict",
+            "form": "explicit-errcode",
+            "line": 706
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+        "replace": true,
+        "line": 445,
+        "bodySha256": "af18ef9e332231b6dc3fd7703129d30c2c810ee36ad18d983f5df2b2898166d8",
+        "raises": [
+          {
+            "offset": 1940,
+            "message": "undo_target_not_top",
+            "form": "explicit-errcode",
+            "line": 469
+          },
+          {
+            "offset": 2460,
+            "message": "undo_lineage_conflict",
+            "form": "explicit-errcode",
+            "line": 473
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+        "replace": true,
+        "line": 724,
+        "bodySha256": "1bfe84ceb5c5eb75ad2334749fecca823abd595d2b03dbc1ab40c9bedbebc280",
+        "raises": [
+          {
+            "offset": 3100,
+            "message": "payment_intent_changed",
+            "form": "explicit-errcode",
+            "line": 743
+          },
+          {
+            "offset": 3391,
+            "message": "payment_dependency_changed",
+            "form": "explicit-errcode",
+            "line": 744
+          },
+          {
+            "offset": 5542,
+            "message": "payment_dependency_changed",
+            "form": "explicit-errcode",
+            "line": 755
+          }
+        ],
+        "file": "20261030064703_budget_workspace_lifecycle.sql"
+      },
+      {
+        "signature": "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+        "replace": true,
+        "line": 286,
+        "bodySha256": "a38a91560720beda9130fc01dcbb8221d9f28d15da0d32beae297042d8ee11ce",
+        "raises": [
+          {
+            "offset": 2746,
+            "message": "dependency_changed",
+            "form": "explicit-errcode",
+            "line": 304
+          },
+          {
+            "offset": 2846,
+            "message": "group_conflict",
+            "form": "explicit-errcode",
+            "line": 305
+          },
+          {
+            "offset": 4065,
+            "message": "Trip exchange rate changed or unavailable",
+            "form": "explicit-errcode",
+            "line": 315
+          },
+          {
+            "offset": 5102,
+            "message": "Resource changed",
+            "form": "explicit-errcode",
+            "line": 324
+          },
+          {
+            "offset": 7889,
+            "message": "dependency_changed",
+            "form": "explicit-errcode",
+            "line": 343
+          }
+        ],
+        "file": "20261030064703_budget_workspace_lifecycle.sql"
+      },
+      {
+        "signature": "app_private.prepare_budget_rates(uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+        "replace": false,
+        "line": 254,
+        "bodySha256": "03be8c05c546f794abd3b705cd2dfb935c8d7003d8c81f1df3e00fb32290e1d4",
+        "raises": [
+          {
+            "offset": 1802,
+            "message": "Rates dependencies changed",
+            "form": "explicit-errcode",
+            "line": 266
+          },
+          {
+            "offset": 3944,
+            "message": "Rates dependencies changed",
+            "form": "explicit-errcode",
+            "line": 278
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)",
+        "replace": true,
+        "line": 241,
+        "bodySha256": "21077f5bb167b1aa477526d4d0a062977c0d681b47c18c4db6adff0a5e9ffe88",
+        "raises": [
+          {
+            "offset": 2000,
+            "message": "Receipt changed",
+            "form": "explicit-errcode",
+            "line": 259
+          },
+          {
+            "offset": 2214,
+            "message": "Original object unavailable; no deletion performed",
+            "form": "explicit-errcode",
+            "line": 260
+          },
+          {
+            "offset": 4514,
+            "message": "Original receipt changed",
+            "form": "explicit-errcode",
+            "line": 274
+          },
+          {
+            "offset": 4856,
+            "message": "Uploaded object not confirmed",
+            "form": "explicit-errcode",
+            "line": 277
+          }
+        ],
+        "file": "20261030125028_budget_workspace_integration_safety.sql"
+      },
+      {
+        "signature": "app_private.receipt_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)",
+        "replace": false,
+        "line": 66,
+        "bodySha256": "19f20f4395841705c9fb3936f583ccb91c5a1825a723fed743918cd7b3765a7d",
+        "raises": [
+          {
+            "offset": 1971,
+            "message": "Receipt dependencies changed",
+            "form": "explicit-errcode",
+            "line": 82
+          }
+        ],
+        "file": "20261030034351_budget_receipts_lifecycle.sql"
+      },
+      {
+        "signature": "app_private.receipt_authority(uuid,uuid,uuid,uuid,bigint,bigint,jsonb)",
+        "replace": false,
+        "line": 45,
+        "bodySha256": "23ed70e3c00dc3f3aa02eef8aac7c4edfd98b785e0509ddcbdad08edafe0e9eb",
+        "raises": [
+          {
+            "offset": 1207,
+            "message": "Source missing",
+            "form": "explicit-errcode",
+            "line": 57
+          },
+          {
+            "offset": 1383,
+            "message": "Receipt dependency changed; keep file and reconfirm",
+            "form": "explicit-errcode",
+            "line": 58
+          },
+          {
+            "offset": 1647,
+            "message": "Receipt version changed",
+            "form": "explicit-errcode",
+            "line": 60
+          }
+        ],
+        "file": "20261030034351_budget_receipts_lifecycle.sql"
+      },
+      {
+        "signature": "app_private.reconcile_budget_readiness(text,uuid)",
+        "replace": false,
+        "line": 181,
+        "bodySha256": "61daa8aba6b1feb3066ced4c97e21ca1dbb2a5f03caf17b7dd9cfc651780307c",
+        "raises": [
+          {
+            "offset": 557,
+            "message": "Unfinished group before readiness",
+            "form": "explicit-errcode",
+            "line": 186
+          }
+        ],
+        "file": "20261030064703_budget_workspace_lifecycle.sql"
+      },
+      {
+        "signature": "app_private.record_budget_metadata_undo()",
+        "replace": true,
+        "line": 222,
+        "bodySha256": "48158f5f52c3f67a4686b50ec6c0b9e460262e4f5a9e391cd6bfbdbe709a6f7f",
+        "raises": [
+          {
+            "offset": 3058,
+            "message": "invalid_undo_effect",
+            "form": "explicit-errcode",
+            "line": 251
+          },
+          {
+            "offset": 3674,
+            "message": "undo_predecessor_conflict",
+            "form": "explicit-errcode",
+            "line": 257
+          },
+          {
+            "offset": 4988,
+            "message": "missing_undo_before_image",
+            "form": "explicit-errcode",
+            "line": 271
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.workspace_inverse_manifest()",
+        "replace": false,
+        "line": 141,
+        "bodySha256": "f1339103161079ca8f77fb66156ffc15b781c57710da47bfd4b98ec59fbc51de",
+        "raises": [
+          {
+            "offset": 1151,
+            "message": "Inverse target mismatch",
+            "form": "explicit-errcode",
+            "line": 151
+          },
+          {
+            "offset": 2668,
+            "message": "Undo cannot restore a stale currency or rate",
+            "form": "explicit-errcode",
+            "line": 165
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "app_private.workspace_undo_top(uuid,uuid,uuid)",
+        "replace": false,
+        "line": 67,
+        "bodySha256": "3d1ec6e96683ebd25cd5c70b6258291e0d84758cad52e913c2d3c1267e6e0a79",
+        "raises": [
+          {
+            "offset": 928,
+            "message": "Undo target is not stack top",
+            "form": "explicit-errcode",
+            "line": 75
+          },
+          {
+            "offset": 1424,
+            "message": "Undo dependency changed",
+            "form": "explicit-errcode",
+            "line": 79
+          },
+          {
+            "offset": 1638,
+            "message": "Placeholder has changed",
+            "form": "explicit-errcode",
+            "line": 81
+          },
+          {
+            "offset": 2186,
+            "message": "Undo target graph changed",
+            "form": "explicit-errcode",
+            "line": 85
+          },
+          {
+            "offset": 3323,
+            "message": "Undo effect/lineage changed",
+            "form": "explicit-errcode",
+            "line": 91
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      },
+      {
+        "signature": "public.delete_itinerary_item_budget_safe(uuid,uuid)",
+        "replace": false,
+        "line": 327,
+        "bodySha256": "58d2f85bf17847b68449138183151a3d8fe599af59efb068de162e4139dc1043",
+        "raises": [
+          {
+            "offset": 474,
+            "message": "Itinerary item unavailable",
+            "form": "explicit-errcode",
+            "line": 333
+          }
+        ],
+        "file": "20261030125028_budget_workspace_integration_safety.sql"
+      },
+      {
+        "signature": "public.patch_budget_metadata_group_v2(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+        "replace": false,
+        "line": 155,
+        "bodySha256": "e82b4db4ff60c8fcfabb0d11161f108623c1e6af93f57ad4e05d6002fbb78125",
+        "raises": [
+          {
+            "offset": 1753,
+            "message": "Resource changed",
+            "form": "explicit-errcode",
+            "line": 175
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+        "replace": true,
+        "line": 722,
+        "bodySha256": "ed9fbf65da49ca228d93f38b72b5b4924a9ba5065816cf3036e6e74b24a26834",
+        "raises": [
+          {
+            "offset": 2404,
+            "message": "Record missing",
+            "form": "explicit-errcode",
+            "line": 751
+          }
+        ],
+        "file": "20261030054628_budget_financial_dependencies.sql"
+      },
+      {
+        "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+        "replace": true,
+        "line": 746,
+        "bodySha256": "900e27fd2dad423ef5b0476c6058ea4e26e1e75fe7807cbefdefb84a18e27714",
+        "raises": [
+          {
+            "offset": 3058,
+            "message": "Budget missing",
+            "form": "explicit-errcode",
+            "line": 787
+          },
+          {
+            "offset": 3210,
+            "message": "Budget changed",
+            "form": "explicit-errcode",
+            "line": 788
+          },
+          {
+            "offset": 6386,
+            "message": "Expense changed",
+            "form": "explicit-errcode",
+            "line": 814
+          }
+        ],
+        "file": "20261029123907_budget_pricing_participant_groups.sql"
+      },
+      {
+        "signature": "public.undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+        "replace": false,
+        "line": 513,
+        "bodySha256": "a2504d57f6f11d7d3095e045c19f780be31d5fa180715e20e4056ddbf8c4654a",
+        "raises": [
+          {
+            "offset": 2209,
+            "message": "Resource changed",
+            "form": "explicit-errcode",
+            "line": 540
+          }
+        ],
+        "file": "20261030082712_budget_workspace_undo.sql"
+      }
+    ],
+    "dynamicRewrites": [
+      {
+        "file": "20261030125028_budget_workspace_integration_safety.sql",
+        "line": 114,
+        "signatures": [
+          "app_private.guard_budget_metadata_children()",
+          "app_private.read_budget_metadata_state_v3(uuid,uuid)"
+        ],
+        "snippet": "declare body text;begin\n body:=pg_get_functiondef('app_private.guard_budget_metadata_children()'::regprocedure"
+      },
+      {
+        "file": "20261030125028_budget_workspace_integration_safety.sql",
+        "line": 144,
+        "signatures": [
+          "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+          "public.save_budget_workspace_record_v4(uuid,text,uuid,timestamptz,jsonb,uuid,uuid,uuid)",
+          "public.save_budget_workspace_record_v3(uuid,text,uuid,timestamptz,jsonb,uuid)",
+          "public.save_budget_workspace_record_v2(uuid,text,uuid,timestamptz,jsonb,uuid)",
+          "app_private.budget_workspace_request(uuid,uuid,text,text,uuid)"
+        ],
+        "snippet": "declare name text;f regprocedure;body text;gate text;ver text;req text;begin\n foreach name in array array['sav"
+      }
+    ]
+  },
+  "drafts": {
+    "sql": "docs/operations/drafts/budget-b7-no-business-40001.sql",
+    "executed": false,
+    "hasUnconditionalDraftStop": true,
+    "hasUnsealedDynamicHash": true,
+    "versionAssigned": false,
+    "controllerPatch": "docs/operations/drafts/budget-b7-pt409-client.patch",
+    "controllerPatchApplied": false,
+    "patchApplyCheck": "passed",
+    "draftJsSyntax": "passed"
+  },
+  "checks": {
+    "lexerTests": {
+      "passed": 5,
+      "failed": 0
+    },
+    "newMigrationExecution": false,
+    "historicalTestsRerun": false,
+    "buildRerun": false
+  },
+  "gates": {
+    "readOnlyPreflight": "Completed",
+    "stagingDeployment": "NO-GO",
+    "activation": "NO-GO",
+    "H01": "Blocked",
+    "H02": "Blocked",
+    "H03": "Blocked",
+    "productionB7": "NO-GO"
+  },
+  "constraints": [
+    "No Production modifications",
+    "No Staging migrations or rehearsal this round",
+    "No fixtures, Storage changes or Worker scheduling",
+    "No B-7 flags or protocol enabled",
+    "No Docker, main merge or frontend deployment"
+  ]
+}

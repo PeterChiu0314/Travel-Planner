@@ -2,6 +2,8 @@
 
 本文件是可審閱的操作程序，**不是 Hosted 操作授權**。目前所有新前端旗標／DB protocol 預設關閉；真 HTTP 與排程未驗收，結論為 **NO-GO**。請先讀 [驗收矩陣](2026-10-30-budget-b7-integration-acceptance.md)。
 
+**2026-10-31 最新入口：[B-7 Staging 部署前安全預檢](2026-10-31-budget-b7-staging-preflight.md)。** 使用者本輪只授權 Hosted 唯讀盤點、草案與文件，沒有部署／演練／啟用授權。該計畫列出 13 個缺失 Budget 檔、Timeline 缺口、custom 40001 的 terminal Forward／client patch gates，以及 H01–H03 preactivation readiness 與 postactivation E2E 證據界線。下文的 Docker-only 環境限制是較早 checkpoint；環境選擇／安全條件依新計畫與下一筆明確授權，不可自行修改本機 Worker guard 去跑 Hosted。現有 Activation 及 Parent guard 仍維持；尚未核准 readiness scope／QA 保留清理前不得操作。舊 `20261031003000` hotfix 已在兩個 Hosted 專案登記，不能盲目按版本補全部。
+
 最新 B-7 [真服務補驗交接](2026-10-30-budget-b7-service-acceptance-followup.md)：本機 Docker 的 AppData namespace 與缺少 vendor registry 阻擋尚未安全修復，保留 package 私有資料 VHDX；不得改用 Hosted 繞過。CLI Advisor 已用 per-cluster TLS 成功執行，但 managed Supabase／HTTP／Worker 排程仍未通過。以下未執行的部署步驟仍需日後另行授權；本機全部通過後也須先 ChatGPT Review。
 
 ## 1. 環境與發行前檢查

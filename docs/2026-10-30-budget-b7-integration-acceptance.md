@@ -4,6 +4,8 @@
 
 本文件是本次驗收矩陣與結果入口。**發行結論：Blocked／NO-GO**。本機程式修正、DB 整合與可控 UI 已通過；真 Auth/PostgREST/Realtime/Storage HTTP、Worker 排程與完整 Supabase managed 環境安全驗收未完成，不能宣稱正式上線就緒。歷史 B-1～B-6 的通過數字不計入此次結果。
 
+2026-10-31 更新：[Staging 部署前安全預檢與 H01–H03 計畫](2026-10-31-budget-b7-staging-preflight.md)。舊基線 PT409 的 20 個真 HTTP 案例已另行通過，**不等於**本矩陣 B-7 群組／Browser／Realtime／Storage／Worker 驗收；H01–H03 仍 Blocked。待部署 source 會重新引入 custom 40001，須先審查新 terminal Forward 與 controller patch；本輪沒有執行 migration、資料測試或啟用。
+
 最新補驗自 `a28232ebc051c40c0741907d4e1c44a55f1df701` 接續：見 [Docker／真服務補驗交接](2026-10-30-budget-b7-service-acceptance-followup.md) 與 [去敏證據](qa/2026-10-30-budget-b7-service-followup.json)。新增 9/9 TLS／catalog 查核，CLI Advisor TLS 已排除；真 HTTP／排程仍 Blocked。本節以下歷史 DB／UI 數字沒有重跑或重算為本輪結果。
 
 ## 跨功能矩陣
