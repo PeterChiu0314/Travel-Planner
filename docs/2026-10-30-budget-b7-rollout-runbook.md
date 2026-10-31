@@ -1,5 +1,8 @@
 # Budget B-7 — Preflight、啟用、暫停與 Forward Repair
 
+> 2026-10-31最新：[連續收尾Runbook](operations/budget-b7-closeout-runbook.md)。使用者已授權Staging-only連續驗收及具備真實證據後的受控Activation，不需逐階段Review。當前憑證/實測readiness仍Blocked，七OFF。下文較早「只可本機／另等授權」為歷史範圍；安全gate、資料保護及Pause規則仍適用，Production不在授權內。
+
+
 本文件是可審閱的操作程序，**不是 Hosted 操作授權**。目前所有新前端旗標／DB protocol 預設關閉；真 HTTP 與排程未驗收，結論為 **NO-GO**。請先讀 [驗收矩陣](2026-10-30-budget-b7-integration-acceptance.md)。
 
 **2026-10-31 最新入口：[B-7 Staging 部署前安全預檢](2026-10-31-budget-b7-staging-preflight.md)。** 使用者本輪只授權 Hosted 唯讀盤點、草案與文件，沒有部署／演練／啟用授權。該計畫列出 13 個缺失 Budget 檔、Timeline 缺口、custom 40001 的 terminal Forward／client patch gates，以及 H01–H03 preactivation readiness 與 postactivation E2E 證據界線。下文的 Docker-only 環境限制是較早 checkpoint；環境選擇／安全條件依新計畫與下一筆明確授權，不可自行修改本機 Worker guard 去跑 Hosted。現有 Activation 及 Parent guard 仍維持；尚未核准 readiness scope／QA 保留清理前不得操作。舊 `20261031003000` hotfix 已在兩個 Hosted 專案登記，不能盲目按版本補全部。

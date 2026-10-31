@@ -151,6 +151,19 @@ export async function integrationCases(h){
   const linked=(await admin('select itinerary_item_id id from itinerary_budget_items where budget_item_id=$1',[budget]))[0].id,transport=uuid(),destination=uuid();await admin("insert into itinerary_items(id,trip_id,title,type,date,day_index,sort_order) values($1,$2,'Other stop','attraction',current_date+10,0,2)",[destination,trip]);await admin("insert into itinerary_items(id,trip_id,title,type,item_type,date,day_index,sort_order,from_item_id,to_item_id,transport_duration_minutes) values($1,$2,'Adjacent transport','transport','transport',current_date+10,0,1,$3,$4,10)",[transport,trip,linked,destination]);const before=await admin('select * from itinerary_items where trip_id=$1 order by id',[trip]);
   await assert.rejects(()=>query(a,'select public.delete_itinerary_item_budget_safe($1,$2)',[trip,linked]),e=>e.detail==='BUDGET_PARENT_DELETE_BLOCKED');assert.deepEqual(await admin('select * from itinerary_items where trip_id=$1 order by id',[trip]),before);await assert.rejects(()=>query(a,'select public.delete_itinerary_item_budget_safe($1,$2)',[h.secretTrip,linked]),e=>e.code==='42501');
  });
+ await test('B7 legal Pricing creates real children on still-Incomplete parents and raw INSERT UPDATE DELETE all reject',async()=>{
+  for(const k of ['budget','actual']){
+   const id=(await create(a,k)).created_id,g=await group(a,k,id,'pricing');
+   await patch(a,k,id,'pricing',{...g.value,amount:120,currency:'TWD',participantIds:[actorA,actorB],versions:g.value.versions});
+   const parent=await record(id,k);assert.equal(parent.record_status,'incomplete');assert.equal(parent.title,'');assert.equal(parent.pricing_ready,true);
+   const table=k==='budget'?'budget_item_participants':'actual_expense_participants',fk=k==='budget'?'budget_item_id':'actual_expense_id';
+   const read=()=>admin(`select * from ${table} where ${fk}=$1 order by user_id`,[id]);
+   const before=await read();assert.equal(before.length,2);
+   for(const [sql,args] of [[`insert into ${table}(${fk},user_id) values($1,$2)`,[id,actorA]],[`update ${table} set user_id=user_id where ${fk}=$1 and user_id=$2`,[id,actorA]],[`delete from ${table} where ${fk}=$1 and user_id=$2`,[id,actorA]]]){
+    await assert.rejects(()=>query(a,sql,args),e=>e.code==='55000');assert.deepEqual(await read(),before);
+   }
+  }
+ });
  await test('B7 operational activation refuses missing attestations and Pause Readback preserve financial hashes',async()=>{
   const activate=await fs.readFile(new URL('../docs/operations/budget-b7-activate.sql',import.meta.url),'utf8');await assert.rejects(()=>admin(activate),/Reviewed B7 real HTTP/);await admin('rollback');const before=await business();await admin(await fs.readFile(new URL('../docs/operations/budget-b7-pause.sql',import.meta.url),'utf8'));await admin(await fs.readFile(new URL('../docs/operations/budget-b7-readback.sql',import.meta.url),'utf8'));assert.deepEqual(await business(),before);
   // Fixture-only attestation exercises executable SQL; never accepted as HTTP proof.

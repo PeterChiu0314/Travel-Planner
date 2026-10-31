@@ -1,0 +1,2598 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Taipei",
+  "startingCommit": "585daacd2bca27d520202193ac90198fa3433789",
+  "project": "uyqdopksfysbobhjcepk",
+  "authorization": "Continuous Staging-only closeout; no Production/main/Vercel/Docker/WSL",
+  "completed": false,
+  "matrix": [
+    {
+      "id": "LIVE-BASELINE",
+      "item": "Fresh Staging Ledger64, original28 fingerprints,38final functions,roles/Storage policies,seven OFF",
+      "status": "Passed",
+      "evidence": "Real Dashboard read-only SQL; compared unchanged previous checkpoint; no Hosted DDL/DML"
+    },
+    {
+      "id": "LIVE-SOURCES",
+      "item": "Staging Ledger to Git source inventory",
+      "status": "Passed",
+      "evidence": "64 classified:32 exact,31 historical without full source,1 exact full-source readback differs by one trailing LF; no resealing"
+    },
+    {
+      "id": "INCOMPLETE-LOCAL",
+      "item": "Legal Lifecycle+Pricing fixture, existing-child INSERT/UPDATE/DELETE rejection",
+      "status": "Passed",
+      "evidence": "New native integration case for Budget and Actual; no direct child seeding or Guard bypass"
+    },
+    {
+      "id": "INCOMPLETE-HTTP",
+      "item": "Same legal fixture under real ordinary JWT",
+      "status": "Blocked",
+      "evidence": "QA credential supply unavailable; valid fixture requires Lifecycle/Finance activation; no fake HTTP proof"
+    },
+    {
+      "id": "STORAGE-HTTP",
+      "item": "Over10MiB/MIME/private/Signed URL/bytes SHA-256/receipt lifecycle",
+      "status": "Blocked",
+      "evidence": "No current ordinary QA JWT. Historical small PNG/MIME/private/Signed URL passed, historical overlimit deadline unresolved; no rerun this round"
+    },
+    {
+      "id": "WORKER-ADAPTER",
+      "item": "Bounded Staging adapter with project/role/expiry and exact QA claim scope",
+      "status": "Passed",
+      "evidence": "Four local safety tests; no signing secret, no Hosted Worker execution"
+    },
+    {
+      "id": "WORKER-LIVE",
+      "item": "Trusted short JWT/headers/claim/lease/cleanup/retry/restart/two scheduled cycles",
+      "status": "Blocked",
+      "evidence": "Dedicated token not supplied; ordinary/service-role substitution prohibited; zero Hosted cycles this round"
+    },
+    {
+      "id": "ACTIVATION",
+      "item": "Conditional Staging Protocol/Readiness/flags activation",
+      "status": "Blocked",
+      "evidence": "Authorized in principle, safety prerequisites unsatisfied; no attestation or flag changed"
+    },
+    {
+      "id": "FULL-E2E",
+      "item": "Real independent Browser Auth sessions and complete collaboration flows",
+      "status": "Blocked",
+      "evidence": "Requires QA credentials and gated Activation; no real-session E2E claim"
+    },
+    {
+      "id": "LOCAL-INTEGRATION",
+      "item": "Marked native PostgreSQL financial/integration concurrency",
+      "status": "Passed",
+      "evidence": "27/27; original26 repeated once only to add legal fixture coverage; latest27 used, not summed"
+    },
+    {
+      "id": "LOCAL-CONTROLLERS",
+      "item": "Nine collaboration Controller suites",
+      "status": "Passed",
+      "evidence": "136/136 local tests, not Hosted service evidence"
+    },
+    {
+      "id": "LOCAL-PLAYWRIGHT",
+      "item": "Integration/Forward suites (8 browser cases +2 verifier/Worker unit cases)",
+      "status": "Passed",
+      "evidence": "10/10. Browser cases use Mock backend or Demo; includes1440/820/390; not real Staging multiuser"
+    },
+    {
+      "id": "BUILD",
+      "item": "Production Build, syntax and immutable packet checks",
+      "status": "Passed",
+      "evidence": "Build passed with existing large chunk warning; originals/managed packet unchanged"
+    },
+    {
+      "id": "ADVISOR",
+      "item": "Managed Staging Security Advisor rerun",
+      "status": "Passed",
+      "evidence": "0Errors10Warnings23Info; no drift from prior checkpoint; existing findings retained"
+    },
+    {
+      "id": "PRODUCTION",
+      "item": "Exact Production install / merge / deploy readiness",
+      "status": "Blocked",
+      "evidence": "No Production access; live baseline/catalog/backups unknown; Staging live gates incomplete. NO-GO"
+    }
+  ],
+  "liveBaseline": {
+    "observedAt": "2026-10-31T15:31:14.704477+00:00",
+    "ledger": {
+      "head": "20261031140648",
+      "count": 64
+    },
+    "original28": [
+      {
+        "name": "app_private.budget_edit_leases",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "app_private.budget_selections",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "app_private.budget_workspace_requests",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "auth.users",
+        "rows": 1,
+        "sha256": "2e43e82d9b13ea3f469f1675ebcc0cb232b04a54aee220f19eac5816d5535490"
+      },
+      {
+        "name": "public.accommodations",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.actual_expense_participants",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.actual_expenses",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.attachments",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_collaboration_signals",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_item_participants",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.guide_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_alternatives",
+        "rows": 3,
+        "sha256": "a6f90744b303df7679c9bdc90cc4739f8ea92563df0cb5917e086a27ab3ac83a"
+      },
+      {
+        "name": "public.itinerary_budget_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_items",
+        "rows": 25,
+        "sha256": "00943b973d3d470b17bb5bd6e993a36284042d9fe8a15693da0c83f4d36a24b5"
+      },
+      {
+        "name": "public.itinerary_route_override_nodes",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_route_overrides",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.luggage_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.pack_items",
+        "rows": 7,
+        "sha256": "d9519b2d91c5e6023323f7089c72c959b4e3046bc5fbc3bc7f5459492ab2950d"
+      },
+      {
+        "name": "public.share_links",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.shared_luggage_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.todo_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.trip_budget_baselines",
+        "rows": 1,
+        "sha256": "6d451ff219e1e8404c68ec2e6805a46cbb482de84c1219875a746c8413586c21"
+      },
+      {
+        "name": "public.trip_invites",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.trip_members",
+        "rows": 2,
+        "sha256": "4164878c26addb5bc85a8e43afc897746a2bb49c33b014dab32ec33f4fb8a857"
+      },
+      {
+        "name": "public.trips",
+        "rows": 2,
+        "sha256": "ccb841ca4b518ee8a7027886e70dc157ee105627cfad7a04186b9fbebd648764"
+      },
+      {
+        "name": "storage.buckets",
+        "rows": 1,
+        "sha256": "a67dc22edc0f770da506176d96a475d39a30f456a318e4a656595c82c020d830"
+      },
+      {
+        "name": "storage.objects",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ],
+    "functions38": [
+      {
+        "sha256": "8989115e07f6da60ca6f747bffb8ffe3f72c00141d951f5c198c5b3789a709b6",
+        "signature": "app_private.assert_budget_metadata_effect_finished()"
+      },
+      {
+        "sha256": "dad3f343185fbd781d1759da2c3e76397945d11e6bf2834fcd7bd15e45416942",
+        "signature": "app_private.assert_budget_metadata_undo_finished()"
+      },
+      {
+        "sha256": "51707bef63fde8a5ee724d3cf01150b1a34028b102f604e8fa8c221ba65caa98",
+        "signature": "app_private.budget_field_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)"
+      },
+      {
+        "sha256": "a0fe39acdee70c5c8fa33d4b61cebb37dd1a6da44c8970f8a2b836abe615f0b0",
+        "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)"
+      },
+      {
+        "sha256": "f7bcad63f45c2f94cbd2075c4452f5a1c3a4c48fd245565fd2c3594418213be2",
+        "signature": "app_private.budget_payment_admission_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)"
+      },
+      {
+        "sha256": "5e2a305d48192f9def39cad1c1f61c104f8f3d39db430a83b24726c4c1b37eff",
+        "signature": "app_private.budget_pricing_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)"
+      },
+      {
+        "sha256": "c7c23c35570f95ffba3fc8a60c791d15b2af9569676a4649ce078135fd24cd52",
+        "signature": "app_private.budget_rates_admission(uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "bfc4a4a8b1d4df08c347b238764d07b2892a1f86be4900d8008724f7b8266165",
+        "signature": "app_private.budget_source_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "bb089f6fca11a6a107e8097a07ce88ceead6e423f19075933fa29574ab76bd4c",
+        "signature": "app_private.finish_budget_field()"
+      },
+      {
+        "sha256": "0183307a30cb21966d58c0d17d1d913e88e351647b7f57057fef43d89d811e05",
+        "signature": "app_private.finish_budget_lifecycle()"
+      },
+      {
+        "sha256": "f60530a2a2c98d8752f79a0f2f24be2ac112af28e88e9ff66ee95133276ae396",
+        "signature": "app_private.finish_budget_metadata_patch()"
+      },
+      {
+        "sha256": "748387cce14c3b2c9fd56ff36ecae688b4919b6bfc6faf2bee98be7e415a257e",
+        "signature": "app_private.finish_budget_payment()"
+      },
+      {
+        "sha256": "8ccaeb5bb00737e4dab7b0d40f18c05d4257d25ce1b88156cf4a213b4e63f6bb",
+        "signature": "app_private.finish_budget_pricing_patch()"
+      },
+      {
+        "sha256": "bf6344e34ce4ab1b9516cb7547925052759d4aabc7ef545164b1fce5b618bb19",
+        "signature": "app_private.finish_budget_rates()"
+      },
+      {
+        "sha256": "19a6c07798e9f3a8f922cab4ca0e1d3032d0a587b675a39416e586b1e9a38d1d",
+        "signature": "app_private.finish_budget_source()"
+      },
+      {
+        "sha256": "ff898589f18b01ada15e60665803514c88526ce2ca02bd7cc3f146a74e4cf74b",
+        "signature": "app_private.finish_receipt()"
+      },
+      {
+        "sha256": "fff03ef9c3c6b28645cd9504c3f63f8165d9512ceef3deb69dea3aaa70e9b713",
+        "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "379aa891881d5c8063eb400134b0fd2d7825f51da5752376960834838e22f106",
+        "signature": "app_private.lifecycle_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "da705e54b8c0d4d6bf21dc04d5f9ecff82132b20b864ee5d768fdf3b69756f16",
+        "signature": "app_private.lock_budget_field_parents(uuid,jsonb)"
+      },
+      {
+        "sha256": "0f3bac238e5ff45e8bc0eff973a4a56b8ef90e2d7d9792a5c752b6341ba6e1d3",
+        "signature": "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)"
+      },
+      {
+        "sha256": "4a048aecf009ce194f53ceba1915e11a3a98c701b2040f563768c882423cd9aa",
+        "signature": "app_private.prepare_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "6d9982e9169566709b09e4393008b7aea4571cc7f71f68419676529111e7f0d1",
+        "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "f4672f96c7e02b906b2e7df3043c20d64c7126806db4d564f9279d029c99605b",
+        "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "a5bdf7dcacbb3ddff33cf259693fc393b142a17f8c2b7a36029ded433379523c",
+        "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "a1a584d4c7402f1f215d5f9ba948e8b89c88dca9a2e6caebfdad29167b41f282",
+        "signature": "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "60ef5ece9787c856c2ad45bcc7a8f47b3d461ec8b02c0e798530a2b232b55da6",
+        "signature": "app_private.prepare_budget_rates(uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "77d3d6caa3b638df03361d845bd2396f5891c7217b088b17109090700d8ddcf3",
+        "signature": "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)"
+      },
+      {
+        "sha256": "f4657021b2c1c3ed0ad1c9dbfc18b37a9910cfed4d892d6df8d6e644714865dc",
+        "signature": "app_private.receipt_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)"
+      },
+      {
+        "sha256": "e9e93248d99ae6cce0dc5e1d099af90c3b36d357f79ea310bf3e82e5de3c8c7d",
+        "signature": "app_private.receipt_authority(uuid,uuid,uuid,uuid,bigint,bigint,jsonb)"
+      },
+      {
+        "sha256": "ccfb54792a451dd5ee8a35816e48801a5f995885e34e38907586514e2d703a9a",
+        "signature": "app_private.reconcile_budget_readiness(text,uuid)"
+      },
+      {
+        "sha256": "5830ee20eb1be97551dfff230cd9fa294b706fb42ac8d4c0c6e97eac9024e041",
+        "signature": "app_private.record_budget_metadata_undo()"
+      },
+      {
+        "sha256": "24738db574851c7d952ea77434d73f41d1baedb5700da073f5bba7d824695acc",
+        "signature": "app_private.workspace_inverse_manifest()"
+      },
+      {
+        "sha256": "f156820a0da2625624da1d83f684c2a666b1a9805684d43d0916cd23701a7844",
+        "signature": "app_private.workspace_undo_top(uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "4c2c7e5f7b548f96647b67292bc6b30cf5204adc8a3f213140e521303d3fc2be",
+        "signature": "public.delete_itinerary_item_budget_safe(uuid,uuid)"
+      },
+      {
+        "sha256": "a4b77b82da75fd36a0b51bccfa29374ed682fc59508aeab0a5d4d43bb84ee9b2",
+        "signature": "public.patch_budget_metadata_group_v2(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)"
+      },
+      {
+        "sha256": "ace1afd5982d4787b0c2e2593b8e7fc3e3ab63cfe5d6fa7721ef83d833e6b4c0",
+        "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "bfe5d4bf86080ae678b56ccd6b875e15d52a7ad8ccff1339b8162ea9a8c0ea0a",
+        "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)"
+      },
+      {
+        "sha256": "3d7440821dabd5b3571f1937235643f94d6dd67db62f5847a0a15b96b415d0b7",
+        "signature": "public.undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)"
+      }
+    ],
+    "protocols": {
+      "budget_source_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_finance_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true
+      },
+      "budget_payment_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_receipt_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true,
+        "storage_verified": false,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": false,
+        "content_worker_verified": false,
+        "legacy_grants_expire_at": null
+      },
+      "budget_metadata_protocol": {
+        "enabled": false,
+        "singleton": true
+      },
+      "budget_lifecycle_protocol": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true
+      },
+      "budget_metadata_undo_protocol": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      }
+    },
+    "unchanged": true,
+    "finalObservedAt": "2026-10-31T15:54:41.254758+00:00",
+    "fullCatalogUnchanged": true,
+    "custom40001": 0,
+    "activeLeases": 0,
+    "otherTransactions": 0,
+    "qaCounts": {
+      "users": 2,
+      "groups": 72,
+      "budgets": 9,
+      "objects": 0,
+      "signals": 6,
+      "baselines": 1,
+      "tripCount": 1,
+      "participants": 5,
+      "legacyRequests": 12
+    },
+    "receiptQueues": {
+      "cleanup": 0,
+      "intents": 0
+    }
+  },
+  "sourceAudit": {
+    "project": "uyqdopksfysbobhjcepk",
+    "observedAt": "2026-10-31T15:39:32.61695+00:00",
+    "readOnly": true,
+    "hostedWrites": false,
+    "ledgerCount": 64,
+    "matched": 32,
+    "historicalWithoutFullSource": 31,
+    "sourceByteMismatches": 1,
+    "allKnownDifferencesExplained": true,
+    "ledger": [
+      {
+        "name": "collaborative_travel_planner",
+        "version": "001",
+        "source_count": 73,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "core_mvp_schema",
+        "version": "002",
+        "source_count": 144,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "trip_name_compat",
+        "version": "003",
+        "source_count": 3,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "harden_rls_rpc_permissions",
+        "version": "004",
+        "source_count": 12,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "revoke_public_rpc_execute",
+        "version": "005",
+        "source_count": 12,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "move_rls_helpers_private",
+        "version": "006",
+        "source_count": 113,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "create_attachments_storage",
+        "version": "007",
+        "source_count": 9,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "share_snapshot_rpc",
+        "version": "008",
+        "source_count": 6,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_edit_locks",
+        "version": "009",
+        "source_count": 14,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_transportation_card_fields",
+        "version": "010",
+        "source_count": 14,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_transport_card_pair_fields",
+        "version": "011",
+        "source_count": 9,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_transport_review_snapshots",
+        "version": "012",
+        "source_count": 10,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_itinerary_alternative_visit_fields",
+        "version": "013",
+        "source_count": 8,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_itinerary_item_fixed_fields",
+        "version": "014",
+        "source_count": 4,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_trip_destination_fields",
+        "version": "015",
+        "source_count": 3,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "apply_trip_date_change",
+        "version": "016",
+        "source_count": 9,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "confirm_trip_date_shortening",
+        "version": "017",
+        "source_count": 11,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "filter_share_snapshot_timeline",
+        "version": "018",
+        "source_count": 6,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "swap_itinerary_destination_packages",
+        "version": "019",
+        "source_count": 10,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "reorder_itinerary_destination_packages",
+        "version": "020",
+        "source_count": 10,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "fix_reorder_baseline_count",
+        "version": "021",
+        "source_count": 4,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_transport_role_to_itinerary_items",
+        "version": "022",
+        "source_count": 6,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "reorder_itinerary_timed_auto_continuation",
+        "version": "023",
+        "source_count": 10,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "reorder_itinerary_fixed_anchor_continuation",
+        "version": "024",
+        "source_count": 10,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": []
+      },
+      {
+        "name": "add_itinerary_route_overrides",
+        "version": "20260708063744",
+        "source_count": 15,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": [
+          {
+            "path": "supabase/migrations/20260708063744_add_itinerary_route_overrides.sql",
+            "version": "20260708063744",
+            "name": "add_itinerary_route_overrides",
+            "sha256": "27672c8a7f3a0a7241a583b3b1d91386f9ea76751cc7c2dd681905b03bc11289"
+          }
+        ]
+      },
+      {
+        "name": "add_itinerary_route_override_nodes",
+        "version": "20260710125337",
+        "source_count": 28,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": [
+          {
+            "path": "supabase/migrations/20260710125337_add_itinerary_route_override_nodes.sql",
+            "version": "20260710125337",
+            "name": "add_itinerary_route_override_nodes",
+            "sha256": "b028b9bd07ec271cb0d10d8f69d812a8ea321b14b25a7154fe0d166875172dd4"
+          }
+        ]
+      },
+      {
+        "name": "add_route_tables_to_realtime",
+        "version": "20260712033758",
+        "source_count": 4,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": [
+          {
+            "path": "supabase/migrations/20260712033758_add_route_tables_to_realtime.sql",
+            "version": "20260712033758",
+            "name": "add_route_tables_to_realtime",
+            "sha256": "e1f082339d5f7b6715024032336d01c9d4cd6f7af487ba920603fe147132fc5d"
+          }
+        ]
+      },
+      {
+        "name": "timeline_phase_6_unified_schedule_operation",
+        "version": "20260809090000",
+        "source_count": 33,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": [
+          {
+            "path": "supabase/migrations/20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+            "version": "20260809090000",
+            "name": "timeline_phase_6_unified_schedule_operation",
+            "sha256": "32b6683c21dd20a20c0402e336b5737130e49e34d7a50fbc477e897a5bb72c10"
+          }
+        ]
+      },
+      {
+        "name": "timeline_phase_6_cleanup_legacy_time_transport",
+        "version": "20260809091000",
+        "source_count": 15,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": [
+          {
+            "path": "supabase/migrations/20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+            "version": "20260809091000",
+            "name": "timeline_phase_6_cleanup_legacy_time_transport",
+            "sha256": "50026a093d158ee7053c09fd485367052d20e37bff1e1dbb9828d2187697e810"
+          }
+        ]
+      },
+      {
+        "name": "timeline_phase_6_defer_transport_pair_uniqueness",
+        "version": "20260811124500",
+        "source_count": 3,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": [
+          {
+            "path": "supabase/migrations/20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+            "version": "20260811124500",
+            "name": "timeline_phase_6_defer_transport_pair_uniqueness",
+            "sha256": "6e82e3a2fe7936dbbd2e792af8f3218cf86ad25d9087b31c76e77e97c60b858a"
+          }
+        ]
+      },
+      {
+        "name": "timeline_phase_6_restore_five_minute_ceiling",
+        "version": "20260811133000",
+        "source_count": 3,
+        "source_sha256": null,
+        "status": "Historical source unavailable",
+        "matchingPaths": [],
+        "localCandidates": [
+          {
+            "path": "supabase/migrations/20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+            "version": "20260811133000",
+            "name": "timeline_phase_6_restore_five_minute_ceiling",
+            "sha256": "22d8a682a6e59cd2f260212ef539260349f6d4faa9d6c76a3f5d88e13461407b"
+          }
+        ]
+      },
+      {
+        "name": "atomic_apply_itinerary_alternative",
+        "version": "20260811150000",
+        "source_count": 1,
+        "source_sha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20260811150000_atomic_apply_itinerary_alternative.sql"
+        ]
+      },
+      {
+        "name": "phase_7_import_trip_timeline_v1",
+        "version": "20260819125851",
+        "source_count": 1,
+        "source_sha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c",
+        "status": "Source mismatch or missing",
+        "matchingPaths": [],
+        "localCandidates": [
+          {
+            "path": "supabase/migrations/20260819125851_phase_7_import_trip_timeline_v1.sql",
+            "version": "20260819125851",
+            "name": "phase_7_import_trip_timeline_v1",
+            "sha256": "d6706de32644a91ebc5e88cd94e54a8823f3363f12feabb8ead0638f890ae2c9"
+          }
+        ],
+        "explanation": "Exact readback differs by one trailing LF only; executable SQL unchanged; source hashes remain unequal"
+      },
+      {
+        "name": "budget_workspace_baseline_and_pricing",
+        "version": "20261022090000",
+        "source_count": 1,
+        "source_sha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261022090000_budget_workspace_baseline_and_pricing.sql"
+        ]
+      },
+      {
+        "name": "trip_budget_exchange_rates",
+        "version": "20261022100000",
+        "source_count": 1,
+        "source_sha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261022100000_trip_budget_exchange_rates.sql"
+        ]
+      },
+      {
+        "name": "budget_payment_safety_and_actual_cost",
+        "version": "20261022110000",
+        "source_count": 1,
+        "source_sha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261022110000_budget_payment_safety_and_actual_cost.sql"
+        ]
+      },
+      {
+        "name": "unified_planning_payments",
+        "version": "20261022120000",
+        "source_count": 1,
+        "source_sha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261022120000_unified_planning_payments.sql"
+        ]
+      },
+      {
+        "name": "luggage_collaboration_state_safety",
+        "version": "20261022162015",
+        "source_count": 1,
+        "source_sha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261022162015_luggage_collaboration_state_safety.sql"
+        ]
+      },
+      {
+        "name": "luggage_notes",
+        "version": "20261023120000",
+        "source_count": 1,
+        "source_sha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261023120000_luggage_notes.sql"
+        ]
+      },
+      {
+        "name": "luggage_drag_assignment",
+        "version": "20261024054121",
+        "source_count": 1,
+        "source_sha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261024054121_luggage_drag_assignment.sql"
+        ]
+      },
+      {
+        "name": "luggage_private_return",
+        "version": "20261024063828",
+        "source_count": 1,
+        "source_sha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261024063828_luggage_private_return.sql"
+        ]
+      },
+      {
+        "name": "luggage_item_ordering",
+        "version": "20261024112902",
+        "source_count": 1,
+        "source_sha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261024112902_luggage_item_ordering.sql"
+        ]
+      },
+      {
+        "name": "luggage_required_assignee",
+        "version": "20261026120000",
+        "source_count": 1,
+        "source_sha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261026120000_luggage_required_assignee.sql"
+        ]
+      },
+      {
+        "name": "budget_atomic_edit_leases",
+        "version": "20261027140044",
+        "source_count": 1,
+        "source_sha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261027140044_budget_atomic_edit_leases.sql"
+        ]
+      },
+      {
+        "name": "budget_consistent_snapshot",
+        "version": "20261027145613",
+        "source_count": 1,
+        "source_sha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261027145613_budget_consistent_snapshot.sql"
+        ]
+      },
+      {
+        "name": "budget_collaboration_state",
+        "version": "20261027152539",
+        "source_count": 1,
+        "source_sha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261027152539_budget_collaboration_state.sql"
+        ]
+      },
+      {
+        "name": "budget_selection_activity",
+        "version": "20261028104333",
+        "source_count": 1,
+        "source_sha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261028104333_budget_selection_activity.sql"
+        ]
+      },
+      {
+        "name": "budget_group_metadata_prototype",
+        "version": "20261029020551",
+        "source_count": 1,
+        "source_sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261029020551_budget_group_metadata_prototype.sql"
+        ]
+      },
+      {
+        "name": "budget_metadata_snapshot_signals",
+        "version": "20261029031137",
+        "source_count": 1,
+        "source_sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261029031137_budget_metadata_snapshot_signals.sql"
+        ]
+      },
+      {
+        "name": "budget_metadata_undo_prototype",
+        "version": "20261029091435",
+        "source_count": 1,
+        "source_sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261029091435_budget_metadata_undo_prototype.sql"
+        ]
+      },
+      {
+        "name": "budget_category_payer_links_groups",
+        "version": "20261029114817",
+        "source_count": 1,
+        "source_sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261029114817_budget_category_payer_links_groups.sql"
+        ]
+      },
+      {
+        "name": "budget_pricing_participant_groups",
+        "version": "20261029123907",
+        "source_count": 1,
+        "source_sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261029123907_budget_pricing_participant_groups.sql"
+        ]
+      },
+      {
+        "name": "budget_payment_lifecycle_groups",
+        "version": "20261029134206",
+        "source_count": 1,
+        "source_sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261029134206_budget_payment_lifecycle_groups.sql"
+        ]
+      },
+      {
+        "name": "budget_payment_minimal_bundle",
+        "version": "20261030012554",
+        "source_count": 1,
+        "source_sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261030012554_budget_payment_minimal_bundle.sql"
+        ]
+      },
+      {
+        "name": "budget_source_atomic_groups",
+        "version": "20261030021719",
+        "source_count": 1,
+        "source_sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261030021719_budget_source_atomic_groups.sql"
+        ]
+      },
+      {
+        "name": "budget_receipts_lifecycle",
+        "version": "20261030034351",
+        "source_count": 1,
+        "source_sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261030034351_budget_receipts_lifecycle.sql"
+        ]
+      },
+      {
+        "name": "budget_financial_dependencies",
+        "version": "20261030054628",
+        "source_count": 1,
+        "source_sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261030054628_budget_financial_dependencies.sql"
+        ]
+      },
+      {
+        "name": "budget_workspace_lifecycle",
+        "version": "20261030064703",
+        "source_count": 1,
+        "source_sha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261030064703_budget_workspace_lifecycle.sql"
+        ]
+      },
+      {
+        "name": "budget_workspace_undo",
+        "version": "20261030082712",
+        "source_count": 1,
+        "source_sha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261030082712_budget_workspace_undo.sql"
+        ]
+      },
+      {
+        "name": "rpc_business_conflicts_no_retry",
+        "version": "20261031003000",
+        "source_count": 1,
+        "source_sha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2",
+        "status": "Matched",
+        "matchingPaths": [
+          "supabase/migrations/20261031003000_rpc_business_conflicts_no_retry.sql"
+        ]
+      },
+      {
+        "name": "budget_managed_worker_role_path",
+        "version": "20261031083437",
+        "source_count": 1,
+        "source_sha256": "4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e",
+        "status": "Matched",
+        "matchingPaths": [
+          "docs/operations/budget-b7-staging-managed/20261031083437_budget_managed_worker_role_path.sql"
+        ]
+      },
+      {
+        "name": "budget_business_conflicts_forward",
+        "version": "20261031130000",
+        "source_count": 1,
+        "source_sha256": "f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3",
+        "status": "Matched",
+        "matchingPaths": [
+          "docs/operations/budget-b7-staging/20261031130000_budget_business_conflicts_forward.sql"
+        ]
+      },
+      {
+        "name": "budget_dormant_parent_cascade_guard",
+        "version": "20261031130414",
+        "source_count": 1,
+        "source_sha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+        "status": "Matched",
+        "matchingPaths": [
+          "docs/operations/drafts/budget-b7-cascade-forward/20261031130414_budget_dormant_parent_cascade_guard.sql"
+        ]
+      },
+      {
+        "name": "budget_trip_cascade_lease_admission",
+        "version": "20261031140648",
+        "source_count": 1,
+        "source_sha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+        "status": "Matched",
+        "matchingPaths": [
+          "docs/operations/drafts/budget-b7-trip-cascade/20261031140648_budget_trip_cascade_lease_admission.sql"
+        ]
+      }
+    ],
+    "forwardOrder": [
+      {
+        "order": 1,
+        "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+        "sourceSha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8",
+        "sourcePaths": [
+          "supabase/migrations/20260811150000_atomic_apply_itinerary_alternative.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 2,
+        "file": "20261029020551_budget_group_metadata_prototype.sql",
+        "sourceSha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6",
+        "sourcePaths": [
+          "supabase/migrations/20261029020551_budget_group_metadata_prototype.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 3,
+        "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+        "sourceSha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1",
+        "sourcePaths": [
+          "supabase/migrations/20261029031137_budget_metadata_snapshot_signals.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 4,
+        "file": "20261029091435_budget_metadata_undo_prototype.sql",
+        "sourceSha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd",
+        "sourcePaths": [
+          "supabase/migrations/20261029091435_budget_metadata_undo_prototype.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 5,
+        "file": "20261029114817_budget_category_payer_links_groups.sql",
+        "sourceSha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262",
+        "sourcePaths": [
+          "supabase/migrations/20261029114817_budget_category_payer_links_groups.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 6,
+        "file": "20261029123907_budget_pricing_participant_groups.sql",
+        "sourceSha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d",
+        "sourcePaths": [
+          "supabase/migrations/20261029123907_budget_pricing_participant_groups.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 7,
+        "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+        "sourceSha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3",
+        "sourcePaths": [
+          "supabase/migrations/20261029134206_budget_payment_lifecycle_groups.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 8,
+        "file": "20261030012554_budget_payment_minimal_bundle.sql",
+        "sourceSha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011",
+        "sourcePaths": [
+          "supabase/migrations/20261030012554_budget_payment_minimal_bundle.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 9,
+        "file": "20261030021719_budget_source_atomic_groups.sql",
+        "sourceSha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c",
+        "sourcePaths": [
+          "supabase/migrations/20261030021719_budget_source_atomic_groups.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 10,
+        "file": "20261030034351_budget_receipts_lifecycle.sql",
+        "sourceSha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80",
+        "sourcePaths": [
+          "supabase/migrations/20261030034351_budget_receipts_lifecycle.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 11,
+        "file": "20261030054628_budget_financial_dependencies.sql",
+        "sourceSha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55",
+        "sourcePaths": [
+          "supabase/migrations/20261030054628_budget_financial_dependencies.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 12,
+        "file": "20261030064703_budget_workspace_lifecycle.sql",
+        "sourceSha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+        "sourcePaths": [
+          "supabase/migrations/20261030064703_budget_workspace_lifecycle.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 13,
+        "file": "20261030082712_budget_workspace_undo.sql",
+        "sourceSha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27",
+        "sourcePaths": [
+          "supabase/migrations/20261030082712_budget_workspace_undo.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 14,
+        "file": "20261031083437_budget_managed_worker_role_path.sql",
+        "sourceSha256": "4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e",
+        "sourcePaths": [
+          "docs/operations/budget-b7-staging-managed/20261031083437_budget_managed_worker_role_path.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 15,
+        "file": "20261031130000_budget_business_conflicts_forward.sql",
+        "sourceSha256": "f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3",
+        "sourcePaths": [
+          "docs/operations/budget-b7-staging/20261031130000_budget_business_conflicts_forward.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 16,
+        "file": "20261031130414_budget_dormant_parent_cascade_guard.sql",
+        "sourceSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+        "sourcePaths": [
+          "docs/operations/drafts/budget-b7-cascade-forward/20261031130414_budget_dormant_parent_cascade_guard.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      },
+      {
+        "order": 17,
+        "file": "20261031140648_budget_trip_cascade_lease_admission.sql",
+        "sourceSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+        "sourcePaths": [
+          "docs/operations/drafts/budget-b7-trip-cascade/20261031140648_budget_trip_cascade_lease_admission.sql"
+        ],
+        "stagingInstalled": true,
+        "productionInstalled": "Unconfirmed; no Production access this round"
+      }
+    ],
+    "uninstalledSuperseded": {
+      "version": "20261030125028",
+      "replacement": "20261031083437",
+      "rule": "Retain old source unchanged; do not db push --include-all or fabricate ledger entry"
+    },
+    "localVersionsAbsentFromStaging": [
+      "20261030125028",
+      "20261031100434"
+    ],
+    "productionDecision": "NO-GO: Staging real service/Activation/E2E gates incomplete; Production baseline/catalog/backups unverified; this inventory is not an executable Production packet"
+  },
+  "local": {
+    "native": {
+      "passed": 27,
+      "failed": 0,
+      "results": [
+        {
+          "name": "B7 forward migration failure is fully atomic and successful expansion preserves known cost origin receipt and baseline",
+          "status": "passed",
+          "ms": 137
+        },
+        {
+          "name": "B7 complete chain keeps new protocols dormant private ACL and a non-bypass worker",
+          "status": "passed",
+          "ms": 240
+        },
+        {
+          "name": "B7 placeholder independent title and note commit with real blocked backend graph",
+          "status": "passed",
+          "ms": 224,
+          "overlap": true
+        },
+        {
+          "name": "B7 title category payer links pricing participants completion then first payment preserve every identity",
+          "status": "passed",
+          "ms": 279
+        },
+        {
+          "name": "B7 retained cross-end fields and five-step Undo coexist with unrelated peer note",
+          "status": "passed",
+          "ms": 642
+        },
+        {
+          "name": "B7 same group contention then expiry takeover does not release new holder with late capability",
+          "status": "passed",
+          "ms": 130
+        },
+        {
+          "name": "B7 retained Payment conflicts with Pricing and Payer dependencies without changing history",
+          "status": "passed",
+          "ms": 259,
+          "overlap": true
+        },
+        {
+          "name": "B7 global Rates update reprices only eligible rows and preserves retained history and baseline identities",
+          "status": "passed",
+          "ms": 276
+        },
+        {
+          "name": "B7 Source relink of standalone Actual preserves known debit while historical origin rewrite rejects atomically",
+          "status": "passed",
+          "ms": 439
+        },
+        {
+          "name": "B7 v1 through v10 snapshots preserve the same committed financial graph and current v10 validates",
+          "status": "passed",
+          "ms": 401
+        },
+        {
+          "name": "B7 retained custom Participants Pricing Undo and Links Undo use authorized child effects on every endpoint",
+          "status": "passed",
+          "ms": 362
+        },
+        {
+          "name": "B7 Source apply committed data and safe complete deletion keep child guard strict without rejecting valid transactions",
+          "status": "passed",
+          "ms": 876
+        },
+        {
+          "name": "B7 legacy whole-row API wildcard and raw participant or parent writes cannot cross activated group guards",
+          "status": "passed",
+          "ms": 16
+        },
+        {
+          "name": "B7 exact historical v2 v3 v4 Request replay survives activation without a lease or a new whole-form write",
+          "status": "passed",
+          "ms": 12
+        },
+        {
+          "name": "B7 receipt activation gates remain closed without actual operator attestations",
+          "status": "passed",
+          "ms": 3
+        },
+        {
+          "name": "B7 pending Receipt blocks unverified commit and lifecycle deletion while SQL fixture bytes are not HTTP evidence",
+          "status": "passed",
+          "ms": 152
+        },
+        {
+          "name": "B7 scoped verification role reads exact claim only and rejects wrong proof without enabling metadata",
+          "status": "passed",
+          "ms": 87
+        },
+        {
+          "name": "B7 raw legacy byte deletion and metadata alias cannot remove a committed receipt",
+          "status": "passed",
+          "ms": 6
+        },
+        {
+          "name": "B7 dedicated worker RLS deletes only its orphan claim and never a live receipt or other workspace object",
+          "status": "passed",
+          "ms": 5
+        },
+        {
+          "name": "B7 trip itinerary account external cascade reject at parent and preserve all committed business rows",
+          "status": "passed",
+          "ms": 4
+        },
+        {
+          "name": "B7 live editor blocks deletion of a new placeholder and a failed delete keeps actor Undo",
+          "status": "passed",
+          "ms": 319
+        },
+        {
+          "name": "B7 external itinerary RPC rolls back adjacent transport deletions and rejects stale cross-trip IDs",
+          "status": "passed",
+          "ms": 8
+        },
+        {
+          "name": "B7 legal Pricing creates real children on still-Incomplete parents and raw INSERT UPDATE DELETE all reject",
+          "status": "passed",
+          "ms": 377
+        },
+        {
+          "name": "B7 operational activation refuses missing attestations and Pause Readback preserve financial hashes",
+          "status": "passed",
+          "ms": 96
+        },
+        {
+          "name": "B7 protocol transition waits for complete financial transactions instead of activating between statements",
+          "status": "passed",
+          "ms": 97
+        },
+        {
+          "name": "B7 pause preserves successful Request replay but prevents new writes raw DML and parent cascades",
+          "status": "passed",
+          "ms": 191
+        },
+        {
+          "name": "B7 revoked actor cannot mutate or replay while another approved account still reads v10",
+          "status": "passed",
+          "ms": 172
+        }
+      ],
+      "clusterStopped": true,
+      "note": "Full migration schema fixture plus Auth SQL claims; not real Supabase Auth/Storage; not a fresh64-ledger hosted copy"
+    },
+    "controller": {
+      "stats": {
+        "startTime": "2026-10-31T15:42:54.554Z",
+        "duration": 4077.224,
+        "expected": 136,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "name": "Finance v8 strict projection and rates controller converge canonical quote and preserve successful Request replay",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Finance metadata mirror queue preserves newer input and field vectors without legacy whole Save",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Finance Snapshot timeout keeps confirmed rates request from being submitted twice and later retry only reads",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Lifecycle create ACK loss replays original request without duplicate placeholder and no whole-row lease",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Lifecycle strict v9 keeps placeholders and metadata autosave while every allocation settlement comparison excludes incomplete",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Lifecycle deletes placeholder through tombstone Snapshot and does not issue Storage or legacy Delete",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward PT409 Metadata commit preserves draft and is a confirmed refusal without automatic replay",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward PT500 Metadata commit preserves draft and is a confirmed refusal without automatic replay",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward PT409 Metadata admission refuses stale revision without erasing input",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "initial inspection has no authority; snapshot readiness/schema are strictly checked",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "pending typing is an intent buffer, promoted only after the actual grant",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "denied pending input stays uncommittable and recoverable",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "narrow saves retain focused authority and never mutate amount or another group",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "save adopts the DB canonical title and nullable cleared note",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "dirty group survives remote updates while clean groups merge canonical values",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "same group remote revision creates conflict, not an automatic base replacement",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "clean blur releases and dirty blur flushes before release",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "real idle releases clean leases and heartbeats do not count as human activity",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "suspension disables writes; a fresh read alone cannot manufacture capability confirmation",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "expired ownership is never renewed or saved without reacquisition",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "failed release remains retryable and cannot be reacquired until cleanup",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "lost acknowledgement uses the exact request id and payload for replay",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "NOWAIT abort keeps the draft and requires explicit reacquisition",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "ABA context changes reject late admission and release only its original capability",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "draft persistence contains value/base only and restoration grants no authority",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "unanswered admission cannot report a confirmed release; late grant is cleaned with its epoch",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "viewer and disabled/unsupported protocols never attempt group admission",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "group-aware account deduplication retains two edits on the same record",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "offline graph caching strips metadata authority and transient hints",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "debounce coalesces rapid input and ignores canonical no-ops",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "composition suppresses debounce and blur until composition ends",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "in-flight acknowledgement confirms only submitted revision; latest input drains serially",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "committed canonical survives a failed snapshot and is not resubmitted",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "queued input survives successful first patch plus failed refresh",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "unknown result preserves original payload while newer input queues",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "transport timeout never overlaps a second patch before the original settles",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "unknown result persists an inert replay ledger without capability and survives new document session",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "dirty prepare drains final patch before exact cleanup; failed patch cannot prepare",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "invalid draft uses ten minute idle; heartbeat, snapshots and saved responses do not reset activity",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "late patch after ABA cannot replace the new context or submit queued input",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "unknown result at ten minute idle releases exact capability but keeps replay intent",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "failed auth confirmation stops autosave without busy retrying or issuing a patch",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "finish freezes both groups while flushing and releasing, preserving the last accepted revision",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "first real focus after an idle inspection starts its own activity window",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "confirmed patch plus permanently pending snapshot times out without losing queued input",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "timeout retires readWork, concurrent explicit retries share authority and latest queued patch",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "controller timeout also retires the actual coalescer slot; late transport cannot apply a financial graph",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "another editor's newer version wins after timeout; queued B stays a conflicted draft",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "pending snapshot cannot strand dirty prepare or finish; discard requires an explicit decision",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "clean confirmed patch can finish after snapshot deadline without submitting again",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "trip context isolates a late pending snapshot before or after its deadline",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "account context isolates a late pending snapshot before or after its deadline",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "logout context isolates a late pending snapshot before or after its deadline",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "offline after snapshot timeout keeps B and reconnect needs fresh read plus confirmed lease",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "category immediate autosave canonicalizes and preserves other fields \"餐飲\"",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "payer immediate autosave canonicalizes and preserves other fields \"B\"",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "payer immediate autosave canonicalizes and preserves other fields null",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "links immediate autosave canonicalizes and preserves other fields [\"j\",\"i\",\"j\"]",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "schema v2 rejects malformed missing group and foreign collection projections",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "links queue retains latest collection while previous request awaits acknowledgement",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "unknown payer ACK retries exact intent without a second write",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "payer membership failure preserves draft and changing trip fences late ACK",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "links draft storage restores arrays without capability or automatic write",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "null payer first intent survives pending acquire and becomes an actual null patch",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "confirmed link collection survives snapshot deadline with queued collection and exact retry",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward PT409 Payment dependency refusal cannot create a duplicate payment or replay automatically",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward PT500 Payment dependency refusal cannot create a duplicate payment or replay automatically",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward PT409 Payment admission does not issue a financial mutation",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "inspection has no lease and explicit payment uses committed DB shape without full form",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "explicit unpaid and paid preserve record joins history receipt and known debit",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "duplicate click shares one in-flight operation and unknown ACK retries original request",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "mutation timeout keeps exact transport and cannot admit a second payment while unsettled",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "confirmed payment with pending Snapshot retries read only and preserves request identity",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "restored pending request has no capability and replays original origin session",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "old account/trip late ACK cannot mark a new context successful or call its refresh",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "missing Payment RPC fails closed and never falls back to financial save",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "P2 missing currency quote rejects pricing draft and explicit latest quote preserves other input",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "v5 payment snapshot rejects missing records mismatched active state and forged dependency readiness",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "retained Payment leaves live Pricing capability and newer local draft intact then refuses stale pricing",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "bound intent and exact minimal target epochs are required before submitting a payment",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "strict v5 rejects extra retained Pricing leases and missing committed dependency checks",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "unpaid without retained is an intent-bound payment-only no-op with no financial changes",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "previous protocol inert request can only replay its old receipt then converge through strict v5",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Demo v5 keeps one canonical pricing snapshot while React props are still behind the acknowledged override",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "account switch during authorization cannot acquire or mutate with old actor",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "late payment admission timeout releases exact capability and failed release remains retryable",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "committed Payment converges when latest authoritative snapshot has a newer independent rates generation",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "pricing canonical structured snapshot binds financial graph and dependency vectors",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "pricing custom total is sum of every share and patch preserves nonfinancial fields",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "invalid blank and precision drafts never issue requests and valid correction autosaves",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "structured queue rebases only its confirmed ACK vector and saves newest amount once",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "unknown pricing ACK retries exact request without issuing legacy save or second effect",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "rates vector change retains local pricing intent and blocks automatic rebase",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "all invalid numerics fail preview validation while original cents and rate precision reconcile",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "pricing ACK survives ten second snapshot deadline with queued value and ignores late stale snapshot",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Demo safe inactive retained transition preserves identities and known debit rejects entire amount change",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward PT409 Receipt retains the exact request and original file for explicit recovery",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward PT500 Receipt retains the exact request and original file for explicit recovery",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt Auth failure or timeout stays inline before any intent and a later explicit upload can recover",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt upload confirms bytes before metadata and replacement/deletion preserve finance and all existing identities",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt failed upload retries one original request and rejects illegal type and oversized file before any intent",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt Storage success followed by metadata failure retries commit without uploading again or losing old valid receipt",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt upload or commit ACK loss confirms same journal; no duplicate upload metadata or capability acquisition",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt committed metadata with Storage deletion failure leaves durable exact-object cleanup and original bytes accessible",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt hung cleanup cannot hide confirmed metadata behind an unknown mutation or block editor forever",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt Storage bytes confirmed with never-resolving HTTP ACK can commit once without a second upload",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt unresolved upload before bytes shares one Storage transport across retry and preserves original request",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt pending transport uses one operation and guards exit; explicit cancellation journals orphan instead of one-shot compensation",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt timeout Snapshot and offline retry preserve confirmed canonical without another upload or commit",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt reload restores no capability; pending operation requires exact original file then fresh lease validation",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt changed Source prevents blind retry; explicit abandon uses fresh dependencies and preserves draft bytes for worker",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt late ACK after account trip ABA cannot mark returned context successful",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt strict v7 validator rejects missing group forged attachment set and mixed snapshot",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt explicit park preserves unresolved request without capability and permits exit after withdrawal",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt durable worker retries failure later and uses only claimed path; it never deletes metadata via SQL",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Receipt content verification waits without committing or reuploading; original request resumes after trusted proof",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Source inspection and authoritative preview acquire nothing; relink changes only source identity",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Apply is a separate explicit action with all changed groups and preserved known cost history and joins",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "historical origin is retained on detach and cannot be overwritten by a new association",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "known debit refusal never partially copies source text or participants",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "changed authoritative source after confirmation requires a new preview with no automatic rebase",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "unknown ACK retries the same request once and reload restores no capability",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "pending mutation timeout and repeated click share a single transport and preserve exit guard",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "confirmed Source with pending Snapshot retries reads only; old read cannot roll back canonical",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "late Source ACK after account trip switch never refreshes or marks the new context successful",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "strict v6 rejects missing Source projection wrong identity forged epochs and altered protected cost",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "same current source no-op creates no operation revision and exact release leaves other groups alone",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "missing Source RPC fails closed and never invokes an older whole-record save",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "confirmed Source release failure guards exit; retry releases without resending or reacquiring",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "offline after confirmed Source keeps pending receipt and recovers by authoritative read only",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Undo original request recovery confirms a lost ACK once without popping another step",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Undo queued key intents are serialized and preserve five-step order",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Undo shortcuts reject redo composition and keep native editable targets",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Undo document context is stable during repeated renders and rotates after trip logout or a new document",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Undo confirmed ACK with never-resolving Snapshot retries only authoritative reads and ignores the late result",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Undo late mutation ACK after context change cannot finish or refresh the new context",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        }
+      ]
+    },
+    "playwright": {
+      "stats": {
+        "startTime": "2026-10-31T15:40:41.197Z",
+        "duration": 20129.757,
+        "expected": 10,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "name": "Forward browser PT409 autosave preserves the rendered draft and does not retry",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward browser PT500 autosave preserves the rendered draft and does not retry",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "Forward browser PT409 Payment refusal permits an explicit new operation and commits exactly once",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "B7 Formal create different-group autosave completion first payment retained edit and receipt verification pending share one workspace",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "B7 Portal listbox and Modal retain keyboard ownership while native input IME and other workspace never issue Undo",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "B7 Demo 1440px meaningful page accessible inputs and basic create flow stay memory-only",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "B7 Demo 820px meaningful page accessible inputs and basic create flow stay memory-only",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "B7 Demo 390px meaningful page accessible inputs and basic create flow stay memory-only",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "B7 trusted verifier rejects mismatched digest MIME size and truncated bytes without accepting file extensions",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        },
+        {
+          "name": "B7 Worker verification uses exact claim and a lost finish cannot turn bytes into committed metadata",
+          "passed": true,
+          "statuses": [
+            "passed"
+          ]
+        }
+      ],
+      "mockOrDemo": true,
+      "realHostedMultiuser": false,
+      "initialEnvironmentFailures": [
+        "Sandbox Playwright browser path redirected; used existing normal Windows installation",
+        "Loopback network denied/server namespace unreachable; moved both local server and test process to approved native execution; no timeout/assertion relaxed"
+      ]
+    },
+    "workerSafety": {
+      "passed": 4,
+      "failed": 0,
+      "realHosted": false
+    },
+    "build": {
+      "passed": true,
+      "warning": "Existing bundle chunk >500KiB"
+    },
+    "nativeInitialSandboxFailure": "initdb WAL rename permission denied before product tests; approved fresh loopback execution succeeded",
+    "visualProof": {
+      "passed": 4,
+      "repeatedForScreenshots": true,
+      "addedToTestTotal": false,
+      "desktop1440": "Inspected",
+      "narrow390": "Inspected",
+      "sizes": [
+        1440,
+        820,
+        390
+      ],
+      "storage": "Ignored local evidence; no real financial/QA credentials in screenshots",
+      "imageHashes": [
+        {
+          "file": "b7-demo-1440.png",
+          "sha256": "dae71ebde160ad5d56b8c5e57fad79cb9e0475110c61f7e15bba0fa5f27681e0"
+        },
+        {
+          "file": "b7-demo-820.png",
+          "sha256": "98102422569b45887ed8c22261d89af9a510d7a16abe1ff335b117682ed1f5a2"
+        },
+        {
+          "file": "b7-demo-390.png",
+          "sha256": "102c4f58c1e95f8f0e9c3ac091fedac3583ef2d69e0577089c3609b7a1ae828a"
+        },
+        {
+          "file": "b7-forward-payment-recovered.png",
+          "sha256": "bec674874aa69602ce1163ef034240658bc97f8459f89cb6cdd6cba88be90a72"
+        }
+      ]
+    }
+  },
+  "advisor": {
+    "source": "Actual Managed Dashboard rerun",
+    "errors": 0,
+    "warnings": 10,
+    "info": 23,
+    "unchangedFromPreviousDeployment": true
+  },
+  "credentials": {
+    "connector": "Project permission denied; no expansion attempted",
+    "apiSettings": "Automatic safety review rejected credential-bearing DOM read; no workaround or secret extraction",
+    "qaJwt": "Not available",
+    "dedicatedWorkerJwt": "Not available",
+    "requestPending": "Asked for secure external issuer/QA credential path or narrowly authorized in-memory Staging-only credential supply; no answer is not approval"
+  },
+  "activation": {
+    "performed": false,
+    "sevenOff": true,
+    "workerCycles": 0,
+    "featureFlagsChanged": false,
+    "readinessWritten": false,
+    "hostedSchemaOrDataWrites": false
+  },
+  "limitations": [
+    "Incomplete fixture validated only native; protocol-OFF creation is intentionally rejected",
+    "Worker empty batches can prove capability only, never receipt lifecycle/retry recovery",
+    "31 historical ledger sources absent and one trailing-LF mismatch retained",
+    "Production packet is a conditional source inventory, not executable or authorized",
+    "No current whole Hosted E2E or >10MiB authenticated HTTP result"
+  ],
+  "decision": {
+    "stagingActivation": "NO-GO until real prerequisite evidence",
+    "production": "NO-GO",
+    "safeIndependentWorkComplete": true,
+    "waitFor": "Secure credential supply; continuous Staging authorization remains in scope, no new phase Review gate invented"
+  }
+}
