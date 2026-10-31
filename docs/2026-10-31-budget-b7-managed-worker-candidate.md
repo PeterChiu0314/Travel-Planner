@@ -1,5 +1,7 @@
 # B-7 Managed Worker 相容候選與隔離驗證
 
+> 後續狀態：使用者另行明確授權新 Hash 與 M0 supersession；新版已在 Staging 完成 COMMIT、Ledger 62 與獨立讀回，見[實際部署報告](2026-10-31-budget-b7-staging-managed-deployment.md)。本文保留較早本機 checkpoint 的授權範圍與 23 次 native 執行證據；下文「尚未授權／最後 Hosted 觀測」描述當時狀態，不代表目前狀態。H01～H03、Activation 仍未通過或啟用。
+
 2026-10-31，從 `aff8d78fdec252b4f95e315204a91e70283e3d5d` 接續，原分支 `codex/budget-collaboration-redesign`。使用者明確授權「本機修正與隔離驗證」；**沒有授權新封包的 Hosted 寫入**。本次沒有連線 Staging／Production、讀取密碼、建立 Hosted fixtures、啟用 Protocol／Flag 或啟動 Worker／排程。
 
 **結果：新版非自動套用候選已完成本機驗證，可交 Review；Hosted 部署與服務驗收仍 NO-GO。** 舊封包與全部原始 Migration、Forward、38 函式 seal 都保留不動。較早[真實 psql 失敗與完整回滾](2026-10-31-budget-b7-staging-psql-deployment.md)仍是最後一次 Hosted 觀測，不宣稱本次重新核對遠端。

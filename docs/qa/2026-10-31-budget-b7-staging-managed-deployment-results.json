@@ -1,0 +1,386 @@
+{
+  "scope": "Travel-Planner-Staging Dormant Schema deployment only",
+  "projectRef": "uyqdopksfysbobhjcepk",
+  "date": "2026-10-31",
+  "startingCommit": "14f0d3150ba9676410ea29c857f191f3dcd5e9a6",
+  "explicitAuthorization": {
+    "newPacketAndM0Supersession": true,
+    "independentReadOnlyAcceptance": true,
+    "activation": false,
+    "h01ToH03": false,
+    "workerSchedule": false,
+    "production": false
+  },
+  "packet": {
+    "sha256": "6a61cddbd039832b648c76cff385ee3803eaada6e2f252169affe8b9540bcf47",
+    "bytes": 1493588,
+    "sources": 15,
+    "unchanged": true,
+    "m0Version": "20261031083437",
+    "retiredVersion": "20261030125028",
+    "retiredVersionInLedger": false,
+    "oldHotfixReplayed": false
+  },
+  "transport": {
+    "client": "psql 17.11",
+    "server": "PostgreSQL 17.6",
+    "endpointType": "Session Pooler",
+    "port": 5432,
+    "sslmode": "verify-full",
+    "clientTls": "TLSv1.3",
+    "note": "Client TLS verified with conninfo; backend pg_stat_ssl describes a different hop",
+    "passwordSaved": false,
+    "passwordHelperStopped": true
+  },
+  "preflight": {
+    "observedAt": "2026-10-31T09:05:06.777437+00:00",
+    "checks": [
+      {
+        "name": "postgres role / database / read-only / client TLS",
+        "status": "passed"
+      },
+      {
+        "name": "ledger equals sealed prior live state",
+        "status": "passed"
+      },
+      {
+        "name": "data equals sealed prior live state",
+        "status": "passed"
+      },
+      {
+        "name": "catalog equals sealed prior live state",
+        "status": "passed"
+      },
+      {
+        "name": "hotfix equals sealed prior live state",
+        "status": "passed"
+      },
+      {
+        "name": "schemas equals sealed prior live state",
+        "status": "passed"
+      },
+      {
+        "name": "functions equals sealed prior live state",
+        "status": "passed"
+      },
+      {
+        "name": "storage_policies equals sealed prior live state",
+        "status": "passed"
+      },
+      {
+        "name": "default_acls equals complete prior rollback capture",
+        "status": "passed"
+      },
+      {
+        "name": "role_memberships equals complete prior rollback capture",
+        "status": "passed"
+      },
+      {
+        "name": "47 ledger / head / dormant absence",
+        "status": "passed"
+      },
+      {
+        "name": "no leases / writer transactions / prepared transactions / custom40001 / raw private grants",
+        "status": "passed"
+      },
+      {
+        "name": "role and managed policy grants preserved",
+        "status": "passed"
+      },
+      {
+        "name": "required managed grants and lock capability",
+        "status": "passed"
+      },
+      {
+        "name": "Existing Managed SET path / grants and unused M0",
+        "status": "passed"
+      }
+    ],
+    "failures": [],
+    "count": 15
+  },
+  "deployment": {
+    "status": "committed",
+    "psqlExitCode": 0,
+    "explicitCommitObserved": true,
+    "actualPacketExecutions": 1,
+    "onErrorStop": true,
+    "singleClientSession": true,
+    "packetTransactionUnmodified": true,
+    "notice": "B7 forward verified 38 routines; changed 38",
+    "earlierAuthenticationRejectedBeforeSql": true
+  },
+  "independentAcceptance": {
+    "observedAt": "2026-10-31T09:07:50.091451+00:00",
+    "pids": {
+      "deployment": 80571,
+      "independent": 80571,
+      "acceptance": 80571,
+      "additional": 80633,
+      "advisorDetails": 81314
+    },
+    "independentClientProcesses": true,
+    "poolerBackendPidReuseMayOccur": true,
+    "passed": [
+      {
+        "name": "Independent new psql process READ ONLY ledger62/head/source identities",
+        "status": "passed"
+      },
+      {
+        "name": "All28 original data projection hashes/counts/columns unchanged",
+        "status": "passed"
+      },
+      {
+        "name": "All38 final body hashes and54 PT409/24 PT500 match approved seal",
+        "status": "passed"
+      },
+      {
+        "name": "All13 retained Hotfix routes match unchanged or precisely reviewed Guard hashes",
+        "status": "passed"
+      },
+      {
+        "name": "All82 original function OID/owner/ACL/settings and all unmodified attributes preserved",
+        "status": "passed"
+      },
+      {
+        "name": "Intentional private trigger security changes and worker helper equal approved source",
+        "status": "passed"
+      },
+      {
+        "name": "Every application function remains owned by reviewed postgres role",
+        "status": "passed"
+      },
+      {
+        "name": "Seven protocol rows/latches/readiness flags stay OFF",
+        "status": "passed"
+      },
+      {
+        "name": "Worker role is dedicated NOLOGIN NOINHERIT NOBYPASSRLS without elevated attributes",
+        "status": "passed"
+      },
+      {
+        "name": "All original memberships preserved; only reviewed two Worker membership rows added",
+        "status": "passed"
+      },
+      {
+        "name": "Worker transitive SET catalog capability, no inherited API role, exact Storage SELECT/DELETE only",
+        "status": "passed"
+      },
+      {
+        "name": "Application/private/Storage RLS and protected Storage owners remain correct",
+        "status": "passed"
+      },
+      {
+        "name": "No schema CREATE authority for worker/anonymous/authenticated",
+        "status": "passed"
+      },
+      {
+        "name": "No new anonymous public API; pre-existing read-only share API is the only anonymous routine",
+        "status": "passed"
+      },
+      {
+        "name": "Existing public/private policies unchanged and old Storage policies retained",
+        "status": "passed"
+      },
+      {
+        "name": "All four planned parent deletion guards installed and enabled",
+        "status": "passed"
+      },
+      {
+        "name": "T0 Advisor warning is exact signed-in-only source with pinned paths and no anonymous access",
+        "status": "passed"
+      },
+      {
+        "name": "All22 private Info rows are RLS-enabled deny-by-default tables",
+        "status": "passed"
+      },
+      {
+        "name": "No active editing leases/open writers/prepared transactions after installation",
+        "status": "passed"
+      },
+      {
+        "name": "Existing operational Preflight readback stays dormant with no pending worker work",
+        "status": "passed"
+      },
+      {
+        "name": "Existing operational Readback has original Baseline and zero missing receipt objects",
+        "status": "passed"
+      },
+      {
+        "name": "Original21 publication table memberships preserved",
+        "status": "passed"
+      }
+    ],
+    "failures": [],
+    "intentionalSecurityChanges": [
+      "app_private.keep_actual_budget_origin()",
+      "app_private.keep_actual_twd_cost()"
+    ],
+    "allPassed": true,
+    "count": 22
+  },
+  "ledger": {
+    "before": 47,
+    "after": 62,
+    "head": "20261031130000",
+    "newSourceHashesMatch": 15,
+    "previousIdentitiesAndKnownSourceHashesPreserved": true,
+    "legacyMultiStatementSourceLimit": "31 previous rows lack one-file complete-source parity; catalog/dependencies and identities were checked"
+  },
+  "functions": {
+    "finalHashesMatch": 38,
+    "pt409Sites": 54,
+    "pt500Sites": 24,
+    "explicitCustom40001Sites": 0,
+    "trueEngineSerializationAndDeadlockSemanticsChanged": false,
+    "retainedHotfixPaths": {
+      "unchanged": 9,
+      "exactM0GuardTransformation": 3,
+      "exactFinalF0Seal": 1
+    },
+    "originalFunctionAttributeChecks": 82,
+    "intentionalSecurityDefinerChanges": [
+      "app_private.keep_actual_budget_origin()",
+      "app_private.keep_actual_twd_cost()"
+    ]
+  },
+  "dataPreservation": {
+    "originalProjectionsUnchanged": 28,
+    "trips": 2,
+    "authUsers": 1,
+    "itineraryItems": 25,
+    "alternatives": 3,
+    "baselines": 1,
+    "packItems": 7,
+    "memberships": 2,
+    "privateBuckets": 1,
+    "storageObjects": 0,
+    "financialTablesOriginallyEmpty": true,
+    "realFinancialE2ePerformed": false,
+    "realBackupOrRestorePerformed": false
+  },
+  "security": {
+    "appFunctionsOwnedByPostgres": 271,
+    "rlsEnabledAppTables": 44,
+    "previousPublicPrivatePoliciesPreserved": 57,
+    "previousStoragePoliciesPreserved": 4,
+    "originalPublicationTableMembershipsPreserved": 21,
+    "privateRawClientOrWorkerGrants": 0,
+    "privatePublicationEntries": 0,
+    "parentGuardsEnabled": 4,
+    "newAnonymousRpcs": 0,
+    "worker": {
+      "noLogin": true,
+      "noInherit": true,
+      "noBypassRls": true,
+      "noSuperuser": true,
+      "noCreateRole": true,
+      "noCreateDb": true,
+      "noReplication": true,
+      "inheritsRoles": false,
+      "authenticatorMembership": {
+        "admin": false,
+        "inherit": false,
+        "set": true
+      },
+      "creatorMembership": {
+        "admin": true,
+        "inherit": false,
+        "set": false
+      },
+      "realJwtHttpOrSchedulingVerified": false
+    }
+  },
+  "dormant": {
+    "protocolGroups": [
+      "metadata",
+      "source",
+      "payment",
+      "finance",
+      "lifecycle",
+      "receipt",
+      "undo"
+    ],
+    "allEnabledFalse": true,
+    "allActivatedOrFullEnabledFalse": true,
+    "allReceiptReadinessFalse": true,
+    "activeWildcardLeases": 0,
+    "activeGroupLeases": 0,
+    "pendingReceipts": 0,
+    "blockedCleanup": 0,
+    "missingReceiptObjects": 0,
+    "preflightPassed": true,
+    "readbackPassed": true,
+    "frontendSourceDefaultsUnchangedOff": true,
+    "localEnvOptIns": false,
+    "remoteVercelEnvAudited": false
+  },
+  "managedSecurityAdvisor": {
+    "before": {
+      "errors": 0,
+      "warnings": 9,
+      "infos": 2
+    },
+    "after": {
+      "errors": 0,
+      "warnings": 10,
+      "infos": 22
+    },
+    "previousWarningsUnchanged": true,
+    "addedWarning": {
+      "function": "public.apply_itinerary_alternative(...)",
+      "severity": "P2",
+      "exactT0Source": true,
+      "pinnedSearchPaths": true,
+      "anonymousDenied": true,
+      "signedInTripAuthorizationChecksRetained": true,
+      "realAuthBehaviorPendingH01": true
+    },
+    "addedInfoCount": 20,
+    "newPrivateTables": 19,
+    "existingPrivateLedgerHardened": 1,
+    "privateRlsNoPolicyTables": [
+      "budget_edit_leases",
+      "budget_finance_protocol",
+      "budget_lifecycle_protocol",
+      "budget_metadata_effects",
+      "budget_metadata_groups",
+      "budget_metadata_protocol",
+      "budget_metadata_requests",
+      "budget_metadata_undo_intents",
+      "budget_metadata_undo_lineage",
+      "budget_metadata_undo_operations",
+      "budget_metadata_undo_protocol",
+      "budget_metadata_undo_receipts",
+      "budget_metadata_undo_stack",
+      "budget_payment_protocol",
+      "budget_pricing_trip_versions",
+      "budget_rates_leases",
+      "budget_receipt_cleanup",
+      "budget_receipt_intents",
+      "budget_receipt_protocol",
+      "budget_selections",
+      "budget_source_protocol",
+      "budget_workspace_requests"
+    ],
+    "allInfoTablesDefaultDenyVerified": true,
+    "warningsSuppressed": false
+  },
+  "decisions": {
+    "dormantInstallation": "PASSED",
+    "newP0OrP1WithinInstallation": [],
+    "fullB7Readiness": "NO-GO",
+    "h01": "BLOCKED_NOT_EXECUTED",
+    "h02": "BLOCKED_NOT_EXECUTED",
+    "h03": "BLOCKED_NOT_EXECUTED",
+    "activation": "NOT_AUTHORIZED",
+    "next": "Stop for ChatGPT Review; do not replay packet or start service QA"
+  },
+  "evidenceLimits": [
+    "Native fixture tests are prior evidence, not real Auth/Realtime/Storage HTTP acceptance",
+    "No Worker JWT, custom Header, actual bytes, scheduler or two-account Browser tests in this round",
+    "Pooler may reuse backend PIDs across independent client processes",
+    "No Production access or remote frontend env audit",
+    "Private raw outputs, password helper and diagnostic screenshot are excluded from Git"
+  ]
+}

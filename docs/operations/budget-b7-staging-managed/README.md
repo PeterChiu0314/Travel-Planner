@@ -1,6 +1,8 @@
-# B-7 Staging Managed-compatible candidate Runbook
+# B-7 Staging Managed-compatible Dormant Schema Runbook
 
-**NON-AUTO-APPLY／僅供 Review；本輪沒有 Hosted 寫入授權。** 唯一預定目標是 Travel-Planner-Staging／uyqdopksfysbobhjcepk。舊封包因 reserved-role Grant 失敗且完整回滾；新候選本機驗證不等於 Hosted 權限或服務驗收通過。
+**2026-10-31：已取得此新 Hash／M0 supersession 的 Staging-only 明確授權，並已完成 COMMIT 及獨立唯讀驗收。Ledger 62、38 個最終 Hash 相符、七組 Protocol／Latch OFF。禁止在已安裝環境重播此封包。** 唯一目標是 Travel-Planner-Staging／uyqdopksfysbobhjcepk。[實際部署報告](../../2026-10-31-budget-b7-staging-managed-deployment.md)、[去敏部署證據](../../qa/2026-10-31-budget-b7-staging-managed-deployment-results.json)。H01～H03／Activation／Worker 排程仍未授權，完整 B-7 上線 NO-GO。
+
+封包仍為 NON-AUTO-APPLY；SQL 註解與 manifest 的 `deploymentAuthorization:false` 是產出時的歷史狀態，不是 runtime flag。後續明確授權與實際執行另記於部署報告；不修改 artifact 以維持核准 Hash。`realStorageHttpVerified`／`workerScheduleVerified` 仍未實測。
 
 [完整修正與驗證報告](../../2026-10-31-budget-b7-managed-worker-candidate.md)、[去敏證據](../../qa/2026-10-31-budget-b7-managed-worker-results.json)、[原封包 Runbook](../budget-b7-staging/README.md)。
 
@@ -29,11 +31,11 @@
 | 14 | `20261031083437_budget_managed_worker_role_path.sql` | `4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e` |
 | 15 | `20261031130000_budget_business_conflicts_forward.sql` | `f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3` |
 
-## Ledger 與 supersession 必須先 Review
+## 已授權的 Ledger 與 supersession
 
 新安裝仍47 → 62，Head為20261031130000。`20261030125028` 必須未安裝、未登記，`20261031083437` 登記M0完整來源；不空補舊Ledger、不宣稱執行原檔、不修改原始檔Hash。已有舊B-7安裝或M0的環境直接拒絕，不適用此候選。
 
-原檔仍留在 `supabase/migrations`；CLI可能顯示這一筆未套用。因此未來也不可盲用db push／include-all或migration repair。Review須明確接受這個替代歷史與來源選擇政策；目前只是一份候選，不是已批准的全環境reconciliation方案。
+原檔仍留在 `supabase/migrations`；CLI可能顯示這一筆未套用。因此未來也不可盲用db push／include-all或migration repair。使用者已明確接受本次 Staging 的 M0 替代與舊版本缺席；這不是全環境 reconciliation、Production 或已有原 B-7 安裝環境的授權。
 
 ## 本機重現（不接受外部DB URL）
 
@@ -46,7 +48,7 @@ node scripts/qa/run-budget-metadata-parallel.mjs --managed-worker --fresh-chain
 
 Builder `scripts/qa/build-b7-managed-packet.mjs` 僅離線輸出此候選，拒絕原封包／來源漂移；沒有網路或DB executor。Checker比對完整生成SQL、各來源、函式定義零差異與單一BEGIN／COMMIT。Runner每次建立新的loopback PostgreSQL cluster，連線marker驗證後才執行，finally停止；不能用此fixture證明Auth／Realtime／Storage HTTP／Worker排程。
 
-## 未來部署前的 gate（本輪不執行）
+## 本次已執行的部署 gate（保留契約，禁止重播）
 
 1. 先取得**此新Hash＋M0替代／Ledger規則**的Staging-only明確授權。原4d43封包的授權不自動擴充到新版本。
 2. 新鮮唯讀核對project host／pooler登入role與實際postgres身分、Ledger47/head、13舊Hotfix、全部Catalog／RLS／ACL／Trigger、原資料指紋、未完成交易；不得用target GUC當唯一身分證明。原2個旅程／1帳號與財務／Baseline／Receipt受保護，無破壞性重建。
@@ -60,4 +62,4 @@ Builder `scripts/qa/build-b7-managed-packet.mjs` 僅離線輸出此候選，拒�
 
 交易失敗應整筆回滾，先核對舊47基線、舊Hotfix、Catalog／資料及Worker不存在。不要修掉報錯SQL後接著跑後半包。已COMMIT則保持Dormant，只準備經Review的新Forward Repair；不刪Ledger、不drop協定／角色、不重計價、不還原撤銷已提交財務操作。
 
-即使新Dormant安裝成功，仍未授權建立H01～H03 fixtures、Storage files、簽發／讀取JWT signing secrets、啟動Worker排程或Activation。本輪沒有取得任何Hosted憑證或執行以上步驟。
+本次新 Dormant 安裝已成功；仍未授權建立 H01～H03 fixtures、Storage files、簽發／讀取 JWT signing secrets、啟動 Worker 排程或 Activation。DB 密碼僅以本機遮罩輸入、記憶體傳遞，helper 已停止，沒有持久保存。下一步是 ChatGPT Review；不要重開 helper 或再執行封包。

@@ -1,6 +1,6 @@
 # B-7 Staging Dormant Schema 封包與操作 Runbook
 
-後續已有[另版 Managed Worker 候選](../budget-b7-staging-managed/README.md)，僅本機驗證、等待新 Hash 與 M0 supersession Review／授權。本目錄的原封包／manifest／seals未變且仍 NO-GO；不要因候選存在就重跑本檔或自動補 Ledger。
+後續[另版 Managed Worker 封包](../budget-b7-staging-managed/README.md)已另獲新 Hash 與 M0 supersession 明確授權，並完成 Staging COMMIT／Ledger 62／獨立讀回，見[新部署報告](../../2026-10-31-budget-b7-staging-managed-deployment.md)。本目錄的原封包／manifest／seals未變且原封包仍 NO-GO；本頁下文保留舊版失敗 checkpoint，不能當目前 Ledger 狀態。不要重跑任何整包或自動補 Ledger；H01～H03／Activation 仍待 Review 與另行授權。
 
 2026-10-31。只適用 `Travel-Planner-Staging`（`uyqdopksfysbobhjcepk`），不能用於 Production。[封包產出交接](../../2026-10-31-budget-b7-forward-package-validation.md)。**原指定 Dormant 安裝已有授權並經 psql 實際嘗試，但 Managed reserved-role Grant 失敗；完整回滾確認，禁止重試原封包。**
 
