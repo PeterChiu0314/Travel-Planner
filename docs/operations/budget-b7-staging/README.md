@@ -1,8 +1,10 @@
 # B-7 Staging Dormant Schema 封包與操作 Runbook
 
-2026-10-31。只適用 `Travel-Planner-Staging`（`uyqdopksfysbobhjcepk`），不能用於 Production。[封包產出交接](../../2026-10-31-budget-b7-forward-package-validation.md)。**使用者已明確授權指定Dormant安裝，但本輪SQL Editor因完整query過大而拒絕；停止，不得自動重試。**
+2026-10-31。只適用 `Travel-Planner-Staging`（`uyqdopksfysbobhjcepk`），不能用於 Production。[封包產出交接](../../2026-10-31-budget-b7-forward-package-validation.md)。**指定Dormant安裝已有授權，現因psql缺少可用憑證停止；禁止自動重試或擴權。**
 
-最新：[Dormant部署嘗試與獨立讀回](../../2026-10-31-budget-b7-staging-dormant-deployment.md)。本輪使用者因純測試資料取消**此Staging專案**的備份P0門檻；不是完成備份／還原。Ledger仍47，15來源未安裝，無部分套用；[前次預檢](../../2026-10-31-budget-b7-staging-final-predeploy-verification.md)的備份阻擋保留歷史效力，不能繼續當作本輪前置。原SQL、manifest與seals未改。**目前NO-GO原因：SQL Editor無法承載完整1,488,439-byte封包，connector無此專案權限且無direct連線；禁止拆分、縮減或另行擴權。**
+目前：[psql準備與停止紀錄](../../2026-10-31-budget-b7-staging-psql-readiness.md)。已確認原生psql17.11；沒有可用連線憑證，依最新使用者指示停止，未連線／送SQL／COMMIT／重驗遠端，也不再嘗試SQL Editor或其他繞過通道。下方SQL Editor失敗與14:04讀回都是前一輪歷史。完整封包／Hash不變；接續前需從指定Dashboard Connect準備實際Direct或Session端點、適用TLS憑證與**既有DB密碼**。禁止Transaction Pooler、重設密碼或擴權；新鮮部署前檢查尚未完成。
+
+前輪：[Dormant部署嘗試與獨立讀回](../../2026-10-31-budget-b7-staging-dormant-deployment.md)。使用者因純測試資料取消**此Staging專案**的備份P0門檻；不是完成備份／還原。當時Ledger47，15來源未安裝，無部分套用；本輪未重新連線，不能宣稱這仍是即時狀態。[更早預檢](../../2026-10-31-budget-b7-staging-final-predeploy-verification.md)的備份紀錄保留歷史效力，不是目前前置。原SQL、manifest與seals未改。SQL Editor已因完整1,488,439-byte query過大而拒絕，不能回頭拆分、縮減或繞過；依上方psql停止條件處理。
 
 SQL註解中的「No Hosted authorization」是封包產出當時的備註，本輪使用者已另明確授權此ref的指定DDL／ledger；不修改註解以保持原Hash。既有執行授權已記錄，停止等待ChatGPT Review，後續需先解決完整同Session執行通道。
 
@@ -60,6 +62,7 @@ T0 是本來缺失的 Timeline 原子 alternative API，先於 Links／跨功能
 4. 逐項比對先前記錄的 **2 trips／1 user／25 itinerary items／3 alternatives／1 frozen Baseline／Storage objects 0** 與 13 表保護指紋。封包硬性綁定先前去敏預檢的指紋，任何 drift 都拒絕。不得為了安裝而改資料或盲目重封 Hash。必要時建立新版本封包並重驗。
 5. 封包最前方鎖住 ledger、13 個 public 保護表、Auth.users、Storage.objects／buckets，`SHARE ROW EXCLUSIVE` 允許普通 SELECT，阻擋其他 writer；DDL 可能進一步要求強鎖。lock timeout 5s／statement timeout 60s，任一步失敗全交易 rollback。必須先確認 managed Auth／Storage owner 權限允許鎖表；本機 admin 通過不保證 Hosted 執行角色相同。需要安靜維護時窗，無權限時不降級移除保護鎖。
 6. 在**同一資料庫Session**明確設定`app.b7_install_target='uyqdopksfysbobhjcepk'`後，以具ON_ERROR_STOP語意且能承載整個封包的SQL client一次執行。GUC不是伺服器身分證明，須另核對ref／role。**Dashboard已實測拒絕此完整封包；禁止再用SQL Editor或改成分段。** 若需新憑證、connector權限或其他擴權，另行提出方案；既有同範圍DDL授權不等於這些變更已授權。
+   最新psql規則：Direct優先，IPv6不可用才用Session Pooler，禁止Transaction Pooler；以安全本機passfile／service與TLS驗證連線。保留原檔BEGIN／COMMIT，設定`ON_ERROR_STOP=1`，**不加`-1`**。無可用憑證就停止，不建立可誤觸執行的wrapper；unknown COMMIT先獨立唯讀判定，不盲目重送。本輪因憑證缺口未執行。
 7. 封包會拒絕 ledger／known source／baseline body drift、重複安裝、非 dormant protocol、自訂未知 40001；交易內保存每張表的原始欄位投影，核對所有原始資料不變，允許新增 schema 欄位。T0／13 個 B-7／F0 的 exact source ledger 同交易提交；成功才發出 PostgREST reload NOTIFY。
 8. 提交後獨立唯讀連線逐項核對 ledger 62／F0 來源 Hash、38 個 after body Hash、未被 F0 涉及的 hotfix 原路徑、OID／owner／ACL／SECURITY／search_path、RLS／grants／private publication、原始欄位資料投影／Auth／Storage／Baseline／歷史成本。執行既有 [Preflight](../budget-b7-preflight.sql) 與 [Readback](../budget-b7-readback.sql)，再做 Managed Security Advisor。既有 Readback 是狀態摘要，不可取代部署前後逐欄位資料與 catalog 比較。未知缺失全部停止，不自動設置 readiness=true。
 

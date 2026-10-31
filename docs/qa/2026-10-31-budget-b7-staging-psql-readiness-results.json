@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-31",
+  "startCommit": "49e60d428836df716c2b8e7965ed0014e58e1dff",
+  "projectRef": "uyqdopksfysbobhjcepk",
+  "psql": {
+    "version": "17.11",
+    "versionCommandPassed": true,
+    "inPath": false,
+    "existingRuntime": true,
+    "relativeExecutable": ".tmp-budget-native-pg/runtime/pgsql/bin/psql.exe",
+    "softwareInstalled": false
+  },
+  "credentials": {
+    "usableConfigurationFound": false,
+    "scope": "Explicit connection environment variables, documented user libpq locations, client-relative service candidate and named project env files only; not a full-machine or password-manager search",
+    "connectionEnvironmentConfigured": false,
+    "explicitPassfile": false,
+    "explicitServicefile": false,
+    "checkedUserPassfilesPresent": false,
+    "checkedUserServicefilesPresent": false,
+    "checkedClientServicefilePresent": false,
+    "projectEnvDatabaseKeys": [],
+    "credentialContentsPrinted": false,
+    "browserTokensAccessed": false
+  },
+  "connection": {
+    "attempted": false,
+    "connected": false,
+    "directReachability": null,
+    "sessionPoolerReachability": null,
+    "tlsVerified": null,
+    "liveHostDatabaseRoleVerified": false
+  },
+  "packet": {
+    "sha256": "4d43bddf6ed7853daa3008c51b58d76b868553330b919f885d82a200f546698b",
+    "bytes": 1488439,
+    "offlineCheckerPassed": true,
+    "resealed": false
+  },
+  "deployment": {
+    "sqlSent": false,
+    "commitAttempted": false,
+    "commitConfirmed": false,
+    "rollbackClaimed": false,
+    "wrapperCreated": false,
+    "psqlSingleTransactionOptionUsed": false
+  },
+  "acceptance": {
+    "freshLedger": "not checked",
+    "freshCatalog": "not checked",
+    "hotfix": "not checked",
+    "finalFunctionHashes": "not checked",
+    "rlsAcl": "not checked",
+    "originalData": "not checked",
+    "protocolLatchOffReadback": "not checked",
+    "securityAdvisorDelta": "not checked",
+    "historicalReadbackNotReusedAsFreshEvidence": true
+  },
+  "boundaries": {
+    "hostedAccess": false,
+    "sqlEditorUsed": false,
+    "connectorProjectAccessUsed": false,
+    "dockerWsl": false,
+    "passwordReset": false,
+    "permissionExpansion": false,
+    "flagsEnabled": false,
+    "workerStarted": false,
+    "paidUpgrade": false,
+    "backupCreated": false,
+    "productCodeChanged": false,
+    "migrationOrPacketChanged": false
+  },
+  "decision": "BLOCKED / NO-GO: stop at missing credentials as instructed",
+  "next": "User obtains actual Staging Direct/Session endpoint and certificate from Dashboard Connect and supplies existing password only through protected local credentials. No reset or alternate route.",
+  "checks": {
+    "localPacket": true,
+    "documentLinks": true,
+    "diff": true,
+    "historicalTestsRerun": false,
+    "buildRerun": false
+  }
+}
