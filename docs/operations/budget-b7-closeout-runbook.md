@@ -6,7 +6,7 @@
 
 ## 安全供應與實際執行前條件
 
-1. 可信操作者簽發Staging專用短效JWT：role=budget_receipt_worker、ref=uyqdopksfysbobhjcepk、iss=https://uyqdopksfysbobhjcepk.supabase.co/auth/v1、iat/exp（最多15分鐘）。原signing key留可信端，JWT透過process environment注入，不貼聊天、不寫CLI參數／Git／report。現有service_role只可QA Auth／membership初始化，不代替Worker或普通使用者權限驗收。需要存取API／signing key來源時，先取得精確授權；本輪自動審查拒絕仍有效。
+1. 可信操作者簽發Staging專用短效JWT：role=budget_receipt_worker、ref=uyqdopksfysbobhjcepk、iss=https://uyqdopksfysbobhjcepk.supabase.co/auth/v1、iat/exp（最多15分鐘）。原signing key留可信端，JWT透過process environment注入，不貼聊天、不寫CLI參數／Git／report。現有service_role只可QA Auth／membership初始化，不代替Worker或普通使用者權限驗收。需要存取API／signing key來源時，先取得精確授權；2026-11-01使用者已給精確記憶體存取授權、來源核對完成；剩餘是native工具環境限制，見[使用者啟動助手](../2026-11-01-budget-b7-memory-credential-handoff.md)，不重複索取同一份權限。
 2. 新鮮獨立唯讀連線比對project／實際身分／64筆ledger／38final與兩個Guard afterhash、原28資料、完整RLS／ACL／Worker／Storage policies。不可僅靠target GUC。無不明writer／有效租約，保留既有QA Baseline。DB管理憑證只用安全輸入，不重設密碼或擴權。
 3. QA manifest記錄此次精確trip／Actual／object IDs（Git外）；核對原始資料未變、所有非本次scope的pending intents／cleanup皆0，排除其他測試writer。否則不跑global sweep。重啟可保留本次scope內durable jobs，不能把它們標成不存在。
 4. Worker有限adapter為scripts/qa/run-b7-staging-worker.mjs，舊maintenance CLI仍loopback-only。注入STAGING_RECEIPT_WORKER_JWT、STAGING_PUBLIC_API_KEY、STAGING_RECEIPT_QA_SCOPE，再以--authorized-staging-qa執行。scope為project/tripIds/actualIds/preflightAt/livePreflight.originalDataUnchanged=true/livePreflight.noUnscopedReceiptJobs=true；每項必須由真唯讀結果支持，不能手填true冒充驗證。結果只留hash/count，不保存token。未供應憑證不啟動。

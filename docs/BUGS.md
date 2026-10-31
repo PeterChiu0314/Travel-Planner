@@ -15,6 +15,8 @@ This document now separates:
 
 ## B-7 release gates | Real service closeout remains blocked (not a new reproduced product bug)
 
+2026-11-01: Staging secret-read authorization is now explicit and source/HMAC checks succeeded, then secret references cleared. Remaining environment gate is native execution: sandbox DNS/pipe isolation plus product policy refusing automatic PowerShell launch. User-started masked memory helper prepared; real HTTP/Worker/Activation still not passed. [Credential/operator handoff](2026-11-01-budget-b7-memory-credential-handoff.md). Earlier rejection below is historical, not a request for duplicate authorization.
+
 Updated2026-10-31 from585daac. BUG-028/030 remain Staging-verified closed; BUG-029 frontend rollout is still pending. New legal Incomplete fixture (Lifecycle placeholder + validated Pricing while Title empty) has real children; raw INSERT/UPDATE/DELETE reject on both financial parents in native integration27/27. Hosted proof still unavailable without QA credentials and gated Lifecycle activation. No Guard bypass or source-history change.
 
 P1 release gates: dedicated trustworthy Worker JWT/headers/claim/retry/restart/two actual cycles, authenticated over10MiB Storage and full Receipt lifecycle, controlled Activation and independent real Browser sessions/E2E. No new confirmed P0 or productP1 this round; these gates are unverified, not presumed Passed. Automatic safety review rejected reading API settings credentials; no token/secret workaround. Full evidence and secure supply requirements: [continuous closeout](2026-10-31-budget-b7-closeout.md).
