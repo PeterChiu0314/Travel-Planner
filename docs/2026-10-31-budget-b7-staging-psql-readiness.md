@@ -6,6 +6,15 @@
 
 ## 本輪已確認
 
+### 使用者要求代操作 Connect 後的補充
+
+- 從 `a685d3e14b7fd55cfc04b30514b84131a6009eda` 接續，已唯讀開啟指定 Staging Dashboard 的 Connect → Direct → PSQL，核對實際顯示的兩種端點；未使用 SQL Editor。
+- Direct：Host `db.uyqdopksfysbobhjcepk.supabase.co`、Port `5432`、Database `postgres`、User `postgres`。
+- Session Pooler 備用：Host `aws-0-ap-northeast-1.pooler.supabase.com`、Port `5432`、Database `postgres`、User `postgres.uyqdopksfysbobhjcepk`。只查看選項，沒有啟用付費 IPv4 或修改設定；最後保留 Direct Connect 面板。
+- 以上是 Dashboard 連線範本的實測，不是 DNS／網路／TLS 或資料庫登入成功證據。憑證、即時 Catalog、Ledger、Advisor 及資料指紋仍未核對；沒有建立隱藏輸入提示、passfile 或部署 wrapper。
+- 使用者明確回覆 **「不知道，先停止部署」**，確認無法提供現有 DB 密碼。本次停止，不重設密碼、不擴權、不用其他通道。後續只能先討論憑證處理；本紀錄不構成任何重設授權。
+- 重新執行離線封包 checker 通過：原 SHA-256 不變，15 來源、38 函式、78 點（54 PT409／24 PT500）、一組 BEGIN／COMMIT；未重新封存。沒有連線、送 SQL 或 COMMIT。
+
 - PATH沒有psql，但現有ignored原生runtime的`psql.exe --version`成功，為 **PostgreSQL17.11**，可使用絕對路徑；不必另外安裝或修改PATH。位置為repo內`.tmp-budget-native-pg/runtime/pgsql/bin/psql.exe`。
 - 僅檢查既有連線設定：PG連線／service／passfile／TLS相關環境變數及標準DB URL變數皆未設定；指定或標準libpq passfile／servicefile均未發現可用檔案。Windows目前Roaming、一般桌面profile的標準位置分別檢查，未假設AppData相同；沒有掃描密碼庫、其他專案或瀏覽器token。
 - `.env`、`.env.local`、`.env.staging.local`只有前端設定，沒有原生DB憑證key。僅讀取key名稱與檔案存在狀態，未輸出任何金鑰／密碼。

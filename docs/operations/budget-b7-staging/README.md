@@ -2,6 +2,8 @@
 
 2026-10-31。只適用 `Travel-Planner-Staging`（`uyqdopksfysbobhjcepk`），不能用於 Production。[封包產出交接](../../2026-10-31-budget-b7-forward-package-validation.md)。**指定Dormant安裝已有授權，現因psql缺少可用憑證停止；禁止自動重試或擴權。**
 
+Connect 代操作補充：已在指定 Dashboard 確認 Direct 與 Session Pooler5432 的實際範本，參數見下方 psql 報告；沒有實際登入或 TLS 驗證。使用者明確回覆 **「不知道，先停止部署」**，本輪停止。未建立憑證檔／輸入提示／wrapper，沒有重設密碼、替代部署或任何 SQL 寫入。後續憑證處理須另行討論，不能把既有 Dormant 授權當成密碼重設授權。
+
 目前：[psql準備與停止紀錄](../../2026-10-31-budget-b7-staging-psql-readiness.md)。已確認原生psql17.11；沒有可用連線憑證，依最新使用者指示停止，未連線／送SQL／COMMIT／重驗遠端，也不再嘗試SQL Editor或其他繞過通道。下方SQL Editor失敗與14:04讀回都是前一輪歷史。完整封包／Hash不變；接續前需從指定Dashboard Connect準備實際Direct或Session端點、適用TLS憑證與**既有DB密碼**。禁止Transaction Pooler、重設密碼或擴權；新鮮部署前檢查尚未完成。
 
 前輪：[Dormant部署嘗試與獨立讀回](../../2026-10-31-budget-b7-staging-dormant-deployment.md)。使用者因純測試資料取消**此Staging專案**的備份P0門檻；不是完成備份／還原。當時Ledger47，15來源未安裝，無部分套用；本輪未重新連線，不能宣稱這仍是即時狀態。[更早預檢](../../2026-10-31-budget-b7-staging-final-predeploy-verification.md)的備份紀錄保留歷史效力，不是目前前置。原SQL、manifest與seals未改。SQL Editor已因完整1,488,439-byte query過大而拒絕，不能回頭拆分、縮減或繞過；依上方psql停止條件處理。

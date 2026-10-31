@@ -2,6 +2,18 @@
   "date": "2026-10-31",
   "startCommit": "49e60d428836df716c2b8e7965ed0014e58e1dff",
   "projectRef": "uyqdopksfysbobhjcepk",
+  "connectFollowup": {
+    "startCommit": "a685d3e14b7fd55cfc04b30514b84131a6009eda",
+    "dashboardConnectRead": true,
+    "direct": { "host": "db.uyqdopksfysbobhjcepk.supabase.co", "port": 5432, "database": "postgres", "user": "postgres" },
+    "sessionPooler": { "host": "aws-0-ap-northeast-1.pooler.supabase.com", "port": 5432, "database": "postgres", "user": "postgres.uyqdopksfysbobhjcepk" },
+    "parametersAreTemplatesNotConnectionProof": true,
+    "userDoesNotKnowExistingPassword": true,
+    "userExplicitlyStoppedDeployment": true,
+    "hiddenInputPromptCreated": false,
+    "passfileCreated": false,
+    "packetCheckerRepassedWithoutResealing": true
+  },
   "psql": {
     "version": "17.11",
     "versionCommandPassed": true,
@@ -57,7 +69,9 @@
     "historicalReadbackNotReusedAsFreshEvidence": true
   },
   "boundaries": {
-    "hostedAccess": false,
+    "hostedAccess": true,
+    "hostedAccessScope": "Read-only Staging Dashboard Connect parameters only; no database SQL access",
+    "hostedDatabaseSqlAccess": false,
     "sqlEditorUsed": false,
     "connectorProjectAccessUsed": false,
     "dockerWsl": false,
@@ -71,7 +85,7 @@
     "migrationOrPacketChanged": false
   },
   "decision": "BLOCKED / NO-GO: stop at missing credentials as instructed",
-  "next": "User obtains actual Staging Direct/Session endpoint and certificate from Dashboard Connect and supplies existing password only through protected local credentials. No reset or alternate route.",
+  "next": "Stop as explicitly requested: user does not know the existing DB password. No reset, alternate route or deployment. Credential handling requires separate discussion.",
   "checks": {
     "localPacket": true,
     "documentLinks": true,
