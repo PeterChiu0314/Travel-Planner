@@ -1,3 +1,6 @@
+-- SUPERSEDED historical draft: classified/sealed executable candidate is in
+-- ../budget-b7-staging/. See ../../2026-10-31-budget-b7-forward-package-validation.md.
+-- Do NOT run this obsolete draft; its unconditional stop remains intentional.
 -- REVIEW DRAFT ONLY. Outside supabase/migrations; NEVER execute in this round.
 -- Proposed new terminal forward migration, AFTER all 13 B-1..B-7 sources.
 -- Historical files and 20261031003000 remain immutable and are not replayed.

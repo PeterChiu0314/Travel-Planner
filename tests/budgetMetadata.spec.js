@@ -20,6 +20,17 @@ async function setup(options = {}) {
   client.configure("A", "trip", true, true); await client.refresh();
   return { client, props, calls, patches, reads, service, transport, values, storage, title: client.get("budget", "id", "title"), note: client.get("budget", "id", "note"), advance: ms => { time += ms; } };
 }
+for(const code of ['PT409','PT500'])test(`Forward ${code} Metadata commit preserves draft and is a confirmed refusal without automatic replay`,async()=>{
+ const f=await setup();await f.client.focus(f.title);f.client.input(f.title,'Protected failed draft');let issued=0;
+ f.service.patch=async()=>{issued++;return {error:{code,message:code==='PT409'?'group_conflict':'unfinished_group_patch'}};};
+ expect(await f.client.save(f.title)).toBe(false);expect(f.title.request).toBe(null);expect(f.title.state).toBe('lost');expect(f.title.conflict).toBe(code==='PT409');expect(f.title.value).toBe('Protected failed draft');
+ await f.client.tick();await f.client.refresh();expect(issued).toBe(1);expect(f.props.budgetItems[0].title).toBe('Title');expect(f.client.view(f.title).dirty).toBe(true);
+});
+test('Forward PT409 Metadata admission refuses stale revision without erasing input',async()=>{
+ const f=await setup(),gate=deferred();let issued=0;f.service.lease=async()=>{issued++;return gate.promise;};const work=f.client.focus(f.title);
+ await expect.poll(()=>f.title.state).toBe('pending');f.client.input(f.title,'Admission draft');gate.resolve({error:{code:'PT409',message:'group_conflict'}});
+ expect(await work).toBe(false);expect(f.title.conflict).toBe(true);expect(f.client.view(f.title).display).toBe('Admission draft');expect(f.client.view(f.title).writable).toBe(false);expect(f.patches).toHaveLength(0);expect(issued).toBe(1);
+});
 test("initial inspection has no authority; snapshot readiness/schema are strictly checked", async () => {
   const f = await setup(); expect(f.calls).toEqual([]); expect(f.client.view(f.title).writable).toBe(false);
   const good = (await f.transport.read("trip")).data; expect(validBudgetMetadataSnapshot(good, "trip")).toBe(true);

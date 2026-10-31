@@ -1,0 +1,703 @@
+{
+  "version": "20261031130000",
+  "name": "budget_business_conflicts_forward",
+  "sourceCommit": "5c9e8ea07ddb9f95e748d9b2836f28e8c3790bb8",
+  "functions": [
+    {
+      "signature": "app_private.assert_budget_metadata_effect_finished()",
+      "file": "20261029020551_budget_group_metadata_prototype.sql",
+      "sites": [
+        {
+          "message": "unfinished_group_patch",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.assert_budget_metadata_undo_finished()",
+      "file": "20261029091435_budget_metadata_undo_prototype.sql",
+      "sites": [
+        {
+          "message": "unfinished_metadata_undo",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.budget_field_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "Field dependency changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Group state missing",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "group_state_missing",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "group_conflict",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.budget_payment_admission_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)",
+      "file": "20261030012554_budget_payment_minimal_bundle.sql",
+      "sites": [
+        {
+          "message": "payment_dependency_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "payment_intent_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.budget_pricing_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+      "file": "20261029123907_budget_pricing_participant_groups.sql",
+      "sites": [
+        {
+          "message": "group_conflict",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "dependency_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.budget_rates_admission(uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "Rates dependencies changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Pricing state missing",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.budget_source_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "file": "20261030021719_budget_source_atomic_groups.sql",
+      "sites": [
+        {
+          "message": "source_dependency_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Source bundle changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Source intent changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Source state missing",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "source_dependency_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_budget_field()",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "Incomplete field bundle",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_budget_lifecycle()",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "Delete incomplete",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Lifecycle effect incomplete",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_budget_metadata_patch()",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "group_effect_not_committed",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_budget_payment()",
+      "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+      "sites": [
+        {
+          "message": "Incomplete payment effect",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Incomplete payment participants",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_budget_pricing_patch()",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "Incomplete pricing effect",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_budget_rates()",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "Rates not committed",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Incomplete rate reprice",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Rates revision mismatch",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_budget_source()",
+      "file": "20261030021719_budget_source_atomic_groups.sql",
+      "sites": [
+        {
+          "message": "Incomplete Source parent",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Incomplete Source participants",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_receipt()",
+      "file": "20261030034351_budget_receipts_lifecycle.sql",
+      "sites": [
+        {
+          "message": "Incomplete receipt metadata",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "Inverse target changed",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Placeholder inverse not committed",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Incomplete inverse effect",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Inverse predecessor lineage conflict",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.lifecycle_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "file": "20261030064703_budget_workspace_lifecycle.sql",
+      "sites": [
+        {
+          "message": "Lifecycle version changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.lock_budget_field_parents(uuid,jsonb)",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "Resource changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "Field dependency changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.prepare_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "file": "20261030064703_budget_workspace_lifecycle.sql",
+      "sites": [
+        {
+          "message": "Identity already used",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Lifecycle version changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "group_conflict",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "undo_target_not_top",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "undo_lineage_conflict",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "file": "20261030064703_budget_workspace_lifecycle.sql",
+      "sites": [
+        {
+          "message": "payment_intent_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "payment_dependency_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "payment_dependency_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "file": "20261030064703_budget_workspace_lifecycle.sql",
+      "sites": [
+        {
+          "message": "dependency_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "group_conflict",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Trip exchange rate changed or unavailable",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Resource changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "dependency_changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.prepare_budget_rates(uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "Rates dependencies changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Rates dependencies changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)",
+      "file": "20261030125028_budget_workspace_integration_safety.sql",
+      "sites": [
+        {
+          "message": "Receipt changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Original object unavailable; no deletion performed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Original receipt changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Uploaded object not confirmed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.receipt_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)",
+      "file": "20261030034351_budget_receipts_lifecycle.sql",
+      "sites": [
+        {
+          "message": "Receipt dependencies changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.receipt_authority(uuid,uuid,uuid,uuid,bigint,bigint,jsonb)",
+      "file": "20261030034351_budget_receipts_lifecycle.sql",
+      "sites": [
+        {
+          "message": "Source missing",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Receipt dependency changed; keep file and reconfirm",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Receipt version changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.reconcile_budget_readiness(text,uuid)",
+      "file": "20261030064703_budget_workspace_lifecycle.sql",
+      "sites": [
+        {
+          "message": "Unfinished group before readiness",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.record_budget_metadata_undo()",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "invalid_undo_effect",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "undo_predecessor_conflict",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "missing_undo_before_image",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.workspace_inverse_manifest()",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "Inverse target mismatch",
+          "code": "PT500",
+          "classification": "internal_integrity",
+          "rationale": "Server-owned effect/inverse/lineage finalization or missing before-image violates a locked transaction invariant; retrying the same user payload cannot repair it."
+        },
+        {
+          "message": "Undo cannot restore a stale currency or rate",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "app_private.workspace_undo_top(uuid,uuid,uuid)",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "Undo target is not stack top",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Undo dependency changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Placeholder has changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Undo target graph changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Undo effect/lineage changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "public.delete_itinerary_item_budget_safe(uuid,uuid)",
+      "file": "20261030125028_budget_workspace_integration_safety.sql",
+      "sites": [
+        {
+          "message": "Itinerary item unavailable",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "public.patch_budget_metadata_group_v2(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "Resource changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sites": [
+        {
+          "message": "Record missing",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+      "file": "20261029123907_budget_pricing_participant_groups.sql",
+      "sites": [
+        {
+          "message": "Budget missing",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Budget changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        },
+        {
+          "message": "Expense changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    },
+    {
+      "signature": "public.undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sites": [
+        {
+          "message": "Resource changed",
+          "code": "PT409",
+          "classification": "business_conflict",
+          "rationale": "Optimistic revision/dependency/resource/readiness guard can reject a stale user intent; retain draft and require authoritative reconciliation."
+        }
+      ]
+    }
+  ]
+}

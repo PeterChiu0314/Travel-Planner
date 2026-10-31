@@ -1,0 +1,105 @@
+// Native PostgreSQL only. Auth/Storage schemas are fixtures, never real services.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+import {randomUUID as uuid} from 'node:crypto';
+import {nativeBootstrap} from './helpers/b7-native-bootstrap.mjs';
+import {migrationSources,transactionBody,classification,captureCatalog,sealForward,bundleDir,forwardFile,hash,normalize} from '../scripts/qa/b7-forward-artifacts.mjs';
+import {packet,captureProtection} from '../scripts/qa/build-b7-staging-packet.mjs';
+
+const port=Number(process.env.BUDGET_NATIVE_PORT),marker=process.env.BUDGET_NATIVE_MARKER,chain=process.env.BUDGET_FORWARD_CHAIN;
+assert(Number.isInteger(port)&&port>1024&&/^[a-f0-9-]{36}$/.test(marker||'')&&['staging','fresh'].includes(chain));
+const pg=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href),{Client}=pg.default||pg;
+const cfg={host:'127.0.0.1',port,database:'postgres',connectionTimeoutMillis:5000};
+const db=new Client({...cfg,user:'budget_local_admin'}),a=new Client({...cfg,user:'budget_actor_a'}),b=new Client({...cfg,user:'budget_actor_b'});
+const results=[];let catalogs,compiled,forward;
+const q=async(sql,args)=>(await db.query(sql,args)).rows;
+const test=async(name,run)=>{const start=Date.now();try{await run();results.push({name,status:'passed',ms:Date.now()-start});console.log('PASS '+name);}catch(e){results.push({name,status:'failed',message:e.message,code:e.code});throw e;}};
+const ledger=async f=>{const audit=JSON.parse(await fs.readFile('docs/qa/2026-10-31-budget-b7-preflight-audit.json','utf8')),old=chain==='staging'?audit.staging.ledger.find(r=>r.version===f.version):null;let source=f.source;if(old?.source_sha256&&hash(source)!==old.source_sha256&&hash(source+'\n')===old.source_sha256)source+='\n';await q('insert into supabase_migrations.schema_migrations values($1,$2,$3)',[f.version,old?.name||f.file.slice(f.version.length+1,-4),old&&!old.source_sha256?null:[source]]);};
+const flags=async()=>q(`select 'metadata' k,enabled v from app_private.budget_metadata_protocol union all select 'finance',enabled or activated from app_private.budget_finance_protocol union all select 'payment',enabled from app_private.budget_payment_protocol union all select 'source',enabled from app_private.budget_source_protocol union all select 'receipts',enabled or activated from app_private.budget_receipt_protocol union all select 'lifecycle',enabled or activated from app_private.budget_lifecycle_protocol union all select 'undo',enabled or full_enabled from app_private.budget_metadata_undo_protocol order by k`);
+const state=async()=>({schemas:await q("select oid,nspname,nspowner,nspacl from pg_namespace where nspname in('public','app_private','auth','storage') order by oid"),memberships:await q('select * from pg_auth_members order by roleid,member,grantor'),functions:await q("select p.oid,to_jsonb(p) attributes from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in('public','app_private') order by p.oid"),policies:await q('select * from pg_policies order by schemaname,tablename,policyname'),triggers:await q("select t.oid,to_jsonb(t) value from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname in('public','app_private','auth','storage') order by t.oid"),rls:await q("select n.nspname,c.relname,c.relrowsecurity,c.relforcerowsecurity,c.relacl from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in('public','app_private','auth','storage') and c.relkind='r' order by 1,2"),roles:await q('select oid,rolname,rolcanlogin,rolsuper,rolbypassrls,rolinherit from pg_roles order by oid'),ledger:await q('select * from supabase_migrations.schema_migrations order by version'),rows:await captureProtection(db)});
+const rollbackFailure=async(sql,code='P0001')=>{await assert.rejects(()=>q(sql),e=>e.code===code);await q('rollback');};
+const custom=async()=>(await q("select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in('public','app_private') and p.prosrc ~* $x$errcode[[:space:]]*=[[:space:]]*'40001'$x$"))[0].n;
+const originalRows=async()=>Object.fromEntries(await Promise.all((await captureProtection(db)).map(async t=>[t.name,(await q(`select to_jsonb(t) r from public.${t.name} t`)).map(x=>x.r)])));
+const assertOriginalRows=async before=>{const after=await originalRows();for(const [name,rows] of Object.entries(before)){const sort=values=>values.map(v=>JSON.stringify(v)).sort();if(!rows.length){assert.equal(after[name].length,0,name);continue;}const keys=Object.keys(rows[0]);assert.deepEqual(sort(after[name].map(r=>Object.fromEntries(keys.map(k=>[k,r[k]])))),sort(rows),name);}};
+const originalUser=uuid(),trip1=uuid(),trip2=uuid(),budget=uuid(),actual=uuid();
+try{
+ await db.connect();assert.equal((await q("select current_setting('budget_metadata.test_cluster',true) marker"))[0].marker,marker);assert.equal((await q("select count(*)::int n from pg_database where datname not in('postgres','template0','template1')"))[0].n,0);
+ await q(nativeBootstrap);
+ const all=await migrationSources(),pre=all.filter(f=>f.file<='20261028104333_budget_selection_activity.sql'&&(chain==='fresh'||!f.file.startsWith('20260811150000'))),b7=all.filter(f=>/^202610(?:29|30)/.test(f.file)),t0=all.find(f=>f.file.startsWith('20260811150000')),hotfix=all.find(f=>f.file.startsWith('20261031003000'));
+ for(const f of pre){await q(f.source);await ledger(f);}
+ if(chain==='staging'){await q(hotfix.source);await ledger(hotfix);}
+ await q('insert into auth.users values($1,$2,$3)',[originalUser,'fixture@example.invalid',{}]);
+ await q("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'Protected future','Protected future','Fixture','2099-01-01','2099-01-03',$3),($2,'Protected past','Protected past','Fixture','2020-01-01','2020-01-03',$3)",[trip1,trip2,originalUser]);
+ await q("insert into trip_members(trip_id,user_id,role,status) values($1,$3,'owner','approved'),($2,$3,'owner','approved')",[trip1,trip2,originalUser]);
+ const itemIds=[];for(let i=0;i<25;i++){const id=uuid();itemIds.push(id);await q("insert into itinerary_items(id,trip_id,day_index,sort_order,type,title) values($1,$2,0,$3,'attraction','Protected item')",[id,i<12?trip1:trip2,i]);}
+ for(let i=0;i<3;i++)await q("insert into itinerary_alternatives(itinerary_item_id,title) values($1,'Protected alternative')",[itemIds[0]]);
+ await q("update trip_budget_baselines set departure_at='2000-01-01',payload='{"+'"historical":true'+"}'");
+ await q("insert into budget_items(id,trip_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id) values($1,$2,'Protected budget','交通',900,900,'TWD',1,$3)",[budget,trip2,originalUser]);
+ await q('insert into budget_item_participants(budget_item_id,user_id,share_amount) values($1,$2,900)',[budget,originalUser]);
+ await q("insert into actual_expenses(id,trip_id,budget_item_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id,payment_origin,twd_amount_source,actual_twd_amount,payment_history) values($1,$2,$3,'Historical debit','交通',1000,777,'JPY',0.2,$4,'manual','actual',777,'[{\"cost\":777}]')",[actual,trip2,budget,originalUser]);
+ await q('insert into actual_expense_participants(actual_expense_id,user_id) values($1,$2)',[actual,originalUser]);
+ await q("insert into attachments(trip_id,target_type,target_id,file_name,file_url,file_type,file_size) values($1,'actual_expense',$2,'protected.pdf','original-receipt','application/pdf',8)",[trip2,actual]);
+ const review=await classification(),beforeData=await captureProtection(db),originalData=await originalRows(),baseState=await state();
+ if(chain==='staging'){
+  assert.equal(baseState.ledger.length,47);assert.equal(await custom(),0);
+  const hotfixNames=JSON.parse(await fs.readFile('docs/qa/2026-10-31-budget-b7-preflight-audit.json','utf8')).sourceAudit.hotfixSignatures;
+  const baselineSeal=[];for(const signature of hotfixNames){const r=(await q('select replace(prosrc,chr(13),\'\') body from pg_proc where oid=to_regprocedure($1)',[signature]))[0];baselineSeal.push({signature,sha256:hash(r.body)});}
+  await fs.writeFile(`${bundleDir}/baseline-seal.json`,JSON.stringify(baselineSeal,null,2)+'\n');
+  await test('Out-of-order chain compilation seals 38 final functions / 78 RAISE sites without committing or enabling',async()=>{
+   await q('begin');for(const f of [t0,...b7]){await q(transactionBody(f.source));await ledger(f);}
+   compiled=await captureCatalog(db,review);assert.equal(compiled.length,38);assert.equal(compiled.reduce((n,r)=>n+(r.body.match(/errcode\s*=\s*'40001'/gi)||[]).length,0),78);assert((await flags()).every(r=>r.v===false));
+   if(process.env.BUDGET_FORWARD_SEAL==='1')await sealForward(compiled);
+   forward=normalize(await fs.readFile(`${bundleDir}/${forwardFile}`,'utf8'));
+   const beforeForward=await state();await q(transactionBody(forward));const afterForward=await state();assert.deepEqual({...afterForward,functions:[]},{...beforeForward,functions:[]});assert.deepEqual((await captureCatalog(db,review)).map(r=>r.attributes),compiled.map(r=>r.attributes));await assertOriginalRows(originalData);
+   await q('rollback');assert.deepEqual(await state(),baseState);
+  });
+  const built=await packet({protection:beforeData,baselineSeal});await fs.writeFile(path.join(process.env.BUDGET_NATIVE_EVIDENCE,'fixture-packet.sql'),built.sql);await q("set app.b7_install_target='uyqdopksfysbobhjcepk'");
+  await test('Packet rejects an unbound target before any DDL',async()=>{await q("set app.b7_install_target='wrong'");await rollbackFailure(built.sql);assert.deepEqual(await state(),baseState);await q("set app.b7_install_target='uyqdopksfysbobhjcepk'");});
+  await test('Packet rejects a changed protected rowset without overwriting it',async()=>{await q('begin');await q("update budget_items set title='Native drift' where id=$1",[budget]);const drifted=await state();await q('savepoint drift_probe');await assert.rejects(()=>q(transactionBody(built.sql)),e=>e.code==='P0001');await q('rollback to savepoint drift_probe');assert.deepEqual(await state(),drifted);await q('rollback');assert.deepEqual(await state(),baseState);});
+  const packetBase=await state();
+  await test('Atomic packet fences a concurrent original-data writer until rollback releases its locks',async()=>{const peer=new Client({...cfg,user:'budget_local_admin'});await peer.connect();try{await q('begin');await q(transactionBody(built.sql));await peer.query("set lock_timeout='200ms'");await assert.rejects(()=>peer.query('update public.trips set title=title where id=$1',[trip1]),e=>e.code==='55P03');}finally{await q('rollback');await peer.end();}assert.deepEqual(await state(),packetBase);});
+  await test('Atomic complete packet failure after a Forward rewrite rolls back schema roles ledger and all original data',async()=>{const injected=built.sql.replace('changed:=changed+1;','changed:=changed+1; if changed=1 then perform 1/0;end if;');assert.notEqual(injected,built.sql);await rollbackFailure(injected,'22012');assert.deepEqual(await state(),packetBase);});
+  await test('Atomic out-of-order dormant packet preserves financial history source receipt baseline and original rowsets',async()=>{await q(built.sql);await assertOriginalRows(originalData);assert.equal((await q('select count(*)::int n from supabase_migrations.schema_migrations'))[0].n,62);assert.equal((await q('select actual_twd_amount from actual_expenses where id=$1',[actual]))[0].actual_twd_amount,'777.00');});
+ }else{
+  await test('Fresh chronological chain plus terminal Forward preserves old data and does not replay the old hotfix',async()=>{
+   for(const f of b7){await q(f.source);await ledger(f);}compiled=await captureCatalog(db,review);assert.equal(compiled.length,38);assert.equal(compiled.reduce((n,r)=>n+(r.body.match(/errcode\s*=\s*'40001'/gi)||[]).length,0),78);await q(hotfix.source);await ledger(hotfix);forward=normalize(await fs.readFile(`${bundleDir}/${forwardFile}`,'utf8'));
+   const candidates=await captureCatalog(db,review);assert.equal(candidates.reduce((n,r)=>n+(r.body.match(/errcode\s*=\s*'40001'/gi)||[]).length,0),75);
+   await q(forward);await ledger({file:forwardFile,version:'20261031130000',source:forward});assert.equal(await custom(),0);assert.equal((await q('select count(*)::int n from supabase_migrations.schema_migrations'))[0].n,62);
+   await assertOriginalRows(originalData);assert.equal((await q('select actual_twd_amount from actual_expenses where id=$1',[actual]))[0].actual_twd_amount,'777.00');
+  });
+ }
+ catalogs=await captureCatalog(db,review);
+ await test('Operational Preflight Readback and already-dormant Pause execute without enabling protocols or changing data',async()=>{const before=await state();for(const file of ['budget-b7-preflight.sql','budget-b7-readback.sql','budget-b7-pause.sql'])await q(await fs.readFile(`docs/operations/${file}`,'utf8'));assert.deepEqual(await state(),before);assert((await flags()).every(r=>r.v===false));});
+ await test('Dormant RLS and scoped worker grants exclude anonymous writes private-table DML and elevated worker powers',async()=>{
+  assert.deepEqual(await q("select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='app_private' and c.relkind='r' and not c.relrowsecurity"),[]);
+  assert.deepEqual(await q("select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='app_private' and c.relkind='r' and (has_table_privilege('authenticated',c.oid,'INSERT,UPDATE,DELETE,TRUNCATE') or has_table_privilege('budget_receipt_worker',c.oid,'SELECT,INSERT,UPDATE,DELETE'))"),[]);
+  const worker=(await q("select rolcanlogin,rolsuper,rolbypassrls,rolinherit from pg_roles where rolname='budget_receipt_worker'"))[0];assert.deepEqual(Object.values(worker),[false,false,false,false]);
+  assert.deepEqual((await q("select r.rolname from pg_auth_members m join pg_roles r on r.oid=m.member where m.roleid='budget_receipt_worker'::regrole order by 1")).map(r=>r.rolname),['authenticator','supabase_storage_admin']);
+  assert.equal((await q("select has_table_privilege('budget_receipt_worker','storage.objects','SELECT') and has_table_privilege('budget_receipt_worker','storage.objects','DELETE') and not has_table_privilege('budget_receipt_worker','storage.objects','INSERT,UPDATE') ok"))[0].ok,true);
+  for(const f of review.functions)assert.equal((await q("select has_function_privilege('anon',to_regprocedure($1),'EXECUTE') allowed",[f.signature]))[0].allowed,false,f.signature);
+ });
+ await test('New ledger sources match every exact installed file and every protocol remains dormant',async()=>{const rows=await q('select version,statements from supabase_migrations.schema_migrations order by version');const expected=chain==='staging'?[t0,...b7,{version:'20261031130000',source:forward}]:[...all,{version:'20261031130000',source:forward}];for(const f of expected)assert.equal(normalize(rows.find(r=>r.version===f.version).statements[0]),f.source);assert.equal((await flags()).length,7);assert((await flags()).every(r=>r.v===false));});
+ await test('All compiled classified sites match sealed bodies: 54 PT409 and 24 PT500; final dynamic guards retained',async()=>{
+  const sealed=JSON.parse(await fs.readFile(`${bundleDir}/compiled-seal.json`,'utf8'));let business=0,internal=0;
+  for(const f of sealed.functions){const c=catalogs.find(x=>x.signature===f.signature);assert.equal(hash(normalize(c.body)),f.afterSha256);business+=f.sites.filter(s=>s.code==='PT409').length;internal+=f.sites.filter(s=>s.code==='PT500').length;}
+  assert.equal(business,54);assert.equal(internal,24);assert.equal(await custom(),0);assert(catalogs.find(r=>r.signature.startsWith('public.save_budget_workspace_record(')).body.includes('IF app_private.legacy_budget_blocked'));
+ });
+ await test('Repeated Forward preserves full routine OIDs owner ACL security search_path RLS triggers ledger and data',async()=>{const before=await state();await q(forward);assert.deepEqual(await state(),before);});
+ await test('Unknown custom-40001 routine fails closed and transaction rollback preserves every existing object',async()=>{await q("create function public.unreviewed_probe() returns void language plpgsql as $$begin raise exception 'unexpected' using errcode='40001';end$$");const before=await state();await rollbackFailure(forward);assert.deepEqual(await state(),before);await q('drop function public.unreviewed_probe()');});
+ await test('Hash drift fails closed without reverting guards or changing data',async()=>{const first=catalogs[0],def=(await q('select pg_get_functiondef(to_regprocedure($1)) d',[first.signature]))[0].d;await q(def.replace(first.body,()=>first.body+'\n-- drift'));const before=await state();await rollbackFailure(forward);assert.deepEqual(await state(),before);await q(def);});
+ await test('Partial Forward failure rolls back earlier CREATE OR REPLACE and all function attributes',async()=>{
+  await q('begin');for(const c of compiled){const def=(await q('select pg_get_functiondef(to_regprocedure($1)) d',[c.signature]))[0].d,current=catalogs.find(r=>r.signature===c.signature);await q(def.replace(current.body,()=>c.body));}
+  const before=await state();await q('savepoint partial');const fail=transactionBody(forward).replace('changed:=changed+1;','changed:=changed+1; if changed=1 then perform 1/0;end if;');await assert.rejects(()=>q(fail),e=>e.code==='22012');await q('rollback to savepoint partial');assert.deepEqual(await state(),before);await q('rollback');
+ });
+ await test('Native classified RAISE transport probes compile all 78 outcomes without enabling protocols',async()=>{for(const f of review.functions)for(const s of f.sites)await assert.rejects(()=>q(`do $probe$begin raise exception '${s.message.replaceAll("'","''")}' using errcode='${s.code}';end $probe$`),e=>e.code===s.code&&e.message===s.message);assert((await flags()).every(r=>r.v===false));});
+ await Promise.all([a.connect(),b.connect()]);for(const c of [a,b]){await c.query("set role authenticated;set statement_timeout='10s'");await c.query("select set_config('request.jwt.claim.sub',$1,false)",[originalUser]);}
+ await test('Existing hotfix real legacy stale Delete still returns PT409 and retains its financial graph',async()=>{const before=await captureProtection(db);await assert.rejects(()=>a.query('select public.delete_budget_workspace_record($1,\'budget\',$2,null)',[trip2,budget]),e=>e.code==='PT409');assert.deepEqual(await captureProtection(db),before);});
+ await test('Dormant group RPC remains fail-closed rather than activating to manufacture acceptance',async()=>{await assert.rejects(()=>a.query('select public.create_budget_workspace_placeholder($1,\'budget\',$2,$3)',[trip2,uuid(),uuid()]),e=>e.code==='55000');assert((await flags()).every(r=>r.v===false));});
+ await q('create table budget_test.engine_probe(id int primary key,n int);insert into budget_test.engine_probe values(1,0),(2,0);grant all on budget_test.engine_probe to authenticated');
+ await test('Genuine engine serialization_failure remains 40001 with independent connections',async()=>{await a.query('begin isolation level repeatable read');await a.query('select * from budget_test.engine_probe where id=1');await b.query('update budget_test.engine_probe set n=1 where id=1');await assert.rejects(()=>a.query('update budget_test.engine_probe set n=2 where id=1'),e=>e.code==='40001');await a.query('rollback');});
+ await test('Genuine engine deadlock remains 40P01 and survivor transaction commits',async()=>{await q('update budget_test.engine_probe set n=0');await a.query('begin');await b.query('begin');await a.query('update budget_test.engine_probe set n=n+1 where id=1');await b.query('update budget_test.engine_probe set n=n+1 where id=2');const work=async(c,id)=>{try{await c.query('update budget_test.engine_probe set n=n+1 where id=$1',[id]);await c.query('commit');return 'commit';}catch(e){await c.query('rollback');return e.code;}};const r=await Promise.all([work(a,2),work(b,1)]);assert.deepEqual(r.sort(),['40P01','commit']);assert.deepEqual((await q('select n from budget_test.engine_probe order by id')).map(r=>r.n),[1,1]);});
+ assert((await flags()).every(r=>r.v===false));
+}catch(e){console.error(e.message);if(!results.some(r=>r.status==='failed'))results.push({name:'bootstrap/install',status:'failed',message:e.message,code:e.code});process.exitCode=1;}
+finally{await Promise.allSettled([a.end(),b.end()]);const result={chain,marker,server:(await q('select version() v').catch(()=>[]))[0]?.v,results,passed:results.filter(r=>r.status==='passed').length,failed:results.filter(r=>r.status==='failed').length,protocolsNeverEnabled:true,realServices:false};await fs.writeFile(path.join(process.env.BUDGET_NATIVE_EVIDENCE,'results.json'),JSON.stringify(result,null,2)+'\n');await db.end();console.log(JSON.stringify({chain,passed:result.passed,failed:result.failed}));}

@@ -215,8 +215,8 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         if (!result.error && !data?.granted) g.token = null;
         if (data?.granted && version(data.epoch)) { g.epoch = data.epoch; await cleanup(g); }
         g.state = result.error ? "uncertain" : "blocked";
-        g.error = result.error?.code === "40001" ? "此欄位版本已更新，草稿已保留。" : result.error?.message || "其他成員或分頁正在編輯，請稍後重試。";
-        if (result.error?.code === "40001") g.conflict = true;
+        g.error = ["PT409", "40001"].includes(result.error?.code) ? "此欄位版本已更新，草稿已保留。" : result.error?.message || "其他成員或分頁正在編輯，請稍後重試。";
+        if (["PT409", "40001"].includes(result.error?.code)) g.conflict = true;
         emit(); void refresh(); return false;
       }
       g.epoch = data.epoch; g.expires = Date.parse(data.expires_at) - offset;
@@ -281,11 +281,11 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         || !data.value.versions.targets.some(t => t.kind === g.kind && t.id === g.id && t.revision === data.revision))
       || !version(data?.revision) || ![request.p_base_revision, request.p_base_revision + 1].includes(data.revision)) {
       const code = result.error?.code;
-      if (["40001", "40P01", "55P03", "42501", "55000", "22023", "22P02", "0A000"].includes(code)) {
-        g.request = null; g.state = "lost"; g.conflict = code === "40001";
+      if (["PT409", "PT500", "40001", "40P01", "55P03", "42501", "55000", "22023", "22P02", "0A000"].includes(code)) {
+        g.request = null; g.state = "lost"; g.conflict = ["PT409", "40001"].includes(code);
       }
       g.error = code === "55P03" ? "編輯權限或交易忙碌，草稿已保留。請重新確認後重試。"
-        : code === "40001" ? "此欄位已更新，請確認最新內容；草稿已保留。" : result.error?.message || "儲存結果尚待確認，請以原請求重試。";
+        : ["PT409", "40001"].includes(code) ? "此欄位已更新，請確認最新內容；草稿已保留。" : result.error?.message || "儲存結果尚待確認，請以原請求重試。";
       g.failed = true; persist(g); emit(); void refresh(); return false;
     }
     g.canonical = data.value ?? ""; g.base = data.revision;g.versions=data.versions??g.versions;

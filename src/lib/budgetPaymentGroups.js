@@ -108,7 +108,7 @@ export function createBudgetPaymentController({ metadata, service, sessionId, st
           && (operation ? operation.validReceipt(data, request) : action === 'set_paid_at' ? Date.parse(data.value.paid_at) === Date.parse(request.p_value.paid_at) : data.value.active === (action === 'paid'));
         if (result.error || !valid) {
           e.requestFailure=result.error?.code;
-          if (['40001', '40P01', '55P03', '42501', '55000', '22023', '22P02', '0A000'].includes(result.error?.code)&&!operation?.retainRequestOnError?.(result.error.code)) {
+          if (['PT409', 'PT500', '40001', '40P01', '55P03', '42501', '55000', '22023', '22P02', '0A000'].includes(result.error?.code)&&!operation?.retainRequestOnError?.(result.error.code)) {
             e.request = null; persist(e); e.releasePending = !(await cleanup(e));
           }
           throw new Error(result.error?.message || `${label}結果待確認，請以原請求重試。`);

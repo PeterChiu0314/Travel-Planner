@@ -17,6 +17,14 @@ async function setup(options={}) {
  const payment=createBudgetPaymentController({metadata,service,sessionId:'tab',storage,timeoutMs:30,...options});clients.push(payment);payment.configure('A','trip',true);
  return {payment,metadata,transport,service,calls,leases,storage,values,get props(){return props;}};
 }
+for(const code of ['PT409','PT500'])test(`Forward ${code} Payment dependency refusal cannot create a duplicate payment or replay automatically`,async()=>{
+ const f=await setup();let issued=0;f.service.mutate=async()=>{issued++;return {error:{code,message:code==='PT409'?'payment_dependency_changed':'Incomplete payment effect'}};};
+ expect(await f.payment.execute('budget','id',{action:'paid'})).toBe(false);expect(f.payment.view('budget','id').unknown).toBe(false);expect(f.payment.view('budget','id').request).toBe(null);expect(f.props.actualExpenses).toHaveLength(0);
+ await f.metadata.refresh();expect(issued).toBe(1);expect(f.values.size).toBe(0);expect(f.payment.view('budget','id').error).toBeTruthy();
+});
+test('Forward PT409 Payment admission does not issue a financial mutation',async()=>{
+ const f=await setup();f.service.lease=async()=>({error:{code:'PT409',message:'payment_dependency_changed'}});expect(await f.payment.execute('budget','id',{action:'paid'})).toBe(false);expect(f.calls).toHaveLength(0);expect(f.props.actualExpenses).toHaveLength(0);
+});
 test('inspection has no lease and explicit payment uses committed DB shape without full form',async()=>{
  const f=await setup();expect(f.payment.view('budget','id').active).toBe(false);expect(f.leases).toHaveLength(0);const ok=await f.payment.execute('budget','id',{action:'paid'});expect(ok,f.payment.view('budget','id').error).toBe(true);
  expect(f.props.actualExpenses).toHaveLength(1);expect(f.props.actualExpenses[0]).toMatchObject({title:'Committed',amount:900,payer_id:'A',payment_active:true});expect(Object.keys(f.calls[0].p_value)).toEqual(['action','versions']);expect(f.payment.hasPending()).toBe(false);

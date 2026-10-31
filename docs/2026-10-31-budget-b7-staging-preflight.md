@@ -1,5 +1,7 @@
 # Budget B-7 Staging 部署前安全預檢
 
+後續狀態：本頁保留當時唯讀觀測；[Forward與封包驗證交接](2026-10-31-budget-b7-forward-package-validation.md)已完成本機編譯／controller修正，取代本頁「尚未套用／未編譯」狀態。Hosted部署／Activation仍NO-GO，沒有重新觀測遠端資料。
+
 日期：2026-10-31，Asia/Taipei。起點／已 fetch 的 GitHub 原分支 HEAD：`7b9f5a5c0c0408134d2a731ef2c65c2725cf674b`。
 
 **決策：唯讀預檢完成；實際部署／啟用仍 NO-GO，停止等待 ChatGPT Review。** 本輪沒有執行任何 migration（包含 rollback 演練）、fixture 建立、Storage 操作、Worker、protocol／flag 更新、Docker、main merge 或前端部署。先前 Staging 測試的操作授權不延伸到這次 B-7；本輪新指示只授權唯讀、草案與文件。

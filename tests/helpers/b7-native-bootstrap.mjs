@@ -1,0 +1,15 @@
+export const nativeBootstrap=`create role anon;create role authenticated;create role service_role bypassrls;
+create role budget_actor_a login;create role budget_actor_b login;grant authenticated to budget_actor_a,budget_actor_b;
+create role authenticator nologin noinherit;create role supabase_storage_admin nologin noinherit;
+create schema auth;create schema storage;create schema budget_test;create schema supabase_migrations;
+create table supabase_migrations.schema_migrations(version text primary key,name text,statements text[]);
+create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb);
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+create function auth.jwt() returns jsonb language sql stable as $$select '{}'::jsonb$$;
+grant usage on schema public,auth,storage,budget_test to authenticated,anon;
+alter default privileges in schema public grant all on tables to authenticated;
+create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+create table storage.objects(id uuid primary key,bucket_id text,name text,owner uuid,metadata jsonb);
+alter table storage.objects enable row level security;alter table storage.buckets enable row level security;
+create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;
+create publication supabase_realtime;`;

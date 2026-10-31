@@ -1,0 +1,83 @@
+{
+  "target": "uyqdopksfysbobhjcepk",
+  "baselineHead": "20261031003000",
+  "baselineLedgerRows": 47,
+  "finalLedgerRows": 62,
+  "packetSha256": "4d43bddf6ed7853daa3008c51b58d76b868553330b919f885d82a200f546698b",
+  "packetBytes": 1488439,
+  "sources": [
+    {
+      "file": "20260811150000_atomic_apply_itinerary_alternative.sql",
+      "sha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+    },
+    {
+      "file": "20261029020551_budget_group_metadata_prototype.sql",
+      "sha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+    },
+    {
+      "file": "20261029031137_budget_metadata_snapshot_signals.sql",
+      "sha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+    },
+    {
+      "file": "20261029091435_budget_metadata_undo_prototype.sql",
+      "sha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd"
+    },
+    {
+      "file": "20261029114817_budget_category_payer_links_groups.sql",
+      "sha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262"
+    },
+    {
+      "file": "20261029123907_budget_pricing_participant_groups.sql",
+      "sha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d"
+    },
+    {
+      "file": "20261029134206_budget_payment_lifecycle_groups.sql",
+      "sha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3"
+    },
+    {
+      "file": "20261030012554_budget_payment_minimal_bundle.sql",
+      "sha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011"
+    },
+    {
+      "file": "20261030021719_budget_source_atomic_groups.sql",
+      "sha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c"
+    },
+    {
+      "file": "20261030034351_budget_receipts_lifecycle.sql",
+      "sha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80"
+    },
+    {
+      "file": "20261030054628_budget_financial_dependencies.sql",
+      "sha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55"
+    },
+    {
+      "file": "20261030064703_budget_workspace_lifecycle.sql",
+      "sha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea"
+    },
+    {
+      "file": "20261030082712_budget_workspace_undo.sql",
+      "sha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27"
+    },
+    {
+      "file": "20261030125028_budget_workspace_integration_safety.sql",
+      "sha256": "87350e2bafd338345bd59cd0a4c71aaf58baccd57f8110c91eae6bd502ac713c"
+    },
+    {
+      "file": "20261031130000_budget_business_conflicts_forward.sql",
+      "sha256": "f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3"
+    }
+  ],
+  "retainedHotfix": {
+    "file": "20261031003000_rpc_business_conflicts_no_retry.sql",
+    "sha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2",
+    "replayed": false
+  },
+  "supportingHashes": {
+    "compiled-seal.json": "8da2e12029ab65c29919e487b550f418610b1569a486857d173fed6ace092dc2",
+    "compiled-definitions.json": "1363ee92001c6ee4d03cf866d991dda70bfba7bf907f977c294e31ee3b8314ef",
+    "baseline-seal.json": "96ff9d9cb2ab3e6574a35aeb1bca196d0c5172361fd352b5d50ea7e407d67ad6",
+    "error-classification.json": "22a4970f7a10d5302acaa29a0b4c6fddab75d6e7fe7372802973542ecc7cdbde"
+  },
+  "protocols": "all disabled; never activates",
+  "historicalSourceFilesChanged": false
+}

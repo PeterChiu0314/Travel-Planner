@@ -1,0 +1,54 @@
+[
+  {
+    "signature": "public.delete_budget_workspace_record(uuid,text,uuid,timestamptz)",
+    "sha256": "5ebc2cb8ee461212e101b465699589f574363f534003b6a1e2197727a40c8ddc"
+  },
+  {
+    "signature": "app_private.budget_edit_lease_action(text,uuid,uuid,uuid,text,timestamptz)",
+    "sha256": "765a5a6f28f98ce401d0a540b6589d49a8bc3d16793e3afb75f200bb62eb9410"
+  },
+  {
+    "signature": "app_private.budget_workspace_request(uuid,uuid,text,text,uuid)",
+    "sha256": "d7f3d2b18037842d63fb0ad06a7a356cc3c51b6631e02b1d5a0dba831688139d"
+  },
+  {
+    "signature": "app_private.update_budget_selection(uuid,uuid,text,uuid)",
+    "sha256": "ed2867ba4b7927919ef5f1c46ab4474d354ac27c6a0fa7823e85d0e0b6ea1108"
+  },
+  {
+    "signature": "app_private.update_budget_selection_v2(uuid,uuid,text,uuid,uuid,text)",
+    "sha256": "b4044b8aaf8e818932a502f56a69e9947022750da5882e012685d8056207c7e7"
+  },
+  {
+    "signature": "public.assign_luggage_item(uuid,text,uuid,timestamptz,uuid)",
+    "sha256": "6f44e927dbaaec2f68b74c07f3bf2b60bdac21b81bb43a2653619b0347965082"
+  },
+  {
+    "signature": "public.mutate_budget_receipt(uuid,uuid,text,jsonb,uuid,uuid)",
+    "sha256": "7ce9b1201ab18b6b4481b2fd503ea312acf3454d93c41c6d3854345fda5b5370"
+  },
+  {
+    "signature": "public.mutate_luggage_item(uuid,text,text,uuid,timestamptz,jsonb)",
+    "sha256": "d1840d783cf1014824162ca0a85c838784f42fd99320cdfa544c6d7fb131f922"
+  },
+  {
+    "signature": "public.privatize_luggage_item(uuid,uuid,timestamptz,text)",
+    "sha256": "a64ed5a6673791df4c65bc07496b502bdaaccd1023aaa77451ca76488db6c8c0"
+  },
+  {
+    "signature": "public.reorder_luggage_items(uuid,text,uuid,uuid,text,jsonb)",
+    "sha256": "d5bc3114dc05d25efabb019328dcbb5923135f673dde7e61357bf6b35a47067f"
+  },
+  {
+    "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+    "sha256": "405c9244cfa84cace41c31339712b45c9808fc5d5631892a3af191e40c2c7635"
+  },
+  {
+    "signature": "public.save_budget_workspace_record_v2(uuid,text,uuid,timestamptz,jsonb,uuid)",
+    "sha256": "1bc43fb2e1bf0bed7783094438f3e2479abfff178d8bd813c1770972713a122b"
+  },
+  {
+    "signature": "public.save_budget_workspace_record_v3(uuid,text,uuid,timestamptz,jsonb,uuid)",
+    "sha256": "9fe2c15538936679fc32ddc3594069353e0b213217d3afafd3cf87918f4034b3"
+  }
+]
