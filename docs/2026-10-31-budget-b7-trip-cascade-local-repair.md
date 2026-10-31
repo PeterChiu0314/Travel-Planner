@@ -1,5 +1,7 @@
 # Budget B-7｜BUG-030 本機修正與隔離回歸
 
+> 後續狀態：本文件保留本機22/22歷史。新封包已另獲精確授權並部署至Staging，Ledger64、真實HTTP7/7、BUG-030結案；見[最新部署驗收](2026-10-31-bug030-staging-deployment.md)。以下「尚未部署」僅為當時紀錄。
+
 2026-10-31，分支codex/budget-collaboration-redesign，起點24d2c5580875da9e18f98dacc278ac9dcb4f2041。使用者「繼續」後，本輪完成**本機最小修正／隔離驗證／供Review的非自動套用Forward**，沒有把它當成另一份Hosted部署授權。
 
 **官方候選20261031140648／22項針對性原生回歸全部通過。Staging未存取／未寫入；BUG-030的真HTTP仍未結案。** [完整Runbook與安全規則](operations/drafts/budget-b7-trip-cascade/README.md)、[封包manifest](operations/drafts/budget-b7-trip-cascade/packet-manifest.json)、[去敏實測結果](qa/2026-10-31-budget-b7-trip-cascade-local-results.json)。

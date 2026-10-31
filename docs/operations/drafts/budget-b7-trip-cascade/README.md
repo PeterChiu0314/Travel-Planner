@@ -1,10 +1,10 @@
-# BUG-030｜Trip Cascade 租約授權 Forward（只完成本機驗證）
+# BUG-030｜Trip Cascade 租約授權 Forward（Staging 已部署）
 
-**NON-AUTO-APPLY；未取得此新封包的Hosted部署授權。** 唯一未來候選目標Travel-Planner-Staging／uyqdopksfysbobhjcepk。此目錄不在supabase/migrations；不要db push／include-all／重播舊Forward。
+**已依精確封包授權 COMMIT 至 Travel-Planner-Staging／uyqdopksfysbobhjcepk，Ledger64；真實HTTP7/7、BUG-030結案。禁止重送本封包。** [實際部署與驗收](../../../2026-10-31-bug030-staging-deployment.md)、[去敏證據](../../../qa/2026-10-31-bug030-staging-deployment-results.json)。七Protocol／Latch／Readiness OFF，Activation／Worker／Production仍NO-GO。以下保留核准封包及原執行前規則的歷史紀錄；「尚未授權／執行」描述僅指先前本機Review階段。此目錄不在supabase/migrations；不要db push／include-all／重播舊Forward。
 
-[本輪修正與隔離報告](../../../2026-10-31-budget-b7-trip-cascade-local-repair.md)、[去敏22項證據](../../../qa/2026-10-31-budget-b7-trip-cascade-local-results.json)、[實際已部署63筆checkpoint](../../../2026-10-31-budget-b7-cascade-deployment.md)。最後一份是歷史服務證據，本輪沒有連線Hosted刷新狀態。
+[先前本機修正與隔離報告](../../../2026-10-31-budget-b7-trip-cascade-local-repair.md)、[去敏22項證據](../../../qa/2026-10-31-budget-b7-trip-cascade-local-results.json)、[先前63筆checkpoint](../../../2026-10-31-budget-b7-cascade-deployment.md)。最新64筆服務證據見上方部署報告，舊失敗紀錄保留。
 
-## 唯一待Review候選
+## 唯一已核准部署封包
 
 | 項目 | 封存值 |
 | --- | --- |
@@ -13,7 +13,7 @@
 | 完整Source | 17,987bytes，SHA-256 `a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b` |
 | Wrapper | [candidate-deployment.psql](candidate-deployment.psql)，37,600bytes |
 | Wrapper SHA-256 | `032a2498b1677cbb7c99b0d38c388a9e707043fb6184823aa3a9d936b74653f1` |
-| Ledger | 預期63／20261031130414 →64／20261031140648；Hosted尚未執行 |
+| Ledger | 已實測63／20261031130414 →64／20261031140648；Source及函式獨立讀回通過 |
 | 封存 | [packet-manifest](packet-manifest.json)、[source-manifest](source-manifest.json)、[完整before／after body](compiled-definitions.json) |
 
 僅更改兩個既有private函式body：guard_budget_external_parent()、assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)。OID／owner／ACL／security／search_path／輸入名稱與defaults保持。另新增三個必要物件：
@@ -42,14 +42,14 @@
 
 已部署130414的source／wrapper／manifest、38final seals、舊Migrations與財務歷史不修改。22項新針對性回歸不代替先前尚未通過的Hosted Trip／Incomplete／PT409測試。
 
-## 未來部署前的必要門檻（尚未授權）
+## 部署前必要門檻（歷史核准程序，已完成）
 
 - 先ChatGPT Review本候選的真實版號／兩個Hash／五個物件變動，再取得**新的Staging-only明確授權**；泛稱繼續或前次one-Guard授權不能用來部署本封包。
 - 新的唯讀連線核對實際host／project-bound login／DB／role、TLS verify-full、Ledger恰63/head130414、新版本缺席、兩個before body SHA、已部署Incomplete Guard afterHash ecd788…、38final Hash、原28資料指紋與保留QA清單／Baseline、全RLS／ACL／Trigger／Worker／Storage policies；不得重封預期Hash來通過。
 - 七組完整Protocol／Latch／Readiness均OFF。新增admission表／函式／cleanup trigger均應不存在；未知同名物件或部分已套用即拒絕。確認無有效legacy／group／rates/raw鎖、未完成交易或其他測試寫入。
-- 確認部署role可在app_private建立私有表／函式、在public.trips建立trigger、執行必要表鎖，並保留原函式owner；本輪未再次確認Managed權限。不要擴權或更改既有grants。
+- 確認部署role可在app_private建立私有表／函式、在public.trips建立trigger、執行必要表鎖，並保留原函式owner；本次Managed Preflight及原子COMMIT已驗證，不擴權或更改既有grants。
 
-## 核准後的原子執行與讀回程序（本輪未執行）
+## 核准後的原子執行與讀回程序（已依此完成，不重送）
 
 1. 重新準備僅針對本候選的安全psql helper；**不要直接重用前輪operator，它釘住舊130414的path／Hash**。既有helper已stopped，密碼未保存。不要讀瀏覽器Session Token或把密碼放URI／命令列／Git。
 2. 只用已核對Staging Direct或Session Pooler5432／verify-full。單一client Session先SET app.b7_install_target='uyqdopksfysbobhjcepk'，再完整載入candidate-deployment.psql；保留ON_ERROR_STOP與原BEGIN／COMMIT，不加-1、不拆段。
@@ -57,10 +57,10 @@
 4. 若COMMIT不明先獨立唯讀讀回，不能直接重送。同版本重送只接受64/head／name／完整sourceSHA及所有after物件完全一致；NULL來源、source碰撞、未知head／部分函式狀態／權限或清理trigger漂移都拒絕。
 5. COMMIT後新唯讀連線核對64／完整source、兩個afterHash與原非body屬性、38final／原資料／七OFF、新表RLS／ACL／0rows、cleanup函式／trigger、新物件不被Realtime發布及Managed Advisor前後差異。不得做破壞性Rollback或刪Ledger；必要時另版Forward Repair。
 
-## Hosted尚待驗收與清理
+## Hosted驗收與清理（先前待辦，最新結果見部署報告）
 
-普通JWT重跑Trip／Budget／Actual cascade、非會員／匿名／撤權與並發有效租約拒絕；先前PT409真HTTP未完成也需補驗。Incomplete負向需安全合法fixture，本輪仍無protocol-OFF合法製造方式，不能用直接SQL／停trigger／服務角色繞Guard。
+普通JWT Trip／Budget／Actual cascade、非會員／匿名、有效peer租約拒絕及真實PT409已通過；撤權／並發邊界沿用先前本機證據。Incomplete負向需安全合法Hosted fixture，仍無protocol-OFF合法製造方式，不能用直接SQL／停trigger／服務角色繞Guard。
 
-前輪保留的兩個QA trip／兩個自動Baseline及剩餘Budget／Actual children仍依原manifest保留；本輪未查、未動。未來只有普通owner的正常DELETE成功且所有關聯驗證通過才能清理；其他Parent／Baseline／Audit guard拒絕就保留，不走Auth Admin Cascade或強制SQL。
+前輪保留的兩個QA trip以及本輪兩個新QA trip，已依精確manifest用普通owner正常DELETE清理，其Baseline／financial／membership關聯均0；舊preactivation QA旅程／Baseline未動。四筆無Trip FK的QA signal保留，不強制清除。其他Parent／Baseline／Audit guard若拒絕仍應保留，不走Auth Admin Cascade或強制SQL。
 
-**GO：本機候選Review。NO-GO：Hosted部署、Activation／Worker／Production。BUG-030的Hosted結案仍Pending。**
+**目前GO：部署結果ChatGPT Review。BUG-030已在Staging結案；NO-GO：Activation／Worker／Production。不自動進入下一階段。**

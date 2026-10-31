@@ -16,8 +16,11 @@ This document now separates:
 ## BUG-030 | Ordinary JWT Trip cascade loses Budget lease authorization
 
 Priority: P1
-Status: Local candidate22/22 passed / pending exact-artifact Review / Hosted not repaired
+Status: Closed — Staging Forward committed / true Auth-PostgREST HTTP7/7 passed
 Discovered: 2026-10-31
+
+**Latest 2026-10-31:** explicitly authorized exact20261031140648 Source/wrapper committed on Staging, ledger63→64. Fresh read-only body/attributes/catalog/38functions/28original fingerprints and sevenOFF verified. Ordinary owner JWT Trip DELETE now succeeds with Budget/Actual/participant/Baseline graph; Budget/Actual deletes, peer lease refusal, nonmember/anon isolation and real409/PT409 also pass (7 targeted HTTP cases). Two new and exactly two prior failed-run QA trips normally removed; four QA sync signals retained without forced cleanup, older QA Baseline preserved. Advisor no new unresolved P0/P1. [Deployment and real-service closure](2026-10-31-bug030-staging-deployment.md). Historical failure/local-only evidence follows; it is superseded for this Staging defect.
+
 
 After approved guard_incomplete_child Forward committed (ledger63), individual Budget/Actual deletes cascade correctly. An approved owner JWT DELETE of a fresh QA Trip still returns403/42501 Forbidden. Managed PostgreSQL context confirms FK DELETE budget_items -> guard_budget_edit_lease line26 -> assert_budget_edit_lease line11 at can_edit_trip; approved_trip_role reads trip_members during the parent/membership cascade. Privileged native cases bypass this when auth.uid is null, so prior15/15 did not cover this real-user boundary. Failed transaction retains both parent/child graphs and Baselines; no orphan rows or forced cleanup. Further Hosted writes stopped; other requested negative/PT409 tests blocked. Only read-only diagnosis done, no extra function/RLS/grant changes. Subsequent local candidate20261031140648 reproduces the ordinary-role42501, then passes22/22 targeted native cases using a private transaction-bound admission and pre-delete permission/lease/row locks. It preserves both existing function attributes and all prior financial/RLS/latch boundaries. No Hosted access in that local follow-up; real Trip HTTP failure remains open pending exact-artifact Review, separate Staging authority and post-deployment HTTP. [Local fix/22case evidence](2026-10-31-budget-b7-trip-cascade-local-repair.md). [Deployment, runtime context and retained QA](2026-10-31-budget-b7-cascade-deployment.md).
 
@@ -36,8 +39,11 @@ The two original failures were caused by treating Phoenix JOIN/SUBSCRIBED as Pos
 ## BUG-028 | Dormant participant Guard rejects normal parent FK cascade
 
 Priority: P1
-Status: Participant repair deployed / Budget-Actual HTTP passed / Trip cascade still P1 (BUG-030)
+Status: Closed on Staging — participant Forward plus BUG-030 verified Budget/Actual/Trip HTTP
 Discovered: 2026-10-31
+
+Latest: the later separately authorized BUG-030 Forward and ordinary-JWT7/7 regression resolve the downstream Trip authorization failure too; ledger64, guard_incomplete_child body unchanged, original data/protocol fences preserved. Hosted Incomplete negative fixture remains pending; prior native boundary evidence is not called new HTTP. [Final scoped deployment report](2026-10-31-bug030-staging-deployment.md). The next paragraph records the earlier checkpoints.
+
 
 Deleting a QA trip with a Budget participant returns55000 because the child's BEFORE DELETE trigger queries a parent already removed by the FK cascade, interprets it as incomplete and requires validated Pricing. Both real Staging runs reproduce this with all protocols OFF. A non-auto-apply, exact-body-hash draft restores only DELETE with an absent parent before any financial/lifecycle/receipt activation; existing incomplete parents and activated/paused parent protection remain guarded. Fifteen native cases pass: the original eight plus strict child UPDATE/DELETE, three paused-latch fences, protocol concurrency, full-source ledger/repeat/collision/version and atomic rollback boundaries. New full source preserves exact function hashes and properties. After the authorized21:01 local continuation, official CLI2.106.0 issued 20261031130414 later than head20261031130000; exact full source/wrapper and actual-version15/15 native regression pass. Earlier time-blocked/unfinished CLI attempts remain historical; no clock/version fabrication. Later explicitly authorized Forward committed to Staging (ledger63); Budget/Actual child cascades pass real HTTP. Whole Trip DELETE remains42501 in a different legacy lease/membership guard, tracked as BUG-030; this P1 is not closed. Old sources remain unchanged. [Source, official version and scope](2026-10-31-budget-b7-p1-repair-review.md).
 
