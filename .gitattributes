@@ -1,0 +1,2 @@
+# Preserve the reviewed managed-candidate packet bytes on Windows checkouts.
+docs/operations/budget-b7-staging-managed/*.sql text eol=lf

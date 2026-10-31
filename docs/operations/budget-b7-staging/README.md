@@ -1,5 +1,7 @@
 # B-7 Staging Dormant Schema 封包與操作 Runbook
 
+後續已有[另版 Managed Worker 候選](../budget-b7-staging-managed/README.md)，僅本機驗證、等待新 Hash 與 M0 supersession Review／授權。本目錄的原封包／manifest／seals未變且仍 NO-GO；不要因候選存在就重跑本檔或自動補 Ledger。
+
 2026-10-31。只適用 `Travel-Planner-Staging`（`uyqdopksfysbobhjcepk`），不能用於 Production。[封包產出交接](../../2026-10-31-budget-b7-forward-package-validation.md)。**原指定 Dormant 安裝已有授權並經 psql 實際嘗試，但 Managed reserved-role Grant 失敗；完整回滾確認，禁止重試原封包。**
 
 目前：[psql部署與獨立回滾](../../2026-10-31-budget-b7-staging-psql-deployment.md)。使用者自行重設 Staging DB 密碼後，原生psql17.11以 Session Pooler5432 / verify-full TLS1.3 成功連線。16:21前置符合；原封包第13692行 `grant budget_receipt_worker to supabase_storage_admin` 被平台 reserved-role hook 拒絕，psql exit3，未 COMMIT。16:23新唯讀連線證明 Ledger47、15版本全未安裝、原資料/Catalog/ACL/角色關係全部回復。七組協定與Worker role不存在；沒有Activation/QA/Worker。

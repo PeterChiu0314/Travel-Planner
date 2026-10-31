@@ -1,0 +1,256 @@
+{
+  "date": "2026-10-31",
+  "startCommit": "aff8d78fdec252b4f95e315204a91e70283e3d5d",
+  "authorization": "Explicit local code/candidate packet and isolated verification only; no Hosted writes",
+  "targetForFutureReview": "uyqdopksfysbobhjcepk",
+  "packet": {
+    "sha256": "6a61cddbd039832b648c76cff385ee3803eaada6e2f252169affe8b9540bcf47",
+    "bytes": 1493588,
+    "sources": 15,
+    "originalSha256": "4d43bddf6ed7853daa3008c51b58d76b868553330b919f885d82a200f546698b",
+    "originalUnchanged": true,
+    "supersession": {
+      "unappliedOriginal": {
+        "file": "20261030125028_budget_workspace_integration_safety.sql",
+        "sha256": "87350e2bafd338345bd59cd0a4c71aaf58baccd57f8110c91eae6bd502ac713c",
+        "version": "20261030125028"
+      },
+      "replacement": {
+        "file": "20261031083437_budget_managed_worker_role_path.sql",
+        "version": "20261031083437",
+        "sha256": "4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e"
+      },
+      "originalLedgerRowMustRemainAbsent": true
+    },
+    "compiledFunctionDeltas": 0,
+    "afterHashesMatched": 38,
+    "pt409": 54,
+    "pt500": 24,
+    "custom40001": 0,
+    "baselineAndCompiledSealsUnchanged": true
+  },
+  "sourceResearch": {
+    "storageCommit": "9d15cdc93c0b1afc37708914f5e45f865b231d48",
+    "sources": [
+      {
+        "path": "src/internal/database/postgres/scope.ts",
+        "sha256": "6dd93c6ec8a1d3b357f20e882ff4f91eb004618a662bec7c5a37a61583e3e22b"
+      },
+      {
+        "path": "src/internal/database/pg-connection.ts",
+        "sha256": "26874fdab04436db0cd18f3e2c0bd7a17149f03445cd7a2d1222c19c63b76a2b"
+      },
+      {
+        "path": "src/http/plugins/jwt.ts",
+        "sha256": "d6c334dfeb3dcdbb375c31756e8d85d2eee95671ee1d07d047e9b46b625a2f1b"
+      }
+    ],
+    "installedHostedVersionVerified": false,
+    "changelogFetched": true
+  },
+  "native": {
+    "postgres": "17.11",
+    "runs": [
+      {
+        "chain": "staging",
+        "scope": "Native PostgreSQL non-superuser role path, RLS and install atomicity only; not Supautils/HTTP/Auth/Realtime/Storage bytes",
+        "results": [
+          {
+            "name": "Absent existing Storage SET path refuses before install and rolls back all objects",
+            "status": "passed",
+            "ms": 69
+          },
+          {
+            "name": "Missing effective schema Grant Option refuses candidate and rolls back",
+            "status": "passed",
+            "ms": 436
+          },
+          {
+            "name": "Unreviewed direct Worker member refuses candidate and rolls back",
+            "status": "passed",
+            "ms": 335
+          },
+          {
+            "name": "Late Forward fault rolls back roles membership ledger schema and original financial data",
+            "status": "passed",
+            "ms": 361
+          },
+          {
+            "name": "Non-superuser Staging out-of-order packet installs exact replacement without reserved-role mutation",
+            "status": "passed",
+            "ms": 355
+          },
+          {
+            "name": "Replacement ledger is truthful and original immutable superseded version remains absent",
+            "status": "passed",
+            "ms": 45
+          },
+          {
+            "name": "All original protected rowsets including payment history source receipt and Baseline survive",
+            "status": "passed",
+            "ms": 17
+          },
+          {
+            "name": "38 final compiled hashes retain Guard and exactly54 PT409 /24 PT500; no custom40001",
+            "status": "passed",
+            "ms": 17
+          },
+          {
+            "name": "Only authenticator can SET worker; creator ADMIN has no SET/INHERIT; Worker has no elevated/raw private grants",
+            "status": "passed",
+            "ms": 4
+          },
+          {
+            "name": "Real non-superuser Storage and API connections transitively SET worker; ordinary account cannot",
+            "status": "passed",
+            "ms": 2
+          },
+          {
+            "name": "Real SQL role scope reads only exact durable claim and fails closed on bad/missing headers or object-ID change",
+            "status": "passed",
+            "ms": 17
+          },
+          {
+            "name": "Exact cleanup claim deletes only unreferenced matching metadata; referenced Receipt is protected",
+            "status": "passed",
+            "ms": 7
+          },
+          {
+            "name": "Operational Preflight / Readback pass; all seven protocols/latches stay dormant",
+            "status": "passed",
+            "ms": 68
+          },
+          {
+            "name": "Replaying full candidate refuses and preserves committed candidate schema/ledger/data",
+            "status": "passed",
+            "ms": 138
+          }
+        ],
+        "passed": 14,
+        "failed": 0,
+        "marker": "56e8413a-8027-4039-b388-8bb884138cf2",
+        "clusterStopped": true
+      },
+      {
+        "chain": "fresh",
+        "scope": "Native PostgreSQL non-superuser role path, RLS and install atomicity only; not Supautils/HTTP/Auth/Realtime/Storage bytes",
+        "results": [
+          {
+            "name": "Fresh chronological supersession chain installs Hotfix then M0 then F0",
+            "status": "passed",
+            "ms": 379
+          },
+          {
+            "name": "Replacement ledger is truthful and original immutable superseded version remains absent",
+            "status": "passed",
+            "ms": 67
+          },
+          {
+            "name": "All original protected rowsets including payment history source receipt and Baseline survive",
+            "status": "passed",
+            "ms": 18
+          },
+          {
+            "name": "38 final compiled hashes retain Guard and exactly54 PT409 /24 PT500; no custom40001",
+            "status": "passed",
+            "ms": 17
+          },
+          {
+            "name": "Only authenticator can SET worker; creator ADMIN has no SET/INHERIT; Worker has no elevated/raw private grants",
+            "status": "passed",
+            "ms": 5
+          },
+          {
+            "name": "Real non-superuser Storage and API connections transitively SET worker; ordinary account cannot",
+            "status": "passed",
+            "ms": 3
+          },
+          {
+            "name": "Real SQL role scope reads only exact durable claim and fails closed on bad/missing headers or object-ID change",
+            "status": "passed",
+            "ms": 18
+          },
+          {
+            "name": "Exact cleanup claim deletes only unreferenced matching metadata; referenced Receipt is protected",
+            "status": "passed",
+            "ms": 6
+          },
+          {
+            "name": "Operational Preflight / Readback pass; all seven protocols/latches stay dormant",
+            "status": "passed",
+            "ms": 44
+          }
+        ],
+        "passed": 9,
+        "failed": 0,
+        "marker": "54981dc1-6473-411f-8f08-1d1a8e352580",
+        "clusterStopped": true
+      }
+    ],
+    "caseExecutions": 23,
+    "distinctScenarios": 15,
+    "failedFinalCases": 0,
+    "limits": [
+      "No Supautils hook or complete Managed ownership model",
+      "Auth/Storage tables are synthetic fixtures; no real services",
+      "Packet data-protection fingerprints are generated for synthetic fixture only; real candidate fingerprint unchanged",
+      "SQL DELETE is RLS metadata-only test, not Storage HTTP/bytes evidence"
+    ],
+    "profile": "Non-superuser installer postgres; separate non-superuser synthetic Storage/authenticator/ordinary sessions; existing SET path; no reserved-role write in candidate",
+    "caseLabelNote": "Recorded Only authenticator can SET worker label asserts the sole direct SET membership; the next separate-session case proves Storage transitive SET. Current test label clarifies direct grant; assertions unchanged."
+  },
+  "findings": [
+    {
+      "priority": "P0",
+      "name": "Direct reserved-role Grant",
+      "status": "Removed from local candidate; Hosted replacement not yet verified",
+      "previousHostedEvidence": "Original packet failed and fully rolled back; not repeated this round"
+    },
+    {
+      "priority": "P1",
+      "name": "Non-superuser creator automatic ADMIN membership",
+      "status": "Explicitly allow only creator ADMIN TRUE with INHERIT FALSE / SET FALSE; tested; Worker inherits no roles"
+    },
+    {
+      "priority": "P1",
+      "name": "GRANT warning without effective schema permission",
+      "status": "Candidate now checks resulting Usage/Select/Delete and no Insert/Update; native fixture aligned with observed Grant Option"
+    }
+  ],
+  "checks": {
+    "originalOfflinePacket": true,
+    "newOfflinePacket": true,
+    "syntaxFiles": 4,
+    "productionBuild": true,
+    "buildWarning": "Existing chunk-size warning; no threshold change",
+    "historicalFunctionalSuitesRerun": false,
+    "json": true,
+    "links": true,
+    "diff": true
+  },
+  "boundaries": {
+    "hostedDatabaseConnection": false,
+    "hostedReads": false,
+    "hostedWrites": false,
+    "passwordOrTokenRead": false,
+    "originalMigrationFilesChanged": false,
+    "originalPacketManifestSealsChanged": false,
+    "productRuntimeOrFrontendChanged": false,
+    "workerStarted": false,
+    "workerSchedulerStarted": false,
+    "storageHttpOrBytesTested": false,
+    "authRealtimeBrowserTested": false,
+    "protocolActivation": false,
+    "newFlagsDefaultOff": true,
+    "dockerWslVhdxChanged": false,
+    "mainOrVercelDeployment": false
+  },
+  "decisions": {
+    "localCandidateReview": "GO within tested scope",
+    "originalPacket": "NO-GO",
+    "candidateHostedDeployment": "NO-GO pending supersession Review and explicit new-hash Staging authority",
+    "h01H03": "BLOCKED not started",
+    "productionActivation": "NO-GO"
+  },
+  "next": "Stop for ChatGPT Review. Never automatically install the new packet or reconcile the superseded ledger via repair/include-all."
+}

@@ -1,5 +1,7 @@
 # B-7 Staging psql 部署失敗與完整回滾驗證
 
+後續：[Managed Worker 本機候選與隔離驗證](2026-10-31-budget-b7-managed-worker-candidate.md)。新候選尚未部署，本頁仍是最後一次 Hosted 實測及回滾證據；原封包失敗結論不變。
+
 2026-10-31，分支 `codex/budget-collaboration-redesign`，Git 起點 `2da16221a42f0ecaad10ff21cb7b113078407fd3`。唯一資料庫目標 `Travel-Planner-Staging`／`uyqdopksfysbobhjcepk`。本次沿用指定 Dormant Schema 的 DDL／Role／Grant／Ledger 授權；使用者自行完成 Staging 密碼重設後，要求繼續。沒有操作 Production。
 
 **結果：連線成功、部署失敗、完整交易回滾已獨立確認；NO-GO。** 原封包在 B-7 Worker 的 Managed reserved-role Grant 被拒絕，沒有到達 F0 或 COMMIT。沒有更改封包、移除 Grant、擴權或重送。下一步先交 ChatGPT Review，不能開始 H01～H03／Activation。
