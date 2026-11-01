@@ -239,7 +239,8 @@
   .bw-main { padding: 0; }
   .bw-table { min-width: 540px; }
   .bw-toolbar { gap: 12px; flex-wrap: wrap; }
-  .bw-filters { order: 3; flex-basis: 100%; }
+  .trip-editor > div:has(> .budget-workspace) { min-width: 0; }
+  .bw-filters { order: 3; flex-basis: 100%; flex-wrap: wrap; }
   .bw-side { position: static; max-height: none; overflow: visible; border-left: 0; border-top: 1px solid var(--line); padding: 0; }
   .bw-hero strong { font-size: 28px; }
   .bw-editor select[multiple] { min-height: 110px; }

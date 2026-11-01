@@ -87,19 +87,24 @@ Staging cutover真實停止03:57Z，oldURLkey在使用者操作後真正Revoked�
 
 兩個本輪前端P1在真實競爭中發現並安全Pause：BUG-031明確首次PT409導致無epoch token阻塞discard；BUG-032 Snapshot/admission排序缺陷。修正、red/green、直接相依回歸及真Staging對應案例已記錄。Resume只重新開啟同一QA協定，不重填readiness或重設latch，不把新E2E readiness預設Passed。一次臨時Resume wrapper解析拒絕已獨立證明無COMMIT，修正本機JS dollar替換後仍保留所有Lock／Timeout及原子檢查；封存Migration不變。
 
-**目前必須維持Pause。** 最後獨立Protocol讀回12:56:14Z（台灣20:56）七OFF、finance／receipt／lifecycle activated=TRUE、三readiness保留、Ledger65、pending／cleanup／missingReceipt0。12:58:40Z原28投影／38seals／RLS／ACL／Worker／Storage／Realtime未變；12:59Source及privatehelper屬性／Hash讀回相符。13:02QA graph為1trip／3budgets／3Actual／1itinerary／1Baseline／1attachment／2objects，無participant孤兒及有效租約。只有本次那筆blank lifecycle競爭Budget已正常刪除；其餘graph保留。原始2trips／1user／25items／3alternatives／1Baseline及舊QA Baseline不是cleanup目標。
+**目前維持 Pause。最新驗收為2026-11-02（台灣）**：[最終 E2E 報告](../2026-11-02-budget-b7-final-e2e-followup.md)、[去敏矩陣](../qa/2026-11-02-budget-b7-final-e2e-results.json)。先前12:56Z停機／pending membership記錄見舊報告；它們已由本輪實測收尾取代，不能再當目前未恢復狀態。
 
-### 解除目前阻擋的最小操作順序
+- 最後 Protocol16:38:22Z：七OFF、Undo fullOFF、三activated latches TRUE、三既有readiness保留、Ledger65、pending／cleanup／missingReceipt0。
+- 最後保護16:39:46Z：原28投影／38seals／Guard／Worker／Storage／Realtime投影不變。Auth sessions與有效refresh tokens已由普通JWT登出及獨立讀回證明0；16:40Z後真正原生CIM／TCP證明helper／QA Chrome／Vite及5188／5189均退出。
+- QA主圖1trip／4budgets／4Actual／1itinerary／1planning Baseline；有付款歷史的新外幣圖保留，未付款contender正常刪除；本次Receipt metadata與objects歸零，原控制檔不動。舊QA旅程自動匯率初始化刷新其2099 planning Baseline，沒有raw before Hash，不宣稱其整筆不變。原始受保護歷史Baseline仍匹配。
+- 新真服務範圍包括實際hidden／visible草稿、撤權／切旅程／登出與原樣晚到回應隔離、真Auth新Session／UI reload、外幣付款與版本PT409、雙帳號Receipt replace／新舊Object ID／限定Browser斷網後專用Worker清理恢復。以前已通過的Auth／Storage／Worker平台suite及未受影響案例沒有重跑。
 
-1. 先核對唯一Staging target、Ledger65、來源／seals／原28指紋及七OFF；不用舊status檔認定helper仍在或已停。使用者已回覆Ctrl+C、原生視窗盤點未見QA PowerShell／Chrome，exactstoprequest也已佇列，但process退出／RAM釋放／正常Auth logout未獨立證實。
-2. 延遲Snapshot Runner必須加入每步進度、導航／route釋放的有限等待及可取消收尾。新版helper已加獨立RAM期限、exactstop watcher及只關閉自有Chrome/Vite；它的原生取消／期限驗收尚未完成，不能宣稱已實測。不要再啟動舊助手等待無限Promise，也不要任意kill其他Node／Chrome。
-3. 用Git外原scope恢復同一QA Graph與兩個帳號；必要可信憑證僅RAM。先以普通owner JWT核對／恢復**該QA B的pending→原approved**，確認一筆row、原role及其他成員不變，再普通Auth signout／刷新後證明隔離。這是本輪中斷後尚未完成的收尾，不可用Auth Admin Cascade／SQL清除掩蓋；此步不能冒充原撤權／晚回應E2E通過。
-4. 先完成無Activation相依的tool cancellation及readonly safety檢查。只在fresh evidence、0有效租約、0unscopedReceipt工作、舊key保持Revoked、相依權限及原資料不變時，才可依原Staging授權／現行Runbook受控Resume。任一P0／P1立即使用`budget-b7-pause.sql`並獨立讀回；永不清除activated latch或已提交財務資料。
-5. 僅補Blocked的真hidden/visible草稿、撤權晚回應、切旅程／登出／重新整理、外幣／歷史成本競爭、Receipt concurrent object-ID race及手機／IME／Portal／a11y流程。不重跑已過Auth／Storage／Worker平台suite或剛通過且未受影響的業務E2E。標準／multipart超限transport回應仍獨立Blocked，不能以TUS413取代標籤。
-6. QA清理先走正常API，Baseline／Source Origin／Audit／Parent Guard阻擋就保留整圖與去敏指紋；不強刪。最終核對原資料、功能旗標、protocol／latch、Advisor與Worker／排程／Session／本機程序狀態，才更新GO／NO-GO。
+### 剩餘門檻與下一次測試前條件
+
+1. **真 changed-rate repricing 仍 Blocked。** 實際外部quote相同時，SQL合法回傳no-op／空targets，不能要求它與Pricing互斥或據此宣稱重新計價安全。保留失敗前提，先確定合法且真實的不同報價來源／測試時間，再只補受影響競爭與歷史成本驗收；禁止偽造quote、expiry或readiness。
+2. 下一次切旅程QA先讀回兩個目的地的既有rates與Baseline指紋。缺少rates可能觸發產品正常初始化，不能假設只瀏覽UI就零寫入；不可再次以未封存的舊QA Baseline作無變更保護目標。使用新隔離可保留graph或先完成Review的明確fixture保護計畫，禁止強制SQL恢復未知Baseline。
+3. 原schema／來源／Flag預設不變。若需再次Resume：重新確認指定project、Ledger65、38seals、原28投影、權限、七OFF及0不明交易／有效租約／unscoped Receipt job；readiness只能檢查既有真實證據，不重填為true。用原子Activation／Pause腳本，保留latches／request history／bytes；P0或P1立即Pause並獨立讀回。
+4. 延遲回應使用scripts/qa/b7-real-response-gate.mjs：navigation只等commit，fetch／hold／delivery／cancel都有deadline；先release或abort，再unroute。只轉送route.fetch取得的真回應，取消的回應不能算實際delivered-late案例。原生Chrome visibility需先證明真正incognito與hidden／visible，不以DOM事件或focus emulation代替。
+5. QA server用scripts/qa/b7-staging-vite.mjs排除scratch profile監看；真Session bootstrap每context只做一次，不能reload後偷偷登入。Master secrets仍僅RAM；Worker JWT最多15分鐘、專用role，不能用service_role代替。RAM timer不會自動Pause DB，須在期限前獨立Pause；無法安排期限前收尾時不可Resume。新自動expiry logout hook沒有另等完整期限重測；結案必須仍有普通logout、Auth獨立讀回與真正原生程序證據，不能只相信status.json。
+6. 正常UI／Lifecycle／Storage清理之後核對關聯、bytes與持久queue；有Baseline／Source Origin／付款歷史／audit依賴則保留，不走Auth Admin Cascade或SQL強刪。最後Pause、登出兩個QA帳號、獨立讀回Session0、停止有限Worker／Browser／Vite／RAM operator，再原生CIM／TCP核對全部退出。原生程序腳本只辨識本專案精確程序與profile，未知Chrome保留並Blocked，禁止任意kill其他Node／Chrome。
 
 ### 正式發布準備與回復
 
-目前只能交付待Review的feature branch，不能建立「可直接正式執行」的Staging複製封包。未解Blocked、QA恢復及tool shutdown完成前，main合併／正式部署皆NO-GO。後續需要另外明確Production授權：唯讀baseline/依賴/權限與成本保護核對、必要真實備份及隔離還原、Production-bound最小Forward／原子wrapper、Stage已過版本的前端與Worker部署、最後人工決策Activation。worker專用JWT與排程必須最小權限，不能以service_role替代。
+目前只能交付待Review的feature branch，不能建立「可直接正式執行」的Staging複製封包。QA恢復及tool shutdown已完成；仍有changed-rate實測與fixture界線待Review，因此main合併／正式部署皆NO-GO。後續需要另外明確Production授權：唯讀baseline/依賴/權限與成本保護核對、必要真實備份及隔離還原、Production-bound最小Forward／原子wrapper、Stage已過版本的前端與Worker部署、最後人工決策Activation。worker專用JWT與排程必須最小權限，不能以service_role替代。
 
 執行順序為schema dormant→獨立readback→前端預設OFF相容版本→可信Worker驗證／有界排程與readiness真證據→停止legacy簽發與真失效→原子受控Activation→真實smoke；每一步仍須新的Production範圍授權。本輪未做其中任何Production操作。失敗優先Pause停止新操作，保留request/ledger/history/bytes與latches；未知COMMIT先新唯讀連線判定，不能重送整包；只做經審查的Forward Repair，禁止破壞性schema down、舊snapshot覆蓋財務或重置activated latch。

@@ -1,0 +1,517 @@
+{
+  "date": "2026-11-02",
+  "timezone": "Asia/Taipei",
+  "project": "uyqdopksfysbobhjcepk",
+  "branch": "codex/budget-collaboration-redesign",
+  "startingCommit": "0b51499b9960a936a390918b6b6f1ab152c14e24",
+  "scope": "Remaining B7 Staging E2E only; no prior platform suite rerun",
+  "stagingComplete": false,
+  "productionDecision": "NO-GO",
+  "ledger": {
+    "count": 65,
+    "head": "20261101032853",
+    "migrationWritesThisRound": false
+  },
+  "finalState": {
+    "protocolReadAt": "2026-11-01T16:38:22.687927+00:00",
+    "sevenOff": true,
+    "undoFullOff": true,
+    "latchesRetained": true,
+    "receiptReadinessRetained": true,
+    "legacyExhausted": true,
+    "legacyNaturalExpiry": null,
+    "pendingIntents": 0,
+    "activeCleanup": 0,
+    "missingReceiptObjects": 0,
+    "qaAuthSessions": 0,
+    "qaRefreshTokens": 0,
+    "authReadAt": "2026-11-01T16:38:47.930715+00:00",
+    "nativeHelperBrowsersViteAndPortsExited": true,
+    "nativeReadAt": "2026-11-01T16:40:23.2014908Z",
+    "masterCredentialFilesWritten": false,
+    "masterCredentialsLogged": false,
+    "frontendDefaultsChanged": false,
+    "qaViteProcessStopped": true,
+    "workerDaemonOrScheduleStarted": false
+  },
+  "protection": {
+    "readAt": "2026-11-01T16:39:46.636099+00:00",
+    "originalProjectionCount": 28,
+    "original28Matched": true,
+    "businessFunctionCount": 38,
+    "functions38Matched": true,
+    "guardAndWorkerAndStorageAndRealtimeProjectionsMatched": true,
+    "oldThreeQaActualsByteEquivalent": true,
+    "allFourQaActualsSinceForeignPaymentByteEquivalent": true
+  },
+  "advisor": {
+    "rerunLinter": true,
+    "readAt": "2026-11-01T16:43:21.097Z",
+    "errors": 0,
+    "warnings": 10,
+    "info": 24,
+    "countsMatchPrior": true,
+    "allPriorWarningEntitiesRawCompared": false
+  },
+  "qaRetention": {
+    "newForeignBudgets": 2,
+    "newForeignActuals": 1,
+    "unpaidContenderNormallyDeleted": true,
+    "retainedTripCount": 1,
+    "retainedBudgets": 4,
+    "retainedActuals": 4,
+    "planningBaselineItems": 4,
+    "businessReceiptMetadataAndObjects": 0,
+    "paidGraphRetainedForHistoryAndAudit": true,
+    "oldPreactivationQaBaseline": {
+      "retained": true,
+      "planningDepartureYear": 2099,
+      "capturedAt": "2026-11-01T15:55:31.017155+00:00",
+      "automaticallyRefreshedOnTripVisit": true,
+      "beforeRawHashAvailable": false,
+      "rawUnchangedNotClaimed": true
+    }
+  },
+  "matrix": [
+    {
+      "id": "SAFETY-OWNER-RESTORE",
+      "status": "Passed"
+    },
+    {
+      "id": "RAW-QA-BASELINE-EQUALITY",
+      "status": "Failed"
+    },
+    {
+      "id": "BOUNDED-SNAPSHOT-GATE",
+      "status": "Passed"
+    },
+    {
+      "id": "REAL-BACKGROUND-DRAFT",
+      "status": "Passed"
+    },
+    {
+      "id": "REVOKED-LATE-SNAPSHOT",
+      "status": "Passed"
+    },
+    {
+      "id": "TRIP-SWITCH-LATE-SNAPSHOT",
+      "status": "Passed"
+    },
+    {
+      "id": "LOGOUT-LATE-SNAPSHOT",
+      "status": "Passed"
+    },
+    {
+      "id": "AUTH-RELOGIN-UI-REFRESH",
+      "status": "Passed"
+    },
+    {
+      "id": "FOREIGN-PAID-PRICING-RATES-VERSION",
+      "status": "Passed"
+    },
+    {
+      "id": "REAL-CHANGED-RATE-REPRICING",
+      "status": "Blocked"
+    },
+    {
+      "id": "RECEIPT-CONCURRENT-REPLACE",
+      "status": "Passed"
+    },
+    {
+      "id": "OLD-CLAIM-NEW-OBJECT-HTTP-PROTECTION",
+      "status": "Passed"
+    },
+    {
+      "id": "RECEIPT-NETWORK-RECOVERY-CLEANUP",
+      "status": "Passed"
+    },
+    {
+      "id": "IME-PORTAL-KEYBOARD-STEP-ASSERTIONS",
+      "status": "Passed"
+    },
+    {
+      "id": "INITIAL-COMBINED-IME-RESPONSIVE-RUN",
+      "status": "Failed"
+    },
+    {
+      "id": "RESPONSIVE-ONLY-AFTER-CSS-FIX",
+      "status": "Passed"
+    },
+    {
+      "id": "ORIGINAL28-FUNCTION38-SECURITY",
+      "status": "Passed"
+    },
+    {
+      "id": "FINAL-SESSION-NATIVE-SHUTDOWN",
+      "status": "Passed"
+    }
+  ],
+  "events": [
+    {
+      "id": "BROWSER-REAL-BACKGROUND-VISIBILITY",
+      "status": "Passed",
+      "at": "2026-11-01T15:55:05.091Z",
+      "checks": {
+        "nativeDocumentHiddenAndVisible": true,
+        "noVisibilityOverride": true,
+        "draftPreservedWhileHidden": true,
+        "peerOtherGroupCommitted": true,
+        "reconciledThenAutosaved": true
+      }
+    },
+    {
+      "id": "BROWSER-FINAL-MEMBERSHIP-REVOKE",
+      "status": "Passed",
+      "at": "2026-11-01T15:55:18.267Z",
+      "checks": {
+        "ordinaryOwnerJwt": true,
+        "independentUserRlsDenied": true,
+        "freshUiRemovedRevokedData": true,
+        "editorMembershipNormallyRestored": true,
+        "qaPlanningBaselineMembershipRefreshExpected": true
+      },
+      "steps": [
+        {
+          "phase": "revoke-owner-request",
+          "at": "2026-11-01T15:55:16.712Z"
+        },
+        {
+          "phase": "revoked",
+          "at": "2026-11-01T15:55:17.001Z"
+        },
+        {
+          "phase": "independent-rls-denied",
+          "at": "2026-11-01T15:55:17.126Z"
+        },
+        {
+          "phase": "fresh-ui-has-no-revoked-budget",
+          "at": "2026-11-01T15:55:17.368Z"
+        },
+        {
+          "phase": "restore-owner-request",
+          "at": "2026-11-01T15:55:17.368Z"
+        },
+        {
+          "phase": "restored-before-resource-cleanup",
+          "at": "2026-11-01T15:55:17.739Z"
+        }
+      ]
+    },
+    {
+      "id": "BROWSER-TRIP-SWITCH-LATE-SNAPSHOT",
+      "status": "Passed",
+      "at": "2026-11-01T15:58:41.968Z",
+      "checks": {
+        "realResponseCapturedAndDelivered": true,
+        "noFabricatedPayload": true,
+        "oldContextNotRepopulated": true,
+        "realUiAction": true
+      },
+      "steps": [
+        {
+          "phase": "route-fetch-started",
+          "at": "2026-11-01T15:58:40.132Z"
+        },
+        {
+          "phase": "real-response-captured",
+          "at": "2026-11-01T15:58:40.453Z"
+        },
+        {
+          "phase": "old-actual-snapshot-held",
+          "at": "2026-11-01T15:58:40.453Z"
+        },
+        {
+          "phase": "other-trip-visible-before-release",
+          "at": "2026-11-01T15:58:40.504Z"
+        },
+        {
+          "phase": "actual-response-delivered",
+          "at": "2026-11-01T15:58:40.507Z"
+        },
+        {
+          "phase": "destination-ui-ready-before-return",
+          "at": "2026-11-01T15:58:40.569Z"
+        },
+        {
+          "phase": "release-held-response-before-unroute",
+          "at": "2026-11-01T15:58:41.972Z"
+        },
+        {
+          "phase": "gate-disposed",
+          "at": "2026-11-01T15:58:41.973Z"
+        }
+      ]
+    },
+    {
+      "id": "BROWSER-REVOCATION-DELIVERED-LATE-SNAPSHOT",
+      "status": "Passed",
+      "at": "2026-11-01T16:04:35.111Z",
+      "checks": {
+        "ordinaryOwnerJwt": true,
+        "independentRlsDenied": true,
+        "authoritativeRefusalRendered": true,
+        "actualPreRevocationResponseDelivered": true,
+        "revokedBudgetNotRepopulated": true,
+        "membershipRestoredBeforePass": true
+      },
+      "steps": [
+        {
+          "phase": "route-fetch-started",
+          "at": "2026-11-01T16:04:33.978Z"
+        },
+        {
+          "phase": "real-response-captured",
+          "at": "2026-11-01T16:04:34.316Z"
+        },
+        {
+          "phase": "membership-revoked-with-real-response-held",
+          "at": "2026-11-01T16:04:34.429Z"
+        },
+        {
+          "phase": "release-after-independent-rls-refusal",
+          "at": "2026-11-01T16:04:34.517Z"
+        },
+        {
+          "phase": "actual-response-delivered",
+          "at": "2026-11-01T16:04:34.521Z"
+        },
+        {
+          "phase": "authoritative-budget-refusal-rendered",
+          "at": "2026-11-01T16:04:34.616Z"
+        },
+        {
+          "phase": "membership-normally-restored",
+          "at": "2026-11-01T16:04:34.711Z"
+        }
+      ]
+    },
+    {
+      "id": "BROWSER-LOGOUT-LATE-SNAPSHOT",
+      "status": "Passed",
+      "at": "2026-11-01T16:04:50.006Z",
+      "checks": {
+        "realResponseCapturedAndDelivered": true,
+        "noFabricatedPayload": true,
+        "oldContextNotRepopulated": true,
+        "realUiAction": true
+      },
+      "steps": [
+        {
+          "phase": "route-fetch-started",
+          "at": "2026-11-01T16:04:48.696Z"
+        },
+        {
+          "phase": "real-response-captured",
+          "at": "2026-11-01T16:04:49.006Z"
+        },
+        {
+          "phase": "old-actual-snapshot-held",
+          "at": "2026-11-01T16:04:49.006Z"
+        },
+        {
+          "phase": "signed-out-before-release",
+          "at": "2026-11-01T16:04:49.942Z"
+        },
+        {
+          "phase": "actual-response-delivered",
+          "at": "2026-11-01T16:04:49.944Z"
+        },
+        {
+          "phase": "release-held-response-before-unroute",
+          "at": "2026-11-01T16:04:50.010Z"
+        },
+        {
+          "phase": "gate-disposed",
+          "at": "2026-11-01T16:04:50.010Z"
+        }
+      ]
+    },
+    {
+      "id": "BROWSER-RELOGIN-REFRESH",
+      "status": "Passed",
+      "at": "2026-11-01T16:06:01.364Z",
+      "checks": {
+        "actualAuthVerification": true,
+        "freshOrdinarySession": true,
+        "controlledQaBootstrap": true,
+        "googleOauthNotClaimed": true,
+        "realUiReloadRetainedCorrectTrip": true
+      }
+    },
+    {
+      "id": "FOREIGN-PRICING-RATES-STALE-VERSION",
+      "status": "Passed",
+      "at": "2026-11-01T16:19:22.597Z",
+      "checks": {
+        "realForeignPaymentUi": true,
+        "realOrdinaryUserHttpCompetition": true,
+        "actualStaleSnapshotPt409": true,
+        "noBlindRetry": true,
+        "freshNoopLeaseReleased": true,
+        "foreignPaidBudgetAndFourActualsUnchanged": true,
+        "changedQuoteRepricingStillPending": true
+      }
+    },
+    {
+      "id": "RECEIPT-CONCURRENT-REPLACE-OBJECT-IDENTITY",
+      "status": "Passed",
+      "at": "2026-11-01T16:30:24.851Z",
+      "checks": {
+        "twoRealAccountsConcurrent": true,
+        "oneIntentWinner": true,
+        "originalKeptUntilVerifiedCommit": true,
+        "newObjectIdentityDistinct": true,
+        "oneCanonicalReference": true,
+        "normalCleanupCompleted": true,
+        "failedFaultInjectionNotClaimed": true
+      }
+    },
+    {
+      "id": "RECEIPT-OLD-CLAIM-NEW-OBJECT-PROTECTION",
+      "status": "Passed",
+      "at": "2026-11-01T16:32:11.453Z",
+      "checks": {
+        "dedicatedWorkerJwt": true,
+        "exactOldObjectClaim": true,
+        "oldClaimCouldNotDeleteNewReference": true,
+        "realStorageHttpCleanup": true,
+        "currentReferenceBytesAndSha256Preserved": true,
+        "samePathObjectIdReuseNotClaimed": true
+      }
+    },
+    {
+      "id": "BROWSER-MOBILE-BUDGET-OVERFLOW-FIX",
+      "status": "Passed",
+      "at": "2026-11-01T16:32:53.379Z",
+      "checks": {
+        "widths": [
+          820,
+          390
+        ],
+        "documentFitsViewport": true,
+        "addControlWithinViewport": true,
+        "tableRetainsOwnHorizontalScroll": true,
+        "physicalPhoneNotClaimed": true
+      }
+    }
+  ],
+  "validation": {
+    "runnerUnitDistinctPassed": 5,
+    "loopbackNativeGatePassed": true,
+    "loopbackNotHostedEvidence": true,
+    "buildPassed": true,
+    "buildExistingLargeChunkWarning": true,
+    "syntax": "Passed",
+    "diff": "Passed",
+    "links": "Passed",
+    "json": "Passed",
+    "sensitiveScan": "Passed",
+    "historicalSuitesRerun": false,
+    "syntaxFiles": 16,
+    "powershellAst": "Passed",
+    "powershellAstFiles": 2,
+    "localMarkdownLinks": 78,
+    "sensitiveFiles": 25
+  },
+  "limitations": {
+    "differentRealMarketQuoteUnavailable": true,
+    "noSyntheticRateUsed": true,
+    "unchangedQuoteNoopNotRepricingEvidence": true,
+    "initialRawBaselineEqualityFailureRetained": true,
+    "imePortalAssertionsCompletedBeforeIndependentWidthFailure": true,
+    "combinedFailedRunNotPassed": true,
+    "googleOauthInteractiveNotClaimed": true,
+    "physicalPhoneOsImeAndFullWcagNotClaimed": true,
+    "tablePanGestureNotClaimed": true,
+    "samePathObjectIdReuseNotClaimed": true,
+    "newAutomaticExpiryLogoutHookNotWaitedForFullExpiry": true,
+    "priorStandardMultipartOversizeTransportStillBlocked": true,
+    "oldQaPlanningBaselineFullBeforeAfterPreservationNotProven": true,
+    "ramExpiryDoesNotAutomaticallyPauseDb": true
+  },
+  "artifacts": [
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/native-process-audit.json",
+      "sha256": "1f3f80cb497b905922c66c2bc7a8dd1071fcb8fb502402115511e308bfcd7563"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/safety-results.json",
+      "sha256": "b53ef2cbabb7578ce2c5f5d7906fc7cdc207fb09d2d5ac30d1d6fdff2a9e1c36"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/native-gate-probe.json",
+      "sha256": "6fbd34a339cdc36795b458334ae777f2e183038c32417c94cc6cd403c8554be4"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/native-visibility-probe.json",
+      "sha256": "f09e1d7dce4a67deea335455cffbb530aa62bb23349c566bf2f51a9d73634c0b"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/final-protocols.json",
+      "sha256": "0a195742f12382f21c6f63a94a536559ef3ec8226ed086efa4c4781aed09fae5"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/final-protection.json",
+      "sha256": "a1ee23e415dfa1614936f5714ab7a31808f1170879c964478ab9567c1ba4fc7a"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/final-sessions.json",
+      "sha256": "05c09a5ba89d0f09432b2a60ed52ec5e65b5fc8cbfe2de010dc24996e3007d5c"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/final-qa-graph.json",
+      "sha256": "8e9d390a07165453092bc1066b4e0d14aaf4df8ce26e6e0637bf3289cd89ffcf"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/final-complete-audit.json",
+      "sha256": "b72c93fcb515f9242a14e07f20db1c300c81464f6a60fc0b3f514a5a90da39fa"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/advisor-warnings.json",
+      "sha256": "b5cd85c1dfb18f056e675e4eddafc89ed64705ac56124d85efa1b183745a42c2"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/final-summary.json",
+      "sha256": "6ae0603ea70152c0fc91e8fc5770efa6e3c5b8b1a8abd79bed249d5f1f1bb1ff"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/revoked-late-red.json",
+      "sha256": "96a65d9db2fd22dc4c3ed3fc129df3c8f71f8e5ca3f6189ff9525a49df4aca08"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-final-recovery/local-checks.json",
+      "sha256": "9d29fb5c41a09a9fe3acbdeed541ab130331740251d79c2a6bce4d5d1732bf3a"
+    },
+    {
+      "privateLocalFile": ".tmp-b7-live/browser-results.json",
+      "sha256": "e18218c0e446f21c9c69465b8bc56ccec7d19a635d6a9b51f2642f8382f8ab6d"
+    }
+  ],
+  "issues": {
+    "newUnresolvedProductP0": 0,
+    "newUnresolvedProductP1": 0,
+    "acceptanceGate": {
+      "priority": "P1 release gate, not a newly reproduced product defect",
+      "id": "REAL-CHANGED-RATE-REPRICING",
+      "status": "Blocked"
+    },
+    "p2": [
+      {
+        "id": "BUG-033",
+        "status": "Fixed and responsive regression passed"
+      },
+      {
+        "id": "QA-PLANNING-BASELINE-ISOLATION",
+        "status": "Review required; raw before Hash missing"
+      },
+      {
+        "id": "EXISTING-OVERSIZE-TRANSPORT",
+        "status": "Prior Blocked, outside remaining E2E scope"
+      },
+      {
+        "id": "EXISTING-BUNDLE-ADVISOR",
+        "status": "Existing warnings retained"
+      }
+    ]
+  }
+}

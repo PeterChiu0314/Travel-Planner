@@ -15,7 +15,15 @@ This document now separates:
 
 ## B-7 release gates | Legacy cutoff verified; controlled Staging E2E in progress
 
-Latest2026-11-01: [cutover and current real E2E report](2026-11-01-budget-b7-legacy-cutover-and-e2e.md). Ledger65; issuance stop and genuine old-key invalidation proven, natural expiry remainsNULL. ControlledActivation plus safePause/Resume for BUG-031 and BUG-032; finallyPAUSED for unresolved session-boundary acceptance. Receipt business lifecycle, dedicatedWorker verification, payment/retainedActual/ACK, legalSource, five-stepUndo, peer conflict, snapshotsv1–v10, old-write fences, create/delete lease race and realexpiry takeover passed their stated real-service scopes. Background visibility, revoked-session late response and safe QA membership/logout recovery are not certified. Production NO-GO. Historical pre-cutover checkpoint below is superseded on these points; retain its oversized transport limitation.
+Latest2026-11-02: [final E2E follow-up](2026-11-02-budget-b7-final-e2e-followup.md). Ledger65 unchanged; seven protocols finally OFF, three activated latches retained. Ordinary QA membership recovery/logout and native helper/Chrome/Vite shutdown independently verified. Actual background draft, revoked/trip/logout delivered-late Snapshot isolation, re-login/refresh, foreign payment/version conflict, concurrent Receipt replacement and old-claim/new-object protection passed their stated scopes. True changed-quote repricing remains Blocked; do not substitute a no-op. A legacy QA planning Baseline auto-refreshed on trip visit and lacks a full raw before Hash; this fixture isolation limit is explicit. Original28 and38 seals matched. Production NO-GO. Prior dated platform/cutover records below remain historical evidence.
+
+## BUG-033 | Narrow Budget grid expands beyond the viewport
+
+Priority: P2
+Status: Fixed on feature branch; true Staging browser responsive checks passed
+Discovered: 2026-11-02 (Asia/Taipei)
+
+At390px, Budget's540px table contributed its minimum width through the parent grid wrapper, producing a556px document; the filter row also refused to wrap. The two scoped max760px CSS adjustments add min-width:0 to the Budget wrapper and allow filter wrapping. Real Staging820/390px checks now match document and viewport width, with the Add control inside the viewport; screenshots were inspected. Desktop layout rules and financial behavior were not redesigned. The original combined IME/mobile failure is retained; only the affected responsive part was rerun. See the final report and matrix for hardware/accessibility limits.
 
 ## BUG-031 | First definite Metadata admission PT409 blocks discard and close
 

@@ -1,5 +1,7 @@
 # Budget B-7｜Legacy cutover 與受控 Staging E2E
 
+> Current state superseded by [2026-11-02 final E2E follow-up](2026-11-02-budget-b7-final-e2e-followup.md). The dated failures and evidence below are retained; pending membership/shutdown statements below describe the prior checkpoint.
+
 2026-11-01，分支 `codex/budget-collaboration-redesign`，起點 `240a105e113bdfbf723faa9a29c2378a5bf88a0d`。本文件持續更新；尚未完成項目不列為 Passed。唯一環境 `uyqdopksfysbobhjcepk`。使用者授權連續 Staging 收尾及有真實證據的 Activation，無逐階段 Review 門檻；Production/main/Vercel/Docker/WSL 未操作。
 
 **最終結論：Staging 已安全 Pause，Production NO-GO。** 最後Protocol讀回2026-11-01 **20:56:14台灣時間（12:56:14Z）**，七組OFF、三個不可逆Latch保留、Ledger65。完成的核心E2E與缺陷修正如下，但背景可見性、撤權／Late Response等必要驗收未完成，不能宣稱B-7整體結案。沒有逐階段等待Review；停止原因是實際環境／Runner安全阻擋。完整去敏資料見[本輪機器可讀證據](qa/2026-11-01-budget-b7-cutover-e2e-results.json)；其中distinct event types不是獨立測試總數。

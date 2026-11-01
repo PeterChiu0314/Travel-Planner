@@ -6,6 +6,7 @@ import readline from 'node:readline';
 import {randomUUID} from 'node:crypto';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createStagingCredentialProvider,credentialProject} from './staging-worker-credentials.mjs';
+import {qaDeadline} from './b7-real-response-gate.mjs';
 const root=fileURLToPath(new URL('../..',import.meta.url)),dir=path.join(root,'.tmp-b7-live');
 const operatorId=randomUUID();
 if(!process.argv.includes('--private-stdin'))throw Error('Use the local masked-input launcher');
@@ -18,8 +19,26 @@ let provider,credentials,deadlineTimer,stopWatcher,stopRequested=false;
 const runtime={project:credentialProject,url:`https://${credentialProject}.supabase.co`,root,dir};
 const safe=e=>String(e?.message||e).replace(/eyJ[A-Za-z0-9_.-]+|sb_secret_[A-Za-z0-9_-]+/g,'[redacted]');
 const closeOwnedRuntime=async()=>{
- await Promise.allSettled([runtime.browser,...(runtime.additionalQaBrowsers||[])].filter(Boolean).map(browser=>browser.close()));
+ // Playwright close on an attached CDP browser only disconnects. Close our
+ // proven, isolated native Chrome itself before dropping the CDP connection.
+ if(runtime.nativeVisibility?.cdp){
+  let timer;
+  try{await Promise.race([runtime.nativeVisibility.cdp.send('Browser.close'),new Promise(resolve=>{timer=setTimeout(resolve,3000);})]);}catch{}finally{clearTimeout(timer);}
+ }
+ await Promise.allSettled([runtime.browser,...(runtime.additionalQaBrowsers||[])].filter(Boolean).map(browser=>qaDeadline(browser.close(),{ms:3000,label:'owned browser close'})));
  try{runtime.viteChild?.kill();}catch{}
+ if(!runtime.qaSignoutAttempted&&runtime.qaUserIds&&runtime.publicAnon){
+  runtime.qaSignoutAttempted=true;
+  const sessions=[...(runtime.cutover?.sessions||[]),...(runtime.finalRecovery?.sessions||[]),...(runtime.sessions||[])];
+  const seen=new Set(),results=[];
+  for(const session of sessions){
+   if(!runtime.qaUserIds.includes(session?.user?.id)||!session.access_token||seen.has(session.user.id))continue;
+   seen.add(session.user.id);
+   try{const response=await fetch(runtime.url+'/auth/v1/logout?scope=global',{method:'POST',redirect:'error',headers:{apikey:runtime.publicAnon,Authorization:'Bearer '+session.access_token},signal:AbortSignal.timeout(8000)});results.push({status:response.status});}
+   catch{results.push({status:'unconfirmed'});}
+  }
+  await fs.writeFile(path.join(dir,'shutdown-signout.json'),JSON.stringify({at:new Date().toISOString(),ordinaryQaJwtOnly:true,results,independentReadbackRequired:true}));
+ }
 };
 try{
  const input=await readInput();
@@ -34,6 +53,7 @@ try{
  const scope=JSON.parse(await fs.readFile(path.join(root,'.tmp-b7-p1/qa-scope.json'),'utf8'));
  const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
  if(!Array.isArray(scope.users)||scope.users.length!==2||!scope.users.every(x=>uuid.test(x))||!uuid.test(scope.run))throw Error('Invalid controlled QA identity manifest');
+ runtime.qaUserIds=scope.users;runtime.publicAnon=anon;
  const response=await fetch(runtime.url+'/auth/v1/admin/users/'+scope.users[0],{redirect:'error',headers:{apikey:credentials.admin,Authorization:'Bearer '+credentials.admin},signal:AbortSignal.timeout(10000)});
  if(response.status!==200)throw Error('Staging QA Auth read failed (HTTP '+response.status+')');
  const user=await response.json();if(user.id!==scope.users[0]||user.user_metadata?.qa_run!==scope.run)throw Error('QA identity mismatch');
@@ -42,7 +62,7 @@ try{
  // outer loop alone cannot enforce a deadline while awaiting a QA module.
  deadlineTimer=setTimeout(()=>{
   stopRequested=true;provider?.stop();credentials=null;
-  const force=setTimeout(()=>process.exit(1),5000);force.unref();
+  const force=setTimeout(()=>process.exit(1),25000);force.unref();
   void closeOwnedRuntime().finally(async()=>{await state({phase:'stopped',reason:'memory-window-expired'});process.exit(0);});
  },maxMinutes*60000);deadlineTimer.unref();
  let inspectingStop=false;
