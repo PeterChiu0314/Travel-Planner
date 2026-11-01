@@ -1,5 +1,7 @@
 # B-7｜Staging 憑證授權與記憶體執行交接
 
+> 後續狀態：已完成真READY、真Auth/Storage/Worker平台驗收並停止助手；本頁的「等待啟動」屬歷史。現況見[2026-11-01真服務驗收](2026-11-01-budget-b7-real-service-acceptance.md)。
+
 2026-11-01，原分支codex/budget-collaboration-redesign，起點041ecbd4023a03371914294c4285de8332f6a5f2。接續[完整收尾](2026-10-31-budget-b7-closeout.md)，不是新增子階段。使用者已明確授權讀取Travel-Planner-Staging／uyqdopksfysbobhjcepk的既有管理API key與JWT signing secret，僅本機記憶體初始化QA／簽發最長15分鐘專用Worker JWT；不保存、不輸出、不提交Git、不操作Production。這項授權已足夠，不再要求同一份權限確認。
 
 ## 已完成與實際限制

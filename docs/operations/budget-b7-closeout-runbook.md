@@ -2,11 +2,11 @@
 
 2026-10-31最新授權：可連續Staging測試／必要修正／有證據的受控Activation，不需每項停Review；唯一uyqdopksfysbobhjcepk。Production、main、Vercel及Docker／WSL不在授權內。舊Runbook的「本輪只可本機」與逐階段Review是歷史界線，本次授權優先；其資料保護／readiness／Pause安全規則仍完整保留。
 
-[本輪結果](../2026-10-31-budget-b7-closeout.md)、[去敏64筆來源與矩陣](../qa/2026-10-31-budget-b7-closeout-results.json)、[原Activation/Pause/Forward Repair程序](../2026-10-30-budget-b7-rollout-runbook.md)。本文件不把下列未跑步驟當成Passed。
+[最新真服務結果](../2026-11-01-budget-b7-real-service-acceptance.md)、[先前本機結果](../2026-10-31-budget-b7-closeout.md)、[去敏64筆來源與矩陣](../qa/2026-10-31-budget-b7-closeout-results.json)、[原Activation/Pause/Forward Repair程序](../2026-10-30-budget-b7-rollout-runbook.md)。本文件不把下列未跑步驟當成Passed。
 
 ## 安全供應與實際執行前條件
 
-1. 可信操作者簽發Staging專用短效JWT：role=budget_receipt_worker、ref=uyqdopksfysbobhjcepk、iss=https://uyqdopksfysbobhjcepk.supabase.co/auth/v1、iat/exp（最多15分鐘）。原signing key留可信端，JWT透過process environment注入，不貼聊天、不寫CLI參數／Git／report。現有service_role只可QA Auth／membership初始化，不代替Worker或普通使用者權限驗收。需要存取API／signing key來源時，先取得精確授權；2026-11-01使用者已給精確記憶體存取授權、來源核對完成；剩餘是native工具環境限制，見[使用者啟動助手](../2026-11-01-budget-b7-memory-credential-handoff.md)，不重複索取同一份權限。
+1. 可信操作者簽發Staging專用短效JWT：role=budget_receipt_worker、ref=uyqdopksfysbobhjcepk、iss=https://uyqdopksfysbobhjcepk.supabase.co/auth/v1、iat/exp（最多15分鐘）。原signing key留可信端，JWT透過process environment注入，不貼聊天、不寫CLI參數／Git／report。現有service_role只可QA Auth／membership初始化，不代替Worker或普通使用者權限驗收。需要存取API／signing key來源時，先取得精確授權；2026-11-01精確授權及native手動啟動已完成；助手已真READY並完成本次HTTP／Worker後停止。見[真服務證據](../2026-11-01-budget-b7-real-service-acceptance.md)；[舊啟動助手](../2026-11-01-budget-b7-memory-credential-handoff.md)保留為歷史/下次安全供應方式，不重複索取同一份授權。
 2. 新鮮獨立唯讀連線比對project／實際身分／64筆ledger／38final與兩個Guard afterhash、原28資料、完整RLS／ACL／Worker／Storage policies。不可僅靠target GUC。無不明writer／有效租約，保留既有QA Baseline。DB管理憑證只用安全輸入，不重設密碼或擴權。
 3. QA manifest記錄此次精確trip／Actual／object IDs（Git外）；核對原始資料未變、所有非本次scope的pending intents／cleanup皆0，排除其他測試writer。否則不跑global sweep。重啟可保留本次scope內durable jobs，不能把它們標成不存在。
 4. Worker有限adapter為scripts/qa/run-b7-staging-worker.mjs，舊maintenance CLI仍loopback-only。注入STAGING_RECEIPT_WORKER_JWT、STAGING_PUBLIC_API_KEY、STAGING_RECEIPT_QA_SCOPE，再以--authorized-staging-qa執行。scope為project/tripIds/actualIds/preflightAt/livePreflight.originalDataUnchanged=true/livePreflight.noUnscopedReceiptJobs=true；每項必須由真唯讀結果支持，不能手填true冒充驗證。結果只留hash/count，不保存token。未供應憑證不啟動。
@@ -15,7 +15,7 @@
 
 先完成既有Protocol OFF下的Auth/RLS/Realtime、Private bucket一般QA路徑MIME／small bytes／Signed URL／超10MiB的真HTTP。每個request記錄DNS/TLS／100Continue／body-send／response階段及bytes計數，區分body沒送完和後端拒絕；停止重複12秒失敗，不能只提高Timeout或用Catalog當HTTP413。
 
-Worker的啟用前證據必須是可信token通過真PostgREST與Storage exact-header／object-ID權限，以及受控QA canary的實際claim/bytes驗證／delete/retry/restart兩輪；queue fixture與content證據要明標管理初始化對比真HTTP，不得把SQL metadata fixture本身當作Storage成功。沒有合法canary的操作來源就保持Blocked，不能靠偽造Receipt intent／驗證時間／虛構hash解鎖。完整使用者Receipt Begin／Commit／Replace與參照競爭屬啟用後驗收，不是空兩輪的結果。當前canary尚未執行，readiness保持false。
+Worker的啟用前證據必須是可信token通過真PostgREST與Storage exact-header／object-ID權限，以及受控QA canary的實際claim/bytes驗證／delete/retry/restart兩輪；queue fixture與content證據要明標管理初始化對比真HTTP，不得把SQL metadata fixture本身當作Storage成功。沒有合法canary的操作來源就保持Blocked，不能靠偽造Receipt intent／驗證時間／虛構hash解鎖。完整使用者Receipt Begin／Commit／Replace與參照競爭屬啟用後驗收，不是空兩輪的結果。2026-11-01canary已實測：管理員只seed未驗證平台jobs，真普通JWTbytes、專用Worker/HTTP驗證及清理分開記錄；8+2有限排程、程序重啟、retry/lease與引用保護已通過。它仍不代表使用者Receipt Begin/Commit。Legacy授權耗盡未證實，readiness保持false。
 
 所有前置平台能力都真實通過後，封存證據SHA，依原Runbook記錄真storage/content/cleanup驗證與實際legacy upload grant耗盡時間；不能猜測最長TTL。鎖七protocol、排空全部lease及在途財務transaction，以budget-b7-activate.sql原子開啟，不刪租約或改Guard。隨即用新連線Readback，再以Staging-only本機frontend（--mode staging及該process五個flags）執行完整E2E。原始repo defaults保持OFF，禁止連到Production frontend／API。
 
@@ -62,3 +62,15 @@ PT409 20261031003000先前已在Production安裝，仍需未來唯讀核對來�
 完整Staging E2E通過、安全Advisor/權限/資料一致、正式backup/restore及Production baseline查核後，才準備精確main合併範圍與相容frontend/schema/Worker發布次序，提正式授權；本輪不操作Production、不合併main。現在NO-GO，不建立會被自動套用的Production Migration／排程。
 
 官方核對入口：[Storage Custom Roles](https://supabase.com/docs/guides/storage/schema/custom-roles)、[JWT Signing Keys](https://supabase.com/docs/guides/auth/signing-keys)、[Supabase Changelog](https://supabase.com/changelog)。本輪markdown Changelog端點不支援，使用官方HTML index；未因查文件升級服務／套件或讀取簽章秘密。文件支援設計查核，不代替本專案真實HTTP／JWT／headers結果。
+
+## 2026-11-01 實際平台驗收與剩餘安全門檻
+
+[完整矩陣](../qa/2026-11-01-budget-b7-real-service-results.json)。3個新QA旅程/1Actual/8Storage物件均正常清理，3個新Baseline由正常Trip Cascade刪除。保留3aborted intents、6done cleanup及3sync signals，不停Guard或強清稽核；舊QA Baseline、帳號及原28投影不變。最後Ledger64、38seals、七OFF、三readinessfalse、legacyNULL。記憶體助手stopped；沒有常駐Worker或排程。
+
+測試工具保留在scripts/qa/b7-staging-service-checks.mjs、b7-staging-platform-worker-checks.mjs及child、prepare-b7-platform-canary-sql.mjs、prepare-b7-reference-canary-sql.mjs、b7-staging-large-storage-check.mjs及recover。透過既有memory operator的Git忽略module wrapper呼叫；不能直接把來源當Migration執行。SQL準備器只讀Git外qa-state manifest、產出未執行SQL；每次必須先獨立核對原資料、exactQA graph、無unscoped jobs、realobjectsize/type，fixture建立仍需管理初始化。其job signature標記platform-only/not-user-receipt，不seedverified_at/readiness；不碰Storage metadata/bytes。先核對結果id與ready才可送下一命令，不能重送未知提交。原始8輪診斷與後來封裝後2輪證據分開留存，不聲稱封裝後Source SHA就是先前診斷逐byte版本。
+
+超限standard/multipart12s回應檢查維持Blocked；Managed backend EntityTooLarge和TUS413是另外證據。合法9MiB ACK逾時先唯讀確認commit，沒有重傳，ordinaryJWT完整GET200/9437269bytes/SHA相符再正常刪除。不可將平台ACK恢復當成尚未Activation的Receipt Controller E2E。
+
+Legacy安全門檻不可由「沒有物件」推導。建立所有Staging簽發端可稽核停止點；盤點signed-upload/TUS/S3及其實際TTL/未完成upload；官方SDK signed-upload2h、TUS最多24h只是已確認通道上限，不是本專案已耗盡證據。Managed日誌有延遲且沒有權威未過期grant清單，本次不填猜測expiry。若現有Guard不能在Activation前阻止新legacy簽發，先做最小Forward設計與隔離驗證；不可先填now-1s、改歷史或以keyrotation/刪資料取巧。簽發停止/排空條件未成立就保持NO-GO，既有Staging授權不需重問。
+
+PostgREST官方允許exp30秒clock skew；JWT負向測試在真正exp+30s後仍嚴格要求401/PGRST303，不改簽章/時鐘/延長request timeout。Worker自身預先45s停止使用接近到期token；不要把宣告TTL與平台skew混為同一個時間。

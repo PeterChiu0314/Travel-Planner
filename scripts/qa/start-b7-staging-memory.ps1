@@ -16,6 +16,9 @@ foreach($entry in @(@('admin','Staging legacy service_role key'),@('signingSecre
 }
 $note=New-Object Windows.Forms.Label;$note.Text='Staging only. Memory only. No migration or activation on launch.';$note.Location=New-Object Drawing.Point(20,160);$note.Size=New-Object Drawing.Size(520,30);$form.Controls.Add($note)
 $start=New-Object Windows.Forms.Button;$start.Text='Connect Staging (memory only)';$start.Location=New-Object Drawing.Point(20,205);$start.Size=New-Object Drawing.Size(320,32);$form.Controls.Add($start)
+$idle=New-Object Windows.Forms.Timer;$idle.Interval=900000
+$idle.Add_Tick({foreach($f in $fields.Values){$f.Clear()};$form.Close()})
+$form.Add_Shown({$idle.Start()})
 $start.Add_Click({
  try {
   if($fields.admin.Text.Length -lt 30 -or $fields.signingSecret.Text.Length -lt 32){return}
@@ -28,11 +31,24 @@ $start.Add_Click({
   $script:qaChild=New-Object Diagnostics.Process;$script:qaChild.StartInfo=$info;[void]$script:qaChild.Start();$child=$script:qaChild
   $payload=@{admin=$fields.admin.Text;signingSecret=$fields.signingSecret.Text} | ConvertTo-Json -Compress
   $child.StandardInput.WriteLine($payload);$child.StandardInput.Flush();$child.StandardInput.Close();$payload=$null
-  foreach($f in $fields.Values){$f.Clear()};$form.Close()
- } catch { $start.Enabled=$true;$start.Text='Failed to start - no credentials saved' }
+  $form.UseWaitCursor=$true;$note.Text='Checking Staging credentials (up to 20 seconds)...';$form.Refresh()
+  $firstLine=$child.StandardOutput.ReadLine()
+  if($firstLine -like 'READY:*'){
+   Write-Host 'Staging ready (read-only QA check passed). Keep this PowerShell open.'
+   foreach($f in $fields.Values){$f.Clear()};$form.Close()
+  }else{
+   if(-not $child.HasExited){$child.WaitForExit(1000) | Out-Null};if(-not $child.HasExited){$child.Kill()};$child.Dispose();$script:qaChild=$null
+   $note.Text='Check blocked. Values remain masked; correct and retry. See status.json.';$start.Enabled=$true
+  }
+  $firstLine=$null;$form.UseWaitCursor=$false
+ } catch {
+  if($script:qaChild){if(-not $script:qaChild.HasExited){$script:qaChild.Kill()};$script:qaChild.Dispose();$script:qaChild=$null}
+  $form.UseWaitCursor=$false;$start.Enabled=$true;$start.Text='Failed to start - retry (nothing saved)'
+ }
 })
 try {
  [void]$form.ShowDialog()
+ $idle.Stop()
  if($script:qaChild){
   while(-not $script:qaChild.StandardOutput.EndOfStream){
    $line=$script:qaChild.StandardOutput.ReadLine()
@@ -44,6 +60,6 @@ try {
   if($script:qaChild.ExitCode -ne 0){Write-Host 'Staging QA blocked. Inspect .tmp-b7-live/status.json (no credentials).'}
  }
 } finally {
- foreach($f in $fields.Values){$f.Clear()};$payload=$null;$form.Dispose()
+ $idle.Stop();$idle.Dispose();foreach($f in $fields.Values){$f.Clear()};$payload=$null;$form.Dispose()
  if($script:qaChild){if(-not $script:qaChild.HasExited){$script:qaChild.Kill()};$script:qaChild.Dispose()}
 }

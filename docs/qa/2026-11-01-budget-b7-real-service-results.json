@@ -1,0 +1,839 @@
+{
+  "date": "2026-11-01",
+  "project": "uyqdopksfysbobhjcepk",
+  "startingCommit": "e13560351cbb06110dce9a465263177d7e3052a6",
+  "complete": false,
+  "realHttp": true,
+  "credentialHandling": {
+    "masterKeysMemoryOnly": true,
+    "workerJwtSavedOrLogged": false,
+    "maximumDeclaredJwtSeconds": 900,
+    "operatorStopped": true,
+    "qaSessionsLoggedOut": 3,
+    "agentOpenedSecretPagesClosed": true,
+    "userOwnedSettingsTabsUntouched": true,
+    "rawLogsCommitted": false
+  },
+  "matrix": [
+    {
+      "id": "AUTH-REAL",
+      "status": "Passed",
+      "detail": {
+        "sessions": 2,
+        "userHashes": [
+          "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+          "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95"
+        ],
+        "sessionHashes": [
+          "c6a0399c476e232f41ba4a2d8882d9d0279f2ed305deeb129d1bf3bde7401ffd",
+          "4c45a2e0c9b478f81b8a577ae49ac2a6c9cdaa75b8240f2d8aec5eb5c3936954"
+        ],
+        "adminAcceptance": false
+      }
+    },
+    {
+      "id": "AUTH-RLS",
+      "status": "Passed",
+      "detail": {
+        "member": true,
+        "nonmember": true
+      }
+    },
+    {
+      "id": "WORKER-SIGNED-CAPABILITY",
+      "status": "Passed",
+      "detail": {
+        "dedicatedJwt": true,
+        "ttlSeconds": 900,
+        "emptyClaimsOnly": true,
+        "notLifecycleAcceptance": true
+      }
+    },
+    {
+      "id": "STORAGE-BYTES",
+      "status": "Passed",
+      "detail": {
+        "size": 68,
+        "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea"
+      }
+    },
+    {
+      "id": "STORAGE-SIGNED-URL",
+      "status": "Passed",
+      "detail": {
+        "bytesMatch": true
+      }
+    },
+    {
+      "id": "STORAGE-PRIVATE",
+      "status": "Passed",
+      "detail": {
+        "nonmemberAndAnonymousDenied": true
+      }
+    },
+    {
+      "id": "STORAGE-MIME",
+      "status": "Passed",
+      "detail": {
+        "httpStatus": 400
+      }
+    },
+    {
+      "id": "STORAGE-OVER-10MIB",
+      "status": "Blocked",
+      "detail": {
+        "status": null,
+        "error": "transport-error",
+        "timing": {
+          "declaredBytes": 10485761,
+          "dnsMs": 10,
+          "tlsMs": 46,
+          "continueMs": 60,
+          "bodyStartMs": 60,
+          "clientFinishMs": 69
+        }
+      }
+    },
+    {
+      "id": "STORAGE-OVER-10MIB-MULTIPART",
+      "status": "Blocked",
+      "detail": {
+        "status": null,
+        "error": "TimeoutError",
+        "ms": 12005,
+        "format": "SDK-compatible multipart FormData",
+        "noOversizedObject": true
+      }
+    },
+    {
+      "id": "STORAGE-OVER-10MIB-TUS",
+      "status": "Passed",
+      "detail": {
+        "status": 413,
+        "ms": 433,
+        "declaredBytes": 10485761,
+        "protocol": "TUS 1.0.0",
+        "bytesSent": 0
+      }
+    },
+    {
+      "id": "STORAGE-DELETE",
+      "status": "Passed",
+      "detail": {
+        "realHttp": true,
+        "readAbsent": true
+      }
+    },
+    {
+      "id": "WORKER-LIVE-REFERENCE",
+      "status": "Passed",
+      "detail": {
+        "referencedBytesPreserved": true,
+        "legacyOverwriteDenied": true,
+        "normalDetachThenCleanup": true,
+        "jobHeaders": true
+      }
+    },
+    {
+      "id": "AUTH-MEMBERSHIP-REVOKED",
+      "status": "Passed",
+      "detail": {
+        "sameUserJwt": true,
+        "readDeniedImmediately": true
+      }
+    },
+    {
+      "id": "QA-NORMAL-CLEANUP",
+      "status": "Passed",
+      "detail": {
+        "tripDeletes": 2,
+        "actualDeletes": 1,
+        "ordinaryJwt": true,
+        "noForcedCascade": true,
+        "privateJournalsRetained": true
+      }
+    },
+    {
+      "id": "WORKER-EXPIRED-JWT",
+      "status": "Passed",
+      "detail": {
+        "httpStatus": 401,
+        "code": "PGRST303",
+        "realExpiry": true
+      }
+    },
+    {
+      "id": "AUTH-LOGOUT",
+      "status": "Passed",
+      "detail": {
+        "sessions": 2,
+        "scope": "local",
+        "doesNotClaimExistingJwtInvalidated": true
+      }
+    },
+    {
+      "id": "WORKER-CANARY-RETRY-RESTART",
+      "status": "Passed",
+      "detail": {
+        "scheduledCycles": 8,
+        "verificationRetryCycle": 4,
+        "expiredClaimRecoveryCycle": 7,
+        "crashedExit": 42,
+        "restartedExit": 0,
+        "realHttp": true
+      }
+    },
+    {
+      "id": "WORKER-CLEANUP-RETRY-RESTART",
+      "status": "Passed",
+      "detail": {
+        "scheduledCycles": 2,
+        "cleanupAttempts": 2,
+        "wrongFinishTokenDenied": true,
+        "crashedExit": 42,
+        "restartedExit": 0
+      }
+    },
+    {
+      "id": "WORKER-EXPIRED-INTENT-SWEEP",
+      "status": "Passed",
+      "detail": {
+        "aborted": 3,
+        "actualStorageDeletions": 3
+      }
+    },
+    {
+      "id": "STORAGE-LARGE-ACK-RECOVERY",
+      "status": "Passed",
+      "detail": {
+        "initialUploadAck": "Unknown; not resent",
+        "commitConfirmedByIndependentRead": true,
+        "size": 9437269,
+        "expectedSha256": "4ce8568193be84705a0cc31a87d992734748c3f39f08b0be0bab1c86d09b2ea2",
+        "bytesReceived": 9437269,
+        "status": "Passed",
+        "httpStatus": 200,
+        "headersMs": 1565,
+        "lastProgressMs": 4280,
+        "actualSha256": "4ce8568193be84705a0cc31a87d992734748c3f39f08b0be0bab1c86d09b2ea2",
+        "normalCleanup": true,
+        "authLogout": true
+      }
+    },
+    {
+      "id": "LEGACY-GRANT-EXHAUSTION",
+      "status": "Blocked",
+      "detail": "No verified issuance-stop/drain window; delayed Managed logs are not an authoritative outstanding-grant inventory; do not infer expiry or attest readiness."
+    },
+    {
+      "id": "INCOMPLETE-HOSTED",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "RECEIPT-BEGIN-COMMIT-REPLACE",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "RECEIPT-OBJECT-ID-RACE",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "FULL-MULTI-BROWSER-E2E",
+      "status": "Pending Post-Activation"
+    },
+    {
+      "id": "CONTROLLED-ACTIVATION",
+      "status": "Blocked"
+    }
+  ],
+  "worker": {
+    "platformOnly": true,
+    "userReceiptLifecycleAcceptance": false,
+    "fixtureInitialization": "Exact admin SQL inserts of unverified disposable QA platform jobs referencing real ordinary-JWT uploads; no Storage metadata/bytes DML; no verified_at/readiness seeding",
+    "initial": {
+      "fixture": "Admin-created platform-only jobs, real ordinary-user bytes; not user Receipt Begin/Commit",
+      "first": {
+        "code": 42,
+        "events": [
+          {
+            "phase": "verify",
+            "content": true,
+            "headersNegative": true,
+            "job": "5e9e267417a5924cdc466c2357feb49d87d5405fe4d0f5caa27017d8638d602b"
+          },
+          {
+            "phase": "retry-persisted",
+            "job": "df59cb86d7272c86e36feabce2e4f38c0a2c367175311ac401388f6ada2f3f36"
+          },
+          {
+            "phase": "crash-after-claim",
+            "job": "602044ce54a474868e64eaaf1cfcc6f990bd77e263d968518c4b1752b56f3769"
+          }
+        ],
+        "stderrPresent": false
+      },
+      "objectHashes": [
+        "e6a93e048ac6431894454bdc0ab2be8d1113eb6b8df68f2dd61cafbec1bc38c5",
+        "9a8fa3679fb42496f0b8d64e598edd4acfe8ab0389e3599ee18b67fdde36755e",
+        "cbcc36fa8bc870055987a28b13e2730eb65caea91d74c9851d0af21fd13aaa5e",
+        "2f53d1cc17b18f5a31b7b09d01abc15f02755d1b0cdf1ff0637b0fe688f06fda"
+      ],
+      "restarted": {
+        "code": 0,
+        "events": [
+          {
+            "phase": "cycle",
+            "cycle": 1,
+            "at": "2026-11-01T02:30:53.608Z",
+            "verified": 0,
+            "cleaned": 1,
+            "failed": 0
+          },
+          {
+            "phase": "cycle",
+            "cycle": 2,
+            "at": "2026-11-01T02:31:13.940Z",
+            "verified": 0,
+            "cleaned": 0,
+            "failed": 0
+          },
+          {
+            "phase": "cycle",
+            "cycle": 3,
+            "at": "2026-11-01T02:31:34.389Z",
+            "verified": 0,
+            "cleaned": 0,
+            "failed": 0
+          },
+          {
+            "phase": "cycle",
+            "cycle": 4,
+            "at": "2026-11-01T02:31:55.419Z",
+            "verified": 1,
+            "cleaned": 0,
+            "failed": 0
+          },
+          {
+            "phase": "cycle",
+            "cycle": 5,
+            "at": "2026-11-01T02:32:15.777Z",
+            "verified": 0,
+            "cleaned": 0,
+            "failed": 0
+          },
+          {
+            "phase": "cycle",
+            "cycle": 6,
+            "at": "2026-11-01T02:32:36.129Z",
+            "verified": 0,
+            "cleaned": 0,
+            "failed": 0
+          },
+          {
+            "phase": "cycle",
+            "cycle": 7,
+            "at": "2026-11-01T02:32:57.029Z",
+            "verified": 1,
+            "cleaned": 0,
+            "failed": 0
+          },
+          {
+            "phase": "cycle",
+            "cycle": 8,
+            "at": "2026-11-01T02:33:17.369Z",
+            "verified": 0,
+            "cleaned": 0,
+            "failed": 0
+          }
+        ],
+        "stderrPresent": false
+      }
+    },
+    "cleanupRetry": {
+      "first": {
+        "code": 42,
+        "events": [
+          {
+            "phase": "cleanup-retry-persisted",
+            "wrongTokenDenied": true,
+            "job": "41253f2b1646adfc2c7ead63da8cbb2f0cc46368b65f94822e0bf2debf642b70"
+          }
+        ],
+        "stderrPresent": false
+      },
+      "resumed": {
+        "code": 0,
+        "events": [
+          {
+            "phase": "cycle",
+            "cycle": 1,
+            "at": "2026-11-01T02:41:53.403Z",
+            "verified": 0,
+            "cleaned": 1,
+            "failed": 0
+          },
+          {
+            "phase": "cycle",
+            "cycle": 2,
+            "at": "2026-11-01T02:42:08.762Z",
+            "verified": 0,
+            "cleaned": 0,
+            "failed": 0
+          }
+        ],
+        "stderrPresent": false
+      },
+      "realHttp": true
+    },
+    "expirySweep": {
+      "at": "2026-11-01T02:37:21.458Z",
+      "expiredCanaryJobs": [
+        {
+          "phase": "cleanup",
+          "done": true
+        },
+        {
+          "phase": "cleanup",
+          "done": true
+        },
+        {
+          "phase": "cleanup",
+          "done": true
+        }
+      ],
+      "realHttp": true
+    },
+    "verificationAttempts": [
+      1,
+      2,
+      2
+    ],
+    "cleanupAttempts": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      2
+    ]
+  },
+  "storage": {
+    "bucketPrivate": true,
+    "bucketLimitBytes": 10485760,
+    "pixelSha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea",
+    "oversizeRawAndMultipart": "Client12s response deadlines remain Blocked; actual Managed Storage log says EntityTooLarge/internal413/userStatus400; no oversized object committed",
+    "tusOversize": {
+      "status": 413,
+      "declaredBytes": 10485761,
+      "bytesSent": 0,
+      "ms": 433
+    },
+    "largeUnknownAckRecovery": {
+      "initialUploadAck": "Unknown; not resent",
+      "commitConfirmedByIndependentRead": true,
+      "size": 9437269,
+      "expectedSha256": "4ce8568193be84705a0cc31a87d992734748c3f39f08b0be0bab1c86d09b2ea2",
+      "bytesReceived": 9437269,
+      "status": "Passed",
+      "httpStatus": 200,
+      "headersMs": 1565,
+      "lastProgressMs": 4280,
+      "actualSha256": "4ce8568193be84705a0cc31a87d992734748c3f39f08b0be0bab1c86d09b2ea2",
+      "normalCleanup": true,
+      "authLogout": true
+    }
+  },
+  "readback": {
+    "observedAt": "2026-11-01T02:53:35.780614+00:00",
+    "operationalAt": "2026-11-01T02:55:10.355323+00:00",
+    "ledger": {
+      "head": "20261031140648",
+      "count": 64
+    },
+    "original28Unchanged": true,
+    "functions38Unchanged": true,
+    "guardAttributesAndHashUnchanged": true,
+    "budgetRlsPublicationWorkerAclAndStoragePoliciesUnchanged": true,
+    "sevenProtocolsLatchesAndReadinessOff": true,
+    "legacyGrantsExpireAt": null,
+    "qaObjectsRemaining": 0,
+    "originalData": [
+      {
+        "name": "app_private.budget_edit_leases",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "app_private.budget_selections",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "app_private.budget_workspace_requests",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "auth.users",
+        "rows": 1,
+        "sha256": "2e43e82d9b13ea3f469f1675ebcc0cb232b04a54aee220f19eac5816d5535490"
+      },
+      {
+        "name": "public.accommodations",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.actual_expense_participants",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.actual_expenses",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.attachments",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_collaboration_signals",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_item_participants",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.guide_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_alternatives",
+        "rows": 3,
+        "sha256": "a6f90744b303df7679c9bdc90cc4739f8ea92563df0cb5917e086a27ab3ac83a"
+      },
+      {
+        "name": "public.itinerary_budget_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_items",
+        "rows": 25,
+        "sha256": "00943b973d3d470b17bb5bd6e993a36284042d9fe8a15693da0c83f4d36a24b5"
+      },
+      {
+        "name": "public.itinerary_route_override_nodes",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_route_overrides",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.luggage_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.pack_items",
+        "rows": 7,
+        "sha256": "d9519b2d91c5e6023323f7089c72c959b4e3046bc5fbc3bc7f5459492ab2950d"
+      },
+      {
+        "name": "public.share_links",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.shared_luggage_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.todo_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.trip_budget_baselines",
+        "rows": 1,
+        "sha256": "6d451ff219e1e8404c68ec2e6805a46cbb482de84c1219875a746c8413586c21"
+      },
+      {
+        "name": "public.trip_invites",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.trip_members",
+        "rows": 2,
+        "sha256": "4164878c26addb5bc85a8e43afc897746a2bb49c33b014dab32ec33f4fb8a857"
+      },
+      {
+        "name": "public.trips",
+        "rows": 2,
+        "sha256": "ccb841ca4b518ee8a7027886e70dc157ee105627cfad7a04186b9fbebd648764"
+      },
+      {
+        "name": "storage.buckets",
+        "rows": 1,
+        "sha256": "a67dc22edc0f770da506176d96a475d39a30f456a318e4a656595c82c020d830"
+      },
+      {
+        "name": "storage.objects",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ],
+    "functionSeals": [
+      {
+        "sha256": "8989115e07f6da60ca6f747bffb8ffe3f72c00141d951f5c198c5b3789a709b6",
+        "signature": "app_private.assert_budget_metadata_effect_finished()"
+      },
+      {
+        "sha256": "dad3f343185fbd781d1759da2c3e76397945d11e6bf2834fcd7bd15e45416942",
+        "signature": "app_private.assert_budget_metadata_undo_finished()"
+      },
+      {
+        "sha256": "51707bef63fde8a5ee724d3cf01150b1a34028b102f604e8fa8c221ba65caa98",
+        "signature": "app_private.budget_field_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)"
+      },
+      {
+        "sha256": "a0fe39acdee70c5c8fa33d4b61cebb37dd1a6da44c8970f8a2b836abe615f0b0",
+        "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)"
+      },
+      {
+        "sha256": "f7bcad63f45c2f94cbd2075c4452f5a1c3a4c48fd245565fd2c3594418213be2",
+        "signature": "app_private.budget_payment_admission_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)"
+      },
+      {
+        "sha256": "5e2a305d48192f9def39cad1c1f61c104f8f3d39db430a83b24726c4c1b37eff",
+        "signature": "app_private.budget_pricing_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)"
+      },
+      {
+        "sha256": "c7c23c35570f95ffba3fc8a60c791d15b2af9569676a4649ce078135fd24cd52",
+        "signature": "app_private.budget_rates_admission(uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "bfc4a4a8b1d4df08c347b238764d07b2892a1f86be4900d8008724f7b8266165",
+        "signature": "app_private.budget_source_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "bb089f6fca11a6a107e8097a07ce88ceead6e423f19075933fa29574ab76bd4c",
+        "signature": "app_private.finish_budget_field()"
+      },
+      {
+        "sha256": "0183307a30cb21966d58c0d17d1d913e88e351647b7f57057fef43d89d811e05",
+        "signature": "app_private.finish_budget_lifecycle()"
+      },
+      {
+        "sha256": "f60530a2a2c98d8752f79a0f2f24be2ac112af28e88e9ff66ee95133276ae396",
+        "signature": "app_private.finish_budget_metadata_patch()"
+      },
+      {
+        "sha256": "748387cce14c3b2c9fd56ff36ecae688b4919b6bfc6faf2bee98be7e415a257e",
+        "signature": "app_private.finish_budget_payment()"
+      },
+      {
+        "sha256": "8ccaeb5bb00737e4dab7b0d40f18c05d4257d25ce1b88156cf4a213b4e63f6bb",
+        "signature": "app_private.finish_budget_pricing_patch()"
+      },
+      {
+        "sha256": "bf6344e34ce4ab1b9516cb7547925052759d4aabc7ef545164b1fce5b618bb19",
+        "signature": "app_private.finish_budget_rates()"
+      },
+      {
+        "sha256": "19a6c07798e9f3a8f922cab4ca0e1d3032d0a587b675a39416e586b1e9a38d1d",
+        "signature": "app_private.finish_budget_source()"
+      },
+      {
+        "sha256": "ff898589f18b01ada15e60665803514c88526ce2ca02bd7cc3f146a74e4cf74b",
+        "signature": "app_private.finish_receipt()"
+      },
+      {
+        "sha256": "fff03ef9c3c6b28645cd9504c3f63f8165d9512ceef3deb69dea3aaa70e9b713",
+        "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "379aa891881d5c8063eb400134b0fd2d7825f51da5752376960834838e22f106",
+        "signature": "app_private.lifecycle_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "da705e54b8c0d4d6bf21dc04d5f9ecff82132b20b864ee5d768fdf3b69756f16",
+        "signature": "app_private.lock_budget_field_parents(uuid,jsonb)"
+      },
+      {
+        "sha256": "0f3bac238e5ff45e8bc0eff973a4a56b8ef90e2d7d9792a5c752b6341ba6e1d3",
+        "signature": "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)"
+      },
+      {
+        "sha256": "4a048aecf009ce194f53ceba1915e11a3a98c701b2040f563768c882423cd9aa",
+        "signature": "app_private.prepare_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "6d9982e9169566709b09e4393008b7aea4571cc7f71f68419676529111e7f0d1",
+        "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "f4672f96c7e02b906b2e7df3043c20d64c7126806db4d564f9279d029c99605b",
+        "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "a5bdf7dcacbb3ddff33cf259693fc393b142a17f8c2b7a36029ded433379523c",
+        "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "a1a584d4c7402f1f215d5f9ba948e8b89c88dca9a2e6caebfdad29167b41f282",
+        "signature": "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "60ef5ece9787c856c2ad45bcc7a8f47b3d461ec8b02c0e798530a2b232b55da6",
+        "signature": "app_private.prepare_budget_rates(uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "77d3d6caa3b638df03361d845bd2396f5891c7217b088b17109090700d8ddcf3",
+        "signature": "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)"
+      },
+      {
+        "sha256": "f4657021b2c1c3ed0ad1c9dbfc18b37a9910cfed4d892d6df8d6e644714865dc",
+        "signature": "app_private.receipt_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)"
+      },
+      {
+        "sha256": "e9e93248d99ae6cce0dc5e1d099af90c3b36d357f79ea310bf3e82e5de3c8c7d",
+        "signature": "app_private.receipt_authority(uuid,uuid,uuid,uuid,bigint,bigint,jsonb)"
+      },
+      {
+        "sha256": "ccfb54792a451dd5ee8a35816e48801a5f995885e34e38907586514e2d703a9a",
+        "signature": "app_private.reconcile_budget_readiness(text,uuid)"
+      },
+      {
+        "sha256": "5830ee20eb1be97551dfff230cd9fa294b706fb42ac8d4c0c6e97eac9024e041",
+        "signature": "app_private.record_budget_metadata_undo()"
+      },
+      {
+        "sha256": "24738db574851c7d952ea77434d73f41d1baedb5700da073f5bba7d824695acc",
+        "signature": "app_private.workspace_inverse_manifest()"
+      },
+      {
+        "sha256": "f156820a0da2625624da1d83f684c2a666b1a9805684d43d0916cd23701a7844",
+        "signature": "app_private.workspace_undo_top(uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "4c2c7e5f7b548f96647b67292bc6b30cf5204adc8a3f213140e521303d3fc2be",
+        "signature": "public.delete_itinerary_item_budget_safe(uuid,uuid)"
+      },
+      {
+        "sha256": "a4b77b82da75fd36a0b51bccfa29374ed682fc59508aeab0a5d4d43bb84ee9b2",
+        "signature": "public.patch_budget_metadata_group_v2(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)"
+      },
+      {
+        "sha256": "ace1afd5982d4787b0c2e2593b8e7fc3e3ab63cfe5d6fa7721ef83d833e6b4c0",
+        "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "bfe5d4bf86080ae678b56ccd6b875e15d52a7ad8ccff1339b8162ea9a8c0ea0a",
+        "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)"
+      },
+      {
+        "sha256": "3d7440821dabd5b3571f1937235643f94d6dd67db62f5847a0a15b96b415d0b7",
+        "signature": "public.undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)"
+      }
+    ]
+  },
+  "advisor": {
+    "rerunLinterClicked": true,
+    "errors": 0,
+    "warnings": 10,
+    "info": 23,
+    "warningRowsUnchanged": true
+  },
+  "cleanup": {
+    "ordinaryUserJwt": true,
+    "newTripsDeleted": 3,
+    "newActualsDeleted": 1,
+    "newStorageObjectsDeleted": 8,
+    "newBaselinesNormallyCascaded": 3,
+    "oldQaBaselineRetained": true,
+    "existingQaUsersRetained": 2,
+    "retainedNewSignals": 3,
+    "retainedIntentJournal": {
+      "aborted": 3
+    },
+    "retainedCleanupJournal": {
+      "done": 6
+    },
+    "noActivePendingClaims": true,
+    "adminCascadeOrForcedDelete": false,
+    "runHash": "e9a3da9393db6a556c72bbe1d90ad7871250e0710c4f00155f7c00980fa79e2e",
+    "newTripHashes": [
+      "9c5d90204b8d5c57a15a1704031e31e1e4bcdaf38753000fce50426dd608a5fa",
+      "0aefdd8791439eb627fdd2a7aed0b60b5ccf283c6b346f5999c2f0a64e7ec6ea",
+      "10d5df59f5ef60604a0c00904f11180ed41912edb6adbae4996d08613d4c6b82"
+    ]
+  },
+  "validation": {
+    "credentialAndWorkerSafetyTests": {
+      "passed": 7,
+      "failed": 0,
+      "distinctTests": 7
+    },
+    "stagingTargetFenceTests": {
+      "passed": 4,
+      "failed": 0
+    },
+    "totalDistinctFocusedTests": 11,
+    "productionBuild": "Passed; existing bundle-size advisory",
+    "historicalSuites": "Not rerun; native27/27, controllers136/136, local browser10/10 and real Realtime6/6 remain historical evidence, not new hosted B7 E2E",
+    "syntax": "Passed:10 changed/source Node files plus target-fence test and PowerShell AST",
+    "diff": "Passed:git diff --check and git diff --cached --check",
+    "linksAndSensitiveScan": {
+      "files": 18,
+      "links": 72,
+      "status": "Passed"
+    },
+    "frontendFiveFlagsOff": true
+  },
+  "observations": [
+    {
+      "type": "QA fixture correction",
+      "detail": "Temporary SQL reason concatenation42725 rolled back; fresh empty-queue guard passed before corrected atomic QA initialization."
+    },
+    {
+      "type": "QA fixture correction",
+      "detail": "Large trip setup needed return=minimal before membership bootstrap and required destination.403/23502 attempts independently read back as absent; no RLS or constraint changes."
+    },
+    {
+      "type": "JWT boundary",
+      "detail": "Probe immediately after exp was200 within documented PostgREST30-second skew. Rejection assertion remains401; genuine exp+skew then returns401/PGRST303, without re-signing or changing clocks."
+    }
+  ],
+  "packagedToolsSha256": {
+    "scripts/qa/b7-staging-service-checks.mjs": "19bece234e5fd695bdc18c5e6633949237ee2460df40a318413a81cc94151364",
+    "scripts/qa/b7-staging-platform-worker-checks.mjs": "f2e505db3c83a365998b71cd85fdd73c809ea06f6066647cd502365088d3914b",
+    "scripts/qa/b7-staging-platform-worker-child.mjs": "04be87b1876c9a101a9f9e0329b9538e2bd4b396eb48e78e803a7fd2d98b1430",
+    "scripts/qa/prepare-b7-platform-canary-sql.mjs": "b3e66f74ce95d7135421490d2bd7807718edd69b44851892a3967006269cd817",
+    "scripts/qa/prepare-b7-reference-canary-sql.mjs": "fb71004daea18cdee97802fe39a839a1b90a4292db085204b68c40c17172c039",
+    "scripts/qa/b7-staging-large-storage-check.mjs": "2671a068c75e2b76c595fb96edc065e6593d47f51de4bdbc9232299b49c98b92",
+    "scripts/qa/b7-staging-large-storage-recover.mjs": "ecce028116afa72049aa535eece3d508f2884c63345da90a81f75fef64ec897e"
+  },
+  "decision": {
+    "stagingActivation": "NO-GO: verified legacy grant issuance cutoff/exhaustion missing",
+    "production": "NO-GO: activation/full business Browser E2E and Production live baseline/backup not completed",
+    "noAdditionalStageApprovalRequested": true
+  },
+  "packagedToolsHashNormalization": "UTF-8 without BOM; CRLF normalized to LF. Applies only to new QA tools, never deployed Migration seals."
+}

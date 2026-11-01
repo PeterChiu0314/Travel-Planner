@@ -1,0 +1,8 @@
+import fs from 'node:fs/promises';const m=JSON.parse(await fs.readFile('.tmp-b7-live/qa-state.json','utf8')),c=m.canary,f=c[process.argv[2]||'reference'],q=x=>"'"+String(x).replaceAll("'","''")+"'";if(!f)throw Error('Real reference QA upload first');
+const sql=`begin;set local lock_timeout='3s';set local statement_timeout='10s';
+do $$begin if (select count(*) from supabase_migrations.schema_migrations)<>64 or exists(select 1 from app_private.budget_receipt_protocol where enabled or activated) then raise exception 'Target drift';end if;
+if not exists(select 1 from public.actual_expenses a join public.trips t on t.id=a.trip_id where a.id=${q(c.actual)}::uuid and t.id=${q(m.tripIds[0])}::uuid and t.title=${q('QA B7 Closeout '+m.run)}) or not exists(select 1 from storage.objects where bucket_id='trip-attachments' and name=${q(f.path)} and (metadata->>'size')::bigint=68 and metadata->>'mimetype'='image/png') then raise exception 'Real QA bytes/graph missing';end if;
+if exists(select 1 from app_private.budget_receipt_cleanup where status in('waiting','claimed','blocked')) then raise exception 'Existing active cleanup; stop';end if;end $$;
+insert into app_private.budget_receipt_cleanup(request_id,trip_id,actual_id,object_path,object_id,reason) select ${q(f.request)}::uuid,${q(m.tripIds[0])}::uuid,${q(c.actual)}::uuid,name,id,${q('Disposable QA live-reference canary '+m.run)} from storage.objects where bucket_id='trip-attachments' and name=${q(f.path)};
+select jsonb_build_object('qaReferenceCanary',1,'readinessChanged',false) result;commit;`;
+await fs.writeFile('.tmp-b7-live/seed-reference-canary.sql',sql);

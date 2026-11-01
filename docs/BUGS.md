@@ -13,15 +13,15 @@ This document now separates:
 
 # Confirmed Bugs
 
-## B-7 release gates | Real service closeout remains blocked (not a new reproduced product bug)
+## B-7 release gates | Platform HTTP/Worker passed; legacy cutoff and post-Activation E2E blocked
 
-2026-11-01: Staging secret-read authorization is now explicit and source/HMAC checks succeeded, then secret references cleared. Remaining environment gate is native execution: sandbox DNS/pipe isolation plus product policy refusing automatic PowerShell launch. User-started masked memory helper prepared; real HTTP/Worker/Activation still not passed. [Credential/operator handoff](2026-11-01-budget-b7-memory-credential-handoff.md). Earlier rejection below is historical, not a request for duplicate authorization.
+Updated2026-11-01. [Real-service report](2026-11-01-budget-b7-real-service-acceptance.md), [case matrix](qa/2026-11-01-budget-b7-real-service-results.json). Prior credential/native-launch blocker is resolved; masked helper genuinelyREADY, then stopped after testing. Publishable-key compatibility fixed locally,7/7 focused tests andBuild passed.
 
-Updated2026-10-31 from585daac. BUG-028/030 remain Staging-verified closed; BUG-029 frontend rollout is still pending. New legal Incomplete fixture (Lifecycle placeholder + validated Pricing while Title empty) has real children; raw INSERT/UPDATE/DELETE reject on both financial parents in native integration27/27. Hosted proof still unavailable without QA credentials and gated Lifecycle activation. No Guard bypass or source-history change.
+TrueAuth/RLS/Storage bytes+SHA/SignedURL/MIME/TUS413, dedicatedWorker exactheaders/content/retry/claimexpiry/processrestart/10scheduled cycles, live-reference protection and expiredJWT401 passed as scoped platform tests. Valid9MiB upload ACK was unknown, independently confirmed committed, fully downloaded/hashverified and normally removed. Original standard/multipart oversized client response checks remainBlocked; backend rejected EntityTooLarge, no Timeout/assertion relaxation. No new confirmed productP0/P1; unknown upload ACK transport cause remainsP2 investigation, not fullReceipt E2E proof.
 
-P1 release gates: dedicated trustworthy Worker JWT/headers/claim/retry/restart/two actual cycles, authenticated over10MiB Storage and full Receipt lifecycle, controlled Activation and independent real Browser sessions/E2E. No new confirmed P0 or productP1 this round; these gates are unverified, not presumed Passed. Automatic safety review rejected reading API settings credentials; no token/secret workaround. Full evidence and secure supply requirements: [continuous closeout](2026-10-31-budget-b7-closeout.md).
+P1 release blocker: no verifiable legacy issuance stop/drain/expiry evidence. Delayed logs, noS3keys and zero multipart cannot alone authorize filling legacy_grants_expire_at. Keep sevenProtocol/Latch/readiness OFF; no Activation. LegalHostedIncomplete, userReceipt lifecycle, object-ID race and fullmultiBrowserE2E remainPending Post-Activation. Do not turn admin-created platformcanary jobs into businessReceipt acceptance or fake readiness. Existing Staging authority continues, not a newstageReview gate.
 
-P2 historical drift: ledger20260819125851 SourceSHA6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c versus local d6706de32644a91ebc5e88cd94e54a8823f3363f12feabb8ead0638f890ae2c9: exact backend-verified source differs by one trailingLF only.31other historical ledger rows lack full source; disclose, never reseal or blindly replay. Existing500/55P03 lease mapping and bundle advisory remain. Seven flags/readiness OFF; no Hosted writes or new QA graph this round.
+Final Ledger64/38seals/28original projections and scopedRLS/ACL unchanged; Advisor0Errors/10sameWarnings/23Info. New3trips/1Actual/8objects normally cleaned;3aborted intents/6donecleanup/3syncsignals retained. OldQA Baseline/users preserved,3newAuth sessions logout, noWorker daemon. Existing BUG-028/030 closure, BUG-029 frontend rollout, historicalsource/55P03/bundle warnings retain prior status. Production NO-GO.
 
 ---
 

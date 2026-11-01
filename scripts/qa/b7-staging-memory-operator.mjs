@@ -19,8 +19,12 @@ try{
  const input=await readInput();
  const env=await fs.readFile(path.join(root,'.env.staging.local'),'utf8');
  const anon=env.match(/^\s*VITE_SUPABASE_ANON_KEY\s*=\s*["']?([^\s"']+)/m)?.[1];
- provider=createStagingCredentialProvider({admin:input.admin,anon,secret:Buffer.from(input.signingSecret||'','utf8')});
+ const projectUrl=env.match(/^\s*VITE_SUPABASE_URL\s*=\s*["']?([^\s"']+)/m)?.[1];
+ if(projectUrl?.replace(/\/$/,'')!==runtime.url)throw Error('Public configuration must target Staging');
+ provider=createStagingCredentialProvider({admin:input.admin,anon,projectUrl,secret:Buffer.from(input.signingSecret||'','utf8')});
  input.admin=null;input.signingSecret=null;credentials=provider.issue();
+ const health=await fetch(runtime.url+'/auth/v1/health',{redirect:'error',headers:{apikey:credentials.anon},signal:AbortSignal.timeout(10000)});
+ if(health.status!==200)throw Error('Staging public key rejected (HTTP '+health.status+')');
  const scope=JSON.parse(await fs.readFile(path.join(root,'.tmp-b7-p1/qa-scope.json'),'utf8'));
  const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
  if(!Array.isArray(scope.users)||scope.users.length!==2||!scope.users.every(x=>uuid.test(x))||!uuid.test(scope.run))throw Error('Invalid controlled QA identity manifest');
@@ -28,7 +32,7 @@ try{
  if(response.status!==200)throw Error('Staging QA Auth read failed (HTTP '+response.status+')');
  const user=await response.json();if(user.id!==scope.users[0]||user.user_metadata?.qa_run!==scope.run)throw Error('QA identity mismatch');
  const workerExpiresAt=JSON.parse(Buffer.from(credentials.worker.split('.')[1],'base64url').toString()).exp;
- await state({phase:'ready',authLookupStatus:200,qaIdentityVerified:true,workerExpiresAt});console.log('READY: Staging QA identity verified; credentials in memory only');
+ await state({phase:'ready',publicKeyStatus:200,authLookupStatus:200,qaIdentityVerified:true,workerExpiresAt});console.log('READY: Staging QA identity verified; credentials in memory only');
  const started=Date.now();let lastId='';
  while(Date.now()-started<50*60000){
   let request;try{request=JSON.parse(await fs.readFile(path.join(dir,'request.json'),'utf8'));}catch{}
