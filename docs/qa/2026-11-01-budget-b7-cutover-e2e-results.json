@@ -1,0 +1,1250 @@
+{
+  "project": "uyqdopksfysbobhjcepk",
+  "scope": "Staging-only cutover and targeted post-Activation E2E; previous Auth/Storage/Worker suites reused, not rerun",
+  "currentDecision": "NO-GO",
+  "dormantSchemaNotReplayed": true,
+  "migration": {
+    "version": "20261101032853",
+    "sourceSha256": "b5032314b31678ae6ae922f6aa648e7a7108e5ce77bd09a7a9b5aef7d3ed85b6",
+    "wrapperSha256": "8e98cc69539afe0c0a0887a66c3c7f4d4af4e3f28f59500d4aab8adba55ac393",
+    "ledgerBefore": 64,
+    "ledgerAfter": 65,
+    "sourceVerifiedFromIndependentLedger": true,
+    "installedOnce": true
+  },
+  "finalState": {
+    "readAt": "2026-11-01T12:56:14.432864+00:00",
+    "protocols": {
+      "undo": false,
+      "source": false,
+      "finance": false,
+      "payment": false,
+      "metadata": false,
+      "receipts": false,
+      "lifecycle": false
+    },
+    "irreversibleLatchesPreserved": true,
+    "readinessNotReset": true,
+    "legacyNaturalExpiry": null,
+    "legacyExhausted": true,
+    "pendingIntents": 0,
+    "activeCleanup": 0,
+    "missingReceiptObjects": 0
+  },
+  "dataProtection": {
+    "readAt": "2026-11-01T12:58:40.665364+00:00",
+    "original28": [
+      {
+        "name": "app_private.budget_edit_leases",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "app_private.budget_selections",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "app_private.budget_workspace_requests",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "auth.users",
+        "rows": 1,
+        "sha256": "2e43e82d9b13ea3f469f1675ebcc0cb232b04a54aee220f19eac5816d5535490"
+      },
+      {
+        "name": "public.accommodations",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.actual_expense_participants",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.actual_expenses",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.attachments",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_collaboration_signals",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_item_participants",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.budget_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.guide_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_alternatives",
+        "rows": 3,
+        "sha256": "a6f90744b303df7679c9bdc90cc4739f8ea92563df0cb5917e086a27ab3ac83a"
+      },
+      {
+        "name": "public.itinerary_budget_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_items",
+        "rows": 25,
+        "sha256": "00943b973d3d470b17bb5bd6e993a36284042d9fe8a15693da0c83f4d36a24b5"
+      },
+      {
+        "name": "public.itinerary_route_override_nodes",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.itinerary_route_overrides",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.luggage_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.pack_items",
+        "rows": 7,
+        "sha256": "d9519b2d91c5e6023323f7089c72c959b4e3046bc5fbc3bc7f5459492ab2950d"
+      },
+      {
+        "name": "public.share_links",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.shared_luggage_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.todo_items",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.trip_budget_baselines",
+        "rows": 1,
+        "sha256": "6d451ff219e1e8404c68ec2e6805a46cbb482de84c1219875a746c8413586c21"
+      },
+      {
+        "name": "public.trip_invites",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "name": "public.trip_members",
+        "rows": 2,
+        "sha256": "4164878c26addb5bc85a8e43afc897746a2bb49c33b014dab32ec33f4fb8a857"
+      },
+      {
+        "name": "public.trips",
+        "rows": 2,
+        "sha256": "ccb841ca4b518ee8a7027886e70dc157ee105627cfad7a04186b9fbebd648764"
+      },
+      {
+        "name": "storage.buckets",
+        "rows": 1,
+        "sha256": "a67dc22edc0f770da506176d96a475d39a30f456a318e4a656595c82c020d830"
+      },
+      {
+        "name": "storage.objects",
+        "rows": 0,
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ],
+    "functions38": [
+      {
+        "sha256": "8989115e07f6da60ca6f747bffb8ffe3f72c00141d951f5c198c5b3789a709b6",
+        "signature": "app_private.assert_budget_metadata_effect_finished()"
+      },
+      {
+        "sha256": "dad3f343185fbd781d1759da2c3e76397945d11e6bf2834fcd7bd15e45416942",
+        "signature": "app_private.assert_budget_metadata_undo_finished()"
+      },
+      {
+        "sha256": "51707bef63fde8a5ee724d3cf01150b1a34028b102f604e8fa8c221ba65caa98",
+        "signature": "app_private.budget_field_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)"
+      },
+      {
+        "sha256": "a0fe39acdee70c5c8fa33d4b61cebb37dd1a6da44c8970f8a2b836abe615f0b0",
+        "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)"
+      },
+      {
+        "sha256": "f7bcad63f45c2f94cbd2075c4452f5a1c3a4c48fd245565fd2c3594418213be2",
+        "signature": "app_private.budget_payment_admission_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)"
+      },
+      {
+        "sha256": "5e2a305d48192f9def39cad1c1f61c104f8f3d39db430a83b24726c4c1b37eff",
+        "signature": "app_private.budget_pricing_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)"
+      },
+      {
+        "sha256": "c7c23c35570f95ffba3fc8a60c791d15b2af9569676a4649ce078135fd24cd52",
+        "signature": "app_private.budget_rates_admission(uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "bfc4a4a8b1d4df08c347b238764d07b2892a1f86be4900d8008724f7b8266165",
+        "signature": "app_private.budget_source_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "bb089f6fca11a6a107e8097a07ce88ceead6e423f19075933fa29574ab76bd4c",
+        "signature": "app_private.finish_budget_field()"
+      },
+      {
+        "sha256": "0183307a30cb21966d58c0d17d1d913e88e351647b7f57057fef43d89d811e05",
+        "signature": "app_private.finish_budget_lifecycle()"
+      },
+      {
+        "sha256": "f60530a2a2c98d8752f79a0f2f24be2ac112af28e88e9ff66ee95133276ae396",
+        "signature": "app_private.finish_budget_metadata_patch()"
+      },
+      {
+        "sha256": "748387cce14c3b2c9fd56ff36ecae688b4919b6bfc6faf2bee98be7e415a257e",
+        "signature": "app_private.finish_budget_payment()"
+      },
+      {
+        "sha256": "8ccaeb5bb00737e4dab7b0d40f18c05d4257d25ce1b88156cf4a213b4e63f6bb",
+        "signature": "app_private.finish_budget_pricing_patch()"
+      },
+      {
+        "sha256": "bf6344e34ce4ab1b9516cb7547925052759d4aabc7ef545164b1fce5b618bb19",
+        "signature": "app_private.finish_budget_rates()"
+      },
+      {
+        "sha256": "19a6c07798e9f3a8f922cab4ca0e1d3032d0a587b675a39416e586b1e9a38d1d",
+        "signature": "app_private.finish_budget_source()"
+      },
+      {
+        "sha256": "ff898589f18b01ada15e60665803514c88526ce2ca02bd7cc3f146a74e4cf74b",
+        "signature": "app_private.finish_receipt()"
+      },
+      {
+        "sha256": "fff03ef9c3c6b28645cd9504c3f63f8165d9512ceef3deb69dea3aaa70e9b713",
+        "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "379aa891881d5c8063eb400134b0fd2d7825f51da5752376960834838e22f106",
+        "signature": "app_private.lifecycle_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)"
+      },
+      {
+        "sha256": "da705e54b8c0d4d6bf21dc04d5f9ecff82132b20b864ee5d768fdf3b69756f16",
+        "signature": "app_private.lock_budget_field_parents(uuid,jsonb)"
+      },
+      {
+        "sha256": "0f3bac238e5ff45e8bc0eff973a4a56b8ef90e2d7d9792a5c752b6341ba6e1d3",
+        "signature": "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)"
+      },
+      {
+        "sha256": "4a048aecf009ce194f53ceba1915e11a3a98c701b2040f563768c882423cd9aa",
+        "signature": "app_private.prepare_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "6d9982e9169566709b09e4393008b7aea4571cc7f71f68419676529111e7f0d1",
+        "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "f4672f96c7e02b906b2e7df3043c20d64c7126806db4d564f9279d029c99605b",
+        "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "a5bdf7dcacbb3ddff33cf259693fc393b142a17f8c2b7a36029ded433379523c",
+        "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "a1a584d4c7402f1f215d5f9ba948e8b89c88dca9a2e6caebfdad29167b41f282",
+        "signature": "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "60ef5ece9787c856c2ad45bcc7a8f47b3d461ec8b02c0e798530a2b232b55da6",
+        "signature": "app_private.prepare_budget_rates(uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "77d3d6caa3b638df03361d845bd2396f5891c7217b088b17109090700d8ddcf3",
+        "signature": "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)"
+      },
+      {
+        "sha256": "f4657021b2c1c3ed0ad1c9dbfc18b37a9910cfed4d892d6df8d6e644714865dc",
+        "signature": "app_private.receipt_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)"
+      },
+      {
+        "sha256": "e9e93248d99ae6cce0dc5e1d099af90c3b36d357f79ea310bf3e82e5de3c8c7d",
+        "signature": "app_private.receipt_authority(uuid,uuid,uuid,uuid,bigint,bigint,jsonb)"
+      },
+      {
+        "sha256": "ccfb54792a451dd5ee8a35816e48801a5f995885e34e38907586514e2d703a9a",
+        "signature": "app_private.reconcile_budget_readiness(text,uuid)"
+      },
+      {
+        "sha256": "5830ee20eb1be97551dfff230cd9fa294b706fb42ac8d4c0c6e97eac9024e041",
+        "signature": "app_private.record_budget_metadata_undo()"
+      },
+      {
+        "sha256": "24738db574851c7d952ea77434d73f41d1baedb5700da073f5bba7d824695acc",
+        "signature": "app_private.workspace_inverse_manifest()"
+      },
+      {
+        "sha256": "f156820a0da2625624da1d83f684c2a666b1a9805684d43d0916cd23701a7844",
+        "signature": "app_private.workspace_undo_top(uuid,uuid,uuid)"
+      },
+      {
+        "sha256": "4c2c7e5f7b548f96647b67292bc6b30cf5204adc8a3f213140e521303d3fc2be",
+        "signature": "public.delete_itinerary_item_budget_safe(uuid,uuid)"
+      },
+      {
+        "sha256": "a4b77b82da75fd36a0b51bccfa29374ed682fc59508aeab0a5d4d43bb84ee9b2",
+        "signature": "public.patch_budget_metadata_group_v2(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)"
+      },
+      {
+        "sha256": "ace1afd5982d4787b0c2e2593b8e7fc3e3ab63cfe5d6fa7721ef83d833e6b4c0",
+        "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)"
+      },
+      {
+        "sha256": "bfe5d4bf86080ae678b56ccd6b875e15d52a7ad8ccff1339b8162ea9a8c0ea0a",
+        "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)"
+      },
+      {
+        "sha256": "3d7440821dabd5b3571f1937235643f94d6dd67db62f5847a0a15b96b415d0b7",
+        "signature": "public.undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)"
+      }
+    ],
+    "existingSecurityUnchanged": true,
+    "exactQaLinkWithinTrip": 1,
+    "qaCrossTripLinks": 0
+  },
+  "guards": [
+    {
+      "signature": "app_private.guard_receipt_metadata()",
+      "beforeSha256": "8d8577fcf0803cd3cab51429a58dcf025d3b62279e5f7f79b1e3593cf5c59965",
+      "afterSha256": "85cda3b2566527c40fe9bb1ee791b5d9ed07172e283ad46c5b2e23dd2c2df434",
+      "oidOwnerAclSecuritySearchPathUnchanged": true
+    },
+    {
+      "signature": "app_private.latch_budget_receipts()",
+      "beforeSha256": "2b9737d0470fb13d6f8d7ee3e12444a9b1549b9f95f7a1b6dcac1c7d9e15e83b",
+      "afterSha256": "eb1fdeec2290b9dc95c8033c0d212713f938db8ccfa716b85e340bc7f9b983ac",
+      "oidOwnerAclSecuritySearchPathUnchanged": true
+    },
+    {
+      "signature": "app_private.receipt_path_protected(text,text)",
+      "beforeSha256": "4dfc4622d6fbd4edd0287e5cfd199cebcbe81b44195541bd7fc1a77a96cb6a30",
+      "afterSha256": "87a6a48c10e8adcca2a66c23fc91520e38b7cc8bf4f15208c1576b82e93392e0",
+      "oidOwnerAclSecuritySearchPathUnchanged": true
+    }
+  ],
+  "privateHelpers": {
+    "count": 5,
+    "sealsMatch": true,
+    "journalRls": true,
+    "journalOwnerOnlyAcl": true,
+    "journalPublished": false
+  },
+  "advisor": {
+    "refreshedInManagedDashboard": true,
+    "errors": 0,
+    "warnings": 10,
+    "info": 24,
+    "existingWarningsUnchanged": true,
+    "newInfoVsPreCutover": 1,
+    "intentionalPrivateJournalDenyAll": true,
+    "connector": "Denied permission for exact Staging project; no scope expansion"
+  },
+  "tests": {
+    "nativeCutover": 19,
+    "newFirstAdmission": 3,
+    "newSnapshotOrdering": 4,
+    "directExistingFirstAdmission": 3,
+    "directExistingIngestExpiry": 4,
+    "revokedUploadResponseClassifier": 2,
+    "productionBuild": "Passed; existing bundle-size warning",
+    "historicalUnaffectedSuitesRerun": false,
+    "gitDiffCheck": {
+      "fullStaged": "Failed: 6 trailing-space lines confined to immutable installed SQL artifacts",
+      "otherPaths": "Passed",
+      "sourceLines": [
+        20,
+        131
+      ],
+      "wrapperLines": [
+        32,
+        143,
+        179,
+        290
+      ],
+      "settingsNotRelaxed": true,
+      "sealedSourcesNotRewritten": true
+    },
+    "staticDeliveryChecks": {
+      "javascriptSyntaxFiles": 25,
+      "powershellSyntax": "Passed",
+      "jsonFiles": 4,
+      "localMarkdownLinks": 74,
+      "sensitiveScan": "Passed; one pre-existing negative synthetic key fixture explicitly reviewed",
+      "rawPacketHashes": "Passed"
+    }
+  },
+  "events": [
+    {
+      "id": "SIGNED-UPLOAD-HELD",
+      "status": "Passed",
+      "at": "2026-11-01T03:46:27.363Z",
+      "kid": "[qa-id]",
+      "algorithm": "HS256",
+      "iat": 1793504787,
+      "exp": 1793511987,
+      "ttlSeconds": 7200,
+      "tokenSha256": "35ff6385076316335b855a68a2486de4f7f0c8e7927a12c15c0236b054a2a534",
+      "pathSha256": "2471f98877a9ba7ec6c2ee4d83e44305db21b7a72dd20bc37d7093a669fcedc4"
+    },
+    {
+      "id": "SIGNED-UPLOAD-CONTROL",
+      "status": "Passed",
+      "at": "2026-11-01T03:46:27.480Z",
+      "kid": "[qa-id]",
+      "algorithm": "HS256",
+      "iat": 1793504787,
+      "exp": 1793511987,
+      "ttlSeconds": 7200,
+      "tokenSha256": "e6c123f966edb389a94a658d636aa6e03710135d746cede034033476cbcc0d0e",
+      "pathSha256": "e008b2b6484b1fc999180248e2d74694aec3327264688bb4f2f50583d04f333b"
+    },
+    {
+      "id": "CAPABILITY-CONTROL",
+      "status": "Passed",
+      "at": "2026-11-01T03:46:28.000Z",
+      "uploadStatus": 200,
+      "fixtureBytes": 68,
+      "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea",
+      "realUserJwt": true
+    },
+    {
+      "id": "S3-SESSION-PRESIGNED-CONTROL",
+      "status": 200,
+      "at": "2026-11-01T03:46:40.066Z",
+      "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "urlSha256": "0a5743768beb3fcf481dd4f3eb1fb1ae3767735db289c805554c7ce5b1b42868",
+      "expiresInSeconds": 900,
+      "realUserJwt": true,
+      "bypassesRls": false
+    },
+    {
+      "id": "AUTHENTICATED-TUS-LEASE",
+      "status": 400,
+      "at": "2026-11-01T03:47:08.829Z",
+      "locationSha256": null,
+      "bodySha256": "310857c9c5fbface6eb8a3a2c26f0034cc3791e69fee2760314d33c1a4eed4d5"
+    },
+    {
+      "id": "SIGNED-TUS-LEASE",
+      "status": 400,
+      "at": "2026-11-01T03:47:08.923Z",
+      "locationSha256": null,
+      "bodySha256": "310857c9c5fbface6eb8a3a2c26f0034cc3791e69fee2760314d33c1a4eed4d5"
+    },
+    {
+      "id": "AUTHENTICATED-TUS-LEASE",
+      "status": 400,
+      "at": "2026-11-01T03:47:40.647Z",
+      "locationSha256": null,
+      "bodySha256": "310857c9c5fbface6eb8a3a2c26f0034cc3791e69fee2760314d33c1a4eed4d5"
+    },
+    {
+      "id": "SIGNED-TUS-LEASE",
+      "status": 400,
+      "at": "2026-11-01T03:47:40.724Z",
+      "locationSha256": null,
+      "bodySha256": "310857c9c5fbface6eb8a3a2c26f0034cc3791e69fee2760314d33c1a4eed4d5"
+    },
+    {
+      "id": "AUTHENTICATED-TUS-LEASE",
+      "status": 201,
+      "at": "2026-11-01T03:48:25.835Z",
+      "locationSha256": "11f68abd6eacab5a4863f74fccd2ce194a47ae3abb3f8e8329c66cea1808c263",
+      "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "SIGNED-TUS-LEASE",
+      "status": 201,
+      "at": "2026-11-01T03:48:26.132Z",
+      "locationSha256": "4a7171af4824cea77893f68c8d79134a63267168bf1c5d80b006e3d6d00bfe7e",
+      "bodySha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "DOWNLOAD-SCOPE-UPLOAD-DENIED",
+      "status": "Passed",
+      "at": "2026-11-01T03:50:32.741Z",
+      "httpStatus": 400,
+      "errorCode": "InvalidSignature",
+      "bodySha256": "9affd06e6ed8d77e8497bceb8e47a6cd5b85246fc1c257e8910ef3e8b938f149",
+      "ordinaryUserMintedDownloadToken": true,
+      "writeWithoutUserJwt": true,
+      "objectWasAbsent": true
+    },
+    {
+      "id": "LEGITIMATE-LEGACY-RECEIPT-FIXTURE",
+      "status": 201,
+      "at": "2026-11-01T03:54:18.421Z",
+      "createdViaOrdinaryJwt": true,
+      "attachmentHash": "fda47a5b3448b07e3bd3dc26abdecb5c873c223b3646585909badf3e3cc5ff8e"
+    },
+    {
+      "id": "S3-HELD-GRANT",
+      "status": "Passed",
+      "at": "2026-11-01T03:55:40.986Z",
+      "urlSha256": "3ee97290e2d991d33151bb06b46f3a8dba903b60dc8a018d12cbff5b8478a7ce",
+      "expiresInSeconds": 900,
+      "userJwtExpiresAt": 1793508386,
+      "notConsumed": true
+    },
+    {
+      "id": "FROZEN-NEW-SIGNED-UPLOAD",
+      "status": "Passed",
+      "at": "2026-11-01T03:57:27.747Z",
+      "httpStatus": 400,
+      "errorCode": "Unauthorized",
+      "bodySha256": "fb74b0bb1eb71ea8b17252e51a13d176ef924a7054e83813fc80c5b9ff132a23"
+    },
+    {
+      "id": "FROZEN-OLD-AUTHENTICATED-TUS",
+      "status": "Passed",
+      "at": "2026-11-01T03:57:28.000Z",
+      "httpStatus": 403,
+      "bodySha256": "abc4bc369c58293dedd4ba52e07243f9e14354be571b1d3670a41696e1ac73f0"
+    },
+    {
+      "id": "FROZEN-OLD-S3-SESSION",
+      "status": "Passed",
+      "at": "2026-11-01T03:57:28.301Z",
+      "httpStatus": 403,
+      "bodySha256": "e14a8eaddfe4a7d96abf8b5c44f0d820441d39bc569a3b80b70d74bb20cb72e1"
+    },
+    {
+      "id": "REVOKED-OLD-SIGNED-UPLOAD",
+      "status": "Passed",
+      "at": "2026-11-01T04:03:05.395Z",
+      "httpStatus": 400,
+      "errorCode": "InvalidJWT",
+      "bodySha256": "b56406cfb08062872e2bfd866161fd477789b3e2752af1bf9f939cc9f998444c",
+      "tokenStillWithinExpiry": true
+    },
+    {
+      "id": "REVOKED-OLD-SIGNED-TUS",
+      "status": "Failed",
+      "at": "2026-11-01T04:03:05.555Z",
+      "httpStatus": 400,
+      "errorCode": null,
+      "bodySha256": "afb26ceb4c27f3ad607a1ee0ab73786128810f8bd059d76532dd28c47d29f834",
+      "tokenStillWithinExpiry": true
+    },
+    {
+      "id": "REVOKED-OLD-SIGNED-TUS-VERIFIED",
+      "status": "Passed",
+      "at": "2026-11-01T04:05:17.997Z",
+      "httpStatus": 400,
+      "bodySha256": "afb26ceb4c27f3ad607a1ee0ab73786128810f8bd059d76532dd28c47d29f834",
+      "errorMessage": "signature verification failed",
+      "tokenStillWithinExpiry": true,
+      "originalAttemptRetained": true,
+      "diagnosticBytesSent": 0,
+      "runnerFormatCorrected": true
+    },
+    {
+      "id": "POST-ROTATION-FRESH-RECEIPT-READ",
+      "status": "Passed",
+      "at": "2026-11-01T04:05:34.430Z",
+      "httpStatus": 200,
+      "newActiveKid": "[qa-id]",
+      "bytes": 68,
+      "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea",
+      "matchesBeforeCutover": true
+    },
+    {
+      "id": "LEGAL-INCOMPLETE-BUDGET",
+      "status": "Passed",
+      "at": "2026-11-01T04:13:54.067Z",
+      "parentHash": "4d874baa25f8538e3a16c3da22617de4bc9e12ca01adb4514bb397eff51e314b",
+      "ordinaryJwtLifecycle": true,
+      "ordinaryJwtPricing": true,
+      "participantCount": 1,
+      "financialGraphSha256": "00a7add4720fc63e8b9b210c06f816b5c04ab2d6fe5de940fb10e1a86ee63ddf"
+    },
+    {
+      "id": "INCOMPLETE-BUDGET-POST",
+      "status": "Passed",
+      "at": "2026-11-01T04:13:54.398Z",
+      "httpStatus": 500,
+      "code": "55000",
+      "existingChildMatched": true,
+      "graphUnchanged": true
+    },
+    {
+      "id": "INCOMPLETE-BUDGET-PATCH",
+      "status": "Passed",
+      "at": "2026-11-01T04:13:54.649Z",
+      "httpStatus": 500,
+      "code": "55000",
+      "existingChildMatched": true,
+      "graphUnchanged": true
+    },
+    {
+      "id": "INCOMPLETE-BUDGET-DELETE",
+      "status": "Passed",
+      "at": "2026-11-01T04:13:54.912Z",
+      "httpStatus": 500,
+      "code": "55000",
+      "existingChildMatched": true,
+      "graphUnchanged": true
+    },
+    {
+      "id": "LEGAL-INCOMPLETE-ACTUAL",
+      "status": "Passed",
+      "at": "2026-11-01T04:13:55.676Z",
+      "parentHash": "237b7c0a01ea649eb09b237f899708c4d15302e6736ddb978466a4c4f1b35281",
+      "ordinaryJwtLifecycle": true,
+      "ordinaryJwtPricing": true,
+      "participantCount": 1,
+      "financialGraphSha256": "5f20bf7310e00deb8c7c551df5972bf343377c93f62fadcc8030fcad02f56730"
+    },
+    {
+      "id": "INCOMPLETE-ACTUAL-POST",
+      "status": "Passed",
+      "at": "2026-11-01T04:13:55.934Z",
+      "httpStatus": 500,
+      "code": "55000",
+      "existingChildMatched": true,
+      "graphUnchanged": true
+    },
+    {
+      "id": "INCOMPLETE-ACTUAL-PATCH",
+      "status": "Passed",
+      "at": "2026-11-01T04:13:56.157Z",
+      "httpStatus": 500,
+      "code": "55000",
+      "existingChildMatched": true,
+      "graphUnchanged": true
+    },
+    {
+      "id": "INCOMPLETE-ACTUAL-DELETE",
+      "status": "Passed",
+      "at": "2026-11-01T04:13:56.377Z",
+      "httpStatus": 500,
+      "code": "55000",
+      "existingChildMatched": true,
+      "graphUnchanged": true
+    },
+    {
+      "id": "QA-SESSION-RENEWAL",
+      "status": "Passed",
+      "at": "2026-11-01T04:43:40.730Z",
+      "setupOnly": true,
+      "independentSessionHashes": [
+        "2ba170d4f0ac05d52292671985ce3e47ce452798b933ae5179833aa4cc4cc15f",
+        "d52d4db1958b58a7c11db95ca498eaa3240498edc43614fcbf57a2a7de1f18e1"
+      ],
+      "ordinaryAccessExpiresAt": [
+        1793511820,
+        1793511820
+      ]
+    },
+    {
+      "id": "QA-FIXTURE-LABELS",
+      "status": "Passed",
+      "at": "2026-11-01T04:45:18.698Z",
+      "ownerUserJwt": true,
+      "onlyAuthorizedTrip": true
+    },
+    {
+      "id": "QA-LINK-FIXTURE",
+      "status": "Passed",
+      "at": "2026-11-01T04:55:14.023Z",
+      "ordinaryJwt": true,
+      "itineraryHash": "450b6cce19b12443bfeb2317823c618d4f6e2568aed2e00ff7574ce5909d5dae",
+      "onlyAuthorizedTrip": true
+    },
+    {
+      "id": "QA-SESSION-RENEWAL",
+      "status": "Passed",
+      "at": "2026-11-01T11:55:35.639Z",
+      "setupOnly": true,
+      "independentSessionHashes": [
+        "415ea33a44794e4de93c87b6d6eddb85401d7a756794ddc92afd34daaf70de7b",
+        "cea5c34868d081adc5489807c86eeaa24900c00fb14c8d18c870c1454fe5df11"
+      ],
+      "ordinaryAccessExpiresAt": [
+        1793537735,
+        1793537735
+      ]
+    },
+    {
+      "id": "BROWSER-REAL-TWO-CONTEXTS",
+      "status": "Passed",
+      "at": "2026-11-01T04:19:54.499Z",
+      "independentSessionHashes": [
+        "49ac0ac4f6194010ffdf36c26654c4c26276278bce39f20be1edf18c06b2417f",
+        "cb6f1ca6acf8482bd5b96b95c056d52a802106db0c44660f07a5c65294e88c95"
+      ],
+      "desktop": {
+        "width": 1440,
+        "height": 1000
+      },
+      "noServiceRoleInBrowser": true
+    },
+    {
+      "id": "BROWSER-TWO-GROUPS",
+      "status": "Passed",
+      "at": "2026-11-01T04:22:17.570Z",
+      "distinctActors": true,
+      "simultaneousTitleAndNote": true,
+      "canonicalDbConfirmed": true
+    },
+    {
+      "id": "SAME-GROUP-PREMISE-DIAGNOSTIC",
+      "status": "Observed",
+      "at": "2026-11-01T04:26:31.743Z",
+      "held": false,
+      "ownerHash": null,
+      "epoch": 1,
+      "expiresAt": null,
+      "priorImmediateReadonlyAssertionRetained": true
+    },
+    {
+      "id": "SAME-GROUP-PREMISE-DIAGNOSTIC",
+      "status": "Observed",
+      "at": "2026-11-01T04:28:56.344Z",
+      "held": false,
+      "ownerHash": null,
+      "epoch": 1,
+      "expiresAt": null,
+      "priorImmediateReadonlyAssertionRetained": true
+    },
+    {
+      "id": "SAME-GROUP-PREMISE-DIAGNOSTIC",
+      "status": "Observed",
+      "at": "2026-11-01T04:30:44.311Z",
+      "held": true,
+      "ownerHash": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+      "epoch": 2,
+      "expiresAt": "2026-11-01T04:31:01.803549+00:00",
+      "priorImmediateReadonlyAssertionRetained": true
+    },
+    {
+      "id": "P1-METADATA-ADMISSION-RECOVERY",
+      "status": "Failed",
+      "at": "2026-11-01T04:40:26.375Z",
+      "safePauseConfirmed": true,
+      "epochNullUnadmittedTokenBlockedCleanup": true,
+      "localFixTestsPassed": 6,
+      "hostedRetestPending": true
+    },
+    {
+      "id": "BROWSER-REAL-TWO-CONTEXTS",
+      "status": "Passed",
+      "at": "2026-11-01T04:50:56.136Z",
+      "independentSessionHashes": [
+        "2ba170d4f0ac05d52292671985ce3e47ce452798b933ae5179833aa4cc4cc15f",
+        "d52d4db1958b58a7c11db95ca498eaa3240498edc43614fcbf57a2a7de1f18e1"
+      ],
+      "desktop": {
+        "width": 1440,
+        "height": 1000
+      },
+      "noServiceRoleInBrowser": true
+    },
+    {
+      "id": "BROWSER-SAME-GROUP",
+      "status": "Passed",
+      "at": "2026-11-01T04:51:19.591Z",
+      "freshAOwnedLease": true,
+      "realPeerRpcGroupLocked": true,
+      "peerReadonly": true,
+      "peerNotePreserved": true,
+      "normalCloseBoth": true
+    },
+    {
+      "id": "P1-METADATA-ADMISSION-RECOVERY-RETEST",
+      "status": "Passed",
+      "at": "2026-11-01T04:52:32.793Z",
+      "realBackendPt409": true,
+      "oneDelayedUnmodifiedRequest": true,
+      "syntheticBackendResponse": false,
+      "userDraftPreservedUntilExplicitDiscard": true,
+      "peerPatchCount": 0,
+      "discardAndCloseSucceeded": true,
+      "bothCanonicalListsUpdated": true,
+      "controllerFixActive": true
+    },
+    {
+      "id": "BROWSER-REAL-TWO-CONTEXTS",
+      "status": "Passed",
+      "at": "2026-11-01T10:58:23.621Z",
+      "independentSessionHashes": [
+        "4debe9061be0367fe99768b6489c24d1478be94e5a68b74cb2a5121754d6e2f1",
+        "fd337c475b138c88b6cd4f48fbfe1aa173093f26b920e5b94509eac09c2c4c4f"
+      ],
+      "desktop": {
+        "width": 1440,
+        "height": 1000
+      },
+      "noServiceRoleInBrowser": true
+    },
+    {
+      "id": "BROWSER-CHOICES-PRICING-LINKS",
+      "status": "Passed",
+      "at": "2026-11-01T11:01:52.913Z",
+      "category": "交通",
+      "payerHash": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+      "amount": 300,
+      "participants": 2,
+      "eachShare": 150,
+      "links": 1,
+      "ordinaryBrowserAutosave": true
+    },
+    {
+      "id": "BROWSER-PAYMENT-RETAINED-ACTUAL",
+      "status": "Passed",
+      "at": "2026-11-01T11:02:19.921Z",
+      "realPayment": true,
+      "actualHash": "478b5b4aa0cc24778a2bcbd0cfe507bd3b9f44cd0668e37f846e6c79140d7fb0",
+      "amount": 300,
+      "participants": 2,
+      "peerRealtimeUpdated": true
+    },
+    {
+      "id": "BROWSER-RECEIPT-UPLOAD-BEGIN",
+      "status": "Passed",
+      "at": "2026-11-01T11:02:35.511Z",
+      "bytes": 68,
+      "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea",
+      "originalMetadataPreserved": true,
+      "ordinaryBrowserUpload": true
+    },
+    {
+      "id": "RECEIPT-BUSINESS-WORKER-VERIFY",
+      "status": "Passed",
+      "at": "2026-11-01T11:03:00.162Z",
+      "dedicatedRole": true,
+      "exactClaimHeaders": true,
+      "objectHash": "46336acd15d4cb08ea79696e691caeae5f3ff366800c477d7450678ce82e3a30",
+      "bytes": 68,
+      "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea"
+    },
+    {
+      "id": "BROWSER-RECEIPT-COMMIT",
+      "status": "Passed",
+      "at": "2026-11-01T11:03:12.878Z",
+      "attachmentHash": "0f246e6e26c51f00aacd80764195ba1cff468df674a1ab4bd6e8d29e37aa1403",
+      "objectHash": "46336acd15d4cb08ea79696e691caeae5f3ff366800c477d7450678ce82e3a30",
+      "sameVerifiedPath": true,
+      "oneAttachment": true
+    },
+    {
+      "id": "BROWSER-RECEIPT-REPLACE-BEGIN",
+      "status": "Passed",
+      "at": "2026-11-01T11:03:35.835Z",
+      "bytes": 68,
+      "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea",
+      "originalMetadataPreserved": true,
+      "ordinaryBrowserUpload": true
+    },
+    {
+      "id": "RECEIPT-BUSINESS-WORKER-VERIFY",
+      "status": "Passed",
+      "at": "2026-11-01T11:04:18.776Z",
+      "dedicatedRole": true,
+      "exactClaimHeaders": true,
+      "objectHash": "ca687aa13e3d3fbf016dcb39ad3e238ab4a75ce2d73f1be0f3aa1cb2b647d362",
+      "bytes": 68,
+      "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea"
+    },
+    {
+      "id": "BROWSER-RECEIPT-COMMIT",
+      "status": "Passed",
+      "at": "2026-11-01T11:04:43.049Z",
+      "attachmentHash": "a7585313f2725cb60c79e15b29b212159874275e265196333cc5ddb04d62ccac",
+      "objectHash": "ca687aa13e3d3fbf016dcb39ad3e238ab4a75ce2d73f1be0f3aa1cb2b647d362",
+      "sameVerifiedPath": true,
+      "oneAttachment": true
+    },
+    {
+      "id": "RECEIPT-BUSINESS-PEER-SIGNED-READ",
+      "status": "Passed",
+      "at": "2026-11-01T11:05:15.550Z",
+      "ordinaryPeerJwt": true,
+      "privateSignedUrl": true,
+      "bytes": 68,
+      "sha256": "c33aeac20cdfb2d12b602cd65611496d0ca00a0407c782340e6df4c7bfdc52ea"
+    },
+    {
+      "id": "GENERATED-RETAINED-SOURCE-DETACH-DENIED",
+      "status": "Passed",
+      "at": "2026-11-01T11:07:23.917Z",
+      "explicitProductGuard": true,
+      "sourceOriginRetained": true,
+      "paidAmountAndReceiptRetained": true,
+      "notNormalManualSourceAcceptance": true
+    },
+    {
+      "id": "BROWSER-RECEIPT-DELETE",
+      "status": "Passed",
+      "at": "2026-11-01T11:07:40.230Z",
+      "ordinaryBrowserJwt": true,
+      "logicalReceiptRemoved": true,
+      "paymentHistoryRetained": true
+    },
+    {
+      "id": "BROWSER-UNDO-FIVE",
+      "status": "Passed",
+      "at": "2026-11-01T11:08:56.186Z",
+      "sixDistinctAutosaves": true,
+      "fiveSuccessfulUndo": true,
+      "sixthMutationAbsent": true,
+      "realCtrlZ": true
+    },
+    {
+      "id": "BROWSER-NATIVE-UNDO",
+      "status": "Passed",
+      "at": "2026-11-01T11:10:32.964Z",
+      "inputOwnedShortcut": true,
+      "noFinancialMutation": true
+    },
+    {
+      "id": "BROWSER-UNKNOWN-ACK-REPLAY",
+      "status": "Passed",
+      "at": "2026-11-01T11:11:02.323Z",
+      "actualCommitBeforeLostResponse": true,
+      "sameRequestId": true,
+      "requestHash": "fdc2e29568c0641b1c437e222fb87252e712e09f87afbd1f90ea0acc8cd12307",
+      "draftPreserved": true,
+      "realHttp": true
+    },
+    {
+      "id": "BROWSER-UNDO-PEER-CONFLICT",
+      "status": "Passed",
+      "at": "2026-11-01T11:11:23.592Z",
+      "peerCanonicalPreserved": true,
+      "staleUndoRejected": true
+    },
+    {
+      "id": "BROWSER-OFFLINE-RECONNECT",
+      "status": "Passed",
+      "at": "2026-11-01T11:11:52.103Z",
+      "realContextNetworkOffline": true,
+      "peerCanonicalRecovered": true,
+      "realSnapshotAndRealtime": true
+    },
+    {
+      "id": "HISTORICAL-SOURCE-RELINK-DENIED",
+      "status": "Passed",
+      "at": "2026-11-01T11:17:30.757Z",
+      "explicitImmutableProductContract": true,
+      "existingOriginReceiptAndAmountPreserved": true,
+      "firstAttachAndDetachObserved": true,
+      "notGeneralRoundtripAcceptance": true
+    },
+    {
+      "id": "BROWSER-PAYMENT-UNKNOWN-ACK",
+      "status": "Passed",
+      "at": "2026-11-01T11:20:10.115Z",
+      "actualCommitBeforeLostResponse": true,
+      "sameRequestHash": "42078052150105d0ceeebc063e1b87453cc7143b19fefa968ce7af71b35ddb61",
+      "noDuplicateFinancialOrHistoryWrite": true,
+      "unpaidThenPaidSameActual": true,
+      "oldHistoryPreserved": true
+    },
+    {
+      "id": "ACTIVATED-SNAPSHOT-V1-V10",
+      "status": "Passed",
+      "at": "2026-11-01T11:20:37.723Z",
+      "ordinaryJwt": true,
+      "versions": 10,
+      "exactTripScoped": true
+    },
+    {
+      "id": "ACTIVATED-LEGACY-WRITE-FENCES",
+      "status": "Passed",
+      "at": "2026-11-01T11:21:35.078Z",
+      "ordinaryJwt": true,
+      "denied": [
+        {
+          "method": "PATCH",
+          "httpStatus": 500,
+          "code": "55000"
+        },
+        {
+          "method": "PATCH",
+          "httpStatus": 500,
+          "code": "55000"
+        },
+        {
+          "legacySave": true,
+          "httpStatus": 500,
+          "code": "55000"
+        }
+      ],
+      "financialGraphUnchanged": true
+    },
+    {
+      "id": "HTTP-INCOMPLETE-ACTUAL-COMPLETE",
+      "status": "Passed",
+      "at": "2026-11-01T11:27:21.894Z",
+      "ordinaryLifecycleTimeRpc": true,
+      "realExistingPricedParticipant": true,
+      "noRawReadinessWrite": true,
+      "financialAmountPreserved": true,
+      "uiPlanningIncompleteActualNotListed": true
+    },
+    {
+      "id": "BROWSER-SOURCE-LEGAL-FIRST-LINK",
+      "status": "Passed",
+      "at": "2026-11-01T11:27:59.923Z",
+      "ordinaryBrowserJwt": true,
+      "firstLinkThenDetach": true,
+      "originInitializedExactlyOnceThenRetained": true,
+      "financialGraphSha256": "ed6a9d4f66b5f6f68031973e4062ae4b539d04869db133c237af80bfaacbe022",
+      "allFinancialFieldsAndHistoryUnchanged": true,
+      "existingParticipantPreserved": true
+    },
+    {
+      "id": "BROWSER-TRIP-RATE-REFRESH",
+      "status": "Passed",
+      "at": "2026-11-01T11:29:09.722Z",
+      "realPublicQuoteHttpStatus": 200,
+      "quoteSha256": "6dbf316712b6721a2d32145de8bf11d89cbba7b428f3e801813cc0438ad43a9b",
+      "quotedAt": "2026-11-01T00:02:31+00:00",
+      "ordinaryBrowserRpc": true,
+      "actualRowsUnchanged": 3
+    },
+    {
+      "id": "BROWSER-CREATE-DELETE-LEASE-RACE",
+      "status": "Passed",
+      "at": "2026-11-01T11:32:12.747Z",
+      "newFormalBlank": true,
+      "peerRealtimeInsert": true,
+      "realPeerLeasePremise": true,
+      "deleteBlockedWhilePeerEditing": true,
+      "normalDeleteAfterRelease": true,
+      "peerRealtimeDelete": true,
+      "qaRecordHash": "97404a7756b90c20baa2d6a4d362f46df152db1b577fc95d854c90d7c4aa5396"
+    },
+    {
+      "id": "BROWSER-REAL-TWO-CONTEXTS",
+      "status": "Passed",
+      "at": "2026-11-01T12:02:52.531Z",
+      "independentSessionHashes": [
+        "415ea33a44794e4de93c87b6d6eddb85401d7a756794ddc92afd34daaf70de7b",
+        "cea5c34868d081adc5489807c86eeaa24900c00fb14c8d18c870c1454fe5df11"
+      ],
+      "desktop": {
+        "width": 1440,
+        "height": 1000
+      },
+      "noServiceRoleInBrowser": true
+    },
+    {
+      "id": "BROWSER-REAL-LEASE-EXPIRY-TAKEOVER",
+      "status": "Passed",
+      "at": "2026-11-01T12:06:33.795Z",
+      "realExpiresAt": "2026-11-01T12:06:29.058144+00:00",
+      "dbClockNotModified": true,
+      "peerAcquiredAfterActualExpiry": true,
+      "oldTabRecoveredCanonicalAndClosed": true,
+      "cdpLifecycleCommandIssued": true,
+      "backgroundSuspensionVerified": false,
+      "observedOldTabRequestsDuringWait": 18
+    },
+    {
+      "id": "BACKGROUND-CDP-FREEZE",
+      "status": "Blocked",
+      "at": "2026-11-01T12:09:20.439Z",
+      "commandAcknowledgementInsufficient": true,
+      "observedContinuedRequests": 18,
+      "realVisibilityTestPending": true
+    },
+    {
+      "id": "BROWSER-SAME-ACCOUNT-TWO-TABS",
+      "status": "Passed",
+      "at": "2026-11-01T12:10:51.009Z",
+      "sameAuthSessionHash": "415ea33a44794e4de93c87b6d6eddb85401d7a756794ddc92afd34daaf70de7b",
+      "distinctEditorSessions": true,
+      "realLeasePeerDenied": true,
+      "ownerPresenceRendered": true,
+      "normalCloseBoth": true
+    },
+    {
+      "id": "BROWSER-REAL-BACKGROUND-VISIBILITY",
+      "status": "Blocked",
+      "at": "2026-11-01T12:12:24.531Z",
+      "reason": "Native Chrome did not report a hidden page; no DOM visibility override or synthetic event used"
+    },
+    {
+      "id": "BROWSER-REAL-BACKGROUND-VISIBILITY",
+      "status": "Blocked",
+      "at": "2026-11-01T12:14:47.203Z",
+      "reason": "Native Chrome did not report a hidden page; no DOM visibility override or synthetic event used"
+    },
+    {
+      "id": "BROWSER-REAL-BACKGROUND-VISIBILITY",
+      "status": "Blocked",
+      "at": "2026-11-01T12:51:57.390Z",
+      "reason": "Native Chrome did not report a hidden page; no DOM visibility override or synthetic event used"
+    }
+  ],
+  "distinctPassedEventTypes": 50,
+  "passedEventTypes": [
+    "SIGNED-UPLOAD-HELD",
+    "SIGNED-UPLOAD-CONTROL",
+    "CAPABILITY-CONTROL",
+    "DOWNLOAD-SCOPE-UPLOAD-DENIED",
+    "S3-HELD-GRANT",
+    "FROZEN-NEW-SIGNED-UPLOAD",
+    "FROZEN-OLD-AUTHENTICATED-TUS",
+    "FROZEN-OLD-S3-SESSION",
+    "REVOKED-OLD-SIGNED-UPLOAD",
+    "REVOKED-OLD-SIGNED-TUS-VERIFIED",
+    "POST-ROTATION-FRESH-RECEIPT-READ",
+    "LEGAL-INCOMPLETE-BUDGET",
+    "INCOMPLETE-BUDGET-POST",
+    "INCOMPLETE-BUDGET-PATCH",
+    "INCOMPLETE-BUDGET-DELETE",
+    "LEGAL-INCOMPLETE-ACTUAL",
+    "INCOMPLETE-ACTUAL-POST",
+    "INCOMPLETE-ACTUAL-PATCH",
+    "INCOMPLETE-ACTUAL-DELETE",
+    "QA-SESSION-RENEWAL",
+    "QA-FIXTURE-LABELS",
+    "QA-LINK-FIXTURE",
+    "BROWSER-REAL-TWO-CONTEXTS",
+    "BROWSER-TWO-GROUPS",
+    "BROWSER-SAME-GROUP",
+    "P1-METADATA-ADMISSION-RECOVERY-RETEST",
+    "BROWSER-CHOICES-PRICING-LINKS",
+    "BROWSER-PAYMENT-RETAINED-ACTUAL",
+    "BROWSER-RECEIPT-UPLOAD-BEGIN",
+    "RECEIPT-BUSINESS-WORKER-VERIFY",
+    "BROWSER-RECEIPT-COMMIT",
+    "BROWSER-RECEIPT-REPLACE-BEGIN",
+    "RECEIPT-BUSINESS-PEER-SIGNED-READ",
+    "GENERATED-RETAINED-SOURCE-DETACH-DENIED",
+    "BROWSER-RECEIPT-DELETE",
+    "BROWSER-UNDO-FIVE",
+    "BROWSER-NATIVE-UNDO",
+    "BROWSER-UNKNOWN-ACK-REPLAY",
+    "BROWSER-UNDO-PEER-CONFLICT",
+    "BROWSER-OFFLINE-RECONNECT",
+    "HISTORICAL-SOURCE-RELINK-DENIED",
+    "BROWSER-PAYMENT-UNKNOWN-ACK",
+    "ACTIVATED-SNAPSHOT-V1-V10",
+    "ACTIVATED-LEGACY-WRITE-FENCES",
+    "HTTP-INCOMPLETE-ACTUAL-COMPLETE",
+    "BROWSER-SOURCE-LEGAL-FIRST-LINK",
+    "BROWSER-TRIP-RATE-REFRESH",
+    "BROWSER-CREATE-DELETE-LEASE-RACE",
+    "BROWSER-REAL-LEASE-EXPIRY-TAKEOVER",
+    "BROWSER-SAME-ACCOUNT-TWO-TABS"
+  ],
+  "remaining": [
+    {
+      "id": "BACKGROUND-VISIBILITY",
+      "status": "Blocked",
+      "reason": "Native Chrome did not expose a verifiable hidden state; CDP lifecycle acknowledgement did not stop all traffic; no DOM override used"
+    },
+    {
+      "id": "REVOCATION-LATE-SNAPSHOT",
+      "status": "Blocked",
+      "reason": "Real QA membership became pending; delayed response runner did not return. Do not certify revocation UI, late response recovery, normal membership restore or logout."
+    },
+    {
+      "id": "SESSION-TRIP-SWITCH-LOGOUT",
+      "status": "Blocked",
+      "reason": "Stopped with the pending session-boundary case; no full real end-to-end evidence"
+    },
+    {
+      "id": "RESPONSIVE-IME-PORTAL-A11Y",
+      "status": "Blocked",
+      "reason": "Prior unaffected evidence retained, but this final real Staging run did not finish these checks"
+    },
+    {
+      "id": "FOREIGN-FX-HISTORICAL-RACE",
+      "status": "Blocked",
+      "reason": "Real quote refresh preserved all three Actual rows; complete foreign-currency pricing/race flow still not accepted"
+    },
+    {
+      "id": "RECEIPT-CONCURRENT-OBJECT-ID-RACE",
+      "status": "Blocked",
+      "reason": "Real sequential replacement used different object IDs; concurrent object replacement race is not certified by that pass"
+    },
+    {
+      "id": "OVERSIZED-STANDARD-MULTIPART-RESPONSE",
+      "status": "Blocked",
+      "reason": "Prior real request transport timeout retained; backend EntityTooLarge and TUS413 are separate passed evidence"
+    }
+  ],
+  "qaRetention": {
+    "qaItems": 1,
+    "qaTrips": 1,
+    "qaActuals": 3,
+    "qaBudgets": 3,
+    "qaObjects": 2,
+    "observedAt": "2026-11-01T13:02:04.843835+00:00",
+    "qaBaselines": 1,
+    "activeLeases": 0,
+    "qaMembership": [
+      {
+        "role": "editor",
+        "status": "pending"
+      },
+      {
+        "role": "owner",
+        "status": "approved"
+      }
+    ],
+    "activeCleanup": 0,
+    "qaAttachments": 1,
+    "pendingReceipts": 0,
+    "qaOrphanActualParticipants": 0,
+    "qaOrphanBudgetParticipants": 0,
+    "identifiers": "Exact scope files stay Git-ignored; no account emails/tokens/paths included",
+    "receiptBusinessLifecycleObjects": 0,
+    "receiptBusinessLifecycleMetadata": 0,
+    "ephemeralLifecycleBudgetNormallyDeleted": true,
+    "remainingGraphRetained": true,
+    "noForcedCleanup": true,
+    "membershipRestorePending": true
+  },
+  "operatorShutdown": {
+    "userReportedCtrlC": true,
+    "noPowerShellOrQaChromeWindowObserved": true,
+    "stopRequestQueued": true,
+    "lastRecordedPhaseIsStale": true,
+    "processExitAndLogoutNotIndependentlyCertified": true,
+    "futureIndependentDeadlineAndStopWatcherSyntaxCheckedOnly": true
+  },
+  "production": {
+    "operated": false,
+    "mainMerged": false,
+    "frontendDeployed": false,
+    "go": false,
+    "reason": "Complete E2E and safe QA/session recovery still blocked; Production catalog/backup/target-bound packet are separately required"
+  }
+}

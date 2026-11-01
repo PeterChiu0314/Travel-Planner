@@ -4,3 +4,4 @@ docs/operations/drafts/budget-b7-cascade-forward/*.sql text eol=lf
 docs/operations/drafts/budget-b7-cascade-forward/*.psql text eol=lf
 docs/operations/drafts/budget-b7-trip-cascade/*.sql text eol=lf
 docs/operations/drafts/budget-b7-trip-cascade/*.psql text eol=lf
+docs/operations/budget-b7-legacy-cutover/*.sql text eol=lf

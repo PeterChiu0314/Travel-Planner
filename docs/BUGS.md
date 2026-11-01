@@ -13,7 +13,37 @@ This document now separates:
 
 # Confirmed Bugs
 
-## B-7 release gates | Platform HTTP/Worker passed; legacy cutoff and post-Activation E2E blocked
+## B-7 release gates | Legacy cutoff verified; controlled Staging E2E in progress
+
+Latest2026-11-01: [cutover and current real E2E report](2026-11-01-budget-b7-legacy-cutover-and-e2e.md). Ledger65; issuance stop and genuine old-key invalidation proven, natural expiry remainsNULL. ControlledActivation plus safePause/Resume for BUG-031 and BUG-032; finallyPAUSED for unresolved session-boundary acceptance. Receipt business lifecycle, dedicatedWorker verification, payment/retainedActual/ACK, legalSource, five-stepUndo, peer conflict, snapshotsv1–v10, old-write fences, create/delete lease race and realexpiry takeover passed their stated real-service scopes. Background visibility, revoked-session late response and safe QA membership/logout recovery are not certified. Production NO-GO. Historical pre-cutover checkpoint below is superseded on these points; retain its oversized transport limitation.
+
+## BUG-031 | First definite Metadata admission PT409 blocks discard and close
+
+Priority: P1
+Status: Fixed on feature branch; real Staging browser regression passed
+Discovered: 2026-11-01
+
+Two real clients admitted against a changing version exposed a new token with no epoch after a definite first PT409. The draft was preserved but cleanup could never prove release, blocking discard/close. Immediately paused Staging at04:35Z; irreversible latches and financial history retained. Minimal fix clears only the definitely ungranted first token, preserving the draft/conflict; an earlier unknown ACK or a known epoch still requires verified cleanup. Receipt retainRequestOnError is unchanged.
+
+New red/green tests3/3 and directly dependent regressions3/3 passed. After controlledResume04:50Z, true delayed admission/real409 at04:52Z preserved B's draft, sent no B patch, allowed explicit discard/close, and showed A's canonical update. Actual lease competition also passed. Production source/deployment remains pending with the complete B-7 release gates. [Evidence and recovery timeline](2026-11-01-budget-b7-legacy-cutover-and-e2e.md).
+
+### Historical pre-cutover checkpoint (240a105)
+
+Current release remains NO-GO after the second completed local recovery and real lease-expiry test. Final safePause12:56Z: ledger65/sevenOFF/latchesretained/queues0; original28/38/security unchanged. QA B was really moved to pending during late-Snapshot testing; Runner stalled and ordinary restore/logout are not certified. Whole exact QA graph retained, user reported interrupt. These are unresolved acceptance/recovery gates, not proof of a product RLS bypass. Do not use the old historical OFF/readinessfalse/ledger64 snapshot below as current state.
+
+P2 immutable-artifact exception: full staged diff whitespace check reports6 trailing-space lines in the already-installed cutover SQL/source wrapper. Full Source/wrapper hashes remain identical; other paths pass. No whitespace setting was disabled and no applied source was rewritten. Existing bundle-size warning and oversized transport limitation remain separate.
+
+## BUG-032 | Out-of-order Snapshot can invalidate newer admission or regress displayed protocol state
+
+Priority: P1
+Status: Fixed locally; real Staging expiry/takeover regression passed; overall release still blocked
+Discovered: 2026-11-01
+
+An ownership Snapshot started before lease admission could arrive after the grant and mark the field lost; an even older enabled Snapshot could regress a newer Pause. Both are reproduced by focused red tests. Record monotonic read-start order per context, reset it on configure, and retain only the authority proven by an unexpired admission when contradicted by a pre-admission read. Fresh loss/revocation still fails closed; Snapshot alone cannot grant edit authority.
+
+New4tests red2fail/2pass→green4/4; direct existing admission3 and ingest/expiry4 plusBuild passed. ImmediatePause11:45Z preserved all latches; controlledResume12:02Z after unchanged original/security proofs. Actual server lease expired12:06:29Z, B acquired epoch22 after21, saved, A recovered canonical and closed12:06:33Z. Pre-fix full network trace was not sealed, so exact attribution of every earlier harness failure remains an inference. CDPfreeze/background claims were removed when traffic continued; genuine visibility remainsBlocked. FinalPause for the separate unresolved revocation harness leaves Staging sevenOFF. [Detailed evidence](2026-11-01-budget-b7-legacy-cutover-and-e2e.md).
+
+### Historical platform-only results (before cutover)
 
 Updated2026-11-01. [Real-service report](2026-11-01-budget-b7-real-service-acceptance.md), [case matrix](qa/2026-11-01-budget-b7-real-service-results.json). Prior credential/native-launch blocker is resolved; masked helper genuinelyREADY, then stopped after testing. Publishable-key compatibility fixed locally,7/7 focused tests andBuild passed.
 

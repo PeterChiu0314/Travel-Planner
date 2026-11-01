@@ -10,10 +10,11 @@ function verifyLegacy(token,role,secret){
  const expected=createHmac('sha256',secret).update(p[0]+'.'+p[1]).digest(),actual=Buffer.from(p[2],'base64url');
  if(actual.length!==expected.length||!timingSafeEqual(actual,expected))throw Error('Staging signing secret does not match existing credential');
 }
-export function createStagingCredentialProvider({admin,anon,projectUrl,secret,now=()=>Math.floor(Date.now()/1000)}){
+export function createStagingCredentialProvider({admin,anon,legacyAnon,projectUrl,secret,now=()=>Math.floor(Date.now()/1000)}){
  if(!Buffer.isBuffer(secret)||secret.length<32)throw Error('In-memory signing secret Buffer required');
  try{
   verifyLegacy(admin,'service_role',secret);
+  if(legacyAnon!==undefined)verifyLegacy(legacyAnon,'anon',secret);
   if(anon?.startsWith('sb_publishable_')){
    if(!/^sb_publishable_[A-Za-z0-9_-]+$/.test(anon)||projectUrl?.replace(/\/$/,'')!==endpoint)throw Error('Publishable key requires the exact Staging endpoint');
    // Opaque keys have no JWT claims/signature. The operator must additionally
@@ -28,8 +29,8 @@ export function createStagingCredentialProvider({admin,anon,projectUrl,secret,no
    const head=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
    const body=Buffer.from(JSON.stringify({role:'budget_receipt_worker',ref:credentialProject,iss:endpoint+'/auth/v1',aud:'authenticated',sub:randomUUID(),iat:issued,exp:issued+900})).toString('base64url');
    const worker=head+'.'+body+'.'+createHmac('sha256',secret).update(head+'.'+body).digest('base64url');
-   return {admin,anon,worker};
+   return {admin,anon,worker,...(legacyAnon?{legacyAnon}:{})};
   },
-  stop(){stopped=true;secret.fill(0);admin=null;anon=null;}
+  stop(){stopped=true;secret.fill(0);admin=null;anon=null;legacyAnon=null;}
  };
 }

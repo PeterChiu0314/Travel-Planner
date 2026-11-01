@@ -9,20 +9,26 @@ import {createStagingCredentialProvider,credentialProject} from './staging-worke
 const root=fileURLToPath(new URL('../..',import.meta.url)),dir=path.join(root,'.tmp-b7-live');
 const operatorId=randomUUID();
 if(!process.argv.includes('--private-stdin'))throw Error('Use the local masked-input launcher');
+const maxMinutes=Number(process.argv.find(x=>x.startsWith('--max-minutes='))?.slice('--max-minutes='.length)||50);
+if(!Number.isInteger(maxMinutes)||maxMinutes<5||maxMinutes>180)throw Error('Finite memory window required (5–180 minutes)');
 await fs.mkdir(dir,{recursive:true});
 const state=x=>fs.writeFile(path.join(dir,'status.json'),JSON.stringify({credentialsSaved:false,operatorId,...x}));
 const readInput=()=>new Promise((resolve,reject)=>{const r=readline.createInterface({input:process.stdin});let received=false;r.once('line',line=>{received=true;try{resolve(JSON.parse(line));}catch{reject(Error('Private input format invalid'));}r.close();});r.once('close',()=>{if(!received)reject(Error('No private input supplied'));});});
-let provider,credentials;
+let provider,credentials,deadlineTimer,stopWatcher,stopRequested=false;
 const runtime={project:credentialProject,url:`https://${credentialProject}.supabase.co`,root,dir};
 const safe=e=>String(e?.message||e).replace(/eyJ[A-Za-z0-9_.-]+|sb_secret_[A-Za-z0-9_-]+/g,'[redacted]');
+const closeOwnedRuntime=async()=>{
+ await Promise.allSettled([runtime.browser,...(runtime.additionalQaBrowsers||[])].filter(Boolean).map(browser=>browser.close()));
+ try{runtime.viteChild?.kill();}catch{}
+};
 try{
  const input=await readInput();
  const env=await fs.readFile(path.join(root,'.env.staging.local'),'utf8');
  const anon=env.match(/^\s*VITE_SUPABASE_ANON_KEY\s*=\s*["']?([^\s"']+)/m)?.[1];
  const projectUrl=env.match(/^\s*VITE_SUPABASE_URL\s*=\s*["']?([^\s"']+)/m)?.[1];
  if(projectUrl?.replace(/\/$/,'')!==runtime.url)throw Error('Public configuration must target Staging');
- provider=createStagingCredentialProvider({admin:input.admin,anon,projectUrl,secret:Buffer.from(input.signingSecret||'','utf8')});
- input.admin=null;input.signingSecret=null;credentials=provider.issue();
+ provider=createStagingCredentialProvider({admin:input.admin,anon,legacyAnon:input.legacyAnon||undefined,projectUrl,secret:Buffer.from(input.signingSecret||'','utf8')});
+ input.admin=null;input.signingSecret=null;input.legacyAnon=null;credentials=provider.issue();
  const health=await fetch(runtime.url+'/auth/v1/health',{redirect:'error',headers:{apikey:credentials.anon},signal:AbortSignal.timeout(10000)});
  if(health.status!==200)throw Error('Staging public key rejected (HTTP '+health.status+')');
  const scope=JSON.parse(await fs.readFile(path.join(root,'.tmp-b7-p1/qa-scope.json'),'utf8'));
@@ -32,9 +38,23 @@ try{
  if(response.status!==200)throw Error('Staging QA Auth read failed (HTTP '+response.status+')');
  const user=await response.json();if(user.id!==scope.users[0]||user.user_metadata?.qa_run!==scope.run)throw Error('QA identity mismatch');
  const workerExpiresAt=JSON.parse(Buffer.from(credentials.worker.split('.')[1],'base64url').toString()).exp;
- await state({phase:'ready',publicKeyStatus:200,authLookupStatus:200,qaIdentityVerified:true,workerExpiresAt});console.log('READY: Staging QA identity verified; credentials in memory only');
+ // Enforce the RAM window even when a browser operation never settles. The
+ // outer loop alone cannot enforce a deadline while awaiting a QA module.
+ deadlineTimer=setTimeout(()=>{
+  stopRequested=true;provider?.stop();credentials=null;
+  const force=setTimeout(()=>process.exit(1),5000);force.unref();
+  void closeOwnedRuntime().finally(async()=>{await state({phase:'stopped',reason:'memory-window-expired'});process.exit(0);});
+ },maxMinutes*60000);deadlineTimer.unref();
+ let inspectingStop=false;
+ stopWatcher=setInterval(async()=>{if(inspectingStop||stopRequested)return;inspectingStop=true;try{
+  const request=JSON.parse(await fs.readFile(path.join(dir,'request.json'),'utf8'));
+  if(request.operatorId===operatorId&&request.action==='stop'){
+   stopRequested=true;await closeOwnedRuntime();
+  }
+ }catch{/* Missing/partial request is not a stop command. */}finally{inspectingStop=false;}},500);stopWatcher.unref();
+ await state({phase:'ready',publicKeyStatus:200,authLookupStatus:200,qaIdentityVerified:true,workerExpiresAt,maxMinutes,legacyS3PublicKeySupplied:Boolean(credentials.legacyAnon)});console.log('READY: Staging QA identity verified; credentials in memory only');
  const started=Date.now();let lastId='';
- while(Date.now()-started<50*60000){
+ while(!stopRequested&&Date.now()-started<maxMinutes*60000){
   let request;try{request=JSON.parse(await fs.readFile(path.join(dir,'request.json'),'utf8'));}catch{}
   if(!request?.id||request.operatorId!==operatorId||request.id===lastId){await new Promise(r=>setTimeout(r,250));continue;}lastId=request.id;
   if(request.action==='stop')break;
@@ -49,6 +69,8 @@ try{
  }
 }catch(e){await state({phase:'blocked',error:safe(e)});console.log('BLOCKED: '+safe(e));process.exitCode=1;}
 finally{
+ clearTimeout(deadlineTimer);clearInterval(stopWatcher);
+ await closeOwnedRuntime();
  for(const client of runtime.clients||[])try{await client.auth.signOut({scope:'local'});}catch{}
  provider?.stop();credentials=null;runtime.sessions=null;runtime.clients=null;
  if(!process.exitCode)await state({phase:'stopped'});

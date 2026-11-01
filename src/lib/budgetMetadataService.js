@@ -73,7 +73,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
   makeId = () => crypto.randomUUID(), timeoutMs = budgetAuthorityTimeoutMs, debounceMs = 1000 }) {
   const entries = new Map(), listeners = new Set();
   let context = null, generation = 0, revision = 0, projectionRevision = 0, snapshot = null, verified = false, message = "正在確認協作狀態…", offset = 0;
-  let readWork = null, renewAt = 0, refreshAt = Infinity, suspended = false;
+  let readWork = null, renewAt = 0, refreshAt = Infinity, suspended = false, latestReadStartedAt = -Infinity;
   const emit = (projection = false) => { revision++; if (projection) projectionRevision++; listeners.forEach(fn => fn()); };
   const key = (kind, id, group) => `${kind}:${id}:${group}`;
   const current = g => g.generation === generation && g.actor === context?.actor && g.trip === context?.trip && entries.get(g.key) === g;
@@ -113,6 +113,10 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
   }
   function ingest(data) {
     if (!context || suspended || data.metadataUserId && data.metadataUserId !== context.actor || !validBudgetMetadataSnapshot(data, context.trip) || data.metadataVerified !== true) return false;
+    const started = data.metadataReadStartedAt;
+    // An older response cannot undo a newer canonical graph or protocol Pause.
+    if (Number.isFinite(started) && started < latestReadStartedAt) return true;
+    if (Number.isFinite(started)) latestReadStartedAt = started;
     snapshot = data; verified = true; message = data.metadataProtocol.enabled ? "" : "群組編輯尚未啟用，目前僅供檢視。";
     offset = Date.parse(data.serverNow) - (data.metadataReadStartedAt ?? now());
     refreshAt = data.nextRefreshAt ? Date.parse(data.nextRefreshAt) - offset : Infinity;
@@ -123,13 +127,16 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       if (!remote) { g.state = "lost"; g.error = "項目已移除，未提交內容仍保留。"; continue; }
       if (remote.revision < g.base) continue; // A response predating our confirmed patch cannot roll it back.
       g.syncPending = false;
-      g.remote = remote;
+      const predatesGrant = Number.isFinite(started) && started < g.admittedAt && owns(g);
+      // Ownership from before a confirmed admission cannot disprove its receipt.
+      g.remote = predatesGrant ? { ...remote, held: true, own_session: true, owner_id: g.actor,
+        epoch: g.epoch, expires_at: g.admissionExpiresAt } : remote;
       if ((remote.revision !== g.base || remote.versions&&!sameFinanceVersions(remote.versions,g.versions) || g.group === "pricing" && JSON.stringify(remote.value.versions) !== JSON.stringify(g.canonical.versions)) && (dirty(g) || g.request)) {
         if (!g.request) { g.conflict = true; g.error = "此欄位已由其他人更新，草稿已保留。請確認最新內容。"; }
       } else if (!dirty(g) && !g.request) {
         g.canonical = remote.value ?? ""; g.value = g.canonical; g.base = remote.revision;g.versions=remote.versions;
       }
-      if (g.state === "held" && (!remote.own_session || remote.epoch !== g.epoch || !remote.held)) g.state = "lost";
+      if (g.state === "held" && (!g.remote.own_session || g.remote.epoch !== g.epoch || !g.remote.held)) g.state = "lost";
     }
     emit(true); return true;
   }
@@ -195,6 +202,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     g.focused = true;
     if (owns(g)) return true;
     if (g.acquiring) return g.acquiring;
+    const firstAdmission = !g.token;
     g.lastActivity = now(); g.activity = (g.activity || 0) + 1;
     g.state = "pending"; g.error = ""; g.token ||= makeId(); emit();
     const work = (async () => {
@@ -213,6 +221,10 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       const data = result.data;
       if (result.error || !data?.granted || !version(data.epoch) || data.revision !== g.base || !Number.isFinite(Date.parse(data.expires_at))) {
         if (!result.error && !data?.granted) g.token = null;
+        // A first PT409 admission rolled back without granting a lease. Keep
+        // its draft/conflict, but do not invent an unknown capability that can
+        // never be released. An earlier unanswered attempt keeps its token.
+        if (firstAdmission && result.error?.code === "PT409" && !data?.granted && g.epoch == null) g.token = null;
         if (data?.granted && version(data.epoch)) { g.epoch = data.epoch; await cleanup(g); }
         g.state = result.error ? "uncertain" : "blocked";
         g.error = ["PT409", "40001"].includes(result.error?.code) ? "此欄位版本已更新，草稿已保留。" : result.error?.message || "其他成員或分頁正在編輯，請稍後重試。";
@@ -220,6 +232,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         emit(); void refresh(); return false;
       }
       g.epoch = data.epoch; g.expires = Date.parse(data.expires_at) - offset;
+      g.admittedAt = now(); g.admissionExpiresAt = data.expires_at;
       g.canonical = data.value ?? "";g.versions=data.versions??g.versions; g.value = localValue(g); delete g.staged;
       g.state = "held";
       persist(g); emit(); schedule(g); return true;
@@ -361,7 +374,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       if (context?.actor === actor && context?.trip === trip && context?.active === active && context?.editable === editable) return;
       generation++; for (const g of entries.values()) { cancelTimer(g); persist(g); g.releasing = true; if (!g.acquiring) void cleanup(g); }
       entries.clear(); context = actor && trip ? { actor, trip, active, editable: editable && active } : null;
-      verified = false; snapshot = null; readWork = null; refreshAt = Infinity; suspended = false;
+      verified = false; snapshot = null; readWork = null; refreshAt = Infinity; suspended = false; latestReadStartedAt = -Infinity;
       message = "正在確認協作狀態…"; emit(true);
     },
     async tick() {

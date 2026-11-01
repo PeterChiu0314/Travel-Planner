@@ -1,0 +1,22 @@
+{
+  "version": "20261101032853",
+  "name": "budget_receipt_legacy_cutover",
+  "file": "20261101032853_budget_receipt_legacy_cutover.sql",
+  "issuedByOfficialCli": true,
+  "officialCli": "2.106.0",
+  "sourceSha256": "b5032314b31678ae6ae922f6aa648e7a7108e5ce77bd09a7a9b5aef7d3ed85b6",
+  "sourceBytes": 25808,
+  "wrapperSha256": "8e98cc69539afe0c0a0887a66c3c7f4d4af4e3f28f59500d4aab8adba55ac393",
+  "startingLedger": {
+    "count": 64,
+    "head": "20261031140648"
+  },
+  "endingLedger": {
+    "count": 65,
+    "head": "20261101032853"
+  },
+  "defaultState": "Not stopped; not invalidated; all protocols/readiness OFF",
+  "legacyExpiry": "Never backdated or synthesized; key revocation is recorded separately",
+  "automaticallyApplied": false,
+  "deploymentEvidence": "../../2026-11-01-budget-b7-legacy-cutover-and-e2e.md"
+}

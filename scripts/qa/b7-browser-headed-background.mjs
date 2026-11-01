@@ -1,0 +1,11 @@
+// Native desktop Chrome is required for a genuine hidden-tab visibility event.
+import assert from 'node:assert/strict';import {chromium} from 'playwright';
+export async function execute(context){
+ const {runtime:r,args}=context;assert.equal(r.project,'uyqdopksfysbobhjcepk');if(args.mode==='native-focus'){assert(r.headedBackgroundAttempt&&!r.nativeFocusAttempt);r.nativeFocusAttempt=true;}else{assert(!r.headedBackgroundAttempt);r.headedBackgroundAttempt=true;}
+ const originalPage=r.browserPages[0],originalContext=r.browserContexts[0],session=r.cutover.sessions[0];assert.equal(session.user.id,JSON.parse(Buffer.from(session.access_token.split('.')[1],'base64url')).sub);
+ const browser=await chromium.launch({channel:'chrome',headless:false,args:['--window-size=1440,1000']});r.additionalQaBrowsers??=[];r.additionalQaBrowsers.push(browser);const headed=await browser.newContext({viewport:{width:1440,height:1000},locale:'zh-TW'});
+ await headed.route('**/*.supabase.co/**',route=>new URL(route.request().url()).hostname===r.project+'.supabase.co'?route.continue():route.abort());
+ await headed.addInitScript(({session,project,trip})=>{if(location.hostname!=='127.0.0.1')return;if(!localStorage.getItem(`sb-${project}-auth-token`))localStorage.setItem(`sb-${project}-auth-token`,JSON.stringify(session));localStorage.setItem(`travel-planner-session-context:${session.user.id}`,JSON.stringify({activeTripId:trip,activeSection:'budget',activeDay:0,luggageTab:'personal',updatedAt:new Date().toISOString()}));},{session,project:r.project,trip:r.cutover.trips[0]});
+ const page=await headed.newPage();if(args.mode==='native-focus'){const native=await headed.newCDPSession(page);await native.send('Emulation.setFocusEmulationEnabled',{enabled:false});r.backgroundNativeCdp=native;}await page.goto(r.browserBaseUrl,{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'新增預算',exact:true}).waitFor({timeout:15000});r.browserPages[0]=page;r.browserContexts[0]=headed;
+ try{const module=await import('./b7-browser-resilience.mjs?v='+Date.now()),result=await module.execute({...context,args:{mode:'background-visibility'}});r.browserPages[0]=originalPage;r.browserContexts[0]=originalContext;await browser.close();return {...result,nativeHeadedChrome:true};}catch(e){r.headedBackgroundFailure=true;throw e;}
+}

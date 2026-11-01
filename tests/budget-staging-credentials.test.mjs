@@ -18,3 +18,9 @@ test('Modern publishable key is accepted only with the exact Staging URL; admin 
  const c=provider.issue();assert.equal(c.anon,'sb_publishable_synthetic_public_key');assert.equal(JSON.parse(Buffer.from(c.worker.split('.')[1],'base64url')).role,'budget_receipt_worker');provider.stop();
  for(const override of [{projectUrl:'https://other-project.supabase.co'},{projectUrl:undefined},{anon:'sb_publishable_invalid space',projectUrl:`https://${credentialProject}.supabase.co`},{admin:'sb_secret_not_a_legacy_jwt',projectUrl:`https://${credentialProject}.supabase.co`}]){const s=randomBytes(48);assert.throws(()=>createStagingCredentialProvider(make(s,{anon:'sb_publishable_synthetic_public_key',...override})));assert(s.every(x=>x===0));}
 });
+
+test('Legacy S3 public key must match existing Staging anon role and signer; no additional role is signed',()=>{
+ const secret=randomBytes(48),legacyAnon=sign({role:'anon'},secret),provider=createStagingCredentialProvider(make(secret,{legacyAnon}));
+ const r=provider.issue();assert.equal(r.legacyAnon,legacyAnon);const worker=JSON.parse(Buffer.from(r.worker.split('.')[1],'base64url'));assert.equal(worker.role,'budget_receipt_worker');assert.equal(worker.exp-worker.iat,900);provider.stop();
+ for(const role of ['service_role','authenticated']){const s=randomBytes(48);assert.throws(()=>createStagingCredentialProvider(make(s,{legacyAnon:sign({role},s)})));assert(s.every(x=>x===0));}
+});

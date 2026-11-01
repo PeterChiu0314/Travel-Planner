@@ -15,7 +15,7 @@ do $$begin
   or exists(select 1 from app_private.budget_rates_leases where expires_at>clock_timestamp()) then raise exception 'Drain active leases before activation';end if;
  if exists(select 1 from app_private.budget_receipt_cleanup where status='blocked') then raise exception 'Resolve quarantined cleanup before activation';end if;
  if not exists(select 1 from app_private.budget_receipt_protocol where storage_verified and cleanup_worker_verified and content_worker_verified
-  and legacy_grants_expire_at is not null and legacy_grants_expire_at<clock_timestamp()) then raise exception 'Real Storage/Worker attestations and actual legacy token exhaustion required';end if;
+  and app_private.budget_receipt_legacy_exhausted()) then raise exception 'Real Storage/Worker attestations and audited legacy capability invalidation required';end if;
 end $$;
 update app_private.budget_metadata_protocol set enabled=true;
 update app_private.budget_finance_protocol set enabled=true;

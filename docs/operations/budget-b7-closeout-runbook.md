@@ -74,3 +74,32 @@ PT409 20261031003000先前已在Production安裝，仍需未來唯讀核對來�
 Legacy安全門檻不可由「沒有物件」推導。建立所有Staging簽發端可稽核停止點；盤點signed-upload/TUS/S3及其實際TTL/未完成upload；官方SDK signed-upload2h、TUS最多24h只是已確認通道上限，不是本專案已耗盡證據。Managed日誌有延遲且沒有權威未過期grant清單，本次不填猜測expiry。若現有Guard不能在Activation前阻止新legacy簽發，先做最小Forward設計與隔離驗證；不可先填now-1s、改歷史或以keyrotation/刪資料取巧。簽發停止/排空條件未成立就保持NO-GO，既有Staging授權不需重問。
 
 PostgREST官方允許exp30秒clock skew；JWT負向測試在真正exp+30s後仍嚴格要求401/PGRST303，不改簽章/時鐘/延長request timeout。Worker自身預先45s停止使用接近到期token；不要把宣告TTL與平台skew混為同一個時間。
+
+## 2026-11-01 Legacy cutover／受控 E2E後的現況（優先於上方歷史checkpoint）
+
+[本輪報告與剩餘矩陣](../2026-11-01-budget-b7-legacy-cutover-and-e2e.md)、[去敏實測證據](../qa/2026-11-01-budget-b7-cutover-e2e-results.json)、[已安裝Forward／操作規則](budget-b7-legacy-cutover/README.md)。Staging已從64→65；20261101032853已安裝一次，不再執行舊Dormant、Hotfix或此Forward。
+
+前表增量17個來源之後，第18個為`20261101032853_budget_receipt_legacy_cutover.sql`，完整LF Source SHA-256 `b5032314b31678ae6ae922f6aa648e7a7108e5ce77bd09a7a9b5aef7d3ed85b6`；原子wrapper SHA-256 `8e98cc69539afe0c0a0887a66c3c7f4d4af4e3f28f59500d4aab8adba55ac393`。它存於非自動套用目錄，官方CLI產版及原始before/after封存。Source更新3個private Guard、加入5個owner-only helper及append-only private journal；沒有重放舊PT409，也沒有改38business seals或歷史Migration來源。
+
+Production所需的是**依實際Production ledger／catalog產出的精確來源差異與專用封包**，不是把Staging的47＋18＝65當Production預期。先前未安裝的20261030125028仍不可冒充已安裝，M0實際來源為20261031083437；F0必須位於後續覆蓋函式之後，不可重播舊Hotfix替代。前表31筆缺完整Source與Timeline LF差異仍需遵守既有依賴查核。Production本輪完全未讀寫，保留NO-GO。
+
+Staging cutover真實停止03:57Z，oldURLkey在使用者操作後真正Revoked，04:07Z以未過期能力的HTTP拒絕及完整bytes證據建立invalidation journal。`legacy_grants_expire_at`一直NULL；不能把key撤銷改寫為自然expiry。只有journal滿足exhausted及真實Storage／專用Worker證據後才曾受控Activation。舊key不可在Pause期間恢復Standby，否則可能重新接受舊高權限上傳能力。
+
+兩個本輪前端P1在真實競爭中發現並安全Pause：BUG-031明確首次PT409導致無epoch token阻塞discard；BUG-032 Snapshot/admission排序缺陷。修正、red/green、直接相依回歸及真Staging對應案例已記錄。Resume只重新開啟同一QA協定，不重填readiness或重設latch，不把新E2E readiness預設Passed。一次臨時Resume wrapper解析拒絕已獨立證明無COMMIT，修正本機JS dollar替換後仍保留所有Lock／Timeout及原子檢查；封存Migration不變。
+
+**目前必須維持Pause。** 最後獨立Protocol讀回12:56:14Z（台灣20:56）七OFF、finance／receipt／lifecycle activated=TRUE、三readiness保留、Ledger65、pending／cleanup／missingReceipt0。12:58:40Z原28投影／38seals／RLS／ACL／Worker／Storage／Realtime未變；12:59Source及privatehelper屬性／Hash讀回相符。13:02QA graph為1trip／3budgets／3Actual／1itinerary／1Baseline／1attachment／2objects，無participant孤兒及有效租約。只有本次那筆blank lifecycle競爭Budget已正常刪除；其餘graph保留。原始2trips／1user／25items／3alternatives／1Baseline及舊QA Baseline不是cleanup目標。
+
+### 解除目前阻擋的最小操作順序
+
+1. 先核對唯一Staging target、Ledger65、來源／seals／原28指紋及七OFF；不用舊status檔認定helper仍在或已停。使用者已回覆Ctrl+C、原生視窗盤點未見QA PowerShell／Chrome，exactstoprequest也已佇列，但process退出／RAM釋放／正常Auth logout未獨立證實。
+2. 延遲Snapshot Runner必須加入每步進度、導航／route釋放的有限等待及可取消收尾。新版helper已加獨立RAM期限、exactstop watcher及只關閉自有Chrome/Vite；它的原生取消／期限驗收尚未完成，不能宣稱已實測。不要再啟動舊助手等待無限Promise，也不要任意kill其他Node／Chrome。
+3. 用Git外原scope恢復同一QA Graph與兩個帳號；必要可信憑證僅RAM。先以普通owner JWT核對／恢復**該QA B的pending→原approved**，確認一筆row、原role及其他成員不變，再普通Auth signout／刷新後證明隔離。這是本輪中斷後尚未完成的收尾，不可用Auth Admin Cascade／SQL清除掩蓋；此步不能冒充原撤權／晚回應E2E通過。
+4. 先完成無Activation相依的tool cancellation及readonly safety檢查。只在fresh evidence、0有效租約、0unscopedReceipt工作、舊key保持Revoked、相依權限及原資料不變時，才可依原Staging授權／現行Runbook受控Resume。任一P0／P1立即使用`budget-b7-pause.sql`並獨立讀回；永不清除activated latch或已提交財務資料。
+5. 僅補Blocked的真hidden/visible草稿、撤權晚回應、切旅程／登出／重新整理、外幣／歷史成本競爭、Receipt concurrent object-ID race及手機／IME／Portal／a11y流程。不重跑已過Auth／Storage／Worker平台suite或剛通過且未受影響的業務E2E。標準／multipart超限transport回應仍獨立Blocked，不能以TUS413取代標籤。
+6. QA清理先走正常API，Baseline／Source Origin／Audit／Parent Guard阻擋就保留整圖與去敏指紋；不強刪。最終核對原資料、功能旗標、protocol／latch、Advisor與Worker／排程／Session／本機程序狀態，才更新GO／NO-GO。
+
+### 正式發布準備與回復
+
+目前只能交付待Review的feature branch，不能建立「可直接正式執行」的Staging複製封包。未解Blocked、QA恢復及tool shutdown完成前，main合併／正式部署皆NO-GO。後續需要另外明確Production授權：唯讀baseline/依賴/權限與成本保護核對、必要真實備份及隔離還原、Production-bound最小Forward／原子wrapper、Stage已過版本的前端與Worker部署、最後人工決策Activation。worker專用JWT與排程必須最小權限，不能以service_role替代。
+
+執行順序為schema dormant→獨立readback→前端預設OFF相容版本→可信Worker驗證／有界排程與readiness真證據→停止legacy簽發與真失效→原子受控Activation→真實smoke；每一步仍須新的Production範圍授權。本輪未做其中任何Production操作。失敗優先Pause停止新操作，保留request/ledger/history/bytes與latches；未知COMMIT先新唯讀連線判定，不能重送整包；只做經審查的Forward Repair，禁止破壞性schema down、舊snapshot覆蓋財務或重置activated latch。
