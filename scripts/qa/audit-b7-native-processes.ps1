@@ -25,7 +25,10 @@ function Read-QaProcesses {
  $owned=@($all | Where-Object {$ids.Contains([uint32]$_.ProcessId)})
  $ambiguous=@($all | Where-Object {$_.Name -eq 'chrome.exe' -and $_.CommandLine -match '--remote-debugging-pipe' -and $_.CommandLine -match 'playwright_chromiumdev_profile' -and -not $ids.Contains([uint32]$_.ProcessId)})
  $ports=@(Get-NetTCPConnection -State Listen -ErrorAction Stop | Where-Object {$_.LocalPort -in @(5188,5189)} | Select-Object LocalPort,OwningProcess)
- [pscustomobject]@{observedAt=[DateTime]::UtcNow.ToString('o');processes=@($owned | ForEach-Object {[pscustomobject]@{id=$_.ProcessId;parent=$_.ParentProcessId;name=$_.Name;created=$_.CreationDate.ToUniversalTime().ToString('o')}});ambiguousQaChromeCount=$ambiguous.Count;listeners=$ports}
+ # A different Windows integrity level can hide CommandLine even though CIM
+ # returns the PID. Missing command lines cannot certify that QA has exited.
+ $unidentified=@($all | Where-Object {$_.Name -in @('node.exe','chrome.exe') -and -not $_.CommandLine -and $_.ProcessId -ne $IgnoreOwnerPid})
+ [pscustomobject]@{observedAt=[DateTime]::UtcNow.ToString('o');processes=@($owned | ForEach-Object {[pscustomobject]@{id=$_.ProcessId;parent=$_.ParentProcessId;name=$_.Name;created=$_.CreationDate.ToUniversalTime().ToString('o')}});unidentifiedNodeOrChrome=@($unidentified | Select-Object ProcessId,Name);ambiguousQaChromeCount=$ambiguous.Count;listeners=$ports}
 }
 $before=Read-QaProcesses
 $before | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidenceDir "$OutputStem-before.json") -Encoding UTF8
@@ -44,7 +47,7 @@ if($StopKnownQa){
  }
 }
 $after=Read-QaProcesses
-$pass=$after.processes.Count -eq 0 -and $after.listeners.Count -eq 0 -and $after.ambiguousQaChromeCount -eq 0
+$pass=$after.processes.Count -eq 0 -and $after.listeners.Count -eq 0 -and $after.ambiguousQaChromeCount -eq 0 -and $after.unidentifiedNodeOrChrome.Count -eq 0
 [pscustomobject]@{source='native Windows CIM and TCP listener reads, not operator status.json';selfPid=$PID;ignoredCurrentOperatorPid=$IgnoreOwnerPid;before=$before;stoppedExactOwnedPids=$stopped;exitedDuringStop=$exitedDuringStop;after=$after;oldQaRuntimeExited=$pass;credentialsRead=$false} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidenceDir "$OutputStem-audit.json") -Encoding UTF8
 if($pass){Write-Host 'PASS: no known QA helper, descendants, ambiguous QA Chrome, or listeners on5188/5189.'}
 else{Write-Host 'BLOCKED: retained native-process-audit.json; no ambiguous/unrelated processes were stopped.'}

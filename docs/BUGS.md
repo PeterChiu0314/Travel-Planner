@@ -13,7 +13,13 @@ This document now separates:
 
 # Confirmed Bugs
 
-## B-7 release gates | Legacy cutoff verified; controlled Staging E2E in progress
+## B-7 release gates | Changed quote verified; Staging core acceptance GO with P2 limits
+
+Latest2026-11-02, fromffa1dbf: [rates / Staging closeout](2026-11-02-budget-b7-rates-staging-closeout.md), [new results](qa/2026-11-02-budget-b7-rates-closeout-results.json). Last P1 acceptance gate Passed with actual daily quoteJPY0.206945→0.207133, unpaidJPY100001→20714TWD, shares10357/10357, real two-user Pricing/Rates exclusion, both stale-versionPT409, exact Replay and both headed Browser detail/statistics. Four old Actuals/payment history/Source Origin/retained Budgets exact. Final Ledger65/sevenOFF/latchesretained/28+38/security unchanged; normal QA cleanup/logout/session0/native shutdown verified. No new unresolved product P0/P1. Production/main/deployment remain NO-GO pending separately authorized planning and rollout.
+
+Baseline refresh on missing-rate initialization of a future planning trip is confirmed existing design, not a newly reproduced product defect. This round sealed both target trips before Browser entry; pure initialized-trip entry changed neither Baseline, legitimate edits refreshed main only, other Rates/Baseline and original history exact. Prior raw before Hash gap remains known P2 and the historical failed raw-equality assertion stays Failed; no invented Hash or forced restoration. Existing standard/multipart oversized HTTP response Blocked and bundle/Advisor/hardware/accessibility limitations remain; Staging core GO is not a zero-Blocked transport certificate. QA-only unreadable-process audit now fails closed; a repeated-selection test mistake was corrected after safety Pause without modifying product behavior.
+
+The following dated checkpoint is preserved as history; its changed-rate Blocked status is superseded by the new true service result above.
 
 Latest2026-11-02: [final E2E follow-up](2026-11-02-budget-b7-final-e2e-followup.md). Ledger65 unchanged; seven protocols finally OFF, three activated latches retained. Ordinary QA membership recovery/logout and native helper/Chrome/Vite shutdown independently verified. Actual background draft, revoked/trip/logout delivered-late Snapshot isolation, re-login/refresh, foreign payment/version conflict, concurrent Receipt replacement and old-claim/new-object protection passed their stated scopes. True changed-quote repricing remains Blocked; do not substitute a no-op. A legacy QA planning Baseline auto-refreshed on trip visit and lacks a full raw before Hash; this fixture isolation limit is explicit. Original28 and38 seals matched. Production NO-GO. Prior dated platform/cutover records below remain historical evidence.
 

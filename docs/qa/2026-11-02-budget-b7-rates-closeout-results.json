@@ -1,0 +1,429 @@
+{
+  "date": "2026-11-02",
+  "timezone": "Asia/Taipei",
+  "project": "uyqdopksfysbobhjcepk",
+  "branch": "codex/budget-collaboration-redesign",
+  "startingCommit": "ffa1dbf662ba3fb55f52c7a00b216130afd214a2",
+  "scope": "Only final changed real quote repricing, directly dependent two-user/browser convergence, Baseline design and safe shutdown; no historical platform suite rerun",
+  "decision": {
+    "stagingCoreProductAndFinancialSafety": "GO with recorded P2 limits; last P1 changed-quote acceptance gate closed",
+    "allTransportSubcasesPassed": false,
+    "production": "NO-GO; separate live baseline, backup/restore and target-bound deployment planning/authorization required",
+    "mainMergeAuthorized": false,
+    "productionDeploymentAuthorized": false
+  },
+  "quote": {
+    "source": "ExchangeRate-API",
+    "endpoint": "https://open.er-api.com/v6/latest/TWD",
+    "documentation": "https://www.exchangerate-api.com/docs/free",
+    "httpStatus": 200,
+    "oldQuotedAt": "2026-11-01T00:02:31+00:00",
+    "newQuotedAt": "2026-11-02T00:02:31.000Z",
+    "oldJpy": 0.206945,
+    "newJpy": 0.207133,
+    "marketQuoteFabricated": false,
+    "clockChanged": false,
+    "fullRawResponsePublished": false
+  },
+  "matrix": [
+    {
+      "id": "STAGING-READONLY-PREFLIGHT",
+      "status": "Passed",
+      "checks": [
+        "ledger65",
+        "original28",
+        "functions38",
+        "pinned security projections",
+        "sevenOFF",
+        "prior readiness retained",
+        "no live leases or unknown transactions"
+      ]
+    },
+    {
+      "id": "REAL-CHANGED-RATE-REPRICING",
+      "status": "Passed",
+      "realService": true,
+      "proofEvent": "REAL-CHANGED-QUOTE-REPRICING"
+    },
+    {
+      "id": "TWO-USER-PRICING-RATES-MUTUAL-EXCLUSION",
+      "status": "Passed",
+      "normalUserJwts": true,
+      "pricingBlocksRates": "pricing_locked",
+      "ratesBlocksPricing": "group_locked"
+    },
+    {
+      "id": "STALE-RATES-AND-PRICING-PT409",
+      "status": "Passed",
+      "distinctHttp409Cases": 2
+    },
+    {
+      "id": "RATES-EXACT-REQUEST-REPLAY",
+      "status": "Passed",
+      "sameRequestIdAndBody": true,
+      "sameReceiptAndRevision": true,
+      "duplicateFinancialMutation": false
+    },
+    {
+      "id": "PAID-ACTUAL-HISTORY-ORIGIN-PRESERVATION",
+      "status": "Passed",
+      "actualRows": 4,
+      "comparison": "all row fields plus participant rows and retained Budget rows"
+    },
+    {
+      "id": "TWO-BROWSER-SNAPSHOT-LIST-DETAIL-STATISTICS",
+      "status": "Passed",
+      "browser": "native headed Chrome",
+      "browserPlugin": "not available; user-authorized Playwright",
+      "independentIncognitoContexts": 2,
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "reloadRequired": false,
+      "renderedPerPerson": 10357,
+      "renderedTripTotal": 21322
+    },
+    {
+      "id": "QA-BASELINE-DESIGN-AND-BEFORE-SEALS",
+      "status": "Passed",
+      "qaTripsSealedBeforeBrowser": 2,
+      "hostedDeferredTriggers": 6,
+      "pureInitializedTripEntryBaselinesUnchanged": true,
+      "otherQaRatesBaselineExact": true,
+      "mainPlanningBaselineMatchesCurrentCommittedItems": true,
+      "historicalBaselineInOriginal28Unchanged": true
+    },
+    {
+      "id": "INITIAL-EXTRA-UI-READBACK",
+      "status": "Failed",
+      "rootCause": "Runner clicked already-selected row; existing product intentionally deselects it",
+      "retained": true,
+      "financialUpdateRepeated": false,
+      "safePauseVerified": true,
+      "correctedRunnerStrictAssertionsPassed": true
+    },
+    {
+      "id": "NORMAL-QA-CLEANUP",
+      "status": "Passed",
+      "newUnpaidBudgetsCreated": 1,
+      "newUnpaidBudgetsNormallyDeleted": 1,
+      "newUsers": 0,
+      "newTrips": 0,
+      "newPayments": 0,
+      "mainBudgetsAfter": 4,
+      "mainActualsAfter": 4,
+      "forcedCleanup": false,
+      "newLegitimateTripQuoteRetained": true
+    },
+    {
+      "id": "PAUSE-LOGOUT-INDEPENDENT-READBACK-NATIVE-SHUTDOWN",
+      "status": "Passed",
+      "qaAuthSessions": 0,
+      "qaActiveRefreshTokens": 0,
+      "globalCountsForUnrelatedAccountsNotClaimed": true
+    },
+    {
+      "id": "PRIOR-RAW-QA-BASELINE-HASH-GAP",
+      "status": "Blocked",
+      "priority": "P2 evidence limitation",
+      "pastRawEqualityFailureNotReclassified": true,
+      "expectedRefreshDesignConfirmed": true,
+      "unknownOriginalNotRestored": true
+    },
+    {
+      "id": "PRIOR-STANDARD-MULTIPART-OVERSIZE-HTTP-STATUS",
+      "status": "Blocked",
+      "priority": "P2 previously recorded transport evidence limitation",
+      "notRerun": true,
+      "priorTus413NotUsedAsReplacement": true
+    },
+    {
+      "id": "UNMODIFIED-PLATFORM-E2E-BUILD-ADVISOR",
+      "status": "Reused prior evidence",
+      "notRerun": true,
+      "priorReport": "2026-11-02-budget-b7-final-e2e-results.json",
+      "advisor": {
+        "errors": 0,
+        "warnings": 10,
+        "info": 24,
+        "freshRunThisRound": false
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "REAL-CHANGED-QUOTE-REPRICING",
+      "status": "Passed",
+      "at": "2026-11-02T13:48:52.260Z",
+      "oldQuoteDate": "2026-11-01T00:02:31+00:00",
+      "newQuoteDate": "2026-11-02T00:02:31.000Z",
+      "oldJpy": 0.206945,
+      "newJpy": 0.207133,
+      "jpyAmount": 100001,
+      "oldTwd": 20695,
+      "newTwd": 20714,
+      "allocations": [
+        10357,
+        10357
+      ],
+      "distinctUsers": 2,
+      "pricingBlocksRates": true,
+      "ratesBlocksPricing": true,
+      "staleRatesPT409": true,
+      "stalePricingPT409": true,
+      "exactRequestReplay": true,
+      "bothRealSnapshotsConverged": true,
+      "bothRenderedListsConvergedWithoutReload": true,
+      "actualRowsAndParticipantsExact": 4,
+      "retainedBudgetsExact": true
+    },
+    {
+      "id": "CHANGED-RATE-UI-ALLOCATIONS-STATISTICS",
+      "status": "Passed",
+      "at": "2026-11-02T13:53:12.103Z",
+      "bothRealBrowsers": true,
+      "perPerson": 10357,
+      "wholeTripBudget": 21322,
+      "newJpy": 0.207133,
+      "reloaded": false
+    }
+  ],
+  "finalState": {
+    "protocolReadAt": "2026-11-02T13:54:55.766397+00:00",
+    "protectionReadAt": "2026-11-02T13:55:11.906376+00:00",
+    "authAndQaScopeReadAt": "2026-11-02T13:55:33.938153+00:00",
+    "nativeAuditAt": "2026-11-02T13:55:25.3519876Z",
+    "ledger": {
+      "head": "20261101032853",
+      "count": 65
+    },
+    "sevenOff": true,
+    "undoFullOff": true,
+    "activatedLatchesRetained": 3,
+    "receiptReadinessRetained": true,
+    "legacyNaturalExpiry": null,
+    "legacyExhausted": true,
+    "pendingIntents": 0,
+    "activeCleanup": 0,
+    "missingReceiptObjects": 0,
+    "activeLeases": 0,
+    "qaAuthSessions": 0,
+    "qaActiveRefreshTokens": 0,
+    "ordinaryLogoutStatuses": [
+      {
+        "logout": 204,
+        "refreshRefused": 400
+      },
+      {
+        "logout": 204,
+        "refreshRefused": 400
+      }
+    ],
+    "refreshTokenRefusalVerified": true,
+    "accessJwtImmediateCryptographicInvalidationClaimed": false,
+    "qaNativeProcesses": 0,
+    "unidentifiedNodeOrChrome": 0,
+    "qaListeningPorts": 0,
+    "workerStartedThisRound": false,
+    "persistentScheduleCreated": false,
+    "masterCredentialsRamOnly": true,
+    "operatorStopped": true,
+    "repositoryFrontendFlagsDefaultOff": true
+  },
+  "protection": {
+    "originalGroups": 28,
+    "functionBodySeals": 38,
+    "unchangedProjections": [
+      "data",
+      "functions",
+      "worker",
+      "worker_memberships",
+      "worker_grants",
+      "worker_capabilities",
+      "storagePolicies",
+      "guardSha256",
+      "guardAttributes",
+      "publications",
+      "rt",
+      "bucket"
+    ],
+    "installedMigrationOrLedgerWrites": false,
+    "installedSourceHashesModified": false,
+    "rlsGrantPublicationWrites": false
+  },
+  "baseline": {
+    "design": "Future planning Baselines refresh on meaningful planning graph changes and missing-rate trip initialization; historical departure Baselines are protected",
+    "priorMissingRawHashStillMissing": true,
+    "priorDataForceRestored": false,
+    "currentOtherTripRatesAndBaselineExact": true
+  },
+  "issues": {
+    "unresolvedProductP0": 0,
+    "unresolvedProductP1": 0,
+    "lastP1AcceptanceGate": "Passed",
+    "knownP2": [
+      "Expected future planning Baseline refresh and prior raw before Hash gap",
+      "Prior standard/multipart oversize response Blocked",
+      "Existing bundle and Advisor warnings"
+    ],
+    "hardwareAndFullAccessibilityNotClaimed": true
+  },
+  "qaToolFixes": [
+    "Avoid duplicate selection click that intentionally deselects row; wait for actual allocation detail, keep strict assertions",
+    "Fail closed if native Node/Chrome command lines are unreadable; never kill unidentified processes"
+  ],
+  "validation": {
+    "jsSyntax": "Passed: new QA module",
+    "powerShellAst": "Passed: modified native audit",
+    "jsonEvidenceAssertions": "Passed",
+    "sourceArtifactHashes": "Passed: 28 exact byte SHA-256 seals",
+    "localLinks": "Passed: 83 local Markdown targets",
+    "sensitiveContent": "Passed: 8 intended files",
+    "gitDiffCheck": "Passed: working-tree and staged diff checks",
+    "productionBuild": "Prior unaffected build Passed; not rerun",
+    "historicalSuitesRerun": false
+  },
+  "artifacts": [
+    {
+      "localIgnoredArtifact": "external-quote.json",
+      "bytes": 8412,
+      "sha256": "0ace7b537334c255543dc5a2cb6e734695728df878db000b72cdfad4daff7f3c"
+    },
+    {
+      "localIgnoredArtifact": "operator-real-quote.json",
+      "bytes": 8412,
+      "sha256": "32dc101dbc2dcdd1df79bc85bfd27890339c6be573c87e2b3cc33079d8004b93"
+    },
+    {
+      "localIgnoredArtifact": "pre-protection.json",
+      "bytes": 25789,
+      "sha256": "5e4a2e45efc6e747294b260f2b64fd18161f32d80b85b6adec2a3985c9da8651"
+    },
+    {
+      "localIgnoredArtifact": "pre-protocols.json",
+      "bytes": 2755,
+      "sha256": "81d93086276e65dcb4fce6636acb6c5212fd48537fd1a302250ed6451166e666"
+    },
+    {
+      "localIgnoredArtifact": "pre-scope.json",
+      "bytes": 52461,
+      "sha256": "0294322976d709d207a5661a2ba7a44a8faeef7316ad631ec7d6cb8400b1e00f"
+    },
+    {
+      "localIgnoredArtifact": "ordinary-before.json",
+      "bytes": 38346,
+      "sha256": "3c5338956a6e4c2cb00a65773b83b3a5befcc1842bf7c096047e713baaec2ab1"
+    },
+    {
+      "localIgnoredArtifact": "ordinary-after.json",
+      "bytes": 36946,
+      "sha256": "95bd9fc6c3b3301752fd7141ce969840ae9655a50b44c4f87f55b84f2243fc92"
+    },
+    {
+      "localIgnoredArtifact": "resume-evidence.json",
+      "bytes": 1171,
+      "sha256": "4cb48334f44be724a7bf6e2d842b72c710aa6ebff522e3f2f6502b712bca7cfe"
+    },
+    {
+      "localIgnoredArtifact": "resume-readback.json",
+      "bytes": 2746,
+      "sha256": "6fe38abe4404fd0f866398f7d2e71782171807a1eff593b0e59a9c86218a92d2"
+    },
+    {
+      "localIgnoredArtifact": "pause-ui-readback.json",
+      "bytes": 2755,
+      "sha256": "3612b274d253b292e5867f0b3028e951b1ca375bd578a081675a3e3ca2d3af11"
+    },
+    {
+      "localIgnoredArtifact": "resume-ui-readback.json",
+      "bytes": 2747,
+      "sha256": "81a8ba7af6a45b20cc42e1770f0d6234eae6acd3c96c00b79a1dba986dd5f4b8"
+    },
+    {
+      "localIgnoredArtifact": "results.json",
+      "bytes": 2226,
+      "sha256": "8138bd80084738a92cab9f7a601151b8883118657748e9cbd2efd51b41862b19"
+    },
+    {
+      "localIgnoredArtifact": "steps.json",
+      "bytes": 1157,
+      "sha256": "e7f3a9eb7227689a6ce849aa1cb424e48836c5ec5b0d6e52ab7cd104d14ce367"
+    },
+    {
+      "localIgnoredArtifact": "ui-readback-failed.json",
+      "bytes": 146,
+      "sha256": "bde61c2a5a1e93b7e7f7b637a7e462bebd6e65927633949ed323f7af20470336"
+    },
+    {
+      "localIgnoredArtifact": "logout.json",
+      "bytes": 248,
+      "sha256": "0faa87638fdd4dbe0c7b05574f140c2e71056e3aed846608a75171e93b290b58"
+    },
+    {
+      "localIgnoredArtifact": "final-protocols.json",
+      "bytes": 2755,
+      "sha256": "8716b596a9b6e971b9de72a130e10c97a588f8ed1d1cced7999486e01e0e24cc"
+    },
+    {
+      "localIgnoredArtifact": "final-protection.json",
+      "bytes": 25789,
+      "sha256": "9a6822b06a2ddc909a183f36939d046431a2afdcd68d30e7fd043ddbd28724a9"
+    },
+    {
+      "localIgnoredArtifact": "final-scope.json",
+      "bytes": 52451,
+      "sha256": "f752d12953bc6232048de2cb2b6383ff58c2bc1307f390d43db9c6c81bf7d024"
+    },
+    {
+      "localIgnoredArtifact": "changed-rate-actor-0.png",
+      "bytes": 288072,
+      "sha256": "2fb3a8a0b56bf8cbc91e11e51f0699a359fd04d041fc29342f6be0f34d2d371c"
+    },
+    {
+      "localIgnoredArtifact": "changed-rate-actor-1.png",
+      "bytes": 297517,
+      "sha256": "cd42b9fac24952af2544cc28c96a8b727c3e4071d8eb17b787fc19447cb9ce15"
+    },
+    {
+      "localIgnoredArtifact": "allocation-actor-0.png",
+      "bytes": 288251,
+      "sha256": "3f1c3a657977bbfae47dfaa2a55592071016e937932aa75b8e23df8dd40e586f"
+    },
+    {
+      "localIgnoredArtifact": "allocation-actor-1.png",
+      "bytes": 288114,
+      "sha256": "905f685ec826e45f019873ce592508fe26e569d56030644e61efec38951a0cb7"
+    },
+    {
+      "localIgnoredArtifact": "statistics-actor-0.png",
+      "bytes": 292704,
+      "sha256": "9688415370573eba038fc61c5505ac23b33e7ced351c2e950fd95db3797df4a0"
+    },
+    {
+      "localIgnoredArtifact": "statistics-actor-1.png",
+      "bytes": 292577,
+      "sha256": "a7187b3bbc8c1647cce48cc4355dc090873e5c927c61aa5707e4bb5fbf8c7999"
+    },
+    {
+      "source": "scripts/qa/b7-rates-final-checks.mjs",
+      "bytes": 24297,
+      "sha256": "2e12116a866fe33dd1e8ca466912e9fc145338ce3d7366211d9933460236879f"
+    },
+    {
+      "source": "scripts/qa/audit-b7-native-processes.ps1",
+      "bytes": 4192,
+      "sha256": "8fe226bfcbda2fc2da2fb4c7151baa764f0cea89b44ddf0667f5cf281e8dceb2"
+    },
+    {
+      "source": ".tmp-b7-final-recovery/rates-final-audit.json",
+      "bytes": 1157,
+      "sha256": "ccfe6bc283742cdfa5d30d35e33391dbc5029a5ca4e1fff2641b19795b1db223"
+    },
+    {
+      "localIgnoredArtifact": "final-safe-state.png",
+      "bytes": 144121,
+      "sha256": "1dd0f44442eb1b3ae52205cedf262abed0c9c2f1f97010c326b50fc0f8338991"
+    }
+  ]
+}

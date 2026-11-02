@@ -1,5 +1,7 @@
 # Budget B-7：最終 E2E 補驗與安全收尾
 
+> 後續2026-11-02：[真實不同匯率與 Staging 結案](2026-11-02-budget-b7-rates-staging-closeout.md)已補通本文件剩餘 changed-quote P1 門檻。Staging核心功能GO帶P2限制；Production仍NO-GO。以下是前一輪不可改寫的歷史結果，其no-op／原失敗／未知raw Baseline Hash不被追認為通過。
+
 日期：2026-11-02（Asia/Taipei）。本文件時間戳若以 `Z` 結尾即為 UTC。
 分支 `codex/budget-collaboration-redesign`；起點 `0b51499b9960a936a390918b6b6f1ab152c14e24`。
 唯一 Hosted 目標為 Travel-Planner-Staging，`uyqdopksfysbobhjcepk`。

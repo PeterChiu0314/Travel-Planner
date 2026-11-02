@@ -1,5 +1,18 @@
 # Budget B-7｜連續 Staging 驗收與 Production 準備
 
+**最新狀態2026-11-02：[真實不同匯率／Staging 結案](../2026-11-02-budget-b7-rates-staging-closeout.md)、[結果矩陣](../qa/2026-11-02-budget-b7-rates-closeout-results.json)。** 最後 changed-quote P1 gate 已 Passed，Staging 核心功能／財務安全驗收 GO（帶已列 P2 限制）；Production／main／部署 NO-GO。全傳輸子項零 Blocked 的較廣驗收仍未完成，不可把原 standard／multipart HTTP status 缺口改稱通過。現在安全 Pause：Ledger65、七OFF、三 activated latches保留、readiness保留、原28/38/權限不變、QA sessions/refresh/leases0、原生QA助手/Chrome/Vite退出。以下早期64筆／readinessfalse及當時未驗證描述是歷史 checkpoint，不可當現在的前置值。
+
+## 結案後操作與合法匯率補驗程序
+
+1. 本輪最後市場 quote 已變，不需歷史 quote workaround：原產品公開端點HTTP200，2026-11-02 quoteJPY0.207133不同於已存2026-11-01的0.206945。raw response/取得時間/原文SHA只留Git忽略證據，公共矩陣存來源、時間、最小值與digest；保留供應商attribution，不散布整份quote。若未來quote相同，明確Blocked，不改來源/時鐘、不倒寫既有rates、不用no-op冒充重計價；可等供應商下一次真更新，再重核差異。
+2. 若有另外必要的新Staging測試，先新唯讀檢查指定target/Ledger65/38seals/28投影/權限/七OFF/三latches/既有readiness/legacyexhausted、租約與在途transaction/Receipt jobs歸零。**先封存每一個可能切入QA目的旅程的完整Rates/Baseline**；UI缺rates可合法初始化並刷新futureBaseline，不能把瀏覽假設成絕對零寫入。過去缺Hash資料不回填或還原。
+3. 普通QAOwner/Editor各自真Auth Session，主憑證僅RAM；沿既有原子Resume SQL及當前真證據attestation，不重填readiness、不改latch。QA-onlyVite flags只在子程序；正式defaultsOFF。有限RAM期限前必須完成Pause，timer不會自動PauseDB。未能保證收尾不可Resume。
+4. 本輪只新建一筆正常UI未付款JPYBudget；真Pricing與Rates雙向競爭、舊版本409/PT409、不同quote提交及同原requestReplay、兩端Snapshot/列表/明細/統計、Actual/Origin/歷史逐欄保護已通過。不可重送未知COMMIT，不以service_role代替普通權限。本輪曾遇Runner重複點已選列而取消選取，先Pause後只修Runner選取判斷；原失敗保留，沒有放寬金額/分攤斷言或重送金融mutation。
+5. 新未付款Budget已正常Lifecycle刪除，trip保持合法新quote、主planningBaseline正常更新；另一QAtripRates/Baseline完整不變。已付款/Source/歷史/audit/requests依Guard保留，不用SQL/AuthAdmin強清、不把Baseline倒轉。最終Pause讀回七OFF/latches/readiness；普通JWT全域logout、真refresh-token拒絕、獨立auth.sessions/refresh讀回0；停止Worker(本輪無)/Browser/Vite/助手，原生CIM/TCP與已知PID確認退出。現在程序盤點對不可讀CommandLine的Node/Chrome一律Blocked，不能宣稱已退出或任意停止未知程序。
+6. **下一步是Production規劃，不是授權部署。** 原既有Production差異來源表仍僅條件式清單。另取明確Production授權後才能讀其即時ledger/catalog/權限/資料、訂安全backup/restore及精確target-bound forward原子封包、相容前端預設OFF/最小Worker/legacy停發與失效/Activation順序。失敗保留財務與latches，Pause後先獨立讀回未知提交，再走經Review的Forward Repair。不得直接複製Staging65筆、db push --include-all、重播Dormant/Hotfix、schema down、main合併或正式發布。
+
+下列各 dated checkpoint 與較舊剩餘門檻保留其原始證據；本節與最新矩陣優先，不把舊失敗/Blocked歷史抹除。
+
 2026-10-31最新授權：可連續Staging測試／必要修正／有證據的受控Activation，不需每項停Review；唯一uyqdopksfysbobhjcepk。Production、main、Vercel及Docker／WSL不在授權內。舊Runbook的「本輪只可本機」與逐階段Review是歷史界線，本次授權優先；其資料保護／readiness／Pause安全規則仍完整保留。
 
 [最新真服務結果](../2026-11-01-budget-b7-real-service-acceptance.md)、[先前本機結果](../2026-10-31-budget-b7-closeout.md)、[去敏64筆來源與矩陣](../qa/2026-10-31-budget-b7-closeout-results.json)、[原Activation/Pause/Forward Repair程序](../2026-10-30-budget-b7-rollout-runbook.md)。本文件不把下列未跑步驟當成Passed。
