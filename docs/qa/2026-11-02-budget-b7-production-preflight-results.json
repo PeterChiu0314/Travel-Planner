@@ -1,0 +1,401 @@
+{
+  "date": "2026-11-02",
+  "timezone": "Asia/Taipei",
+  "production": "lqvuqamzmchepgxkftcw",
+  "stagingReference": "uyqdopksfysbobhjcepk",
+  "startingCommit": "a0a818df2fcb72557f73c80ddaf77dffe0059b00",
+  "scope": "Production read-only inventory and deployment planning ONLY",
+  "decision": "NO-GO for Production deployment / main merge / activation; ready for plan Review",
+  "databaseWritesExecuted": false,
+  "hostedMigrationsExecuted": false,
+  "vercelReleaseExecuted": false,
+  "workerStarted": false,
+  "stagingTestsRerun": false,
+  "identity": {
+    "surface": "Signed-in Supabase Dashboard project URL/header/API hostname plus read-only DB identity",
+    "database": "postgres",
+    "role": "postgres",
+    "transactionReadOnly": "on",
+    "directPsqlConnectionVerified": false,
+    "postgresVersion": "PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit"
+  },
+  "ledger": {
+    "productionRows": 48,
+    "productionHead": "20261031003000",
+    "stagingRows": 65,
+    "stagingHead": "20261101032853",
+    "pendingExactSources": 17,
+    "projectedRowsAfterAuthorizedInstall": 65,
+    "t0AlreadyInstalled": true,
+    "importAliasNotReplayed": true,
+    "hotfixNotReplayed": true,
+    "historicalCoverage": {
+      "exactSingleFullSource": 11,
+      "splitStatementArraysOriginalByteHashUnproven": 34,
+      "nullSourceRows": 2,
+      "importTimestampAlias": 1
+    },
+    "oldLedgerModified": false,
+    "originalRawRowSeals": 48,
+    "lastReadAt": "2026-11-02T15:43:32.535369+00:00"
+  },
+  "hotfix": {
+    "exactBodySeals": 12,
+    "totalBaselineFunctions": 13,
+    "otherFunction": "public.privatize_luggage_item(uuid,uuid,timestamptz,text)",
+    "difference": "Only whitespace/line breaks after exact body extraction, literal-preserving token comparison and manual diff",
+    "rawMismatchStillBlocksOldPacket": true,
+    "goldenSealsChanged": false,
+    "custom40001InProductionCatalog": 0,
+    "productionHashExceptionApproved": false
+  },
+  "schema": {
+    "productionFunctions": 84,
+    "publicTablesWithoutRls": 0,
+    "publicPolicies": 57,
+    "privateLegacyRequestRlsEnabled": false,
+    "privateLegacyRequestClientPrivileges": {
+      "anonInsert": false,
+      "anonSelect": false,
+      "authenticatedInsert": false,
+      "authenticatedSelect": false
+    },
+    "newStageRelations": 22,
+    "newStageFunctions": 193,
+    "bodyDifferencesIncludingKnownWhitespace": 17,
+    "workerRoleInstalled": false,
+    "existingStorageToAuthenticatorSetPath": true,
+    "managedRoleAndStrongLockRuntimeProbePerformed": false
+  },
+  "financialInventory": {
+    "counts": {
+      "trips": 7,
+      "users": 7,
+      "actuals": 3,
+      "budgets": 17,
+      "members": 12,
+      "baselines": 4,
+      "attachments": 0,
+      "itineraryItems": 123,
+      "storageObjects": 0,
+      "actualParticipants": 7,
+      "budgetParticipants": 29
+    },
+    "originRows": 3,
+    "sourceKinds": {
+      "manual": 3
+    },
+    "activePayments": 1,
+    "foreignBudgets": 0,
+    "frozenBaselines": 0,
+    "futureBaselines": 4,
+    "inactivePayments": 2,
+    "receiptAttachments": 0,
+    "paymentHistoryEntries": 4,
+    "orphanActualParticipants": 0,
+    "orphanBudgetParticipants": 0,
+    "retainedBudgetIdentities": 3,
+    "receiptMetadataWithoutObject": 0,
+    "actualAmountsTitlesMemberIdsNotPublished": true,
+    "fullDataExportPerformed": false,
+    "protectionCapturedTwice": true,
+    "allEightFingerprintGroupsEqual": true,
+    "baselinePayloadIncludedInPrivateHash": true,
+    "allFourBaselinesCurrentlyFuture": true,
+    "legacyShapeReadAt": "2026-11-02T15:24:02.970668+00:00",
+    "legacyShape": {
+      "actualsMissingPayer": 2,
+      "budgetsMissingPayer": 7,
+      "actualsMissingPaidAt": 0,
+      "legacyNonIntegerActualTwd": 0,
+      "customBudgetSharesMismatch": 0,
+      "tripsWithoutInitializedRates": 6,
+      "nonApprovedActualParticipants": 0,
+      "nonApprovedBudgetParticipants": 0,
+      "actualsWithoutExplicitParticipants": 0,
+      "budgetsWithoutExplicitParticipants": 0
+    },
+    "legacyCompatibilityProven": false
+  },
+  "storage": {
+    "privateBucket": true,
+    "bucket": "trip-attachments",
+    "maxBytes": 10485760,
+    "mime": [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/pdf"
+    ],
+    "objectsAtRead": 0,
+    "attachmentsAtRead": 0,
+    "bytesHttpReadPerformed": false,
+    "outstandingGrantsInferredFromEmptyObjects": false,
+    "productionLegacyIssuersAndExpiryVerified": false
+  },
+  "protocols": {
+    "productionB7RelationsAbsent": true,
+    "absenceNotReportedAsSevenOff": true,
+    "productionActiveLegacyLeases": 0,
+    "productionStoredExpiredLegacyLease": 1,
+    "stagingLedger": {
+      "head": "20261101032853",
+      "count": 65
+    },
+    "stagingSevenOff": true,
+    "stagingUndoFullOff": true,
+    "stagingThreeLatchesRetained": 3,
+    "stagingReceiptReadinessUnchanged": true
+  },
+  "health": {
+    "sampleFrom": "2026-11-02T14:41:56.203104+00:00",
+    "sampleTo": "2026-11-02T14:48:18.435323+00:00",
+    "seconds": 382.232,
+    "rollbackDelta": 0,
+    "deadlockDelta": 0,
+    "cumulativeRollbackCounter": 439702978,
+    "invalidIndexes": 0,
+    "idleInTransaction": 0,
+    "waitingClientLocks": 0,
+    "unvalidatedConstraint": "realtime.messages.messages_payload_exclusive (managed NOT VALID CHECK)",
+    "dashboard": {
+      "status": "Healthy",
+      "cpuPercent": 2,
+      "diskPercent": 17,
+      "ramPercent": 47,
+      "connections": "6/60",
+      "last60MinutesPostgresErrors": 0,
+      "window": "2026-11-02 21:43–22:43 Asia/Taipei",
+      "trafficLow": true
+    },
+    "productionLoadOrContinuousRecoveryCertification": false
+  },
+  "security": {
+    "visibleAdvisor": {
+      "errors": 0,
+      "warnings": 10,
+      "info": 2,
+      "rerunLinterClicked": false
+    },
+    "warnings": {
+      "signedInSecurityDefinerApi": 9,
+      "leakedPasswordProtectionDisabled": 1
+    },
+    "ninePublicDefinerApisDenyAnonExecute": true,
+    "delegatedPrivateAuthAndMembershipGuardsInspected": true,
+    "negativeWriteRpcTestsPerformed": false,
+    "postgres17_11SecurityAdvisoryNeedsReview": true,
+    "upgradeCatalogIndicators": {
+      "ltreeInstalled": false,
+      "btreeGistInstalled": false,
+      "customNonExtensionEstimators": 0,
+      "userPgcryptoLegacyCipherMentions": 0
+    },
+    "legacyCipherDataDecryptionProbePerformed": false,
+    "keysRead": false,
+    "credentialsRequested": false,
+    "connectorPermissionDenied": true
+  },
+  "backup": {
+    "plan": "Free / Nano",
+    "dashboard": "Free Plan does not include project backups; no backups available",
+    "liveBackupExportPerformed": false,
+    "restorePerformed": false,
+    "productionPitrAssumed": false,
+    "credentialAndApprovedOutsideGitDestinationSupplied": false,
+    "backupRestoreReleaseGate": "BLOCKED"
+  },
+  "frontend": {
+    "productionCommit": "cab828d0cc2c62ba7eb29760aae692386565cfc5",
+    "featureHead": "a0a818df2fcb72557f73c80ddaf77dffe0059b00",
+    "featureCommitsAhead": 40,
+    "changedFiles": 333,
+    "productFiles": 41,
+    "migrationFilesUnderAutoApplyDirectory": 14,
+    "packageChanges": [],
+    "vercelConfigChanged": false,
+    "vercelProductionCommitMatchesRemoteMain": true,
+    "vercelProductionTarget": "production",
+    "vercelProductionState": "READY",
+    "visibleBudgetEnvFlagsPresent": false,
+    "hiddenProductionEnvCount": 0,
+    "productionBranchObserved": "main",
+    "automaticDomainPromotionSettingsVerified": false,
+    "productionDeploymentPromoted": false,
+    "repositoryGithubWorkflowsPresent": false,
+    "supabaseDashboardRepositoryConnected": false,
+    "proposedMergeChangedFilesIncludingThisPlanning": 344,
+    "proposedCommitsAheadAfterThisPlanningCommit": 41,
+    "productCandidateStill": "a0a818df2fcb72557f73c80ddaf77dffe0059b00"
+  },
+  "gates": [
+    {
+      "id": "P0-BACKUP-RESTORE",
+      "status": "Blocked",
+      "detail": "No real independent backup or restore rehearsal; Free-tier staging waiver does not apply to Production"
+    },
+    {
+      "id": "P1-PRODUCTION-PACKET-REHEARSAL",
+      "status": "Blocked",
+      "detail": "Production target-bound atomic packet, exact before/after catalog, managed privileges and restored-data rehearsal not built or run"
+    },
+    {
+      "id": "P1-LEGACY-SHAPE-COMPATIBILITY",
+      "status": "Blocked",
+      "detail": "7 Budget and2 Actual NULL payer,6 trips missing rates; must rehearse actual restored data; no live autofill, repricing or Baseline restoration"
+    },
+    {
+      "id": "P1-HASH-PROVENANCE-REVIEW",
+      "status": "Blocked",
+      "detail": "12/13 hotfix raw seals, reviewed formatting difference, 2 NULL histories and split-source provenance need explicit Review; no resealing or ledger repair"
+    },
+    {
+      "id": "P1-ENGINE-SECURITY-REVIEW",
+      "status": "Blocked",
+      "detail": "Production17.6 vs official17.11 security fixes; applicability/upgrade sequencing not approved"
+    },
+    {
+      "id": "P1-WORKER-LEGACY-CUTOVER",
+      "status": "Blocked",
+      "detail": "Production trusted signer/refresh/least-privilege runtime/scheduler and all issuance-stop/drain/invalidation evidence unavailable"
+    },
+    {
+      "id": "P1-RELEASE-CONTROL",
+      "status": "Blocked",
+      "detail": "Main merge and automatic Production promotion interlock not yet verified/approved; flag values must stay OFF for initial compatibility release"
+    },
+    {
+      "id": "P2-KNOWN-LIMITS",
+      "status": "Recorded",
+      "detail": "Existing10 security warnings, managed NOT VALID CHECK, Stage oversize transport status and hardware/accessibility limitations remain"
+    }
+  ],
+  "validation": {
+    "all17SourceHashes": "Passed against actual Stage DB-computed full-source seals and local LF files",
+    "stageFinal38": "Passed,54PT409/24PT500",
+    "readOnlyQueries": "Executed catalog/data/dependencies/security inventory; no write-bearing SQL",
+    "legacyProjection": "Passed: actual Production old financial columns match all8 baseline hash groups",
+    "localLinks": "Passed:114 local Markdown targets",
+    "jsonHashSyntax": "Passed:17 source hashes,111 exact non-NULL ledger-source arrays,7 schema-compatible read-only SQL files",
+    "sensitiveScan": "Passed:only intended docs/SQL/manifest paths",
+    "gitDiffCheck": "Passed: working-tree and staged diff checks",
+    "historicalTests": "Not rerun",
+    "productionBuild": "Not rerun; no product changes",
+    "allLegacyProjection": "Passed:25 existing public/private relation counts and hashes equal across two read-only snapshots",
+    "readbackProtocolSql": "Executed metadata-only on Stage65/sevenOFF; does not certify future Production post-install state",
+    "allNonNullLedgerSourceHashes": "Passed:111 non-NULL source arrays match DB-computed first/joined hash;2 NULL rows stay unprovable"
+  },
+  "artifacts": [
+    {
+      "privateIgnoredArtifact": "production-catalog.json",
+      "bytes": 242831,
+      "sha256": "8102957062adbc81fb451f9b42dd8f75ee41a408bbb1a82ab8d3e57926289306"
+    },
+    {
+      "privateIgnoredArtifact": "staging-catalog.json",
+      "bytes": 448042,
+      "sha256": "03289a33956f52e79a886893a76ac009382e396af345b52c626a4ec4c2048fa0"
+    },
+    {
+      "privateIgnoredArtifact": "production-ledger-source-exact.json",
+      "bytes": 465266,
+      "sha256": "ccbbfe813622ec8d8bed5cccec3eeb4f1def5170380d54a4fc6a6930013e4ef6"
+    },
+    {
+      "privateIgnoredArtifact": "staging-ledger-source-exact.json",
+      "bytes": 1263350,
+      "sha256": "4488e9f77020227a148dbb6a2c47ed5dac72614d6aef246d84f5f6706ac81ff0"
+    },
+    {
+      "privateIgnoredArtifact": "production-data-health.json",
+      "bytes": 2489,
+      "sha256": "61f6720d1a2261fd8f74b4d86e5b33dc5e633a74ed0de8bf82caf6a58504787c"
+    },
+    {
+      "privateIgnoredArtifact": "production-health-after.json",
+      "bytes": 2489,
+      "sha256": "c20c3cccae97fb75b24d662b4cc05d97fb22cae349e75ddb2af999796b9cc87f"
+    },
+    {
+      "privateIgnoredArtifact": "production-dependencies.json",
+      "bytes": 109942,
+      "sha256": "6fdfccbd83fac3a885706101cfdbcbacfab1af143442dbef99a460495d4ce266"
+    },
+    {
+      "privateIgnoredArtifact": "staging-dependencies.json",
+      "bytes": 110327,
+      "sha256": "09f7a4976d5a8fa3307b35a513368c0ae6405291ab235f8cfb6a2f75214c9ef9"
+    },
+    {
+      "privateIgnoredArtifact": "production-security-review.json",
+      "bytes": 100624,
+      "sha256": "25d4528037d24f0d91dbf10b050c619cab95740ce51bd4f4cab1ce7928fea71b"
+    },
+    {
+      "privateIgnoredArtifact": "staging-final-protocols.json",
+      "bytes": 2755,
+      "sha256": "82b95e0563a9caed26840149aeeed33411ff43efe5aae2d9ef9c0862d057bbae"
+    },
+    {
+      "privateIgnoredArtifact": "advisor-warning-rows.json",
+      "bytes": 4175,
+      "sha256": "aafd785ab902d210ef4553eae47e75b886848c2da937c30a0865dbf6a584f5c9"
+    },
+    {
+      "privateIgnoredArtifact": "backup-page.txt",
+      "bytes": 6513,
+      "sha256": "4436213685bda7961b38584988ac1c9ae1ee143e6785614ad150e2f7d0474419"
+    },
+    {
+      "privateIgnoredArtifact": "production-overview-dom.txt",
+      "bytes": 7170,
+      "sha256": "89e7979d8859c507c84bb2f0ab88b485888e7051b1dfd41327bfb593a5a72cd0"
+    },
+    {
+      "privateIgnoredArtifact": "merge-scope.json",
+      "bytes": 20731,
+      "sha256": "9888823081b1db76c0b0a4f06c286c7341f9d0b6fb0a3ad230f8f77b048799b9"
+    },
+    {
+      "privateIgnoredArtifact": "production-legacy-projection.json",
+      "bytes": 780,
+      "sha256": "d4624b79ed38ecb44c5d98600712b23a0d8468bf188f740378c08c438e5dac72"
+    },
+    {
+      "privateIgnoredArtifact": "production-all-legacy-protection.json",
+      "bytes": 4353,
+      "sha256": "fda596ca00e0d07bc0ac11c6c4f133b0dd336766d394c001fb5a8eae7cc7434e"
+    },
+    {
+      "privateIgnoredArtifact": "production-all-legacy-protection-final.json",
+      "bytes": 4353,
+      "sha256": "8990efbfa93d6a33e8ffa41d1bf5e9682331490d1ec38cfcc437005934f0e865"
+    },
+    {
+      "privateIgnoredArtifact": "production-legacy-shape.json",
+      "bytes": 536,
+      "sha256": "67f0d5b10f51a95533563614fb55b25e252fb26467c4c5172654e95b9d89b07b"
+    },
+    {
+      "privateIgnoredArtifact": "staging-readback-sql-proof.json",
+      "bytes": 1239,
+      "sha256": "556b1840dee79039e93cf4d00483dcfbb469c107a04664f7de82986c2ae70372"
+    },
+    {
+      "privateIgnoredArtifact": "vercel-safe.json",
+      "bytes": 1430,
+      "sha256": "9daaa10095f0219c7d1868dd6193fd23b237c1baffe13d4f3b5a92493fe43365"
+    },
+    {
+      "privateIgnoredArtifact": "production-ledger-raw-seal.json",
+      "bytes": 6451,
+      "sha256": "8d55a19627c5cda04da032b5492356b371d390b54a83b09482460875f39e32b3"
+    }
+  ],
+  "protection": {
+    "originalPublicAndPrivateRelations": 25,
+    "oldColumnProjectionFirstAt": "2026-11-02T15:21:59.153537+00:00",
+    "oldColumnProjectionFinalAt": "2026-11-02T15:27:37.825403+00:00",
+    "all25CountsAndHashesEqual": true
+  }
+}

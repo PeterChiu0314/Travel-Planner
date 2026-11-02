@@ -1,0 +1,2641 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "status": "REVIEW DRAFT / NOT EXECUTABLE / NOT DEPLOYMENT AUTHORITY",
+  "productionTarget": "lqvuqamzmchepgxkftcw",
+  "stagingReference": "uyqdopksfysbobhjcepk",
+  "startingCommit": "a0a818df2fcb72557f73c80ddaf77dffe0059b00",
+  "normalization": "Source SHA-256 over full UTF-8 source with CR removed; split legacy statement arrays have a separately labelled joined hash",
+  "target": "lqvuqamzmchepgxkftcw",
+  "stage": "uyqdopksfysbobhjcepk",
+  "productionLedger": [
+    {
+      "name": "collaborative_travel_planner",
+      "version": "001",
+      "statementCount": 73,
+      "firstSourceBytes": 39,
+      "firstSourceSha256": "5ffaaee4687ab864609d97715c3d3e520d60c99500c3c03978431227d49d89ea",
+      "joinedSourceSha256": "62202135a871ce7ca27f66c93b888bf972fa8fc00a514216b2c124f9dc5c6a07"
+    },
+    {
+      "name": "core_mvp_schema",
+      "version": "002",
+      "statementCount": 144,
+      "firstSourceBytes": 39,
+      "firstSourceSha256": "5ffaaee4687ab864609d97715c3d3e520d60c99500c3c03978431227d49d89ea",
+      "joinedSourceSha256": "7109dd260036405fbb2f3b89ae1e968b1388c0924392d96d02826c397af506e0"
+    },
+    {
+      "name": "trip_name_compat",
+      "version": "003",
+      "statementCount": 3,
+      "firstSourceBytes": 338,
+      "firstSourceSha256": "68d24bc7237145da96921a44593c8a1144f0fa8d11ef92e2dc41202a6f6c552e",
+      "joinedSourceSha256": "5d7c62933c99230a4c0b626145774308b4029de09740980792fe1679a4bdb438"
+    },
+    {
+      "name": "harden_rls_rpc_permissions",
+      "version": "004",
+      "statementCount": 12,
+      "firstSourceBytes": 84,
+      "firstSourceSha256": "801ce91c2da68babf84f337baddd2d32dfce2189397707a461d51ae90cd1df9d",
+      "joinedSourceSha256": "025d5fadf9138faf8a269b72bbe09a042551d36a1f9d011d9d7ac8ba7e8b5738"
+    },
+    {
+      "name": "revoke_public_rpc_execute",
+      "version": "005",
+      "statementCount": 12,
+      "firstSourceBytes": 71,
+      "firstSourceSha256": "d0da06362154f732824dc30935ca37449e85b6ba67e40795d5cb5a57356b3a1c",
+      "joinedSourceSha256": "212e7b23af33a4e88d05af23eb399d8a6e517a51210b49bef9b7407b34e259b0"
+    },
+    {
+      "name": "move_rls_helpers_private",
+      "version": "006",
+      "statementCount": 113,
+      "firstSourceBytes": 39,
+      "firstSourceSha256": "1b3db31c91b0ffa7209006f1ddd7365c3cab3fd086fa0a3dab0fb87a7036f126",
+      "joinedSourceSha256": "f244931fc885578e64631285c96790516382283d4b2d6572a2dc05ee77c45b10"
+    },
+    {
+      "name": "create_attachments_storage",
+      "version": "007",
+      "statementCount": 9,
+      "firstSourceBytes": 383,
+      "firstSourceSha256": "c2b884191754d8c3d0978112c852f9ddd9cafdab34ec735bbd7114aab127612b",
+      "joinedSourceSha256": "722f7b342f480a0255c37fb315b69ca2c7065638aeb678ebe67bf2ea98bfe57e"
+    },
+    {
+      "name": "share_snapshot_rpc",
+      "version": "008",
+      "statementCount": 6,
+      "firstSourceBytes": 2881,
+      "firstSourceSha256": "e07eeaab1ad57bc2971820d62700ab7a3af1907adab8ef8e6db88979ccae73e4",
+      "joinedSourceSha256": "cef5fdee6f384eaa6d30ebdff39af0d6ae846b2340b858b8c9b2ad0bb4ec5db7"
+    },
+    {
+      "name": "add_edit_locks",
+      "version": "009",
+      "statementCount": 14,
+      "firstSourceBytes": 168,
+      "firstSourceSha256": "b52939fefaf168ec6ab1d025807ad94a6da250e8ffad07aa0984dc20bf269992",
+      "joinedSourceSha256": "670b1f04b0e4609ba4aed5b26ef1c75307ed1a6abcf47b3427e59e78e1b5d96d"
+    },
+    {
+      "name": "add_transportation_card_fields",
+      "version": "010",
+      "statementCount": 14,
+      "firstSourceBytes": 317,
+      "firstSourceSha256": "ead76ab524514fc44623f48402f0e600f228f26d3ba845ba0db543f074c3d969",
+      "joinedSourceSha256": "87c004720e8ee1b32410d6c1bcdcb99998d08a8e858b085a40e0c9ca8744f126"
+    },
+    {
+      "name": "add_transport_card_pair_fields",
+      "version": "011",
+      "statementCount": 9,
+      "firstSourceBytes": 380,
+      "firstSourceSha256": "6448fe0c4e63ec2ad4088d37744b52b937a7b8a3538707d6c0f33be70c599880",
+      "joinedSourceSha256": "1540449e2ed21e64a149fe64049eb1b7c0fb1c9746b963c014267bf271572cc8"
+    },
+    {
+      "name": "add_transport_review_snapshots",
+      "version": "012",
+      "statementCount": 10,
+      "firstSourceBytes": 616,
+      "firstSourceSha256": "051ccd355daa7335d27eec89c510ff5a7738a1a9e03bd5ccd5bf13c69a049dbc",
+      "joinedSourceSha256": "317651a19d30f6762b05bc81787eaff774d80c87af4a585b27067b0b84f3381b"
+    },
+    {
+      "name": "add_itinerary_alternative_visit_fields",
+      "version": "013",
+      "statementCount": 8,
+      "firstSourceBytes": 235,
+      "firstSourceSha256": "d7c5137c8c83c37f934de1ee7cd39864fa72d8376ffce88740418f9053379f2a",
+      "joinedSourceSha256": "7b86732017fee28530d94d755a29346dd29578d71161ae6a791750158851454e"
+    },
+    {
+      "name": "add_itinerary_item_fixed_fields",
+      "version": "014",
+      "statementCount": 4,
+      "firstSourceBytes": 237,
+      "firstSourceSha256": "670dbf6145f81718f0a87125cde59b4c835ffe6401486eb9bd2e0286249c200e",
+      "joinedSourceSha256": "cebfada38a5af5d29e236f9c4d276d046a2bc3fff8d1249a5478b5baafaa1a9e"
+    },
+    {
+      "name": "add_trip_destination_fields",
+      "version": "015",
+      "statementCount": 3,
+      "firstSourceBytes": 128,
+      "firstSourceSha256": "faad39f6c1973d05e24d709491699e970f13c248a901c44f0e11c1636bc51fba",
+      "joinedSourceSha256": "ad2c8238e2db09c263d80a6a5cd2df0d7621010135b82672e12af8ecc613d1c9"
+    },
+    {
+      "name": "apply_trip_date_change",
+      "version": "016",
+      "statementCount": 9,
+      "firstSourceBytes": 2092,
+      "firstSourceSha256": "7a04acd85ad4ee088294325150037d6631752cd64219a222f706afa6a019965a",
+      "joinedSourceSha256": "969614c0262ff8b8f9c10f7be0cf16869d09441f02e211b3252b3967d871f0ea"
+    },
+    {
+      "name": "confirm_trip_date_shortening",
+      "version": "017",
+      "statementCount": 11,
+      "firstSourceBytes": 71,
+      "firstSourceSha256": "1138b07ae605816e73d9a8b1ab9b30be3db4777db1aaeffc556021dd79efaf41",
+      "joinedSourceSha256": "5dcc1cc770ef4a3f82d316c9e281f3fcb371d88f8aeac9b2e34a92689b000e7c"
+    },
+    {
+      "name": "filter_share_snapshot_timeline",
+      "version": "018",
+      "statementCount": 6,
+      "firstSourceBytes": 3508,
+      "firstSourceSha256": "a1bc8599bf4bcd1fd0f7c9d3f8c5ee5412040be4a51889d487a244546408b04b",
+      "joinedSourceSha256": "d2d8584408e42963960e8a973ac0bbdfffe90fc76a574d940a1bfb9bcc7f5a07"
+    },
+    {
+      "name": "swap_itinerary_destination_packages",
+      "version": "019",
+      "statementCount": 10,
+      "firstSourceBytes": 5684,
+      "firstSourceSha256": "5aff215a02acf994a6622029154aa6264dab492ec67fc9a6ee29d9f5f3e87d67",
+      "joinedSourceSha256": "292e15c50f5d251def0ec887dedc2150cb523206da5e3b90bb11bf97a12a9b22"
+    },
+    {
+      "name": "reorder_itinerary_destination_packages",
+      "version": "020",
+      "statementCount": 10,
+      "firstSourceBytes": 12780,
+      "firstSourceSha256": "20ebbe8ba08b5b7fe9c74b92aa2cec32f42a8b707bcc5424d526e04c529b9b9d",
+      "joinedSourceSha256": "f6ceaafdb5f9669226e18966a03397840168809cc1e13962199d0a2169ea67ea"
+    },
+    {
+      "name": "fix_reorder_baseline_count",
+      "version": "021",
+      "statementCount": 4,
+      "firstSourceBytes": 12946,
+      "firstSourceSha256": "433821c22d989bbd3f393e5f7210724f379063f32a46c37ef3a27d9bd5bf1912",
+      "joinedSourceSha256": "3d097bd3109c12e7b3bde69dc2e2d3adaec3f78fd5f0d8225a05ec9d3a2b8f56"
+    },
+    {
+      "name": "add_transport_role_to_itinerary_items",
+      "version": "022",
+      "statementCount": 6,
+      "firstSourceBytes": 222,
+      "firstSourceSha256": "befa77444a232bacb622b3ccdd51fdaca36518fca8d7d49fa62361d870151e79",
+      "joinedSourceSha256": "2a0e174b0c5d64d9e456d905c7c87bff8c170e8c41090d2efd33b4154adacf1b"
+    },
+    {
+      "name": "reorder_itinerary_timed_auto_continuation",
+      "version": "023",
+      "statementCount": 10,
+      "firstSourceBytes": 15024,
+      "firstSourceSha256": "72a4fda7ec9e3b20d386b6c79f885504422696e794cc5fa0f0029cce3798f596",
+      "joinedSourceSha256": "83ee5bbe7960a0adf0878e6305f3f90efc8dc2e98a729c163eea8f6715661b7e"
+    },
+    {
+      "name": "reorder_itinerary_fixed_anchor_continuation",
+      "version": "024",
+      "statementCount": 10,
+      "firstSourceBytes": 26313,
+      "firstSourceSha256": "2a950c4ead50855526de791bd136d00e8ed945f857fc0b92aabb45053f8ff4f8",
+      "joinedSourceSha256": "3c15dd321d699ae364a6014609d2d448b9d16d71f0de827a5d35394ec8811c7b"
+    },
+    {
+      "name": "add_itinerary_route_overrides",
+      "version": "20260708063744",
+      "statementCount": 15,
+      "firstSourceBytes": 827,
+      "firstSourceSha256": "c7a5191f7c584d620d7d763b521cc0cfede89cadf18d0ba8bc60e4ae19237498",
+      "joinedSourceSha256": "335eb93de770ed24eb42627ffd5bafff6f01d80bafc03aafd01b758ff7516e3c"
+    },
+    {
+      "name": "add_itinerary_route_override_nodes",
+      "version": "20260710125337",
+      "statementCount": 28,
+      "firstSourceBytes": 895,
+      "firstSourceSha256": "7a8f7792215d07fb03d6c032c66dc69498cf6c4596016fe37d7b47f2bf05bc26",
+      "joinedSourceSha256": "45dccbcebddd740edd8cb6c98c0707bab75d6fdd934c77f678aa83642bdc1c6e"
+    },
+    {
+      "name": "add_route_tables_to_realtime",
+      "version": "20260712033758",
+      "statementCount": 4,
+      "firstSourceBytes": 66,
+      "firstSourceSha256": "b25ec550a6e4d68b5e14b5b68d21a21280d0a08f9afbe1bfbf35a8c160900f51",
+      "joinedSourceSha256": "9a5f8cba39153ac41cd51bab7ecbcbfa383a10ecbfc2d567dd7a4da0c67d8670"
+    },
+    {
+      "name": "timeline_phase_6_unified_schedule_operation",
+      "version": "20260809090000",
+      "statementCount": 33,
+      "firstSourceBytes": 1084,
+      "firstSourceSha256": "9178632cc2b9cd552715350a8e8c8d4c9c4f9c0df836baa0f5b57f17948158c0",
+      "joinedSourceSha256": "977a6838611725857c8584e72d52e67e5c2752a87c5f45cf902cf8d5ae6d64b4"
+    },
+    {
+      "name": "timeline_phase_6_cleanup_legacy_time_transport",
+      "version": "20260809091000",
+      "statementCount": 15,
+      "firstSourceBytes": 442,
+      "firstSourceSha256": "c810ad91f8cd8e0edfb79b7898bf9d146589b14458a6fcfb91642221b52f3102",
+      "joinedSourceSha256": "772fee113db10a283af46a297b867e8df0fe6a667f2376863b6da75402911033"
+    },
+    {
+      "name": "timeline_phase_6_defer_transport_pair_uniqueness",
+      "version": "20260811124500",
+      "statementCount": 3,
+      "firstSourceBytes": 369,
+      "firstSourceSha256": "3dc31655632b8c331d553420fe9c6c79a8669994be7c14ad0dffd4acd8c01725",
+      "joinedSourceSha256": "de91eb7eb49e18cdac90dbb03cec9c928ef343e9738fe3bb77a0a61e5732b8d1"
+    },
+    {
+      "name": "timeline_phase_6_restore_five_minute_ceiling",
+      "version": "20260811133000",
+      "statementCount": 3,
+      "firstSourceBytes": 592,
+      "firstSourceSha256": "81063974136fd5e80ec14e17f11dcf6e579a54c71828bad81eec532ad5ad4c98",
+      "joinedSourceSha256": "d17ca835656c4df81e1759f58025d92648048daee11bf531e9fafec3bc7946f2"
+    },
+    {
+      "name": "atomic_apply_itinerary_alternative",
+      "version": "20260811150000",
+      "statementCount": 10,
+      "firstSourceBytes": 4174,
+      "firstSourceSha256": "379745edbb743f8c5ff15db8c1bef4ef630d56ea13b31539513f41d6662c5da0",
+      "joinedSourceSha256": "799f2d838bc9cea06f093502af03ea6f3ff893ce482dd4682845a6fe033a70b2"
+    },
+    {
+      "name": "phase_7_import_trip_timeline_v1",
+      "version": "20260819134935",
+      "statementCount": 1,
+      "firstSourceBytes": 22260,
+      "firstSourceSha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c",
+      "joinedSourceSha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c"
+    },
+    {
+      "name": "budget_workspace_baseline_and_pricing",
+      "version": "20261022090000",
+      "statementCount": 36,
+      "firstSourceBytes": 160,
+      "firstSourceSha256": "94ad86546df928bfb7eddf078f63025226ba630c657be29335c3d9cd12ddab80",
+      "joinedSourceSha256": "ac59fabafd9bcbffec0236e91ddf970a2029ada5dce61c0056301490b74b6b24"
+    },
+    {
+      "name": "trip_budget_exchange_rates",
+      "version": "20261022100000",
+      "statementCount": 9,
+      "firstSourceBytes": 77,
+      "firstSourceSha256": "addf15109e2e4ab846767baf24cfea94a1ebdbcf1ba4432bc9124bf1b1712dff",
+      "joinedSourceSha256": "0949f9dd09db4b216006036fb0e98ec583c1ddc707ed90925104ff861aa840ea"
+    },
+    {
+      "name": "budget_payment_safety_and_actual_cost",
+      "version": "20261022110000",
+      "statementCount": 1,
+      "firstSourceBytes": 18050,
+      "firstSourceSha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9",
+      "joinedSourceSha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+    },
+    {
+      "name": "unified_planning_payments",
+      "version": "20261022120000",
+      "statementCount": 1,
+      "firstSourceBytes": 9167,
+      "firstSourceSha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd",
+      "joinedSourceSha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+    },
+    {
+      "name": "luggage_collaboration_state_safety",
+      "version": "20261022162015",
+      "statementCount": 1,
+      "firstSourceBytes": 14829,
+      "firstSourceSha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3",
+      "joinedSourceSha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+    },
+    {
+      "name": "luggage_notes",
+      "version": "20261023120000",
+      "statementCount": 1,
+      "firstSourceBytes": 6743,
+      "firstSourceSha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76",
+      "joinedSourceSha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+    },
+    {
+      "name": "luggage_drag_assignment",
+      "version": "20261024054121",
+      "statementCount": null,
+      "firstSourceBytes": null,
+      "firstSourceSha256": null,
+      "joinedSourceSha256": null
+    },
+    {
+      "name": "luggage_private_return",
+      "version": "20261024063828",
+      "statementCount": null,
+      "firstSourceBytes": null,
+      "firstSourceSha256": null,
+      "joinedSourceSha256": null
+    },
+    {
+      "name": "luggage_item_ordering",
+      "version": "20261024112902",
+      "statementCount": 1,
+      "firstSourceBytes": 4994,
+      "firstSourceSha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db",
+      "joinedSourceSha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+    },
+    {
+      "name": "luggage_required_assignee",
+      "version": "20261026120000",
+      "statementCount": 1,
+      "firstSourceBytes": 13571,
+      "firstSourceSha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6",
+      "joinedSourceSha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+    },
+    {
+      "name": "budget_atomic_edit_leases",
+      "version": "20261027140044",
+      "statementCount": 1,
+      "firstSourceBytes": 16352,
+      "firstSourceSha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127",
+      "joinedSourceSha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+    },
+    {
+      "name": "budget_consistent_snapshot",
+      "version": "20261027145613",
+      "statementCount": 1,
+      "firstSourceBytes": 2662,
+      "firstSourceSha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07",
+      "joinedSourceSha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+    },
+    {
+      "name": "budget_collaboration_state",
+      "version": "20261027152539",
+      "statementCount": 1,
+      "firstSourceBytes": 6758,
+      "firstSourceSha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361",
+      "joinedSourceSha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+    },
+    {
+      "name": "budget_selection_activity",
+      "version": "20261028104333",
+      "statementCount": 1,
+      "firstSourceBytes": 4869,
+      "firstSourceSha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661",
+      "joinedSourceSha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+    },
+    {
+      "name": "rpc_business_conflicts_no_retry",
+      "version": "20261031003000",
+      "statementCount": 1,
+      "firstSourceBytes": 3266,
+      "firstSourceSha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2",
+      "joinedSourceSha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2"
+    }
+  ],
+  "stagingLedger": [
+    {
+      "name": "collaborative_travel_planner",
+      "version": "001",
+      "statementCount": 73,
+      "firstSourceBytes": 39,
+      "firstSourceSha256": "5ffaaee4687ab864609d97715c3d3e520d60c99500c3c03978431227d49d89ea",
+      "joinedSourceSha256": "62202135a871ce7ca27f66c93b888bf972fa8fc00a514216b2c124f9dc5c6a07"
+    },
+    {
+      "name": "core_mvp_schema",
+      "version": "002",
+      "statementCount": 144,
+      "firstSourceBytes": 39,
+      "firstSourceSha256": "5ffaaee4687ab864609d97715c3d3e520d60c99500c3c03978431227d49d89ea",
+      "joinedSourceSha256": "7109dd260036405fbb2f3b89ae1e968b1388c0924392d96d02826c397af506e0"
+    },
+    {
+      "name": "trip_name_compat",
+      "version": "003",
+      "statementCount": 3,
+      "firstSourceBytes": 354,
+      "firstSourceSha256": "68d24bc7237145da96921a44593c8a1144f0fa8d11ef92e2dc41202a6f6c552e",
+      "joinedSourceSha256": "5d7c62933c99230a4c0b626145774308b4029de09740980792fe1679a4bdb438"
+    },
+    {
+      "name": "harden_rls_rpc_permissions",
+      "version": "004",
+      "statementCount": 12,
+      "firstSourceBytes": 84,
+      "firstSourceSha256": "801ce91c2da68babf84f337baddd2d32dfce2189397707a461d51ae90cd1df9d",
+      "joinedSourceSha256": "025d5fadf9138faf8a269b72bbe09a042551d36a1f9d011d9d7ac8ba7e8b5738"
+    },
+    {
+      "name": "revoke_public_rpc_execute",
+      "version": "005",
+      "statementCount": 12,
+      "firstSourceBytes": 71,
+      "firstSourceSha256": "d0da06362154f732824dc30935ca37449e85b6ba67e40795d5cb5a57356b3a1c",
+      "joinedSourceSha256": "212e7b23af33a4e88d05af23eb399d8a6e517a51210b49bef9b7407b34e259b0"
+    },
+    {
+      "name": "move_rls_helpers_private",
+      "version": "006",
+      "statementCount": 113,
+      "firstSourceBytes": 39,
+      "firstSourceSha256": "1b3db31c91b0ffa7209006f1ddd7365c3cab3fd086fa0a3dab0fb87a7036f126",
+      "joinedSourceSha256": "f244931fc885578e64631285c96790516382283d4b2d6572a2dc05ee77c45b10"
+    },
+    {
+      "name": "create_attachments_storage",
+      "version": "007",
+      "statementCount": 9,
+      "firstSourceBytes": 395,
+      "firstSourceSha256": "c2b884191754d8c3d0978112c852f9ddd9cafdab34ec735bbd7114aab127612b",
+      "joinedSourceSha256": "722f7b342f480a0255c37fb315b69ca2c7065638aeb678ebe67bf2ea98bfe57e"
+    },
+    {
+      "name": "share_snapshot_rpc",
+      "version": "008",
+      "statementCount": 6,
+      "firstSourceBytes": 2982,
+      "firstSourceSha256": "e07eeaab1ad57bc2971820d62700ab7a3af1907adab8ef8e6db88979ccae73e4",
+      "joinedSourceSha256": "cef5fdee6f384eaa6d30ebdff39af0d6ae846b2340b858b8c9b2ad0bb4ec5db7"
+    },
+    {
+      "name": "add_edit_locks",
+      "version": "009",
+      "statementCount": 14,
+      "firstSourceBytes": 170,
+      "firstSourceSha256": "b52939fefaf168ec6ab1d025807ad94a6da250e8ffad07aa0984dc20bf269992",
+      "joinedSourceSha256": "670b1f04b0e4609ba4aed5b26ef1c75307ed1a6abcf47b3427e59e78e1b5d96d"
+    },
+    {
+      "name": "add_transportation_card_fields",
+      "version": "010",
+      "statementCount": 14,
+      "firstSourceBytes": 312,
+      "firstSourceSha256": "ead76ab524514fc44623f48402f0e600f228f26d3ba845ba0db543f074c3d969",
+      "joinedSourceSha256": "87c004720e8ee1b32410d6c1bcdcb99998d08a8e858b085a40e0c9ca8744f126"
+    },
+    {
+      "name": "add_transport_card_pair_fields",
+      "version": "011",
+      "statementCount": 9,
+      "firstSourceBytes": 375,
+      "firstSourceSha256": "6448fe0c4e63ec2ad4088d37744b52b937a7b8a3538707d6c0f33be70c599880",
+      "joinedSourceSha256": "1540449e2ed21e64a149fe64049eb1b7c0fb1c9746b963c014267bf271572cc8"
+    },
+    {
+      "name": "add_transport_review_snapshots",
+      "version": "012",
+      "statementCount": 10,
+      "firstSourceBytes": 606,
+      "firstSourceSha256": "051ccd355daa7335d27eec89c510ff5a7738a1a9e03bd5ccd5bf13c69a049dbc",
+      "joinedSourceSha256": "317651a19d30f6762b05bc81787eaff774d80c87af4a585b27067b0b84f3381b"
+    },
+    {
+      "name": "add_itinerary_alternative_visit_fields",
+      "version": "013",
+      "statementCount": 8,
+      "firstSourceBytes": 235,
+      "firstSourceSha256": "d7c5137c8c83c37f934de1ee7cd39864fa72d8376ffce88740418f9053379f2a",
+      "joinedSourceSha256": "7b86732017fee28530d94d755a29346dd29578d71161ae6a791750158851454e"
+    },
+    {
+      "name": "add_itinerary_item_fixed_fields",
+      "version": "014",
+      "statementCount": 4,
+      "firstSourceBytes": 240,
+      "firstSourceSha256": "670dbf6145f81718f0a87125cde59b4c835ffe6401486eb9bd2e0286249c200e",
+      "joinedSourceSha256": "cebfada38a5af5d29e236f9c4d276d046a2bc3fff8d1249a5478b5baafaa1a9e"
+    },
+    {
+      "name": "add_trip_destination_fields",
+      "version": "015",
+      "statementCount": 3,
+      "firstSourceBytes": 128,
+      "firstSourceSha256": "faad39f6c1973d05e24d709491699e970f13c248a901c44f0e11c1636bc51fba",
+      "joinedSourceSha256": "ad2c8238e2db09c263d80a6a5cd2df0d7621010135b82672e12af8ecc613d1c9"
+    },
+    {
+      "name": "apply_trip_date_change",
+      "version": "016",
+      "statementCount": 9,
+      "firstSourceBytes": 2092,
+      "firstSourceSha256": "7a04acd85ad4ee088294325150037d6631752cd64219a222f706afa6a019965a",
+      "joinedSourceSha256": "969614c0262ff8b8f9c10f7be0cf16869d09441f02e211b3252b3967d871f0ea"
+    },
+    {
+      "name": "confirm_trip_date_shortening",
+      "version": "017",
+      "statementCount": 11,
+      "firstSourceBytes": 71,
+      "firstSourceSha256": "1138b07ae605816e73d9a8b1ab9b30be3db4777db1aaeffc556021dd79efaf41",
+      "joinedSourceSha256": "5dcc1cc770ef4a3f82d316c9e281f3fcb371d88f8aeac9b2e34a92689b000e7c"
+    },
+    {
+      "name": "filter_share_snapshot_timeline",
+      "version": "018",
+      "statementCount": 6,
+      "firstSourceBytes": 3508,
+      "firstSourceSha256": "a1bc8599bf4bcd1fd0f7c9d3f8c5ee5412040be4a51889d487a244546408b04b",
+      "joinedSourceSha256": "d2d8584408e42963960e8a973ac0bbdfffe90fc76a574d940a1bfb9bcc7f5a07"
+    },
+    {
+      "name": "swap_itinerary_destination_packages",
+      "version": "019",
+      "statementCount": 10,
+      "firstSourceBytes": 5684,
+      "firstSourceSha256": "5aff215a02acf994a6622029154aa6264dab492ec67fc9a6ee29d9f5f3e87d67",
+      "joinedSourceSha256": "292e15c50f5d251def0ec887dedc2150cb523206da5e3b90bb11bf97a12a9b22"
+    },
+    {
+      "name": "reorder_itinerary_destination_packages",
+      "version": "020",
+      "statementCount": 10,
+      "firstSourceBytes": 12780,
+      "firstSourceSha256": "20ebbe8ba08b5b7fe9c74b92aa2cec32f42a8b707bcc5424d526e04c529b9b9d",
+      "joinedSourceSha256": "f6ceaafdb5f9669226e18966a03397840168809cc1e13962199d0a2169ea67ea"
+    },
+    {
+      "name": "fix_reorder_baseline_count",
+      "version": "021",
+      "statementCount": 4,
+      "firstSourceBytes": 12946,
+      "firstSourceSha256": "433821c22d989bbd3f393e5f7210724f379063f32a46c37ef3a27d9bd5bf1912",
+      "joinedSourceSha256": "3d097bd3109c12e7b3bde69dc2e2d3adaec3f78fd5f0d8225a05ec9d3a2b8f56"
+    },
+    {
+      "name": "add_transport_role_to_itinerary_items",
+      "version": "022",
+      "statementCount": 6,
+      "firstSourceBytes": 222,
+      "firstSourceSha256": "befa77444a232bacb622b3ccdd51fdaca36518fca8d7d49fa62361d870151e79",
+      "joinedSourceSha256": "2a0e174b0c5d64d9e456d905c7c87bff8c170e8c41090d2efd33b4154adacf1b"
+    },
+    {
+      "name": "reorder_itinerary_timed_auto_continuation",
+      "version": "023",
+      "statementCount": 10,
+      "firstSourceBytes": 15024,
+      "firstSourceSha256": "72a4fda7ec9e3b20d386b6c79f885504422696e794cc5fa0f0029cce3798f596",
+      "joinedSourceSha256": "83ee5bbe7960a0adf0878e6305f3f90efc8dc2e98a729c163eea8f6715661b7e"
+    },
+    {
+      "name": "reorder_itinerary_fixed_anchor_continuation",
+      "version": "024",
+      "statementCount": 10,
+      "firstSourceBytes": 26313,
+      "firstSourceSha256": "2a950c4ead50855526de791bd136d00e8ed945f857fc0b92aabb45053f8ff4f8",
+      "joinedSourceSha256": "3c15dd321d699ae364a6014609d2d448b9d16d71f0de827a5d35394ec8811c7b"
+    },
+    {
+      "name": "add_itinerary_route_overrides",
+      "version": "20260708063744",
+      "statementCount": 15,
+      "firstSourceBytes": 841,
+      "firstSourceSha256": "c7a5191f7c584d620d7d763b521cc0cfede89cadf18d0ba8bc60e4ae19237498",
+      "joinedSourceSha256": "335eb93de770ed24eb42627ffd5bafff6f01d80bafc03aafd01b758ff7516e3c"
+    },
+    {
+      "name": "add_itinerary_route_override_nodes",
+      "version": "20260710125337",
+      "statementCount": 28,
+      "firstSourceBytes": 910,
+      "firstSourceSha256": "7a8f7792215d07fb03d6c032c66dc69498cf6c4596016fe37d7b47f2bf05bc26",
+      "joinedSourceSha256": "45dccbcebddd740edd8cb6c98c0707bab75d6fdd934c77f678aa83642bdc1c6e"
+    },
+    {
+      "name": "add_route_tables_to_realtime",
+      "version": "20260712033758",
+      "statementCount": 4,
+      "firstSourceBytes": 66,
+      "firstSourceSha256": "b25ec550a6e4d68b5e14b5b68d21a21280d0a08f9afbe1bfbf35a8c160900f51",
+      "joinedSourceSha256": "9a5f8cba39153ac41cd51bab7ecbcbfa383a10ecbfc2d567dd7a4da0c67d8670"
+    },
+    {
+      "name": "timeline_phase_6_unified_schedule_operation",
+      "version": "20260809090000",
+      "statementCount": 33,
+      "firstSourceBytes": 1084,
+      "firstSourceSha256": "9178632cc2b9cd552715350a8e8c8d4c9c4f9c0df836baa0f5b57f17948158c0",
+      "joinedSourceSha256": "977a6838611725857c8584e72d52e67e5c2752a87c5f45cf902cf8d5ae6d64b4"
+    },
+    {
+      "name": "timeline_phase_6_cleanup_legacy_time_transport",
+      "version": "20260809091000",
+      "statementCount": 15,
+      "firstSourceBytes": 442,
+      "firstSourceSha256": "c810ad91f8cd8e0edfb79b7898bf9d146589b14458a6fcfb91642221b52f3102",
+      "joinedSourceSha256": "772fee113db10a283af46a297b867e8df0fe6a667f2376863b6da75402911033"
+    },
+    {
+      "name": "timeline_phase_6_defer_transport_pair_uniqueness",
+      "version": "20260811124500",
+      "statementCount": 3,
+      "firstSourceBytes": 369,
+      "firstSourceSha256": "3dc31655632b8c331d553420fe9c6c79a8669994be7c14ad0dffd4acd8c01725",
+      "joinedSourceSha256": "de91eb7eb49e18cdac90dbb03cec9c928ef343e9738fe3bb77a0a61e5732b8d1"
+    },
+    {
+      "name": "timeline_phase_6_restore_five_minute_ceiling",
+      "version": "20260811133000",
+      "statementCount": 3,
+      "firstSourceBytes": 592,
+      "firstSourceSha256": "81063974136fd5e80ec14e17f11dcf6e579a54c71828bad81eec532ad5ad4c98",
+      "joinedSourceSha256": "d17ca835656c4df81e1759f58025d92648048daee11bf531e9fafec3bc7946f2"
+    },
+    {
+      "name": "atomic_apply_itinerary_alternative",
+      "version": "20260811150000",
+      "statementCount": 1,
+      "firstSourceBytes": 5716,
+      "firstSourceSha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8",
+      "joinedSourceSha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+    },
+    {
+      "name": "phase_7_import_trip_timeline_v1",
+      "version": "20260819125851",
+      "statementCount": 1,
+      "firstSourceBytes": 22260,
+      "firstSourceSha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c",
+      "joinedSourceSha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c"
+    },
+    {
+      "name": "budget_workspace_baseline_and_pricing",
+      "version": "20261022090000",
+      "statementCount": 1,
+      "firstSourceBytes": 19999,
+      "firstSourceSha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1",
+      "joinedSourceSha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+    },
+    {
+      "name": "trip_budget_exchange_rates",
+      "version": "20261022100000",
+      "statementCount": 1,
+      "firstSourceBytes": 4885,
+      "firstSourceSha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650",
+      "joinedSourceSha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+    },
+    {
+      "name": "budget_payment_safety_and_actual_cost",
+      "version": "20261022110000",
+      "statementCount": 1,
+      "firstSourceBytes": 18050,
+      "firstSourceSha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9",
+      "joinedSourceSha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+    },
+    {
+      "name": "unified_planning_payments",
+      "version": "20261022120000",
+      "statementCount": 1,
+      "firstSourceBytes": 9167,
+      "firstSourceSha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd",
+      "joinedSourceSha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+    },
+    {
+      "name": "luggage_collaboration_state_safety",
+      "version": "20261022162015",
+      "statementCount": 1,
+      "firstSourceBytes": 14829,
+      "firstSourceSha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3",
+      "joinedSourceSha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+    },
+    {
+      "name": "luggage_notes",
+      "version": "20261023120000",
+      "statementCount": 1,
+      "firstSourceBytes": 6743,
+      "firstSourceSha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76",
+      "joinedSourceSha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+    },
+    {
+      "name": "luggage_drag_assignment",
+      "version": "20261024054121",
+      "statementCount": 1,
+      "firstSourceBytes": 3576,
+      "firstSourceSha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68",
+      "joinedSourceSha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+    },
+    {
+      "name": "luggage_private_return",
+      "version": "20261024063828",
+      "statementCount": 1,
+      "firstSourceBytes": 2027,
+      "firstSourceSha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90",
+      "joinedSourceSha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+    },
+    {
+      "name": "luggage_item_ordering",
+      "version": "20261024112902",
+      "statementCount": 1,
+      "firstSourceBytes": 4994,
+      "firstSourceSha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db",
+      "joinedSourceSha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+    },
+    {
+      "name": "luggage_required_assignee",
+      "version": "20261026120000",
+      "statementCount": 1,
+      "firstSourceBytes": 13571,
+      "firstSourceSha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6",
+      "joinedSourceSha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+    },
+    {
+      "name": "budget_atomic_edit_leases",
+      "version": "20261027140044",
+      "statementCount": 1,
+      "firstSourceBytes": 16352,
+      "firstSourceSha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127",
+      "joinedSourceSha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+    },
+    {
+      "name": "budget_consistent_snapshot",
+      "version": "20261027145613",
+      "statementCount": 1,
+      "firstSourceBytes": 2662,
+      "firstSourceSha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07",
+      "joinedSourceSha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+    },
+    {
+      "name": "budget_collaboration_state",
+      "version": "20261027152539",
+      "statementCount": 1,
+      "firstSourceBytes": 6758,
+      "firstSourceSha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361",
+      "joinedSourceSha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+    },
+    {
+      "name": "budget_selection_activity",
+      "version": "20261028104333",
+      "statementCount": 1,
+      "firstSourceBytes": 4924,
+      "firstSourceSha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661",
+      "joinedSourceSha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+    },
+    {
+      "name": "budget_group_metadata_prototype",
+      "version": "20261029020551",
+      "statementCount": 1,
+      "firstSourceBytes": 29124,
+      "firstSourceSha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6",
+      "joinedSourceSha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6"
+    },
+    {
+      "name": "budget_metadata_snapshot_signals",
+      "version": "20261029031137",
+      "statementCount": 1,
+      "firstSourceBytes": 7168,
+      "firstSourceSha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1",
+      "joinedSourceSha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1"
+    },
+    {
+      "name": "budget_metadata_undo_prototype",
+      "version": "20261029091435",
+      "statementCount": 1,
+      "firstSourceBytes": 26310,
+      "firstSourceSha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd",
+      "joinedSourceSha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd"
+    },
+    {
+      "name": "budget_category_payer_links_groups",
+      "version": "20261029114817",
+      "statementCount": 1,
+      "firstSourceBytes": 41963,
+      "firstSourceSha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262",
+      "joinedSourceSha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262"
+    },
+    {
+      "name": "budget_pricing_participant_groups",
+      "version": "20261029123907",
+      "statementCount": 1,
+      "firstSourceBytes": 78330,
+      "firstSourceSha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d",
+      "joinedSourceSha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d"
+    },
+    {
+      "name": "budget_payment_lifecycle_groups",
+      "version": "20261029134206",
+      "statementCount": 1,
+      "firstSourceBytes": 69518,
+      "firstSourceSha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3",
+      "joinedSourceSha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3"
+    },
+    {
+      "name": "budget_payment_minimal_bundle",
+      "version": "20261030012554",
+      "statementCount": 1,
+      "firstSourceBytes": 20858,
+      "firstSourceSha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011",
+      "joinedSourceSha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011"
+    },
+    {
+      "name": "budget_source_atomic_groups",
+      "version": "20261030021719",
+      "statementCount": 1,
+      "firstSourceBytes": 66361,
+      "firstSourceSha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c",
+      "joinedSourceSha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c"
+    },
+    {
+      "name": "budget_receipts_lifecycle",
+      "version": "20261030034351",
+      "statementCount": 1,
+      "firstSourceBytes": 69710,
+      "firstSourceSha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80",
+      "joinedSourceSha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80"
+    },
+    {
+      "name": "budget_financial_dependencies",
+      "version": "20261030054628",
+      "statementCount": 1,
+      "firstSourceBytes": 91373,
+      "firstSourceSha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55",
+      "joinedSourceSha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55"
+    },
+    {
+      "name": "budget_workspace_lifecycle",
+      "version": "20261030064703",
+      "statementCount": 1,
+      "firstSourceBytes": 113553,
+      "firstSourceSha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+      "joinedSourceSha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea"
+    },
+    {
+      "name": "budget_workspace_undo",
+      "version": "20261030082712",
+      "statementCount": 1,
+      "firstSourceBytes": 66204,
+      "firstSourceSha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27",
+      "joinedSourceSha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27"
+    },
+    {
+      "name": "rpc_business_conflicts_no_retry",
+      "version": "20261031003000",
+      "statementCount": 1,
+      "firstSourceBytes": 3266,
+      "firstSourceSha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2",
+      "joinedSourceSha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2"
+    },
+    {
+      "name": "budget_managed_worker_role_path",
+      "version": "20261031083437",
+      "statementCount": 1,
+      "firstSourceBytes": 39275,
+      "firstSourceSha256": "4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e",
+      "joinedSourceSha256": "4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e"
+    },
+    {
+      "name": "budget_business_conflicts_forward",
+      "version": "20261031130000",
+      "statementCount": 1,
+      "firstSourceBytes": 12434,
+      "firstSourceSha256": "f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3",
+      "joinedSourceSha256": "f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3"
+    },
+    {
+      "name": "budget_dormant_parent_cascade_guard",
+      "version": "20261031130414",
+      "statementCount": 1,
+      "firstSourceBytes": 3546,
+      "firstSourceSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+      "joinedSourceSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22"
+    },
+    {
+      "name": "budget_trip_cascade_lease_admission",
+      "version": "20261031140648",
+      "statementCount": 1,
+      "firstSourceBytes": 17987,
+      "firstSourceSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+      "joinedSourceSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b"
+    },
+    {
+      "name": "budget_receipt_legacy_cutover",
+      "version": "20261101032853",
+      "statementCount": 1,
+      "firstSourceBytes": 25954,
+      "firstSourceSha256": "b5032314b31678ae6ae922f6aa648e7a7108e5ce77bd09a7a9b5aef7d3ed85b6",
+      "joinedSourceSha256": "b5032314b31678ae6ae922f6aa648e7a7108e5ce77bd09a7a9b5aef7d3ed85b6"
+    }
+  ],
+  "plannedLedgerAfter": 65,
+  "pendingSources": [
+    {
+      "order": 1,
+      "version": "20261029020551",
+      "name": "budget_group_metadata_prototype",
+      "path": "supabase/migrations/20261029020551_budget_group_metadata_prototype.sql",
+      "lfSha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6",
+      "lfBytes": 29124,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "verified live baseline/PT409/T0/import alias"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 2,
+      "version": "20261029031137",
+      "name": "budget_metadata_snapshot_signals",
+      "path": "supabase/migrations/20261029031137_budget_metadata_snapshot_signals.sql",
+      "lfSha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1",
+      "lfBytes": 7168,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261029020551"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 3,
+      "version": "20261029091435",
+      "name": "budget_metadata_undo_prototype",
+      "path": "supabase/migrations/20261029091435_budget_metadata_undo_prototype.sql",
+      "lfSha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd",
+      "lfBytes": 26310,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261029031137"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 4,
+      "version": "20261029114817",
+      "name": "budget_category_payer_links_groups",
+      "path": "supabase/migrations/20261029114817_budget_category_payer_links_groups.sql",
+      "lfSha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262",
+      "lfBytes": 41963,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261029091435"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 5,
+      "version": "20261029123907",
+      "name": "budget_pricing_participant_groups",
+      "path": "supabase/migrations/20261029123907_budget_pricing_participant_groups.sql",
+      "lfSha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d",
+      "lfBytes": 78330,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261029114817"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 6,
+      "version": "20261029134206",
+      "name": "budget_payment_lifecycle_groups",
+      "path": "supabase/migrations/20261029134206_budget_payment_lifecycle_groups.sql",
+      "lfSha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3",
+      "lfBytes": 69518,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261029123907"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 7,
+      "version": "20261030012554",
+      "name": "budget_payment_minimal_bundle",
+      "path": "supabase/migrations/20261030012554_budget_payment_minimal_bundle.sql",
+      "lfSha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011",
+      "lfBytes": 20858,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261029134206"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 8,
+      "version": "20261030021719",
+      "name": "budget_source_atomic_groups",
+      "path": "supabase/migrations/20261030021719_budget_source_atomic_groups.sql",
+      "lfSha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c",
+      "lfBytes": 66361,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261030012554"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 9,
+      "version": "20261030034351",
+      "name": "budget_receipts_lifecycle",
+      "path": "supabase/migrations/20261030034351_budget_receipts_lifecycle.sql",
+      "lfSha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80",
+      "lfBytes": 69710,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261030021719"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 10,
+      "version": "20261030054628",
+      "name": "budget_financial_dependencies",
+      "path": "supabase/migrations/20261030054628_budget_financial_dependencies.sql",
+      "lfSha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55",
+      "lfBytes": 91373,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261030034351"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 11,
+      "version": "20261030064703",
+      "name": "budget_workspace_lifecycle",
+      "path": "supabase/migrations/20261030064703_budget_workspace_lifecycle.sql",
+      "lfSha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+      "lfBytes": 113553,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261030054628"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 12,
+      "version": "20261030082712",
+      "name": "budget_workspace_undo",
+      "path": "supabase/migrations/20261030082712_budget_workspace_undo.sql",
+      "lfSha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27",
+      "lfBytes": 66204,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261030064703"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 13,
+      "version": "20261031083437",
+      "name": "budget_managed_worker_role_path",
+      "path": "docs/operations/budget-b7-staging-managed/20261031083437_budget_managed_worker_role_path.sql",
+      "lfSha256": "4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e",
+      "lfBytes": 39275,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261030082712"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 14,
+      "version": "20261031130000",
+      "name": "budget_business_conflicts_forward",
+      "path": "docs/operations/budget-b7-staging/20261031130000_budget_business_conflicts_forward.sql",
+      "lfSha256": "f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3",
+      "lfBytes": 12434,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261031083437"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 15,
+      "version": "20261031130414",
+      "name": "budget_dormant_parent_cascade_guard",
+      "path": "docs/operations/drafts/budget-b7-cascade-forward/20261031130414_budget_dormant_parent_cascade_guard.sql",
+      "lfSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+      "lfBytes": 3546,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261031130000"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 16,
+      "version": "20261031140648",
+      "name": "budget_trip_cascade_lease_admission",
+      "path": "docs/operations/drafts/budget-b7-trip-cascade/20261031140648_budget_trip_cascade_lease_admission.sql",
+      "lfSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+      "lfBytes": 17987,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261031130414"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    },
+    {
+      "order": 17,
+      "version": "20261101032853",
+      "name": "budget_receipt_legacy_cutover",
+      "path": "docs/operations/budget-b7-legacy-cutover/20261101032853_budget_receipt_legacy_cutover.sql",
+      "lfSha256": "b5032314b31678ae6ae922f6aa648e7a7108e5ce77bd09a7a9b5aef7d3ed85b6",
+      "lfBytes": 25808,
+      "installedOnProduction": false,
+      "stageSourceExact": true,
+      "dependsOn": [
+        "20261031140648"
+      ],
+      "deploymentState": "PLAN ONLY; not authorized to execute"
+    }
+  ],
+  "rawVersionDifference": {
+    "stageOnly": [
+      "20260819125851",
+      "20261029020551",
+      "20261029031137",
+      "20261029091435",
+      "20261029114817",
+      "20261029123907",
+      "20261029134206",
+      "20261030012554",
+      "20261030021719",
+      "20261030034351",
+      "20261030054628",
+      "20261030064703",
+      "20261030082712",
+      "20261031083437",
+      "20261031130000",
+      "20261031130414",
+      "20261031140648",
+      "20261101032853"
+    ],
+    "productionOnly": [
+      "20260819134935"
+    ]
+  },
+  "exclusions": [
+    {
+      "version": "20260811150000",
+      "reason": "Already installed in Production; T0 private/public function bodies exactly match Stage, do not replay"
+    },
+    {
+      "version": "20260819125851",
+      "reason": "Stage timestamp alias of installed Production20260819134935; actual import function body exact; do not add alias row or replay"
+    },
+    {
+      "version": "20261031003000",
+      "reason": "Existing hotfix; 12 exact body seals, one whitespace-only reviewed difference; no replay"
+    },
+    {
+      "version": "20261030125028",
+      "reason": "Unapplied original; Stage accepted M0 replacement20261031083437, Production acceptance requires explicit Review"
+    }
+  ],
+  "hotfix": [
+    {
+      "signature": "public.delete_budget_workspace_record(uuid,text,uuid,timestamptz)",
+      "stagingBaselineBodySha256": "5ebc2cb8ee461212e101b465699589f574363f534003b6a1e2197727a40c8ddc",
+      "productionBodySha256": "5ebc2cb8ee461212e101b465699589f574363f534003b6a1e2197727a40c8ddc",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    },
+    {
+      "signature": "app_private.budget_edit_lease_action(text,uuid,uuid,uuid,text,timestamptz)",
+      "stagingBaselineBodySha256": "765a5a6f28f98ce401d0a540b6589d49a8bc3d16793e3afb75f200bb62eb9410",
+      "productionBodySha256": "765a5a6f28f98ce401d0a540b6589d49a8bc3d16793e3afb75f200bb62eb9410",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    },
+    {
+      "signature": "app_private.budget_workspace_request(uuid,uuid,text,text,uuid)",
+      "stagingBaselineBodySha256": "d7f3d2b18037842d63fb0ad06a7a356cc3c51b6631e02b1d5a0dba831688139d",
+      "productionBodySha256": "d7f3d2b18037842d63fb0ad06a7a356cc3c51b6631e02b1d5a0dba831688139d",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    },
+    {
+      "signature": "app_private.update_budget_selection(uuid,uuid,text,uuid)",
+      "stagingBaselineBodySha256": "ed2867ba4b7927919ef5f1c46ab4474d354ac27c6a0fa7823e85d0e0b6ea1108",
+      "productionBodySha256": "ed2867ba4b7927919ef5f1c46ab4474d354ac27c6a0fa7823e85d0e0b6ea1108",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    },
+    {
+      "signature": "app_private.update_budget_selection_v2(uuid,uuid,text,uuid,uuid,text)",
+      "stagingBaselineBodySha256": "b4044b8aaf8e818932a502f56a69e9947022750da5882e012685d8056207c7e7",
+      "productionBodySha256": "b4044b8aaf8e818932a502f56a69e9947022750da5882e012685d8056207c7e7",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    },
+    {
+      "signature": "public.assign_luggage_item(uuid,text,uuid,timestamptz,uuid)",
+      "stagingBaselineBodySha256": "6f44e927dbaaec2f68b74c07f3bf2b60bdac21b81bb43a2653619b0347965082",
+      "productionBodySha256": "6f44e927dbaaec2f68b74c07f3bf2b60bdac21b81bb43a2653619b0347965082",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 2
+    },
+    {
+      "signature": "public.mutate_budget_receipt(uuid,uuid,text,jsonb,uuid,uuid)",
+      "stagingBaselineBodySha256": "7ce9b1201ab18b6b4481b2fd503ea312acf3454d93c41c6d3854345fda5b5370",
+      "productionBodySha256": "7ce9b1201ab18b6b4481b2fd503ea312acf3454d93c41c6d3854345fda5b5370",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 2
+    },
+    {
+      "signature": "public.mutate_luggage_item(uuid,text,text,uuid,timestamptz,jsonb)",
+      "stagingBaselineBodySha256": "d1840d783cf1014824162ca0a85c838784f42fd99320cdfa544c6d7fb131f922",
+      "productionBodySha256": "d1840d783cf1014824162ca0a85c838784f42fd99320cdfa544c6d7fb131f922",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    },
+    {
+      "signature": "public.privatize_luggage_item(uuid,uuid,timestamptz,text)",
+      "stagingBaselineBodySha256": "a64ed5a6673791df4c65bc07496b502bdaaccd1023aaa77451ca76488db6c8c0",
+      "productionBodySha256": "bdde67772d13cbca9b7d78d33da4368c8a4dd11445861d054f103818f5391e32",
+      "exactSealMatch": false,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    },
+    {
+      "signature": "public.reorder_luggage_items(uuid,text,uuid,uuid,text,jsonb)",
+      "stagingBaselineBodySha256": "d5bc3114dc05d25efabb019328dcbb5923135f673dde7e61357bf6b35a47067f",
+      "productionBodySha256": "d5bc3114dc05d25efabb019328dcbb5923135f673dde7e61357bf6b35a47067f",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    },
+    {
+      "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+      "stagingBaselineBodySha256": "405c9244cfa84cace41c31339712b45c9808fc5d5631892a3af191e40c2c7635",
+      "productionBodySha256": "405c9244cfa84cace41c31339712b45c9808fc5d5631892a3af191e40c2c7635",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 3
+    },
+    {
+      "signature": "public.save_budget_workspace_record_v2(uuid,text,uuid,timestamptz,jsonb,uuid)",
+      "stagingBaselineBodySha256": "1bc43fb2e1bf0bed7783094438f3e2479abfff178d8bd813c1770972713a122b",
+      "productionBodySha256": "1bc43fb2e1bf0bed7783094438f3e2479abfff178d8bd813c1770972713a122b",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 2
+    },
+    {
+      "signature": "public.save_budget_workspace_record_v3(uuid,text,uuid,timestamptz,jsonb,uuid)",
+      "stagingBaselineBodySha256": "9fe2c15538936679fc32ddc3594069353e0b213217d3afafd3cf87918f4034b3",
+      "productionBodySha256": "9fe2c15538936679fc32ddc3594069353e0b213217d3afafd3cf87918f4034b3",
+      "exactSealMatch": true,
+      "custom40001Points": 0,
+      "pt409Points": 1
+    }
+  ],
+  "hotfixFormattingDifference": {
+    "signature": "privatize_luggage_item(uuid,uuid,timestamp with time zone,text)",
+    "literalPreservingLexicalTokensEqual": true,
+    "manualDiff": "Whitespace/line breaks only",
+    "rawHashStillDifferent": true,
+    "stagingSealModified": false,
+    "productionAllowlistNotApproved": true
+  },
+  "importAlias": {
+    "productionVersion": "20260819134935",
+    "stageVersion": "20260819125851",
+    "productionFullSourceLfSha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c",
+    "stageFullSourceLfSha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c",
+    "actualFunctionBodyExact": true
+  },
+  "sourceCoverage": [
+    {
+      "version": "001",
+      "name": "collaborative_travel_planner",
+      "statementCount": 73,
+      "firstSourceSha256": "5ffaaee4687ab864609d97715c3d3e520d60c99500c3c03978431227d49d89ea",
+      "joinedSourceSha256": "62202135a871ce7ca27f66c93b888bf972fa8fc00a514216b2c124f9dc5c6a07",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/001_collaborative_travel_planner.sql",
+          "lfSha256": "2c559727546f568179f6752262361f721c34acc69f657acdf5504236f99a3e70"
+        }
+      ]
+    },
+    {
+      "version": "002",
+      "name": "core_mvp_schema",
+      "statementCount": 144,
+      "firstSourceSha256": "5ffaaee4687ab864609d97715c3d3e520d60c99500c3c03978431227d49d89ea",
+      "joinedSourceSha256": "7109dd260036405fbb2f3b89ae1e968b1388c0924392d96d02826c397af506e0",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/002_core_mvp_schema.sql",
+          "lfSha256": "cf93fb48deca5bc12dcbc8cb5d34dbae422689e4fb6a008f3c4c255e032d28d4"
+        }
+      ]
+    },
+    {
+      "version": "003",
+      "name": "trip_name_compat",
+      "statementCount": 3,
+      "firstSourceSha256": "68d24bc7237145da96921a44593c8a1144f0fa8d11ef92e2dc41202a6f6c552e",
+      "joinedSourceSha256": "5d7c62933c99230a4c0b626145774308b4029de09740980792fe1679a4bdb438",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/003_trip_name_compat.sql",
+          "lfSha256": "0229879cde2b7ac212a917216ad45a8fb2ab23daaf3aa657123e915cd852c7da"
+        }
+      ]
+    },
+    {
+      "version": "004",
+      "name": "harden_rls_rpc_permissions",
+      "statementCount": 12,
+      "firstSourceSha256": "801ce91c2da68babf84f337baddd2d32dfce2189397707a461d51ae90cd1df9d",
+      "joinedSourceSha256": "025d5fadf9138faf8a269b72bbe09a042551d36a1f9d011d9d7ac8ba7e8b5738",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/004_harden_rls_rpc_permissions.sql",
+          "lfSha256": "fca57bbbd326a961ad35ca65735781199ba8045a456383519fb90e535b751e68"
+        }
+      ]
+    },
+    {
+      "version": "005",
+      "name": "revoke_public_rpc_execute",
+      "statementCount": 12,
+      "firstSourceSha256": "d0da06362154f732824dc30935ca37449e85b6ba67e40795d5cb5a57356b3a1c",
+      "joinedSourceSha256": "212e7b23af33a4e88d05af23eb399d8a6e517a51210b49bef9b7407b34e259b0",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/005_revoke_public_rpc_execute.sql",
+          "lfSha256": "e2efd8bb24451133442819b798b09b7afe11c69c17e6e01b41c7e7217e474d2d"
+        }
+      ]
+    },
+    {
+      "version": "006",
+      "name": "move_rls_helpers_private",
+      "statementCount": 113,
+      "firstSourceSha256": "1b3db31c91b0ffa7209006f1ddd7365c3cab3fd086fa0a3dab0fb87a7036f126",
+      "joinedSourceSha256": "f244931fc885578e64631285c96790516382283d4b2d6572a2dc05ee77c45b10",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/006_move_rls_helpers_private.sql",
+          "lfSha256": "5fdaec34cf98a73fbfe852772475ad4c2e6e580d52a0fc71ecd89350e6eca332"
+        }
+      ]
+    },
+    {
+      "version": "007",
+      "name": "create_attachments_storage",
+      "statementCount": 9,
+      "firstSourceSha256": "c2b884191754d8c3d0978112c852f9ddd9cafdab34ec735bbd7114aab127612b",
+      "joinedSourceSha256": "722f7b342f480a0255c37fb315b69ca2c7065638aeb678ebe67bf2ea98bfe57e",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/007_create_attachments_storage.sql",
+          "lfSha256": "28760121ea7b4c39fa21984c23cedec49848d4b160556ed69383fe7e34a73aa1"
+        }
+      ]
+    },
+    {
+      "version": "008",
+      "name": "share_snapshot_rpc",
+      "statementCount": 6,
+      "firstSourceSha256": "e07eeaab1ad57bc2971820d62700ab7a3af1907adab8ef8e6db88979ccae73e4",
+      "joinedSourceSha256": "cef5fdee6f384eaa6d30ebdff39af0d6ae846b2340b858b8c9b2ad0bb4ec5db7",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/008_share_snapshot_rpc.sql",
+          "lfSha256": "1f53688fdb65878c9723c5ca6644b6aad5992a044332f59c97e5a51a5e516252"
+        }
+      ]
+    },
+    {
+      "version": "009",
+      "name": "add_edit_locks",
+      "statementCount": 14,
+      "firstSourceSha256": "b52939fefaf168ec6ab1d025807ad94a6da250e8ffad07aa0984dc20bf269992",
+      "joinedSourceSha256": "670b1f04b0e4609ba4aed5b26ef1c75307ed1a6abcf47b3427e59e78e1b5d96d",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/009_add_edit_locks.sql",
+          "lfSha256": "1c5dfd46196ffafe923b7ba3eff2d947a86e9c9c759149c393c71c56c16a6548"
+        }
+      ]
+    },
+    {
+      "version": "010",
+      "name": "add_transportation_card_fields",
+      "statementCount": 14,
+      "firstSourceSha256": "ead76ab524514fc44623f48402f0e600f228f26d3ba845ba0db543f074c3d969",
+      "joinedSourceSha256": "87c004720e8ee1b32410d6c1bcdcb99998d08a8e858b085a40e0c9ca8744f126",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/010_add_transportation_card_fields.sql",
+          "lfSha256": "1a609fb3f49a9fbbe68a243bd930c03340985eea2b4b438a1a22d1cc30af34e5"
+        }
+      ]
+    },
+    {
+      "version": "011",
+      "name": "add_transport_card_pair_fields",
+      "statementCount": 9,
+      "firstSourceSha256": "6448fe0c4e63ec2ad4088d37744b52b937a7b8a3538707d6c0f33be70c599880",
+      "joinedSourceSha256": "1540449e2ed21e64a149fe64049eb1b7c0fb1c9746b963c014267bf271572cc8",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/011_add_transport_card_pair_fields.sql",
+          "lfSha256": "996c34cba082958424254d5f334633f8271e052c66d4ad2a168e4ce2a1fad031"
+        }
+      ]
+    },
+    {
+      "version": "012",
+      "name": "add_transport_review_snapshots",
+      "statementCount": 10,
+      "firstSourceSha256": "051ccd355daa7335d27eec89c510ff5a7738a1a9e03bd5ccd5bf13c69a049dbc",
+      "joinedSourceSha256": "317651a19d30f6762b05bc81787eaff774d80c87af4a585b27067b0b84f3381b",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/012_add_transport_review_snapshots.sql",
+          "lfSha256": "973b801e4ac8fffa9cf76d66eb6ac3688b4abb99e8d9a8f9d5c98a176d57e2e1"
+        }
+      ]
+    },
+    {
+      "version": "013",
+      "name": "add_itinerary_alternative_visit_fields",
+      "statementCount": 8,
+      "firstSourceSha256": "d7c5137c8c83c37f934de1ee7cd39864fa72d8376ffce88740418f9053379f2a",
+      "joinedSourceSha256": "7b86732017fee28530d94d755a29346dd29578d71161ae6a791750158851454e",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/013_add_itinerary_alternative_visit_fields.sql",
+          "lfSha256": "1cd01d1cdac8614328778ca406fe2bb11646921d854bfa6eed9c4a71cedef089"
+        }
+      ]
+    },
+    {
+      "version": "014",
+      "name": "add_itinerary_item_fixed_fields",
+      "statementCount": 4,
+      "firstSourceSha256": "670dbf6145f81718f0a87125cde59b4c835ffe6401486eb9bd2e0286249c200e",
+      "joinedSourceSha256": "cebfada38a5af5d29e236f9c4d276d046a2bc3fff8d1249a5478b5baafaa1a9e",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/014_add_itinerary_item_fixed_fields.sql",
+          "lfSha256": "27c4c0e2710d92421714711b617dbfae7d381e6c4ed4224b1d70be92cba35d6e"
+        }
+      ]
+    },
+    {
+      "version": "015",
+      "name": "add_trip_destination_fields",
+      "statementCount": 3,
+      "firstSourceSha256": "faad39f6c1973d05e24d709491699e970f13c248a901c44f0e11c1636bc51fba",
+      "joinedSourceSha256": "ad2c8238e2db09c263d80a6a5cd2df0d7621010135b82672e12af8ecc613d1c9",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/015_add_trip_destination_fields.sql",
+          "lfSha256": "6aeb50673fc096a5e9fbc656b90694a6a329ff8479b5836d61dfe97377260668"
+        }
+      ]
+    },
+    {
+      "version": "016",
+      "name": "apply_trip_date_change",
+      "statementCount": 9,
+      "firstSourceSha256": "7a04acd85ad4ee088294325150037d6631752cd64219a222f706afa6a019965a",
+      "joinedSourceSha256": "969614c0262ff8b8f9c10f7be0cf16869d09441f02e211b3252b3967d871f0ea",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/016_apply_trip_date_change.sql",
+          "lfSha256": "c99fed79f49eeca8d707f204148f40be81e8b70c82faebbb57204ca1cca47992"
+        }
+      ]
+    },
+    {
+      "version": "017",
+      "name": "confirm_trip_date_shortening",
+      "statementCount": 11,
+      "firstSourceSha256": "1138b07ae605816e73d9a8b1ab9b30be3db4777db1aaeffc556021dd79efaf41",
+      "joinedSourceSha256": "5dcc1cc770ef4a3f82d316c9e281f3fcb371d88f8aeac9b2e34a92689b000e7c",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/017_confirm_trip_date_shortening.sql",
+          "lfSha256": "850366e7233e3334efba8581487c1dea2cbdc131c1388e75074ea27d14a51d7c"
+        }
+      ]
+    },
+    {
+      "version": "018",
+      "name": "filter_share_snapshot_timeline",
+      "statementCount": 6,
+      "firstSourceSha256": "a1bc8599bf4bcd1fd0f7c9d3f8c5ee5412040be4a51889d487a244546408b04b",
+      "joinedSourceSha256": "d2d8584408e42963960e8a973ac0bbdfffe90fc76a574d940a1bfb9bcc7f5a07",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/018_filter_share_snapshot_timeline.sql",
+          "lfSha256": "dc6b32ba70cfa9112af7f778e550d32933639d93200e36654944b60c16da65a4"
+        }
+      ]
+    },
+    {
+      "version": "019",
+      "name": "swap_itinerary_destination_packages",
+      "statementCount": 10,
+      "firstSourceSha256": "5aff215a02acf994a6622029154aa6264dab492ec67fc9a6ee29d9f5f3e87d67",
+      "joinedSourceSha256": "292e15c50f5d251def0ec887dedc2150cb523206da5e3b90bb11bf97a12a9b22",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/019_swap_itinerary_destination_packages.sql",
+          "lfSha256": "0b8b266681fa0c4a40a227d1a605f71523fe2a3ede26c507b8153a9b231eb725"
+        }
+      ]
+    },
+    {
+      "version": "020",
+      "name": "reorder_itinerary_destination_packages",
+      "statementCount": 10,
+      "firstSourceSha256": "20ebbe8ba08b5b7fe9c74b92aa2cec32f42a8b707bcc5424d526e04c529b9b9d",
+      "joinedSourceSha256": "f6ceaafdb5f9669226e18966a03397840168809cc1e13962199d0a2169ea67ea",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/020_reorder_itinerary_destination_packages.sql",
+          "lfSha256": "0d49be65931fbfd2853a553369073f138cf6d481571265c601818097e861d45d"
+        }
+      ]
+    },
+    {
+      "version": "021",
+      "name": "fix_reorder_baseline_count",
+      "statementCount": 4,
+      "firstSourceSha256": "433821c22d989bbd3f393e5f7210724f379063f32a46c37ef3a27d9bd5bf1912",
+      "joinedSourceSha256": "3d097bd3109c12e7b3bde69dc2e2d3adaec3f78fd5f0d8225a05ec9d3a2b8f56",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/021_fix_reorder_baseline_count.sql",
+          "lfSha256": "9f7c6d6fb545fda47c79c98b58ea8fc75d33c53541fcbd6c759312d4d38831ba"
+        }
+      ]
+    },
+    {
+      "version": "022",
+      "name": "add_transport_role_to_itinerary_items",
+      "statementCount": 6,
+      "firstSourceSha256": "befa77444a232bacb622b3ccdd51fdaca36518fca8d7d49fa62361d870151e79",
+      "joinedSourceSha256": "2a0e174b0c5d64d9e456d905c7c87bff8c170e8c41090d2efd33b4154adacf1b",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/022_add_transport_role_to_itinerary_items.sql",
+          "lfSha256": "14d763db953dd4516d6496e3064b6d79a3bc6a06b8ef156bb099e8c915ab291a"
+        }
+      ]
+    },
+    {
+      "version": "023",
+      "name": "reorder_itinerary_timed_auto_continuation",
+      "statementCount": 10,
+      "firstSourceSha256": "72a4fda7ec9e3b20d386b6c79f885504422696e794cc5fa0f0029cce3798f596",
+      "joinedSourceSha256": "83ee5bbe7960a0adf0878e6305f3f90efc8dc2e98a729c163eea8f6715661b7e",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/023_reorder_itinerary_timed_auto_continuation.sql",
+          "lfSha256": "91ae805d1abbb37e647a614f5226cbf8fee5c06b91f72a9764398f0e03658c32"
+        }
+      ]
+    },
+    {
+      "version": "024",
+      "name": "reorder_itinerary_fixed_anchor_continuation",
+      "statementCount": 10,
+      "firstSourceSha256": "2a950c4ead50855526de791bd136d00e8ed945f857fc0b92aabb45053f8ff4f8",
+      "joinedSourceSha256": "3c15dd321d699ae364a6014609d2d448b9d16d71f0de827a5d35394ec8811c7b",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/024_reorder_itinerary_fixed_anchor_continuation.sql",
+          "lfSha256": "e5b9602300ff2e84d21b70a2ed1599eaaa29d9072205b3db3753e5d59162de79"
+        }
+      ]
+    },
+    {
+      "version": "20260708063744",
+      "name": "add_itinerary_route_overrides",
+      "statementCount": 15,
+      "firstSourceSha256": "c7a5191f7c584d620d7d763b521cc0cfede89cadf18d0ba8bc60e4ae19237498",
+      "joinedSourceSha256": "335eb93de770ed24eb42627ffd5bafff6f01d80bafc03aafd01b758ff7516e3c",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20260708063744_add_itinerary_route_overrides.sql",
+          "lfSha256": "27672c8a7f3a0a7241a583b3b1d91386f9ea76751cc7c2dd681905b03bc11289"
+        }
+      ]
+    },
+    {
+      "version": "20260710125337",
+      "name": "add_itinerary_route_override_nodes",
+      "statementCount": 28,
+      "firstSourceSha256": "7a8f7792215d07fb03d6c032c66dc69498cf6c4596016fe37d7b47f2bf05bc26",
+      "joinedSourceSha256": "45dccbcebddd740edd8cb6c98c0707bab75d6fdd934c77f678aa83642bdc1c6e",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20260710125337_add_itinerary_route_override_nodes.sql",
+          "lfSha256": "b028b9bd07ec271cb0d10d8f69d812a8ea321b14b25a7154fe0d166875172dd4"
+        }
+      ]
+    },
+    {
+      "version": "20260712033758",
+      "name": "add_route_tables_to_realtime",
+      "statementCount": 4,
+      "firstSourceSha256": "b25ec550a6e4d68b5e14b5b68d21a21280d0a08f9afbe1bfbf35a8c160900f51",
+      "joinedSourceSha256": "9a5f8cba39153ac41cd51bab7ecbcbfa383a10ecbfc2d567dd7a4da0c67d8670",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20260712033758_add_route_tables_to_realtime.sql",
+          "lfSha256": "e1f082339d5f7b6715024032336d01c9d4cd6f7af487ba920603fe147132fc5d"
+        }
+      ]
+    },
+    {
+      "version": "20260809090000",
+      "name": "timeline_phase_6_unified_schedule_operation",
+      "statementCount": 33,
+      "firstSourceSha256": "9178632cc2b9cd552715350a8e8c8d4c9c4f9c0df836baa0f5b57f17948158c0",
+      "joinedSourceSha256": "977a6838611725857c8584e72d52e67e5c2752a87c5f45cf902cf8d5ae6d64b4",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20260809090000_timeline_phase_6_unified_schedule_operation.sql",
+          "lfSha256": "32b6683c21dd20a20c0402e336b5737130e49e34d7a50fbc477e897a5bb72c10"
+        }
+      ]
+    },
+    {
+      "version": "20260809091000",
+      "name": "timeline_phase_6_cleanup_legacy_time_transport",
+      "statementCount": 15,
+      "firstSourceSha256": "c810ad91f8cd8e0edfb79b7898bf9d146589b14458a6fcfb91642221b52f3102",
+      "joinedSourceSha256": "772fee113db10a283af46a297b867e8df0fe6a667f2376863b6da75402911033",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20260809091000_timeline_phase_6_cleanup_legacy_time_transport.sql",
+          "lfSha256": "50026a093d158ee7053c09fd485367052d20e37bff1e1dbb9828d2187697e810"
+        }
+      ]
+    },
+    {
+      "version": "20260811124500",
+      "name": "timeline_phase_6_defer_transport_pair_uniqueness",
+      "statementCount": 3,
+      "firstSourceSha256": "3dc31655632b8c331d553420fe9c6c79a8669994be7c14ad0dffd4acd8c01725",
+      "joinedSourceSha256": "de91eb7eb49e18cdac90dbb03cec9c928ef343e9738fe3bb77a0a61e5732b8d1",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20260811124500_timeline_phase_6_defer_transport_pair_uniqueness.sql",
+          "lfSha256": "6e82e3a2fe7936dbbd2e792af8f3218cf86ad25d9087b31c76e77e97c60b858a"
+        }
+      ]
+    },
+    {
+      "version": "20260811133000",
+      "name": "timeline_phase_6_restore_five_minute_ceiling",
+      "statementCount": 3,
+      "firstSourceSha256": "81063974136fd5e80ec14e17f11dcf6e579a54c71828bad81eec532ad5ad4c98",
+      "joinedSourceSha256": "d17ca835656c4df81e1759f58025d92648048daee11bf531e9fafec3bc7946f2",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
+          "lfSha256": "22d8a682a6e59cd2f260212ef539260349f6d4faa9d6c76a3f5d88e13461407b"
+        }
+      ]
+    },
+    {
+      "version": "20260811150000",
+      "name": "atomic_apply_itinerary_alternative",
+      "statementCount": 10,
+      "firstSourceSha256": "379745edbb743f8c5ff15db8c1bef4ef630d56ea13b31539513f41d6662c5da0",
+      "joinedSourceSha256": "799f2d838bc9cea06f093502af03ea6f3ff893ce482dd4682845a6fe033a70b2",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20260811150000_atomic_apply_itinerary_alternative.sql",
+          "lfSha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+        }
+      ]
+    },
+    {
+      "version": "20260819134935",
+      "name": "phase_7_import_trip_timeline_v1",
+      "statementCount": 1,
+      "firstSourceSha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c",
+      "joinedSourceSha256": "6460f12edf525e959fd88ad4654fdc17acf2d9ee8747aea6cf2f1a24dc4b436c",
+      "status": "Full ledger source differs from matching local version; investigate alias/format",
+      "localCandidates": []
+    },
+    {
+      "version": "20261022090000",
+      "name": "budget_workspace_baseline_and_pricing",
+      "statementCount": 36,
+      "firstSourceSha256": "94ad86546df928bfb7eddf078f63025226ba630c657be29335c3d9cd12ddab80",
+      "joinedSourceSha256": "ac59fabafd9bcbffec0236e91ddf970a2029ada5dce61c0056301490b74b6b24",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261022090000_budget_workspace_baseline_and_pricing.sql",
+          "lfSha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+        }
+      ]
+    },
+    {
+      "version": "20261022100000",
+      "name": "trip_budget_exchange_rates",
+      "statementCount": 9,
+      "firstSourceSha256": "addf15109e2e4ab846767baf24cfea94a1ebdbcf1ba4432bc9124bf1b1712dff",
+      "joinedSourceSha256": "0949f9dd09db4b216006036fb0e98ec583c1ddc707ed90925104ff861aa840ea",
+      "status": "Split statements available; original file byte hash not proven",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261022100000_trip_budget_exchange_rates.sql",
+          "lfSha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+        }
+      ]
+    },
+    {
+      "version": "20261022110000",
+      "name": "budget_payment_safety_and_actual_cost",
+      "statementCount": 1,
+      "firstSourceSha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9",
+      "joinedSourceSha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261022110000_budget_payment_safety_and_actual_cost.sql",
+          "lfSha256": "0184126f6bce61a24020ee72519a36d486dad43a188e5ec36a7e7a2031fbcaa9"
+        }
+      ]
+    },
+    {
+      "version": "20261022120000",
+      "name": "unified_planning_payments",
+      "statementCount": 1,
+      "firstSourceSha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd",
+      "joinedSourceSha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261022120000_unified_planning_payments.sql",
+          "lfSha256": "39cc8651e7f54332f5fee40847a8dcab5dce0b50dbaa656086c76fa47410a5cd"
+        }
+      ]
+    },
+    {
+      "version": "20261022162015",
+      "name": "luggage_collaboration_state_safety",
+      "statementCount": 1,
+      "firstSourceSha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3",
+      "joinedSourceSha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261022162015_luggage_collaboration_state_safety.sql",
+          "lfSha256": "6e2a96005873d89f864662308b4210053b327a139b2df40bcff4901f8e7be1e3"
+        }
+      ]
+    },
+    {
+      "version": "20261023120000",
+      "name": "luggage_notes",
+      "statementCount": 1,
+      "firstSourceSha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76",
+      "joinedSourceSha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261023120000_luggage_notes.sql",
+          "lfSha256": "53cbcafd7541e76776b4293cdbcb21e1cc341f6edcd200b20436f70236fc7c76"
+        }
+      ]
+    },
+    {
+      "version": "20261024054121",
+      "name": "luggage_drag_assignment",
+      "statementCount": null,
+      "firstSourceSha256": null,
+      "joinedSourceSha256": null,
+      "status": "NULL ledger source; catalog provenance required",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261024054121_luggage_drag_assignment.sql",
+          "lfSha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+        }
+      ]
+    },
+    {
+      "version": "20261024063828",
+      "name": "luggage_private_return",
+      "statementCount": null,
+      "firstSourceSha256": null,
+      "joinedSourceSha256": null,
+      "status": "NULL ledger source; catalog provenance required",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261024063828_luggage_private_return.sql",
+          "lfSha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+        }
+      ]
+    },
+    {
+      "version": "20261024112902",
+      "name": "luggage_item_ordering",
+      "statementCount": 1,
+      "firstSourceSha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db",
+      "joinedSourceSha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261024112902_luggage_item_ordering.sql",
+          "lfSha256": "6f6d367fcac94c0bbda9b28a7cea306bf30ade455071c53435505e659eac60db"
+        }
+      ]
+    },
+    {
+      "version": "20261026120000",
+      "name": "luggage_required_assignee",
+      "statementCount": 1,
+      "firstSourceSha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6",
+      "joinedSourceSha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261026120000_luggage_required_assignee.sql",
+          "lfSha256": "1295f8020969656c8e1ea7045881ed2bb6482f1b9663e92493cddf28e1e74ca6"
+        }
+      ]
+    },
+    {
+      "version": "20261027140044",
+      "name": "budget_atomic_edit_leases",
+      "statementCount": 1,
+      "firstSourceSha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127",
+      "joinedSourceSha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261027140044_budget_atomic_edit_leases.sql",
+          "lfSha256": "60684b9931d589248e733275029b236c70c8a11c835d7b5f2c2890292d93f127"
+        }
+      ]
+    },
+    {
+      "version": "20261027145613",
+      "name": "budget_consistent_snapshot",
+      "statementCount": 1,
+      "firstSourceSha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07",
+      "joinedSourceSha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261027145613_budget_consistent_snapshot.sql",
+          "lfSha256": "519b034a0610354418b131d05b413992dd8a86a73cc79dcb6e7a9548dfc2ec07"
+        }
+      ]
+    },
+    {
+      "version": "20261027152539",
+      "name": "budget_collaboration_state",
+      "statementCount": 1,
+      "firstSourceSha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361",
+      "joinedSourceSha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261027152539_budget_collaboration_state.sql",
+          "lfSha256": "aabb7a1830425a71a8a4da5e04b0c47f9c0952ee1778278763c38190e4c8b361"
+        }
+      ]
+    },
+    {
+      "version": "20261028104333",
+      "name": "budget_selection_activity",
+      "statementCount": 1,
+      "firstSourceSha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661",
+      "joinedSourceSha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261028104333_budget_selection_activity.sql",
+          "lfSha256": "a6bd7cf2bb9d8ae436852b0d622745fe9733fee59d799fef780b1d71b5efe661"
+        }
+      ]
+    },
+    {
+      "version": "20261031003000",
+      "name": "rpc_business_conflicts_no_retry",
+      "statementCount": 1,
+      "firstSourceSha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2",
+      "joinedSourceSha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2",
+      "status": "Exact single full source match",
+      "localCandidates": [
+        {
+          "path": "supabase/migrations/20261031003000_rpc_business_conflicts_no_retry.sql",
+          "lfSha256": "fb170f91f1ec96026bb16aae05980fda2b02e32f08e6debc8690b8277e4b8bf2"
+        }
+      ]
+    }
+  ],
+  "sharedSourceDifferences": [
+    {
+      "version": "20260811150000",
+      "productionStatements": 10,
+      "stageStatements": 1,
+      "productionJoinedSha256": "799f2d838bc9cea06f093502af03ea6f3ff893ce482dd4682845a6fe033a70b2",
+      "stageJoinedSha256": "6ff73aabacc0013535e73b554a0c50e7e313e5df1fe7562ceca8876df47517b8"
+    },
+    {
+      "version": "20261022090000",
+      "productionStatements": 36,
+      "stageStatements": 1,
+      "productionJoinedSha256": "ac59fabafd9bcbffec0236e91ddf970a2029ada5dce61c0056301490b74b6b24",
+      "stageJoinedSha256": "87dcbf863915bc599e2923b9c35fd9bd6667c0fa8db0f63e6322a6ce002979a1"
+    },
+    {
+      "version": "20261022100000",
+      "productionStatements": 9,
+      "stageStatements": 1,
+      "productionJoinedSha256": "0949f9dd09db4b216006036fb0e98ec583c1ddc707ed90925104ff861aa840ea",
+      "stageJoinedSha256": "7f42a9f272c6b6caca8310f7eaaaec715fcc9b71f5d5ab6e20ae99d7f846d650"
+    },
+    {
+      "version": "20261024054121",
+      "productionStatements": null,
+      "stageStatements": 1,
+      "productionJoinedSha256": null,
+      "stageJoinedSha256": "94e5e8477250472c126687560b3c9826938e968405c99987748f046ed6eb9b68"
+    },
+    {
+      "version": "20261024063828",
+      "productionStatements": null,
+      "stageStatements": 1,
+      "productionJoinedSha256": null,
+      "stageJoinedSha256": "1e54f3d24a6e0dbdafbb31b7968819521f3a4aba5d2216ee28b0bbfff4284f90"
+    }
+  ],
+  "schemaDiff": {
+    "newTables": [
+      "app_private.budget_finance_protocol",
+      "app_private.budget_lifecycle_protocol",
+      "app_private.budget_metadata_effects",
+      "app_private.budget_metadata_groups",
+      "app_private.budget_metadata_protocol",
+      "app_private.budget_metadata_requests",
+      "app_private.budget_metadata_undo_intents",
+      "app_private.budget_metadata_undo_lineage",
+      "app_private.budget_metadata_undo_operations",
+      "app_private.budget_metadata_undo_protocol",
+      "app_private.budget_metadata_undo_receipts",
+      "app_private.budget_metadata_undo_stack",
+      "app_private.budget_metadata_undo_stack_position_seq",
+      "app_private.budget_payment_protocol",
+      "app_private.budget_pricing_trip_versions",
+      "app_private.budget_rates_leases",
+      "app_private.budget_receipt_cleanup",
+      "app_private.budget_receipt_intents",
+      "app_private.budget_receipt_legacy_cutover",
+      "app_private.budget_receipt_protocol",
+      "app_private.budget_source_protocol",
+      "app_private.budget_trip_delete_admissions"
+    ],
+    "newFunctionCount": 193,
+    "changedFunctionCount": 17,
+    "newFunctions": [
+      "abandon_budget_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "app_private.abandon_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "app_private.apply_budget_rates_quote()",
+      "app_private.assert_budget_metadata_effect_finished()",
+      "app_private.assert_budget_metadata_undo_finished()",
+      "app_private.attest_budget_receipt_legacy_invalidation(uuid,jsonb,text)",
+      "app_private.budget_complete(text,uuid)",
+      "app_private.budget_field_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)",
+      "app_private.budget_field_effect(text,uuid)",
+      "app_private.budget_field_targets(text,uuid,text)",
+      "app_private.budget_field_versions(text,uuid,text)",
+      "app_private.budget_finance_activated()",
+      "app_private.budget_finance_enabled()",
+      "app_private.budget_finance_membership(uuid)",
+      "app_private.budget_finance_undo_context()",
+      "app_private.budget_lifecycle_activated()",
+      "app_private.budget_lifecycle_effect(text,uuid,text)",
+      "app_private.budget_lifecycle_enabled()",
+      "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+      "app_private.budget_metadata_enabled()",
+      "app_private.budget_metadata_live(text,uuid)",
+      "app_private.budget_metadata_record(text,uuid)",
+      "app_private.budget_metadata_supported(text,uuid)",
+      "app_private.budget_metadata_undo_enabled()",
+      "app_private.budget_metadata_value(text,uuid,text)",
+      "app_private.budget_payment_admission_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)",
+      "app_private.budget_payment_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)",
+      "app_private.budget_payment_checks(text,uuid)",
+      "app_private.budget_payment_dependencies(text,uuid,text)",
+      "app_private.budget_payment_dependencies(text,uuid)",
+      "app_private.budget_payment_effect(text,uuid)",
+      "app_private.budget_payment_enabled()",
+      "app_private.budget_payment_targets(text,uuid)",
+      "app_private.budget_payment_value(text,uuid)",
+      "app_private.budget_pricing_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+      "app_private.budget_pricing_effect(text,uuid)",
+      "app_private.budget_pricing_targets(text,uuid)",
+      "app_private.budget_pricing_versions(text,uuid)",
+      "app_private.budget_rate_quote(jsonb)",
+      "app_private.budget_rates_admission(uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "app_private.budget_rates_plan(uuid,jsonb)",
+      "app_private.budget_rates_versions(uuid)",
+      "app_private.budget_readiness_changed()",
+      "app_private.budget_receipt_legacy_exhausted()",
+      "app_private.budget_receipt_legacy_frozen()",
+      "app_private.budget_source_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "app_private.budget_source_effect(text,uuid)",
+      "app_private.budget_source_enabled()",
+      "app_private.budget_source_plan(uuid,uuid,text,uuid)",
+      "app_private.budget_source_preview(uuid,uuid,text,uuid)",
+      "app_private.budget_text_supported(text,uuid,text)",
+      "app_private.calculate_budget_group_pricing(jsonb)",
+      "app_private.capture_budget_metadata_undo_row()",
+      "app_private.capture_workspace_undo_effect()",
+      "app_private.claim_receipt_cleanup(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "app_private.claim_receipt_verification()",
+      "app_private.cleanup_budget_trip_delete_admissions()",
+      "app_private.clear_budget_metadata_undo(uuid,uuid)",
+      "app_private.fence_budget_protocol_transition()",
+      "app_private.finish_budget_field()",
+      "app_private.finish_budget_lifecycle()",
+      "app_private.finish_budget_metadata_patch()",
+      "app_private.finish_budget_payment()",
+      "app_private.finish_budget_pricing_patch()",
+      "app_private.finish_budget_rates()",
+      "app_private.finish_budget_source()",
+      "app_private.finish_receipt_cleanup(uuid,uuid,text)",
+      "app_private.finish_receipt_verification(uuid,uuid,uuid,text,bigint,text,text)",
+      "app_private.finish_receipt()",
+      "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+      "app_private.guard_budget_external_parent()",
+      "app_private.guard_budget_finance_boundary()",
+      "app_private.guard_budget_group_children_required()",
+      "app_private.guard_budget_metadata_children()",
+      "app_private.guard_budget_metadata_row()",
+      "app_private.guard_budget_metadata_undo_boundary()",
+      "app_private.guard_budget_receipt_cutover_journal()",
+      "app_private.guard_budget_source_boundary()",
+      "app_private.guard_incomplete_child()",
+      "app_private.guard_legacy_budget_metadata_lease()",
+      "app_private.guard_lifecycle_write()",
+      "app_private.guard_receipt_metadata()",
+      "app_private.invalidate_budget_metadata_undo(uuid,text,uuid)",
+      "app_private.latch_budget_finance()",
+      "app_private.latch_budget_lifecycle()",
+      "app_private.latch_budget_receipts()",
+      "app_private.legacy_budget_blocked(uuid)",
+      "app_private.lifecycle_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "app_private.lifecycle_delete_plan(uuid,text,uuid)",
+      "app_private.lifecycle_membership(uuid)",
+      "app_private.lifecycle_placeholder_row(uuid,text,uuid)",
+      "app_private.lifecycle_versions(text,uuid)",
+      "app_private.lock_budget_field_parents(uuid,jsonb)",
+      "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+      "app_private.prepare_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+      "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "app_private.prepare_budget_rates(uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "app_private.prepare_budget_source(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)",
+      "app_private.prepare_workspace_inverse(uuid,uuid,uuid,uuid,uuid,bigint)",
+      "app_private.read_budget_finance_state(uuid,uuid)",
+      "app_private.read_budget_lifecycle_state(uuid,uuid)",
+      "app_private.read_budget_metadata_groups(uuid,text,uuid,uuid)",
+      "app_private.read_budget_metadata_state_v2(uuid,uuid)",
+      "app_private.read_budget_metadata_state_v3(uuid,uuid)",
+      "app_private.read_budget_metadata_state(uuid,uuid)",
+      "app_private.read_budget_metadata_undo(uuid,uuid)",
+      "app_private.read_budget_payment_state(uuid,uuid)",
+      "app_private.read_budget_pricing_value(text,uuid)",
+      "app_private.read_budget_source_state(uuid,uuid)",
+      "app_private.read_workspace_undo(uuid,uuid)",
+      "app_private.receipt_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)",
+      "app_private.receipt_authority(uuid,uuid,uuid,uuid,bigint,bigint,jsonb)",
+      "app_private.receipt_effect()",
+      "app_private.receipt_inspect(uuid,uuid,uuid,uuid)",
+      "app_private.receipt_path_protected(text,text)",
+      "app_private.receipt_projection(uuid,uuid)",
+      "app_private.receipt_storage_allowed(text,text,text,uuid,jsonb)",
+      "app_private.receipt_value(uuid)",
+      "app_private.receipt_versions(uuid)",
+      "app_private.receipt_worker_object_allowed(text,uuid,text)",
+      "app_private.receipts_activated()",
+      "app_private.receipts_enabled()",
+      "app_private.reconcile_budget_readiness(text,uuid)",
+      "app_private.record_budget_metadata_undo()",
+      "app_private.record_workspace_undo(app_private.budget_metadata_effects,jsonb)",
+      "app_private.replay_legacy_budget(uuid,text,uuid,timestamp with time zone,jsonb,uuid,integer)",
+      "app_private.signal_budget_metadata_protocol()",
+      "app_private.signal_budget_metadata_state()",
+      "app_private.stop_budget_receipt_legacy_issuance(uuid,uuid[],text)",
+      "app_private.sweep_receipts()",
+      "app_private.track_budget_metadata_links()",
+      "app_private.track_budget_payment_versions()",
+      "app_private.track_budget_pricing_versions()",
+      "app_private.track_budget_source()",
+      "app_private.track_lifecycle_identity()",
+      "app_private.track_receipts()",
+      "app_private.undo_dependencies(text,uuid,text)",
+      "app_private.undo_group_value(text,uuid,text)",
+      "app_private.validate_budget_field_parent(text,uuid,jsonb,jsonb)",
+      "app_private.validate_budget_payment_parent(text,uuid,jsonb,jsonb)",
+      "app_private.validate_budget_source_parent(text,uuid,jsonb,jsonb)",
+      "app_private.validate_lifecycle_row(text,uuid,jsonb,jsonb)",
+      "app_private.worker_claim_receipt()",
+      "app_private.workspace_inverse_manifest()",
+      "app_private.workspace_undo_enabled()",
+      "app_private.workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+      "app_private.workspace_undo_top(uuid,uuid,uuid)",
+      "budget_lifecycle_lease(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "budget_metadata_group_lease_v2(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)",
+      "budget_metadata_group_lease(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+      "budget_payment_lease_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)",
+      "budget_payment_lease(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)",
+      "budget_rates_lease(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "budget_receipts_lease(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "budget_source_lease(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "budget_workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+      "claim_budget_receipt_cleanup(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "claim_budget_receipt_verification()",
+      "claim_budget_receipt_worker()",
+      "clear_budget_metadata_undo(uuid,uuid)",
+      "create_budget_workspace_placeholder(uuid,text,uuid,uuid)",
+      "delete_itinerary_item_budget_safe(uuid,uuid)",
+      "finish_budget_receipt_cleanup(uuid,uuid,text)",
+      "finish_budget_receipt_verification(uuid,uuid,uuid,text,bigint,text,text)",
+      "mutate_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "mutate_budget_payment_v2(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "mutate_budget_receipts(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)",
+      "mutate_budget_source(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "patch_budget_metadata_group_v2(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+      "patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "patch_budget_pricing_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "read_budget_metadata_groups(uuid,text,uuid,uuid)",
+      "read_budget_metadata_snapshot_v10(uuid,uuid)",
+      "read_budget_metadata_snapshot_v2(uuid,uuid)",
+      "read_budget_metadata_snapshot_v3(uuid,uuid)",
+      "read_budget_metadata_snapshot_v4(uuid,uuid)",
+      "read_budget_metadata_snapshot_v5(uuid,uuid)",
+      "read_budget_metadata_snapshot_v6(uuid,uuid)",
+      "read_budget_metadata_snapshot_v7(uuid,uuid)",
+      "read_budget_metadata_snapshot_v8(uuid,uuid)",
+      "read_budget_metadata_snapshot_v9(uuid,uuid)",
+      "read_budget_metadata_snapshot(uuid,uuid)",
+      "read_budget_metadata_undo(uuid,uuid)",
+      "read_budget_receipt_operation(uuid,uuid,uuid,uuid)",
+      "read_budget_source_preview(uuid,uuid,text,uuid)",
+      "sweep_budget_receipts()",
+      "undo_budget_metadata_group(uuid,uuid,uuid,uuid,bigint,uuid)",
+      "undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+      "update_trip_budget_rates_v2(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)"
+    ],
+    "changedFunctions": [
+      "app_private.apply_trip_budget_rate()",
+      "app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)",
+      "app_private.budget_workspace_request(uuid,uuid,text,text,uuid)",
+      "app_private.guard_budget_edit_lease()",
+      "app_private.is_approved_trip_member(uuid,uuid)",
+      "app_private.is_trip_member(uuid,uuid)",
+      "app_private.is_trip_owner(uuid,uuid)",
+      "app_private.keep_actual_budget_origin()",
+      "app_private.keep_actual_twd_cost()",
+      "app_private.refresh_budget_baseline(uuid)",
+      "app_private.swap_itinerary_destination_packages(uuid,uuid,timestamp with time zone,timestamp with time zone)",
+      "privatize_luggage_item(uuid,uuid,timestamp with time zone,text)",
+      "save_budget_workspace_record_v2(uuid,text,uuid,timestamp with time zone,jsonb,uuid)",
+      "save_budget_workspace_record_v3(uuid,text,uuid,timestamp with time zone,jsonb,uuid)",
+      "save_budget_workspace_record_v4(uuid,text,uuid,timestamp with time zone,jsonb,uuid,uuid,uuid)",
+      "save_budget_workspace_record(uuid,text,uuid,timestamp with time zone,jsonb)",
+      "update_trip_budget_rates(uuid,jsonb,boolean)"
+    ]
+  },
+  "catalogObservedAt": {
+    "production": "2026-11-02T14:38:24.06789+00:00",
+    "staging": "2026-11-02T14:39:22.345011+00:00"
+  },
+  "installationAuthorized": false,
+  "productionTargetWrapperBuilt": false,
+  "productionRehearsalPassed": false,
+  "stagingFinal38Expected": [
+    {
+      "signature": "app_private.assert_budget_metadata_effect_finished()",
+      "bodySha256": "8989115e07f6da60ca6f747bffb8ffe3f72c00141d951f5c198c5b3789a709b6"
+    },
+    {
+      "signature": "app_private.assert_budget_metadata_undo_finished()",
+      "bodySha256": "dad3f343185fbd781d1759da2c3e76397945d11e6bf2834fcd7bd15e45416942"
+    },
+    {
+      "signature": "app_private.budget_field_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean,jsonb)",
+      "bodySha256": "51707bef63fde8a5ee724d3cf01150b1a34028b102f604e8fa8c221ba65caa98"
+    },
+    {
+      "signature": "app_private.budget_metadata_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+      "bodySha256": "a0fe39acdee70c5c8fa33d4b61cebb37dd1a6da44c8970f8a2b836abe615f0b0"
+    },
+    {
+      "signature": "app_private.budget_payment_admission_v2(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,text)",
+      "bodySha256": "f7bcad63f45c2f94cbd2075c4452f5a1c3a4c48fd245565fd2c3594418213be2"
+    },
+    {
+      "signature": "app_private.budget_pricing_admission(uuid,text,uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean)",
+      "bodySha256": "5e2a305d48192f9def39cad1c1f61c104f8f3d39db430a83b24726c4c1b37eff"
+    },
+    {
+      "signature": "app_private.budget_rates_admission(uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "bodySha256": "c7c23c35570f95ffba3fc8a60c791d15b2af9569676a4649ce078135fd24cd52"
+    },
+    {
+      "signature": "app_private.budget_source_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "bodySha256": "bfc4a4a8b1d4df08c347b238764d07b2892a1f86be4900d8008724f7b8266165"
+    },
+    {
+      "signature": "app_private.finish_budget_field()",
+      "bodySha256": "bb089f6fca11a6a107e8097a07ce88ceead6e423f19075933fa29574ab76bd4c"
+    },
+    {
+      "signature": "app_private.finish_budget_lifecycle()",
+      "bodySha256": "0183307a30cb21966d58c0d17d1d913e88e351647b7f57057fef43d89d811e05"
+    },
+    {
+      "signature": "app_private.finish_budget_metadata_patch()",
+      "bodySha256": "f60530a2a2c98d8752f79a0f2f24be2ac112af28e88e9ff66ee95133276ae396"
+    },
+    {
+      "signature": "app_private.finish_budget_payment()",
+      "bodySha256": "748387cce14c3b2c9fd56ff36ecae688b4919b6bfc6faf2bee98be7e415a257e"
+    },
+    {
+      "signature": "app_private.finish_budget_pricing_patch()",
+      "bodySha256": "8ccaeb5bb00737e4dab7b0d40f18c05d4257d25ce1b88156cf4a213b4e63f6bb"
+    },
+    {
+      "signature": "app_private.finish_budget_rates()",
+      "bodySha256": "bf6344e34ce4ab1b9516cb7547925052759d4aabc7ef545164b1fce5b618bb19"
+    },
+    {
+      "signature": "app_private.finish_budget_source()",
+      "bodySha256": "19a6c07798e9f3a8f922cab4ca0e1d3032d0a587b675a39416e586b1e9a38d1d"
+    },
+    {
+      "signature": "app_private.finish_receipt()",
+      "bodySha256": "ff898589f18b01ada15e60665803514c88526ce2ca02bd7cc3f146a74e4cf74b"
+    },
+    {
+      "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+      "bodySha256": "fff03ef9c3c6b28645cd9504c3f63f8165d9512ceef3deb69dea3aaa70e9b713"
+    },
+    {
+      "signature": "app_private.lifecycle_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb,jsonb)",
+      "bodySha256": "379aa891881d5c8063eb400134b0fd2d7825f51da5752376960834838e22f106"
+    },
+    {
+      "signature": "app_private.lock_budget_field_parents(uuid,jsonb)",
+      "bodySha256": "da705e54b8c0d4d6bf21dc04d5f9ecff82132b20b864ee5d768fdf3b69756f16"
+    },
+    {
+      "signature": "app_private.prepare_budget_field(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+      "bodySha256": "0f3bac238e5ff45e8bc0eff973a4a56b8ef90e2d7d9792a5c752b6341ba6e1d3"
+    },
+    {
+      "signature": "app_private.prepare_budget_lifecycle(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "bodySha256": "4a048aecf009ce194f53ceba1915e11a3a98c701b2040f563768c882423cd9aa"
+    },
+    {
+      "signature": "app_private.prepare_budget_metadata_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "bodySha256": "6d9982e9169566709b09e4393008b7aea4571cc7f71f68419676529111e7f0d1"
+    },
+    {
+      "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+      "bodySha256": "f4672f96c7e02b906b2e7df3043c20d64c7126806db4d564f9279d029c99605b"
+    },
+    {
+      "signature": "app_private.prepare_budget_payment(uuid,text,uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "bodySha256": "a5bdf7dcacbb3ddff33cf259693fc393b142a17f8c2b7a36029ded433379523c"
+    },
+    {
+      "signature": "app_private.prepare_budget_pricing_patch(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "bodySha256": "a1a584d4c7402f1f215d5f9ba948e8b89c88dca9a2e6caebfdad29167b41f282"
+    },
+    {
+      "signature": "app_private.prepare_budget_rates(uuid,uuid,uuid,bigint,bigint,jsonb,uuid)",
+      "bodySha256": "60ef5ece9787c856c2ad45bcc7a8f47b3d461ec8b02c0e798530a2b232b55da6"
+    },
+    {
+      "signature": "app_private.prepare_receipt(uuid,uuid,uuid,uuid,bigint,bigint,jsonb,uuid,text)",
+      "bodySha256": "77d3d6caa3b638df03361d845bd2396f5891c7217b088b17109090700d8ddcf3"
+    },
+    {
+      "signature": "app_private.receipt_admission(uuid,text,uuid,uuid,uuid,text,bigint,bigint,jsonb)",
+      "bodySha256": "f4657021b2c1c3ed0ad1c9dbfc18b37a9910cfed4d892d6df8d6e644714865dc"
+    },
+    {
+      "signature": "app_private.receipt_authority(uuid,uuid,uuid,uuid,bigint,bigint,jsonb)",
+      "bodySha256": "e9e93248d99ae6cce0dc5e1d099af90c3b36d357f79ea310bf3e82e5de3c8c7d"
+    },
+    {
+      "signature": "app_private.reconcile_budget_readiness(text,uuid)",
+      "bodySha256": "ccfb54792a451dd5ee8a35816e48801a5f995885e34e38907586514e2d703a9a"
+    },
+    {
+      "signature": "app_private.record_budget_metadata_undo()",
+      "bodySha256": "5830ee20eb1be97551dfff230cd9fa294b706fb42ac8d4c0c6e97eac9024e041"
+    },
+    {
+      "signature": "app_private.workspace_inverse_manifest()",
+      "bodySha256": "24738db574851c7d952ea77434d73f41d1baedb5700da073f5bba7d824695acc"
+    },
+    {
+      "signature": "app_private.workspace_undo_top(uuid,uuid,uuid)",
+      "bodySha256": "f156820a0da2625624da1d83f684c2a666b1a9805684d43d0916cd23701a7844"
+    },
+    {
+      "signature": "public.delete_itinerary_item_budget_safe(uuid,uuid)",
+      "bodySha256": "4c2c7e5f7b548f96647b67292bc6b30cf5204adc8a3f213140e521303d3fc2be"
+    },
+    {
+      "signature": "public.patch_budget_metadata_group_v2(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid,jsonb)",
+      "bodySha256": "a4b77b82da75fd36a0b51bccfa29374ed682fc59508aeab0a5d4d43bb84ee9b2"
+    },
+    {
+      "signature": "public.patch_budget_metadata_group(uuid,text,uuid,text,bigint,uuid,uuid,bigint,jsonb,uuid)",
+      "bodySha256": "ace1afd5982d4787b0c2e2593b8e7fc3e3ab63cfe5d6fa7721ef83d833e6b4c0"
+    },
+    {
+      "signature": "public.save_budget_workspace_record(uuid,text,uuid,timestamptz,jsonb)",
+      "bodySha256": "bfe5d4bf86080ae678b56ccd6b875e15d52a7ad8ccff1339b8162ea9a8c0ea0a"
+    },
+    {
+      "signature": "public.undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+      "bodySha256": "3d7440821dabd5b3571f1937235643f94d6dd67db62f5847a0a15b96b415d0b7"
+    }
+  ],
+  "stagingFinalErrorClassification": {
+    "PT409": 54,
+    "PT500": 24
+  },
+  "futureLedgerSetRule": "Exactly Production48 baseline versions UNION these17; retain Production20260819134935; Stage20260819125851 remains absent; preserve all existing ledger statements including NULLs",
+  "productionReceiptLatchesAfterDormant": "false until separately authorized real production activation; never copy Stage activated=true",
+  "productionReadinessAfterDormant": "false; Stage readiness is not production evidence",
+  "restoreAndProductionBaselineRehearsalPassed": false,
+  "applyMigrationAllowed": false,
+  "sourceExtractionVerification": "113 ledger rows inventoried;111 non-NULL first/joined source hashes checked exactly;2 NULL source rows remain unprovable",
+  "productionOriginalRawLedgerSeal": {
+    "observedAt": "2026-11-02T15:43:32.535369+00:00",
+    "rows": [
+      {
+        "version": "001",
+        "rawRowSha256": "397da5e3d20c5c86ce08ac6477a4fd69b65fd39810e1a94a71affa21a10033d5"
+      },
+      {
+        "version": "002",
+        "rawRowSha256": "ca4d75868c3ba8398b0b626fee912b21510148c9cba2733dcf9f2fb6bdfed133"
+      },
+      {
+        "version": "003",
+        "rawRowSha256": "bea19ea82091d5397412b8c573e9f5102783389c9c6b6bbcf66f250f0e8197e3"
+      },
+      {
+        "version": "004",
+        "rawRowSha256": "f15fb5eeb9431331bfb9461a233ffa2fff82cd36bed35f5975983b3c56f64de6"
+      },
+      {
+        "version": "005",
+        "rawRowSha256": "c8a26b7e402091221be316a5298d2acbf812bc8a0f5038f8f0902472424cb0c4"
+      },
+      {
+        "version": "006",
+        "rawRowSha256": "074bb24723360eee6e7b64c7170e53411188630ebd96982a99a8807814e85a08"
+      },
+      {
+        "version": "007",
+        "rawRowSha256": "0960bb0b1fe58e9f509aaf71cd44c01f2aa6d2aaa25e856ec6f4e8f7387c275f"
+      },
+      {
+        "version": "008",
+        "rawRowSha256": "5c3cbf9e1bf333cf76b22c6368b2065744dfcfb9f155f2aa828841be5efff1ee"
+      },
+      {
+        "version": "009",
+        "rawRowSha256": "2ef2bc6d3186016d22d2a751113d8bc58853e5c9268a6307b438f8104edd47c9"
+      },
+      {
+        "version": "010",
+        "rawRowSha256": "8e810019009a9c31aa2143e2a4dffcc86d1e7d50dc948c13eb377abad66418d2"
+      },
+      {
+        "version": "011",
+        "rawRowSha256": "249bd30de862adac5a1c021419eb116ecba292876074f582b40b549b7d224394"
+      },
+      {
+        "version": "012",
+        "rawRowSha256": "616eb70ae40e83cc21bf318a84560c8e1edade95fd3b5036e80ae16b62092e61"
+      },
+      {
+        "version": "013",
+        "rawRowSha256": "983b4bc8d690928565e5533607acc2e9412069673a972c6fa06f7f29c7e23634"
+      },
+      {
+        "version": "014",
+        "rawRowSha256": "c9d76a9c5e8c347c7f4d667c71b5963cb79b784fcb9cadba0f3bff2946942307"
+      },
+      {
+        "version": "015",
+        "rawRowSha256": "f33c771a76443468cdc05f3fa4d8b31ec3f1582de46422a537cc7583a5b57147"
+      },
+      {
+        "version": "016",
+        "rawRowSha256": "fa6616b146123e047f232811efcf97571eebbae8a5e01366012e28346502535c"
+      },
+      {
+        "version": "017",
+        "rawRowSha256": "15051e6b4f89681fe521b95a707a0236f6eaec6e5c2fa12b0628a71b34bf74db"
+      },
+      {
+        "version": "018",
+        "rawRowSha256": "e20ec239950a609d1ecf0abd384a6a4deede84aced13202d41d0130a2a4d588e"
+      },
+      {
+        "version": "019",
+        "rawRowSha256": "08d3652b3ebf76944b9bd1bb24767bf68417c5c2a5df682b1beb98d4af576439"
+      },
+      {
+        "version": "020",
+        "rawRowSha256": "a5ece1d5a33d4717f055549b0fb0197af9c996853e9f82bb0a701ba8aa0b9d43"
+      },
+      {
+        "version": "021",
+        "rawRowSha256": "1353585e70fe22643a1249331d92e406bd5bcec8d2206160bafd8c42061cc75b"
+      },
+      {
+        "version": "022",
+        "rawRowSha256": "3a941eb2cb673aabf6dbdfe6dcd696f4f51c0bc5b88134ff08c71b3b068ee4de"
+      },
+      {
+        "version": "023",
+        "rawRowSha256": "e0f12dbef4835b2d8167eaa94557bcc19a36c302e42b603062f5ccb4fbeb4eed"
+      },
+      {
+        "version": "024",
+        "rawRowSha256": "b3ea38e1a248c2260cf19c0da07ef4e815da8a36fed58c3a2de83ed3a863641c"
+      },
+      {
+        "version": "20260708063744",
+        "rawRowSha256": "353a51ab4e4f6a750bf550430e7bf8d53d5d9609b65e06cf196415086f233cec"
+      },
+      {
+        "version": "20260710125337",
+        "rawRowSha256": "f3bf39e19d2cbd7104bc850f25f38ebcd7e112e9127130811ec3dc20f38041a8"
+      },
+      {
+        "version": "20260712033758",
+        "rawRowSha256": "bc4f98ffd7fc090e3be1d2e88d819a4f280a6240e3c6607a286929415ba1e760"
+      },
+      {
+        "version": "20260809090000",
+        "rawRowSha256": "c635b22346cef8534a0b2f1fb883242fdc563b0d9b9dd519e3e61fff5787d137"
+      },
+      {
+        "version": "20260809091000",
+        "rawRowSha256": "996f4bedf4048d7fce6c4f3a6f09b6fc97b559685a0833fcba2f7836342df58e"
+      },
+      {
+        "version": "20260811124500",
+        "rawRowSha256": "4ace81101f175703ebbc1d94ddf0b68a53a5e666ecc1717dcb32dfcf5f70e64e"
+      },
+      {
+        "version": "20260811133000",
+        "rawRowSha256": "7dd77240344d4ac6e4274a721b80589efb08506b9354dc8e33a52c54e4ea7094"
+      },
+      {
+        "version": "20260811150000",
+        "rawRowSha256": "3c57fea2d43612fbd5552686dacdad40bb880a40ee952c244b13a780dcbe42c2"
+      },
+      {
+        "version": "20260819134935",
+        "rawRowSha256": "ce4515b5efe18e620f16f0cbe41f58139258ddbeeddc605a12ce744453d38707"
+      },
+      {
+        "version": "20261022090000",
+        "rawRowSha256": "ce91961007e6b205d7819d1e34de5e7f81c16e5d54fe2f7345ca6f15e67cb299"
+      },
+      {
+        "version": "20261022100000",
+        "rawRowSha256": "f2165bfc8f866fc21644f0cb2db2fad9e7b3e3823b0d7abaf1d3d2d6bd33cfd6"
+      },
+      {
+        "version": "20261022110000",
+        "rawRowSha256": "2fc5a25805078ba1c23695c07147573dd58316ab71855c5d1324c4dbaae1f120"
+      },
+      {
+        "version": "20261022120000",
+        "rawRowSha256": "6ed282aeb51865b753180df80ebbfe70ba6424eac654daea9f5ab6ab4d2378e2"
+      },
+      {
+        "version": "20261022162015",
+        "rawRowSha256": "f31a6a88dab3d870012655bac718b29fcfba9309507122b71f2e6336b0d96809"
+      },
+      {
+        "version": "20261023120000",
+        "rawRowSha256": "26bd03b56054aceff1f6ba774f694a94e3e662975a3b75b661ad085e46689047"
+      },
+      {
+        "version": "20261024054121",
+        "rawRowSha256": "c7e8c401801cb9408de5990062cd72e4c188ef75b6942537e23d092fbac64679"
+      },
+      {
+        "version": "20261024063828",
+        "rawRowSha256": "9580d0c85c820240b60dd7711d8ca4207d9fd9ef711480998710164bb8d1a435"
+      },
+      {
+        "version": "20261024112902",
+        "rawRowSha256": "4148c395f9efec7ced4c4092769e3f8a07c3ba9bbb3b42495fa941d5caa7b240"
+      },
+      {
+        "version": "20261026120000",
+        "rawRowSha256": "54f41c40824dc4622507abe439ea5ccb9ff35ef55fdd001b13db944ae3c52ee6"
+      },
+      {
+        "version": "20261027140044",
+        "rawRowSha256": "8e8ef4959e95c8c730bf794b4a41d0140d27c4914d89322708dd55a0d47b0fe6"
+      },
+      {
+        "version": "20261027145613",
+        "rawRowSha256": "f973d77ecb57c3b0f2f6ef59e25ae6c98568b48ba9eb26c87ad25eaf763b0bfd"
+      },
+      {
+        "version": "20261027152539",
+        "rawRowSha256": "592fa27831dc75fe787343942ea16481662e1f8a17e535f5bb8ed548e3efe056"
+      },
+      {
+        "version": "20261028104333",
+        "rawRowSha256": "13a4468721dc99c5c23840740f55d1725f32dd0ba584765baf9bf7d8a42fefa7"
+      },
+      {
+        "version": "20261031003000",
+        "rawRowSha256": "752f1467ea0d016d7d76edf3e700f9845aec3832ca802d4087bb8175898fcd70"
+      }
+    ],
+    "rule": "Preserve full original JSONB row hashes including original CRLF, NULL statements and metadata; add only approved17 rows"
+  }
+}

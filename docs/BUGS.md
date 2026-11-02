@@ -13,6 +13,10 @@ This document now separates:
 
 # Confirmed Bugs
 
+## Production preparation | Read-only inventory complete; rollout NO-GO
+
+2026-11-02: [Production inventory / plan](2026-11-02-budget-b7-production-predeployment-plan.md) now supersedes old assumptions about parity. Actual48 baseline +17 pending sources, T0/import alias/Hotfix not replayed.12/13 exact hotfix body seals plus one verified whitespace-only raw mismatch (not waived);2NULL and34split-source provenance retained. P0 backup/restore and P1 Production packet/rehearsal, PG17.6 security treatment, Worker/legacy/promotion controls remain Blocked. No new product bug is inferred from the old cumulative rollback counter:382s delta0/currentCPU2%, bounded low-traffic evidence. Production writes/main/Vercel/activation were not executed. Stage65/sevenOFF maintained; core Stage GO/P2 limits below remain unchanged.
+
 ## B-7 release gates | Changed quote verified; Staging core acceptance GO with P2 limits
 
 Latest2026-11-02, fromffa1dbf: [rates / Staging closeout](2026-11-02-budget-b7-rates-staging-closeout.md), [new results](qa/2026-11-02-budget-b7-rates-closeout-results.json). Last P1 acceptance gate Passed with actual daily quoteJPY0.206945→0.207133, unpaidJPY100001→20714TWD, shares10357/10357, real two-user Pricing/Rates exclusion, both stale-versionPT409, exact Replay and both headed Browser detail/statistics. Four old Actuals/payment history/Source Origin/retained Budgets exact. Final Ledger65/sevenOFF/latchesretained/28+38/security unchanged; normal QA cleanup/logout/session0/native shutdown verified. No new unresolved product P0/P1. Production/main/deployment remain NO-GO pending separately authorized planning and rollout.

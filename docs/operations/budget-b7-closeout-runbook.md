@@ -1,5 +1,7 @@
 # Budget B-7｜連續 Staging 驗收與 Production 準備
 
+**最新任務：Production只讀盤點／部署規劃，等待Review，仍NO-GO。** [Production報告](../2026-11-02-budget-b7-production-predeployment-plan.md)、[專用Runbook](budget-b7-production/README.md)已按實際48筆基線規劃17來源，T0/import別名/Hotfix不重播。本輪僅授權正式SELECT；下文舊Staging連續測試授權不代表現在可Resume、發key或啟動Worker。Stage65/七OFF保持，沒重跑服務驗收；正式寫入/main/Vercel需另外明確核准。
+
 **最新狀態2026-11-02：[真實不同匯率／Staging 結案](../2026-11-02-budget-b7-rates-staging-closeout.md)、[結果矩陣](../qa/2026-11-02-budget-b7-rates-closeout-results.json)。** 最後 changed-quote P1 gate 已 Passed，Staging 核心功能／財務安全驗收 GO（帶已列 P2 限制）；Production／main／部署 NO-GO。全傳輸子項零 Blocked 的較廣驗收仍未完成，不可把原 standard／multipart HTTP status 缺口改稱通過。現在安全 Pause：Ledger65、七OFF、三 activated latches保留、readiness保留、原28/38/權限不變、QA sessions/refresh/leases0、原生QA助手/Chrome/Vite退出。以下早期64筆／readinessfalse及當時未驗證描述是歷史 checkpoint，不可當現在的前置值。
 
 ## 結案後操作與合法匯率補驗程序
