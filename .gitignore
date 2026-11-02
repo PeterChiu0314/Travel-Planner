@@ -9,3 +9,7 @@ env/
 .tmp-*/
 test-results/
 supabase/.temp/
+# Executable copy of the already-applied Production packet; the exact bytes
+# are retained in the lossless audited archive beside its manifest.
+docs/operations/budget-b7-production/candidate/dormant-and-budget-reset.sql
+docs/operations/budget-b7-production/candidate/applied-packet.sql.gz.base64

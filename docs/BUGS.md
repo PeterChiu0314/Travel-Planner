@@ -13,9 +13,11 @@ This document now separates:
 
 # Confirmed Bugs
 
-## Production preparation | Read-only inventory complete; rollout NO-GO
+## Production rollout | Dormant COMMIT; full B7 enablement NO-GO
 
-2026-11-02: [Production inventory / plan](2026-11-02-budget-b7-production-predeployment-plan.md) now supersedes old assumptions about parity. Actual48 baseline +17 pending sources, T0/import alias/Hotfix not replayed.12/13 exact hotfix body seals plus one verified whitespace-only raw mismatch (not waived);2NULL and34split-source provenance retained. P0 backup/restore and P1 Production packet/rehearsal, PG17.6 security treatment, Worker/legacy/promotion controls remain Blocked. No new product bug is inferred from the old cumulative rollback counter:382s delta0/currentCPU2%, bounded low-traffic evidence. Production writes/main/Vercel/activation were not executed. Stage65/sevenOFF maintained; core Stage GO/P2 limits below remain unchanged.
+2026-11-03: [Execution / limits](2026-11-03-budget-b7-production-deployment.md). After explicit Production deployment/budget-only clearing permission and backup waiver, one exact17-source transaction committed48→65. Original48 source rows,38final hashes/54PT409+24PT500, all18 non-budget relation projections, RLS/ACL and sevenOFF/false latches/readiness independently verified.12/12 native packet checks and4/4 signing adapter checks passed. Real dedicated Worker empty claim HTTP200 is narrow capability only. Managed Advisor0Errors/10sameWarnings/24intentional private deny-all Info. No new product P0/P1 found in Dormant installation.
+
+P1 operating gates remain: persistent Production Worker hosting/renewal/two-cycle evidence and Production legacy issuer-stop/invalidation; no readiness fabrication or key rotation. RAM-only signing does not authorize hosted persistence. PG17.6 security triage remains existing. Production budget history/Baseline rows were explicitly disposable and intentionally deleted; other project content retained. Prior backup P0 is **waived by user**, not falsely marked Passed. Compatible flags-OFF frontend release is independent; full Activation remains NO-GO. No main merge.
 
 ## B-7 release gates | Changed quote verified; Staging core acceptance GO with P2 limits
 

@@ -1,0 +1,469 @@
+{
+  "date": "2026-11-03",
+  "timezone": "Asia/Taipei",
+  "project": "lqvuqamzmchepgxkftcw",
+  "startingCommit": "78306bb7c758dcbba10fc4335e6b28bf4b73f669",
+  "backup": {
+    "status": "waived by explicit user decision",
+    "created": false
+  },
+  "scope": {
+    "budgetOnlyReset": true,
+    "wholeDatabaseReset": false,
+    "originalTripsAccountsItineraryPreserved": true
+  },
+  "packet": {
+    "sha256": "8870b5e4c392c9c74e2671c7932033873587ea112417c2d96348e2122f82573e",
+    "wrapperSha256": "ced05679bc2c21f155d9389b714659b31ca2e191968bc74ab10591d46ccc26f4",
+    "sources": [
+      {
+        "order": 1,
+        "version": "20261029020551",
+        "name": "budget_group_metadata_prototype",
+        "path": "supabase/migrations/20261029020551_budget_group_metadata_prototype.sql",
+        "lfSha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6",
+        "lfBytes": 29124
+      },
+      {
+        "order": 2,
+        "version": "20261029031137",
+        "name": "budget_metadata_snapshot_signals",
+        "path": "supabase/migrations/20261029031137_budget_metadata_snapshot_signals.sql",
+        "lfSha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1",
+        "lfBytes": 7168
+      },
+      {
+        "order": 3,
+        "version": "20261029091435",
+        "name": "budget_metadata_undo_prototype",
+        "path": "supabase/migrations/20261029091435_budget_metadata_undo_prototype.sql",
+        "lfSha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd",
+        "lfBytes": 26310
+      },
+      {
+        "order": 4,
+        "version": "20261029114817",
+        "name": "budget_category_payer_links_groups",
+        "path": "supabase/migrations/20261029114817_budget_category_payer_links_groups.sql",
+        "lfSha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262",
+        "lfBytes": 41963
+      },
+      {
+        "order": 5,
+        "version": "20261029123907",
+        "name": "budget_pricing_participant_groups",
+        "path": "supabase/migrations/20261029123907_budget_pricing_participant_groups.sql",
+        "lfSha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d",
+        "lfBytes": 78330
+      },
+      {
+        "order": 6,
+        "version": "20261029134206",
+        "name": "budget_payment_lifecycle_groups",
+        "path": "supabase/migrations/20261029134206_budget_payment_lifecycle_groups.sql",
+        "lfSha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3",
+        "lfBytes": 69518
+      },
+      {
+        "order": 7,
+        "version": "20261030012554",
+        "name": "budget_payment_minimal_bundle",
+        "path": "supabase/migrations/20261030012554_budget_payment_minimal_bundle.sql",
+        "lfSha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011",
+        "lfBytes": 20858
+      },
+      {
+        "order": 8,
+        "version": "20261030021719",
+        "name": "budget_source_atomic_groups",
+        "path": "supabase/migrations/20261030021719_budget_source_atomic_groups.sql",
+        "lfSha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c",
+        "lfBytes": 66361
+      },
+      {
+        "order": 9,
+        "version": "20261030034351",
+        "name": "budget_receipts_lifecycle",
+        "path": "supabase/migrations/20261030034351_budget_receipts_lifecycle.sql",
+        "lfSha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80",
+        "lfBytes": 69710
+      },
+      {
+        "order": 10,
+        "version": "20261030054628",
+        "name": "budget_financial_dependencies",
+        "path": "supabase/migrations/20261030054628_budget_financial_dependencies.sql",
+        "lfSha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55",
+        "lfBytes": 91373
+      },
+      {
+        "order": 11,
+        "version": "20261030064703",
+        "name": "budget_workspace_lifecycle",
+        "path": "supabase/migrations/20261030064703_budget_workspace_lifecycle.sql",
+        "lfSha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+        "lfBytes": 113553
+      },
+      {
+        "order": 12,
+        "version": "20261030082712",
+        "name": "budget_workspace_undo",
+        "path": "supabase/migrations/20261030082712_budget_workspace_undo.sql",
+        "lfSha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27",
+        "lfBytes": 66204
+      },
+      {
+        "order": 13,
+        "version": "20261031083437",
+        "name": "budget_managed_worker_role_path",
+        "path": "docs/operations/budget-b7-staging-managed/20261031083437_budget_managed_worker_role_path.sql",
+        "lfSha256": "4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e",
+        "lfBytes": 39275
+      },
+      {
+        "order": 14,
+        "version": "20261031130000",
+        "name": "budget_business_conflicts_forward",
+        "path": "docs/operations/budget-b7-staging/20261031130000_budget_business_conflicts_forward.sql",
+        "lfSha256": "f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3",
+        "lfBytes": 12434
+      },
+      {
+        "order": 15,
+        "version": "20261031130414",
+        "name": "budget_dormant_parent_cascade_guard",
+        "path": "docs/operations/drafts/budget-b7-cascade-forward/20261031130414_budget_dormant_parent_cascade_guard.sql",
+        "lfSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+        "lfBytes": 3546
+      },
+      {
+        "order": 16,
+        "version": "20261031140648",
+        "name": "budget_trip_cascade_lease_admission",
+        "path": "docs/operations/drafts/budget-b7-trip-cascade/20261031140648_budget_trip_cascade_lease_admission.sql",
+        "lfSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+        "lfBytes": 17987
+      },
+      {
+        "order": 17,
+        "version": "20261101032853",
+        "name": "budget_receipt_legacy_cutover",
+        "path": "docs/operations/budget-b7-legacy-cutover/20261101032853_budget_receipt_legacy_cutover.sql",
+        "lfSha256": "b5032314b31678ae6ae922f6aa648e7a7108e5ce77bd09a7a9b5aef7d3ed85b6",
+        "lfBytes": 25808
+      }
+    ],
+    "commitConfirmed": true,
+    "psqlExitCode": 0,
+    "automaticRetries": 0
+  },
+  "connection": {
+    "clientVersion": "17.11",
+    "serverVersion": "17.6",
+    "sessionPooler5432": true,
+    "projectBoundLogin": true,
+    "sslmode": "verify-full",
+    "clientTlsVersion": "1.3",
+    "passwordSaved": false
+  },
+  "readback": {
+    "observedAt": "2026-11-02T16:38:50.833288+00:00",
+    "ledgerBefore": 48,
+    "ledgerAfter": 65,
+    "head": "20261101032853",
+    "original48RawLedgerUnchanged": true,
+    "new17FullSourcesMatched": true,
+    "functions38Matched": true,
+    "pt409": 54,
+    "pt500": 24,
+    "custom40001": 0,
+    "extraGuards": [
+      {
+        "signature": "app_private.guard_incomplete_child()",
+        "bodySha256": "ecd7888508e91b6df351a9ab4e95cf1a3facc426316ee68a868e622b1cdfda51"
+      },
+      {
+        "signature": "app_private.guard_budget_external_parent()",
+        "bodySha256": "33250f5f38a512114aff9577caf01d4f2e87a9492f212311cf760c8d21df7d8a"
+      },
+      {
+        "signature": "app_private.assert_budget_edit_lease(text,uuid,boolean,uuid,uuid)",
+        "bodySha256": "a198a9f151ae29474341fac43e517c3e2d0bb09d75f2322133586ef8383cec0f"
+      },
+      {
+        "signature": "app_private.guard_receipt_metadata()",
+        "bodySha256": "85cda3b2566527c40fe9bb1ee791b5d9ed07172e283ad46c5b2e23dd2c2df434"
+      },
+      {
+        "signature": "app_private.latch_budget_receipts()",
+        "bodySha256": "eb1fdeec2290b9dc95c8033c0d212713f938db8ccfa716b85e340bc7f9b983ac"
+      },
+      {
+        "signature": "app_private.receipt_path_protected(text,text)",
+        "bodySha256": "87a6a48c10e8adcca2a66c23fc91520e38b7cc8bf4f15208c1576b82e93392e0"
+      }
+    ],
+    "originalNonBudgetRelationsMatched": 18,
+    "countsAfter": {
+      "trips": 7,
+      "users": 7,
+      "actuals": 0,
+      "budgets": 0,
+      "members": 12,
+      "baselines": 0,
+      "attachments": 0,
+      "itineraryItems": 123,
+      "storageObjects": 0,
+      "actualParticipants": 0,
+      "budgetParticipants": 0
+    },
+    "protocols": {
+      "undo": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      },
+      "source": {
+        "enabled": false,
+        "singleton": true
+      },
+      "finance": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true
+      },
+      "payment": {
+        "enabled": false,
+        "singleton": true
+      },
+      "receipt": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true,
+        "storage_verified": false,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": false,
+        "content_worker_verified": false,
+        "legacy_grants_expire_at": null
+      },
+      "metadata": {
+        "enabled": false,
+        "singleton": true
+      },
+      "lifecycle": {
+        "enabled": false,
+        "activated": false,
+        "singleton": true
+      }
+    },
+    "workerRole": {
+      "login": false,
+      "inherit": false,
+      "bypassRls": false,
+      "superuser": false,
+      "createRole": false
+    },
+    "workerMemberships": [
+      {
+        "set": true,
+        "admin": false,
+        "member": "authenticator",
+        "inherit": false
+      },
+      {
+        "set": false,
+        "admin": true,
+        "member": "postgres",
+        "inherit": false
+      }
+    ],
+    "privateTableGrants": [],
+    "privateRlsOff": [],
+    "receiptIntents": 0,
+    "receiptCleanup": 0,
+    "legacyCutoverEvents": 0
+  },
+  "tests": {
+    "nativePacket": {
+      "scope": "isolated PostgreSQL fixture only; not Supabase Managed/Auth/HTTP acceptance",
+      "results": [
+        {
+          "name": "Production packet selects exactly17 immutable sources and excludes T0 alias old hotfix",
+          "status": "passed"
+        },
+        {
+          "name": "Incorrect target refuses atomically before reset",
+          "status": "passed"
+        },
+        {
+          "name": "Unknown hotfix hash rejects without clearing financial graph",
+          "status": "passed"
+        },
+        {
+          "name": "Raw original ledger hash collision refuses before reset",
+          "status": "passed"
+        },
+        {
+          "name": "Catalog/RLS drift refuses atomically",
+          "status": "passed"
+        },
+        {
+          "name": "Protected data mismatch refuses before budget deletion",
+          "status": "passed"
+        },
+        {
+          "name": "Active editor blocks even privileged budget reset",
+          "status": "passed"
+        },
+        {
+          "name": "Late injected failure restores reset rows schema roles and ledger",
+          "status": "passed"
+        },
+        {
+          "name": "Budget-only reset and complete17-source install commit in one transaction",
+          "status": "passed"
+        },
+        {
+          "name": "Original48 source rows unchanged and new17 full sources exact",
+          "status": "passed"
+        },
+        {
+          "name": "Final38 hashes and54 PT409/24 PT500 with seven OFF and three false readiness",
+          "status": "passed"
+        },
+        {
+          "name": "Completed production packet cannot be replayed",
+          "status": "passed"
+        }
+      ],
+      "hostedWrites": false
+    },
+    "productionCredentialAdapter": {
+      "passed": 4,
+      "scope": "local cryptographic adapter only"
+    },
+    "workerHttpCapability": {
+      "status": "Passed",
+      "httpStatus": 200,
+      "empty": true,
+      "workerRole": "budget_receipt_worker",
+      "workerRef": "lqvuqamzmchepgxkftcw",
+      "ttlSeconds": 900,
+      "usesServiceRoleAsWorker": false,
+      "scope": "empty claim capability only; not content cleanup readiness",
+      "readinessChanged": false
+    },
+    "productionCompile": {
+      "status": "Passed",
+      "limitation": "local compile only; Vercel binding independently required"
+    },
+    "stagingSuitesRerun": false
+  },
+  "advisor": {
+    "method": "Dashboard Managed linter actually rerun; connector denied project",
+    "errorsBefore": 0,
+    "errorsAfter": 0,
+    "warningsBefore": 10,
+    "warningsAfter": 10,
+    "warningRowsUnchanged": true,
+    "infoBefore": 2,
+    "infoAfter": 24,
+    "infoClassification": "private RLS enabled/no policies; separately verified no direct private grants"
+  },
+  "frontend": {
+    "status": "Pending release",
+    "allFiveBudgetEnvFlagsAbsent": true,
+    "hiddenProductionEnvCount": 0,
+    "mainMerged": false
+  },
+  "remaining": {
+    "fullActivation": "Blocked",
+    "workerRuntimeRenewalScheduler": "Blocked; RAM-only supply is not persistent hosted infrastructure",
+    "legacyIssuerStopAndInvalidation": "Blocked; no Production journal events",
+    "twoUserReceiptFinancialSmoke": "Pending Post-Activation",
+    "engineSecurityTriage": "existing operational item"
+  },
+  "decision": {
+    "dormantDatabase": "GO / completed",
+    "fullProductionActivation": "NO-GO"
+  },
+  "privateArtifactDigests": [
+    {
+      "artifact": "identity-before.out",
+      "sha256": "9abf8c4ef5e0137d3da77c883af4dfe2b3b97da64d5041e3c2b796b8196dc3f5"
+    },
+    {
+      "artifact": "contract-final-before.out",
+      "sha256": "05150fa2cbe91f605b334210f1bc188da98ae2f9dd87395f69013019b202aaf1"
+    },
+    {
+      "artifact": "protection-final-before.out",
+      "sha256": "b45f3b653e8093af2997acd095c697c123715196c6660c9d5149ab6a8264534e"
+    },
+    {
+      "artifact": "ledger-final-before.out",
+      "sha256": "63096a68f6478c39c75553ba1b5489381d34efcdeda6e200de6f39b382cee6fc"
+    },
+    {
+      "artifact": "nonbudget-before.out",
+      "sha256": "653eb32bfb538620e13e0d7a775dfaf3e9951d4f8237d76e6a1851163cd387dd"
+    },
+    {
+      "artifact": "deployment.out",
+      "sha256": "4284d2e6fb07cc476a75511bb0e775ef0a73de5d3091732493df5e049bb2797b"
+    },
+    {
+      "artifact": "deployment.err",
+      "sha256": "08e6fc9baaca402f5397f76c6a2c3a6514763d2cb743341db3d41fb8dab85550"
+    },
+    {
+      "artifact": "identity-after.out",
+      "sha256": "6ddac3267714e940af6497a34ac4608a12804177678fd44d90ad3b265c2fd50f"
+    },
+    {
+      "artifact": "ledger-after.out",
+      "sha256": "53c2c3a73d7336f863c2ac845886d7ef247b7187e6a30a8acad00be3b63279dd"
+    },
+    {
+      "artifact": "nonbudget-after.out",
+      "sha256": "653eb32bfb538620e13e0d7a775dfaf3e9951d4f8237d76e6a1851163cd387dd"
+    },
+    {
+      "artifact": "data-after.out",
+      "sha256": "49c84a7e0b0536d14c487b107c3a672cc9e78a7912b767d4606fa317e5fbeb59"
+    },
+    {
+      "artifact": "functions-after.out",
+      "sha256": "033da9c27f44b74e0645568f0a7e516640cc06c0cd6fa14e0f78f98f0d6b042f"
+    },
+    {
+      "artifact": "protocols-after.out",
+      "sha256": "b509b70d5e50451168f9ac8a5a20329b5b37725ba45aa569aa40fcb081dedf60"
+    },
+    {
+      "artifact": "permissions-after.out",
+      "sha256": "75efa1898ccd03fbafa87a9ca6d3fcd46023e86e2d353600b7c6029961b5324f"
+    },
+    {
+      "artifact": "catalog-after.out",
+      "sha256": "f0ea0262b3ffcf29a6c1b0b56b151b3eb458d3a324884ad96935318989afde19"
+    },
+    {
+      "artifact": "advisor-before.json",
+      "sha256": "06c0ae3024686327a7883f015742db19131dd2f50f1800ea6b550947cabacf67"
+    },
+    {
+      "artifact": "advisor-after-warnings.json",
+      "sha256": "06c0ae3024686327a7883f015742db19131dd2f50f1800ea6b550947cabacf67"
+    },
+    {
+      "artifact": "advisor-after-info.json",
+      "sha256": "cb2a291bbbbb38706a64912a7c4b4f775ddee3a5b4554fc6bc58fb54ac504763"
+    },
+    {
+      "artifact": "advisor-after-info-scrolled.json",
+      "sha256": "e22ea841e1be865681bcf872d3bb2f8c77912a0ddc8433a5f415f1a95bb88fd2"
+    }
+  ],
+  "secretsOrPersonalRowsIncluded": false
+}

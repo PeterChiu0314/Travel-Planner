@@ -1,4 +1,8 @@
-# B-7 Production 部署計畫／操作 Runbook（Review 草案）
+# B-7 Production 部署／操作 Runbook
+
+**2026-11-03 execution update:** [Production deployment report](../../2026-11-03-budget-b7-production-deployment.md) supersedes the planning-only status below. User explicitly waived backup/restore and authorized budget-only test-data clearing. The [sealed transaction](candidate/packet-manifest.json) COMMITTED48→65; seven protocols/latches/readiness remainFALSE. NEVER replay its reset. Main/frontend release and full Activation status must be read from the new execution report/evidence, not inferred from this old draft. Persistent Worker renewal/runtime and Production legacy cutoff remain true gates; RAM-only signing permission does not authorize hosted secret persistence. No destructive schema rollback.
+
+## Historical planning contract (2026-11-02; superseded only where stated)
 
 2026-11-02。唯一 Production target：`lqvuqamzmchepgxkftcw`。**本文件不是部署授權，沒有可執行的 Production migration wrapper。現在 NO-GO。** 本輪只執行 `BEGIN ... READ ONLY` 的 SELECT 與本機文件工作；不安裝 schema、不合併 main、不發布／Promotion、不啟用任何旗標／Worker。
 

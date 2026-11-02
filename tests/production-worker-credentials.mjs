@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {createHmac} from 'node:crypto';
+import {createProductionCredentialProvider,productionCredentialProject as project} from '../scripts/qa/production-worker-credentials.mjs';
+const now=1900000000;
+const key=Buffer.alloc(32,7);
+const sign=(role,ref=project,secret=key)=>{const h=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url'),b=Buffer.from(JSON.stringify({role,ref,iat:now,exp:now+3600})).toString('base64url');return h+'.'+b+'.'+createHmac('sha256',secret).update(h+'.'+b).digest('base64url');};
+const make=(options={})=>createProductionCredentialProvider({admin:sign('service_role'),anon:sign('anon'),secret:Buffer.from(key),now:()=>now,...options});
+let passed=0;
+const p=make(),token=p.issue().worker,claims=JSON.parse(Buffer.from(token.split('.')[1],'base64url'));
+assert.equal(claims.role,'budget_receipt_worker');assert.equal(claims.ref,project);assert.equal(claims.exp-claims.iat,900);assert.equal(createHmac('sha256',key).update(token.split('.').slice(0,2).join('.')).digest('base64url'),token.split('.')[2]);passed++;
+const wrong=Buffer.from(key);assert.throws(()=>make({admin:sign('service_role','uyqdopksfysbobhjcepk'),secret:wrong}),/project role or expiry/);assert(wrong.every(x=>x===0));passed++;
+assert.throws(()=>make({admin:sign('authenticated')}),/project role or expiry/);assert.throws(()=>make({secret:Buffer.alloc(32,8)}),/signature rejected/);passed++;
+const stopKey=Buffer.from(key),q=make({secret:stopKey});q.stop();assert(stopKey.every(x=>x===0));assert.throws(()=>q.issue(),/stopped/);p.stop();passed++;
+console.log(JSON.stringify({scope:'local cryptographic adapter only; no Auth/HTTP acceptance',passed}));

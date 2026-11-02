@@ -1,0 +1,189 @@
+{
+  "target": "lqvuqamzmchepgxkftcw",
+  "status": "applied Dormant; independently verified; NEVER replay budget reset",
+  "budgetResetAuthorized": true,
+  "backupWaivedByUser": true,
+  "packetSha256": "8870b5e4c392c9c74e2671c7932033873587ea112417c2d96348e2122f82573e",
+  "packetBytes": 1714350,
+  "ledgerBefore": 48,
+  "ledgerAfter": 65,
+  "sources": [
+    {
+      "order": 1,
+      "version": "20261029020551",
+      "name": "budget_group_metadata_prototype",
+      "path": "supabase/migrations/20261029020551_budget_group_metadata_prototype.sql",
+      "lfSha256": "686017abab6daf966fccf15f9f231f91a58f5d4747526daff23b16453f0cdee6",
+      "lfBytes": 29124
+    },
+    {
+      "order": 2,
+      "version": "20261029031137",
+      "name": "budget_metadata_snapshot_signals",
+      "path": "supabase/migrations/20261029031137_budget_metadata_snapshot_signals.sql",
+      "lfSha256": "b7561c3d3cbd89988abebfdf0a526092eb0d65c465dabe45d7cb7eea58d815f1",
+      "lfBytes": 7168
+    },
+    {
+      "order": 3,
+      "version": "20261029091435",
+      "name": "budget_metadata_undo_prototype",
+      "path": "supabase/migrations/20261029091435_budget_metadata_undo_prototype.sql",
+      "lfSha256": "fed54f64ecb3d9588e7df2c074888c02b60c7a68423cb02e86ea42f8d67cb1fd",
+      "lfBytes": 26310
+    },
+    {
+      "order": 4,
+      "version": "20261029114817",
+      "name": "budget_category_payer_links_groups",
+      "path": "supabase/migrations/20261029114817_budget_category_payer_links_groups.sql",
+      "lfSha256": "08c7c9e813d6014fb8ce4fd039e4cd39f9152f0832086609e715d3d1cd591262",
+      "lfBytes": 41963
+    },
+    {
+      "order": 5,
+      "version": "20261029123907",
+      "name": "budget_pricing_participant_groups",
+      "path": "supabase/migrations/20261029123907_budget_pricing_participant_groups.sql",
+      "lfSha256": "657c0cacddcea3b70d82a2a8c6c81e52124aeab2d45c39b89d60bb3ef2d2803d",
+      "lfBytes": 78330
+    },
+    {
+      "order": 6,
+      "version": "20261029134206",
+      "name": "budget_payment_lifecycle_groups",
+      "path": "supabase/migrations/20261029134206_budget_payment_lifecycle_groups.sql",
+      "lfSha256": "3387c31f5e4c4bbfd12ddcbc26ff62e23b534de8132a42265d5311de0d8ffaa3",
+      "lfBytes": 69518
+    },
+    {
+      "order": 7,
+      "version": "20261030012554",
+      "name": "budget_payment_minimal_bundle",
+      "path": "supabase/migrations/20261030012554_budget_payment_minimal_bundle.sql",
+      "lfSha256": "7df467d8e04daedbefda589dee0c1c2cc1e09ec328c37463b640c4e02c07b011",
+      "lfBytes": 20858
+    },
+    {
+      "order": 8,
+      "version": "20261030021719",
+      "name": "budget_source_atomic_groups",
+      "path": "supabase/migrations/20261030021719_budget_source_atomic_groups.sql",
+      "lfSha256": "c9f7db07d72ad627958316a293fdb0d82e284048bee35f3dd6b57cae8a59ea2c",
+      "lfBytes": 66361
+    },
+    {
+      "order": 9,
+      "version": "20261030034351",
+      "name": "budget_receipts_lifecycle",
+      "path": "supabase/migrations/20261030034351_budget_receipts_lifecycle.sql",
+      "lfSha256": "68051b3e1253617a062a863e475fb22a01401f98845a28a3720edaa6dc253a80",
+      "lfBytes": 69710
+    },
+    {
+      "order": 10,
+      "version": "20261030054628",
+      "name": "budget_financial_dependencies",
+      "path": "supabase/migrations/20261030054628_budget_financial_dependencies.sql",
+      "lfSha256": "6e7f04fed391137e775bff888b078e68ced76869d6adc9e302c2a8ff4ee4da55",
+      "lfBytes": 91373
+    },
+    {
+      "order": 11,
+      "version": "20261030064703",
+      "name": "budget_workspace_lifecycle",
+      "path": "supabase/migrations/20261030064703_budget_workspace_lifecycle.sql",
+      "lfSha256": "090d1fb6faeeb64e60b2927b9cf1d7418f7f3541539d9fee44aa45cba9cc0cea",
+      "lfBytes": 113553
+    },
+    {
+      "order": 12,
+      "version": "20261030082712",
+      "name": "budget_workspace_undo",
+      "path": "supabase/migrations/20261030082712_budget_workspace_undo.sql",
+      "lfSha256": "b8fe1488d9c69057e4699b903ba762c1f3622b3d1c75eb5789e1181643055e27",
+      "lfBytes": 66204
+    },
+    {
+      "order": 13,
+      "version": "20261031083437",
+      "name": "budget_managed_worker_role_path",
+      "path": "docs/operations/budget-b7-staging-managed/20261031083437_budget_managed_worker_role_path.sql",
+      "lfSha256": "4a4b50f012c356120a11286d881fef3a268ca97bc23aa05f37aa4b0f122cc08e",
+      "lfBytes": 39275
+    },
+    {
+      "order": 14,
+      "version": "20261031130000",
+      "name": "budget_business_conflicts_forward",
+      "path": "docs/operations/budget-b7-staging/20261031130000_budget_business_conflicts_forward.sql",
+      "lfSha256": "f3b79c74f5c79737ccb17dc89d296cdab3afb8c5c5e115ae32195bb299f6bbb3",
+      "lfBytes": 12434
+    },
+    {
+      "order": 15,
+      "version": "20261031130414",
+      "name": "budget_dormant_parent_cascade_guard",
+      "path": "docs/operations/drafts/budget-b7-cascade-forward/20261031130414_budget_dormant_parent_cascade_guard.sql",
+      "lfSha256": "19f9c1e6184560052b4a62f4b810573198a225b98e0f80b67b874ad869e4cb22",
+      "lfBytes": 3546
+    },
+    {
+      "order": 16,
+      "version": "20261031140648",
+      "name": "budget_trip_cascade_lease_admission",
+      "path": "docs/operations/drafts/budget-b7-trip-cascade/20261031140648_budget_trip_cascade_lease_admission.sql",
+      "lfSha256": "a221d3911b285d5ae729ca7db6fd6c2b15094dced600ee38b52eabebb7de069b",
+      "lfBytes": 17987
+    },
+    {
+      "order": 17,
+      "version": "20261101032853",
+      "name": "budget_receipt_legacy_cutover",
+      "path": "docs/operations/budget-b7-legacy-cutover/20261101032853_budget_receipt_legacy_cutover.sql",
+      "lfSha256": "b5032314b31678ae6ae922f6aa648e7a7108e5ce77bd09a7a9b5aef7d3ed85b6",
+      "lfBytes": 25808
+    }
+  ],
+  "resetTables": [
+    "public.actual_expense_participants",
+    "public.actual_expenses",
+    "public.budget_item_participants",
+    "public.itinerary_budget_items",
+    "public.budget_items",
+    "public.trip_budget_baselines",
+    "app_private.budget_edit_leases",
+    "app_private.budget_selections",
+    "app_private.budget_workspace_requests",
+    "public.budget_collaboration_signals"
+  ],
+  "nonBudgetPreservation": "all observed public/private old columns; accommodation budget backlink and its update timestamp may change; auth/storage metadata retained",
+  "noStorageBytesDeletion": true,
+  "noActivation": true,
+  "sourceMigrationsModified": false,
+  "isolatedTests": {
+    "passed": 12,
+    "failed": 0,
+    "evidence": "docs/qa/2026-11-03-budget-b7-production-deployment-results.json"
+  },
+  "executed": true,
+  "execution": {
+    "commitConfirmed": true,
+    "independentReadbackAt": "2026-11-02T16:38:50.833288+00:00",
+    "ledgerRows": 65,
+    "head": "20261101032853",
+    "protocolsEnabled": false,
+    "latchesActivated": false,
+    "readinessSet": false
+  },
+  "losslessArchive": {
+    "file": "applied-packet.sql.gz.base64",
+    "private": true,
+    "tracked": false,
+    "sha256": "424ec1ab8ee13b46ba1e618767c12cb850e9b2029082a5379624188ca5c8963b",
+    "decodedSqlSha256": "8870b5e4c392c9c74e2671c7932033873587ea112417c2d96348e2122f82573e",
+    "encoding": "base64(gzip(original UTF8 bytes)); LF wrapping",
+    "bytes": 347019,
+    "replayAllowed": false
+  }
+}
