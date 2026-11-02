@@ -1,6 +1,14 @@
 import {sourceBackend,enableMetadata,boot as sourceBoot} from './budgetSourceMock.js';
 import {sourceSignature} from '../../src/lib/budgetSourceValues.js';
-export async function enableReceipts(page){await enableMetadata(page);await page.route('**/src/lib/budgetReceiptConfig.js*',r=>r.fulfill({contentType:'text/javascript',body:'export const budgetReceiptsEnabled=true;'}));}
+import fs from 'node:fs/promises';
+export async function enableReceipts(page,{disabled=false,groups=true}={}){
+ await enableMetadata(page);
+ // Override only build flags; keep the real module's exports and guards.
+ const source=(await fs.readFile(new URL('../../src/lib/budgetReceiptConfig.js',import.meta.url),'utf8'))
+  .replace(/export const budgetReceiptsEnabled=.*?;/,`export const budgetReceiptsEnabled=${groups};`)
+  .replace(/export const budgetReceiptsDisabled=.*?;/,`export const budgetReceiptsDisabled=${disabled};`);
+ await page.route('**/src/lib/budgetReceiptConfig.js*',r=>r.fulfill({contentType:'text/javascript',body:source}));
+}
 export async function boot(page,db,actor='A'){
  await page.route('**/src/lib/budgetReceiptStorage.js*',r=>r.fulfill({contentType:'text/javascript',body:`export async function receiptStorage(client,headers){const actor=(await client.auth.getSession()).data.session.user.id;return {upload:async(path,file)=>window.budgetBackend({op:'receipt-storage',action:'upload',path,file:{name:file.name,type:file.type,size:file.size},headers,actor}),remove:async paths=>window.budgetBackend({op:'receipt-storage',action:'remove',paths,headers,actor})};}`}));
  await sourceBoot(page,db,actor);

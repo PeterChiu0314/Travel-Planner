@@ -3,7 +3,7 @@ import { createBudgetPaymentController, createBudgetPaymentService } from "./lib
 import { createBudgetSourceController, createBudgetSourceService } from './lib/budgetSourceGroups.js';
 import {createBudgetReceiptController,createBudgetReceiptService} from './lib/budgetReceiptGroups.js';
 import {receiptStorage} from './lib/budgetReceiptStorage.js';
-import {budgetReceiptsEnabled} from './lib/budgetReceiptConfig.js';
+import {budgetReceiptsEnabled,budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import BudgetReceiptAttachments from './components/budget/BudgetReceiptAttachments.jsx';
 import {budgetFinanceGroupsEnabled,createBudgetRatesController,createBudgetRatesService} from './lib/budgetFinanceGroups.js';
 import {budgetLifecycleEnabled,isBudgetComplete} from './lib/budgetLifecycleValues.js';
@@ -5700,6 +5700,7 @@ export default function App() {
   }
 
   async function uploadAttachment(targetType, targetId, file, meta = {}) {
+    if (budgetReceiptsDisabled && isBudgetReceiptTarget(targetType)) return { ok: false, error: new Error(budgetReceiptUnavailableMessage) };
     if (!activeTrip || !(targetType === "actual_expense" ? canEdit : canEditActiveTripContent) || !file) return;
     if (file.size > 10 * 1024 * 1024) {
       const error = new Error("附件大小需小於 10MB");
@@ -5740,6 +5741,7 @@ export default function App() {
   }
 
   async function openAttachment(attachment) {
+    if (budgetReceiptsDisabled && isBudgetReceiptTarget(attachment.target_type)) { notify.warning(budgetReceiptUnavailableMessage); return; }
     const { data, error } = await supabase.storage.from(attachmentBucket).createSignedUrl(attachment.file_url, 600);
     if (error) {
       notify.error(error.message);
@@ -5749,6 +5751,7 @@ export default function App() {
   }
 
   async function deleteAttachment(attachment, meta = {}) {
+    if (budgetReceiptsDisabled && isBudgetReceiptTarget(attachment.target_type)) return { ok: false, error: new Error(budgetReceiptUnavailableMessage) };
     if (!activeTrip || !(attachment.target_type === "actual_expense" ? canEdit : canEditActiveTripContent)) return;
     if (meta.leaseProtocol) {
       const result = await deleteBudgetReceipt({ supabase, tripId: activeTrip.id, attachment, meta, refresh: refreshBudget });
@@ -13356,10 +13359,11 @@ function BudgetPanel(props) {
   }
   const workspaceActive = props.restoreDrafts !== false;
   const metadataActive = props.useEditLocks === false || workspaceActive;
-  if(budgetMetadataEnabled&&budgetReceiptsEnabled)for(const row of props.actualExpenses)receipts.view('actual',row.id);
-  const receiptsPending=budgetMetadataEnabled&&budgetReceiptsEnabled&&receipts.hasPending();
+  const receiptGroupsRequested=budgetMetadataEnabled&&budgetReceiptsEnabled&&(!budgetReceiptsDisabled||props.useEditLocks===false);
+  if(receiptGroupsRequested)for(const row of props.actualExpenses)receipts.view('actual',row.id);
+  const receiptsPending=receiptGroupsRequested&&receipts.hasPending();
   services.useGuard(`budget-receipts:${props.activeTrip.id}`,useMemo(()=>({isActive:receiptsPending,isDirty:receiptsPending,prepare:()=>receipts.prepare(),finish:()=>receipts.prepare(),save:async()=>false,discard:async()=>false}),[receiptsPending,receipts]));
-  useEffect(()=>{receipts.configure(props.currentUserId,props.activeTrip.id,budgetMetadataEnabled&&budgetReceiptsEnabled&&metadataActive&&props.canEdit);},[receipts,props.currentUserId,props.activeTrip.id,metadataActive,props.canEdit]);
+  useEffect(()=>{receipts.configure(props.currentUserId,props.activeTrip.id,receiptGroupsRequested&&metadataActive&&props.canEdit);},[receipts,props.currentUserId,props.activeTrip.id,receiptGroupsRequested,metadataActive,props.canEdit]);
   useEffect(()=>()=>{void receipts.dispose();demoReceiptDispose?.();},[receipts,demoReceiptDispose]);
   if(budgetMetadataEnabled&&budgetFinanceGroupsEnabled)rates.view('trip',props.activeTrip.id);
   const ratesPending=budgetMetadataEnabled&&budgetFinanceGroupsEnabled&&rates.hasPending();
@@ -13428,7 +13432,7 @@ function BudgetPanel(props) {
     collaborationRevision={collaborationRevision} remoteCollaborators={props.useEditLocks === false ? [] : budgetMetadataEnabled
       ? primaryBudgetCollaborators(metadata.status().verified ? metadata.status().snapshot?.collaboration?.entries || [] : []).filter(e => !e.own_session)
       : remoteCollaborators} onSelectionChange={props.useEditLocks === false ? undefined : publishSelection}
-    renderAttachments={budgetMetadataEnabled&&budgetReceiptsEnabled?(expense)=><BudgetReceiptAttachments key={`${props.currentUserId}:${props.activeTrip.id}:${expense.id}`} client={receipts} metadata={metadata} record={expense} members={props.members} fallbackAttachments={props.attachments} AttachmentList={AttachmentList} onOpen={props.onOpenAttachment}/>:props.enableAttachments === false ? null : (expense) => <>{receiptError ? <p role="alert" className="bw-warning">{receiptError}</p> : null}<AttachmentList
+    renderAttachments={budgetReceiptsDisabled&&props.useEditLocks!==false?()=> <p className="muted-text" role="status">{budgetReceiptUnavailableMessage}</p>:receiptGroupsRequested?(expense)=><BudgetReceiptAttachments key={`${props.currentUserId}:${props.activeTrip.id}:${expense.id}`} client={receipts} metadata={metadata} record={expense} members={props.members} fallbackAttachments={props.attachments} AttachmentList={AttachmentList} onOpen={props.onOpenAttachment}/>:props.enableAttachments === false ? null : (expense) => <>{receiptError ? <p role="alert" className="bw-warning">{receiptError}</p> : null}<AttachmentList
       attachments={props.attachments.filter((attachment) => attachment.target_type === "actual_expense" && attachment.target_id === expense.id)}
       canEdit={props.canEdit} targetId={expense.id} targetType="actual_expense"
       onDelete={attachment => receiptAction(expense.id, meta => props.onDeleteAttachment(attachment, meta))} onOpen={props.onOpenAttachment}
