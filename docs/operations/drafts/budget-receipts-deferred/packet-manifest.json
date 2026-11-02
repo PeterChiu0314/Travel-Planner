@@ -1,0 +1,27 @@
+{
+  "status": "LOCAL CANDIDATE ONLY; NOT INSTALLED; no approved deployment wrapper or operational Activation packet",
+  "target": "lqvuqamzmchepgxkftcw",
+  "version": "20261102173541",
+  "name": "budget_receipts_deferred_release",
+  "versionOrigin": "official Supabase CLI migration new; moved out of automatic migration directory",
+  "sourcePath": "docs/operations/drafts/budget-receipts-deferred/20261102173541_budget_receipts_deferred_release.sql",
+  "sourceLfSha256": "ca0edee381b6c907c706e1069d1127a805f6f9921fd42d8852dafd3612fcc41e",
+  "sourceLfBytes": 4762,
+  "hostedLedgerUnchanged": 65,
+  "intendedFutureLedger": 66,
+  "existingFunctionBodiesReplaced": 0,
+  "newPrivateFunctions": 2,
+  "newAttachmentTriggers": 1,
+  "newRestrictiveStoragePolicies": 3,
+  "nativeTests": {
+    "passed": 10,
+    "failed": 0,
+    "evidence": "../../../qa/2026-11-03-budget-receipts-deferred-results.json",
+    "realAuth": false,
+    "storageHttp": false,
+    "operationalActivationValidated": false
+  },
+  "receiptReadinessChanged": false,
+  "receiptLatchChanged": false,
+  "hostedWrites": false
+}

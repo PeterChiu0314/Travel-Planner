@@ -357,7 +357,45 @@
       "status": "Passed",
       "limitation": "local compile only; Vercel binding independently required"
     },
-    "stagingSuitesRerun": false
+    "stagingSuitesRerun": false,
+    "productionAnonymousBrowser": {
+      "status": "Passed",
+      "browser": "fresh independent headless native Chrome",
+      "browserPlugin": "not available; regular Playwright per frontend testing skill",
+      "viewport": {
+        "width": 1440,
+        "height": 960
+      },
+      "url": "https://peter-travel-planner.vercel.app",
+      "liveBundleSha256": "33112dba66414e9f22b12d20c8e1c491d9f443bffd8e6c3e2f307997276c43ea",
+      "bundleProductionRef": true,
+      "bundleStagingRef": false,
+      "receiptPauseBranchCompiled": true,
+      "faviconHttpStatus": 200,
+      "loginRendered": true,
+      "demoBudgetRendered": true,
+      "interaction": "login Demo link -> timeline -> budget -> search 機票",
+      "initialDemoRows": 32,
+      "filteredDemoRows": 2,
+      "demoSupabaseRequests": 0,
+      "consoleErrors": [],
+      "failedResources": [],
+      "prodAuthenticated": false,
+      "productionDml": false,
+      "scope": "unauthenticated release smoke only"
+    },
+    "receiptPauseUi": {
+      "passed": 3,
+      "failed": 0,
+      "scope": "local mocked UI regression only; not Hosted JWT permission evidence"
+    },
+    "deferredReceiptCandidate": {
+      "passed": 10,
+      "failed": 0,
+      "sourceSha256": "ca0edee381b6c907c706e1069d1127a805f6f9921fd42d8852dafd3612fcc41e",
+      "scope": "isolated native SQL/RLS only; not HTTP or real Auth; never applied Hosted; direct boundary-fixture flag transitions are not an operational Activation preflight",
+      "evidence": "2026-11-03-budget-receipts-deferred-results.json"
+    }
   },
   "advisor": {
     "method": "Dashboard Managed linter actually rerun; connector denied project",
@@ -371,21 +409,27 @@
     "infoClassification": "private RLS enabled/no policies; separately verified no direct private grants"
   },
   "frontend": {
-    "status": "Pending release",
+    "status": "Production READY; receipts paused in client",
+    "sourceCommit": "85a72095cfc6a2109eedf7238c9a084e31e78303",
+    "deploymentId": "dpl_2AwcVUpbqvENCEFQG2UvVaRrNo1j",
+    "url": "https://peter-travel-planner.vercel.app",
     "allFiveBudgetEnvFlagsAbsent": true,
     "hiddenProductionEnvCount": 0,
+    "receiptDisableEnv": true,
     "mainMerged": false
   },
   "remaining": {
-    "fullActivation": "Blocked",
-    "workerRuntimeRenewalScheduler": "Blocked; RAM-only supply is not persistent hosted infrastructure",
-    "legacyIssuerStopAndInvalidation": "Blocked; no Production journal events",
-    "twoUserReceiptFinancialSmoke": "Pending Post-Activation",
-    "engineSecurityTriage": "existing operational item"
+    "nonReceiptActivation": "Blocked: candidate server fence passed native tests only; safe operational six-protocol preflight/Activation/Pause packet and real Production JWT smoke still pending; new native credential session required",
+    "receiptFeature": "Deferred by user; frontend disabled, receipt protocol/latch/readiness OFF",
+    "receiptWorkerRuntimeAndLegacyCutover": "Deferred receipt-only gates; not a permanent Worker prerequisite for a properly isolated non-receipt release",
+    "engineSecurityTriage": "existing PG17.6 operational item",
+    "existingAdvisorWarnings": 10
   },
   "decision": {
     "dormantDatabase": "GO / completed",
-    "fullProductionActivation": "NO-GO"
+    "compatibleFrontend": "GO / deployed",
+    "nonReceiptB7Activation": "NO-GO / not yet executed",
+    "fullProductionActivation": "NO-GO / receipts explicitly deferred"
   },
   "privateArtifactDigests": [
     {
@@ -465,5 +509,46 @@
       "sha256": "e22ea841e1be865681bcf872d3bb2f8c77912a0ddc8433a5f415f1a95bb88fd2"
     }
   ],
-  "secretsOrPersonalRowsIncluded": false
+  "secretsOrPersonalRowsIncluded": false,
+  "finalReadback": {
+    "observedAt": "2026-11-02T17:32:10.350312+00:00",
+    "method": "new Dashboard READ ONLY SELECT; native helpers had exited, final psql request was not executed",
+    "ledger": 65,
+    "head": "20261101032853",
+    "functionSealsMatched": 38,
+    "nonBudgetSealsMatched": 18,
+    "pt409": 54,
+    "pt500": 24,
+    "custom40001": 0,
+    "counts": {
+      "trips": 7,
+      "users": 7,
+      "actuals": 0,
+      "budgets": 0,
+      "members": 12,
+      "baselines": 0,
+      "attachments": 0,
+      "itineraryItems": 123,
+      "storageObjects": 0,
+      "actualParticipants": 0,
+      "budgetParticipants": 0
+    },
+    "sevenProtocolsOff": true,
+    "threeLatchesFalse": true,
+    "receiptReadinessFalse": true,
+    "queues": 0,
+    "leases": 0
+  },
+  "cleanup": {
+    "observedAt": "2026-11-02T17:49:48.5267780Z",
+    "matchedHelperBrowserViteCount": 0,
+    "qaListenerCount": 0,
+    "scope": "Native Windows process names and known project command patterns only; no credential or environment reads",
+    "unconsumedReadonlyRequestQuarantined": true,
+    "qaAuthAccountsCreated": 0,
+    "qaAuthSessionsCreated": 0,
+    "workerScheduleCreated": false,
+    "credentialsPersisted": false,
+    "nativeCandidateClusterStopped": true
+  }
 }

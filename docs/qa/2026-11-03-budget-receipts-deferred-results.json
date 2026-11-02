@@ -1,0 +1,47 @@
+{
+  "scope": "isolated native SQL/RLS only; not HTTP or real Auth; never applied Hosted; direct boundary-fixture flag transitions are not an operational Activation preflight",
+  "version": "20261102173541",
+  "sourceSha256": "ca0edee381b6c907c706e1069d1127a805f6f9921fd42d8852dafd3612fcc41e",
+  "results": [
+    {
+      "name": "Candidate refuses unknown installed Receipt guard before adding objects",
+      "status": "passed"
+    },
+    {
+      "name": "Late failure rolls back new functions trigger and policies",
+      "status": "passed"
+    },
+    {
+      "name": "Forward adds only reviewed objects and a truthful local ledger row",
+      "status": "passed"
+    },
+    {
+      "name": "Legacy receipt behavior is unchanged before first financial activation",
+      "status": "passed"
+    },
+    {
+      "name": "Six-protocol native profile never sets receipt readiness or latch",
+      "status": "passed"
+    },
+    {
+      "name": "Financial receipt metadata INSERT UPDATE DELETE all refuse atomically",
+      "status": "passed"
+    },
+    {
+      "name": "Normal member Storage metadata cannot insert or retarget financial paths",
+      "status": "passed"
+    },
+    {
+      "name": "Two ordinary native sessions still edit independent groups and get PT409 for stale versions",
+      "status": "passed"
+    },
+    {
+      "name": "Real native lifecycle placeholder and v10 Snapshot remain available without receipts",
+      "status": "passed"
+    },
+    {
+      "name": "Pause retains financial/lifecycle latches and still refuses legacy receipts",
+      "status": "passed"
+    }
+  ]
+}

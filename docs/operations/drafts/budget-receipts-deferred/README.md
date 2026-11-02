@@ -1,0 +1,27 @@
+# Budget release with Receipts deferred — local candidate
+
+2026-11-03. User requested that other deployment work continue while receipts stay unavailable. **Not installed on Production or Staging.** Production remains ledger65, seven protocols OFF, all three latches/readiness FALSE. The compatible frontend is live with `VITE_BUDGET_RECEIPTS_DISABLED=true`.
+
+## Why this candidate exists
+
+The installed receipt metadata guard fences legacy writes only after the Receipt latch activates. Enabling Finance/Lifecycle while leaving that latch FALSE therefore needs an additional server fence; hiding the UI alone is insufficient. This candidate adds two private functions, one attachment trigger and three restrictive authenticated Storage policies. It replaces no existing function or migration. Before first financial activation it preserves legacy behavior; after Finance/Lifecycle first activates, financial receipt metadata writes and ordinary-user financial Storage writes are denied, including after Pause. Non-financial attachments retain their existing permission checks.
+
+[Source](20261102173541_budget_receipts_deferred_release.sql), [manifest](packet-manifest.json), [native results](../../../qa/2026-11-03-budget-receipts-deferred-results.json). Official CLI version `20261102173541`; LF SHA-256 `ca0edee381b6c907c706e1069d1127a805f6f9921fd42d8852dafd3612fcc41e`. Kept outside automatic migrations. **No deployment wrapper has been approved or executed.** Never replay the previous budget-reset packet.
+
+## Verified and unverified
+
+Native PostgreSQL17.11: **10/10 passed**. Unknown installed Receipt guard and late transaction failure reject atomically; exact source ledger fixture65→66; all277 old function OIDs/body hashes retained; ordinary SQL members can edit independent Title/Note groups, stale version returns PT409, lifecycle placeholder/Snapshot work, and Pause retains the fence/latches. The fixture uses the observed Managed baseline Storage ACL rather than granting new permissions in the Forward. No guard disabling or latch reset creates these results.
+
+These are isolated SQL/RLS tests. They do **not** prove real Auth, Storage HTTP, Managed installation privileges, full financial workflows or an operational Activation procedure. Fixture protocol transitions are boundary setup, not readiness evidence. The source locks protocols plus attachments/Storage objects during its empty-graph check. A later Activation must reacquire these locks and repeat that check; the gap between installation and activation must not be trusted.
+
+Restrictive policies intersect existing grants; they do not revoke preissued signed-upload/TUS/S3 authorizations or prevent privileged service-role byte writes. This candidate must not be described as cryptographic invalidation, issuer shutdown, Receipt readiness or complete receipt protection. Financial metadata is fenced even for privileged normal DML; service credentials must remain outside clients. Any existing receipt graph stops installation for a separate preservation plan. This limitation follows [PostgreSQL RLS semantics](https://www.postgresql.org/docs/17/ddl-rowsecurity.html) and [Supabase Storage access control](https://supabase.com/docs/guides/storage/security/access-control).
+
+## Next safe execution plan — not an executable packet
+
+1. Supply a new masked native Production session when the operator is available. Previous helpers actually exited; do not reuse stale status or the quarantined unconsumed read request. Reverify target host/project login/TLS, ledger65/full sources,38seals, permissions, original18 non-budget projections, no active writers/leases, sevenOFF/threeFALSE and empty financial receipt graph.
+2. Build and rehearse a new Production-bound, hash-sealed atomic wrapper. Include exact source ledger/name/hash, all pre/post checks, Managed storage-lock/policy ownership capability, unknown-body and duplicate-version refusal, and new independent readback. Do not execute this bare source as a substitute. No new grants may be added merely to make managed DDL pass.
+3. Validate a **six-protocol** Preflight/Activation/Pause profile. Metadata, Finance, Payment, Source, Lifecycle and Undo may be enabled only after their actual Production evidence is sufficient. Receipt enabled/latch/readiness/expiry must stay FALSE/NULL. Recheck empty graph while holding protocol/attachment/Storage locks at the transition. Do not copy full-seven readiness from Staging or fabricate receipt expiry.
+4. Prepare the matching frontend flags and a usable Pause route before COMMIT. Run real ordinary-JWT, two-account smoke of groups/Pricing/Payment/Actual/Source/Undo/old-client isolation, plus genuine HTTP receipt denial. P0/P1 means immediate safe Pause and independent readback, keeping every committed financial/lifecycle latch/history/request intact. Do not perform schema-down or restore old financial snapshots.
+5. A permanent Worker and legacy cutover are **deferred Receipt gates**, not prerequisites to an independently secured non-receipt profile. Before enabling receipts later, require trusted Worker renewal/runtime/two cycles, actual bytes/claims/retries, issuer stop and real grant expiry/invalidation. This candidate does not satisfy those gates.
+
+Decision: local candidate **GO for further review/validation**; Hosted installation and six-protocol Activation **NO-GO until the missing execution controls and real service evidence above are complete**. No operator action is needed tonight.

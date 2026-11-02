@@ -2,7 +2,7 @@
 
 2026-11-03 Asia/Taipei. Target `lqvuqamzmchepgxkftcw` only. Branch `codex/budget-collaboration-redesign`, starting HEAD `78306bb7c758dcbba10fc4335e6b28bf4b73f669`.
 
-**Database Dormant deployment COMMITTED and independently verified. Full B-7 Activation remains NO-GO.** Frontend release is being prepared with all five Budget flags OFF; its actual deployment ID and SHA belong in the final execution evidence. No main merge.
+**Database Dormant deployment COMMITTED; compatible frontend deployed and verified. New B-7 protocols remain OFF.** User subsequently deferred receipts because there is no permanent Worker runtime. The frontend now hides and guards receipt operations. Other new B-7 features still need the separately secured six-protocol execution profile below. No main merge.
 
 ## Authorization and scope
 
@@ -60,11 +60,23 @@ Managed Security Advisor was actually rerun through Dashboard (connector denied 
 
 See [sanitized execution evidence](qa/2026-11-03-budget-b7-production-deployment-results.json). Raw catalogs/logs and all credentials remain outside tracked files.
 
-## Remaining release gates
+## Frontend release and safe closeout
 
-1. **P1 Worker operating environment:** RAM-only signing permission and a local short-lived capability probe do not supply a persistent Production runtime, renewal, monitored restart or two real scheduler cycles. Storing the signing secret in an approved hosted secret manager would require changing the present RAM-only constraint; no secret was silently persisted. Service_role is not an alternative Worker identity.
-2. **P1 legacy authorization cutover:** Production signed-upload/TUS/S3 issuers, stop time and real grant invalidation/exhaustion are unverified. The cutover journal is empty. Stage key rotation and expiry evidence cannot be copied. No Production key rotation/revocation or invented timestamp was performed.
-3. **Pending Post-Activation:** Production receipt lifecycle, two-user financial smoke and observation window. No readiness or irreversible latch was enabled to obtain passing tests.
+Production READY deployment `dpl_2AwcVUpbqvENCEFQG2UvVaRrNo1j`, source `85a72095cfc6a2109eedf7238c9a084e31e78303`, serves [Travel Studio](https://peter-travel-planner.vercel.app). Released directly from the feature branch; main stays unchanged. The five Budget enable flags remain absent/defaultOFF. Production-only `VITE_BUDGET_RECEIPTS_DISABLED=true` compiles the receipt pause: Formal upload/open/delete entry points refuse and show「收據功能暫未開放。」; there is no legacy upload fallback. Demo remains local. This is a client pause, not proof that all old client/server receipt paths are fenced.
+
+Actual fresh anonymous Chrome release smoke passed: root login, Demo→Timeline→Budget→search, correct Production endpoint/no Staging binding, no console errors or failed resources, Demo Supabase requests0. Favicon was a genuine404 in the first release; a local brand SVG fixed it, final HTTP200. Three directly affected local mocked UI checks passed (both paused paths and enabled Receipt regression); these do not certify authenticated Production E2E.
+
+Last independent Production read at `2026-11-02T17:32:10Z` used a new Dashboard **READ ONLY SELECT**, after native helpers exited: ledger65/Head20261101032853,38final hashes,54PT409/24PT500/0custom40001, all18 original non-budget projections exact, sevenOFF/threeFALSE/readinessFALSE, queues/leases0. Counts remain7trips/7users/12members/123itinerary; budgets/Actual/Baselines/attachments/Storage objects0. RLS/ACL/Advisor evidence above is the earlier independent post-COMMIT audit, not a falsely claimed later psql run.
+
+Native Windows audit at `2026-11-02T17:49:48Z` found0 known credential-helper/QA Browser/Vite matches and0 listeners on5188/5189. The final native read request was never consumed and has been quarantined locally; stale status files are not treated as live connections. No Production QA Auth accounts/sessions were created, no scheduler was installed, no credentials were persisted. The new native candidate cluster also stopped normally.
+
+Public Git contains sanitized evidence and source tools. The full executable packet/live before-contract remain ignored local artifacts. An initial publication containing that live packet was rejected by automatic review; the unpublished commit was replaced with this sanitized publication, which was accepted. No sensitive archive was pushed.
+
+## Remaining release gates — receipts deferred
+
+1. **P1 non-receipt release boundary:** installed legacy Receipt metadata guard does not fence writes before its own latch. A new [non-auto candidate](operations/drafts/budget-receipts-deferred/README.md) adds a separate deferred-Receipt fence, retaining all existing bodies;10/10 isolated native checks passed. It is **not installed**, not real Auth/Storage HTTP acceptance, and not an approved operational Activation packet. Build a hash-bound managed wrapper, six-protocol Preflight/Activation/Pause and prove real Production denial/smoke before enabling the other features. Current native credential sessions are gone, so live execution requires new masked supply later.
+2. **Deferred receipt operating gates:** permanent Worker renewal/runtime/two-cycle evidence and Production legacy issuer-stop/invalidation remain unverified. They are required for future receipts, not a blanket reason to block a properly isolated non-receipt release. RAM-only permission does not authorize hosted persistence; no key rotation, fake readiness/expiry or service-role Worker substitution.
+3. **Pending real Production E2E:** ordinary-JWT two-user financial smoke and observation window for the six-protocol release; full receipt lifecycle remains deferred. No readiness or irreversible latch was enabled to obtain passing tests.
 4. Existing P2 Stage hardware/accessibility/oversize-transport limitations and bundle warnings remain recorded. PG engine security triage is still open.
 
-Dormant database installation and budget-only clearing: **GO / completed**. Full Production B-7 enablement: **NO-GO** until the above operating and cutover gates are satisfied. A compatible all-flags-OFF frontend may be published independently. Pause/repair must retain future latches/history/requests once enabled; never replay this reset or restore committed finance from an old snapshot.
+Dormant database and compatible frontend: **GO / completed**. New non-receipt B-7 Activation: **NO-GO / not executed** pending the safe profile and real smoke above. Full receipt enablement is explicitly deferred. No urgent operator action is needed tonight. Pause/repair must retain future latches/history/requests once enabled; never replay this reset or restore committed finance from an old snapshot.
