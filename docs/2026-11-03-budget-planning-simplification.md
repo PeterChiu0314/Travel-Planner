@@ -1,5 +1,7 @@
 # 行前預算精簡｜待 Review，未部署
 
+**已由 [完全移除自訂 Undo](2026-11-03-budget-custom-undo-removal.md) 取代 Undo 部分。** 以下是 `4266736` 的歷史驗證紀錄；30 秒設計取消，未部署的 `20261103084209` 已從待套用鏈移除，由新 Forward `20261103113253` 承接收據移除／單筆實付限制及永久停用 Undo。不得執行本文舊 Forward 或將舊測試視為目前產品驗收。
+
 2026-11-03；分支 `codex/budget-collaboration-redesign`，起點 `c181b99`。本輪僅本機實作，未操作 Production、Hosted Storage、正式旗標、main、Vercel、Docker／WSL；部署狀態沿用 CURRENT_TASK 既有證據，未新查遠端。
 
 ## 修改與依賴

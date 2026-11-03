@@ -41,8 +41,8 @@ test("different groups save narrow patches and remote commits preserve a dirty l
   } finally { await other.close(); }
 });
 test("same-account tabs have distinct sessions and cannot edit the same group", async ({ page, context }) => {
-  const db = metadataBackend(); await ready(page, db); await write(title(page), "A draft"); const other = await context.newPage();
-  try { await ready(other, db); await title(other).focus(); await expect(other.getByText("A 正在編輯項目名稱", { exact: true })).toBeVisible();
+  const db = metadataBackend(); await ready(page, db); await write(title(page), "A draft"); await expect.poll(()=>db.rows.budget_items[0].title).toBe("A draft"); const other = await context.newPage();
+  try { await ready(other, db, "A", "A draft"); await title(other).focus(); await expect(other.getByText("A 正在編輯項目名稱", { exact: true })).toBeVisible();
     const calls = db.groupCalls.filter(c => c.args.p_action === "acquire"); expect(new Set(calls.map(c => c.args.p_session_id)).size).toBe(2); expect(other.qaErrors).toEqual([]);
   } finally { await other.close(); }
 });
@@ -96,12 +96,12 @@ test("same-group conflict preserves input, and explicit discard adopts the lates
   await page.getByRole("button", { name: "捨棄此欄草稿", exact: true }).click(); await expect(title(page)).toHaveValue("Remote canonical");
 });
 test("draft survives reload without restoring capability or overwriting another tab", async ({ page, context }) => {
-  const db = metadataBackend(); await ready(page, db); await write(title(page), "Only this tab");
+  const db = metadataBackend(); await ready(page, db); db.metadataHold={actor:"A",action:"patch"}; await write(title(page), "Only this tab");
   const other = await context.newPage(); try { await ready(other, db, "B"); await expect(title(other)).toHaveValue("JPY fare");
     await page.reload(); await page.getByRole("button", { name: "JPY fare", exact: true }).click(); await page.getByRole("tab", { name: "編輯項目", exact: true }).click();
     await expect(title(page)).toHaveValue("Only this tab"); await expect(title(page)).toHaveAttribute("readonly", "");
     expect(other.qaErrors).toEqual([]);
-  } finally { await other.close(); }
+  } finally { db.releaseMetadata(); await other.close(); }
 });
 test("late admission cannot authorize the returned trip generation", async ({ page }) => {
   const db = metadataBackend(); await ready(page, db); db.metadataHold = { actor: "A", action: "acquire" };

@@ -5,7 +5,6 @@ import {budgetReceiptsEnabled,budgetReceiptsDisabled,budgetReceiptUnavailableMes
 import {budgetFinanceGroupsEnabled,createBudgetRatesController,createBudgetRatesService} from './lib/budgetFinanceGroups.js';
 import {budgetLifecycleEnabled,isBudgetComplete} from './lib/budgetLifecycleValues.js';
 import {createBudgetLifecycleController,createBudgetLifecycleService} from './lib/budgetLifecycleGroups.js';
-import {budgetUndoEnabled,createBudgetUndoController,createBudgetUndoService} from './lib/budgetUndoGroups.js';
 import { applyDemoPaymentChanges } from "./demo/budgetPaymentGroups.js";
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
 import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
@@ -32,7 +31,7 @@ import { isBudgetConflict } from "./lib/budgetErrors.js";
 import { createBudgetEditLeaseClient } from "./lib/budgetEditLeases.js";
 import { collaboratorColors as timelineCardSelectionColors } from "./lib/collaboratorColors.js";
 import { createBudgetCollaboration, primaryBudgetCollaborators } from "./lib/budgetCollaboration.js";
-import { budgetMetadataEnabled, getBudgetMetadataSessionId, getBudgetMetadataDocumentSessionId } from "./lib/budgetMetadataConfig.js";
+import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./lib/budgetMetadataConfig.js";
 import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata, budgetAuthorityTimeoutMs } from "./lib/budgetMetadataService.js";
 import { createDemoBudgetMetadataService } from "./demo/budgetMetadata.js";
 import { demoBudgetQuote } from "./lib/tripBudgetRates.js";
@@ -2392,7 +2391,7 @@ export default function App() {
   const [shareError, setShareError] = useState("");
   const [activeSection, setActiveSection] = useState("today");
   async function receiptSafeSection(section){
-    if(budgetMetadataEnabled&&(budgetReceiptsEnabled||budgetFinanceGroupsEnabled||budgetLifecycleEnabled||budgetUndoEnabled)&&getActiveEditorGuardEntries({tripId:activeTripId}).some(([id,g])=>(id.startsWith('budget-receipts:')||id.startsWith('budget-finance-rates:')||id.startsWith('budget-lifecycle:')||id.startsWith('budget-undo:'))&&g.isDirty)&&!await requestActiveEditorHandoff({tripId:activeTripId}))return;
+    if(budgetMetadataEnabled&&(budgetReceiptsEnabled||budgetFinanceGroupsEnabled||budgetLifecycleEnabled)&&getActiveEditorGuardEntries({tripId:activeTripId}).some(([id,g])=>(id.startsWith('budget-receipts:')||id.startsWith('budget-finance-rates:')||id.startsWith('budget-lifecycle:'))&&g.isDirty)&&!await requestActiveEditorHandoff({tripId:activeTripId}))return;
     setActiveSection(section);
   }
   const [luggageTab, setLuggageTab] = useState("personal");
@@ -13294,13 +13293,11 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 }
 
 function BudgetPanel(props) {
-  const documentId=useRef(null);if(!documentId.current)documentId.current=crypto.randomUUID();
-  const leases = useMemo(() => createBudgetEditLeaseClient({ supabase, sessionId: budgetMetadataEnabled ? budgetUndoEnabled ? getBudgetMetadataDocumentSessionId(JSON.stringify([documentId.current,props.currentUserId,props.activeTrip.id])) : getBudgetMetadataSessionId() : undefined }), [budgetUndoEnabled&&props.currentUserId,budgetUndoEnabled&&props.activeTrip.id]);
+  const leases = useMemo(() => createBudgetEditLeaseClient({ supabase, sessionId: budgetMetadataEnabled ? getBudgetMetadataSessionId() : undefined }), []);
   const metadataProps = useRef(props); metadataProps.current = props;
-  const { metadata, payments, sources, rates, lifecycle, undo } = useMemo(() => {
+  const { metadata, payments, sources, rates, lifecycle } = useMemo(() => {
     const demo = props.useEditLocks === false;
     const service = demo ? createDemoBudgetMetadataService(() => metadataProps.current) : createBudgetMetadataService(supabase);
-    if(demo)service.undoSession=leases.sessionId;
     const metadata = createBudgetMetadataEditor({ service, sessionId: leases.sessionId,
       storage: demo ? null : { getItem: key => sessionStorage.getItem(key), setItem: (key, value) => sessionStorage.setItem(key, value), removeItem: key => sessionStorage.removeItem(key) },
       read: trip => demo ? service.read(trip) : metadataProps.current.onRefreshBudget?.(trip) || Promise.resolve({ ok: false }),
@@ -13313,15 +13310,13 @@ function BudgetPanel(props) {
       storage:demo?null:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)}});
     const rates=createBudgetRatesController({metadata,sessionId:leases.sessionId,service:demo?service.ratesService:createBudgetRatesService(supabase),storage:demo?null:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)}});
     const lifecycle=createBudgetLifecycleController({metadata,sessionId:leases.sessionId,service:demo?service.lifecycleService:createBudgetLifecycleService(supabase),storage:demo?null:{getItem:key=>sessionStorage.getItem(key),setItem:(key,value)=>sessionStorage.setItem(key,value),removeItem:key=>sessionStorage.removeItem(key)}});
-    const undo=createBudgetUndoController({metadata,sessionId:leases.sessionId,service:demo?service.undoService:createBudgetUndoService(supabase)});
-    return { metadata, payments, sources,rates,lifecycle,undo };
+    return { metadata, payments, sources,rates,lifecycle };
   }, [leases, props.useEditLocks]);
   useSyncExternalStore(metadata.subscribe, metadata.getProjectionVersion);
   useSyncExternalStore(payments.subscribe, payments.getVersion);
   useSyncExternalStore(sources.subscribe,sources.getVersion);
   useSyncExternalStore(rates.subscribe,rates.getVersion);
   useSyncExternalStore(lifecycle.subscribe,lifecycle.getVersion);
-  useSyncExternalStore(undo.subscribe,undo.getVersion);
   const [remoteCollaborators, setRemoteCollaborators] = useState([]);
   const [collaborationRevision, setCollaborationRevision] = useState(0);
   const collaboration = useMemo(() => createBudgetCollaboration({ supabase, sessionId: leases.sessionId, onChange: setRemoteCollaborators,
@@ -13347,10 +13342,6 @@ function BudgetPanel(props) {
   services.useGuard(`budget-lifecycle:${props.activeTrip.id}`,useMemo(()=>({isActive:lifecyclePending,isDirty:lifecyclePending,prepare:()=>lifecycle.prepare(),finish:()=>lifecycle.prepare(),save:async()=>false,discard:async()=>false}),[lifecyclePending,lifecycle]));
   useEffect(()=>{lifecycle.configure(props.currentUserId,props.activeTrip.id,budgetMetadataEnabled&&budgetLifecycleEnabled&&metadataActive&&props.canEdit);},[lifecycle,props.currentUserId,props.activeTrip.id,metadataActive,props.canEdit]);
   useEffect(()=>()=>{void lifecycle.dispose();},[lifecycle]);
-  const undoPending=budgetMetadataEnabled&&budgetUndoEnabled&&undo.hasPending();
-  services.useGuard(`budget-undo:${props.activeTrip.id}`,useMemo(()=>({isActive:undoPending,isDirty:undoPending,prepare:()=>undo.prepare(),finish:()=>undo.prepare(),save:async()=>false,discard:async()=>false}),[undoPending,undo]));
-  useEffect(()=>{undo.configure(props.currentUserId,props.activeTrip.id,budgetMetadataEnabled&&budgetUndoEnabled&&metadataActive&&props.canEdit);},[undo,props.currentUserId,props.activeTrip.id,metadataActive,props.canEdit]);
-  useEffect(()=>()=>{void undo.dispose();},[undo]);
   useEffect(() => {
     // Demo has no Realtime feed: scenario hydration and memory finance deltas
     // must enter the same authoritative/coalesced reader as Formal snapshots.
@@ -13399,7 +13390,6 @@ function BudgetPanel(props) {
   }, [leases, props.currentUserId, props.activeTrip.id, props.canEdit, workspaceActive]);
   useEffect(() => () => { void leases.dispose(); }, [leases]);
   return <BudgetWorkspace {...props} workspaceActive={workspaceActive} baseline={props.budgetBaseline} services={services}
-    undoRequested={budgetMetadataEnabled&&budgetUndoEnabled} undoClient={undo} undoPending={undoPending}
     metadataRequested={budgetMetadataEnabled} metadataClient={metadata.matches(props.currentUserId, props.activeTrip.id) ? metadata : null} paymentClient={payments} sourceClient={sources} ratesRequested={budgetMetadataEnabled&&budgetFinanceGroupsEnabled} ratesClient={rates} ratesPending={ratesPending} lifecycleRequested={budgetMetadataEnabled&&budgetLifecycleEnabled} lifecycleClient={lifecycle} lifecyclePending={lifecyclePending}
     collaborationRevision={collaborationRevision} remoteCollaborators={props.useEditLocks === false ? [] : budgetMetadataEnabled
       ? primaryBudgetCollaborators(metadata.status().verified ? metadata.status().snapshot?.collaboration?.entries || [] : []).filter(e => !e.own_session)

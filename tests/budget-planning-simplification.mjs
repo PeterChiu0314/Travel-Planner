@@ -22,7 +22,11 @@ try{
  await q("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved'),($1,$3,'editor','approved')",[trip,A,B]);
  await q("insert into budget_items(id,trip_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id) values($1,$2,'Budget','交通',100,100,'TWD',1,$3)",[budget,trip,A]);
  await q('insert into budget_item_participants(budget_item_id,user_id,share_amount) values($1,$2,100)',[budget,A]);
- const source=await fs.readFile('supabase/migrations/20261103084209_budget_planning_simplification.sql','utf8');
+ const source=await fs.readFile('supabase/migrations/20261103113253_remove_budget_custom_undo.sql','utf8');
+ await test('Late Forward failure rolls back ACL body index and all financial rows',async()=>{
+ const seal=async()=>({functions:await q("select oid::regprocedure::text signature,prosrc,proacl::text from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) order by signature"),rows:await q('select * from budget_items order by id')});
+ const before=await seal();await assert.rejects(()=>q(source.replace(/commit;\s*$/, 'select 1/0;commit;')),e=>e.code==='22012');await q('rollback');assert.deepEqual(await seal(),before);assert.equal((await q("select to_regclass('public.actual_expenses_one_budget') v"))[0].v,null);
+ });
  await test('Forward applies without changing any protocol or latch',async()=>{const before=await q('select * from app_private.budget_receipt_protocol');await q(source);assert.deepEqual(await q('select * from app_private.budget_receipt_protocol'),before);});
  for(const [c,id]of [[a,A],[b,B]]){await c.connect();await c.query('set role authenticated');await c.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);}
  await test('Receipt metadata blocked even before financial activation',async()=>{await assert.rejects(()=>aq("insert into attachments(trip_id,target_type,target_id,file_name,file_url) values($1,'actual_expense',$2,'x','x')",[trip,uuid()]),e=>e.code==='55000');});
@@ -35,30 +39,38 @@ try{
  const group=async(c,g,s)=>(await snapshot(c,s)).metadataRecords.find(r=>r.id===budget).groups.find(v=>v.group===g);
  const lease=async(c,g,s,r)=>(await c.query("select public.budget_metadata_group_lease_v2($1,'budget',$2,$3,$4,$5,'acquire',$6,null,0,false,$7::jsonb) v",[trip,budget,g,s,uuid(),r.revision,JSON.stringify(r.versions)])).rows[0].v;
  const patch=async(c,g,s,value)=>{const r=await group(c,g,s),token=uuid();const l=(await c.query("select public.budget_metadata_group_lease_v2($1,'budget',$2,$3,$4,$5,'acquire',$6,null,0,false,$7::jsonb) v",[trip,budget,g,s,token,r.revision,JSON.stringify(r.versions)])).rows[0].v;assert(l.granted);await c.query("select public.patch_budget_metadata_group_v2($1,'budget',$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10::jsonb)",[trip,budget,g,r.revision,s,token,l.epoch,JSON.stringify({[g]:value}),uuid(),JSON.stringify(r.versions)]);await c.query("select public.budget_metadata_group_lease_v2($1,'budget',$2,$3,$4,$5,'release',$6,$7,0,false,$8::jsonb)",[trip,budget,g,s,token,r.revision,l.epoch,JSON.stringify(r.versions)]);};
- const undo=async()=>{const op=(await snapshot()).undoRecords[0].value.top.operation_id,token=uuid();const l=(await aq("select public.budget_workspace_undo_lease($1,$2,$3,$4,'acquire',null) v",[trip,sid,op,token]))[0].v;assert(l.granted);try{await aq('select public.undo_budget_workspace($1,$2,$3,$4,$5,$6)',[trip,sid,op,token,l.epoch,uuid()]);}finally{await aq("select public.budget_workspace_undo_lease($1,$2,$3,$4,'release',$5)",[trip,sid,op,token,l.epoch]);}};
- await test('Only latest save can undo once; no predecessor or Redo',async()=>{await patch(a,'title',sid,'One');await patch(a,'title',sid,'Two');assert.equal((await snapshot()).undoRecords[0].value.count,1);await undo();assert.equal((await q('select title from budget_items where id=$1',[budget]))[0].title,'One');assert.equal((await snapshot()).undoRecords[0].value.count,0);});
- await test('Other group peer save does not block undo',async()=>{await patch(a,'title',sid,'Three');await patch(b,'note',otherSid,'Peer');await undo();assert.equal((await q('select note from budget_items where id=$1',[budget]))[0].note,'Peer');});
- await test('Same-group peer save refuses stale undo with PT409 without overwrite',async()=>{await patch(a,'title',sid,'Four');await patch(b,'title',otherSid,'Peer wins');await assert.rejects(undo,e=>e.code==='PT409');assert.equal((await q('select title from budget_items where id=$1',[budget]))[0].title,'Peer wins');});
- await test('Other tab sees no capability from this session',async()=>{assert.equal((await snapshot(a,uuid())).undoRecords[0].value.count,0);});
- await test('Pricing and participants restore atomically as one operation',async()=>{
-  // The existing linked manual Actual intentionally makes Pricing unsupported.
-  // Create a new legal placeholder through Lifecycle for this independent case.
-  const id=(await aq("select public.create_budget_workspace_placeholder($1,'budget',$2,$3) v",[trip,sid,uuid()]))[0].v.created_id;
-  const read=async()=>(await snapshot()).metadataRecords.find(r=>r.id===id).groups.find(v=>v.group==='pricing');
-  const r=await read(),token=uuid();const l=(await aq("select public.budget_metadata_group_lease_v2($1,'budget',$2,'pricing',$3,$4,'acquire',$5,null,0,false,$6::jsonb) v",[trip,id,sid,token,r.revision,JSON.stringify(r.value.versions)]))[0].v;assert(l.granted);
-  const value={...r.value,pricing_mode:'custom',amount:120,currency:'TWD',exchange_rate:1,participantIds:[A,B],shares:{[A]:70,[B]:50}};
-  await aq("select public.patch_budget_metadata_group_v2($1,'budget',$2,'pricing',$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb)",[trip,id,r.revision,sid,token,l.epoch,JSON.stringify({pricing:value}),uuid(),JSON.stringify(r.value.versions)]);
-  await aq("select public.budget_metadata_group_lease_v2($1,'budget',$2,'pricing',$3,$4,'release',$5,$6,0,false,$7::jsonb)",[trip,id,sid,token,r.revision,l.epoch,JSON.stringify(r.value.versions)]);
-  assert.equal((await q('select count(*)::int n from budget_item_participants where budget_item_id=$1',[id]))[0].n,2);
-  // Restoring an uninitialized pricing group is already rejected by the
-  // calculator (no participants). Retain that integrity boundary; verify no
-  // partial inverse, then test restoration of a valid saved allocation.
-  await assert.rejects(undo,e=>e.code==='22023');
-  const before=(await q('select amount,twd_amount from budget_items where id=$1',[id]))[0],people=await q('select user_id,share_amount from budget_item_participants where budget_item_id=$1 order by user_id',[id]);
-  const next=await read(),t=uuid(),held=(await aq("select public.budget_metadata_group_lease_v2($1,'budget',$2,'pricing',$3,$4,'acquire',$5,null,0,false,$6::jsonb) v",[trip,id,sid,t,next.revision,JSON.stringify(next.value.versions)]))[0].v;assert(held.granted);
-  await aq("select public.patch_budget_metadata_group_v2($1,'budget',$2,'pricing',$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb)",[trip,id,next.revision,sid,t,held.epoch,JSON.stringify({pricing:{...next.value,amount:240,shares:{[A]:140,[B]:100}}}),uuid(),JSON.stringify(next.value.versions)]);
-  await aq("select public.budget_metadata_group_lease_v2($1,'budget',$2,'pricing',$3,$4,'release',$5,$6,0,false,$7::jsonb)",[trip,id,sid,t,next.revision,held.epoch,JSON.stringify(next.value.versions)]);
-  await undo();assert.deepEqual((await q('select amount,twd_amount from budget_items where id=$1',[id]))[0],before);assert.deepEqual(await q('select user_id,share_amount from budget_item_participants where budget_item_id=$1 order by user_id',[id]),people);
+ await test('All public Undo RPCs and private inverse entries deny ordinary roles',async()=>{
+ const entries=await q("select p.oid::regprocedure::text signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in('public','app_private') and p.proname in('undo_budget_workspace','undo_budget_metadata_group','budget_workspace_undo_lease','workspace_undo_lease','prepare_workspace_inverse','workspace_inverse_manifest','finish_workspace_inverse','prepare_budget_metadata_undo','read_budget_metadata_undo','clear_budget_metadata_undo')");
+ assert(entries.length>=12);
+ for(const f of entries)for(const role of ['anon','authenticated'])assert.equal((await q("select has_function_privilege($1,$2,'execute') v",[role,f.signature]))[0].v,false,f.signature);
+ await assert.rejects(()=>aq('select public.undo_budget_workspace($1,$2,$3,$4,1,$5)',[trip,sid,uuid(),uuid(),uuid()]),e=>e.code==='42501');
  });
- await test('Actual 30-second expiry rejects inverse',async()=>{await patch(a,'title',sid,'Expiry');await new Promise(r=>setTimeout(r,30100));await assert.rejects(undo,e=>e.code==='PT409');assert.equal((await q('select title from budget_items where id=$1',[budget]))[0].title,'Expiry');});
+ await test('Protocol row cannot reactivate Undo and v10 compatibility remains readable',async()=>{
+ assert.equal((await q('select app_private.workspace_undo_enabled() v'))[0].v,false);
+ assert.equal((await q('select app_private.budget_metadata_undo_enabled() v'))[0].v,false);
+ const s=await snapshot();assert.equal(s.undoRecords[0].value.enabled,false);assert.equal(s.undoRecords[0].value.count,0);
+ });
+ await test('Saved metadata and peer independent group writes still work without Undo capture',async()=>{
+ const before=await q('select count(*)::int n from app_private.budget_metadata_undo_operations');
+ await patch(a,'title',sid,'Saved permanently');await patch(b,'note',otherSid,'Peer note');
+ assert.equal((await q('select title from budget_items where id=$1',[budget]))[0].title,'Saved permanently');
+ assert.equal((await q('select note from budget_items where id=$1',[budget]))[0].note,'Peer note');
+ assert.deepEqual(await q('select count(*)::int n from app_private.budget_metadata_undo_operations'),before);
+ });
+ await test('Same group lease excludes peer without weakening version safety',async()=>{
+ const r=await group(a,'note',sid),held=await lease(a,'note',sid,r);assert(held.granted);
+ const denied=await lease(b,'note',otherSid,r);assert.equal(denied.granted,false);
+ });
+ await test('Pricing participants and Lifecycle remain atomic without Undo',async()=>{
+ const id=(await aq("select public.create_budget_workspace_placeholder($1,'budget',$2,$3) v",[trip,sid,uuid()]))[0].v.created_id;
+ const r=(await snapshot()).metadataRecords.find(v=>v.id===id).groups.find(v=>v.group==='pricing'),token=uuid();
+ const l=(await aq("select public.budget_metadata_group_lease_v2($1,'budget',$2,'pricing',$3,$4,'acquire',$5,null,0,false,$6::jsonb) v",[trip,id,sid,token,r.revision,JSON.stringify(r.value.versions)]))[0].v;assert(l.granted);
+ const args=[trip,id,r.revision,sid,token,l.epoch,JSON.stringify({pricing:{...r.value,pricing_mode:'custom',amount:120,currency:'TWD',exchange_rate:1,participantIds:[A,B],shares:{[A]:70,[B]:50}}}),uuid(),JSON.stringify(r.value.versions)];
+ const sql="select public.patch_budget_metadata_group_v2($1,'budget',$2,'pricing',$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb)";
+ await aq(sql,args);assert.equal((await q('select count(*)::int n from budget_item_participants where budget_item_id=$1',[id]))[0].n,2);
+ assert.equal(Number((await q('select amount from budget_items where id=$1',[id]))[0].amount),120);
+ const before=await q('select * from budget_item_participants where budget_item_id=$1 order by user_id',[id]);
+ await assert.rejects(()=>aq(sql,[...args.slice(0,6),JSON.stringify({pricing:{...r.value,amount:999,participantIds:[]}}),uuid(),args[8]]));
+ assert.deepEqual(await q('select * from budget_item_participants where budget_item_id=$1 order by user_id',[id]),before);
+ });
 }finally{await Promise.allSettled([a.end(),b.end(),db.end()]);await fs.writeFile(process.env.BUDGET_NATIVE_EVIDENCE+'/planning-results.json',JSON.stringify({scope:'isolated native SQL/RLS, not Hosted/HTTP',results},null,2));}

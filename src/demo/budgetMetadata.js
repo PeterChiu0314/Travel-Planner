@@ -8,8 +8,6 @@ import {attachDemoFinance} from './budgetFinanceGroups.js';
 import {budgetFinanceGroupsEnabled,financeFieldTargets} from '../lib/budgetFinanceValues.js';
 import {budgetLifecycleEnabled} from '../lib/budgetLifecycleValues.js';
 import {attachDemoLifecycle} from './budgetLifecycle.js';
-import {budgetUndoEnabled} from '../lib/budgetUndoGroups.js';
-import {attachDemoUndo} from './budgetUndo.js';
 export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now) {
   let paymentOverlay = null, pricingGraph = 0;
   const getProps = () => {
@@ -108,5 +106,5 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
   attachDemoSources(transport,getProps,{state,changed,commit(change){paymentOverlay=change;getOriginalProps().onSaveSource?.(change);}},now);
   if(budgetFinanceGroupsEnabled||budgetLifecycleEnabled)attachDemoFinance(transport,getProps,{state,changed,graphVersion:()=>pricingGraph},now);
   if(budgetLifecycleEnabled)attachDemoLifecycle(transport,getProps,{state,changed},now);
-  return budgetUndoEnabled&&budgetLifecycleEnabled?attachDemoUndo(transport,getProps,{state,changed},now):transport;
+  return transport;
 }

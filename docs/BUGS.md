@@ -17,6 +17,8 @@ This document now separates:
 
 # Confirmed Bugs
 
+Latest product change 2026-11-03: [Custom Undo removal](2026-11-03-budget-custom-undo-removal.md) supersedes all five-step/30-second Undo acceptance and activation instructions. New local Forward20261103113253 replaces unapplied20261103084209; not installed Hosted. Receipt removal and one current Actual per Budget remain. No new Production verification in this task.
+
 ## Production rollout | Dormant COMMIT; full B7 enablement NO-GO
 
 2026-11-03: [Execution / limits](2026-11-03-budget-b7-production-deployment.md). After explicit Production deployment/budget-only clearing permission and backup waiver, one exact17-source transaction committed48→65. Original48 source rows,38final hashes/54PT409+24PT500, all18 non-budget relation projections, RLS/ACL and sevenOFF/false latches/readiness independently verified.12/12 native packet checks and4/4 signing adapter checks passed. Real dedicated Worker empty claim HTTP200 is narrow capability only. Managed Advisor0Errors/10sameWarnings/24intentional private deny-all Info. No new product P0/P1 found in Dormant installation.

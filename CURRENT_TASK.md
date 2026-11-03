@@ -2,11 +2,11 @@
 
 Updated 2026-11-03. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
-## Current request — Planning simplification; local implementation, awaiting Review
+## Current request — Custom Undo removed; local implementation, awaiting Review
 
-- Replaces five-step Undo with silent single-step **30-second** Undo; removes financial Receipt UI/runtime and limits each current Budget link to one Actual. Source product rules, Baseline, travel Actual/Settlement design, Timeline and Luggage retained.
-- [Implementation and rollout limits](docs/2026-11-03-budget-planning-simplification.md), [local matrix](docs/qa/2026-11-03-budget-planning-simplification-results.json). Official CLI Forward `20261103084209` is **not installed Hosted**. Preserve installed sources/latches; do not replay reset or deferred-Receipt draft.
-- Native PostgreSQL12/12; Playwright49 distinct; Build/diff passed. Tests are local SQL/RLS or mocked/browser smoke, not new Hosted certification. First Pricing initialization cannot inverse to no-participant value; safe silent refusal documented.
+- Removes all five-step/30-second custom Undo: Controller/service, subscriptions, key interception, Demo simulation and feature flag. Native input Undo and unsaved-edit cancellation remain; saved data requires editing again. Receipt removal, one current linked Actual, financial atomicity and collaboration retained.
+- [Dependency analysis, implementation and Review handoff](docs/2026-11-03-budget-custom-undo-removal.md). New official CLI Forward `20261103113253` replaces the **unapplied, removed** `20261103084209` and carries Receipt fences/unique Actual index without the cancelled 30-second design. Neither is installed Hosted by this task. Do not replay installed sources/reset or stack the deferred-Receipt draft.
+- Latest local verification: native PostgreSQL **12/12**, complete Playwright **117/117, zero skipped**, Build/syntax/diff passed; [matrix](docs/qa/2026-11-03-budget-custom-undo-removal-results.json). Historical Planning results below are superseded; no new Hosted certification or live inventory was performed. Undo SQL structures remain for shared financial effects/audit/Snapshot dependencies, with client inverse entry points revoked by the new candidate.
 - No Production, main, flags, Storage, Vercel or Docker/WSL operation. Deployment baseline below is dated evidence, not reverified this round. Activation remains NO-GO pending Review, live inventory, Staging and true HTTP checks.
 
 ## Last deployed baseline — Production database/frontend deployed; receipts deferred; new protocols OFF

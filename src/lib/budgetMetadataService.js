@@ -5,7 +5,6 @@ import { validSourceSnapshot } from "./budgetSourceValues.js";
 import {validReceiptSnapshot} from './budgetReceiptValues.js';
 import {budgetFinanceGroupsEnabled,validFinanceSnapshot,sameFinanceVersions} from './budgetFinanceValues.js';
 import {validLifecycleSnapshot} from './budgetLifecycleValues.js';
-import {validUndoSnapshot} from './budgetUndoGroups.js';
 export const budgetAuthorityTimeoutMs = 10000;
 export const budgetSnapshotTimeoutError = () => ({ code: "BUDGET_SNAPSHOT_TIMEOUT", message: "最新同步逾時，草稿已保留。請重新確認後重試。" });
 // The settled race owns the result. An uncancellable transport may finish later,
@@ -34,7 +33,6 @@ export function validBudgetMetadataSnapshot(data, tripId) {
     && (![7,8,9,10].includes(data.metadataProtocol.schemaVersion) || validReceiptSnapshot(data))
     && (![8,9,10].includes(data.metadataProtocol.schemaVersion) || validFinanceSnapshot(data))
     && (![9,10].includes(data.metadataProtocol.schemaVersion) || validLifecycleSnapshot(data))
-    && (data.metadataProtocol.schemaVersion !== 10 || validUndoSnapshot(data))
     && Array.isArray(data.metadataRecords) && Array.isArray(data.collaboration?.entries)
     && data.metadataRecords.length === data.budgetItems.length + data.actualExpenses.length
     && new Set(data.metadataRecords.map(r => `${r.kind}:${r.id}`)).size === data.metadataRecords.length

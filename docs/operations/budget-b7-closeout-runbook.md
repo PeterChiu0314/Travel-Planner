@@ -2,7 +2,7 @@
 
 ## 2026-11-03 行前精簡：本機候選，尚未啟用
 
-新產品規則移除財務收據、Undo單步30秒、目前Budget link最多一筆Actual。見[新交接](../2026-11-03-budget-planning-simplification.md)及[本機矩陣](../qa/2026-11-03-budget-planning-simplification-results.json)。新Forward20261103084209未安裝Hosted；不可重播已部署封包／reset或把舊deferred-Receipt草稿直接堆疊。此輪未操作任何Hosted服務。
+最新規則**完全移除自訂 Undo**，只保留原生輸入 Undo／未儲存取消；財務收據移除及目前Budget link最多一筆Actual保留。見[最新交接](../2026-11-03-budget-custom-undo-removal.md)。舊未部署Forward20261103084209已移除，由20261103113253取代；不得部署30秒Undo、開Undo flags/protocol或沿用下文歷史五步Undo驗收。不可重播已部署封包／reset或堆疊舊deferred-Receipt草稿。此輪未操作Hosted服務。
 
 下次需先Review本候選，再另授權取得live ledger/catalog、重複Actual／Source相依、Receipt metadata/objects/jobs及舊signed能力inventory。多筆資料不得自動合併／刪除；Receipt舊能力失效不得由policy推論。先做Staging全交易失敗演練及真JWT／HTTP／雙帳號回歸，再決定非Receipt既有協定啟用步驟。歷史下列readiness／Worker流程只適用舊完整Receipt產品，不是本候選的啟用授權；保留不可逆latch、歷史與其他附件的安全規則。
 

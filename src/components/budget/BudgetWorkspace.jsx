@@ -13,7 +13,6 @@ import { calculateEntryPricing, isPaymentActive, planningBudgetData } from "../.
 import { preparePaymentChange } from "../../lib/budgetPayment.js";
 import { budgetCurrencies, fetchBudgetQuote } from "../../lib/tripBudgetRates.js";
 import { friendlyError } from "../../lib/notifications.js";
-import {isBudgetUndoKey,keepsNativeUndo} from '../../lib/budgetUndoGroups.js';
 
 const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
 const categoryIcons = { "機票": Plane, "交通": Car, "住宿": BedDouble, "門票": Ticket, "餐飲": UtensilsCrossed, "購物": ShoppingBag, "其他": Package };
@@ -463,18 +462,6 @@ export default function BudgetWorkspace(incoming) {
   const [paymentBusy, setPaymentBusy] = useState(false);
   const paymentBusyRef = useRef(false);
   const [paymentError, setPaymentError] = useState("");
-  useEffect(()=>{
-    if(!props.undoRequested||!canEdit||props.workspaceActive===false&&props.useEditLocks!==false)return;
-    let composing=false;
-    const start=()=>{composing=true;},end=()=>{composing=false;};
-    const key=event=>{
-      if(composing||panel==='edit'||!isBudgetUndoKey(event)||keepsNativeUndo(event.target)||document.querySelector('[role="dialog"],dialog[open],[aria-modal="true"],[role="menu"],[role="listbox"]'))return;
-      event.preventDefault();
-      void props.undoClient.undo(activeTrip.id,async()=>true).catch(()=>{});
-    };
-    window.addEventListener('keydown',key);window.addEventListener('compositionstart',start);window.addEventListener('compositionend',end);
-    return ()=>{window.removeEventListener('keydown',key);window.removeEventListener('compositionstart',start);window.removeEventListener('compositionend',end);};
-  },[props.undoRequested,props.undoClient,props.workspaceActive,props.useEditLocks,canEdit,activeTrip.id,services,panel]);
   const tripRates = props.tripBudgetRates || activeTrip.budget_exchange_rates;
   const [ratesBusy, setRatesBusy] = useState(false);
   const [ratesError, setRatesError] = useState("");
@@ -614,7 +601,7 @@ export default function BudgetWorkspace(incoming) {
     const scope = workspaceScope.current;
     panelTransition.current = true;
     try {
-        if((props.receiptPending||props.ratesPending||props.lifecyclePending||props.undoPending)&&next!==panel&&!(await services.handoff({tripId:activeTrip.id})))return;
+        if((props.receiptPending||props.ratesPending||props.lifecyclePending)&&next!==panel&&!(await services.handoff({tripId:activeTrip.id})))return;
       if (next !== "edit" && props.metadataRequested && !activeEditor && panel === "edit" && !(await services.handoff({ tripId: activeTrip.id }))) return;
       if (next !== "edit" && activeEditor && !(await activeEditor.close(false, { sidebar: true }))) return;
       if (scope !== workspaceScope.current) return;

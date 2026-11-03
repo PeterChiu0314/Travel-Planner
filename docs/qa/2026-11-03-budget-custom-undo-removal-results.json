@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-03",
+  "baseCommit": "4266736",
+  "branch": "codex/budget-collaboration-redesign",
+  "scope": "Local isolated PostgreSQL / mocked Formal and local Demo Chromium only; no Hosted access",
+  "forward": "20261103113253_remove_budget_custom_undo.sql",
+  "supersedesUnapplied": "20261103084209_budget_planning_simplification.sql",
+  "postgres": {
+    "version": "17.11",
+    "passed": 12,
+    "failed": 0,
+    "clusterStopped": true,
+    "cases": [
+      "Late Forward failure rolls back ACL body index and all financial rows",
+      "Forward applies without changing any protocol or latch",
+      "Receipt metadata blocked even before financial activation",
+      "Other workspace attachments retain normal CRUD",
+      "Financial Storage path insert rejected by restrictive RLS",
+      "Ordinary user and Worker cannot call Receipt mutation/claim",
+      "One linked Actual enforced; unrelated Actuals remain legal",
+      "All public Undo RPCs and private inverse entries deny ordinary roles",
+      "Protocol row cannot reactivate Undo and v10 compatibility remains readable",
+      "Saved metadata and peer independent group writes still work without Undo capture",
+      "Same group lease excludes peer without weakening version safety",
+      "Pricing participants and Lifecycle remain atomic without Undo"
+    ]
+  },
+  "playwright": {
+    "browser": "Chromium Windows",
+    "baseURL": "http://127.0.0.1:5175",
+    "passed": 117,
+    "failed": 0,
+    "skipped": 0,
+    "suites": [
+      "budgetNativeUndo",
+      "budgetIntegration",
+      "formalBudgetReceiptsDisabled",
+      "formalBudgetMetadata",
+      "formalBudgetPricingGroups",
+      "formalBudgetPaymentGroups",
+      "formalBudgetLifecycle",
+      "phase-1-7f-smoke"
+    ],
+    "viewports": [
+      1440,
+      820,
+      390
+    ],
+    "browserPlugin": "unavailable; existing local Playwright used"
+  },
+  "build": "passed, existing >500kB advisory",
+  "diffCheck": "passed",
+  "syntaxChecks": "passed",
+  "ordinaryUserUndoRPCsAfterForward": "No inverse/lease/clear/read Undo endpoints executable; 12 public/private signatures denied to anon/authenticated; v10 read-only compatibility retained",
+  "hostedUndoRPCs": "Unchanged and not re-inventoried; migration not deployed",
+  "limits": [
+    "No real Hosted Auth/PostgREST/Storage/Realtime multi-account certification",
+    "No macOS hardware or Safari/native number-history guarantee",
+    "Live ledger/catalog/ACL, duplicates and receipt objects/jobs inventory, Staging HTTP and deployment authorization still required"
+  ],
+  "failedAttempts": [
+    "Sandbox initdb WAL permissions, browser path, and cross-sandbox loopback timeout",
+    "Readonly fill and native text edit grouping corrected",
+    "Old integration Undo expectation replaced with retained Links assertion",
+    "Two legacy autosave timing assumptions corrected with explicit saved/pending preconditions; final complete rerun passed"
+  ]
+}
