@@ -1,5 +1,7 @@
 # Undo 移除｜Staging 單一 Forward 封包候選，未執行 Hosted
 
+**最新狀態已由 [Staging安裝紀錄](2026-11-03-budget-undo-staging-install.md) 取代：Staging ledger66／Forward20261103113253已安裝，七協定OFF。** 本文是`ac9501c`候選歷史，不再是可執行安裝指令。原aggregate row-digest XPath有錯，完整row保全宣稱撤回；已以修正後81表/668列coverage、真資料/並發/CRLF23項測試及實際獨立讀回補證。原先一律write-lock平台表的策略也已修正為精確四表read-lock例外。不要執行或重播舊候選；新source已部署，不得修改。
+
 起點 `97c3761`，唯一目標 `uyqdopksfysbobhjcepk`。依 [原地保全方案](2026-11-03-budget-undo-staging-preflight.md) 準備本機候選；沒有 Hosted DDL/DML、Storage bytes、協定／flag啟用或 Production 操作。Dashboard 只有 READ ONLY contract 查詢及私人查詢草稿。
 
 ## 實作與範圍

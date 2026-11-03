@@ -4,7 +4,7 @@ This file is the operating guide for future AI agents working on this travel pla
 
 ## Documentation Layout
 
-Current Budget product rule (2026-11-03): no custom Undo for saved data. Preserve browser-native input Ctrl/Cmd+Z and cancellation of unsaved edits; never intercept global Undo keys or issue inverse RPCs. See `docs/2026-11-03-budget-custom-undo-removal.md` and `CURRENT_TASK.md` for the unapplied Forward and retained historical SQL dependencies. Old B6/30-second Undo documents are historical, not activation instructions.
+Current Budget product rule (2026-11-03): no custom Undo for saved data. Preserve browser-native input Ctrl/Cmd+Z and cancellation of unsaved edits; never intercept global Undo keys or issue inverse RPCs. See `docs/2026-11-03-budget-custom-undo-removal.md`, `docs/2026-11-03-budget-undo-staging-install.md` and `CURRENT_TASK.md` for the Forward installed on Staging only and retained historical SQL dependencies. The applied source is immutable; Production deployment and activation remain unauthorized. Old B6/30-second Undo documents are historical, not activation instructions.
 
 Root Markdown files are entry points:
 

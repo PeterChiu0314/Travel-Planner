@@ -1,4 +1,6 @@
-# 完全移除預算自訂 Undo｜交 ChatGPT Review，未部署
+# 完全移除預算自訂 Undo｜初次實作及 Review 紀錄
+
+**最新2026-11-03：[Staging單一Forward已安裝](2026-11-03-budget-undo-staging-install.md)**，ledger66，十二個Undo entry拒絕一般角色；81表/668列及metadata1/objects2、latches保留、七協定OFF。Production未部署此Forward。下文是首次本機實作／Review紀錄，當時的「Hosted未套用」與待安裝條件已由最新Staging實測取代；不表示真JWT/HTTP/多帳號驗收已完成。
 
 2026-11-03 Asia/Taipei；分支 `codex/budget-collaboration-redesign`，實作起點 `4266736`。起始 tracked tree clean，五個既有 untracked patch/QA 圖保留。僅本機 source、mocked browser 與新 loopback PostgreSQL；沒有讀寫 Production、正式 Storage/flags、main、Vercel 或 Docker/WSL。
 
@@ -25,7 +27,7 @@
 
 封鎖的 public RPC：`undo_budget_metadata_group`、`undo_budget_workspace`、`budget_workspace_undo_lease`、`read_budget_metadata_undo`、`clear_budget_metadata_undo`。同時封鎖 private `prepare_budget_metadata_undo`、`workspace_undo_lease`、`prepare_workspace_inverse`、`workspace_inverse_manifest`、`finish_workspace_inverse` 及對應 read/clear。隔離 DB 對 anon/authenticated 檢查十二個完整簽章的有效 EXECUTE 均 false，實際呼叫 inverse 回 42501。
 
-**此結論僅對套用新 Forward 的隔離資料庫成立。Hosted 沒有套用或重新盤點；既有 Hosted Undo RPC/ACL 仍是舊部署狀態，不能宣稱已撤銷。** 唯讀 v10 Snapshot 本身仍可呼叫，不是 Undo 寫入入口。
+**初次實作時此結論僅對隔離資料庫成立；後續 Staging 已套用及讀回，見頁首最新紀錄。Production 尚未套用此 Forward，不能宣稱其 Undo ACL 已撤銷。** 唯讀 v10 Snapshot 本身仍可呼叫，不是 Undo 寫入入口。
 
 ## 驗證與失敗紀錄
 

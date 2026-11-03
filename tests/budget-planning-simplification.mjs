@@ -42,7 +42,7 @@ try{
  const protocols=async()=>Object.fromEntries(await Promise.all(['metadata','finance','payment','source','receipt','lifecycle','metadata_undo'].map(async p=>[p,await q(`select * from app_private.budget_${p}_protocol`)])));
  const source=await fs.readFile('supabase/migrations/20261103113253_remove_budget_custom_undo.sql','utf8');
  if(process.env.BUDGET_NATIVE_UNDO_PACKET==='1'){
- await undoRemovalPacketCases({q,db,b,trip,budget,A,sid,historyTrip,historyActual,test});
+ await undoRemovalPacketCases({q,db,b,Client,trip,budget,A,sid,historyTrip,historyActual,test});
  }else{
  await test('Preexisting duplicate Actuals abort Forward without changing ACL data or protocols',async()=>{
  const duplicates=[uuid(),uuid()];

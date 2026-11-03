@@ -65,5 +65,7 @@
     "First unfinished-intent durable fixture correctly rejected by existing deferred PT500 guard; revised to same-transaction fault injection without weakening guards",
     "Visible Dashboard cell is gridcell; corrected DOM extraction and saved only hash/state contract in ignored local directory"
   ],
-  "decision": "Local candidate READY FOR REVIEW; Hosted execution and activation not performed; exact Staging dormant install authorization and new readback still required; HTTP/legacy capability gates remain"
+  "decision": "Local candidate READY FOR REVIEW; Hosted execution and activation not performed; exact Staging dormant install authorization and new readback still required; HTTP/legacy capability gates remain",
+  "supersededBy": "2026-11-03-budget-undo-staging-install-results.json",
+  "evidenceCorrection": "Historical19-case pass count was real, but old aggregate row-digest XPath returned null values and is INVALID as row-preservation evidence. Corrected23-case real-data/concurrency/CRLF suite and actual81-table/668-row coverage plus direct readback supersede that claim. Old candidate must never execute or replay."
 }

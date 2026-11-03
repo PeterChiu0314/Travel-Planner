@@ -1,0 +1,259 @@
+{
+  "date": "2026-11-03",
+  "target": "uyqdopksfysbobhjcepk",
+  "baseCommit": "ac9501c",
+  "authorization": "User confirmed exact Staging-only single Forward and independent readback; continued after bounded failure. No Production/Activation/QA initialization/key scope.",
+  "status": "INSTALLED AND INDEPENDENTLY READ BACK / ALL PROTOCOLS OFF",
+  "migration": {
+    "version": "20261103113253",
+    "name": "remove_budget_custom_undo",
+    "ledgerBefore": 65,
+    "ledgerAfter": 66,
+    "head": "20261103113253",
+    "original65RawRowsUnchanged": true,
+    "sourceSha256": "7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c",
+    "statementCount": 1,
+    "sourceStoredAsLf": true,
+    "immutableSourceEdited": false
+  },
+  "execution": {
+    "successfulAttempt": 3,
+    "contractCapturedAt": "2026-11-03T13:57:52.010989+00:00",
+    "readbackAt": "2026-11-03T14:00:17.107254+00:00",
+    "packetSha256": "52951863d245288b9fadcc421537ea1823a45092c92b349363c7016f8f0d5157",
+    "operatorJobSha256": "1ce25079fc788f77bb62a89e785209a137dc19b893d3bb06b2bbb50035ca2a34",
+    "sourceUnchangedAcrossRepairs": true,
+    "liveProfileAndExecutableSqlIgnored": true,
+    "readbackMeaning": "New Dashboard READ ONLY SQL request/transaction; physical pooled backend novelty not assumed"
+  },
+  "preservation": {
+    "coverage": {
+      "complete": true,
+      "rowCount": 668,
+      "relations": 81
+    },
+    "allProtectedRowsMatched": true,
+    "financialSourceBaselineUndoAuditAuthStorageMatched": true,
+    "metadataCount": 1,
+    "storageObjectCount": 2,
+    "receiptMetadataAndStorageCatalogDirectDigestsMatchedInitialInventory": true,
+    "unchangedBodyAttributesAclsSchemaRoles": true,
+    "protocolRowsUnchanged": true,
+    "sevenProtocolsEnabled": false,
+    "fullUndo": false,
+    "priorActivatedLatchesRetained": true,
+    "priorReadinessRetainedNotReattested": true,
+    "bytesDownloadedOrHashed": false,
+    "storageBytesWrites": false
+  },
+  "undoEntryAcl": [
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "app_private.clear_budget_metadata_undo(uuid,uuid)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "app_private.prepare_workspace_inverse(uuid,uuid,uuid,uuid,uuid,bigint)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "app_private.read_budget_metadata_undo(uuid,uuid)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "app_private.workspace_inverse_manifest()",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "app_private.workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "budget_workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "clear_budget_metadata_undo(uuid,uuid)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "read_budget_metadata_undo(uuid,uuid)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "undo_budget_metadata_group(uuid,uuid,uuid,uuid,bigint,uuid)",
+      "authenticated": false
+    },
+    {
+      "anon": false,
+      "worker": false,
+      "signature": "undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+      "authenticated": false
+    }
+  ],
+  "newNormalizedBodyHashes": {
+    "workspace_undo_enabled": "27318ca20fee7c0bdcd829c113ef3a6833c384bcf85d7bb9ba67034eb775bebc",
+    "read_budget_metadata_undo": "188decbf05cc933cdae88fae1ea59daaa44db3ebe03a1930f7ab944e7e17cc82",
+    "budget_metadata_undo_enabled": "27318ca20fee7c0bdcd829c113ef3a6833c384bcf85d7bb9ba67034eb775bebc",
+    "guard_removed_budget_receipts": "38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6"
+  },
+  "artifacts": {
+    "uniqueCurrentActualIndex": "CREATE UNIQUE INDEX actual_expenses_one_budget ON public.actual_expenses USING btree (budget_item_id) WHERE (budget_item_id IS NOT NULL)",
+    "receiptPolicies": [
+      {
+        "schema": "public",
+        "table": "attachments",
+        "name": "removed_receipts_metadata_read",
+        "command": "SELECT",
+        "permissive": "RESTRICTIVE",
+        "roles": [
+          "anon",
+          "authenticated"
+        ]
+      },
+      {
+        "schema": "storage",
+        "table": "objects",
+        "name": "removed_receipts_storage",
+        "command": "ALL",
+        "permissive": "RESTRICTIVE",
+        "roles": [
+          "anon",
+          "authenticated",
+          "budget_receipt_worker"
+        ]
+      }
+    ],
+    "guardTrigger": {
+      "enabled": "O",
+      "correctFunction": true
+    }
+  },
+  "runtime": {
+    "activeGroupLeases": 0,
+    "activeWholeRecordLeases": 0,
+    "pendingReceipts": 0,
+    "unfinishedCleanup": 0,
+    "privateRlsOff": 0
+  },
+  "managedLockBoundary": {
+    "readOnlyRelations": [
+      "auth.schema_migrations",
+      "storage.buckets_vectors",
+      "storage.migrations",
+      "storage.vector_indexes"
+    ],
+    "modes": "SHARE ROW EXCLUSIVE for critical/application/Auth-user/Storage-object relations; ACCESS SHARE only for four exact platform bookkeeping tables with SELECT-only rights",
+    "limits": "Four platform metadata tables are not write-frozen; all are sealed before/after and real concurrent drift rejects install. No grants or role bypass workaround."
+  },
+  "corrections": [
+    {
+      "attempt": 1,
+      "result": "42501 managed auth.schema_migrations lock denied before Forward DDL; rollback independently verified",
+      "grantOrRoleWorkaround": false
+    },
+    {
+      "toolDefect": "Old aggregate XPath returned null row projections; prior aggregate data-preservation claim invalidated",
+      "fix": "Correct /table/row path, fail closed on any null/malformed projection, real same-count data change and actual concurrent drift tests",
+      "unaffectedEvidence": "Direct financial/Receipt/Storage digests and original14 financialSeal tests use direct row JSON, not this XPath"
+    },
+    {
+      "attempt": 2,
+      "result": "Pre-COMMIT source check refused CRLF ledger representation; independently verified all81/668 rolled back",
+      "probeConfirmedCrLf": true,
+      "fix": "Store canonical exact LF source and normalize only CR in new helper body verification; full source SHA unchanged"
+    },
+    {
+      "testDefects": "Owned-sequence fixture initialization and shared observer/writer advisory deadlock corrected without changing product guards; observation barrier has separate test-only deadline",
+      "realPacketLockTimeout": "3s"
+    }
+  ],
+  "tests": {
+    "nonSuperuserPacket": {
+      "passed": 23,
+      "failed": 0,
+      "cases": [
+        "Row digests change for real same-count financial edits and reject null XML projections",
+        "Unknown read-only relation never receives an automatic lock downgrade",
+        "Non-superuser keeps Auth users and Storage object write exclusion; four managed tables are SELECT only",
+        "Packet refuses transaction-local active editor and rolls back the fixture",
+        "Packet refuses duplicate Actuals without merging or deleting financial rows",
+        "Packet is one Forward with no reset protocol update source replay or byte operation",
+        "Packet refuses incorrect target before any changes",
+        "Packet refuses stale contract",
+        "Builder rejects unknown drift in a helper it would replace",
+        "Packet rejects ledger drift without partial changes",
+        "Packet rejects data drift without partial changes",
+        "Packet rejects schema drift without partial changes",
+        "Packet rejects complete body drift without partial changes",
+        "Packet rejects body drift without partial changes",
+        "Packet rejects attributes drift without partial changes",
+        "Packet rejects ACL drift without partial changes",
+        "Packet rejects role drift without partial changes",
+        "Packet refuses actual peer writer lock without terminating it",
+        "Concurrent platform metadata drift rolls back install while Auth users Storage objects and finance writers remain blocked",
+        "Packet refuses in-flight Undo intent without clearing it",
+        "Packet late fault rolls back schema grants ledger and preserved receipt/history rows",
+        "CRLF transported packet commits65 to66 with exact LF source and preserved receipts history latches",
+        "Packet replay refuses without modifying installed state"
+      ],
+      "clusterStopped": true,
+      "scope": "Native PG17.11 targeted role model including actual peer drift, pg_locks checks and full CRLF transport; not full Supautils/bytes/HTTP simulation"
+    },
+    "basicPacket": {
+      "passed": 21,
+      "failed": 0,
+      "clusterStopped": true,
+      "distinctCountNote": "Overlaps managed packet cases; do not add together as distinct coverage"
+    },
+    "originalSqlRls": {
+      "passed": 14,
+      "failed": 0,
+      "clusterStopped": true
+    },
+    "build": "passed, existing bundle advisory",
+    "syntax": "passed",
+    "diffCheck": "passed",
+    "frontend": "No product frontend edits; prior117/117 retained, not rerun"
+  },
+  "notPerformed": [
+    "Production access/write",
+    "main merge or Vercel deployment",
+    "protocol/feature-flag Activation",
+    "project API/signing key acquisition or credential rotation",
+    "QA Auth/financial fixtures on Hosted",
+    "ordinary-JWT PostgREST/Storage/Realtime multi-user acceptance",
+    "Storage bytes deletion/move/download",
+    "fresh Managed Advisor run"
+  ],
+  "next": "Review corrected Staging deployment; separately scope real JWT/HTTP/legacy capability and multi-user acceptance. Production and Activation not authorized by this record."
+}

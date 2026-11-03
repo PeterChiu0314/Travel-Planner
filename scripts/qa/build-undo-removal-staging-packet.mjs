@@ -6,6 +6,10 @@ import {pathToFileURL} from 'node:url';
 import {hash,normalize,transactionBody} from './b7-forward-artifacts.mjs';
 export const stagingTarget='uyqdopksfysbobhjcepk';
 export const forwardVersion='20261103113253';
+export const reviewedForwardSha256='7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c';
+// Platform bookkeeping only. Never include user/auth session rows, buckets,
+// storage.objects or any application relation in this read-lock allowlist.
+export const managedReadOnlyRelations=['auth.schema_migrations','storage.buckets_vectors','storage.migrations','storage.vector_indexes'];
 const forwardName='remove_budget_custom_undo';
 const schemas="('public','app_private','auth','storage')";
 const changedBodies="('budget_metadata_undo_enabled','workspace_undo_enabled','read_budget_metadata_undo')";
@@ -13,10 +17,12 @@ const revokedNames="('undo_budget_metadata_group','undo_budget_workspace','budge
 const removedAcl=`(p.proname in ${revokedNames} or p.proname like 'budget_receipt_worker_%')`;
 const oldFunctions="n.nspname in('public','app_private') and p.prokind='f' and not(n.nspname='app_private' and p.proname='guard_removed_budget_receipts')";
 const digest=q=>`(select encode(sha256(convert_to(coalesce(jsonb_agg(v order by v::text),'[]'::jsonb)::text,'UTF8')),'hex') from (${q}) d)`;
-export const dataDigestQuery=digest(`select jsonb_build_object('relation',format('%I.%I',n.nspname,c.relname),'rows',
- (xpath('/row/d/text()',query_to_xml(format('select count(*) d from %I.%I',n.nspname,c.relname),true,false,'')))[1]::text,
- 'sha256',(xpath('/row/d/text()',query_to_xml(format('select encode(sha256(convert_to(coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),''[]''::jsonb)::text,''UTF8'')),''hex'') d from %I.%I t',n.nspname,c.relname),true,false,'')))[1]::text) v
- from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ${schemas} and c.relkind in('r','p')`);
+const relationProjectionQuery=`select jsonb_build_object('relation',format('%I.%I',n.nspname,c.relname),'rows',
+ (xpath('/table/row/d/text()',query_to_xml(format('select count(*) d from %I.%I',n.nspname,c.relname),true,false,'')))[1]::text,
+ 'sha256',(xpath('/table/row/d/text()',query_to_xml(format('select encode(sha256(convert_to(coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),''[]''::jsonb)::text,''UTF8'')),''hex'') d from %I.%I t',n.nspname,c.relname),true,false,'')))[1]::text) v
+ from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ${schemas} and c.relkind in('r','p')`;
+export const dataDigestQuery=digest(relationProjectionQuery);
+const dataProjectionCoverage=`(select jsonb_build_object('relations',count(*),'complete',count(*)>0 and bool_and(coalesce((v->>'rows')~'^[0-9]+$' and (v->>'sha256')~'^[a-f0-9]{64}$',false)),'rowCount',sum((v->>'rows')::bigint)) from (${relationProjectionQuery}) rp)`;
 const bodies=digest(`select jsonb_build_object('signature',p.oid::regprocedure::text,'body',p.prosrc) v from pg_proc p join pg_namespace n on n.oid=p.pronamespace where ${oldFunctions} and not(n.nspname='app_private' and p.proname in ${changedBodies})`);
 const allBodies=digest(`select jsonb_build_object('signature',p.oid::regprocedure::text,'body',p.prosrc) v from pg_proc p join pg_namespace n on n.oid=p.pronamespace where ${oldFunctions}`);
 const attributes=digest(`select (to_jsonb(p)-'prosrc'-'proacl') v from pg_proc p join pg_namespace n on n.oid=p.pronamespace where ${oldFunctions}`);
@@ -32,14 +38,20 @@ const schemaDigest=digest(`select jsonb_build_object('relation',format('%I.%I',n
 const roles=digest(`select jsonb_build_object('name',rolname,'super',rolsuper,'inherit',rolinherit,'createRole',rolcreaterole,'createDb',rolcreatedb,'login',rolcanlogin,'bypassRls',rolbypassrls,'config',rolconfig) v from pg_roles union all select to_jsonb(m) from pg_auth_members m`);
 const protocolRows=`jsonb_build_object('metadata',(select to_jsonb(t) from app_private.budget_metadata_protocol t),'finance',(select to_jsonb(t) from app_private.budget_finance_protocol t),'payment',(select to_jsonb(t) from app_private.budget_payment_protocol t),'source',(select to_jsonb(t) from app_private.budget_source_protocol t),'receipt',(select to_jsonb(t) from app_private.budget_receipt_protocol t),'lifecycle',(select to_jsonb(t) from app_private.budget_lifecycle_protocol t),'undo',(select to_jsonb(t) from app_private.budget_metadata_undo_protocol t))`;
 const ledgerDigest=filter=>digest(`select to_jsonb(m) v from supabase_migrations.schema_migrations m ${filter}`);
-export const captureUndoRemovalContractQuery=`select jsonb_build_object('target','${stagingTarget}','capturedAt',clock_timestamp(),'identity',current_user,'fixtureMarker',current_setting('budget_metadata.test_cluster',true),'ledgerCount',(select count(*) from supabase_migrations.schema_migrations),'ledgerHead',(select max(version) from supabase_migrations.schema_migrations),'ledgerDigest',${ledgerDigest('')},'dataDigest',${dataDigestQuery},'allFunctionBodies',${allBodies},'changedBodyBefore',(select jsonb_object_agg(p.proname,encode(sha256(convert_to(replace(p.prosrc,chr(13),''),'UTF8')),'hex')) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='app_private' and p.proname in ${changedBodies}),'functionBodies',${bodies},'functionAttributes',${attributes},'unaffectedAcls',${acls},'schemaDigest',${schemaDigest},'roleDigest',${roles},'protocolRows',${protocolRows}) contract`;
+const canWriteLock=oid=>`(has_table_privilege(current_user,${oid},'UPDATE') or has_table_privilege(current_user,${oid},'DELETE') or has_table_privilege(current_user,${oid},'TRUNCATE') or has_table_privilege(current_user,${oid},'MAINTAIN'))`;
+const readOnlyInventory=`(select coalesce(jsonb_agg(format('%I.%I',n.nspname,c.relname) order by n.nspname,c.relname),'[]'::jsonb) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ${schemas} and c.relkind in('r','p') and not ${canWriteLock('c.oid')})`;
+export const captureUndoRemovalContractQuery=`select jsonb_build_object('target','${stagingTarget}','capturedAt',clock_timestamp(),'identity',current_user,'fixtureMarker',current_setting('budget_metadata.test_cluster',true),'managedReadOnlyRelations',${readOnlyInventory},'ledgerCount',(select count(*) from supabase_migrations.schema_migrations),'ledgerHead',(select max(version) from supabase_migrations.schema_migrations),'ledgerDigest',${ledgerDigest('')},'dataDigest',${dataDigestQuery},'dataProjectionCoverage',${dataProjectionCoverage},'allFunctionBodies',${allBodies},'changedBodyBefore',(select jsonb_object_agg(p.proname,encode(sha256(convert_to(replace(p.prosrc,chr(13),''),'UTF8')),'hex')) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='app_private' and p.proname in ${changedBodies}),'functionBodies',${bodies},'functionAttributes',${attributes},'unaffectedAcls',${acls},'schemaDigest',${schemaDigest},'roleDigest',${roles},'protocolRows',${protocolRows}) contract`;
 const literal=s=>`'${String(s).replaceAll("'","''")}'`;
 export async function undoRemovalStagingPacket(profile){
  assert.equal(profile.target,stagingTarget);assert.equal(profile.ledgerCount,65);assert.equal(profile.ledgerHead,'20261101032853');
  for(const field of ['ledgerDigest','dataDigest','allFunctionBodies','functionBodies','functionAttributes','unaffectedAcls','schemaDigest','roleDigest'])assert(/^[a-f0-9]{64}$/.test(profile[field]),field);
  assert(Number.isFinite(Date.parse(profile.capturedAt)));assert(profile.protocolRows);
+ assert.equal(profile.dataProjectionCoverage?.complete,true,'Incomplete row digest projection');
+ assert(profile.dataProjectionCoverage.relations>0);
+ assert(Array.isArray(profile.managedReadOnlyRelations));assert.equal(new Set(profile.managedReadOnlyRelations).size,profile.managedReadOnlyRelations.length);
+ assert(profile.managedReadOnlyRelations.every(r=>managedReadOnlyRelations.includes(r)),'Unknown read-only managed relation; no lock fallback allowed');
  const fixture=Boolean(profile.fixtureMarker);
- if(fixture){assert(/^[a-f0-9-]{36}$/.test(profile.fixtureMarker));assert.equal(profile.identity,'budget_local_admin');}
+ if(fixture){assert(/^[a-f0-9-]{36}$/.test(profile.fixtureMarker));assert(['budget_local_admin','postgres'].includes(profile.identity));}
  else assert.equal(profile.identity,'postgres');
  assert(Object.values(profile.protocolRows).every(p=>p.enabled===false));assert.equal(profile.protocolRows.undo.full_enabled,false);
  // The three intentionally replaced bodies must match immutable installed
@@ -52,17 +64,21 @@ export async function undoRemovalStagingPacket(profile){
  assert.equal(profile.changedBodyBefore?.[name],hash(old.slice(bodyStart,bodyEnd)),`Installed helper body drift: ${name}`);
  }}
  const source=normalize(await fs.readFile(`supabase/migrations/${forwardVersion}_${forwardName}.sql`,'utf8'));
+ assert.equal(hash(source),reviewedForwardSha256,'Reviewed Forward source drift');
+ for(const relation of managedReadOnlyRelations)assert(!source.includes(relation),'Forward must not touch managed read-only relations');
  assert(!source.includes('$undo_forward_source$'));
  const definitions=[...source.matchAll(/create(?: or replace)? function app_private\.(\w+)\([\s\S]*?\bas \$\$([\s\S]*?)\$\$;/g)];
  assert.deepEqual(definitions.map(m=>m[1]),['budget_metadata_undo_enabled','workspace_undo_enabled','read_budget_metadata_undo','guard_removed_budget_receipts']);
- const manifest={target:stagingTarget,version:forwardVersion,sourceSha256:hash(source),fixtureOnly:fixture,capturedAt:profile.capturedAt,profileSha256:hash(JSON.stringify(profile)),status:'NON-AUTO-APPLY / NO HOSTED EXECUTION AUTHORITY'};
+ const manifest={target:stagingTarget,version:forwardVersion,sourceSha256:hash(source),fixtureOnly:fixture,capturedAt:profile.capturedAt,profileSha256:hash(JSON.stringify(profile)),managedReadOnlyRelations:profile.managedReadOnlyRelations,status:'NON-AUTO-APPLY / REQUIRES SCOPED EXECUTION AUTHORIZATION'};
  const compare=(query,key,label)=>`if (${query}) is distinct from ${literal(profile[key])} then raise exception '${label} drift';end if;`;
  const invariants=`${compare(dataDigestQuery,'dataDigest','Protected data')}
+ if (${dataProjectionCoverage})->>'complete' is distinct from 'true' then raise exception 'Incomplete row digest projection';end if;
  ${compare(bodies,'functionBodies','Unchanged function body')}
  ${compare(attributes,'functionAttributes','Function identity attributes')}
  ${compare(acls,'unaffectedAcls','Unchanged function ACL')}
  ${compare(schemaDigest,'schemaDigest','Schema RLS policy trigger index')}
  ${compare(roles,'roleDigest','Role membership')}
+ if ${readOnlyInventory} is distinct from ${literal(JSON.stringify(profile.managedReadOnlyRelations))}::jsonb then raise exception 'Managed lock privilege drift';end if;
  if ${protocolRows} is distinct from ${literal(JSON.stringify(profile.protocolRows))}::jsonb then raise exception 'Protocol latch readiness drift';end if;`;
  let sql=`-- Staging only; single Forward; NO RESET / NO ACTIVATION / NO STORAGE BYTES.
 -- Transport identity/ref/TLS must be independently verified; target GUC alone is not proof.
@@ -79,10 +95,14 @@ do $undo_preflight$ declare r record;begin
  if (select count(*) from supabase_migrations.schema_migrations)<>65 or (select max(version) from supabase_migrations.schema_migrations)<>'20261101032853' then raise exception 'Ledger baseline drift';end if;
  ${compare(ledgerDigest(''),'ledgerDigest','Raw ledger source')}
  ${compare(allBodies,'allFunctionBodies','Complete before function body')}
- -- Deterministic full relation locks, including auth/storage catalog. Failure
- -- to lock a managed relation is a hard stop, never a grant/role workaround.
- for r in select n.nspname,c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ${schemas} and c.relkind in('r','p') order by n.nspname,c.relname loop
- execute format('lock table %I.%I in share row exclusive mode',r.nspname,r.relname);
+ -- All application/auth-user/storage-object rows keep write-excluding locks.
+ -- Exactly four immutable-source-unrelated platform bookkeeping relations
+ -- may use ACCESS SHARE when only SELECT is available. They remain included
+ -- in before/after row/schema/ACL seals; do not claim they are write-frozen.
+ for r in select c.oid,n.nspname,c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ${schemas} and c.relkind in('r','p') order by n.nspname,c.relname loop
+ if ${canWriteLock('r.oid')} then execute format('lock table %I.%I in share row exclusive mode',r.nspname,r.relname);
+ elsif format('%I.%I',r.nspname,r.relname)=any(array[${managedReadOnlyRelations.map(literal).join(',')}]) and has_table_privilege(current_user,r.oid,'SELECT') then execute format('lock table %I.%I in access share mode',r.nspname,r.relname);
+ else raise exception 'Unsupported managed lock privilege: %.%',r.nspname,r.relname;end if;
  end loop;
  if exists(select 1 from pg_stat_activity where datname=current_database() and pid<>pg_backend_pid() and backend_type='client backend' and xact_start is not null and state<>'idle') then raise exception 'Concurrent transaction; install refused';end if;
  if exists(select 1 from app_private.budget_edit_leases where expires_at>clock_timestamp()) or exists(select 1 from app_private.budget_metadata_groups where expires_at>clock_timestamp())
@@ -94,12 +114,14 @@ do $undo_preflight$ declare r record;begin
  ${invariants}
 end $undo_preflight$;
 ${transactionBody(source)}
-insert into supabase_migrations.schema_migrations(version,name,statements) values('${forwardVersion}','${forwardName}',array[$undo_forward_source$${source}$undo_forward_source$]);
+-- Native Windows clipboard/SQL Editor may transport CRLF. Store the exact
+-- reviewed LF source, not a transport-dependent ledger representation.
+insert into supabase_migrations.schema_migrations(version,name,statements) values('${forwardVersion}','${forwardName}',array[replace($undo_forward_source$${source}$undo_forward_source$,chr(13),'')]);
 do $undo_readback$ declare f record;begin
  ${compare(ledgerDigest(`where version<>'${forwardVersion}'`),'ledgerDigest','Original ledger')}
  if (select count(*) from supabase_migrations.schema_migrations)<>66 or not exists(select 1 from supabase_migrations.schema_migrations where version='${forwardVersion}' and name='${forwardName}' and cardinality(statements)=1 and encode(sha256(convert_to(statements[1],'UTF8')),'hex')='${hash(source)}') then raise exception 'Forward ledger/source mismatch';end if;
  ${invariants}
- ${definitions.map(m=>`if not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='app_private' and p.proname='${m[1]}' and encode(sha256(convert_to(p.prosrc,'UTF8')),'hex')='${hash(m[2])}') then raise exception 'Forward body mismatch: ${m[1]}';end if;`).join('\n')}
+ ${definitions.map(m=>`if not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='app_private' and p.proname='${m[1]}' and encode(sha256(convert_to(replace(p.prosrc,chr(13),''),'UTF8')),'hex')='${hash(m[2])}') then raise exception 'Forward body mismatch: ${m[1]}';end if;`).join('\n')}
  if app_private.budget_metadata_undo_enabled() or app_private.workspace_undo_enabled() then raise exception 'Undo remains enabled';end if;
  for f in select p.oid from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in('public','app_private') and ${removedAcl} and (n.nspname='public' or p.proname in('clear_budget_metadata_undo','read_budget_metadata_undo','prepare_budget_metadata_undo','workspace_undo_lease','prepare_workspace_inverse','workspace_inverse_manifest','finish_workspace_inverse')) loop
  if has_function_privilege('anon',f.oid,'execute') or has_function_privilege('authenticated',f.oid,'execute') or has_function_privilege('budget_receipt_worker',f.oid,'execute') then raise exception 'Removed client entry remains executable';end if;

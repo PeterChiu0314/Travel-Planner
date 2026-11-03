@@ -17,7 +17,7 @@ This document now separates:
 
 # Confirmed Bugs
 
-Latest product change 2026-11-03: [Custom Undo removal](2026-11-03-budget-custom-undo-removal.md) supersedes all five-step/30-second Undo acceptance and activation instructions. New local Forward20261103113253 replaces unapplied20261103084209; not installed Hosted. Receipt removal and one current Actual per Budget remain. No new Production verification in this task.
+Latest product change 2026-11-03: [Custom Undo removal](2026-11-03-budget-custom-undo-removal.md) supersedes all five-step/30-second Undo acceptance and activation instructions. [Staging installation](2026-11-03-budget-undo-staging-install.md): Forward20261103113253 installed ledger66, twelve Undo entries deny ordinary roles, 81tables/668rows and Receiptmetadata1/objects2 preserved, sevenOFF/latchesretained. Original wrapper row-digest XPath and Managed-lock/CRLF tool defects corrected with real-data/concurrency/transport tests; prior aggregate row-proof claim invalidated. Receipt removal and one current Actual per Budget remain. Production unchanged by this task; no new ordinary-JWT/HTTP/full-service certification.
 
 ## Production rollout | Dormant COMMIT; full B7 enablement NO-GO
 

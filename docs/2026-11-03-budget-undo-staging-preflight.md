@@ -1,5 +1,7 @@
 # Undo 移除｜Staging 唯讀盤點與保全方案
 
+**歷史盤點，最新以 [Staging安裝結果](2026-11-03-budget-undo-staging-install.md) 為準。** 其後使用者明確確認Staging安裝／獨立讀回，現已ledger66且Undo權限撤銷；既有metadata1/objects2與原始歷史/latches保留、七協定OFF。本文保留安裝前的65/ACL grant與阻擋紀錄，不能當作目前狀態或重播授權。
+
 2026-11-03 Asia/Taipei；基線 `d663927`，唯一遠端 `Travel-Planner-Staging / uyqdopksfysbobhjcepk`。本輪只有 Dashboard 登入及明確 `BEGIN TRANSACTION READ ONLY` 的 SELECT；沒有 Migration、Activation/Pause、資料 DML、Storage bytes、發證／撤銷、QA 帳號或 Production 操作。SQL Editor 另產生私人查詢草稿，不能把此 UI 草稿描述為零外部狀態變更。
 
 Supabase connector 的 get_project/list_migrations 都回 permission denied；因此改用現有 Edge GitHub 登入 Dashboard。頁面明確顯示專案名稱／ref／Healthy，沒有擴權或修改登入憑證。沒有將 OAuth URL 中的暫時 token 寫入 repo／文件／腳本或拿來呼叫 API；沒有讀取專案 API/signing keys。
