@@ -1,0 +1,116 @@
+{
+  "project": "uyqdopksfysbobhjcepk",
+  "projectName": "Travel-Planner-Staging",
+  "sourceCommit": "d663927",
+  "scope": "Dashboard READ ONLY SQL/catalog; no migration/data/Storage/flag/Activation writes",
+  "observedAt": [
+    "2026-11-03T12:11:53.357471Z",
+    "2026-11-03T12:13:25.765026Z"
+  ],
+  "ledger": {
+    "count": 65,
+    "head": "20261101032853",
+    "cancelled30SecondForwardInstalled": false,
+    "undoRemovalForwardInstalled": false
+  },
+  "protocols": {
+    "allSevenEnabled": false,
+    "fullUndo": false,
+    "financeActivated": true,
+    "receiptActivated": true,
+    "lifecycleActivated": true,
+    "storageVerified": true,
+    "cleanupWorkerVerified": true,
+    "contentWorkerVerified": true,
+    "legacyGrantsExpireAt": null,
+    "evidenceMeaning": "Existing latch/readiness values read only; not re-attested or manufactured"
+  },
+  "counts": {
+    "trips": 4,
+    "users": 3,
+    "budgets": 13,
+    "actuals": 4,
+    "baselines": 3,
+    "duplicateCurrentBudgetLinks": 0,
+    "financialAttachmentMetadata": 1,
+    "financialStorageObjects": 2,
+    "allStorageObjects": 2,
+    "referencedObjects": 1,
+    "objectsWithoutCurrentFinancialMetadataReference": 1,
+    "metadataWithoutObject": 0
+  },
+  "inflight": {
+    "activeWholeRecordLeases": 0,
+    "activeGroupLeases": 0,
+    "pendingReceipts": 0,
+    "unfinishedCleanup": 0,
+    "otherActiveTransactions": 0,
+    "limit": "Point in time only; not a future maintenance-window certificate"
+  },
+  "historicalQueues": {
+    "intents": {
+      "aborted": 3,
+      "committed": 7
+    },
+    "cleanup": {
+      "done": 11
+    }
+  },
+  "security": {
+    "privateTablesWithoutRls": 0,
+    "privateDirectTableGrants": 0,
+    "privatePublications": 0,
+    "applicationFunctionCount": 277,
+    "undoEntrySignatures": 12,
+    "undoAuthenticatedExecute": true,
+    "undoAnonExecute": false,
+    "limit": "Catalog privileges only; no inverse RPC invoked; no live golden-seal parity claim"
+  },
+  "catalogDigests": {
+    "applicationDefinitionsAndAcl": "f4362e0de08573e61e3d0058537f3a87980ac9baea3f297bf6e672235bbae947",
+    "storageObjects": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80",
+    "attachments": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+    "meaning": "SHA256 over ordered PostgreSQL JSON catalog/row projections, not object-byte hashes or backups"
+  },
+  "financialFingerprints": [
+    {
+      "kind": "actual",
+      "rows": 4,
+      "sha256": "4c8a66d4946f7ee8bbeb7a41e97b2164cd26f0c2be0d8cc272b5262a509609ce"
+    },
+    {
+      "kind": "actual_people",
+      "rows": 5,
+      "sha256": "f94356b0b8b0c29ef0c256691fdded575ac274863849f5953d4eb765e09f5ff3"
+    },
+    {
+      "kind": "baselines",
+      "rows": 3,
+      "sha256": "7fb7f3e7ca44ff7e9c785b1418baa88d8fdb1df593b50b0265912b6d542bc8a4"
+    },
+    {
+      "kind": "budget",
+      "rows": 13,
+      "sha256": "d3e393cb5da8384053b98160da8d47813f882ccd65f28f599cbc70470bef4935"
+    },
+    {
+      "kind": "budget_people",
+      "rows": 13,
+      "sha256": "30846aabe2b37464187587db0a3d7536150d29ad386d36b8f470c667276a8160"
+    },
+    {
+      "kind": "links",
+      "rows": 1,
+      "sha256": "bd2a68a36b800ca318b6a711d33a90ef6b6775be36b1e0718075e4f6921bc8a8"
+    }
+  ],
+  "decision": "NO-GO for direct Forward; preserve existing receipts and review exact Staging write scope/before-contract/legacy capabilities first",
+  "access": "Supabase connector permission denied; normal Edge GitHub Dashboard login worked",
+  "limits": [
+    "No Production access",
+    "No Auth/PostgREST/Storage ordinary-JWT HTTP or Realtime acceptance",
+    "No object bytes downloaded/hashed/changed",
+    "No key access, grant expiry assertion, credential rotation or QA account/session creation",
+    "SQL Editor created a private query draft; application DB operations were READ ONLY"
+  ]
+}
