@@ -5,6 +5,7 @@ import {pathToFileURL} from 'node:url';
 import {randomUUID as uuid} from 'node:crypto';
 import {nativeBootstrap} from './helpers/b7-native-bootstrap.mjs';
 import {migrationSources,hash} from '../scripts/qa/b7-forward-artifacts.mjs';
+import {undoRemovalPacketCases} from './budget-undo-removal-packet-cases.mjs';
 const pg=await import(pathToFileURL(process.env.BUDGET_NATIVE_PG_MODULE).href),{Client}=pg.default||pg;
 const cfg={host:'127.0.0.1',port:Number(process.env.BUDGET_NATIVE_PORT),database:'postgres',connectionTimeoutMillis:5000};
 assert(cfg.port>1024);const db=new Client({...cfg,user:'budget_local_admin'}),a=new Client({...cfg,user:'budget_actor_a'}),b=new Client({...cfg,user:'budget_actor_b'});
@@ -40,6 +41,9 @@ try{
  };
  const protocols=async()=>Object.fromEntries(await Promise.all(['metadata','finance','payment','source','receipt','lifecycle','metadata_undo'].map(async p=>[p,await q(`select * from app_private.budget_${p}_protocol`)])));
  const source=await fs.readFile('supabase/migrations/20261103113253_remove_budget_custom_undo.sql','utf8');
+ if(process.env.BUDGET_NATIVE_UNDO_PACKET==='1'){
+ await undoRemovalPacketCases({q,db,b,trip,budget,A,sid,historyTrip,historyActual,test});
+ }else{
  await test('Preexisting duplicate Actuals abort Forward without changing ACL data or protocols',async()=>{
  const duplicates=[uuid(),uuid()];
  for(const id of duplicates)await q("insert into actual_expenses(id,trip_id,budget_item_id,title,category,amount,twd_amount,currency,exchange_rate,paid_at) values($1,$2,$3,'Duplicate fixture','交通',1,1,'TWD',1,clock_timestamp())",[id,trip,budget]);
@@ -109,4 +113,5 @@ try{
  await assert.rejects(()=>aq(sql,[...args.slice(0,6),JSON.stringify({pricing:{...r.value,amount:999,participantIds:[]}}),uuid(),args[8]]));
  assert.deepEqual(await q('select * from budget_item_participants where budget_item_id=$1 order by user_id',[id]),before);
  });
-}finally{await Promise.allSettled([a.end(),b.end(),db.end()]);await fs.writeFile(process.env.BUDGET_NATIVE_EVIDENCE+'/planning-results.json',JSON.stringify({scope:'isolated native SQL/RLS, not Hosted/HTTP',results},null,2));}
+ }
+}finally{await Promise.allSettled([a.end(),b.end(),db.end()]);await fs.writeFile(process.env.BUDGET_NATIVE_EVIDENCE+(process.env.BUDGET_NATIVE_UNDO_PACKET==='1'?'/undo-packet-results.json':'/planning-results.json'),JSON.stringify({scope:'isolated native SQL/RLS, not Hosted/HTTP',results},null,2));}

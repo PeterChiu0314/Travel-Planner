@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-03",
+  "baseCommit": "97c3761",
+  "target": "uyqdopksfysbobhjcepk",
+  "scope": "Offline candidate generation, fresh Dashboard READ ONLY contract, isolated PostgreSQL packet tests; no Hosted migration/Activation",
+  "packetManifest": {
+    "target": "uyqdopksfysbobhjcepk",
+    "version": "20261103113253",
+    "sourceSha256": "7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c",
+    "fixtureOnly": false,
+    "capturedAt": "2026-11-03T12:32:17.820009+00:00",
+    "profileSha256": "b03b4b3946dee7739b8f87ec4d7d142addd5d84809fca751fce045ed030377f9",
+    "status": "NON-AUTO-APPLY / NO HOSTED EXECUTION AUTHORITY",
+    "packetSha256": "2a9ad18afdd2ce1c42d8ebff998a4bd72e14673a3a14888acf7adb23bcc74092"
+  },
+  "packetTests": {
+    "postgres": "17.11",
+    "passed": 19,
+    "failed": 0,
+    "clusterStopped": true,
+    "cases": [
+      "Packet refuses transaction-local active editor and rolls back the fixture",
+      "Packet refuses duplicate Actuals without merging or deleting financial rows",
+      "Packet is one Forward with no reset protocol update source replay or byte operation",
+      "Packet refuses incorrect target before any changes",
+      "Packet refuses stale contract",
+      "Builder rejects unknown drift in a helper it would replace",
+      "Packet rejects ledger drift without partial changes",
+      "Packet rejects data drift without partial changes",
+      "Packet rejects schema drift without partial changes",
+      "Packet rejects complete body drift without partial changes",
+      "Packet rejects body drift without partial changes",
+      "Packet rejects attributes drift without partial changes",
+      "Packet rejects ACL drift without partial changes",
+      "Packet rejects role drift without partial changes",
+      "Packet refuses actual peer writer lock without terminating it",
+      "Packet refuses in-flight Undo intent without clearing it",
+      "Packet late fault rolls back schema grants ledger and preserved receipt/history rows",
+      "Packet commits65 to66 while preserving nonempty receipts financial history and all latches",
+      "Packet replay refuses without modifying installed state"
+    ],
+    "limit": "Native superuser fixture; not Managed Supautils/permissions, physical Storage bytes, Auth/JWT HTTP or actual Hosted migration acceptance"
+  },
+  "planningSqlRegression": {
+    "passed": 14,
+    "failed": 0,
+    "clusterStopped": true
+  },
+  "frontend": "No frontend changes; prior117/117 reused, not rerun",
+  "build": "Passed; existing bundle advisory",
+  "syntax": "Passed for changed JS",
+  "diffCheck": "Passed",
+  "liveContract": {
+    "capturedAt": "2026-11-03T12:32:17.820009Z",
+    "ledgerCount": 65,
+    "head": "20261101032853",
+    "threeReplacementHelpersMatchImmutableInstalledSources": true,
+    "allProtocolsOff": true,
+    "existingLatchesAndReadinessPreserved": true,
+    "localProfileAndExecutablePacketIgnored": true,
+    "expiry": "15 minutes; recapture/review required, never edit timestamp"
+  },
+  "preservation": "Retain all nonempty financial/Source/Baseline/Undo audit and existing Receipt metadata/2Storage catalog objects; no deletion, rename, sweep, key rotation, protocol writes or latch reset",
+  "attempts": [
+    "First unfinished-intent durable fixture correctly rejected by existing deferred PT500 guard; revised to same-transaction fault injection without weakening guards",
+    "Visible Dashboard cell is gridcell; corrected DOM extraction and saved only hash/state contract in ignored local directory"
+  ],
+  "decision": "Local candidate READY FOR REVIEW; Hosted execution and activation not performed; exact Staging dormant install authorization and new readback still required; HTTP/legacy capability gates remain"
+}
