@@ -44,3 +44,18 @@ Browser plugin unavailable，使用現有 Playwright Chromium、原生 loopback 
 交 ChatGPT Review；本輪不部署、不啟用。另案取得授權後，重新讀 live ledger/catalog/ACL、重複 linked Actual、財務 Receipt metadata/objects/jobs、舊 signed URL 能力及有效租約／在途交易。已存在重複實付或收據/jobs 時先保全方案，不自動刪除／合併。新版本只可依 exact live 差異建封包；禁止 db push 全鏈、重播 reset、重設 latch 或修改已部署 migration。
 
 先 Staging 原子失敗演練及真 ordinary JWT 多帳號/多 tab 的 Pricing/Payment/Source/Lifecycle/Realtime/取消；證明新舊 Undo RPC 都拒絕、其他附件 HTTP 正常、財務 Receipt HTTP 拒絕。舊 signed 能力不能只由 policy 推論失效。再另決定正式 schema/frontend 與既有非 Receipt 協定發布順序，Undo 永不啟用。沒有刪除財務歷史或做 schema-down。
+
+## `531a671` 後的本機 Review 補強
+
+後續要求「繼續」先解讀為本機 Review／補強，並非正式或 Staging 寫入授權。重新檢查前端 import／keydown／RPC 路徑及 SQL public/private inverse ACL，未發現新的可執行 Undo 入口；未修改產品程式或 Forward。這是本機自查，不冒充獨立 Review 或 Hosted certification。
+
+原測試對非空歷史保全及既存 duplicate 阻擋的證據不夠直接，已補：
+
+- 管理初始化的獨立歷史 graph，包含外幣付款、目前 Budget link／Source Origin、Actual participants、Baseline、Undo operations／stack／request receipts。這些是明確的隔離 fixture，不是真 Hosted 使用者付款證據。
+- 在 Forward 前放入兩筆相同 Budget 的 Actual，要求 unique index 建立回 `23505`，整包回滾；完整財務／稽核投影、七個協定列與 public/private function bodies／ACL 均一致，index 未殘留。不自動合併或清理重複資料；測試 fixture 由 runner 在獨立 cluster 清理。
+- 成功套用及晚期 fault 都比對非空完整 graph；七個 protocol（含其現有 latch/readiness 欄位）不變。Undo 即使舊 protocol 欄位設 true，兩個 enabled helper 仍回 false。
+- 同伴先提交新 title revision，再以仍有效的租約送舊 base revision，要求 `PT409` 且完整財務／歷史投影不變；沒有取消版本檢查。
+
+這次只補測試／證據／文件，不重跑未受影響的 117-case frontend suite；其上輪完整 Passed 紀錄仍保留。部署決策仍待 Review、live inventory、受控 Staging 與真 JWT/HTTP。尤其現有 receipt bytes/jobs、舊能力失效、在途 inverse／財務 writer 的排除，必須由下一份 target-bound preflight/wrapper 及真讀回證明；單獨本機 SQL Passed 不是可直接對 Hosted 執行整條 migration chain 的授權。
+
+最新完整隔離 PostgreSQL17.11 **14/14 Passed**，已正常停止 cluster；changed JS syntax、`git diff --check` Passed。前述 12/12 是首次移除的歷史 checkpoint，已由這輪完整擴充 suite 取代。

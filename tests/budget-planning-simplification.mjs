@@ -22,12 +22,39 @@ try{
  await q("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved'),($1,$3,'editor','approved')",[trip,A,B]);
  await q("insert into budget_items(id,trip_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id) values($1,$2,'Budget','交通',100,100,'TWD',1,$3)",[budget,trip,A]);
  await q('insert into budget_item_participants(budget_item_id,user_id,share_amount) values($1,$2,100)',[budget,A]);
+ // Historical rows are administrator-initialized fixtures, not Auth/HTTP
+ // acceptance. Keep them separate from the graph mutated by later cases.
+ const historyTrip=uuid(),historyBudget=uuid(),historyActual=uuid(),oldOperation=uuid();
+ await q("insert into trips(id,title,name,destination,start_date,end_date,owner_id) values($1,'History','History','QA','2098-01-01','2098-01-03',$2)",[historyTrip,A]);
+ await q("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved')",[historyTrip,A]);
+ await q("insert into budget_items(id,trip_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id) values($1,$2,'History budget','交通',1000,210,'JPY',0.21,$3)",[historyBudget,historyTrip,A]);
+ await q("insert into actual_expenses(id,trip_id,budget_item_id,budget_origin_id,title,category,amount,twd_amount,currency,exchange_rate,paid_at,payment_origin,payment_history) values($1,$2,$3,$3,'History paid','交通',1000,205,'JPY',0.205,'2026-10-30T00:00:00Z','budget_toggle',$4::jsonb)",[historyActual,historyTrip,historyBudget,JSON.stringify([{action:'paid',paid_at:'2026-10-30T00:00:00Z',twd_amount:205}])]);
+ await q('insert into actual_expense_participants(actual_expense_id,user_id,share_amount) values($1,$2,205)',[historyActual,A]);
+ await q("insert into trip_budget_baselines(trip_id,departure_at,captured_at,payload) values($1,'2098-01-01T00:00:00Z','2026-10-30T00:00:00Z',$2::jsonb) on conflict(trip_id) do update set payload=excluded.payload",[historyTrip,JSON.stringify({fixture:'protected history',amount:205})]);
+ await q("insert into app_private.budget_metadata_undo_operations(user_id,operation_id,trip_id,session_id,kind,resource_id,group_key,before_value,after_value,before_revision,after_revision) values($1,$2,$3,$4,'budget',$5,'title','\"Before\"','\"History budget\"',0,1)",[A,oldOperation,historyTrip,sid,historyBudget]);
+ await q('insert into app_private.budget_metadata_undo_stack(user_id,session_id,trip_id,operation_id,expected_revision) values($1,$2,$3,$4,1)',[A,sid,historyTrip,oldOperation]);
+ await q('insert into app_private.budget_metadata_undo_receipts(user_id,request_id,trip_id,session_id,operation_id,result) values($1,$2,$3,$4,$5,$6::jsonb)',[A,uuid(),historyTrip,sid,oldOperation,JSON.stringify({fixture:'historical request'})]);
+ const financialSeal=async()=>{
+  const tables=['public.trips','public.trip_members','public.budget_items','public.budget_item_participants','public.actual_expenses','public.actual_expense_participants','public.trip_budget_baselines','app_private.budget_metadata_undo_operations','app_private.budget_metadata_undo_stack','app_private.budget_metadata_undo_lineage','app_private.budget_metadata_undo_receipts'];
+  return Object.fromEntries(await Promise.all(tables.map(async t=>[t,await q(`select to_jsonb(r) value from ${t} r order by to_jsonb(r)::text`)])));
+ };
+ const protocols=async()=>Object.fromEntries(await Promise.all(['metadata','finance','payment','source','receipt','lifecycle','metadata_undo'].map(async p=>[p,await q(`select * from app_private.budget_${p}_protocol`)])));
  const source=await fs.readFile('supabase/migrations/20261103113253_remove_budget_custom_undo.sql','utf8');
+ await test('Preexisting duplicate Actuals abort Forward without changing ACL data or protocols',async()=>{
+ const duplicates=[uuid(),uuid()];
+ for(const id of duplicates)await q("insert into actual_expenses(id,trip_id,budget_item_id,title,category,amount,twd_amount,currency,exchange_rate,paid_at) values($1,$2,$3,'Duplicate fixture','交通',1,1,'TWD',1,clock_timestamp())",[id,trip,budget]);
+ const before=await financialSeal(),flags=await protocols(),functions=await q("select oid::regprocedure::text signature,prosrc,proacl::text from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) order by signature");
+ await assert.rejects(()=>q(source),e=>e.code==='23505');await q('rollback');
+ assert.deepEqual(await financialSeal(),before);assert.deepEqual(await protocols(),flags);
+ assert.deepEqual(await q("select oid::regprocedure::text signature,prosrc,proacl::text from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) order by signature"),functions);
+ assert.equal((await q("select to_regclass('public.actual_expenses_one_budget') v"))[0].v,null);
+ await q('delete from actual_expenses where id=any($1::uuid[])',[duplicates]);
+ });
  await test('Late Forward failure rolls back ACL body index and all financial rows',async()=>{
- const seal=async()=>({functions:await q("select oid::regprocedure::text signature,prosrc,proacl::text from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) order by signature"),rows:await q('select * from budget_items order by id')});
+ const seal=async()=>({functions:await q("select oid::regprocedure::text signature,prosrc,proacl::text from pg_proc where pronamespace in('public'::regnamespace,'app_private'::regnamespace) order by signature"),rows:await financialSeal(),protocols:await protocols()});
  const before=await seal();await assert.rejects(()=>q(source.replace(/commit;\s*$/, 'select 1/0;commit;')),e=>e.code==='22012');await q('rollback');assert.deepEqual(await seal(),before);assert.equal((await q("select to_regclass('public.actual_expenses_one_budget') v"))[0].v,null);
  });
- await test('Forward applies without changing any protocol or latch',async()=>{const before=await q('select * from app_private.budget_receipt_protocol');await q(source);assert.deepEqual(await q('select * from app_private.budget_receipt_protocol'),before);});
+ await test('Forward preserves all seven protocol rows financial history Source Baseline and Undo audit',async()=>{const before=await protocols(),rows=await financialSeal();await q(source);assert.deepEqual(await protocols(),before);assert.deepEqual(await financialSeal(),rows);});
  for(const [c,id]of [[a,A],[b,B]]){await c.connect();await c.query('set role authenticated');await c.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);}
  await test('Receipt metadata blocked even before financial activation',async()=>{await assert.rejects(()=>aq("insert into attachments(trip_id,target_type,target_id,file_name,file_url) values($1,'actual_expense',$2,'x','x')",[trip,uuid()]),e=>e.code==='55000');});
  await test('Other workspace attachments retain normal CRUD',async()=>{const row=(await aq("insert into attachments(trip_id,target_type,target_id,file_name,file_url) values($1,'accommodation',$2,'x','x') returning id",[trip,uuid()]))[0];assert.equal((await a.query('delete from attachments where id=$1',[row.id])).rowCount,1);});
@@ -60,6 +87,15 @@ try{
  await test('Same group lease excludes peer without weakening version safety',async()=>{
  const r=await group(a,'note',sid),held=await lease(a,'note',sid,r);assert(held.granted);
  const denied=await lease(b,'note',otherSid,r);assert.equal(denied.granted,false);
+ });
+ await test('Stale metadata revision returns PT409 and preserves the complete financial graph',async()=>{
+ const stale=await group(a,'title',sid);await patch(b,'title',otherSid,'New peer revision');
+ const current=await group(a,'title',sid),token=uuid();
+ const held=(await aq("select public.budget_metadata_group_lease_v2($1,'budget',$2,'title',$3,$4,'acquire',$5,null,0,false,$6::jsonb) v",[trip,budget,sid,token,current.revision,JSON.stringify(current.versions)]))[0].v;assert(held.granted);
+ const before=await financialSeal();
+ await assert.rejects(()=>aq("select public.patch_budget_metadata_group_v2($1,'budget',$2,'title',$3,$4,$5,$6,$7::jsonb,$8,$9::jsonb)",[trip,budget,stale.revision,sid,token,held.epoch,JSON.stringify({title:'Stale overwrite'}),uuid(),JSON.stringify(stale.versions)]),e=>e.code==='PT409');
+ assert.deepEqual(await financialSeal(),before);
+ await aq("select public.budget_metadata_group_lease_v2($1,'budget',$2,'title',$3,$4,'release',$5,$6,0,false,$7::jsonb)",[trip,budget,sid,token,current.revision,held.epoch,JSON.stringify(current.versions)]);
  });
  await test('Pricing participants and Lifecycle remain atomic without Undo',async()=>{
  const id=(await aq("select public.create_budget_workspace_placeholder($1,'budget',$2,$3) v",[trip,sid,uuid()]))[0].v.created_id;

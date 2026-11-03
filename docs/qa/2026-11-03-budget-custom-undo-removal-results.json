@@ -7,12 +7,13 @@
   "supersedesUnapplied": "20261103084209_budget_planning_simplification.sql",
   "postgres": {
     "version": "17.11",
-    "passed": 12,
+    "passed": 14,
     "failed": 0,
     "clusterStopped": true,
     "cases": [
+      "Preexisting duplicate Actuals abort Forward without changing ACL data or protocols",
       "Late Forward failure rolls back ACL body index and all financial rows",
-      "Forward applies without changing any protocol or latch",
+      "Forward preserves all seven protocol rows financial history Source Baseline and Undo audit",
       "Receipt metadata blocked even before financial activation",
       "Other workspace attachments retain normal CRUD",
       "Financial Storage path insert rejected by restrictive RLS",
@@ -22,6 +23,7 @@
       "Protocol row cannot reactivate Undo and v10 compatibility remains readable",
       "Saved metadata and peer independent group writes still work without Undo capture",
       "Same group lease excludes peer without weakening version safety",
+      "Stale metadata revision returns PT409 and preserves the complete financial graph",
       "Pricing participants and Lifecycle remain atomic without Undo"
     ]
   },
@@ -63,5 +65,21 @@
     "Readonly fill and native text edit grouping corrected",
     "Old integration Undo expectation replaced with retained Links assertion",
     "Two legacy autosave timing assumptions corrected with explicit saved/pending preconditions; final complete rerun passed"
-  ]
+  ],
+  "reviewFollowup": {
+    "reviewedCommit": "531a671",
+    "scope": "local self-review and isolated SQL only; no product or migration source change",
+    "postgresPassed": 14,
+    "postgresFailed": 0,
+    "priorPostgresPassed": 12,
+    "frontendResult": "prior complete 117/117 retained; unaffected browser suite not rerun",
+    "preservationFixtures": "separate administrator-initialized financial graph with historical JPY payment/participants, current link/Source Origin, Baseline and nonempty Undo operations/stack/request receipts; not Hosted payment evidence",
+    "newEvidence": [
+      "Preexisting duplicate Actual aborts complete Forward with 23505 and unchanged data/function ACL/body/protocol rows",
+      "Both failed and successful Forward preserve nonempty financial and Undo audit graph",
+      "All seven protocol rows unchanged",
+      "Stale title revision with a valid lease rejects PT409 without graph changes"
+    ],
+    "releaseDecision": "local review package ready; Hosted deployment/activation remains NO-GO pending independent Review, live inventory and separately authorized Staging/HTTP checks"
+  }
 }
