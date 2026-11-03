@@ -1,0 +1,725 @@
+{
+  "date": "2026-11-03T15:23:37.126Z",
+  "baseCommit": "c416b7d",
+  "project": "uyqdopksfysbobhjcepk",
+  "mode": "read-only",
+  "mockedRoutes": false,
+  "rows": [
+    {
+      "id": "R01",
+      "name": "Live ledger, immutable source and twelve Undo ACLs",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "detail": {
+        "observedAt": "2026-11-03T15:21:44.377651+00:00",
+        "sourceAnd12Acls": true
+      },
+      "executedAt": "2026-11-03T15:23:37.128Z"
+    },
+    {
+      "id": "R02",
+      "name": "Seven protocols OFF; latches and readiness recorded",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "detail": {
+        "expectedState": "all seven OFF",
+        "latches": {
+          "undo": {
+            "enabled": false,
+            "singleton": true,
+            "full_enabled": false
+          },
+          "source": {
+            "enabled": false,
+            "singleton": true
+          },
+          "finance": {
+            "enabled": false,
+            "activated": true,
+            "singleton": true
+          },
+          "payment": {
+            "enabled": false,
+            "singleton": true
+          },
+          "receipt": {
+            "enabled": false,
+            "activated": true,
+            "singleton": true,
+            "storage_verified": true,
+            "service_role_had_usage": false,
+            "cleanup_worker_verified": true,
+            "content_worker_verified": true,
+            "legacy_grants_expire_at": null
+          },
+          "metadata": {
+            "enabled": false,
+            "singleton": true
+          },
+          "lifecycle": {
+            "enabled": false,
+            "activated": true,
+            "singleton": true
+          }
+        }
+      },
+      "executedAt": "2026-11-03T15:23:37.129Z"
+    },
+    {
+      "id": "R03",
+      "name": "Existing receipts, objects, data coverage and reusable QA inventory",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "detail": {
+        "receiptMetadata": 1,
+        "objects": 2,
+        "qaUsers": 2,
+        "qaSessions": 0,
+        "localQaManifestMatchesLiveHashes": true,
+        "coverage": {
+          "complete": true,
+          "rowCount": 668,
+          "relations": 81
+        }
+      },
+      "executedAt": "2026-11-03T15:23:37.131Z"
+    },
+    {
+      "id": "R04",
+      "name": "Realtime publication, RLS and subscription grants",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "detail": {
+        "catalogOnly": true,
+        "actualWebsocketNotYetVerified": true
+      },
+      "executedAt": "2026-11-03T15:23:37.131Z"
+    },
+    {
+      "id": "R05",
+      "name": "Staging public Auth health and settings",
+      "phase": "public-http",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "detail": {
+        "realStagingHttp": true,
+        "loginNotAttempted": true
+      },
+      "executedAt": "2026-11-03T15:23:38.215Z"
+    },
+    {
+      "id": "A01",
+      "name": "Two real users and three distinct verified Auth sessions",
+      "phase": "auth",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "A02",
+      "name": "All five public Undo RPC signatures reject ordinary JWTs",
+      "phase": "auth",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "A03",
+      "name": "No custom Undo API or global key interception in live frontend",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "A04",
+      "name": "Native title and note Undo; number key remains unprevented",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "A05",
+      "name": "Saved data unchanged by outside-input Ctrl/Cmd+Z",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "B01",
+      "name": "Create and delete Budget through Lifecycle HTTP",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "B02",
+      "name": "Title and note autosave reach canonical HTTP data",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "B03",
+      "name": "Category and payer edits",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "B04",
+      "name": "Pricing equal and custom splits, currency and exchange rate",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "B05",
+      "name": "Pay, unpay and pay reuse one Actual and preserve history",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "B06",
+      "name": "Manual Actual first Source link and detach preserve financial data",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "B07",
+      "name": "Planning Baseline freezes; traveling/settlement match canonical financial graph",
+      "phase": "travel",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "B08",
+      "name": "Failed stale save preserves complete financial graph",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C01",
+      "name": "Different groups edit concurrently",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C02",
+      "name": "Same group blocks peer and second session of same user",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C03",
+      "name": "Lease acquire, renew and release",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C04",
+      "name": "Real stale version returns HTTP409/PT409",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C05",
+      "name": "Actual websocket postgres_changes delivery and peer UI convergence",
+      "phase": "realtime",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C06",
+      "name": "Three contexts reload to canonical data",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C07",
+      "name": "Real hidden/visible background page preserves edit",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C08",
+      "name": "Real offline context reconnects and restores canonical data",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C09",
+      "name": "Cancel unsaved draft after rejected real admission",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "C10",
+      "name": "Nonmember trip and revoked editor permissions isolated",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "D01",
+      "name": "Financial receipt metadata insert and upload reject",
+      "phase": "storage",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "D02",
+      "name": "New financial receipt signing request rejects",
+      "phase": "storage",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "D03",
+      "name": "Preexisting signed URL actual access before and after genuine expiry",
+      "phase": "legacy-url",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "No retained pre-removal signed URL supplied; historical capability cannot be reconstructed; no Storage request attempted"
+    },
+    {
+      "id": "D04",
+      "name": "Accommodation attachment upload, sign, bytes read and delete",
+      "phase": "storage",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "D05",
+      "name": "Original receipt metadata and objects unchanged after QA",
+      "phase": "after",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    },
+    {
+      "id": "Z01",
+      "name": "Owned fixtures cleaned or retained for audit; sessions revoked; all protocols OFF",
+      "phase": "after",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Requires explicit Hosted QA authorization and/or real credential/session input"
+    }
+  ],
+  "requests": [
+    {
+      "path": "/auth/v1/health",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 984
+    },
+    {
+      "path": "/auth/v1/settings",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 98
+    }
+  ],
+  "failures": [],
+  "productionReady": false,
+  "before": {
+    "capturedAt": "2026-11-03T15:21:44.377651+00:00",
+    "ledger": 66,
+    "head": "20261103113253",
+    "protocols": {
+      "undo": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      },
+      "source": {
+        "enabled": false,
+        "singleton": true
+      },
+      "finance": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true
+      },
+      "payment": {
+        "enabled": false,
+        "singleton": true
+      },
+      "receipt": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true,
+        "storage_verified": true,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": true,
+        "content_worker_verified": true,
+        "legacy_grants_expire_at": null
+      },
+      "metadata": {
+        "enabled": false,
+        "singleton": true
+      },
+      "lifecycle": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true
+      }
+    },
+    "coverage": {
+      "complete": true,
+      "rowCount": 668,
+      "relations": 81
+    },
+    "installation": {
+      "undoAcl": [
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.clear_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.prepare_workspace_inverse(uuid,uuid,uuid,uuid,uuid,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.read_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.workspace_inverse_manifest()",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "budget_workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "clear_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "read_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "undo_budget_metadata_group(uuid,uuid,uuid,uuid,bigint,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+          "authenticated": false
+        }
+      ],
+      "observedAt": "2026-11-03T15:21:44.730966+00:00",
+      "actualIndex": "CREATE UNIQUE INDEX actual_expenses_one_budget ON public.actual_expenses USING btree (budget_item_id) WHERE (budget_item_id IS NOT NULL)",
+      "guardSha256": "38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6",
+      "activeLeases": 0,
+      "qaIdentities": [
+        {
+          "idSha256": "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95",
+          "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+        },
+        {
+          "idSha256": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+          "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+        }
+      ],
+      "sourceSha256": "7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c",
+      "authUserCount": 3,
+      "receiptDigest": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+      "storageDigest": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80",
+      "qaSessionCount": 0,
+      "realtimeTables": [
+        "accommodations",
+        "actual_expense_participants",
+        "actual_expenses",
+        "attachments",
+        "budget_collaboration_signals",
+        "budget_item_participants",
+        "budget_items",
+        "guide_items",
+        "itinerary_alternatives",
+        "itinerary_budget_items",
+        "itinerary_items",
+        "itinerary_route_override_nodes",
+        "itinerary_route_overrides",
+        "luggage_items",
+        "pack_items",
+        "share_links",
+        "shared_luggage_items",
+        "todo_items",
+        "trip_budget_baselines",
+        "trip_members",
+        "trips"
+      ],
+      "storageObjects": 2,
+      "pendingReceipts": 0,
+      "applicationRlsOff": 0,
+      "qaTaggedUserCount": 2,
+      "receiptPathHashes": [
+        "e008b2b6484b1fc999180248e2d74694aec3327264688bb4f2f50583d04f333b"
+      ],
+      "unfinishedCleanup": 0,
+      "receiptPolicyCount": 2,
+      "transactionReadOnly": "on",
+      "realtimeSignalSelect": true,
+      "financialReceiptMetadata": 1
+    }
+  },
+  "after": {
+    "capturedAt": "2026-11-03T15:21:44.377651+00:00",
+    "ledger": 66,
+    "head": "20261103113253",
+    "coverage": {
+      "complete": true,
+      "rowCount": 668,
+      "relations": 81
+    },
+    "allOriginal81RelationRowsUnchanged": true,
+    "wholeDataDigest": "6ffe02fae3bf9d34abcdab98ed6c27360702f6bf0954132aeba5e96eeed6c7ec",
+    "sevenProtocolsOff": true,
+    "protocolRows": {
+      "undo": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      },
+      "source": {
+        "enabled": false,
+        "singleton": true
+      },
+      "finance": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true
+      },
+      "payment": {
+        "enabled": false,
+        "singleton": true
+      },
+      "receipt": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true,
+        "storage_verified": true,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": true,
+        "content_worker_verified": true,
+        "legacy_grants_expire_at": null
+      },
+      "metadata": {
+        "enabled": false,
+        "singleton": true
+      },
+      "lifecycle": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true
+      }
+    },
+    "latchesReadinessUnchanged": true,
+    "receiptMetadata": 1,
+    "objects": 2,
+    "receiptDigest": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+    "storageDigest": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80",
+    "qaSessions": 0,
+    "qaIdentitiesMatchLocalManifest": true,
+    "activeLeases": 0,
+    "originalRowProjectionValid": true,
+    "plannedTripIdsAlreadyExist": 0,
+    "sourceFunctionsAclsSchemaRolesLedgerUnchanged": true,
+    "hostedMutationsPerformed": 0
+  },
+  "scope": "Phase1 tooling/local/Hosted READ ONLY only; no Hosted Auth login or business/Storage mutations authorized",
+  "summary": {
+    "hostedGroups": 34,
+    "Passed": 5,
+    "Failed": 0,
+    "Blocked": 29,
+    "notRun": 0,
+    "ordinaryJwtBusinessExecuted": 0,
+    "hostedBrowserContextsOpened": 0,
+    "hostedStorageOperations": 0
+  },
+  "observationWindow": {
+    "start": "2026-11-03T14:54:43.270709+00:00",
+    "end": "2026-11-03T15:21:44.377651+00:00"
+  },
+  "local": {
+    "safetyUnit": {
+      "Passed": 14,
+      "Failed": 0,
+      "Skipped": 0,
+      "command": "node --test tests/staging-budget-acceptance.test.mjs",
+      "scope": "QA safety contracts; no real Auth or backend emulation claimed"
+    },
+    "playwright": {
+      "Passed": 6,
+      "Failed": 0,
+      "Skipped": 0,
+      "command": "npx.cmd playwright test tests/budgetNativeUndo.spec.js --workers=1",
+      "baseURL": "http://127.0.0.1:5175",
+      "browser": "Native installed Chromium on Windows",
+      "durationSeconds": 21.8,
+      "formal": "Mock RPC/Auth only",
+      "demo": "Local React state only",
+      "hostedAcceptance": false
+    },
+    "build": "Passed; existing >500kB bundle advisory",
+    "syntax": "Passed for all new QA and test files, including safe import validation",
+    "diffCheck": "Passed",
+    "ownedLoopbackServerStopped": true
+  },
+  "approvalPending": {
+    "windowMinutes": 45,
+    "target": "uyqdopksfysbobhjcepk",
+    "enableOnly": [
+      "metadata",
+      "finance",
+      "payment",
+      "source",
+      "lifecycle"
+    ],
+    "undo": false,
+    "receipt": false,
+    "modifyActivatedLatchesOrReadiness": false,
+    "reuseQaUsers": 2,
+    "newAuthUsers": 0,
+    "newRealSessions": 3,
+    "newQaTrips": 2,
+    "maxBudgets": 3,
+    "maxActuals": 2,
+    "newAccommodation": 1,
+    "legalPngUpload": 1,
+    "negativeFinancialUploadAttempt": 1,
+    "existingReceiptsReadOnlySubscope": true,
+    "existingObjectsModify": false,
+    "financialFixtures": "Retain only new exact-scope QA histories/trips for Review",
+    "pause": "Five protocols restored OFF then independent readback",
+    "sqlGeneratedNotExecuted": {
+      "enableSha256": "cfb34e41683e0187538da9ca497b6c63cf75c4e6ad064de3a40f119dcf33aa60",
+      "pauseSha256": "aed3af11f65018b7aca9961e7d48495e8232e2674bfc4267f516c3fe9f3061d5"
+    },
+    "credentials": "Existing Staging admin JWT via private stdin only; ordinary JWTs for all business calls; no signing secret or Worker issuance"
+  },
+  "failuresAndRecovery": [
+    {
+      "kind": "connector",
+      "failure": "Supabase MCP READ ONLY permission denied",
+      "recovery": "READ ONLY SQL in existing authenticated Staging Dashboard; no grant change"
+    },
+    {
+      "kind": "transport",
+      "failure": "Sandbox Node public GET fetch failed",
+      "recovery": "Same GET-only command in approved native network environment returned200 for health/settings"
+    },
+    {
+      "kind": "unit-test",
+      "failure": "Initial no-DML lexical test matched UPDATE inside a privilege string literal",
+      "recovery": "Strip SQL string literals then assert actual statements; final14/14"
+    },
+    {
+      "kind": "browser-launch",
+      "failure": "Initial6 Playwright cases could not launch package-private browser executable",
+      "recovery": "Use existing native installed Chromium"
+    },
+    {
+      "kind": "loopback",
+      "failure": "Two observed cross-sandbox navigation timeouts; stopped run",
+      "recovery": "Same native Vite and native browser loopback; complete6/6 pass, no assertion removed"
+    },
+    {
+      "kind": "readonly-sql-generator",
+      "failure": "String.replace suffix interpolation corrupted a dollar-anchor SQL literal; READ ONLY parse rejected",
+      "recovery": "Use replacement callback, stronger exact-literal assertion, real READ ONLY original-protection query succeeded"
+    }
+  ],
+  "productionDecision": "NO-GO for completed service acceptance/Production release; ready to Review test plan and authorization scope only",
+  "manualUiChecklist": [
+    "Create Budget and verify name/note autosave",
+    "Native input Undo and saved-data permanence",
+    "Cancel unsaved edits",
+    "Amount/currency/payer/equal/custom split presentation",
+    "Pay/unpay/pay single Actual",
+    "Peer different-group edit and same-group lock visuals",
+    "Traveling/settlement versus frozen Baseline presentation",
+    "No receipt/split-payment/custom Undo controls; accommodation attachment normal"
+  ]
+}
