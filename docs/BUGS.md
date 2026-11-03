@@ -1,5 +1,9 @@
 # BUGS.md
 
+## 2026-11-03 planning simplification limits
+
+Local-only single-step30s Undo and Receipt removal: [handoff](2026-11-03-budget-planning-simplification.md). First Pricing initialization inverse to a no-participant value remains safely refused by the existing calculator (22023); unchanged graph, silent UI, no integrity bypass. Valid saved custom amount/participants inverse passes isolated SQL. Record as known functional limit for Review; not a Hosted defect certification. New Forward requires duplicate-Actual and Receipt inventory; never merge/delete to satisfy the unique current-Budget-link constraint. Production remains unchanged this round.
+
 Focused audit scope: routing, Realtime, draft autosave, edit locks, Demo containers, Timeline/Budget/Luggage forms, and mobile flow.
 
 This document now separates:

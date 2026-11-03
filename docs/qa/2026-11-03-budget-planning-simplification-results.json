@@ -1,0 +1,15 @@
+{
+  "startingCommit": "c181b99",
+  "scope": "local planning simplification; no Hosted access or deployment",
+  "undoSeconds": 30,
+  "undoSteps": 1,
+  "productionApplied": false,
+  "stagingApplied": false,
+  "nativePostgres": {"version": "17.11", "distinctPassed": 12, "loopbackOnly": true, "clusterStopped": true, "realExpiryWait": true},
+  "playwrightDistinctPassed": 49,
+  "playwrightScopes": {"undoController": 6, "financeController": 3, "receiptRemovedUi": 2, "silentAndExpiryUi": 2, "formalUndoAndDemo": 6, "shellTimelineLuggageShareSmoke": 30},
+  "build": "passed; existing chunk-size warning",
+  "diffCheck": "passed",
+  "limits": ["no Hosted JWT/Storage HTTP/Realtime acceptance", "first Pricing initialization inverse safely refuses missing participants", "existing signed URLs need separate expiration/revocation proof", "live duplicate and receipt inventory required before Forward", "legacy test-only Receipt modules and installed dependencies retained"],
+  "historicalFailuresRetained": ["sandbox restricted token / network denied", "old runner deadline shorter than product expiry", "Demo missing read projection fixed", "Pricing fixture envelope corrected; guards unchanged"]
+}

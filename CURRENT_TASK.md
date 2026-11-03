@@ -2,7 +2,14 @@
 
 Updated 2026-11-03. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
-## Current request — Production database/frontend deployed; receipts deferred; new protocols OFF
+## Current request — Planning simplification; local implementation, awaiting Review
+
+- Replaces five-step Undo with silent single-step **30-second** Undo; removes financial Receipt UI/runtime and limits each current Budget link to one Actual. Source product rules, Baseline, travel Actual/Settlement design, Timeline and Luggage retained.
+- [Implementation and rollout limits](docs/2026-11-03-budget-planning-simplification.md), [local matrix](docs/qa/2026-11-03-budget-planning-simplification-results.json). Official CLI Forward `20261103084209` is **not installed Hosted**. Preserve installed sources/latches; do not replay reset or deferred-Receipt draft.
+- Native PostgreSQL12/12; Playwright49 distinct; Build/diff passed. Tests are local SQL/RLS or mocked/browser smoke, not new Hosted certification. First Pricing initialization cannot inverse to no-participant value; safe silent refusal documented.
+- No Production, main, flags, Storage, Vercel or Docker/WSL operation. Deployment baseline below is dated evidence, not reverified this round. Activation remains NO-GO pending Review, live inventory, Staging and true HTTP checks.
+
+## Last deployed baseline — Production database/frontend deployed; receipts deferred; new protocols OFF
 
 - Branch `codex/budget-collaboration-redesign`, from78306bb. User requested Production deployment, explicitly waived backup/restore, and permitted clearing **budget data only**. [Execution report](docs/2026-11-03-budget-b7-production-deployment.md), [sanitized evidence](docs/qa/2026-11-03-budget-b7-production-deployment-results.json), [applied packet / NEVER replay](docs/operations/budget-b7-production/candidate/packet-manifest.json). This supersedes the previous read-only/backup gate for this execution; older dated restrictions below remain history.
 - **Production `lqvuqamzmchepgxkftcw` COMMIT confirmed, independent ledger48→65 / Head20261101032853.** Exact17 immutable sources installed in one sealed transaction; packet SHA8870b5e4…f82573e. T0/import alias/old Hotfix not replayed. Original48 raw ledger rows and all17 complete source hashes verified. Original Stage seals unchanged; separate exact Production before contract used. No unknown application drift accepted.

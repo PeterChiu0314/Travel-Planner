@@ -12,7 +12,7 @@ import { budgetDay, budgetStage, calculateActualPricing, calculatePricing, histo
 import { calculateEntryPricing, isPaymentActive, planningBudgetData } from "../../lib/planningBudget.js";
 import { preparePaymentChange } from "../../lib/budgetPayment.js";
 import { budgetCurrencies, fetchBudgetQuote } from "../../lib/tripBudgetRates.js";
-import { friendlyError, notify } from "../../lib/notifications.js";
+import { friendlyError } from "../../lib/notifications.js";
 import {isBudgetUndoKey,keepsNativeUndo} from '../../lib/budgetUndoGroups.js';
 
 const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
@@ -390,7 +390,7 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
       setForm={next => setForm({ ...next, ...(actual ? { twd_amount_source: "estimated", actual_twd_amount: "" } : {}) })}
       membersOpen={membersOpen} setMembersOpen={setMembersOpen} changeMode={changeMode} showModes={!actual} />
     {actual ? payer : null}
-    {readOnlyPayments ? <p className="bw-muted">此項目保留多筆付款或待確認分攤，請在下方付款紀錄修改金額。</p> : null}
+    {readOnlyPayments ? <p className="bw-muted">此項目有不相容的付款或分攤資料，需人工評估後才能修改金額。</p> : null}
     {actual ? <>
       <details className="bw-secondary-fields"><summary>更多設定</summary>
         <div className="bw-field"><span>分類</span><MenuSelect editable label="分類" value={form.category} onValueChange={(value)=>update("category",value)} options={categoryOrder.map(value=>({value,label:value}))} /></div>
@@ -465,20 +465,16 @@ export default function BudgetWorkspace(incoming) {
   const [paymentError, setPaymentError] = useState("");
   useEffect(()=>{
     if(!props.undoRequested||!canEdit||props.workspaceActive===false&&props.useEditLocks!==false)return;
-    let composing=false,active=true;
+    let composing=false;
     const start=()=>{composing=true;},end=()=>{composing=false;};
     const key=event=>{
-      if(composing||!isBudgetUndoKey(event)||keepsNativeUndo(event.target)||document.querySelector('[role="dialog"],dialog[open],[aria-modal="true"],[role="menu"],[role="listbox"]'))return;
-      event.preventDefault();const scope=workspaceScope.current;
-      void props.undoClient.undo(activeTrip.id,()=>services.handoff({tripId:activeTrip.id})).then(ok=>{
-        if(!active||scope!==workspaceScope.current)return;
-        if(ok)notify.success('已復原');
-        else {const message=props.undoClient.view('trip',activeTrip.id).error;if(message)notify.info(message);}
-      });
+      if(composing||panel==='edit'||!isBudgetUndoKey(event)||keepsNativeUndo(event.target)||document.querySelector('[role="dialog"],dialog[open],[aria-modal="true"],[role="menu"],[role="listbox"]'))return;
+      event.preventDefault();
+      void props.undoClient.undo(activeTrip.id,async()=>true).catch(()=>{});
     };
     window.addEventListener('keydown',key);window.addEventListener('compositionstart',start);window.addEventListener('compositionend',end);
-    return ()=>{active=false;window.removeEventListener('keydown',key);window.removeEventListener('compositionstart',start);window.removeEventListener('compositionend',end);};
-  },[props.undoRequested,props.undoClient,props.workspaceActive,props.useEditLocks,canEdit,activeTrip.id,services]);
+    return ()=>{window.removeEventListener('keydown',key);window.removeEventListener('compositionstart',start);window.removeEventListener('compositionend',end);};
+  },[props.undoRequested,props.undoClient,props.workspaceActive,props.useEditLocks,canEdit,activeTrip.id,services,panel]);
   const tripRates = props.tripBudgetRates || activeTrip.budget_exchange_rates;
   const [ratesBusy, setRatesBusy] = useState(false);
   const [ratesError, setRatesError] = useState("");
@@ -696,7 +692,7 @@ export default function BudgetWorkspace(incoming) {
   function renderBudgetAttachments(budget) {
     const retained = allExpenses.filter((row) => row.budget_item_id === budget.id);
     if (retained.length <= 1) return retained[0] ? <>{props.metadataRequested&&canEdit?<button type="button" className="ghost-button compact" onClick={()=>void openActual(retained[0])}>編輯實付項目</button>:null}{props.renderAttachments?.(retained[0])}</> : null;
-    return <section className="bw-retained"><h4>既有分筆</h4>{retained.map((row) => <div key={row.id}><button type="button" className="ghost-button compact" onClick={() => void openActual(row)}>{row.title} · NT$ {money(row.twd_amount)}</button>{props.renderAttachments?.(row)}</div>)}</section>;
+    return <p className="bw-warning" role="alert">此預算有多筆實付，需先人工評估，無法在行前規劃修改。</p>;
   }
   const paymentState = props.metadataRequested && selectedRecord ? props.paymentClient.view(selected.kind, selectedRecord.id) : {};
   const lifecycleTimeState=props.lifecycleRequested&&selected?.kind==='actual'&&selectedRecord&&!isBudgetComplete(selectedRecord)?props.lifecycleClient.view('actual',selectedRecord.id):null;
@@ -731,7 +727,6 @@ export default function BudgetWorkspace(incoming) {
       {props.lifecycleRequested&&props.lifecycleClient.view('trip',activeTrip.id).error?<p role="alert" className="bw-warning">{props.lifecycleClient.view('trip',activeTrip.id).error}<button type="button" onClick={()=>void add()}>確認新增結果</button></p>:null}
       {props.lifecycleRequested&&selected&&props.lifecycleClient.view(selected.kind,selected.id).error?<p role="alert" className="bw-warning">{props.lifecycleClient.view(selected.kind,selected.id).error}<button type="button" onClick={()=>void props.lifecycleClient.retry(selected.kind,selected.id)}>確認操作結果</button></p>:null}
       {props.lifecycleRequested?props.lifecycleClient.pendingOperations().filter(r=>r.kind!=='trip'&&r.id!==selected?.id&&r.error).map(r=><p role="alert" key={`${r.kind}:${r.id}`} className="bw-warning">{r.error}<button type="button" disabled={r.busy} onClick={()=>void props.lifecycleClient.retry(r.kind,r.id)}>確認先前操作結果</button></p>):null}
-      {props.undoRequested&&props.undoClient.view('trip',activeTrip.id).error?<p role="status" className="bw-warning">{props.undoClient.view('trip',activeTrip.id).error} 可在輸入框外按 Ctrl+Z 重新確認。</p>:null}
       {compare ? <div className="bw-comparison-summary">{baseline ? <><span>出發前預算<b>NT$ {money(baselineTotal)}</b></span><span>實際支出<b>NT$ {money(actualTotal)}</b></span><span>差額<b>{actualTotal - baselineTotal > 0 ? "+" : ""}{money(actualTotal - baselineTotal)}</b></span></> : <p>無出發前快照，無法還原當時預算。</p>}</div> : null}
       <div className="bw-table-scroll"><table className="bw-table" aria-label={compare ? "出發前預算對照" : actual ? "實付明細" : "預算明細"}><thead><tr title={allCollapsed ? "展開所有分類" : "收合所有分類"} onClick={() => void toggleCategories(visibleCategories, !allCollapsed)}><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{compare ? "出發前預算" : actual ? "每人負擔" : "每人預算"}<small>TWD</small></th><th className="bw-number">{compare ? "實付" : "總額"}<small>TWD</small></th><th><button className="bw-fold-all" type="button" aria-label={allCollapsed ? "展開所有分類" : "收合所有分類"} aria-expanded={!allCollapsed} onClick={(event) => { event.stopPropagation(); void toggleCategories(visibleCategories, !allCollapsed); }}>{compare ? "差額" : actual ? "來源" : "狀態"}</button></th></tr></thead>
         <tbody>{visibleCategories.map((value) => {

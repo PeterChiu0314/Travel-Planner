@@ -1,5 +1,11 @@
 # Budget B-7｜連續 Staging 驗收與 Production 準備
 
+## 2026-11-03 行前精簡：本機候選，尚未啟用
+
+新產品規則移除財務收據、Undo單步30秒、目前Budget link最多一筆Actual。見[新交接](../2026-11-03-budget-planning-simplification.md)及[本機矩陣](../qa/2026-11-03-budget-planning-simplification-results.json)。新Forward20261103084209未安裝Hosted；不可重播已部署封包／reset或把舊deferred-Receipt草稿直接堆疊。此輪未操作任何Hosted服務。
+
+下次需先Review本候選，再另授權取得live ledger/catalog、重複Actual／Source相依、Receipt metadata/objects/jobs及舊signed能力inventory。多筆資料不得自動合併／刪除；Receipt舊能力失效不得由policy推論。先做Staging全交易失敗演練及真JWT／HTTP／雙帳號回歸，再決定非Receipt既有協定啟用步驟。歷史下列readiness／Worker流程只適用舊完整Receipt產品，不是本候選的啟用授權；保留不可逆latch、歷史與其他附件的安全規則。
+
 Latest2026-11-03: [Production Dormant deployment / budget-only reset](../2026-11-03-budget-b7-production-deployment.md), [Production Runbook](budget-b7-production/README.md). Production65, sevenOFF/latchesFALSE; this Stage-only runbook does not supply Production readiness or key invalidation. Original Stage evidence remains unchanged.
 
 **最新任務：Production只讀盤點／部署規劃，等待Review，仍NO-GO。** [Production報告](../2026-11-02-budget-b7-production-predeployment-plan.md)、[專用Runbook](budget-b7-production/README.md)已按實際48筆基線規劃17來源，T0/import別名/Hotfix不重播。本輪僅授權正式SELECT；下文舊Staging連續測試授權不代表現在可Resume、發key或啟動Worker。Stage65/七OFF保持，沒重跑服務驗收；正式寫入/main/Vercel需另外明確核准。

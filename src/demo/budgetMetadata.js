@@ -4,7 +4,6 @@ import { metadataGroupKeys, recordMetadataValue, sameMetadataValue, metadataFiel
 import { budgetStage } from "../lib/budgetFinance.js";
 import { attachDemoPayments, applyDemoPaymentChanges, paymentChangesApplied } from "./budgetPaymentGroups.js";
 import { attachDemoSources } from './budgetSourceGroups.js';
-import {attachDemoReceipts} from './budgetReceipts.js';
 import {attachDemoFinance} from './budgetFinanceGroups.js';
 import {budgetFinanceGroupsEnabled,financeFieldTargets} from '../lib/budgetFinanceValues.js';
 import {budgetLifecycleEnabled} from '../lib/budgetLifecycleValues.js';
@@ -97,10 +96,16 @@ export function createDemoBudgetMetadataService(getOriginalProps, now = Date.now
     },
   };
   const changed = graph => { revision++; if (graph) pricingGraph++; };
+  // Keep the installed v7-v10 read contract without allocating Receipt jobs,
+  // object buffers, timers or a mutable Receipt adapter in Demo.
+  const readWithoutReceipts=transport.read.bind(transport);
+  transport.read=async trip=>{const result=await readWithoutReceipts(trip);if(!result.ok)return result;const d=result.data;
+    d.attachments=structuredClone(getProps().attachments||[]);
+    d.receiptProtocol={name:'budget-receipts',schemaVersion:1,enabled:false};
+    d.receiptRecords=d.actualExpenses.map(a=>({kind:'actual',id:a.id,trip_id:trip,supported:false,revision:0,epoch:0,held:false,own_session:false,value:{ids:d.attachments.filter(v=>v.target_type==='actual_expense'&&v.target_id===a.id).map(v=>v.id),versions:{source:0,payment:0,graph:0,budget_graph:0,current:null,origin:null}}}));return result;};
   attachDemoPayments(transport, getProps, { state, changed, graphVersion:()=>pricingGraph,
     commit(change) { paymentOverlay = change; getOriginalProps().onSavePayment?.(change); } }, now);
   attachDemoSources(transport,getProps,{state,changed,commit(change){paymentOverlay=change;getOriginalProps().onSaveSource?.(change);}},now);
-  attachDemoReceipts(transport,getProps,{state,changed},now);
   if(budgetFinanceGroupsEnabled||budgetLifecycleEnabled)attachDemoFinance(transport,getProps,{state,changed,graphVersion:()=>pricingGraph},now);
   if(budgetLifecycleEnabled)attachDemoLifecycle(transport,getProps,{state,changed},now);
   return budgetUndoEnabled&&budgetLifecycleEnabled?attachDemoUndo(transport,getProps,{state,changed},now):transport;

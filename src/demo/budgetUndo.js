@@ -1,23 +1,23 @@
 import {applyDemoPricing} from '../lib/budgetPricingGroups.js';
 import {financeFieldTargets} from '../lib/budgetFinanceValues.js';
 import {metadataField} from '../lib/budgetMetadataValues.js';
-// Memory implementation of the same five-pointer contract. No persistence or
+// Memory implementation of the same single-pointer contract. No persistence or
 // external authority; native SQL independently verifies the actual security.
 export function attachDemoUndo(service,getProps,{state,changed},now=Date.now){
  const read=service.read.bind(service),patch=service.patch.bind(service),stacks=new Map(),lineage=new Map(),receipts=new Map(),held=new Map();let inverse=false;
  const clone=v=>structuredClone(v),equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b),failure=(code,message)=>({error:{code,message}});
  const key=(actor,trip,sid)=>JSON.stringify([actor,trip,sid]),target=t=>`${t.kind}:${t.id}:${t.group}`;
  const row=(k,id)=>(getProps()[k==='budget'?'budgetItems':'actualExpenses']||[]).find(r=>r.id===id),s=t=>state(t.kind,row(t.kind,t.id),t.group);
- const stack=a=>{const k=key(getProps().currentUserId,a.p_trip_id,a.p_session_id);if(!stacks.has(k))stacks.set(k,[]);return stacks.get(k);};
+ const stack=a=>{const k=key(getProps().currentUserId,a.p_trip_id,a.p_session_id);if(!stacks.has(k))stacks.set(k,[]);const list=stacks.get(k);if(list[0]&&now()-list[0].savedAt>=30000)list.length=0;return list;};
  const deps=(snap,op)=>op.group==='lifecycle'?snap.lifecycleRecords.find(r=>r.id===op.id)?.value.versions:op.group==='pricing'?Object.fromEntries(Object.entries(snap.metadataRecords.find(r=>r.kind===op.kind&&r.id===op.id).groups.find(g=>g.group==='pricing').value.versions).filter(([k])=>k!=='targets')):{};
  const values=(snap,k,id,g)=>g==='lifecycle'?snap[k==='budget'?'budgetItems':'actualExpenses'].find(r=>r.id===id):snap.metadataRecords.find(r=>r.kind===k&&r.id===id)?.groups.find(v=>v.group===g)?.value;
  const input=(v,g)=>g==='pricing'?Object.fromEntries(Object.entries(v).filter(([k])=>k!=='versions')):v;
  function capture(a,before,after,kind=a.p_kind,id=a.p_id,group=a.p_group){
-  if(inverse)return;const op={id,kind,group,operation_id:a.p_request_id,dependencies:null,bundle:[]},root=after.metadataRecords.find(r=>r.kind===kind&&r.id===id),rootGroup=root?.groups.find(v=>v.group===group);
+  if(inverse)return;const op={id,kind,group,savedAt:now(),operation_id:a.p_request_id,dependencies:null,bundle:[]},root=after.metadataRecords.find(r=>r.kind===kind&&r.id===id),rootGroup=root?.groups.find(v=>v.group===group);
   const targets=group==='lifecycle'?[{kind,id}]:group==='pricing'?rootGroup.value.versions.targets:financeFieldTargets(getProps(),kind,id,group)||[{kind,id}];
   for(const t of targets){const g={kind:t.kind,id:t.id,group},old=input(values(before,t.kind,t.id,group),group),value=input(values(after,t.kind,t.id,group),group),rev=group==='lifecycle'?0:after.metadataRecords.find(r=>r.kind===t.kind&&r.id===t.id).groups.find(v=>v.group===group).revision,prior=lineage.get(target(g));op.bundle.push({...g,before:old??null,after:clone(value),revision:rev,graph:group==='lifecycle'?0:after.metadataRecords.find(r=>r.kind===t.kind&&r.id===t.id).groups.find(g=>g.group==='pricing').value.versions.graph,predecessor:prior?.operation_id,preRevision:prior?.revision});}
   if(group!=='lifecycle'&&op.bundle.every(t=>equal(t.before,t.after)))return;
-  op.dependencies=clone(deps(after,op));const list=stack(a);list.push(op);if(list.length>5)list.shift();for(const t of op.bundle)lineage.set(target(t),{operation_id:op.operation_id,revision:t.revision});
+  op.dependencies=clone(deps(after,op));const list=stack(a);list.length=0;list.push(op);for(const t of op.bundle)lineage.set(target(t),{operation_id:op.operation_id,revision:t.revision});
  }
  service.read=async(trip,sid)=>{const r=await read(trip);if(!r.ok)return r;const session=sid||service.undoSession||'',list=stack({p_trip_id:trip,p_session_id:session}),op=list.at(-1);r.data.metadataProtocol.schemaVersion=10;r.data.undoRecords=[{kind:'trip',id:trip,trip_id:trip,revision:0,value:{versions:{},effects:[...r.data.metadataRecords.flatMap(t=>t.groups.map(g=>({kind:t.kind,id:t.id,group:g.group,revision:g.revision,deleted:false}))),...r.data.lifecycleRecords.filter(t=>t.kind!=='trip').map(t=>({kind:t.kind,id:t.id,group:'lifecycle',revision:t.revision,deleted:!t.value.exists}))],enabled:true,count:list.length,top:op?{operation_id:op.operation_id,kind:op.kind,id:op.id,group:op.group,expected_revision:0}:null}}];return r;};
  service.patch=async a=>{service.undoSession=a.p_session_id;const before=await read(a.p_trip_id),r=await patch(a);if(!r.error&&before.ok){const after=await read(a.p_trip_id);capture(a,before.data,after.data);}return r;};
