@@ -12,7 +12,7 @@ import {createHttp,ok,claims,realSessions,fixtureApi,httpCases,paymentAndSourceC
 import {baseScope,scopedPreflightSql,verifyAfter} from './staging-budget-acceptance-protection.mjs';
 const root=fileURLToPath(new URL('../..',import.meta.url)),dir=path.join(root,'.tmp-staging-budget-acceptance');
 export function validateMode(args){assert(args.every(a=>['--readonly','--print-preflight','--prepare-scope','--finalize','--authorized-staging-qa','--private-stdin'].includes(a)),'Unknown command');assert(args.filter(a=>['--readonly','--print-preflight','--prepare-scope','--finalize','--authorized-staging-qa'].includes(a)).length<=1,'Read-only and write modes are mutually exclusive');assert(!args.includes('--authorized-staging-qa')||args.includes('--private-stdin'),'Hosted credentials must arrive only through private stdin');}
-export async function main(args=process.argv.slice(2)){
+export async function main(args=process.argv.slice(2),{privateInput}={}){
  validateMode(args);if(args.includes('--print-preflight')){process.stdout.write(preflightSql);return;}
  if(args.includes('--prepare-scope')){
   await fs.mkdir(dir,{recursive:true});const qa=JSON.parse(await fs.readFile(path.join(root,'.tmp-b7-p1/qa-scope.json'),'utf8'));const scope={run:randomUUID(),trips:[randomUUID(),randomUUID()],users:qa.users,resources:[],objects:[]};baseScope(scope);
@@ -44,7 +44,7 @@ export async function main(args=process.argv.slice(2)){
  if(!authorized){report.after={hostedWritesPerformed:0,protocolWritesPerformed:0,note:'Independent final catalog capture required for current after-state; no Auth login, object access or acceptance mutations'};await save();return report;}
  // No automated key lookup or credential file. Existing admin credential is
  // restricted to verifying/reusing two owned QA identities and minting real Auth sessions.
- const input=await new Promise((resolve,reject)=>{const lines=readline.createInterface({input:process.stdin});lines.once('line',text=>{try{resolve(JSON.parse(text));}catch{reject(Error('Private input invalid'));}lines.close();});lines.once('close',()=>reject(Error('Private input closed')));});
+ const input=privateInput||await new Promise((resolve,reject)=>{const lines=readline.createInterface({input:process.stdin});lines.once('line',text=>{try{resolve(JSON.parse(text));}catch{reject(Error('Private input invalid'));}lines.close();});lines.once('close',()=>reject(Error('Private input closed')));});
  assertApproval(input.approval,before);const plan=JSON.parse(await fs.readFile(path.join(dir,'qa-plan.json'),'utf8'));assert.equal(before.fixtureScopeSha256,sha(baseScope(plan)));assert.equal(before.scopeExistingTrips,0);assert(/^[a-f0-9]{64}$/.test(before.originalProtection));assert(input.admin,'Existing Staging fixture admin credential required');assert.equal(claims(input.admin).ref,project);assert.equal(claims(input.admin).role,'service_role');
  writeDeadline=Date.parse(input.approval.expiresAt);
  const qa=JSON.parse(await fs.readFile(path.join(root,'.tmp-b7-p1/qa-scope.json'),'utf8'));
@@ -54,12 +54,16 @@ export async function main(args=process.argv.slice(2)){
  const stopTimer=setTimeout(()=>{void r.browser?.close().catch(()=>{});server?.kill();},Math.max(1,writeDeadline-Date.now()));stopTimer.unref();
  try{
   await realSessions({http,admin:input.admin,qa,onSession:s=>r.sessions.push(s)});input.admin=null;
+  await check('A01',async()=>({users:2,sessions:3,verifiedOrdinarySessions:true}));
   for(const [trip,name] of [[r.trip,r.tripName],[r.privateTrip,`QA private ${run}`]]){
+   // Planned trip IDs are persisted before the request. Count a created trip
+   // only after HTTP confirms the insert; unknown outcomes require readback.
+   await r.savePrivate();
+   ok(await http(r.sessions[0].access_token,'/rest/v1/trips',{method:'POST',prefer:'return=minimal',body:{id:trip,title:name,name,owner_id:qa.users[0],destination:'Isolated acceptance',start_date:'2099-01-01',end_date:'2099-01-03'}}));
    r.createdTrips.push(trip);await r.savePrivate();
-   ok(await http(r.sessions[0].access_token,'/rest/v1/trips',{method:'POST',body:{id:trip,title:name,name,owner_id:qa.users[0],destination:'Isolated acceptance',start_date:'2099-01-01',end_date:'2099-01-03'}}));
    // Use the owner's normal membership management permission, not admin DML.
    const members=ok(await http(r.sessions[0].access_token,`/rest/v1/trip_members?trip_id=eq.${trip}&select=user_id`));
-   if(!members.some(m=>m.user_id===qa.users[0]))ok(await http(r.sessions[0].access_token,'/rest/v1/trip_members',{method:'POST',body:{trip_id:trip,user_id:qa.users[0],role:'owner',status:'approved',display_name:'QA Owner'}}));
+   if(!members.some(m=>m.user_id===qa.users[0]))ok(await http(r.sessions[0].access_token,'/rest/v1/trip_members',{method:'POST',prefer:'return=minimal',body:{trip_id:trip,user_id:qa.users[0],role:'owner',status:'approved',display_name:'QA Owner'}}));
   }
   ok(await http(r.sessions[0].access_token,'/rest/v1/trip_members',{method:'POST',body:{trip_id:r.trip,user_id:qa.users[1],role:'editor',status:'approved',display_name:'QA Editor'}}));
   r.api=fixtureApi({http,sessions:r.sessions,trip:r.trip,onCreate:async id=>{r.resources.push(id);await r.savePrivate();}});await httpCases(r);await paymentAndSourceCases(r);
@@ -69,6 +73,8 @@ export async function main(args=process.argv.slice(2)){
   const {storageCases}=await import('./staging-budget-acceptance-storage.mjs');await storageCases(r);
   await check('B01',async()=>{const id=await r.api.create('budget');await r.mutate('budget',id,'lifecycle',{action:'delete'});assert(!(await r.api.snap()).budgetItems.some(b=>b.id===id));return {ordinaryHttpCreateDelete:true};});
   const {travelCase}=await import('./staging-budget-acceptance-travel.mjs');await travelCase(r);
+ }catch(error){
+  report.failures.push('execution-stopped');report.executionError={name:error.name,message:String(error.message).replace(/eyJ[A-Za-z0-9_.-]+|sb_secret_[A-Za-z0-9_-]+/g,'[redacted]').slice(0,450)};throw error;
  }finally{
   clearTimeout(stopTimer);
   await r.browser?.close();server?.kill();

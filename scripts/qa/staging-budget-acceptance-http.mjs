@@ -6,11 +6,12 @@ import {assertTarget,endpoint,project,sha} from './staging-budget-acceptance-sco
 export function createHttp({url,anon,fetchImpl=fetch,requests=[],beforeRequest=()=>{}}){
  assertTarget(url);
  assert(typeof anon==='string'&&(anon.startsWith('sb_publishable_')||anon.startsWith('eyJ')));
- return async(token,route,{method='GET',body,admin=false,raw=false}={})=>{
+ return async(token,route,{method='GET',body,admin=false,raw=false,prefer='return=representation'}={})=>{
   assertTarget(url);assert(route.startsWith('/')&&!route.startsWith('//')&&!route.includes('://'));
   beforeRequest({route,method});
+  assert(['return=representation','return=minimal'].includes(prefer));
   const started=performance.now();
-  const response=await fetchImpl(url+route,{method,redirect:'error',headers:{apikey:admin?token:anon,...(token?{Authorization:`Bearer ${token}`} :{}),'Content-Type':raw?'image/png':'application/json',Prefer:'return=representation'},body:body===undefined?undefined:raw?body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});
+  const response=await fetchImpl(url+route,{method,redirect:'error',headers:{apikey:admin?token:anon,...(token?{Authorization:`Bearer ${token}`} :{}),'Content-Type':raw?'image/png':'application/json',Prefer:prefer},body:body===undefined?undefined:raw?body:JSON.stringify(body),signal:AbortSignal.timeout(10000)});
   const bytes=Buffer.from(await response.arrayBuffer());let data=null;try{data=JSON.parse(bytes.toString());}catch{}
   requests.push({path:route.split('?')[0].replace(/[a-f0-9]{8}-[a-f0-9-]{27,}/gi,':qa-id'),method,status:response.status,code:data?.code||null,admin,ms:Math.round(performance.now()-started)});
   return {status:response.status,data,bytes};

@@ -1,8 +1,10 @@
 # BUGS.md
 
-## 2026-11-03 planning simplification limits
+## 2026-11-04 Staging QA tooling follow-up
 
-Local-only single-step30s Undo and Receipt removal: [handoff](2026-11-03-budget-planning-simplification.md). First Pricing initialization inverse to a no-participant value remains safely refused by the existing calculator (22023); unchanged graph, silent UI, no integrity bypass. Valid saved custom amount/participants inverse passes isolated SQL. Record as known functional limit for Review; not a Hosted defect certification. New Forward requires duplicate-Actual and Receipt inventory; never merge/delete to satisfy the unique current-Budget-link constraint. Production remains unchanged this round.
+[Execution and current limits](2026-11-04-budget-staging-acceptance.md). The first real QA trip POST was rejected403/42501 because the test transport requested representation before membership; confirmed trip count0. The tool now mirrors the product's minimal-return creation, pending Hosted retry. Real three-session Auth passed and all logouts204/QA sessions0. A PL/pgSQL QA-wrapper ambiguity rolled back and was repaired without installed SQL changes. Original protected-digest difference is exactly the existing protocol triggers' +10 Realtime signal revisions, proven by a READ ONLY projection matching the original digest; no counter or historical financial data was reset. Per-relation/signal evidence now fails closed on other drift; local safety tests17/17 pass. Staging sevenOFF and full service/manual-test readiness remain incomplete. These are QA tooling findings, not evidence of a new product P0/P1.
+
+The former [30-second Undo inverse limitation](2026-11-03-budget-planning-simplification.md) is historical: custom saved-data Undo was subsequently removed. It is not a current product gate. Never merge/delete duplicate Actual history to satisfy the unique current-Budget-link constraint. Production remains unchanged this round.
 
 Focused audit scope: routing, Realtime, draft autosave, edit locks, Demo containers, Timeline/Budget/Luggage forms, and mobile flow.
 

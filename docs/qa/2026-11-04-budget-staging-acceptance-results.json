@@ -1,0 +1,622 @@
+{
+  "date": "2026-11-04T02:10:04.496Z",
+  "project": "uyqdopksfysbobhjcepk",
+  "baseCommit": "ceeb802",
+  "mode": "genuine-hosted-attempt-stopped",
+  "mockedRoutes": false,
+  "productionReady": false,
+  "manualTestReady": false,
+  "outcome": "Failed during QA fixture provisioning; safely Paused, repaired tool pending genuine retry",
+  "counts": {
+    "Passed": 7,
+    "Failed": 0,
+    "Blocked": 27,
+    "Not Run": 0
+  },
+  "executionFailure": {
+    "phase": "trip-provisioning",
+    "http": 403,
+    "code": "42501",
+    "confirmedTrips": 0,
+    "reason": "QA transport requested representation before membership",
+    "hostedRepairVerified": false,
+    "rawFirstReportMissingSetupFailure": true
+  },
+  "rows": [
+    {
+      "id": "R01",
+      "name": "Live ledger, immutable source and twelve Undo ACLs",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed",
+      "detail": {
+        "observedAt": "2026-11-04T01:50:47.492757+00:00",
+        "sourceAnd12Acls": true
+      },
+      "executedAt": "2026-11-04T01:51:35.001Z"
+    },
+    {
+      "id": "R02",
+      "name": "Seven protocols OFF; latches and readiness recorded",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed",
+      "detail": {
+        "expectedState": "five authorized protocols ON; Undo/Receipt OFF",
+        "latches": {
+          "undo": {
+            "enabled": false,
+            "singleton": true,
+            "full_enabled": false
+          },
+          "source": {
+            "enabled": true,
+            "singleton": true
+          },
+          "finance": {
+            "enabled": true,
+            "activated": true,
+            "singleton": true
+          },
+          "payment": {
+            "enabled": true,
+            "singleton": true
+          },
+          "receipt": {
+            "enabled": false,
+            "activated": true,
+            "singleton": true,
+            "storage_verified": true,
+            "service_role_had_usage": false,
+            "cleanup_worker_verified": true,
+            "content_worker_verified": true,
+            "legacy_grants_expire_at": null
+          },
+          "metadata": {
+            "enabled": true,
+            "singleton": true
+          },
+          "lifecycle": {
+            "enabled": true,
+            "activated": true,
+            "singleton": true
+          }
+        }
+      },
+      "executedAt": "2026-11-04T01:51:35.002Z"
+    },
+    {
+      "id": "R03",
+      "name": "Existing receipts, objects, data coverage and reusable QA inventory",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed",
+      "detail": {
+        "receiptMetadata": 1,
+        "objects": 2,
+        "qaUsers": 2,
+        "qaSessions": 0,
+        "localQaManifestMatchesLiveHashes": true,
+        "coverage": {
+          "complete": true,
+          "rowCount": 673,
+          "relations": 83
+        }
+      },
+      "executedAt": "2026-11-04T01:51:35.003Z"
+    },
+    {
+      "id": "R04",
+      "name": "Realtime publication, RLS and subscription grants",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed",
+      "detail": {
+        "catalogOnly": true,
+        "actualWebsocketNotYetVerified": true
+      },
+      "executedAt": "2026-11-04T01:51:35.004Z"
+    },
+    {
+      "id": "R05",
+      "name": "Staging public Auth health and settings",
+      "phase": "public-http",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed",
+      "detail": {
+        "realStagingHttp": true,
+        "loginNotAttempted": true
+      },
+      "executedAt": "2026-11-04T01:51:35.471Z"
+    },
+    {
+      "id": "A01",
+      "name": "Two real users and three distinct verified Auth sessions",
+      "phase": "auth",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "detail": {
+        "derivedFromActualRequestEvidence": true,
+        "users": 2,
+        "sessions": 3,
+        "distinctOrdinarySessionClaimsValidatedBeforeTripPost": true,
+        "adminBusinessDml": false,
+        "logout204": 3
+      }
+    },
+    {
+      "id": "A02",
+      "name": "All five public Undo RPC signatures reject ordinary JWTs",
+      "phase": "auth",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "A03",
+      "name": "No custom Undo API or global key interception in live frontend",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "A04",
+      "name": "Native title and note Undo; number key remains unprevented",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "A05",
+      "name": "Saved data unchanged by outside-input Ctrl/Cmd+Z",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "B01",
+      "name": "Create and delete Budget through Lifecycle HTTP",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "B02",
+      "name": "Title and note autosave reach canonical HTTP data",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "B03",
+      "name": "Category and payer edits",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "B04",
+      "name": "Pricing equal and custom splits, currency and exchange rate",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "B05",
+      "name": "Pay, unpay and pay reuse one Actual and preserve history",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "B06",
+      "name": "Manual Actual first Source link and detach preserve financial data",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "B07",
+      "name": "Planning Baseline freezes; traveling/settlement match canonical financial graph",
+      "phase": "travel",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "B08",
+      "name": "Failed stale save preserves complete financial graph",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C01",
+      "name": "Different groups edit concurrently",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C02",
+      "name": "Same group blocks peer and second session of same user",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C03",
+      "name": "Lease acquire, renew and release",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C04",
+      "name": "Real stale version returns HTTP409/PT409",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C05",
+      "name": "Actual websocket postgres_changes delivery and peer UI convergence",
+      "phase": "realtime",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C06",
+      "name": "Three contexts reload to canonical data",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C07",
+      "name": "Real hidden/visible background page preserves edit",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C08",
+      "name": "Real offline context reconnects and restores canonical data",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C09",
+      "name": "Cancel unsaved draft after rejected real admission",
+      "phase": "browser",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "C10",
+      "name": "Nonmember trip and revoked editor permissions isolated",
+      "phase": "finance",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "D01",
+      "name": "Financial receipt metadata insert and upload reject",
+      "phase": "storage",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "D02",
+      "name": "New financial receipt signing request rejects",
+      "phase": "storage",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "D03",
+      "name": "Preexisting signed URL actual access before and after genuine expiry",
+      "phase": "legacy-url",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "No genuine pre-removal signed URL retained; historical access/expiry cannot be recreated"
+    },
+    {
+      "id": "D04",
+      "name": "Accommodation attachment upload, sign, bytes read and delete",
+      "phase": "storage",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "First genuine run stopped during fixture provisioning; remaining Hosted acceptance not executed"
+    },
+    {
+      "id": "D05",
+      "name": "Original receipt metadata and objects unchanged after QA",
+      "phase": "after",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "detail": {
+        "receiptMetadata": 1,
+        "storageObjects": 2,
+        "receiptDigestUnchanged": true,
+        "storageDigestUnchanged": true,
+        "bytesNotRead": true
+      }
+    },
+    {
+      "id": "Z01",
+      "name": "Owned fixtures cleaned or retained for audit; sessions revoked; all protocols OFF",
+      "phase": "after",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Database Pause/logout verified; final process cleanup and full-run closeout remain pending"
+    }
+  ],
+  "requests": [
+    {
+      "path": "/auth/v1/health",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 387
+    },
+    {
+      "path": "/auth/v1/settings",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 80
+    },
+    {
+      "path": "/auth/v1/admin/users/:qa-id",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 178
+    },
+    {
+      "path": "/auth/v1/admin/generate_link",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 106
+    },
+    {
+      "path": "/auth/v1/verify",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 97
+    },
+    {
+      "path": "/auth/v1/user",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 85
+    },
+    {
+      "path": "/auth/v1/admin/users/:qa-id",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 74
+    },
+    {
+      "path": "/auth/v1/admin/generate_link",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 62
+    },
+    {
+      "path": "/auth/v1/verify",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 60
+    },
+    {
+      "path": "/auth/v1/user",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 63
+    },
+    {
+      "path": "/auth/v1/admin/users/:qa-id",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 75
+    },
+    {
+      "path": "/auth/v1/admin/generate_link",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 61
+    },
+    {
+      "path": "/auth/v1/verify",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 84
+    },
+    {
+      "path": "/auth/v1/user",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 172
+    },
+    {
+      "path": "/rest/v1/trips",
+      "method": "POST",
+      "status": 403,
+      "code": "42501",
+      "admin": false,
+      "ms": 596
+    },
+    {
+      "path": "/auth/v1/logout",
+      "method": "POST",
+      "status": 204,
+      "code": null,
+      "admin": false,
+      "ms": 54
+    },
+    {
+      "path": "/auth/v1/logout",
+      "method": "POST",
+      "status": 204,
+      "code": null,
+      "admin": false,
+      "ms": 120
+    },
+    {
+      "path": "/auth/v1/logout",
+      "method": "POST",
+      "status": 204,
+      "code": null,
+      "admin": false,
+      "ms": 104
+    }
+  ],
+  "after": {
+    "capturedAt": "2026-11-04T01:53:46.214826+00:00",
+    "ledger": 66,
+    "head": "20261103113253",
+    "protocols": {
+      "undo": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      },
+      "source": {
+        "enabled": false,
+        "singleton": true
+      },
+      "finance": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true
+      },
+      "payment": {
+        "enabled": false,
+        "singleton": true
+      },
+      "receipt": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true,
+        "storage_verified": true,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": true,
+        "content_worker_verified": true,
+        "legacy_grants_expire_at": null
+      },
+      "metadata": {
+        "enabled": false,
+        "singleton": true
+      },
+      "lifecycle": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true
+      }
+    },
+    "coverage": {
+      "complete": true,
+      "rowCount": 673,
+      "relations": 83
+    },
+    "catalogSealsUnchanged": [
+      "ledgerDigest",
+      "allFunctionBodies",
+      "functionAttributes",
+      "schemaDigest",
+      "roleDigest",
+      "unaffectedAcls"
+    ],
+    "qaSessions": 0,
+    "activeLeases": 0,
+    "pendingReceipts": 0,
+    "unfinishedCleanup": 0,
+    "scopeExistingTrips": 0,
+    "receiptDigest": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+    "storageDigest": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80"
+  },
+  "protectionProof": {
+    "originalOffDigest": "90d9679d3388093db6c7457518c02f75e7cc526882fed5df530db780e331969f",
+    "afterOffDigest": "929ec80e18c8f239740a708397b6d1d359f46cce39c65963581465a90e9c72b5",
+    "readOnlyMinusTenSignalProjectionDigest": "90d9679d3388093db6c7457518c02f75e7cc526882fed5df530db780e331969f",
+    "matchesOriginal": true,
+    "scope": "Only existing group-backed collaboration signal revisions minus ten in SELECT projection; no live counter UPDATE",
+    "originalFinancialProjectionsMatch": 6,
+    "noForcedHistoricalRestore": true
+  },
+  "nextCapture": {
+    "capturedAt": "2026-11-04T02:04:24.694569+00:00",
+    "perRelationHashCount": 83,
+    "originalSignalRows": 10,
+    "originalSignalTargets": 2
+  },
+  "local": {
+    "safetyTests": {
+      "passed": 17,
+      "total": 17
+    },
+    "syntax": true,
+    "diffCheck": true
+  },
+  "limits": [
+    "No genuine business/Realtime/browser/Storage acceptance after provisioning failure",
+    "A01 was verified by request/claim evidence; the original raw report recorded it too late",
+    "Z01 is not complete while continuation helper/query transfer remains in use",
+    "No Production operations or deployment"
+  ]
+}

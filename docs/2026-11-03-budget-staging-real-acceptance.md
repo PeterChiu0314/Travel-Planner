@@ -1,6 +1,8 @@
 # Staging 真實 HTTP／多人協作自動化驗收｜第一階段，待 Hosted 寫入授權
 
-基準 `c416b7d`，分支 `codex/budget-collaboration-redesign`。本輪只新增 QA 工具／測試／交接，沒有修改產品、Migration、RLS、角色、正式 flags 或部署。未操作 Production、main、正式 Storage、Vercel、Docker／WSL。使用者授權範圍是建立測試、本機驗證及安全唯讀；**尚未授權 Hosted 登入／Session、QA fixtures、協定啟用或 Storage 操作**。
+最新執行以 [2026-11-04 Staging continuation](2026-11-04-budget-staging-acceptance.md) 為準：使用者後續已授權 Staging 真實驗收與手測準備。下列未授權／未執行及5 Passed／29 Blocked是原始準備期的歷史狀態，不能當作目前執行結果或要求重複授權。
+
+基準 `c416b7d`，分支 `codex/budget-collaboration-redesign`。原準備期只新增 QA 工具／測試／交接，沒有修改產品、Migration、RLS、角色、正式 flags 或部署。未操作 Production、main、正式 Storage、Vercel、Docker／WSL。當時使用者授權範圍是建立測試、本機驗證及安全唯讀。
 
 ## 實際結果
 

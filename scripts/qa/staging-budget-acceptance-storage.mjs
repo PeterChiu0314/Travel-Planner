@@ -26,11 +26,17 @@ export async function storageCases(r){
  });
  // A pre-removal capability cannot be recreated after removal. Never claim a
  // missing-object response or a newly signed nonfinancial URL proves revocation.
- if(r.input.protectedReceiptPath){await check('D02',async()=>{const p=r.input.protectedReceiptPath;assert(r.before.installation.receiptPathHashes.includes(sha(p)),'Exact existing receipt metadata path required');assert(p.startsWith('trips/')&&!p.includes('..'));const signed=await http(token,`/storage/v1/object/sign/trip-attachments/${p}`,{method:'POST',body:{expiresIn:60}});assert(signed.status>=400);assert(/policy|unauthoriz|not.found|404|403/i.test(JSON.stringify(signed.data)));return {knownExistingCatalogPath:true,signRejected:true};});}
+ if(r.input.protectedReceiptPath){
+  const p=r.input.protectedReceiptPath;assert(r.before.installation.receiptPathHashes.includes(sha(p)),'Exact existing receipt metadata path required');assert(p.startsWith('trips/')&&!p.includes('..'));
+  const visible=ok(await http(token,`/rest/v1/trips?id=eq.${p.split('/')[1]}&select=id`));
+  if(visible.length===1)await check('D02',async()=>{const signed=await http(token,`/storage/v1/object/sign/trip-attachments/${p}`,{method:'POST',body:{expiresIn:60}});assert(signed.status>=400);assert(/policy|unauthoriz|not.found|404|403/i.test(JSON.stringify(signed.data)));return {knownExistingCatalogPath:true,ordinaryMemberReadConfirmed:true,signRejected:true};});
+  else r.block('D02','Existing receipt trip is not visible to the approved QA identity; nonmember refusal cannot prove receipt removal');
+ }
  else r.block('D02','Requires exact protected existing receipt path matched to captured catalog hash; nonexistent-path404 is insufficient');
  if(!r.input.legacySignedUrl){r.block('D03','No pre-removal signed URL retained; cannot recreate historical capability');return;}
  await check('D03',async()=>{
   const url=new URL(r.input.legacySignedUrl);assert.equal(url.origin,endpoint);assert(url.pathname.startsWith('/storage/v1/object/sign/trip-attachments/'));
+  const historicalPath=decodeURIComponent(url.pathname.slice('/storage/v1/object/sign/trip-attachments/'.length));assert(r.before.installation.receiptPathHashes.includes(sha(historicalPath)),'Historical capability must identify the exact protected financial receipt');
   const exp=Number(r.input.legacySignedUrlExpiresAt);assert(Number.isFinite(exp));const remaining=exp*1000-Date.now();assert(remaining>0&&remaining<=120000,'Provide an unexpired URL with at most120s remaining for a bounded genuine-expiry test');
   const before=await http(null,url.pathname+url.search);assert.equal(before.status,200,'A denied or expired initial URL is not proof of pre/post-expiry access');
   await new Promise(resolve=>setTimeout(resolve,remaining+2000));const after=await http(null,url.pathname+url.search);assert(after.status>=400);assert(/expir/i.test(JSON.stringify(after.data)),'Must reject due to actual expiry');return {realBefore200:true,realExpiryRefusal:true,bytesNotPersisted:true};

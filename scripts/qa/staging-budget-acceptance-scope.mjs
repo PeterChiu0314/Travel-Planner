@@ -44,6 +44,11 @@ export const cases=[
 ];
 
 export function assertTarget(url){assert.equal(url,endpoint,'Exact Staging endpoint required before credentials/network');}
+export function assertPublicKey(value,admin){
+ assert(typeof value==='string'&&value!==admin,'Separate public key required');
+ if(value.startsWith('eyJ')){assert(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value));const c=JSON.parse(Buffer.from(value.split('.')[1],'base64url'));assert.equal(c.role,'anon');assert.equal(c.ref,project);}
+ else assert(/^sb_publishable_[A-Za-z0-9_-]+$/.test(value),'Only a publishable key may be saved in Vite config');
+}
 export function assertPreflight(p,{active=false,now=Date.now()}={}){
  assert.equal(p.target,project);assert.equal(p.ledgerCount,66);assert.equal(p.ledgerHead,'20261103113253');
  for(const k of ['ledgerDigest','dataDigest','allFunctionBodies','functionAttributes','schemaDigest','roleDigest','unaffectedAcls'])assert(/^[a-f0-9]{64}$/.test(p[k]),`${k} seal required`);
@@ -108,7 +113,9 @@ do $$begin
  if exists(select 1 from app_private.budget_metadata_groups where expires_at>clock_timestamp()) or exists(select 1 from app_private.budget_edit_leases where expires_at>clock_timestamp()) then raise exception 'Active leases; refuse protocol transition';end if;
  if exists(select 1 from app_private.budget_receipt_intents where status='pending') or exists(select 1 from app_private.budget_receipt_cleanup where status<>'done') then raise exception 'In-flight Receipt job';end if;
 end $$;`;
- const compare=(active)=>`do $$declare v jsonb;state jsonb;begin select contract into state from (${captureUndoRemovalContractQuery}) c;v:=state->'protocolRows';
+ const compare=(active)=>`do $$
+#variable_conflict use_column
+declare v jsonb;state jsonb;begin select contract into state from (${captureUndoRemovalContractQuery}) c;v:=state->'protocolRows';
  ${['ledgerDigest','allFunctionBodies','functionAttributes','schemaDigest','roleDigest','unaffectedAcls'].map(k=>`if state->>'${k}' is distinct from '${p[k]}' then raise exception '${k} drift';end if;`).join('\n')}
  if ${active?allowedProtocols.map(k=>`not coalesce((v->'${k}'->>'enabled')::boolean,false)`).join(' or '):`v is distinct from '${literal}'::jsonb`} then raise exception 'Protocol state drift';end if;
  ${active?allowedProtocols.map(k=>`v:=jsonb_set(v,'{${k},enabled}','false'::jsonb);`).join('\n'):''}
