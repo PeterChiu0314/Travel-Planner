@@ -2,12 +2,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import readline from 'node:readline';
+import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {project,endpoint,assertApproval,assertPublicKey,sha} from './staging-budget-acceptance-scope.mjs';
 import {createHttp,ok,claims} from './staging-budget-acceptance-http.mjs';
-import {main} from './run-staging-budget-acceptance.mjs';
 assert(process.argv.includes('--private-stdin'));
 const root=fileURLToPath(new URL('../..',import.meta.url)),dir=path.join(root,'.tmp-staging-budget-acceptance');
 await fs.mkdir(dir,{recursive:true});
@@ -24,15 +24,28 @@ try{
  // Only the publishable/anon key is persisted, exactly as normal Vite config.
  await fs.writeFile(path.join(root,'.env.staging.local'),`VITE_SUPABASE_URL=${endpoint}\nVITE_SUPABASE_ANON_KEY=${input.anon}\n`);
  input.anon=null;await status('ready');console.log('READY');
- const deadline=Date.now()+30*60000;
- let request;
- while(Date.now()<deadline){try{const r=JSON.parse(await fs.readFile(path.join(dir,'memory-command.json'),'utf8'));if(r.operatorId===operatorId){if(r.action==='stop')break;if(r.action==='run'){request=r;break;}}}catch{}await new Promise(r=>setTimeout(r,500));}
- if(request){
+ const deadline=Date.now()+45*60000;
+ let handled;
+ while(Date.now()<deadline){
+  let request;try{const r=JSON.parse(await fs.readFile(path.join(dir,'memory-command.json'),'utf8'));if(r.operatorId===operatorId){if(r.action==='stop')break;if(r.action==='run'&&sha(r)!==handled)request=r;}}catch{}
+  if(!request){await new Promise(r=>setTimeout(r,500));continue;}
+  handled=sha(request);
   const before=JSON.parse(await fs.readFile(path.join(dir,'before.json'),'utf8'));assertApproval(request.approval,before);
+  assert(Date.parse(request.approval.expiresAt)<=deadline,'Run must finish inside the RAM helper lifetime');
   let protectedReceiptPath;
   try{protectedReceiptPath=JSON.parse(await fs.readFile(path.join(dir,'protected-receipt.json'),'utf8')).path;}catch(error){if(error.code!=='ENOENT')throw error;}
   if(protectedReceiptPath)assert(before.installation.receiptPathHashes.includes(sha(protectedReceiptPath)),'Receipt path must match independent catalog evidence');
-  await status('running');await main(['--authorized-staging-qa','--private-stdin'],{privateInput:{admin:input.admin,approval:request.approval,protectedReceiptPath}});
+  // Fresh child per explicitly dispatched contract: repaired QA modules are
+  // loaded anew. Key never appears in argv/env/files; failed commands never
+  // replay. The operator must independently Pause/read back before continuing.
+  await status('running');
+  const child=spawn(process.execPath,['scripts/qa/run-staging-budget-acceptance.mjs','--authorized-staging-qa','--private-stdin'],{cwd:root,windowsHide:true,stdio:['pipe','pipe','pipe']});
+  child.stdout.resume();child.stderr.resume();
+  const completed=new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',code=>resolve(code));});
+  child.stdin.end(JSON.stringify({admin:input.admin,approval:request.approval,protectedReceiptPath})+'\n');
+  const code=await completed;
+  if(code===0){await status('completed');break;}
+  await status('needs-readback',{reason:'Stopped run; no retry until a distinct fresh contract is explicitly dispatched'});
  }
 }catch{await status('blocked',{reason:'Input, identity or acceptance check failed; no automatic retry'});console.log('BLOCKED');process.exitCode=1;}
 finally{if(input){input.admin=null;input.anon=null;}if(!process.exitCode)await status('stopped');console.log('STOPPED');}

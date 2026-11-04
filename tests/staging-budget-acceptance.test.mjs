@@ -1,14 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import {project,endpoint,assertTarget,assertPublicKey,assertPreflight,assertApproval,allowedProtocols,protocolControls,sha,preflightSql,freshMatrix} from '../scripts/qa/staging-budget-acceptance-scope.mjs';
-import {createHttp,realSessions} from '../scripts/qa/staging-budget-acceptance-http.mjs';
+import {createHttp,realSessions,initializeQaRates} from '../scripts/qa/staging-budget-acceptance-http.mjs';
 import {validateMode} from '../scripts/qa/run-staging-budget-acceptance.mjs';
-import {baseScope,protectedDataExpression,scopedPreflightSql,verifyAfter,verifyProtectedRows} from '../scripts/qa/staging-budget-acceptance-protection.mjs';
-const profile=()=>({...Object.fromEntries(['ledgerDigest','dataDigest','allFunctionBodies','functionAttributes','schemaDigest','roleDigest','unaffectedAcls'].map(k=>[k,'a'.repeat(64)])),target:project,ledgerCount:66,ledgerHead:'20261103113253',capturedAt:new Date().toISOString(),dataProjectionCoverage:{complete:true},installation:{sourceSha256:'7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c',guardSha256:'38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6',receiptPolicyCount:2,actualIndex:'CREATE UNIQUE INDEX actual_expenses_one_budget ON public.actual_expenses USING btree (budget_item_id) WHERE (budget_item_id IS NOT NULL)',undoAcl:Array.from({length:12},()=>({anon:false,authenticated:false,worker:false})),financialReceiptMetadata:1,storageObjects:2,activeLeases:0,pendingReceipts:0,unfinishedCleanup:0},protocolRows:Object.fromEntries(['metadata','finance','payment','source','lifecycle','receipt','undo'].map(k=>[k,{enabled:false,...(['finance','receipt','lifecycle'].includes(k)?{activated:true}:{}),...(k==='undo'?{full_enabled:false}:{})}]))});
+import {baseScope,protectedDataExpression,scopedPreflightSql,verifyAfter,verifyProtectedRows,managedPublicationCaptureSql,recordedManagedPublicationCaptureSql} from '../scripts/qa/staging-budget-acceptance-protection.mjs';
+import {ensureQaEditor,assertEmptyOwnedQaTrip} from '../scripts/qa/staging-budget-acceptance-fixtures.mjs';
+import {observedRealtimeSignal} from '../scripts/qa/staging-budget-acceptance-browser.mjs';
+const profile=()=>({...Object.fromEntries(['ledgerDigest','dataDigest','allFunctionBodies','functionAttributes','schemaDigest','roleDigest','unaffectedAcls'].map(k=>[k,'a'.repeat(64)])),target:project,ledgerCount:66,ledgerHead:'20261103113253',capturedAt:new Date().toISOString(),dataProjectionCoverage:{complete:true},installation:{sourceSha256:'7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c',guardSha256:'38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6',receiptPolicyCount:2,actualIndex:'CREATE UNIQUE INDEX actual_expenses_one_budget ON public.actual_expenses USING btree (budget_item_id) WHERE (budget_item_id IS NOT NULL)',undoAcl:Array.from({length:12},()=>({anon:false,authenticated:false,worker:false})),financialReceiptMetadata:1,storageObjects:2,activeLeases:0,activeRatesLeases:0,pendingReceipts:0,unfinishedCleanup:0},protocolRows:Object.fromEntries(['metadata','finance','payment','source','lifecycle','receipt','undo'].map(k=>[k,{enabled:false,...(['finance','receipt','lifecycle'].includes(k)?{activated:true}:{}),...(k==='undo'?{full_enabled:false}:{})}]))});
 test('Wrong endpoint rejects before token access or network transport construction',()=>{let called=0;for(const url of ['https://lqvuqamzmchepgxkftcw.supabase.co',endpoint+'/',endpoint+'.invalid']){assert.throws(()=>assertTarget(url));assert.throws(()=>createHttp({url,anon:'sb_publishable_test',fetchImpl:()=>called++}));}assert.equal(called,0);});
 test('No combination can silently turn readonly/print modes into Hosted writes',()=>{validateMode([]);validateMode(['--readonly']);for(const args of [['--authorized-staging-qa'],['--readonly','--authorized-staging-qa','--private-stdin'],['--print-preflight','--authorized-staging-qa','--private-stdin'],['--enable-all']])assert.throws(()=>validateMode(args));});
 test('Stale, missing and unapplied source contracts reject',()=>{for(const mutate of [p=>p.ledgerCount=65,p=>p.ledgerHead='20261101032853',p=>p.capturedAt='2000-01-01',p=>p.installation.sourceSha256='bad',p=>p.dataProjectionCoverage.complete=false]){const p=profile();mutate(p);assert.throws(()=>assertPreflight(p));}});
-test('Undo, Receipt, active leases and any effective client Undo grant reject',()=>{for(const mutate of [p=>p.protocolRows.undo.enabled=true,p=>p.protocolRows.undo.full_enabled=true,p=>p.protocolRows.receipt.enabled=true,p=>p.installation.activeLeases=1,p=>p.installation.undoAcl[0].authenticated=true]){const p=profile();mutate(p);assert.throws(()=>assertPreflight(p));}});
+test('Undo, Receipt, active leases and any effective client Undo grant reject',()=>{for(const mutate of [p=>p.protocolRows.undo.enabled=true,p=>p.protocolRows.undo.full_enabled=true,p=>p.protocolRows.receipt.enabled=true,p=>p.installation.activeLeases=1,p=>p.installation.activeRatesLeases=1,p=>p.installation.undoAcl[0].authenticated=true]){const p=profile();mutate(p);assert.throws(()=>assertPreflight(p));}});
 test('Auth requires exact approved active profile and refuses any expanded scope',()=>{const p=profile();for(const k of allowedProtocols)p.protocolRows[k].enabled=true;const approval={target:project,scope:'isolated-budget-http-browser-storage-qa',expiresAt:new Date(Date.now()+60000).toISOString(),contractSha256:sha(p),reuseExistingQaUsers:true,createAuthUsers:false,modifyLatches:false,enableReceipt:false,enableUndo:false};assertApproval(approval,p);for(const key of ['modifyLatches','enableReceipt','enableUndo','createAuthUsers'])assert.throws(()=>assertApproval({...approval,[key]:true},p));assert.throws(()=>assertApproval({...approval,contractSha256:'other'},p));});
 test('Offline controls change exactly five enabled fields, never latches or removed features',()=>{const c=protocolControls(profile());for(const sql of [c.enable,c.pause]){assert.equal((sql.match(/update app_private\.budget_\w+_protocol set enabled=/g)||[]).length,5);assert(!/set (activated|storage_verified|full_enabled)|set enabled=.*budget_(undo|receipt)/i.test(sql));assert(!/\bgrant\b|\bcreate\s+(table|function)|\bdelete from\b/i.test(sql));assert(sql.includes('Active leases; refuse protocol transition'));}const p=profile();p.protocolRows.finance.activated=false;assert.throws(()=>protocolControls(p));});
 test('SQL capture enforces READ ONLY and never returns emails, paths or signed capabilities',()=>{assert(preflightSql.startsWith('begin read only;'));assert(preflightSql.includes('receiptPathHashes'));const statements=preflightSql.replace(/'(?:[^']|'')*'/g,"''");assert(!/\b(update|insert into|delete from|grant|alter table)\b/i.test(statements));assert(!preflightSql.includes('select email'));});
@@ -29,4 +34,54 @@ test('Protocol notification revisions may advance by exactly ten; no other origi
  const after=structuredClone(before);after.originalProtection='d'.repeat(64);after.protectedRelations[1].sha256='e'.repeat(64);after.originalSignals[0].revision+=10;verifyProtectedRows(before,after);
  for(const change of [p=>p.originalSignals[0].revision++,p=>p.originalSignals[1].revision++,p=>p.originalSignals[0].other=true,p=>p.originalSignals.pop(),p=>p.protectedRelations[0].sha256='f'.repeat(64),p=>p.protectedRelations.pop(),p=>p.originalSignalTargets=[]]){const changed=structuredClone(after);change(changed);assert.throws(()=>verifyProtectedRows(before,changed));}
  assert.throws(()=>verifyProtectedRows({...before,protectedRelations:undefined},after));
+});
+
+test('Second member requests with its own token before owner approval; no owner inserts another identity',async()=>{
+ const sessions=[{access_token:'owner-token',user:{id:'owner'}},{access_token:'editor-token',user:{id:'editor'}}],writes=[];let member;
+ await ensureQaEditor({sessions,trip:'trip',http:async(token,route,opt={})=>{
+  assert(!opt.admin);const method=opt.method||'GET';
+  if(method==='POST'){assert.equal(token,'editor-token');assert.equal(opt.body.user_id,'editor');assert.equal(opt.body.status,'pending');assert.equal(opt.prefer,'return=minimal');member=opt.body;writes.push(method);return {status:201,data:null};}
+  if(method==='PATCH'){assert.equal(token,'owner-token');assert.equal(member.status,'pending');member.status=opt.body.status;writes.push(method);return {status:200,data:[member]};}
+  return {status:200,data:route.startsWith('/rest/v1/trips?')?[{id:'trip'}]:member?[member]:[]};
+ }});assert.deepEqual(writes,['POST','PATCH']);
+});
+
+test('Retained trip continuation refuses mismatched ownership and existing financial rows before any write',async()=>{
+ const session={access_token:'ordinary',user:{id:'owner'}},trip='trip',name='QA exact',row={id:trip,title:name,name,owner_id:'owner',start_date:'2099-01-01',end_date:'2099-01-03'};
+ const run=async({foreign=false,financial=false}={})=>assertEmptyOwnedQaTrip({session,trip,name,allowedUserIds:['owner','editor'],http:async(token,route,opt={})=>{assert.equal(opt.method,undefined);assert(!opt.admin);return {status:200,data:route.startsWith('/rest/v1/trips?')?[{...row,owner_id:foreign?'someone-else':'owner'}]:route.startsWith('/rest/v1/trip_members?')?[{user_id:'owner',role:'owner',status:'approved'}]:financial&&route.startsWith('/rest/v1/budget_items?')?[{trip_id:trip}]:[]};}});
+ await run();await assert.rejects(()=>run({foreign:true}));await assert.rejects(()=>run({financial:true}));
+});
+
+test('Unit-only rate initialization preserves the real API contract and accepts server timestamp normalization',async t=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'travel-qa-rates-')),raw={result:'success',base_code:'TWD',time_last_update_unix:1700000000,rates:{TWD:1,JPY:5,USD:.03,EUR:.02,KRW:40,HKD:.25}},versions={rates:0,members:2,budgets:[]},calls=[];let saved={};
+ t.mock.method(globalThis,'fetch',async url=>{assert.equal(url,'https://open.er-api.com/v6/latest/TWD');return new Response(JSON.stringify(raw),{status:200});});
+ const api={sids:['ordinary-session'],snap:async()=>({tripBudgetRates:saved,ratesRecords:[{revision:0,value:{versions}}]}),rpc:async(i,name,args)=>{assert.equal(i,0);calls.push(name+':'+(args.p_action||'commit'));if(name==='update_trip_budget_rates_v2'){assert.deepEqual(args.p_value.versions,versions);assert.equal(args.p_value.initialize,true);saved={...args.p_value.quote,quoted_at:args.p_value.quote.quoted_at.replace('.000Z','+00:00'),updated_at:'2026-11-04T00:00:00+00:00'};return {status:200,data:{}};}return {status:200,data:{granted:true,epoch:1}};}};
+ try{const value=await initializeQaRates({dir,api,trip:'owned-qa-trip'});assert.equal(value.rates.JPY,.2);assert.equal(value.updated_at,saved.updated_at);assert.deepEqual(calls,['budget_rates_lease:acquire','update_trip_budget_rates_v2:commit','budget_rates_lease:release']);}
+ finally{await fs.rm(path.join(dir,'real-initial-quote.json'),{force:true});await fs.rmdir(dir);}
+});
+
+test('Managed partition explanation is READ ONLY and cannot exclude arbitrary schema objects',()=>{
+ const sql=managedPublicationCaptureSql(scope(),['2026_11_06','2026_11_07']);assert(sql.startsWith('begin read only;'));assert(sql.includes('schemaWithoutManagedPublicationAdditions'));assert(sql.includes("p.pubname='supabase_realtime_messages_publication' and p.schemaname='realtime'"));
+ for(const dates of [["2026_11_07');drop table public.trips;--"],[],['2026_11_07','2026_11_07'],['2026_11_04','2026_11_05','2026_11_06','2026_11_07']])assert.throws(()=>managedPublicationCaptureSql(scope(),dates));
+});
+
+test('Schema drift requires the exact previous full projection; public or unexplained changes never pass',()=>{
+ const s=scope(),p={...profile(),fixtureScopeSha256:sha(baseScope(s)),originalProtection:'b'.repeat(64),protectedRelations:[{relation:'public.budget_items',sha256:'d'.repeat(64)},{relation:'public.budget_collaboration_signals',sha256:'e'.repeat(64)}],originalSignals:[],originalSignalTargets:[]};p.installation.qaSessionCount=0;p.installation.receiptDigest='receipt';p.installation.storageDigest='storage';
+ const after=structuredClone(p);after.schemaDigest='f'.repeat(64);assert.throws(()=>verifyAfter({before:p,after,scope:s}));after.schemaWithoutManagedPublicationAdditions=p.schemaDigest;after.managedPublicationAdditions=[{pubname:'supabase_realtime_messages_publication',schemaname:'realtime',tablename:'messages_2026_11_07',rowfilter:null}];verifyAfter({before:p,after,scope:s});
+ for(const change of [a=>a.schemaWithoutManagedPublicationAdditions='0'.repeat(64),a=>a.managedPublicationAdditions[0].schemaname='public',a=>a.managedPublicationAdditions[0].tablename='budget_items']){const invalid=structuredClone(after);change(invalid);assert.throws(()=>verifyAfter({before:p,after:invalid,scope:s}));}
+});
+
+test('Socket evidence accepts both Phoenix JSON envelopes and drops auth frames, other trips and full row payloads',()=>{
+ const payload={data:{schema:'public',table:'budget_collaboration_signals',record:{trip_id:'qa-trip',revision:42,extra:'must-not-persist'}}};
+ for(const message of [{event:'postgres_changes',payload},[null,null,'channel','postgres_changes',payload]]){const signal=observedRealtimeSignal(JSON.stringify(message),'qa-trip',1);assert.equal(signal.actor,1);assert.equal(signal.revision,42);assert(!JSON.stringify(signal).includes('must-not-persist'));}
+ for(const message of [{event:'access_token',payload:{access_token:'secret'}},{event:'postgres_changes',payload}])assert.equal(observedRealtimeSignal(JSON.stringify(message),'other-trip',1),null);assert.equal(observedRealtimeSignal('not-json','qa-trip',1),null);
+});
+
+test('Stable catalog guard excludes only the reserved managed publication and rejects an invalid seal',()=>{
+ const p=profile();p.stableSchemaDigest='c'.repeat(64);const controls=protocolControls(p);assert(controls.pause.includes('stableSchemaDigest drift'));assert(controls.pause.includes("where not(p.pubname='supabase_realtime_messages_publication' and p.schemaname='realtime')"));p.stableSchemaDigest="';select true;--";assert.throws(()=>protocolControls(p));
+});
+
+test('Recorded removed publication evidence cannot insert application or arbitrary catalog JSON',()=>{
+ const row={pubname:'supabase_realtime_messages_publication',schemaname:'realtime',tablename:'messages_2026_10_30',attnames:['id'],rowfilter:null};const sql=recordedManagedPublicationCaptureSql(scope(),[row]);assert(sql.startsWith('begin read only;'));assert(sql.includes('schemaWithRecordedManagedPublications'));
+ for(const altered of [{...row,schemaname:'public'},{...row,tablename:'budget_items'},{...row,extra:'arbitrary-catalog-row'},{...row,attnames:["id');drop table public.trips;--"]}])assert.throws(()=>recordedManagedPublicationCaptureSql(scope(),[altered]));
 });

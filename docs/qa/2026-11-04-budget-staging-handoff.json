@@ -1,0 +1,2195 @@
+{
+  "version": 1,
+  "project": "uyqdopksfysbobhjcepk",
+  "branch": "codex/budget-collaboration-redesign",
+  "createdAt": "2026-11-04T07:33:51.504Z",
+  "qaIdentity": {
+    "run": "8fb7596d-9da5-418d-b16e-dfa59200dfa6",
+    "users": [
+      "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+      "9dc72f8a-4231-40d3-8617-c620098d39f7"
+    ]
+  },
+  "plan": {
+    "run": "e0722f90-a746-4b98-9abb-6a7cdd37fb6b",
+    "trips": [
+      "91a0ad12-99bf-4501-8846-859fbf11aae4",
+      "3557499d-902a-4011-af9f-399f773d7c0c"
+    ],
+    "users": [
+      "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+      "9dc72f8a-4231-40d3-8617-c620098d39f7"
+    ],
+    "resources": [],
+    "objects": []
+  },
+  "fixtureScope": {
+    "project": "uyqdopksfysbobhjcepk",
+    "run": "e0722f90-a746-4b98-9abb-6a7cdd37fb6b",
+    "trips": [
+      "91a0ad12-99bf-4501-8846-859fbf11aae4",
+      "3557499d-902a-4011-af9f-399f773d7c0c"
+    ],
+    "users": [
+      "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+      "9dc72f8a-4231-40d3-8617-c620098d39f7"
+    ],
+    "resources": [
+      "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3",
+      "0d678cdd-3f78-4484-a07f-bb139b18c9d9",
+      "eb4664a2-2cfb-495f-b8a1-c1f434fbecaf",
+      "9ba88c32-5aad-4eea-a01a-993ec98ed510"
+    ],
+    "createdTrips": [
+      "91a0ad12-99bf-4501-8846-859fbf11aae4",
+      "3557499d-902a-4011-af9f-399f773d7c0c"
+    ],
+    "objects": []
+  },
+  "continuation": {
+    "run": "e0722f90-a746-4b98-9abb-6a7cdd37fb6b",
+    "startAt": "C05",
+    "budget": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3",
+    "expectedGraph": {
+      "budgetItems": [
+        {
+          "id": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3",
+          "note": "QA real UI note",
+          "title": "QA websocket e0722f90",
+          "amount": 120,
+          "trip_id": "91a0ad12-99bf-4501-8846-859fbf11aae4",
+          "category": "交通",
+          "currency": "TWD",
+          "is_fixed": false,
+          "payer_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+          "locked_at": null,
+          "locked_by": null,
+          "created_at": "2026-11-04T02:28:39.489022+00:00",
+          "split_type": "custom",
+          "twd_amount": 120,
+          "updated_at": "2026-11-04T07:11:49.520858+00:00",
+          "subcategory": null,
+          "unit_amount": null,
+          "completed_at": "2026-11-04T06:37:45.668558+00:00",
+          "pricing_mode": "custom",
+          "exchange_rate": 1,
+          "pricing_ready": true,
+          "record_status": "complete",
+          "lifecycle_revision": 1,
+          "auto_created_actual_expense_id": "0d678cdd-3f78-4484-a07f-bb139b18c9d9"
+        },
+        {
+          "id": "eb4664a2-2cfb-495f-b8a1-c1f434fbecaf",
+          "note": null,
+          "title": "QA first source e0722f90",
+          "amount": 100,
+          "trip_id": "91a0ad12-99bf-4501-8846-859fbf11aae4",
+          "category": "其他",
+          "currency": "TWD",
+          "is_fixed": false,
+          "payer_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+          "locked_at": null,
+          "locked_by": null,
+          "created_at": "2026-11-04T06:41:29.273411+00:00",
+          "split_type": "equal",
+          "twd_amount": 100,
+          "updated_at": "2026-11-04T06:41:30.382653+00:00",
+          "subcategory": null,
+          "unit_amount": null,
+          "completed_at": "2026-11-04T06:41:30.417106+00:00",
+          "pricing_mode": "split_total",
+          "exchange_rate": 1,
+          "pricing_ready": true,
+          "record_status": "complete",
+          "lifecycle_revision": 1,
+          "auto_created_actual_expense_id": null
+        }
+      ],
+      "actualExpenses": [
+        {
+          "id": "0d678cdd-3f78-4484-a07f-bb139b18c9d9",
+          "note": "QA real UI note",
+          "title": "QA websocket e0722f90",
+          "amount": 120,
+          "paid_at": "2026-11-04T06:41:27.932976+00:00",
+          "trip_id": "91a0ad12-99bf-4501-8846-859fbf11aae4",
+          "category": "交通",
+          "currency": "TWD",
+          "payer_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+          "locked_at": null,
+          "locked_by": null,
+          "created_at": "2026-11-04T06:41:27.932976+00:00",
+          "split_type": "custom",
+          "twd_amount": 120,
+          "updated_at": "2026-11-04T07:11:49.520858+00:00",
+          "subcategory": null,
+          "unit_amount": null,
+          "completed_at": "2026-11-04T06:41:27.932976+00:00",
+          "pricing_mode": "custom",
+          "exchange_rate": 1,
+          "pricing_ready": true,
+          "record_status": "complete",
+          "budget_item_id": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3",
+          "payment_active": true,
+          "payment_origin": "budget_toggle",
+          "payment_history": [],
+          "budget_origin_id": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3",
+          "actual_twd_amount": 120,
+          "twd_amount_source": "actual",
+          "lifecycle_revision": 0
+        },
+        {
+          "id": "9ba88c32-5aad-4eea-a01a-993ec98ed510",
+          "note": null,
+          "title": "QA manual source Actual",
+          "amount": 100,
+          "paid_at": "2026-11-04T06:41:30.528+00:00",
+          "trip_id": "91a0ad12-99bf-4501-8846-859fbf11aae4",
+          "category": "其他",
+          "currency": "TWD",
+          "payer_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+          "locked_at": null,
+          "locked_by": null,
+          "created_at": "2026-11-04T06:41:29.34825+00:00",
+          "split_type": "equal",
+          "twd_amount": 100,
+          "updated_at": "2026-11-04T06:41:34.118135+00:00",
+          "subcategory": null,
+          "unit_amount": null,
+          "completed_at": "2026-11-04T06:41:32.106698+00:00",
+          "pricing_mode": "split_total",
+          "exchange_rate": 1,
+          "pricing_ready": true,
+          "record_status": "complete",
+          "budget_item_id": null,
+          "payment_active": true,
+          "payment_origin": "manual",
+          "payment_history": [],
+          "budget_origin_id": "eb4664a2-2cfb-495f-b8a1-c1f434fbecaf",
+          "actual_twd_amount": 100,
+          "twd_amount_source": "actual",
+          "lifecycle_revision": 2
+        }
+      ],
+      "budgetParticipants": [
+        {
+          "id": "b5f50f84-a22b-407f-a8f0-9b34b639e01a",
+          "user_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+          "created_at": "2026-11-04T06:37:45.618364+00:00",
+          "share_amount": 70,
+          "budget_item_id": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3"
+        },
+        {
+          "id": "86d21db9-3597-4e7c-afd0-06f6a4abcb6b",
+          "user_id": "9dc72f8a-4231-40d3-8617-c620098d39f7",
+          "created_at": "2026-11-04T06:37:45.618364+00:00",
+          "share_amount": 50,
+          "budget_item_id": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3"
+        },
+        {
+          "id": "22ac4e85-8041-469d-9240-11db17f35cb8",
+          "user_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+          "created_at": "2026-11-04T06:41:30.382653+00:00",
+          "share_amount": null,
+          "budget_item_id": "eb4664a2-2cfb-495f-b8a1-c1f434fbecaf"
+        }
+      ],
+      "actualParticipants": [
+        {
+          "id": "518aaf90-a124-46c4-8635-0847556700c7",
+          "user_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+          "created_at": "2026-11-04T06:41:27.932976+00:00",
+          "share_amount": 70,
+          "actual_expense_id": "0d678cdd-3f78-4484-a07f-bb139b18c9d9"
+        },
+        {
+          "id": "989e83c3-9053-4b98-b61d-3bb14cd6d9fc",
+          "user_id": "9dc72f8a-4231-40d3-8617-c620098d39f7",
+          "created_at": "2026-11-04T06:41:27.932976+00:00",
+          "share_amount": 50,
+          "actual_expense_id": "0d678cdd-3f78-4484-a07f-bb139b18c9d9"
+        },
+        {
+          "id": "fef75b73-a025-4eba-bff8-01541fb494f1",
+          "user_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+          "created_at": "2026-11-04T06:41:31.681394+00:00",
+          "share_amount": null,
+          "actual_expense_id": "9ba88c32-5aad-4eea-a01a-993ec98ed510"
+        }
+      ],
+      "itineraryBudgetLinks": [],
+      "budgetBaseline": {
+        "payload": {
+          "items": [
+            {
+              "id": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3",
+              "note": "QA real UI note",
+              "title": "QA websocket e0722f90",
+              "amount": 120,
+              "trip_id": "91a0ad12-99bf-4501-8846-859fbf11aae4",
+              "category": "交通",
+              "currency": "TWD",
+              "is_fixed": false,
+              "payer_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+              "created_at": "2026-11-04T02:28:39.489022+00:00",
+              "split_type": "custom",
+              "twd_amount": 120,
+              "updated_at": "2026-11-04T07:11:49.520858+00:00",
+              "subcategory": null,
+              "unit_amount": null,
+              "completed_at": "2026-11-04T06:37:45.668558+00:00",
+              "pricing_mode": "custom",
+              "exchange_rate": 1,
+              "pricing_ready": true,
+              "record_status": "complete",
+              "lifecycle_revision": 1,
+              "auto_created_actual_expense_id": "0d678cdd-3f78-4484-a07f-bb139b18c9d9"
+            },
+            {
+              "id": "eb4664a2-2cfb-495f-b8a1-c1f434fbecaf",
+              "note": null,
+              "title": "QA first source e0722f90",
+              "amount": 100,
+              "trip_id": "91a0ad12-99bf-4501-8846-859fbf11aae4",
+              "category": "其他",
+              "currency": "TWD",
+              "is_fixed": false,
+              "payer_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+              "created_at": "2026-11-04T06:41:29.273411+00:00",
+              "split_type": "equal",
+              "twd_amount": 100,
+              "updated_at": "2026-11-04T06:41:30.382653+00:00",
+              "subcategory": null,
+              "unit_amount": null,
+              "completed_at": "2026-11-04T06:41:30.417106+00:00",
+              "pricing_mode": "split_total",
+              "exchange_rate": 1,
+              "pricing_ready": true,
+              "record_status": "complete",
+              "lifecycle_revision": 1,
+              "auto_created_actual_expense_id": null
+            }
+          ],
+          "links": [],
+          "members": [
+            {
+              "user_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+              "display_name": "QA Owner"
+            },
+            {
+              "user_id": "9dc72f8a-4231-40d3-8617-c620098d39f7",
+              "display_name": "QA Editor"
+            }
+          ],
+          "itinerary": [],
+          "participants": [
+            {
+              "id": "b5f50f84-a22b-407f-a8f0-9b34b639e01a",
+              "user_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+              "created_at": "2026-11-04T06:37:45.618364+00:00",
+              "share_amount": 70,
+              "budget_item_id": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3"
+            },
+            {
+              "id": "22ac4e85-8041-469d-9240-11db17f35cb8",
+              "user_id": "47a20d72-0623-4afb-a48d-ddac5b30f7dd",
+              "created_at": "2026-11-04T06:41:30.382653+00:00",
+              "share_amount": null,
+              "budget_item_id": "eb4664a2-2cfb-495f-b8a1-c1f434fbecaf"
+            },
+            {
+              "id": "86d21db9-3597-4e7c-afd0-06f6a4abcb6b",
+              "user_id": "9dc72f8a-4231-40d3-8617-c620098d39f7",
+              "created_at": "2026-11-04T06:37:45.618364+00:00",
+              "share_amount": 50,
+              "budget_item_id": "7bb4b5b1-6e8f-4cb6-bed5-6377bff23cd3"
+            }
+          ]
+        },
+        "trip_id": "91a0ad12-99bf-4501-8846-859fbf11aae4",
+        "captured_at": "2026-11-04T07:11:49.61289+00:00",
+        "departure_at": "2098-12-31T16:00:00+00:00"
+      },
+      "tripBudgetRates": {
+        "rates": {
+          "AED": 8.923393,
+          "AFN": 0.504094,
+          "ALL": 0.403298,
+          "AMD": 0.09089,
+          "ANG": 18.307977,
+          "AOA": 0.034528,
+          "ARS": 0.021147,
+          "AUD": 22.852442,
+          "AWG": 18.307977,
+          "AZN": 19.282312,
+          "BAM": 18.757503,
+          "BBD": 16.385653,
+          "BDT": 0.263156,
+          "BGN": 18.757503,
+          "BHD": 87.153565,
+          "BIF": 0.010948,
+          "BMD": 32.770768,
+          "BND": 25.593776,
+          "BOB": 2.710887,
+          "BRL": 5.970042,
+          "BSD": 32.770768,
+          "BTN": 0.34558,
+          "BWP": 2.327005,
+          "BYN": 11.027668,
+          "BZD": 16.385653,
+          "CAD": 23.425238,
+          "CDF": 0.014138,
+          "CHF": 39.987204,
+          "CLF": 1326.259947,
+          "CLP": 0.033537,
+          "CNH": 4.915164,
+          "CNY": 4.906771,
+          "COP": 0.010184,
+          "CRC": 0.072222,
+          "CUP": 1.365465,
+          "CVE": 0.332715,
+          "CZK": 1.506219,
+          "DJF": 0.184397,
+          "DKK": 4.901985,
+          "DOP": 0.54353,
+          "DZD": 0.241257,
+          "EGP": 0.592054,
+          "ERN": 2.184742,
+          "ETB": 0.202691,
+          "EUR": 36.699941,
+          "FJD": 14.576197,
+          "FKP": 43.98311,
+          "FOK": 4.902033,
+          "GBP": 43.998592,
+          "GEL": 12.618456,
+          "GGP": 43.98311,
+          "GHS": 2.805553,
+          "GIP": 43.98311,
+          "GMD": 0.438792,
+          "GNF": 0.003707,
+          "GTQ": 4.289011,
+          "GYD": 0.156257,
+          "HKD": 4.178523,
+          "HNL": 1.219792,
+          "HRK": 4.869166,
+          "HTG": 0.249899,
+          "HUF": 0.100523,
+          "IDR": 0.001806,
+          "ILS": 10.373552,
+          "IMP": 43.98311,
+          "INR": 0.345564,
+          "IQD": 0.021579,
+          "IRR": 0.000017,
+          "ISK": 0.269348,
+          "JEP": 43.98311,
+          "JMD": 0.206519,
+          "JOD": 46.221401,
+          "JPY": 0.20699,
+          "KES": 0.252224,
+          "KGS": 0.374378,
+          "KHR": 0.007973,
+          "KID": 22.868643,
+          "KMF": 0.074572,
+          "KRW": 0.024396,
+          "KWD": 106.123315,
+          "KYD": 39.32518,
+          "KZT": 0.072236,
+          "LAK": 0.001469,
+          "LBP": 0.000366,
+          "LKR": 0.098753,
+          "LRD": 0.19322,
+          "LSL": 1.971935,
+          "LYD": 5.103629,
+          "MAD": 3.337104,
+          "MDL": 1.82033,
+          "MGA": 0.007123,
+          "MKD": 0.585282,
+          "MMK": 0.015623,
+          "MNT": 0.009039,
+          "MOP": 4.056845,
+          "MRU": 0.807666,
+          "MUR": 0.69132,
+          "MVR": 2.120495,
+          "MWK": 0.018796,
+          "MXN": 1.746908,
+          "MYR": 8.038585,
+          "MZN": 0.513558,
+          "NAD": 1.971935,
+          "NGN": 0.024322,
+          "NIO": 0.890977,
+          "NOK": 3.530101,
+          "NPR": 0.215988,
+          "NZD": 18.353675,
+          "OMR": 85.229694,
+          "PAB": 32.770768,
+          "PEN": 9.467993,
+          "PGK": 7.316038,
+          "PHP": 0.515761,
+          "PKR": 0.118496,
+          "PLN": 8.306683,
+          "PYG": 0.00554,
+          "QAR": 9.003088,
+          "RON": 6.859604,
+          "RSD": 0.311928,
+          "RUB": 0.402418,
+          "RWF": 0.022166,
+          "SAR": 8.738967,
+          "SBD": 4.062431,
+          "SCR": 2.299099,
+          "SDG": 0.072842,
+          "SEK": 3.350275,
+          "SGD": 25.597706,
+          "SHP": 43.98311,
+          "SLE": 1.415372,
+          "SLL": 0.001415,
+          "SOS": 0.057294,
+          "SRD": 0.869912,
+          "SSP": 0.005371,
+          "STN": 1.497418,
+          "SYP": 0.269373,
+          "SZL": 1.971935,
+          "THB": 0.971205,
+          "TJS": 3.522491,
+          "TMT": 9.255917,
+          "TND": 10.919892,
+          "TOP": 13.622122,
+          "TRY": 0.655601,
+          "TTD": 4.849896,
+          "TVD": 22.868643,
+          "TWD": 1,
+          "TZS": 0.012387,
+          "UAH": 0.717598,
+          "UGX": 0.007715,
+          "USD": 32.770768,
+          "UYU": 0.8155,
+          "UZS": 0.002763,
+          "VES": 0.036689,
+          "VND": 0.001274,
+          "VUV": 0.273941,
+          "WST": 11.826202,
+          "XAF": 0.055929,
+          "XCD": 12.137395,
+          "XCG": 18.307977,
+          "XDR": 44.379355,
+          "XOF": 0.055929,
+          "XPF": 0.307435,
+          "YER": 0.138787,
+          "ZAR": 1.971916,
+          "ZMW": 1.617003,
+          "ZWG": 1.233677,
+          "ZWL": 1.233674
+        },
+        "source": "ExchangeRate-API",
+        "quoted_at": "2026-11-04T00:02:31+00:00",
+        "updated_at": "2026-11-04T06:33:20.020924+00:00"
+      },
+      "attachments": []
+    },
+    "previousReport": {
+      "date": "2026-11-04T07:11:38.091Z",
+      "baseCommit": "c416b7d",
+      "project": "uyqdopksfysbobhjcepk",
+      "mode": "authorized-hosted-qa",
+      "mockedRoutes": false,
+      "rows": [
+        {
+          "id": "R01",
+          "name": "Live ledger, immutable source and twelve Undo ACLs",
+          "phase": "readonly",
+          "status": "Passed",
+          "environment": "Hosted catalog",
+          "detail": {
+            "observedAt": "2026-11-04T07:11:10.259114+00:00",
+            "sourceAnd12Acls": true
+          },
+          "executedAt": "2026-11-04T07:11:38.093Z"
+        },
+        {
+          "id": "R02",
+          "name": "Seven protocols OFF; latches and readiness recorded",
+          "phase": "readonly",
+          "status": "Passed",
+          "environment": "Hosted catalog",
+          "detail": {
+            "expectedState": "five authorized protocols ON; Undo/Receipt OFF",
+            "latches": {
+              "undo": {
+                "enabled": false,
+                "singleton": true,
+                "full_enabled": false
+              },
+              "source": {
+                "enabled": true,
+                "singleton": true
+              },
+              "finance": {
+                "enabled": true,
+                "activated": true,
+                "singleton": true
+              },
+              "payment": {
+                "enabled": true,
+                "singleton": true
+              },
+              "receipt": {
+                "enabled": false,
+                "activated": true,
+                "singleton": true,
+                "storage_verified": true,
+                "service_role_had_usage": false,
+                "cleanup_worker_verified": true,
+                "content_worker_verified": true,
+                "legacy_grants_expire_at": null
+              },
+              "metadata": {
+                "enabled": true,
+                "singleton": true
+              },
+              "lifecycle": {
+                "enabled": true,
+                "activated": true,
+                "singleton": true
+              }
+            }
+          },
+          "executedAt": "2026-11-04T07:11:38.093Z"
+        },
+        {
+          "id": "R03",
+          "name": "Existing receipts, objects, data coverage and reusable QA inventory",
+          "phase": "readonly",
+          "status": "Passed",
+          "environment": "Hosted catalog",
+          "detail": {
+            "receiptMetadata": 1,
+            "objects": 2,
+            "qaUsers": 2,
+            "qaSessions": 0,
+            "localQaManifestMatchesLiveHashes": true,
+            "coverage": {
+              "complete": true,
+              "rowCount": 761,
+              "relations": 83
+            }
+          },
+          "executedAt": "2026-11-04T07:11:38.094Z"
+        },
+        {
+          "id": "R04",
+          "name": "Realtime publication, RLS and subscription grants",
+          "phase": "readonly",
+          "status": "Passed",
+          "environment": "Hosted catalog",
+          "detail": {
+            "catalogOnly": true,
+            "actualWebsocketNotYetVerified": true
+          },
+          "executedAt": "2026-11-04T07:11:38.095Z"
+        },
+        {
+          "id": "R05",
+          "name": "Staging public Auth health and settings",
+          "phase": "public-http",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "detail": {
+            "realStagingHttp": true,
+            "loginNotAttempted": true
+          },
+          "executedAt": "2026-11-04T07:11:38.749Z"
+        },
+        {
+          "id": "A01",
+          "name": "Two real users and three distinct verified Auth sessions",
+          "phase": "auth",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "detail": {
+            "users": 2,
+            "sessions": 3,
+            "sessionHashes": [
+              "406f8094111a2d67ee2b9570e974a2c30aec62f22accc7f8d7f3c4fdec671ebe",
+              "9e9f9eb398c1657ea8c1ef6058313936cad3e654408fb58aef0713d0c8071384",
+              "01a3c312f2c2d441f879ea447bdf2f719b0c3269dbcd0ece2fc13410e95b9083"
+            ]
+          },
+          "executedAt": "2026-11-04T07:11:40.870Z"
+        },
+        {
+          "id": "A02",
+          "name": "All five public Undo RPC signatures reject ordinary JWTs",
+          "phase": "auth",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "ordinaryJwt": true,
+            "exactSignatures": 5
+          },
+          "executedAt": "2026-11-04T02:28:38.464Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "A03",
+          "name": "No custom Undo API or global key interception in live frontend",
+          "phase": "browser",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "A04",
+          "name": "Native title and note Undo; number key remains unprevented",
+          "phase": "browser",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "detail": {
+            "actualChromiumTextHistory": true,
+            "numberNativeEventNotPrevented": true,
+            "macHardwareNotClaimed": true
+          },
+          "executedAt": "2026-11-04T07:11:45.887Z"
+        },
+        {
+          "id": "A05",
+          "name": "Saved data unchanged by outside-input Ctrl/Cmd+Z",
+          "phase": "browser",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "detail": {
+            "savedGraphUnchanged": true
+          },
+          "executedAt": "2026-11-04T07:11:47.556Z"
+        },
+        {
+          "id": "B01",
+          "name": "Create and delete Budget through Lifecycle HTTP",
+          "phase": "finance",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "B02",
+          "name": "Title and note autosave reach canonical HTTP data",
+          "phase": "browser",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "realUiToHttp": true
+          },
+          "executedAt": "2026-11-04T06:48:20.859Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "B03",
+          "name": "Category and payer edits",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "canonicalConfirmed": true
+          },
+          "executedAt": "2026-11-04T02:28:39.742Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "B04",
+          "name": "Pricing equal and custom splits, currency and exchange rate",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "equalAndCustom": true,
+            "currencyAndRate": true,
+            "rateSource": "ExchangeRate-API",
+            "quoteDate": "2026-11-04T00:02:31+00:00",
+            "jpyRate": 0.20699
+          },
+          "executedAt": "2026-11-04T06:37:45.096Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "B05",
+          "name": "Pay, unpay and pay reuse one Actual and preserve history",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "oneActual": true,
+            "historyPrefixPreserved": true
+          },
+          "executedAt": "2026-11-04T06:41:27.954Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "B06",
+          "name": "Manual Actual first Source link and detach preserve financial data",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "firstLinkDetachOnly": true,
+            "historicalOriginRetained": true,
+            "secondCurrentActualRejected": true,
+            "duplicateGraphUnchanged": true
+          },
+          "executedAt": "2026-11-04T06:41:33.093Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "B07",
+          "name": "Planning Baseline freezes; traveling/settlement match canonical financial graph",
+          "phase": "travel",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "B08",
+          "name": "Failed stale save preserves complete financial graph",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "http": 409,
+            "code": "PT409",
+            "completeFinancialGraphUnchanged": true
+          },
+          "executedAt": "2026-11-04T06:41:26.138Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "C01",
+          "name": "Different groups edit concurrently",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "distinctAccounts": true
+          },
+          "executedAt": "2026-11-04T06:37:45.687Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "C02",
+          "name": "Same group blocks peer and second session of same user",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "differentUserAndSameUserSessionDenied": true
+          },
+          "executedAt": "2026-11-04T06:37:46.278Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "C03",
+          "name": "Lease acquire, renew and release",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "acquiredRenewedReleased": true
+          },
+          "executedAt": "2026-11-04T06:37:46.668Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "C04",
+          "name": "Real stale version returns HTTP409/PT409",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "http": 409,
+            "code": "PT409",
+            "completeFinancialGraphUnchanged": true
+          },
+          "executedAt": "2026-11-04T06:37:47.617Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "C05",
+          "name": "Actual websocket postgres_changes delivery and peer UI convergence",
+          "phase": "realtime",
+          "status": "Failed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Error: real postgres_changes delivery deadline exceeded"
+        },
+        {
+          "id": "C06",
+          "name": "Three contexts reload to canonical data",
+          "phase": "browser",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "C07",
+          "name": "Real hidden/visible background page preserves edit",
+          "phase": "browser",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "C08",
+          "name": "Real offline context reconnects and restores canonical data",
+          "phase": "browser",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "C09",
+          "name": "Cancel unsaved draft after rejected real admission",
+          "phase": "browser",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "C10",
+          "name": "Nonmember trip and revoked editor permissions isolated",
+          "phase": "finance",
+          "status": "Passed",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution",
+          "detail": {
+            "nonmemberAndRevokedEditor": true
+          },
+          "executedAt": "2026-11-04T06:41:26.415Z",
+          "reusedEvidence": true,
+          "previousReportSha256": "6a41ad3f9bad00a6a23a8736a7022a71688b0b30b11e1e59be9949e4ec49d18d"
+        },
+        {
+          "id": "D01",
+          "name": "Financial receipt metadata insert and upload reject",
+          "phase": "storage",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "D02",
+          "name": "New financial receipt signing request rejects",
+          "phase": "storage",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "D03",
+          "name": "Preexisting signed URL actual access before and after genuine expiry",
+          "phase": "legacy-url",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "D04",
+          "name": "Accommodation attachment upload, sign, bytes read and delete",
+          "phase": "storage",
+          "status": "Not Run",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Waiting for authorized execution"
+        },
+        {
+          "id": "D05",
+          "name": "Original receipt metadata and objects unchanged after QA",
+          "phase": "after",
+          "status": "Blocked",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Independent before/after catalog/row readback required after returning all protocols OFF"
+        },
+        {
+          "id": "Z01",
+          "name": "Owned fixtures cleaned or retained for audit; sessions revoked; all protocols OFF",
+          "phase": "after",
+          "status": "Blocked",
+          "environment": "Hosted real Auth/HTTP/browser",
+          "reason": "Owned QA histories retained for audit; exact cleanup and independently verified protocol Pause still required"
+        }
+      ],
+      "requests": [
+        {
+          "path": "/auth/v1/health",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 565
+        },
+        {
+          "path": "/auth/v1/settings",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 88
+        },
+        {
+          "path": "/auth/v1/admin/users/:qa-id",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": true,
+          "ms": 213
+        },
+        {
+          "path": "/auth/v1/admin/generate_link",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": true,
+          "ms": 75
+        },
+        {
+          "path": "/auth/v1/verify",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 111
+        },
+        {
+          "path": "/auth/v1/user",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 77
+        },
+        {
+          "path": "/auth/v1/admin/users/:qa-id",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": true,
+          "ms": 84
+        },
+        {
+          "path": "/auth/v1/admin/generate_link",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": true,
+          "ms": 59
+        },
+        {
+          "path": "/auth/v1/verify",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 62
+        },
+        {
+          "path": "/auth/v1/user",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 81
+        },
+        {
+          "path": "/auth/v1/admin/users/:qa-id",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": true,
+          "ms": 58
+        },
+        {
+          "path": "/auth/v1/admin/generate_link",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": true,
+          "ms": 57
+        },
+        {
+          "path": "/auth/v1/verify",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 82
+        },
+        {
+          "path": "/auth/v1/user",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 55
+        },
+        {
+          "path": "/rest/v1/trips",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 288
+        },
+        {
+          "path": "/rest/v1/trip_members",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 58
+        },
+        {
+          "path": "/rest/v1/trips",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 93
+        },
+        {
+          "path": "/rest/v1/trip_members",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 63
+        },
+        {
+          "path": "/rest/v1/budget_items",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 57
+        },
+        {
+          "path": "/rest/v1/actual_expenses",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 87
+        },
+        {
+          "path": "/rest/v1/itinerary_items",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 58
+        },
+        {
+          "path": "/rest/v1/accommodations",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 82
+        },
+        {
+          "path": "/rest/v1/attachments",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 57
+        },
+        {
+          "path": "/rest/v1/trip_budget_baselines",
+          "method": "GET",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 55
+        },
+        {
+          "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 195
+        },
+        {
+          "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 150
+        },
+        {
+          "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 297
+        },
+        {
+          "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 150
+        },
+        {
+          "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 180
+        },
+        {
+          "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 299
+        },
+        {
+          "path": "/rest/v1/rpc/budget_metadata_group_lease_v2",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 79
+        },
+        {
+          "path": "/rest/v1/rpc/patch_budget_metadata_group_v2",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 162
+        },
+        {
+          "path": "/rest/v1/rpc/budget_metadata_group_lease_v2",
+          "method": "POST",
+          "status": 200,
+          "code": null,
+          "admin": false,
+          "ms": 100
+        },
+        {
+          "path": "/auth/v1/logout",
+          "method": "POST",
+          "status": 204,
+          "code": null,
+          "admin": false,
+          "ms": 349
+        },
+        {
+          "path": "/auth/v1/logout",
+          "method": "POST",
+          "status": 204,
+          "code": null,
+          "admin": false,
+          "ms": 104
+        },
+        {
+          "path": "/auth/v1/logout",
+          "method": "POST",
+          "status": 204,
+          "code": null,
+          "admin": false,
+          "ms": 55
+        }
+      ],
+      "failures": [
+        "C05",
+        "execution-stopped"
+      ],
+      "productionReady": false,
+      "before": {
+        "capturedAt": "2026-11-04T07:11:10.259114+00:00",
+        "ledger": 66,
+        "head": "20261103113253",
+        "protocols": {
+          "undo": {
+            "enabled": false,
+            "singleton": true,
+            "full_enabled": false
+          },
+          "source": {
+            "enabled": true,
+            "singleton": true
+          },
+          "finance": {
+            "enabled": true,
+            "activated": true,
+            "singleton": true
+          },
+          "payment": {
+            "enabled": true,
+            "singleton": true
+          },
+          "receipt": {
+            "enabled": false,
+            "activated": true,
+            "singleton": true,
+            "storage_verified": true,
+            "service_role_had_usage": false,
+            "cleanup_worker_verified": true,
+            "content_worker_verified": true,
+            "legacy_grants_expire_at": null
+          },
+          "metadata": {
+            "enabled": true,
+            "singleton": true
+          },
+          "lifecycle": {
+            "enabled": true,
+            "activated": true,
+            "singleton": true
+          }
+        },
+        "coverage": {
+          "complete": true,
+          "rowCount": 761,
+          "relations": 83
+        },
+        "installation": {
+          "undoAcl": [
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "app_private.clear_budget_metadata_undo(uuid,uuid)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "app_private.prepare_workspace_inverse(uuid,uuid,uuid,uuid,uuid,bigint)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "app_private.read_budget_metadata_undo(uuid,uuid)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "app_private.workspace_inverse_manifest()",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "app_private.workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "budget_workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "clear_budget_metadata_undo(uuid,uuid)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "read_budget_metadata_undo(uuid,uuid)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "undo_budget_metadata_group(uuid,uuid,uuid,uuid,bigint,uuid)",
+              "authenticated": false
+            },
+            {
+              "anon": false,
+              "worker": false,
+              "signature": "undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+              "authenticated": false
+            }
+          ],
+          "observedAt": "2026-11-04T07:11:10.446647+00:00",
+          "actualIndex": "CREATE UNIQUE INDEX actual_expenses_one_budget ON public.actual_expenses USING btree (budget_item_id) WHERE (budget_item_id IS NOT NULL)",
+          "guardSha256": "38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6",
+          "activeLeases": 0,
+          "qaIdentities": [
+            {
+              "idSha256": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+              "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+            },
+            {
+              "idSha256": "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95",
+              "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+            }
+          ],
+          "sourceSha256": "7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c",
+          "authUserCount": 3,
+          "receiptDigest": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+          "storageDigest": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80",
+          "qaSessionCount": 0,
+          "realtimeTables": [
+            "accommodations",
+            "actual_expense_participants",
+            "actual_expenses",
+            "attachments",
+            "budget_collaboration_signals",
+            "budget_item_participants",
+            "budget_items",
+            "guide_items",
+            "itinerary_alternatives",
+            "itinerary_budget_items",
+            "itinerary_items",
+            "itinerary_route_override_nodes",
+            "itinerary_route_overrides",
+            "luggage_items",
+            "pack_items",
+            "share_links",
+            "shared_luggage_items",
+            "todo_items",
+            "trip_budget_baselines",
+            "trip_members",
+            "trips"
+          ],
+          "storageObjects": 2,
+          "pendingReceipts": 0,
+          "applicationRlsOff": 0,
+          "qaTaggedUserCount": 2,
+          "receiptPathHashes": [
+            "e008b2b6484b1fc999180248e2d74694aec3327264688bb4f2f50583d04f333b"
+          ],
+          "unfinishedCleanup": 0,
+          "receiptPolicyCount": 2,
+          "transactionReadOnly": "on",
+          "realtimeSignalSelect": true,
+          "financialReceiptMetadata": 1
+        }
+      },
+      "executionError": {
+        "name": "Error",
+        "message": "Acceptance C05 failed; stop before dependent writes"
+      },
+      "ownedFixtureState": {
+        "retainedForAudit": true,
+        "trips": 2,
+        "objectsPending": 0,
+        "scopeFileIgnored": true
+      }
+    }
+  },
+  "continuationSha256": "8ab94bf56a3189b2210a2a332bafde528790b0aada8336fdffc3ea52805f8aae",
+  "lastOff": {
+    "target": "uyqdopksfysbobhjcepk",
+    "identity": "postgres",
+    "capturedAt": "2026-11-04T07:33:37.884887+00:00",
+    "dataDigest": "a549e192bdd1a03dbad9e773fef4f99a7315a2f199c9f727325b5b06d171ff64",
+    "ledgerHead": "20261103113253",
+    "roleDigest": "8055806a0458fa62c6a92c859cf122aedc42e0d6c79a1e037d059ffca1f15851",
+    "ledgerCount": 66,
+    "installation": {
+      "undoAcl": [
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.clear_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.prepare_workspace_inverse(uuid,uuid,uuid,uuid,uuid,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.read_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.workspace_inverse_manifest()",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "budget_workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "clear_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "read_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "undo_budget_metadata_group(uuid,uuid,uuid,uuid,bigint,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+          "authenticated": false
+        }
+      ],
+      "observedAt": "2026-11-04T07:33:38.140662+00:00",
+      "actualIndex": "CREATE UNIQUE INDEX actual_expenses_one_budget ON public.actual_expenses USING btree (budget_item_id) WHERE (budget_item_id IS NOT NULL)",
+      "guardSha256": "38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6",
+      "activeLeases": 0,
+      "qaIdentities": [
+        {
+          "idSha256": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+          "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+        },
+        {
+          "idSha256": "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95",
+          "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+        }
+      ],
+      "sourceSha256": "7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c",
+      "authUserCount": 3,
+      "receiptDigest": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+      "storageDigest": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80",
+      "qaSessionCount": 0,
+      "realtimeTables": [
+        "accommodations",
+        "actual_expense_participants",
+        "actual_expenses",
+        "attachments",
+        "budget_collaboration_signals",
+        "budget_item_participants",
+        "budget_items",
+        "guide_items",
+        "itinerary_alternatives",
+        "itinerary_budget_items",
+        "itinerary_items",
+        "itinerary_route_override_nodes",
+        "itinerary_route_overrides",
+        "luggage_items",
+        "pack_items",
+        "share_links",
+        "shared_luggage_items",
+        "todo_items",
+        "trip_budget_baselines",
+        "trip_members",
+        "trips"
+      ],
+      "storageObjects": 2,
+      "pendingReceipts": 0,
+      "activeRatesLeases": 0,
+      "applicationRlsOff": 0,
+      "qaTaggedUserCount": 2,
+      "receiptPathHashes": [
+        "e008b2b6484b1fc999180248e2d74694aec3327264688bb4f2f50583d04f333b"
+      ],
+      "unfinishedCleanup": 0,
+      "receiptPolicyCount": 2,
+      "transactionReadOnly": "on",
+      "realtimeSignalSelect": true,
+      "financialReceiptMetadata": 1
+    },
+    "ledgerDigest": "1c2aab29f2fec10d375c70aada8ba3c3873f439acfec552cdbbc08f80eb0752b",
+    "protocolRows": {
+      "undo": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      },
+      "source": {
+        "enabled": false,
+        "singleton": true
+      },
+      "finance": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true
+      },
+      "payment": {
+        "enabled": false,
+        "singleton": true
+      },
+      "receipt": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true,
+        "storage_verified": true,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": true,
+        "content_worker_verified": true,
+        "legacy_grants_expire_at": null
+      },
+      "metadata": {
+        "enabled": false,
+        "singleton": true
+      },
+      "lifecycle": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true
+      }
+    },
+    "schemaDigest": "b1d4b576fe93de48823ebb9517672ab438589780b81a3152c6d43f615a885084",
+    "fixtureMarker": null,
+    "functionBodies": "d4780dad4b88bd7f83e97e5ee9c47a97b1feb127b91c3021a864e34b68137edd",
+    "unaffectedAcls": "ca7e57ead6322645a15d639de0636d2751529623036c317baf2b4d93ec091c26",
+    "originalSignals": [
+      {
+        "trip_id": "210acb5b-b0de-47aa-b19d-7e0665d947b3",
+        "revision": 1
+      },
+      {
+        "trip_id": "4b53f5c1-4038-4b1d-9ff1-16cf4bb22d9f",
+        "revision": 22
+      },
+      {
+        "trip_id": "5c57d155-489b-49ca-88f6-f5928a4cff93",
+        "revision": 67
+      },
+      {
+        "trip_id": "870cd75f-4e68-4d8b-91c7-72c3b919aafe",
+        "revision": 22
+      },
+      {
+        "trip_id": "8888bd03-927c-4587-a5c0-a35d090718eb",
+        "revision": 1
+      },
+      {
+        "trip_id": "a2c251bc-7051-47e9-99f3-36a880401ff1",
+        "revision": 5175
+      },
+      {
+        "trip_id": "ad675768-8360-4cf2-9f4f-2fbb3862a85c",
+        "revision": 62
+      },
+      {
+        "trip_id": "b51b47cf-cb5a-4257-9be4-198e16b7684b",
+        "revision": 43
+      },
+      {
+        "trip_id": "ce263897-98bf-428b-a0e0-0de808dfd4b9",
+        "revision": 21
+      },
+      {
+        "trip_id": "f810325e-8eac-48de-a7d7-685085c6f7aa",
+        "revision": 338
+      }
+    ],
+    "allFunctionBodies": "1493fb18cddcb0c1a233ef7623f98bf4ae5e32e652e2f35414b9ac8cd7384d18",
+    "changedBodyBefore": {
+      "workspace_undo_enabled": "27318ca20fee7c0bdcd829c113ef3a6833c384bcf85d7bb9ba67034eb775bebc",
+      "read_budget_metadata_undo": "188decbf05cc933cdae88fae1ea59daaa44db3ebe03a1930f7ab944e7e17cc82",
+      "budget_metadata_undo_enabled": "27318ca20fee7c0bdcd829c113ef3a6833c384bcf85d7bb9ba67034eb775bebc"
+    },
+    "fixtureScopeSha256": "d6e73977ee5f67ff035ecd5e9a9c7166fa6d94ddce745e93c761997b3f1f6cd6",
+    "functionAttributes": "f3eccf67e64c9d15a8d3f5ebff2b66bb5c1042fd6d80b9a0db984ab7616c03e7",
+    "originalProtection": "0cdd0b257db1155f8163c9bde9eba3a83c6083bc4980ba0182d2b2e0b9b78fec",
+    "protectedRelations": [
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "app_private.budget_edit_leases"
+      },
+      {
+        "sha256": "baddaa4de8d3d0248443d17eae9c082a11edc549a313dd6ce4c282a8506e1eb5",
+        "relation": "app_private.budget_finance_protocol"
+      },
+      {
+        "sha256": "baddaa4de8d3d0248443d17eae9c082a11edc549a313dd6ce4c282a8506e1eb5",
+        "relation": "app_private.budget_lifecycle_protocol"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "app_private.budget_metadata_effects"
+      },
+      {
+        "sha256": "ad83b7342cb6398425ede155fe717bcf4c15e021a9d3483a95a9373ce79e45dc",
+        "relation": "app_private.budget_metadata_groups"
+      },
+      {
+        "sha256": "e36578cb1a8a14be93c5c4d6f1e82b1aa7ebdd12265f41cbe28dc7a8734643a0",
+        "relation": "app_private.budget_metadata_protocol"
+      },
+      {
+        "sha256": "49888ed34baeb7959202cc2abc95fc2b67ce49ffa6d5a77be7b8a1b8fa00ae3d",
+        "relation": "app_private.budget_metadata_requests"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "app_private.budget_metadata_undo_intents"
+      },
+      {
+        "sha256": "5b6167be62b273477e59b44b874f770968bd39b9fb33d05d258d27da67c0c386",
+        "relation": "app_private.budget_metadata_undo_lineage"
+      },
+      {
+        "sha256": "3dbcdd2f091031a1a2fb2945b5cc196ab541c8a4d5a8f0d3678e426fdb9451ad",
+        "relation": "app_private.budget_metadata_undo_operations"
+      },
+      {
+        "sha256": "56870070ede72ff5beb5659ce99bc93b2239422224a7029920d114332b014a5b",
+        "relation": "app_private.budget_metadata_undo_protocol"
+      },
+      {
+        "sha256": "8bed58069bf63050e3cfe7bdae0a26dc51252858a86a3988b26704cbda81e508",
+        "relation": "app_private.budget_metadata_undo_receipts"
+      },
+      {
+        "sha256": "faac308c2ad2848af6315cdc370f762bb4469dd664eb6d0e5bfed8409fa8d53a",
+        "relation": "app_private.budget_metadata_undo_stack"
+      },
+      {
+        "sha256": "e36578cb1a8a14be93c5c4d6f1e82b1aa7ebdd12265f41cbe28dc7a8734643a0",
+        "relation": "app_private.budget_payment_protocol"
+      },
+      {
+        "sha256": "ea7943c49ad8c883316498b8ac90a28aed0adac5329209fb14d25c6242b02b6e",
+        "relation": "app_private.budget_pricing_trip_versions"
+      },
+      {
+        "sha256": "7bab6bb4cd40a322956edb58815bb2b8b31f7f4bf667870581a8c7e3bdaece0c",
+        "relation": "app_private.budget_rates_leases"
+      },
+      {
+        "sha256": "a3bb506561049d9d4d53e3d083245743197d1b7ceb92ad272cffbc76f1195f02",
+        "relation": "app_private.budget_receipt_cleanup"
+      },
+      {
+        "sha256": "2efe55aa945110a4bf72b7a247c3f499689f40256c6491088628f20d6a37f696",
+        "relation": "app_private.budget_receipt_intents"
+      },
+      {
+        "sha256": "74cf8e8d90085c7cbbd8cf53c5578d7193ad05cc27f4b8782ee07cab6213acfe",
+        "relation": "app_private.budget_receipt_legacy_cutover"
+      },
+      {
+        "sha256": "8399a4c8c63fb0d26f7de5fc15c9ead603e2c6ec84f21dac91ab2b0efb19c3ca",
+        "relation": "app_private.budget_receipt_protocol"
+      },
+      {
+        "sha256": "8123f776f91d0e2f5dceeddd2750033ffa14e72557c1f578060849d5531a468b",
+        "relation": "app_private.budget_selections"
+      },
+      {
+        "sha256": "e36578cb1a8a14be93c5c4d6f1e82b1aa7ebdd12265f41cbe28dc7a8734643a0",
+        "relation": "app_private.budget_source_protocol"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "app_private.budget_trip_delete_admissions"
+      },
+      {
+        "sha256": "e9240bc7caa586993df1bc233dd5ad055e59eca9e0f97a434fbf33c822989829",
+        "relation": "app_private.budget_workspace_requests"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.audit_log_entries"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.custom_oauth_providers"
+      },
+      {
+        "sha256": "7a7cfce0cbabe8a2951925175fafcd876ecff626f5929819a5b98875fdd83969",
+        "relation": "auth.flow_state"
+      },
+      {
+        "sha256": "8d7bbb5dec72196d2f570a7f6672027f6f448c24d4f5bdcbb9ead77547befc31",
+        "relation": "auth.identities"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.instances"
+      },
+      {
+        "sha256": "5b9b7f97b0aac6a2ad8ba5e6d668527aee45abee0e9403cc809fb355c6818d1c",
+        "relation": "auth.mfa_amr_claims"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.mfa_challenges"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.mfa_factors"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.mfa_recovery_code_sets"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.mfa_recovery_codes"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.oauth_authorizations"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.oauth_client_states"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.oauth_clients"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.oauth_consents"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.one_time_tokens"
+      },
+      {
+        "sha256": "f5cd37fac537875a0399875df93a772e0c59c3c0d758d5e0822950d0a56094ac",
+        "relation": "auth.refresh_tokens"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.saml_providers"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.saml_relay_states"
+      },
+      {
+        "sha256": "8cdf22f03f7379ee9ddce1b77ca630cd50ddcae9dd3c3cddb70af6e703df0104",
+        "relation": "auth.schema_migrations"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.scim_tokens"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.scim_users"
+      },
+      {
+        "sha256": "84e16cd2e3179cc3e5566a24b9596674d684936f2dbc24ccabcc870c2593a09e",
+        "relation": "auth.sessions"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.sso_domains"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.sso_providers"
+      },
+      {
+        "sha256": "2e43e82d9b13ea3f469f1675ebcc0cb232b04a54aee220f19eac5816d5535490",
+        "relation": "auth.users"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.webauthn_challenges"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "auth.webauthn_credentials"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.accommodations"
+      },
+      {
+        "sha256": "f94356b0b8b0c29ef0c256691fdded575ac274863849f5953d4eb765e09f5ff3",
+        "relation": "public.actual_expense_participants"
+      },
+      {
+        "sha256": "4c8a66d4946f7ee8bbeb7a41e97b2164cd26f0c2be0d8cc272b5262a509609ce",
+        "relation": "public.actual_expenses"
+      },
+      {
+        "sha256": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+        "relation": "public.attachments"
+      },
+      {
+        "sha256": "77f0e7bd73316a1090de494573f8a866bbf449d6a2b121394675f768b29c0eb4",
+        "relation": "public.budget_collaboration_signals"
+      },
+      {
+        "sha256": "30846aabe2b37464187587db0a3d7536150d29ad386d36b8f470c667276a8160",
+        "relation": "public.budget_item_participants"
+      },
+      {
+        "sha256": "d3e393cb5da8384053b98160da8d47813f882ccd65f28f599cbc70470bef4935",
+        "relation": "public.budget_items"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.guide_items"
+      },
+      {
+        "sha256": "a6f90744b303df7679c9bdc90cc4739f8ea92563df0cb5917e086a27ab3ac83a",
+        "relation": "public.itinerary_alternatives"
+      },
+      {
+        "sha256": "bd2a68a36b800ca318b6a711d33a90ef6b6775be36b1e0718075e4f6921bc8a8",
+        "relation": "public.itinerary_budget_items"
+      },
+      {
+        "sha256": "fa4bed556b489e679785d3e4621cbbc6b4c70d09122e692946dd9bf222436913",
+        "relation": "public.itinerary_items"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.itinerary_route_override_nodes"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.itinerary_route_overrides"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.luggage_items"
+      },
+      {
+        "sha256": "d9519b2d91c5e6023323f7089c72c959b4e3046bc5fbc3bc7f5459492ab2950d",
+        "relation": "public.pack_items"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.share_links"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.shared_luggage_items"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.todo_items"
+      },
+      {
+        "sha256": "7fb7f3e7ca44ff7e9c785b1418baa88d8fdb1df593b50b0265912b6d542bc8a4",
+        "relation": "public.trip_budget_baselines"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "public.trip_invites"
+      },
+      {
+        "sha256": "3ef3b34095ccdb518008c004d785b27e84f8aa52e4f5c7b6240e1362822fbac3",
+        "relation": "public.trip_members"
+      },
+      {
+        "sha256": "c6a13edb9e326eb5545ee08befe314361b96fb1cb9faed12922467b32163d781",
+        "relation": "public.trips"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "storage.bucket_lifecycle_states"
+      },
+      {
+        "sha256": "a67dc22edc0f770da506176d96a475d39a30f456a318e4a656595c82c020d830",
+        "relation": "storage.buckets"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "storage.buckets_analytics"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "storage.buckets_vectors"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "storage.lifecycle_abandoned_artifacts"
+      },
+      {
+        "sha256": "db4447006a8bb19df89bd770858448c68e1ff20cf2c62c6102c31c1c9f1b64f4",
+        "relation": "storage.migrations"
+      },
+      {
+        "sha256": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80",
+        "relation": "storage.objects"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "storage.s3_multipart_uploads"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "storage.s3_multipart_uploads_parts"
+      },
+      {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "relation": "storage.vector_indexes"
+      }
+    ],
+    "qaTripFingerprints": [
+      {
+        "trip": "3557499d-902a-4011-af9f-399f773d7c0c",
+        "ratesSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "baselineSha256": "f9496a38defb05e0885d7ef69d7be64741e020645fe911bea1be274be3fd71d5"
+      },
+      {
+        "trip": "91a0ad12-99bf-4501-8846-859fbf11aae4",
+        "ratesSha256": "3e75af39d4f9ab69a32dcaca5687cc2efb78a7e9c16addfed342702fcdb8dbc9",
+        "baselineSha256": "1ce1f8ff1d5fd72c74b1b342156b04b56ae16847be2b5833ded16b63d2be949d"
+      }
+    ],
+    "scopeExistingTrips": 2,
+    "stableSchemaDigest": "86ec97010faad59488accd09efc1849d2bec112085bdc6a0fb73e0b46f961879",
+    "managedPublications": [
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_11_01",
+        "schemaname": "realtime"
+      },
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_11_02",
+        "schemaname": "realtime"
+      },
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_11_03",
+        "schemaname": "realtime"
+      },
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_11_04",
+        "schemaname": "realtime"
+      },
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_11_05",
+        "schemaname": "realtime"
+      },
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_11_06",
+        "schemaname": "realtime"
+      },
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_11_07",
+        "schemaname": "realtime"
+      }
+    ],
+    "originalSignalTargets": [
+      "a2c251bc-7051-47e9-99f3-36a880401ff1",
+      "f810325e-8eac-48de-a7d7-685085c6f7aa"
+    ],
+    "dataProjectionCoverage": {
+      "complete": true,
+      "rowCount": 763,
+      "relations": 83
+    },
+    "managedReadOnlyRelations": [
+      "auth.schema_migrations",
+      "storage.buckets_vectors",
+      "storage.migrations",
+      "storage.vector_indexes"
+    ],
+    "recordedRemovedManagedPublications": [
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_10_30",
+        "schemaname": "realtime"
+      },
+      {
+        "pubname": "supabase_realtime_messages_publication",
+        "attnames": [
+          "topic",
+          "extension",
+          "payload",
+          "event",
+          "private",
+          "updated_at",
+          "inserted_at",
+          "id",
+          "binary_payload",
+          "skip_broadcast"
+        ],
+        "rowfilter": null,
+        "tablename": "messages_2026_10_31",
+        "schemaname": "realtime"
+      }
+    ],
+    "schemaWithRecordedManagedPublications": "6ba782d774ee4916901c7effd6a32106d890eb10ebe09f2c222d0b8ece4c5600"
+  },
+  "credentialFilesIncluded": false,
+  "freshPreflightRequired": true,
+  "nativeCleanup": {
+    "observedAt": "2026-11-04T07:40:21.4542328Z",
+    "ownedProcesses": 0,
+    "listeners": 0
+  }
+}

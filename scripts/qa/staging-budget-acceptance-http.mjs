@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
+import fs from 'node:fs/promises';
 import {assertTarget,endpoint,project,sha} from './staging-budget-acceptance-scope.mjs';
+import {parseBudgetQuote} from '../../src/lib/tripBudgetRates.js';
 
 // No retries, redirects, raw bodies, tokens, URLs with query strings or PII in evidence.
 export function createHttp({url,anon,fetchImpl=fetch,requests=[],beforeRequest=()=>{}}){
@@ -17,7 +19,7 @@ export function createHttp({url,anon,fetchImpl=fetch,requests=[],beforeRequest=(
   return {status:response.status,data,bytes};
  };
 }
-export function ok(r){assert(r.status>=200&&r.status<300,`HTTP ${r.status} ${r.data?.code||r.data?.error||''}`);return r.data;}
+export function ok(r){assert(r.status>=200&&r.status<300,`HTTP ${r.status} ${r.data?.code||r.data?.error||''} ${String(r.data?.message||'').replace(/eyJ[A-Za-z0-9_.-]+|sb_secret_[A-Za-z0-9_-]+/g,'[redacted]').slice(0,180)}`);return r.data;}
 export const claims=t=>JSON.parse(Buffer.from(t.split('.')[1],'base64url').toString());
 export async function realSessions({http,admin,qa,onSession=()=>{}}){
  assert(qa.users?.length===2&&new Set(qa.users).size===2);assert.match(qa.run,/^[a-f0-9-]{36}$/);
@@ -58,7 +60,7 @@ export function fixtureApi({http,sessions,trip,onCreate=()=>{}}){
 export async function httpCases(r){
  const {check,api:a,sessions,trip,http}=r,ids=sessions.slice(0,2).map(s=>s.user.id);
  await check('A01',async()=>({users:2,sessions:3,sessionHashes:sessions.map(s=>sha(claims(s.access_token).session_id))}));
- await check('A02',async()=>{
+ if(!r.continuation)await check('A02',async()=>{
   const u=randomUUID(),args={p_trip_id:trip,p_session_id:a.sids[0]};
   for(const [name,body] of [
    ['read_budget_metadata_undo',args],['clear_budget_metadata_undo',args],
@@ -68,23 +70,36 @@ export async function httpCases(r){
   ]){const z=await a.rpc(0,name,body);assert.equal(z.status,403,name);assert.equal(z.data?.code,'42501',name);}
   return {ordinaryJwt:true,exactSignatures:5};
  });
- r.budget=await a.create('budget');assert((await a.snap()).budgetItems.some(b=>b.id===r.budget));
+ if(!r.continuation)r.budget=await a.create('budget');assert((await a.snap()).budgetItems.some(b=>b.id===r.budget));
  assert(r.budget,'Lifecycle creation must pass before dependent cases');
  const id=r.budget;
- await a.patch(0,'budget',id,'title',()=>`QA acceptance ${r.run.slice(0,8)}`);
- await check('B03',async()=>{await a.patch(0,'budget',id,'category',()=> '交通');await a.patch(0,'budget',id,'payer',()=>ids[0]);const b=(await a.snap()).budgetItems.find(b=>b.id===id);assert.equal(b.category,'交通');assert.equal(b.payer_id,ids[0]);return {canonicalConfirmed:true};});
+ if(!r.continuation){await a.patch(0,'budget',id,'title',()=>`QA acceptance ${r.run.slice(0,8)}`);
+ await check('B03',async()=>{await a.patch(0,'budget',id,'category',()=> '交通');await a.patch(0,'budget',id,'payer',()=>ids[0]);const b=(await a.snap()).budgetItems.find(b=>b.id===id);assert.equal(b.category,'交通');assert.equal(b.payer_id,ids[0]);return {canonicalConfirmed:true};});}
  await check('B04',async()=>{
-  await a.patch(0,'budget',id,'pricing',v=>({...v,pricing_mode:'split_total',amount:100,unit_amount:null,currency:'JPY',exchange_rate:0.21,participantIds:ids,shares:{}}));
-  let s=await a.snap(),b=s.budgetItems.find(b=>b.id===id);assert.equal(Number(b.amount),100);assert.equal(b.currency,'JPY');assert.equal(Number(b.exchange_rate),0.21);assert.equal(s.budgetParticipants.filter(p=>p.budget_item_id===id).length,2);
+  const quote=await initializeQaRates(r);
+  await a.patch(0,'budget',id,'pricing',v=>({...v,pricing_mode:'split_total',amount:100,unit_amount:null,currency:'JPY',exchange_rate:quote.rates.JPY,participantIds:ids,shares:{}}));
+  let s=await a.snap(),b=s.budgetItems.find(b=>b.id===id);assert.equal(Number(b.amount),100);assert.equal(b.currency,'JPY');assert.equal(Number(b.exchange_rate),quote.rates.JPY);assert.equal(Number(b.twd_amount),Math.round(100*quote.rates.JPY));assert.equal(s.budgetParticipants.filter(p=>p.budget_item_id===id).length,2);
   await a.patch(0,'budget',id,'pricing',v=>({...v,pricing_mode:'custom',amount:120,unit_amount:null,currency:'TWD',exchange_rate:1,participantIds:ids,shares:{[ids[0]]:70,[ids[1]]:50}}));
-  s=await a.snap();const people=s.budgetParticipants.filter(p=>p.budget_item_id===id);assert.deepEqual(people.map(p=>Number(p.share_amount)).sort((a,b)=>a-b),[50,70]);return {equalAndCustom:true,currencyAndRate:true};
+  s=await a.snap();const people=s.budgetParticipants.filter(p=>p.budget_item_id===id);assert.deepEqual(people.map(p=>Number(p.share_amount)).sort((a,b)=>a-b),[50,70]);return {equalAndCustom:true,currencyAndRate:true,rateSource:quote.source,quoteDate:quote.quoted_at,jpyRate:quote.rates.JPY};
  });
  await check('C01',async()=>{await Promise.all([a.patch(0,'budget',id,'title',()=>`QA concurrent ${r.run.slice(0,8)}`),a.patch(1,'budget',id,'note',()=> 'Real independent note')]);const b=(await a.snap()).budgetItems.find(b=>b.id===id);assert.equal(b.note,'Real independent note');assert(b.title.startsWith('QA concurrent'));return {distinctAccounts:true};});
  await check('C02',async()=>{const owner=await a.acquire(0,'budget',id,'title');assert(owner.result.granted);try{for(const i of [1,2]){const peer=await a.acquire(i,'budget',id,'title');assert.equal(peer.result.granted,false);assert.equal(peer.result.reason,'group_locked');}}finally{await a.release(owner);}return {differentUserAndSameUserSessionDenied:true};});
  await check('C03',async()=>{const h=await a.acquire(0,'budget',id,'note');assert(h.result.granted);try{const renewed=ok(await a.rpc(0,'budget_metadata_group_lease_v2',{...h.args,p_action:'renew',p_epoch:h.result.epoch,p_activity_seq:2}));assert(renewed.granted);assert.equal(renewed.epoch,h.result.epoch);}finally{await a.release(h);}const g=await a.group(1,'budget',id,'note');assert.equal(g.held,false);return {acquiredRenewedReleased:true};});
- const staleFailure=async()=>{const stale=await a.group(0,'budget',id,'title');await a.patch(1,'budget',id,'title',()=>`QA newer ${r.run.slice(0,8)}`);const h=await a.acquire(0,'budget',id,'title');assert(h.result.granted);const before=await a.graph();try{const z=await a.patchHeld(h,'Must never commit',stale.revision);assert.equal(z.status,409);assert.equal(z.data?.code,'PT409');assert.deepEqual(await a.graph(),before);}finally{await a.release(h);}return {http:409,code:'PT409',completeFinancialGraphUnchanged:true};};
+ const staleFailure=async()=>{const stale=await a.group(0,'budget',id,'title');await a.patch(1,'budget',id,'title',()=>`QA newer ${r.run.slice(0,8)} ${randomUUID().slice(0,8)}`);const h=await a.acquire(0,'budget',id,'title');assert(h.result.granted);const before=await a.graph();try{const z=await a.patchHeld(h,'Must never commit',stale.revision);assert.equal(z.status,409);assert.equal(z.data?.code,'PT409');assert.deepEqual(await a.graph(),before);}finally{await a.release(h);}return {http:409,code:'PT409',completeFinancialGraphUnchanged:true};};
  await check('C04',staleFailure);await check('B08',staleFailure);
- await check('C10',async()=>{const visible=await a.read('trips',`id=eq.${r.privateTrip}&select=id`,1);assert.deepEqual(visible,[]);const route=`/rest/v1/trip_members?trip_id=eq.${trip}&user_id=eq.${ids[1]}`;try{ok(await http(sessions[0].access_token,route,{method:'PATCH',body:{status:'pending'}}));const z=await a.rpc(1,'read_budget_metadata_snapshot_v9',{p_trip_id:trip,p_session_id:a.sids[1]});assert.equal(z.status,403);assert.equal(z.data?.code,'42501');}finally{const restored=ok(await http(sessions[0].access_token,route,{method:'PATCH',body:{status:'approved'}}));assert.equal(restored.length,1);}return {nonmemberAndRevokedEditor:true};});
+ await check('C10',async()=>{const visible=await a.read('trips',`id=eq.${r.privateTrip}&select=id`,1);assert.deepEqual(visible,[]);const route=`/rest/v1/trip_members?trip_id=eq.${trip}&user_id=eq.${ids[1]}`;try{ok(await http(sessions[0].access_token,route,{method:'PATCH',body:{status:'pending'}}));const z=await a.rpc(1,'read_budget_metadata_snapshot_v9',{p_trip_id:trip,p_session_id:a.sids[1]});assert.equal(z.status,200);assert.equal(z.data,null,'Revoked member must receive no financial snapshot');}finally{const restored=ok(await http(sessions[0].access_token,route,{method:'PATCH',body:{status:'approved'}}));assert.equal(restored.length,1);}return {nonmemberAndRevokedEditor:true};});
+}
+
+export async function initializeQaRates(r){
+ const {api:a,trip}=r,s=await a.snap();if(s.tripBudgetRates?.rates?.JPY)return s.tripBudgetRates;
+ const url='https://open.er-api.com/v6/latest/TWD',response=await fetch(url,{redirect:'error',credentials:'omit',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(10000)});assert.equal(response.status,200);
+ const raw=await response.json(),quote=parseBudgetQuote(raw);await fs.writeFile(`${r.dir}/real-initial-quote.json`,JSON.stringify({url,status:response.status,fetchedAt:new Date().toISOString(),raw,parsed:quote},null,2));
+ const record=(await a.snap()).ratesRecords[0],intent={action:'rates',quote,initialize:true};
+ const args={p_trip_id:trip,p_kind:'trip',p_id:trip,p_session_id:a.sids[0],p_token:randomUUID(),p_action:'acquire',p_base_revision:record.revision,p_epoch:null,p_versions:record.value.versions,p_intent:intent};
+ const held=ok(await a.rpc(0,'budget_rates_lease',args));assert(held.granted);
+ try{ok(await a.rpc(0,'update_trip_budget_rates_v2',{p_trip_id:trip,p_kind:'trip',p_id:trip,p_session_id:a.sids[0],p_token:args.p_token,p_epoch:held.epoch,p_base_revision:record.revision,p_value:{...intent,versions:record.value.versions},p_request_id:randomUUID()}));}
+ finally{const released=ok(await a.rpc(0,'budget_rates_lease',{...args,p_action:'release',p_epoch:held.epoch}));assert(released.granted);}
+ const saved=(await a.snap()).tripBudgetRates;assert.deepEqual(saved.rates,quote.rates);assert.equal(saved.source,quote.source);assert.equal(Date.parse(saved.quoted_at),Date.parse(quote.quoted_at));assert(Number.isFinite(Date.parse(saved.updated_at)));return saved;
 }
 
 export async function paymentAndSourceCases(r){
@@ -108,11 +123,14 @@ export async function paymentAndSourceCases(r){
   await a.patch(0,'actual',actual,'pricing',v=>({...v,pricing_mode:'split_total',amount:100,unit_amount:null,currency:'TWD',exchange_rate:1,participantIds:[sessions[0].user.id],shares:{}}));
   await mutate('actual',actual,'lifecycle',{action:'set_paid_at',paid_at:new Date().toISOString()});
   const before=(await a.snap()).actualExpenses.find(z=>z.id===actual);assert.equal(before.budget_origin_id,null);
+  const graphBeforeDuplicate=await a.graph();let duplicateError;
+  try{await mutate('actual',actual,'source',{action:'relink_only',budget_id:r.budget});}catch(error){duplicateError=error;}
+  assert(duplicateError,'A second current Actual must never attach to an occupied Budget');assert.match(duplicateError.message,/23505/,'The unique current-Budget-link constraint must reject the second Actual');assert.deepEqual(await a.graph(),graphBeforeDuplicate,'Rejected duplicate must preserve the complete graph and Baseline');
   for(const target of [budget,null]){
    const preview=ok(await a.rpc(0,'read_budget_source_preview',{p_trip_id:trip,p_id:actual,p_action:'relink_only',p_budget_id:target}));assert(preview);
    await mutate('actual',actual,'source',{action:'relink_only',budget_id:target});
    const after=(await a.snap()).actualExpenses.find(z=>z.id===actual);assert.equal(after.budget_item_id,target);assert.equal(after.budget_origin_id,budget);
    for(const k of ['amount','twd_amount','payer_id','payment_history','payment_active'])assert.deepEqual(after[k],before[k],k);
-  }return {firstLinkDetachOnly:true,historicalOriginRetained:true};
+  }return {firstLinkDetachOnly:true,historicalOriginRetained:true,secondCurrentActualRejected:true,duplicateGraphUnchanged:true};
  });
 }

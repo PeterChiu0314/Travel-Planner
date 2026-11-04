@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {captureUndoRemovalContractQuery} from './build-undo-removal-staging-packet.mjs';
+import {stableSchemaExpression} from './staging-budget-catalog-projections.mjs';
 
 export const project='uyqdopksfysbobhjcepk';
 export const endpoint=`https://${project}.supabase.co`;
@@ -52,13 +53,14 @@ export function assertPublicKey(value,admin){
 export function assertPreflight(p,{active=false,now=Date.now()}={}){
  assert.equal(p.target,project);assert.equal(p.ledgerCount,66);assert.equal(p.ledgerHead,'20261103113253');
  for(const k of ['ledgerDigest','dataDigest','allFunctionBodies','functionAttributes','schemaDigest','roleDigest','unaffectedAcls'])assert(/^[a-f0-9]{64}$/.test(p[k]),`${k} seal required`);
+ if(p.stableSchemaDigest!==undefined)assert(/^[a-f0-9]{64}$/.test(p.stableSchemaDigest),'Stable application catalog seal required');
  assert.equal(p.dataProjectionCoverage?.complete,true);assert.equal(p.installation?.sourceSha256,'7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c');
  assert(now-Date.parse(p.capturedAt)>=0&&now-Date.parse(p.capturedAt)<15*60000,'Fresh read-only preflight required');
  assert.equal(p.protocolRows.undo.enabled,false);assert.equal(p.protocolRows.undo.full_enabled,false);assert.equal(p.protocolRows.receipt.enabled,false);
  for(const name of allowedProtocols)assert.equal(p.protocolRows[name].enabled,active,`${name} protocol state`);
  assert.equal(p.installation.undoAcl.length,12);assert(p.installation.undoAcl.every(v=>!v.anon&&!v.authenticated&&!v.worker));
  assert.equal(p.installation.financialReceiptMetadata,1);assert.equal(p.installation.storageObjects,2);
- assert.equal(p.installation.activeLeases,0);assert.equal(p.installation.pendingReceipts,0);assert.equal(p.installation.unfinishedCleanup,0);
+ assert.equal(p.installation.activeLeases,0);assert.equal(p.installation.activeRatesLeases,0);assert.equal(p.installation.pendingReceipts,0);assert.equal(p.installation.unfinishedCleanup,0);
  assert.equal(p.installation.guardSha256,'38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6');
  assert.equal(p.installation.receiptPolicyCount,2);assert(/CREATE UNIQUE INDEX.*WHERE \(budget_item_id IS NOT NULL\)/.test(p.installation.actualIndex));
  return p;
@@ -91,6 +93,7 @@ select jsonb_build_object(
  'qaIdentities',(select coalesce(jsonb_agg(jsonb_build_object('idSha256',encode(sha256(convert_to(id::text,'UTF8')),'hex'),'runSha256',encode(sha256(convert_to(raw_user_meta_data->>'qa_run','UTF8')),'hex'))),'[]'::jsonb) from auth.users where raw_user_meta_data ? 'qa_run'),
  'qaSessionCount',(select count(*) from auth.sessions s join auth.users u on u.id=s.user_id where u.raw_user_meta_data ? 'qa_run'),
  'activeLeases',(select count(*) from app_private.budget_metadata_groups where expires_at>clock_timestamp())+(select count(*) from app_private.budget_edit_leases where expires_at>clock_timestamp()),
+ 'activeRatesLeases',(select count(*) from app_private.budget_rates_leases where expires_at>clock_timestamp()),
  'pendingReceipts',(select count(*) from app_private.budget_receipt_intents where status='pending'),
  'unfinishedCleanup',(select count(*) from app_private.budget_receipt_cleanup where status<>'done'),
  'realtimeTables',(select coalesce(jsonb_agg(tablename order by tablename),'[]'::jsonb) from pg_publication_tables where pubname='supabase_realtime' and schemaname='public'),
@@ -110,13 +113,14 @@ export function protocolControls(p){
  const pre=`begin;set local lock_timeout='3s';set local statement_timeout='30s';
 do $$begin
  if (select count(*) from supabase_migrations.schema_migrations)<>66 or not exists(select 1 from supabase_migrations.schema_migrations where version='20261103113253' and encode(sha256(convert_to(statements[1],'UTF8')),'hex')='${p.installation.sourceSha256}') then raise exception 'Ledger/source drift';end if;
- if exists(select 1 from app_private.budget_metadata_groups where expires_at>clock_timestamp()) or exists(select 1 from app_private.budget_edit_leases where expires_at>clock_timestamp()) then raise exception 'Active leases; refuse protocol transition';end if;
+ if exists(select 1 from app_private.budget_metadata_groups where expires_at>clock_timestamp()) or exists(select 1 from app_private.budget_edit_leases where expires_at>clock_timestamp()) or exists(select 1 from app_private.budget_rates_leases where expires_at>clock_timestamp()) then raise exception 'Active leases; refuse protocol transition';end if;
  if exists(select 1 from app_private.budget_receipt_intents where status='pending') or exists(select 1 from app_private.budget_receipt_cleanup where status<>'done') then raise exception 'In-flight Receipt job';end if;
 end $$;`;
+ const controlCapture=p.stableSchemaDigest?`select contract||jsonb_build_object('stableSchemaDigest',${stableSchemaExpression}) contract from (${captureUndoRemovalContractQuery}) original_capture`:captureUndoRemovalContractQuery;
  const compare=(active)=>`do $$
 #variable_conflict use_column
-declare v jsonb;state jsonb;begin select contract into state from (${captureUndoRemovalContractQuery}) c;v:=state->'protocolRows';
- ${['ledgerDigest','allFunctionBodies','functionAttributes','schemaDigest','roleDigest','unaffectedAcls'].map(k=>`if state->>'${k}' is distinct from '${p[k]}' then raise exception '${k} drift';end if;`).join('\n')}
+declare v jsonb;state jsonb;begin select contract into state from (${controlCapture}) c;v:=state->'protocolRows';
+ ${['ledgerDigest','allFunctionBodies','functionAttributes',p.stableSchemaDigest?'stableSchemaDigest':'schemaDigest','roleDigest','unaffectedAcls'].map(k=>`if state->>'${k}' is distinct from '${p[k]}' then raise exception '${k} drift';end if;`).join('\n')}
  if ${active?allowedProtocols.map(k=>`not coalesce((v->'${k}'->>'enabled')::boolean,false)`).join(' or '):`v is distinct from '${literal}'::jsonb`} then raise exception 'Protocol state drift';end if;
  ${active?allowedProtocols.map(k=>`v:=jsonb_set(v,'{${k},enabled}','false'::jsonb);`).join('\n'):''}
  if v is distinct from '${literal}'::jsonb then raise exception 'Latch/readiness/removed-feature drift';end if;
