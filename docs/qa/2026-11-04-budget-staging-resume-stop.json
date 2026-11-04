@@ -1,0 +1,20 @@
+{
+  "observedAt": "2026-11-04T11:25:37Z",
+  "baseCommit": "4f0794e",
+  "project": "uyqdopksfysbobhjcepk",
+  "status": "STOPPED_BY_USER_QUOTA_RULE",
+  "fiveHourUsedPercent": 93,
+  "fiveHourRemainingPercent": 7,
+  "stopThresholdRemainingPercent": 10,
+  "newTestsExecuted": 0,
+  "matrixUnchanged": {"Passed": 22, "Failed": 1, "Blocked": 11},
+  "restore": {"status": "REFUSED_BEFORE_WRITES", "conflictingPath": ".tmp-b7-p1/qa-scope.json", "originalFilesPreserved": true},
+  "hostedReadback": "MCP permission denied; no fresh state certified",
+  "hostedWrites": 0,
+  "authSessionsCreated": 0,
+  "protocolChanges": 0,
+  "storageOperations": 0,
+  "nativeAudit": {"successful": true, "ownedQaProcessMatches": 0, "listeners5174_5189_5190": 0, "sandboxCimFailureNotUsedAsEvidence": true},
+  "next": "After quota recovery, preserve/compare local conflicting scope, restore exact handoff, reconnect masked helper, obtain fresh OFF/active captures, resume C05",
+  "productionOperated": false
+}

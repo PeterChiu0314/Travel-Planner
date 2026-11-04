@@ -1,5 +1,7 @@
 # 回家接續 Staging 驗收
 
+**最新接續checkpoint：2026-11-04 19:25已依額度門檻停止。** 五小時used93%／remaining7%；未重跑C05、未登入或啟用。還原工具拒絕本機舊qa-scope衝突並保留原檔。恢復前先核對／備存衝突檔，禁止直接覆蓋或再prepare另一批scope。[完整停止紀錄](2026-11-04-budget-staging-resume-stop.md)。
+
 分支：`codex/budget-collaboration-redesign`。先讀 `AGENT.md`、`CURRENT_TASK.md`、[最新驗收紀錄](2026-11-04-budget-staging-acceptance.md) 與 [矩陣](qa/2026-11-04-budget-staging-acceptance-results.json)。目前22 Passed /1 Failed /11 Blocked；尚未準備好完整手測或正式啟用。本輪只到正式部署前，不操作 Production、main、Vercel、Docker／WSL。
 
 ## 在家裡電腦準備

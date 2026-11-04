@@ -2,6 +2,8 @@
 
 ## 2026-11-04 Staging QA tooling follow-up
 
+Home continuation at19:25 Asia/Taipei stopped under the user's remaining10% quota rule (actual remaining7%); no new tests or Hosted writes. Local restore refused a conflicting old QA identity artifact without overwriting it; investigate/retain before restoring the portable scope. C05 and22/1/11 results unchanged. [Checkpoint](2026-11-04-budget-staging-resume-stop.md).
+
 [Execution and limits](2026-11-04-budget-staging-acceptance.md), [home runbook](2026-11-04-budget-staging-home-handoff.md). Latest22 Passed/1 Failed/11 Blocked. Fixed QA minimal-return provisioning, self-pending membership/owner approval, empty Baseline handling, actual quote normalization, real stale-version trigger, Vite readiness and selected-row input targeting. C05 standalone Node subscriber timed out although peer UI converged; root cause unconfirmed. Candidate observes actual product WebSocket frames, locally tested but not Hosted rerun. No new product P0/P1 established. Managed Realtime partition publication rotation was proven by exact SELECT-only reconstruction, not catalog mutation;83 original relation seals preserved and signal increments exactly+10 per enable/Pause cycle.25/25 local QA safety tests passed. Final ledger66/sevenOFF/latches retained; sessions/all leases/jobs0; native owned processes/listeners0. Manual testing/Production GO remain blocked.
 
 The former [30-second Undo inverse limitation](2026-11-03-budget-planning-simplification.md) is historical: custom saved-data Undo was subsequently removed. It is not a current product gate. Never merge/delete duplicate Actual history to satisfy the unique current-Budget-link constraint. Production remains unchanged this round.
