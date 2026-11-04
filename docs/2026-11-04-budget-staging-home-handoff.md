@@ -1,5 +1,11 @@
 # 回家接續 Staging 驗收
 
+## 最新安全停止狀態（2026-11-04，優先於下方歷史說明）
+
+目前 masked helper 已停止，沒有保存 service-role key，也沒有進行中的 Hosted 工作。所有七個協定皆 OFF；Undo／Receipt 在本輪從未啟用。已觀察 QA session／active lease 為0，原有1筆收據 metadata與2個 Storage 物件保留。矩陣為 **27 Passed／2 Failed／5 Not Run／0 Blocked**；詳細安全快照見 [JSON](qa/2026-11-04-budget-staging-continuation-stop.json)。
+
+本輪新增通過 C05（真正 product WebSocket `postgres_changes` frame）、C06、C08、C09與A03。C07因本自動化主機最小化 Chrome後仍回報 `visibilityState=visible` 而失敗，保留給真實瀏覽器手測，不能視為產品通過。D01的實際收據 metadata 寫入已被拒絕（SQLSTATE55000／HTTP500），原測試錯誤預期HTTP400已修正；未建立 metadata或物件，仍需乾淨重跑。剩餘D01、D02–D04、B01、B07。重新接續前必須重新建立 masked helper、做新的OFF／active readback與bounded approval；不得使用過期 approval。Production仍為NO-GO。
+
 **後續更新：10%停止規則已取消。** 已備存衝突的舊本機檔案並還原既有handoff，25/25本機安全測試通過。2026-11-04T11:32:29Z新READ ONLY與last-handoff OFF完整schema／functions／83關係保全／signals／Rates/Baseline／protocol rows完全相符，QA sessions0。執行環境未顯示遮蔽憑證視窗，本輪啟動嘗試已關閉、未建立RAM助手；需使用者從一般PowerShell執行下列既有launcher並填入Staging key，再從C05接續。沒有新增Hosted寫入。
 
 **最新接續checkpoint：2026-11-04 19:25已依額度門檻停止。** 五小時used93%／remaining7%；未重跑C05、未登入或啟用。還原工具拒絕本機舊qa-scope衝突並保留原檔。恢復前先核對／備存衝突檔，禁止直接覆蓋或再prepare另一批scope。[完整停止紀錄](2026-11-04-budget-staging-resume-stop.md)。

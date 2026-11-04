@@ -3,6 +3,11 @@ import {randomUUID} from 'node:crypto';
 import {expect,chromium} from '@playwright/test';
 import {project} from './staging-budget-acceptance-scope.mjs';
 import {qaDeadline} from './b7-real-response-gate.mjs';
+import {isPostgresChangesReady} from '../../src/lib/realtimePostgresReadiness.js';
+
+export function observedRealtimeReady(payload,trip){
+ try{const d=JSON.parse(typeof payload==='string'?payload:payload.toString()),m=Array.isArray(d)?{topic:d[2],event:d[3],payload:d[4]}:d;return m.topic===`realtime:trip-${trip}`&&m.event==='system'&&isPostgresChangesReady(m.payload);}catch{return false;}
+}
 
 export function observedRealtimeSignal(payload,trip,actor){
  try{const decoded=JSON.parse(typeof payload==='string'?payload:payload.toString()),message=Array.isArray(decoded)?{event:decoded[3],payload:decoded[4]}:decoded,data=message.payload?.data,record=data?.record;
@@ -13,7 +18,7 @@ export function observedRealtimeSignal(payload,trip,actor){
 export async function browserCases(r){
  const {check,api,trip,sessions}=r;
  assert.equal(r.browserUrl,'http://127.0.0.1:5189');
- r.browser=await chromium.launch({channel:'chrome',headless:false});r.contexts=[];r.pages=[];r.browserRequests=[];r.browserErrors=[];r.realtimeSignals=[];
+ r.browser=await chromium.launch({channel:'chrome',headless:false});r.contexts=[];r.pages=[];r.browserRequests=[];r.browserErrors=[];r.realtimeSignals=[];r.realtimeReady=new Set();
  for(const [i,session] of sessions.entries()){
   const context=await r.browser.newContext({viewport:{width:1440,height:1000},locale:'zh-TW',serviceWorkers:'block'});r.contexts.push(context);
   // Abort target mistakes before credentials leave the machine. No mock response.
@@ -22,7 +27,7 @@ export async function browserCases(r){
   const page=await context.newPage();r.pages.push(page);
   // Observe the product's own authenticated socket, never outbound auth frames
   // or a second stand-alone client with different initialization behavior.
-  page.on('websocket',socket=>socket.on('framereceived',frame=>{const signal=observedRealtimeSignal(frame.payload,trip,i);if(signal)r.realtimeSignals.push(signal);}));
+  page.on('websocket',socket=>{socket.on('framereceived',frame=>{if(observedRealtimeReady(frame.payload,trip))r.realtimeReady.add(i);const signal=observedRealtimeSignal(frame.payload,trip,i);if(signal)r.realtimeSignals.push(signal);});socket.on('close',()=>r.realtimeReady.delete(i));});
   page.on('pageerror',()=>r.browserErrors.push({kind:'pageerror',actor:i}));
   page.on('request',req=>{const u=new URL(req.url());if(u.hostname===`${project}.supabase.co`)r.browserRequests.push({actor:i,method:req.method(),path:u.pathname.replace(/[a-f0-9]{8}-[a-f0-9-]{27,}/gi,':id')});});
   await page.goto(r.browserUrl);await expect(page.getByRole('button',{name:'新增預算',exact:true})).toBeVisible();
@@ -37,6 +42,7 @@ export async function browserCases(r){
  await check('A04',async()=>{for(const name of ['項目名稱','備註']){const t=await edit(a,name),before=await t.inputValue();await t.press('End');await a.keyboard.insertText('native input');await expect(t).toHaveValue(before+'native input');await a.keyboard.press('Control+z');await expect(t).toHaveValue(before);}const pricing=a.getByRole('group',{name:'計價與分攤',exact:true});await pricing.focus();if(await pricing.locator('details').getAttribute('open')===null)await pricing.locator('summary').click();const amount=pricing.getByRole('spinbutton',{name:/分攤金額/}).first();await amount.focus();await expect(amount).toBeEditable();await a.evaluate(()=>{window.qaNativeKeys=[];window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='z')queueMicrotask(()=>window.qaNativeKeys.push(e.defaultPrevented));});});await a.keyboard.press('Control+z');assert.deepEqual(await a.evaluate(()=>window.qaNativeKeys),[false]);await close(a);return {actualChromiumTextHistory:true,numberNativeEventNotPrevented:true,macHardwareNotClaimed:true};});
  await check('A05',async()=>{const before=await api.graph();await a.locator('body').click({position:{x:1000,y:600}});const start=r.browserRequests.length;await a.keyboard.press('Control+z');await a.keyboard.press('Meta+z');await a.waitForTimeout(1300);assert.deepEqual(await api.graph(),before);assert(!r.browserRequests.slice(start).some(x=>x.method!=='GET'&&x.path.includes('/rpc/')&&!/read_/.test(x.path)));return {savedGraphUnchanged:true};});
  await check('C05',async()=>{
+  await expect.poll(()=>r.realtimeReady.has(1),{timeout:15000,message:'Peer product Postgres Changes system readiness required before mutation'}).toBe(true);
   const start=r.realtimeSignals.length,before=(await api.snap()).collaborationRevision,title=`QA websocket ${r.run.slice(0,8)} ${randomUUID().slice(0,8)}`;
   await api.patch(0,'budget',r.budget,'title',()=>title);
   await expect.poll(()=>r.realtimeSignals.slice(start).some(signal=>signal.actor===1&&signal.revision>Number(before)),{timeout:15000,message:'Real product postgres_changes frame for the correct trip required'}).toBe(true);
@@ -44,7 +50,7 @@ export async function browserCases(r){
  });
  await check('C06',async()=>{for(const page of r.pages){await page.reload();await expect(page.getByRole('button',{name:(await canonical()).title,exact:true})).toBeVisible();}return {threeRealContexts:true};});
  await check('C08',async()=>{await r.contexts[1].setOffline(true);try{const title=`QA reconnect ${r.run.slice(0,8)}`;await api.patch(0,'budget',r.budget,'title',()=>title);await expect(b.getByRole('button',{name:title,exact:true})).toHaveCount(0);}finally{await r.contexts[1].setOffline(false);}await b.reload();await expect(b.getByRole('button',{name:(await canonical()).title,exact:true})).toBeVisible();return {actualOfflineNetwork:true};});
- await check('C07',async()=>{const t=await edit(a),before=await canonical();await t.fill(`QA background ${r.run.slice(0,8)}`);const blank=await r.contexts[0].newPage();try{await blank.bringToFront();await expect.poll(()=>a.evaluate(()=>document.visibilityState)).toBe('hidden');await a.waitForTimeout(1300);assert.equal(await t.inputValue(),`QA background ${r.run.slice(0,8)}`);assert.equal((await canonical()).title,before.title);await a.bringToFront();await expect.poll(()=>a.evaluate(()=>document.visibilityState)).toBe('visible');await expect.poll(async()=>(await canonical()).title).toBe(await t.inputValue());await close(a);}finally{await blank.close();}return {realDocumentHiddenVisible:true};});
+ await check('C07',async()=>{const native=await r.contexts[0].newCDPSession(a);await native.send('Emulation.setFocusEmulationEnabled',{enabled:false});const {windowId}=await native.send('Browser.getWindowForTarget');try{await native.send('Browser.setWindowBounds',{windowId,bounds:{windowState:'normal'}});await a.bringToFront();await expect.poll(()=>a.evaluate(()=>document.visibilityState)).toBe('visible');const t=await edit(a),before=await canonical(),draft=`QA background ${r.run.slice(0,8)} ${randomUUID().slice(0,8)}`;await t.fill(draft);await native.send('Browser.setWindowBounds',{windowId,bounds:{windowState:'minimized'}});await expect.poll(()=>a.evaluate(()=>document.visibilityState)).toBe('hidden');await a.waitForTimeout(1300);assert.equal(await t.inputValue(),draft);assert.equal((await canonical()).title,before.title);await native.send('Browser.setWindowBounds',{windowId,bounds:{windowState:'normal'}});await a.bringToFront();await expect.poll(()=>a.evaluate(()=>document.visibilityState)).toBe('visible');await expect.poll(async()=>(await canonical()).title).toBe(draft);await close(a);}finally{await native.send('Browser.setWindowBounds',{windowId,bounds:{windowState:'normal'}});await native.send('Emulation.setFocusEmulationEnabled',{enabled:true});await native.detach();}return {realDocumentHiddenVisible:true,actualWindowMinimized:true,playwrightFocusEmulationDisabled:true};});
  await check('C09',async()=>{
   // Delay a real admission request, commit a competing revision, then forward
   // the unchanged request. A fabricated response is never accepted here.

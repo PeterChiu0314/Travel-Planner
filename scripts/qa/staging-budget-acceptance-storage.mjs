@@ -8,8 +8,8 @@ export async function storageCases(r){
  await check('D01',async()=>{
   const attachment={id:randomUUID(),trip_id:trip,target_type:'budget_item',target_id:r.budget,file_name:'QA forbidden receipt.png',file_url:`trips/${trip}/attachments/budget_item/${r.budget}/${r.run}.png`,file_type:'image/png',file_size:png.length,uploaded_by:sessions[0].user.id};
   r.objects.push(attachment.file_url);await r.savePrivate();
-  const before=await api.graph();const metadata=await http(token,'/rest/v1/attachments',{method:'POST',body:attachment});assert.equal(metadata.data?.code,'55000');assert.equal(metadata.status,400);
-  const upload=await http(token,`/storage/v1/object/trip-attachments/${attachment.file_url}`,{method:'POST',body:png,raw:true});assert(upload.status>=400);assert(/row.level|policy|unauthoriz|403/i.test(JSON.stringify(upload.data)),'Upload must reject by access policy, not malformed path or MIME');assert.deepEqual(await api.graph(),before);r.objects=r.objects.filter(p=>p!==attachment.file_url);await r.savePrivate();return {metadataGuard:true,realUploadPolicyRefusal:true};
+  const before=await api.graph();const metadata=await http(token,'/rest/v1/attachments',{method:'POST',body:attachment});assert.equal(metadata.data?.code,'55000');assert.equal(metadata.status,500);
+  const upload=await http(token,`/storage/v1/object/trip-attachments/${attachment.file_url}`,{method:'POST',body:png,raw:true});assert(upload.status>=400);assert(/row.level|policy|unauthoriz|403/i.test(JSON.stringify(upload.data)),'Upload must reject by access policy, not malformed path or MIME');assert.deepEqual(await api.graph(),before);r.objects=r.objects.filter(p=>p!==attachment.file_url);await r.savePrivate();return {metadataGuard:true,metadataHttpStatus:500,metadataCode:'55000',realUploadPolicyRefusal:true};
  });
  await check('D04',async()=>{
   const accommodation=randomUUID(),attachment=randomUUID(),path=`trips/${trip}/attachments/accommodation/${accommodation}/${r.run}.png`;

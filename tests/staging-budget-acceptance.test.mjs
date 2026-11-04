@@ -1,5 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+test('Independent continuation retains visibility failure as Failed and refuses to bypass data failures',async()=>{
+ const {preservedFailureRows}=await import('../scripts/qa/staging-budget-acceptance-scope.mjs');const c={retainFailureIds:['C07'],previousReport:{rows:[{id:'C07',status:'Failed',reason:'Expected: "hidden" Received: "visible"'}]}};
+ const [row]=preservedFailureRows(c);assert.equal(row.status,'Failed');assert.equal(row.retainedFailure,true);
+ assert.throws(()=>preservedFailureRows({...c,retainFailureIds:['C09']}));assert.throws(()=>preservedFailureRows({...c,previousReport:{rows:[{id:'C07',status:'Failed',reason:'Saved data changed unexpectedly'}]}}));
+});
+test('Product CDC readiness must precede mutation; JOIN and other topics never count',async()=>{
+ const {observedRealtimeReady}=await import('../scripts/qa/staging-budget-acceptance-browser.mjs');const payload={extension:'postgres_changes',status:'ok'};
+ assert(observedRealtimeReady(JSON.stringify({topic:'realtime:trip-qa',event:'system',payload}),'qa'));
+ assert(observedRealtimeReady(JSON.stringify([null,null,'realtime:trip-qa','system',payload]),'qa'));
+ for(const message of [{topic:'realtime:trip-qa',event:'phx_reply',payload:{status:'ok'}},{topic:'realtime:trip-other',event:'system',payload},{topic:'realtime:trip-qa',event:'system',payload:{extension:'postgres_changes',status:'error'}}])assert.equal(observedRealtimeReady(JSON.stringify(message),'qa'),false);
+});
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';

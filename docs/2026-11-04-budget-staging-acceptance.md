@@ -1,5 +1,15 @@
 # 2026-11-04 Staging acceptance continuation
 
+## Latest controlled stop — 2026-11-04
+
+The historical account below remains evidence, but this is the current handoff. The masked RAM-only credential helper stopped and saved no key. The final controlled pause returned metadata/finance/payment/source/lifecycle to OFF; Undo and Receipt stayed OFF throughout. The independent closeout still records zero QA sessions and active leases, plus the original one financial-receipt metadata row and two Storage objects.
+
+Current matrix: **27 Passed / 2 Failed / 5 Not Run / 0 Blocked**. The new genuine Staging evidence is C05 product-page `postgres_changes` readiness/frame plus peer UI convergence, C06 three-context canonical reload, C08 offline recovery, C09 real PT409 plus cancelled unsaved draft, and A03 no custom Undo request/key interception using the QA-only static map provider. The static provider is only child-process test configuration; no hosted setting changed.
+
+C07 is a real failed prerequisite, not a product pass: even after an actual Chrome minimize attempt, this automation host continued reporting `document.visibilityState === "visible"`. It is retained as a manual browser verification item without bypassing a draft/data correctness assertion. D01 correctly observed financial receipt metadata refusal with SQLSTATE `55000`, returned by PostgREST as HTTP500; the test's old HTTP400 expectation was corrected locally. No metadata or Storage object was created, but D01 needs one clean rerun before becoming Passed. The remaining cases are D01, D02–D04, B01 and B07. D03 will remain an explicit evidence gap unless a genuine pre-removal signed URL exists; never mint a replacement and call it historical.
+
+Resume only after reconnecting the masked helper, taking fresh OFF and active readbacks, and issuing a new bounded approval. The portable `continuation.json` now supports `startAt: "remaining"` only while retaining C07, so independent cases can proceed after D01 without treating that environment failure as a credential/helper failure. Manual test readiness and Production activation remain **NO-GO**. The sanitized stop snapshot is [here](qa/2026-11-04-budget-staging-continuation-stop.json).
+
 Branch `codex/budget-collaboration-redesign`, starting at `ceeb802`. The user authorized completing Staging preparation and genuine acceptance for manual testing, stopping before Production deployment. This supersedes the earlier plan's pending Hosted authorization; no repeated phase approval is required. Production, main, Vercel, Docker and WSL remain outside scope.
 
 ## Latest outcome — portable home handoff

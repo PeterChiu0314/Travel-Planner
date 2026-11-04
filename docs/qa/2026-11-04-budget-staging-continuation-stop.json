@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-04",
+  "project": "uyqdopksfysbobhjcepk",
+  "scope": "Staging only; no Production, main, Vercel, Docker, or WSL action",
+  "protocolStateAtStop": {
+    "undo": "OFF",
+    "receipt": "OFF",
+    "metadata": "OFF",
+    "finance": "OFF",
+    "payment": "OFF",
+    "source": "OFF",
+    "lifecycle": "OFF"
+  },
+  "observed": {
+    "ledger": 66,
+    "undoRemovalForward": "20261103113253",
+    "existingFinancialReceiptMetadata": 1,
+    "existingStorageObjects": 2,
+    "qaSessions": 0,
+    "activeLeases": 0
+  },
+  "matrix": {
+    "Passed": 27,
+    "Failed": 2,
+    "NotRun": 5,
+    "Blocked": 0
+  },
+  "newEvidence": {
+    "C05": "Passed with the product page's actual postgres_changes readiness and peer-frame evidence",
+    "C06": "Passed: three real contexts reloaded canonical data",
+    "C08": "Passed: an offline context reconnected to canonical data",
+    "C09": "Passed: real PT409 and unsaved-draft cancellation",
+    "A03": "Passed after forcing the QA-only Vite child to use the static map provider",
+    "D01": "The financial receipt metadata insert was rejected with PostgREST HTTP 500 / SQLSTATE 55000. The assertion has been corrected to that documented mapping; it still needs one clean rerun before it can be marked Passed."
+  },
+  "remaining": ["D01 clean rerun", "D02", "D03", "D04", "B01", "B07"],
+  "knownFailures": {
+    "C07": "The real Chrome window did not expose document.visibilityState=hidden after an actual minimize attempt. This is a test-environment limitation, not a product pass; retain for manual browser verification.",
+    "D01": "The first run correctly observed a rejection but expected HTTP 400 instead of the actual documented HTTP 500 mapping. No receipt metadata or object was created."
+  },
+  "credentialState": "Masked service-role helper stopped and holds no saved credential. A fresh helper and new OFF/active readback are required before any further Hosted run.",
+  "productionReady": false
+}

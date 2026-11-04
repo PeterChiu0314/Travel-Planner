@@ -7,6 +7,10 @@ export const project='uyqdopksfysbobhjcepk';
 export const endpoint=`https://${project}.supabase.co`;
 export const allowedProtocols=['metadata','finance','payment','source','lifecycle'];
 export const sha=value=>createHash('sha256').update(typeof value==='string'?value:JSON.stringify(value)).digest('hex');
+export function preservedFailureRows(continuation){
+ const ids=continuation?.retainFailureIds||[];assert(ids.length<=1&&new Set(ids).size===ids.length);
+ return ids.map(id=>{assert.equal(id,'C07','Only the observed native visibility prerequisite may be retained for independent cases');const row=continuation.previousReport.rows.find(r=>r.id===id);assert.equal(row?.status,'Failed');assert(/Expected: "hidden"/.test(row.reason)&&/Received: "visible"/.test(row.reason),'Do not bypass a draft/data correctness failure');return {...row,retainedFailure:true,previousReportSha256:sha(continuation.previousReport)};});
+}
 export const cases=[
  ['R01','Live ledger, immutable source and twelve Undo ACLs','readonly'],
  ['R02','Seven protocols OFF; latches and readiness recorded','readonly'],
