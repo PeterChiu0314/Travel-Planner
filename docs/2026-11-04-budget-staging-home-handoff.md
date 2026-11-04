@@ -1,6 +1,6 @@
 # 回家接續 Staging 驗收
 
-**後續更新：10%停止規則已取消。** 已備存衝突的舊本機檔案並還原既有handoff，25/25本機安全測試通過。2026-11-04T11:32:29Z新READ ONLY與last-handoff OFF完整schema／functions／83關係保全／signals／Rates/Baseline／protocol rows完全相符，QA sessions0。遮蔽憑證視窗已開啟，等待既有Staging key重新建立RAM助手，之後從C05接續；沒有新增Hosted寫入。
+**後續更新：10%停止規則已取消。** 已備存衝突的舊本機檔案並還原既有handoff，25/25本機安全測試通過。2026-11-04T11:32:29Z新READ ONLY與last-handoff OFF完整schema／functions／83關係保全／signals／Rates/Baseline／protocol rows完全相符，QA sessions0。執行環境未顯示遮蔽憑證視窗，本輪啟動嘗試已關閉、未建立RAM助手；需使用者從一般PowerShell執行下列既有launcher並填入Staging key，再從C05接續。沒有新增Hosted寫入。
 
 **最新接續checkpoint：2026-11-04 19:25已依額度門檻停止。** 五小時used93%／remaining7%；未重跑C05、未登入或啟用。還原工具拒絕本機舊qa-scope衝突並保留原檔。恢復前先核對／備存衝突檔，禁止直接覆蓋或再prepare另一批scope。[完整停止紀錄](2026-11-04-budget-staging-resume-stop.md)。
 
