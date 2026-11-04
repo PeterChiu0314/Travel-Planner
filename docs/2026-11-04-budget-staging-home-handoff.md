@@ -1,5 +1,7 @@
 # 回家接續 Staging 驗收
 
+**後續更新：10%停止規則已取消。** 已備存衝突的舊本機檔案並還原既有handoff，25/25本機安全測試通過。2026-11-04T11:32:29Z新READ ONLY與last-handoff OFF完整schema／functions／83關係保全／signals／Rates/Baseline／protocol rows完全相符，QA sessions0。遮蔽憑證視窗已開啟，等待既有Staging key重新建立RAM助手，之後從C05接續；沒有新增Hosted寫入。
+
 **最新接續checkpoint：2026-11-04 19:25已依額度門檻停止。** 五小時used93%／remaining7%；未重跑C05、未登入或啟用。還原工具拒絕本機舊qa-scope衝突並保留原檔。恢復前先核對／備存衝突檔，禁止直接覆蓋或再prepare另一批scope。[完整停止紀錄](2026-11-04-budget-staging-resume-stop.md)。
 
 分支：`codex/budget-collaboration-redesign`。先讀 `AGENT.md`、`CURRENT_TASK.md`、[最新驗收紀錄](2026-11-04-budget-staging-acceptance.md) 與 [矩陣](qa/2026-11-04-budget-staging-acceptance-results.json)。目前22 Passed /1 Failed /11 Blocked；尚未準備好完整手測或正式啟用。本輪只到正式部署前，不操作 Production、main、Vercel、Docker／WSL。
@@ -37,8 +39,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File ".\scripts\qa\start
 
 ## 額度與跨電腦限制
 
-使用者要求五小時額度剩10%時停止新增測試，安全 Pause／logout／退出程序，更新矩陣、BUGS、CURRENT_TASK 和 Runbook，再 Commit／Push 原分支。已建立本機5分鐘 heartbeat（budget）；讀取真實 account usage，usedPercent90代表剩10%。輪詢不是即時保證，關機／應用程式停止後不能保證原主機繼續執行。回家續測時檢查實際監控是否在執行，必要時恢復同一項監控，避免重複建立。
+使用者已於2026-11-04取消「五小時額度剩10%時停止」規則；不再因這個門檻停止驗收，也不恢復用來強制停止的budget heartbeat。先前因門檻停止的紀錄保留為歷史，不再是接續前提。
 
 額度由同一帳號共用，換電腦不會重置。Git 可轉移程式、非機密 scope 與已確認證據；不會轉移 RAM key、程序、一般登入 session、本機 env 或自動化主機狀態。舊 before/approval 已過時，需重新捕捉。本機 UI 原始日誌與附件路徑留在原機；可公開的測試圖與保護指紋已在 tracked manifest。
 
-可在家對 Codex 說：「先 pull 原分支，讀 CURRENT_TASK 與2026-11-04 home handoff，還原非機密 QA scope，從 C05 繼續；只做到正式部署前。額度剩10%時安全收尾並 push。」
+可在家對 Codex 說：「先 pull 原分支，讀 CURRENT_TASK 與2026-11-04 home handoff，核對並還原非機密 QA scope，從 C05 繼續；只做到正式部署前。額度10%停止規則已取消。」

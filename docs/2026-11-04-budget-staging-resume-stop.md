@@ -1,5 +1,7 @@
 # Staging 接續停止紀錄
 
+後續更正：使用者已取消10%額度停止規則。以下保留當時停止的事實；接續不再要求先等額度恢復。
+
 2026-11-04 19:25 Asia/Taipei；起點4f0794e，原分支codex/budget-collaboration-redesign。
 
 使用者要求接續完成；既有Staging授權沿用，但先前明確要求五小時額度剩10%時停止新增測試並安全收尾。實際account usage讀回used93%／remaining7%，因此在新Auth／QA／協定操作前停止。本輪沒有新增測試通過，驗收維持22 Passed／1 Failed／11 Blocked；C05沒有重跑。
