@@ -377,7 +377,7 @@
       "phase": "after",
       "status": "Blocked",
       "environment": "Hosted real Auth/HTTP/browser",
-      "reason": "Database Pause/logout verified; final process cleanup and full-run closeout remain pending"
+      "reason": "Aborted-attempt database/logout/process cleanup verified; complete financial/browser/Storage-run closeout still awaits genuine retry"
     }
   ],
   "requests": [
@@ -616,7 +616,28 @@
   "limits": [
     "No genuine business/Realtime/browser/Storage acceptance after provisioning failure",
     "A01 was verified by request/claim evidence; the original raw report recorded it too late",
-    "Z01 is not complete while continuation helper/query transfer remains in use",
+    "Z01 remains Blocked for complete-run closeout; the aborted attempt itself has zero sessions/processes/listeners",
     "No Production operations or deployment"
-  ]
+  ],
+  "finalPause": {
+    "head": "20261103113253",
+    "ledger": 66,
+    "fullUndo": false,
+    "observedAt": "2026-11-04T02:13:13.745805+00:00",
+    "qaSessions": 0,
+    "activeLeases": 0,
+    "storageObjects": 2,
+    "pendingReceipts": 0,
+    "enabledProtocols": 0,
+    "financialReceipts": 1,
+    "unfinishedCleanup": 0
+  },
+  "nativeCleanup": {
+    "observedAt": "2026-11-04T10:13:59.0210845+08:00",
+    "qaNodeProcesses": 0,
+    "qaListeners5189And5190": 0,
+    "temporaryQueryTabClosed": true,
+    "qaBrowserNeverStarted": true,
+    "workerNeverStarted": true
+  }
 }
