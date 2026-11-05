@@ -23,9 +23,9 @@ test('same pricing owner makes participant choices disabled and prevents peer wr
  const db=dbFor();await ready(page,db);await amount(page).focus();await expect(amount(page)).toBeEditable();const b=await context.newPage();try{await ready(b,db,'B');await group(b).focus();await expect(group(b).getByText('A 正在編輯計價與分攤',{exact:true})).toBeVisible();await group(b).getByText('參與成員 · 2 人',{exact:true}).click();await expect(group(b).getByRole('checkbox').first()).toBeDisabled();await expect(amount(b)).not.toBeEditable();expect(db.groupCalls.filter(c=>c.actor==='B'&&c.name==='patch_budget_metadata_group')).toHaveLength(0);
  }finally{await b.close();}
 });
-test('blank amount stays local and guarded full editor handoff offers save or discard',async({page})=>{
+test('blank amount stays local and can be discarded without a duplicate full editor entry',async({page})=>{
  const db=dbFor();await ready(page,db);await amount(page).focus();await expect(amount(page)).toBeEditable();await amount(page).fill('');await editor(page).getByRole('textbox',{name:'項目名稱',exact:true}).focus();await expect(page.getByRole('alert')).toContainText('請輸入非負數');expect(db.rows.budget_items[0].amount).toBe(1000);expect(db.groupCalls.filter(c=>c.name==='patch_budget_metadata_group')).toHaveLength(0);
- await group(page).getByRole('button',{name:'捨棄此欄草稿',exact:true}).click();await expect(amount(page)).toHaveValue('1000');await page.getByRole('button',{name:'編輯完整項目',exact:true}).click();await expect(page.getByRole('button',{name:'儲存',exact:true})).toBeVisible();
+ await group(page).getByRole('button',{name:'捨棄此欄草稿',exact:true}).click();await expect(amount(page)).toHaveValue('1000');await expect(page.getByRole('button',{name:'編輯完整項目',exact:true})).toHaveCount(0);await page.getByRole('button',{name:'關閉編輯',exact:true}).click();await expect(editor(page)).toHaveCount(0);
 });
 test('links readonly disables checkbox and remove while keeping historical links visible',async({page,context})=>{
  const db=dbFor();db.rows.itinerary_items=[{id:'visit',trip_id:'trip',title:'Museum',type:'attraction',day_index:0,sort_order:0}];db.rows.itinerary_budget_items=[{budget_item_id:'budget',itinerary_item_id:'visit'}];await ready(page,db);

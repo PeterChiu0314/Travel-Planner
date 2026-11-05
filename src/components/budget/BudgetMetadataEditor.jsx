@@ -38,6 +38,9 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
   const version = useSyncExternalStore(client.subscribe, client.getVersion);
   const fields = client.groupKeys(kind).map(group => client.get(kind, record.id, group, recordMetadataValue(kind, record, group, client.status().snapshot?.itineraryBudgetLinks)));
   const views = fields.map(g => client.view(g));
+  // Full-record editing is only a compatibility escape hatch for Budget.
+  // Actual retains its existing form for fields outside this planning scope.
+  const needsFullEditor = kind === "actual" || ["title", "note", "category", "payer", "links", "pricing"].some(key => !views.some(g => g.group === key && g.supported));
   const { message, verified, editable } = client.status();
   const hasDraft = views.some(g => g.dirty || g.request || g.saving);
   const saveAll = () => client.saveAll(kind, record.id);
@@ -116,6 +119,6 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
       </div>;
     })}
     <div className="bw-metadata-summary"><span>分類 · {record.category || "其他"}</span><span>金額 · {isBudgetComplete(record)||record.pricing_ready?`${record.currency} ${record.amount}`:'尚未填寫'}</span></div>
-    {isBudgetComplete(record)?<button type="button" className="ghost-button" disabled={!editable} onClick={onLegacy}>編輯完整項目</button>:null}
+    {isBudgetComplete(record) && needsFullEditor ? <button type="button" className="ghost-button" disabled={!editable} onClick={onLegacy}>編輯完整項目</button> : null}
   </section>;
 }

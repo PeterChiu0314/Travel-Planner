@@ -17,6 +17,7 @@ test.afterEach(async({page})=>{if(page.qaErrors)expect(page.qaErrors).toEqual([]
 test('unclaimed and own fields keep the same normal appearance without admission hints',async({page})=>{
  const db=await ready(page),fields=controls(page),before=await Promise.all(fields.map(style));
  expect(db.groupCalls).toHaveLength(0);
+ await expect(page.getByRole('button',{name:'編輯完整項目',exact:true})).toHaveCount(0);
  await expect(page.locator('.bw-metadata-group.is-readonly')).toHaveCount(0);
  await expect(page.getByText('聚焦後取得編輯權',{exact:true})).toHaveCount(0);
  await expect(page.getByText('可編輯',{exact:true})).toHaveCount(0);
