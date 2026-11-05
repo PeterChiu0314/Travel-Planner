@@ -12,6 +12,8 @@
 
 ## 尚未達 Staging 部署門檻
 
+Commit `9303cef84e1c44af424d2ee2c7bdeef9bc18019a` 已 push 原分支；Vercel deployment `dpl_4r3wrrapvUjrihVJfFTK4tEYjgTT` 為 READY、`target:null` 的 Preview。這只證明分支前端已建置，尚未驗證新版連接 Hosted RPC。原分支 Preview 網址為 https://travel-planner-git-codex-budget-co-6eda5b-peter-chiu-s-projects.vercel.app 。
+
 Supabase Dashboard 對整包交易試跑提示新建表 RLS。選擇「Run and enable RLS」後 SQL Editor 顯示 `schema "expense_stage_b" does not exist`；其是否在 SQL 執行之後的額外 RLS 步驟失敗，無法從該畫面確證，所以不標 Passed。正式 Commit 操作被自動審核拒絕，明確理由為 Staging dry run 未通過。隨後獨立 readback 確認沒有新 schema、沒有 Ledger 67、原始 Actual/Baseline 指紋未變。沒有改五個協定、Undo/Receipt、Latch、Migration 66、正式環境。
 
 下一步：使用有正確 Staging 存取權的正式 Supabase migration 執行路徑，先完成可讀回結果的交易回滾試跑；完整 Preflight/Actual parity/RLS/ACL 合格後才套用此 Forward，並執行授權帳號的實際新增、修改、付款、兩人群組衝突、Rates、住宿及結算煙霧測試。新 Preview 前端在新 RPC 尚未安裝時會走舊讀取；不能當作新版已上 Staging。正式 Production/main 仍 NO-GO。
