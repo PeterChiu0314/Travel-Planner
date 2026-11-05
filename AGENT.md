@@ -1,6 +1,6 @@
 # AGENT.md
 
-Issue #18 2026-11-05 predeploy handoff: see `docs/2026-11-05-issue18-staging-predeploy-handoff.md`. Feature branch now has native editor/RPC/CLI-generated Forward, but Hosted Staging installation failed the dry-run gate and was rejected by auto-review; independent readback shows no schema or data change. Do not mark Staging complete or rerun installed sources. Original Actual/Baseline and user icon exploration are protected. Obtain a passed Staging transaction dry run before applying the new Forward.
+Latest user direction 2026-11-05: restore the already designed Budget UI at home; change presentation only and retain the Issue #18 single-expense model. Read `docs/2026-11-05-issue18-ui-restore-home-handoff.md` first. Staging Forward is already installed: Ledger67/head `20261105083233`, passed real rollback trial and authenticated basic Preview smoke. Do not replay or edit it. Restore the original grouped table, toolbar, right-side three tabs and statistics using the new editor/transport; do not reactivate old financial writes, Source, Receipt or Undo. Original Actual/Baseline and user icon exploration are protected. Production/main remain forbidden. Earlier planning/predeploy paragraphs below are historical, not current deployment blockers.
 
 This file is the operating guide for future AI agents working on this travel planner. It is intentionally project-specific. Do not treat this as generic SaaS boilerplate.
 

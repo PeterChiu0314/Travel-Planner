@@ -1,5 +1,9 @@
 # BUGS.md
 
+## Issue #18 UI regression — user rejected redesigned workspace; restore at home
+
+The new `ExpenseWorkspace` replaced the user's existing grouped table, toolbar and right-side Stats/Detail/Edit presentation without authorization for a visual redesign. User requires restoration of that existing design with **presentation changes only**, retaining the installed single-expense model and its security/controller behavior. This documentation turn did not change UI or database. Model/schema/RPC tests rerun41/41; Hosted acceptance remains bounded by the prior evidence. [Concrete home handoff and acceptance](2026-11-05-issue18-ui-restore-home-handoff.md). Do not claim UI accepted or revert the schema/old writes to make the old screen appear.
+
 ## Issue #18 Staging installed; manual acceptance open — 2026-11-05
 
 Supabase connector restored access to exact Staging `uyqdopksfysbobhjcepk`. The full Forward passed a real transaction/ROLLBACK dry run with independent unchanged-ledger/Actual/participant/Baseline readback; `apply_migration` then installed it as Ledger67/head `20261105083233`. Original Actual and Baseline fingerprints remain unchanged after an authenticated Preview smoke test: add item, save title/amount/payer, mark paid, read back the same item in SQL. RLS, six authenticated-only public RPCs, old financial write revocation, Realtime publication and five-ON/two-OFF/fullUndo-OFF state were checked. No Hosted two-user, changed foreign Rates, accommodation or settlement pass is claimed. [Current manual handoff](2026-11-05-issue18-staging-manual-handoff.md); [historical predeploy blocker](2026-11-05-issue18-staging-predeploy-handoff.md). Production remains NO-GO.
