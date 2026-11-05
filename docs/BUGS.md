@@ -1,5 +1,9 @@
 # BUGS.md
 
+## Issue #18 | Review corrections and isolated B foundation
+
+[Stage B delivery and limits](2026-11-05-budget-issue18-stage-b-foundation.md). Corrected independent forecast/paid participant decisions, removed proposed second Baseline, preserved legacy settlement eligibility including missing paid_at, and clarified pure old Budget link retirement versus other-module functionality.24 local model/request/isolated SQL cases passed; Build/diff passed. No client DML or write RPC exposed; no App/Hosted cutover. Genuine server lease/mutation/Realtime/UI and actual-data inventory remain unfinished; do not treat the isolated fixture as Hosted RLS parity or complete #18. Latest Review permits isolated B before #17 closure; destructive Staging D/E remains unauthorized.
+
 ## Issue #18 | Single expense model — analysis/Review stage
 
 [Model, dependencies and phased acceptance](2026-11-05-budget-issue18-single-expense-review.md). Existing planning projection overwrites displayed forecast with retained payment totals, and Source/Origin/bundle/snapshot dependencies prevent safe component-only removal. User now waives old Budget retention: no old Budget conversion or two-way compatibility plan. Candidate uses one expense identity with optional forecast/paid financial bundles, one participant-decision structure and no Source product flows. Actual-only values/IDs, other modules and frozen Baseline remain protected pending explicit mapping Review; no data deleted or DB restructured. Read-only inventory SQL is not executed. #17 newcomer-decision and genuine Hosted gaps remain open; #18 implementation/acceptance is not claimed Passed.

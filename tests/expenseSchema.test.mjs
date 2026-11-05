@@ -1,0 +1,22 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs/promises';import {pathToFileURL} from 'node:url';
+const {PGlite}=await import(pathToFileURL(process.env.PGLITE_MODULE).href);
+const db=new PGlite(),trip='00000000-0000-4000-8000-000000000001',other='00000000-0000-4000-8000-000000000002',id='00000000-0000-4000-8000-000000000003',place='00000000-0000-4000-8000-000000000004';
+await db.exec(`create role anon;create role authenticated;create schema auth;create schema app_private;
+create table public.trips(id uuid primary key);create table public.itinerary_items(id uuid primary key,trip_id uuid references public.trips(id));
+create table public.test_members(actor text,trip_id uuid,status text);insert into public.trips values('${trip}'),('${other}');insert into public.itinerary_items values('${place}','${other}');
+insert into public.test_members values('editor','${trip}','approved'),('viewer','${trip}','approved'),('pending','${trip}','pending');
+create function auth.uid() returns text language sql stable as $$select current_setting('test.actor',true)$$;
+create function app_private.can_read_trip(t uuid,a text) returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.test_members where trip_id=t and actor=a and status='approved')$$;
+grant usage on schema auth,app_private to authenticated;grant execute on function auth.uid(),app_private.can_read_trip(uuid,text) to authenticated;`);
+await db.exec(await fs.readFile(new URL('../docs/operations/issue18/isolated-schema.sql',import.meta.url),'utf8'));
+await db.query(`insert into expense_stage_b.expense_items(id,trip_id,payment_state,paid) values($1,$2,'paid','{"amount":800,"twd_amount":800}')`,[id,trip]);
+await db.query(`insert into expense_stage_b.expense_participants(expense_id,user_id,budget_selected,paid_selected) values($1,$2,false,true)`,[id,place]);
+async function login(actor){await db.exec('reset role');await db.query("select set_config('test.actor',$1,false)",[actor]);await db.exec('set role authenticated');}
+test.after(async()=>{await db.close();});
+test('legacy paid row with no time is representable, without a new Baseline table',async()=>{await db.exec('reset role');const r=await db.query('select paid_at,payment_state from expense_stage_b.expense_items');assert.equal(r.rows[0].paid_at,null);assert.equal(r.rows[0].payment_state,'paid');assert.equal((await db.query("select to_regclass('expense_stage_b.expense_trip_baselines') as name")).rows[0].name,null);});
+test('budget/paid participant decisions are independent and retain exclusion',async()=>{await db.exec('reset role');const r=await db.query('select budget_selected,paid_selected from expense_stage_b.expense_participants');assert.deepEqual(r.rows[0],{budget_selected:false,paid_selected:true});});
+for(const actor of ['editor','viewer'])test(`${actor} reads allowed trip but cannot bypass missing write RPC`,async()=>{await login(actor);assert.equal((await db.query('select * from expense_stage_b.expense_items')).rows.length,1);await assert.rejects(db.query('delete from expense_stage_b.expense_items'),e=>e.code==='42501');});
+for(const actor of ['pending','outsider'])test(`${actor} cannot read parent or participants`,async()=>{await login(actor);for(const table of ['expense_items','expense_participants','expense_itinerary_links'])assert.equal((await db.query(`select * from expense_stage_b.${table}`)).rows.length,0);});
+test('anon has no schema access',async()=>{await db.exec('reset role;set role anon');await assert.rejects(db.query('select * from expense_stage_b.expense_items'),e=>e.code==='42501');});
+test('cross-trip link is rejected while itinerary remains intact',async()=>{await db.exec('reset role');await assert.rejects(db.query('insert into expense_stage_b.expense_itinerary_links values($1,$2,$3)',[id,trip,place]),e=>e.code==='22023');assert.equal((await db.query('select * from public.itinerary_items')).rows.length,1);});
+test('a paid item cannot have a missing bundle, and an item cannot have a second parent with the same ID',async()=>{await db.exec('reset role');await assert.rejects(db.query('update expense_stage_b.expense_items set paid=null where id=$1',[id]),e=>e.code==='23514');await assert.rejects(db.query("insert into expense_stage_b.expense_items(id,trip_id,payment_state) values($1,$2,'draft')",[id,trip]),e=>e.code==='23505');});
