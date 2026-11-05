@@ -1,6 +1,7 @@
 .budget-workspace { --board-scrollbar-width: 4px; --board-scrollbar-thumb: color-mix(in srgb, var(--muted) 45%, transparent); display: grid; grid-template-columns: minmax(0, 7fr) minmax(290px, 3fr); gap: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; min-height: min(760px, calc(100vh - 100px)); color: var(--ink); }
 .budget-workspace button, .budget-workspace input, .budget-workspace select, .budget-workspace textarea { font: inherit; }
 .bw-main { min-width: 0; padding: 0; }
+.bw-side > div > .bw-stats, .bw-restored-rates { margin: 0 16px; padding-bottom: 12px; }
 .bw-retained { padding: 12px 16px; border-top: 1px solid var(--line); }
 .bw-retained h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
 .bw-retained > div { margin-block: 8px; }
@@ -256,6 +257,8 @@
 .bw-filters > label input { height: 32px; min-height: 32px; }
 .bw-metadata-group { position: relative; display: grid; gap: 7px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .bw-metadata-group > label { font-size: 12px; color: var(--muted); }
+.bw-metadata-group.is-peer-held { background: var(--color-surface-subtle); }
+.bw-metadata-group.is-peer-held input, .bw-metadata-group.is-peer-held textarea, .bw-metadata-group.is-peer-held .menu-select { color: var(--muted); }
 /* Lease admission still gates these controls; an unclaimed group should look
    normal before focus. Do not restyle intentionally disabled computed totals
    or fixed historical currencies. */

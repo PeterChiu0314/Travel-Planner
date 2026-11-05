@@ -23,6 +23,7 @@ const categoryColors = { "機票": palette[0], "住宿": palette[1], "餐飲": p
 function categoryColor(category) {
   return categoryColors[category] || palette[[...category].reduce((hash, character) => (hash * 31 + character.codePointAt(0)) >>> 0, 0) % palette.length];
 }
+export {categoryOrder, categoryIcons, categoryColor};
 const empty = recordForm(null, [], "", []);
 
 async function applyPaymentStatus(props, budget, paid, leaseMeta = {}) {
@@ -260,7 +261,7 @@ function useWorkspaceEditor(kind, props) {
   return { ...draft, hasUnsavedChanges, context, error, saving, closing, leaseLost, retryLease, open, close, save };
 }
 
-function Stats({ records, rows, members, actual, budgets, viewpoint, setViewpoint, ratesControl }) {
+export function Stats({ records, rows, members, actual, budgets, viewpoint, setViewpoint, ratesControl, ratesSummary }) {
   records=records.filter(isBudgetComplete);budgets=budgets.filter(isBudgetComplete);
   const validView = ["average", "all", ...members.map((member) => member.user_id)].includes(viewpoint) ? viewpoint : "average";
   const allocations = records.map((record) => recordAllocations(record, participantsFor(record, rows, actual ? "actual_expense_id" : "budget_item_id", members)));
@@ -288,16 +289,16 @@ function Stats({ records, rows, members, actual, budgets, viewpoint, setViewpoin
       <div className="bw-distribution" role="img" aria-label="分類金額占比">{categoriesList.map(([category, value]) => <span key={category} style={{ flex: Math.max(value, 0), backgroundColor: categoryColor(category) }} title={`${category} ${money(value)}`} />)}</div>
       {categoriesList.map(([category, value]) => <div className="bw-stat-line" key={category}><span className="bw-category-label"><i style={{ backgroundColor: categoryColor(category) }} />{category}</span><span><b>{unknown && validView !== "all" && validView !== "average" ? "—" : money(value)}</b><small>{main ? Math.round(value / main * 100) : 0}%</small></span></div>)}
     </section>
-    {actual ? null : <><div className="bw-stat-line bw-paid-summary"><span>已付款項目</span><span>{records.filter((row) => row.hasActual).length} / {records.length}</span></div><TripRatesSummary {...ratesControl} /></>}
+    {actual ? null : <><div className="bw-stat-line bw-paid-summary"><span>已付款項目</span><span>{records.filter((row) => row.hasActual).length} / {records.length}</span></div>{ratesSummary ?? <TripRatesSummary {...ratesControl} />}</>}
   </section>;
 }
 
-function PricingSummary({ amount, twdAmount, currency, mode, count }) {
+export function PricingSummary({ amount, twdAmount, currency, mode, count }) {
   const perPerson = mode === "custom" ? "依成員" : count ? `${twdAmount % count ? "≈ " : ""}NT$ ${money(twdAmount / count)}` : "—";
   return <div className="bw-calculation"><div><span>每人</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>NT$ {money(twdAmount)}</strong>{currency !== "TWD" ? <small>{currency} {money(amount)}</small> : null}</div></div>;
 }
 
-function TripRatesSummary({ tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates }) {
+export function TripRatesSummary({ tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates }) {
   return <section className="bw-trip-rate"><div><h4>旅程估算匯率</h4><button type="button" className="ghost-button compact" disabled={!canRefreshRates || ratesBusy} onClick={onRefreshRates}>{ratesBusy ? "更新中…" : "更新匯率"}</button></div>
     {Object.entries(tripRates?.rates || {}).filter(([currency]) => budgetCurrencies.includes(currency)).map(([currency, rate]) => <div key={currency}><span>1 {currency}</span><b>{rate} TWD</b></div>)}
     <small>{tripRates?.quoted_at ? `${tripRates.source} · ${new Date(tripRates.quoted_at).toLocaleDateString("zh-TW")}` : tripRates ? "首次自動取得，之後手動更新" : "旅程統一匯率尚待啟用"}</small>

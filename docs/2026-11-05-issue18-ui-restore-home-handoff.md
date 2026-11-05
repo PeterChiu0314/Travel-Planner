@@ -1,5 +1,14 @@
 # 回家接續：只恢復既有預算 UI，保留 Issue #18 模型
 
+## 家中實作結果（2026-11-05，優先於下方待辦文字）
+
+- 已在原分支 pull 到 `4aa1967` 後恢復 UI。`ExpenseWorkspace` 沿用原 CSS、圖示、分類色、純 Stats／PricingSummary／TripRatesSummary 和既有 PricingFields／ItineraryPicker／CollaborationFrame；新 `ExpensePresentation` 只做表格／明細／顯示投影。沒有掛回舊 Budget／Actual／Source 寫入 controller。
+- 行前 toolbar 不再出現預算／實付切頁；原搜尋、付款篩選、筆數、新增、五欄分類表、小計／收合、右側三分頁、統計視角／成員負擔／分類占比與原位置 Rates 已恢復。正常 autosave 無技術 banner／成功 Toast；取消／完成回到明細，未成功儲存的草稿仍經既有 Continue／Discard guard。行前已付款項目的實付群組收在編輯器「實付金額與分攤」，與預算群組獨立。
+- #18 model／controller／transport／snapshot／SQL 都未修改；安裝 Migration 完整 SHA256 仍為 `8d472812fcecc87b3def9825d85bce8bbe227e5778883649c84e99c693391a50`。NULL 預算顯示未填，不從 paid／Origin 補值；明確0仍計為已填。預算10000/ABC、實付9500/AB、歷史午餐budget NULL/paid800 的隔離 fixture 核對表格／統計與結算分開讀取。
+- 驗證：41/41 Node/PGlite 模型／SQL／RLS／controller；40個 distinct Chromium案例，38個首輪通過，另外2個修正測試判定後重跑2/2（整數尾差依成員ID分配，checkbox accessible name包含金額）。涵蓋5個新恢復案例、2個新模型既有案例、3個舊欄位外觀與30個app/Demo/Share smoke。Build／diff通過，既有大bundle提示保留。瀏覽器plugin未提供，使用repository Playwright、static maps與本機隔離SQL；首次sandbox網路拒絕／跨sandbox連線失敗，改用同一原生環境的localhost5175後可驗證。桌面1440x1000截圖已檢視；截圖／trace存於本機visualizations，不提交至repo。
+- 模型界線：#18 snapshot只有編輯group lease，沒有selection-only presence。已恢復本機選取列、peer編輯row／field色框、hover／focus姓名提示及peer唯讀底色；不能宣稱已恢復其他人僅選取的提示。恢復後者需要另行協作協定工作，本輪不修改模型或接回舊selection RPC。
+- 沒有Hosted業務寫入／Migration／協定開關、Production／main、Receipt／Undo／Source／多筆付款恢復。新UI的真Hosted雙人、合法外幣報價、住宿／結算完整旅程與使用者外觀驗收仍待Preview手測。推送後需核對精確Git SHA的Preview READY；不以本機通過代替部署證據。使用者icon目錄及原有未追蹤檔案保持原狀。
+
 ## 使用者最新指示（最高優先）
 
 「回家做，UI給我改回去，我先前都已經設計好。請確保資料模型正確，只改回UI。寫交接文件讓家中codex可以順利接手。」
