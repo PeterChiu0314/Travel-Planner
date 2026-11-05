@@ -263,6 +263,5 @@
 .bw-metadata-group.is-unclaimed .bw-participants input[type=checkbox]:disabled { opacity: 1; cursor: auto; }
 .bw-metadata-group input:focus-visible, .bw-metadata-group textarea:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .bw-metadata-group textarea { height: auto; min-height: 90px; resize: vertical; }
-.bw-sync-status { color: var(--muted); font-size: 12px; margin: 8px 0; }
 .bw-metadata-summary { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
 .bw-metadata-editor .bw-warning button { display: block; margin-top: 7px; }

@@ -33,7 +33,7 @@ test('manual exclusions survive all modes; a new custom participant starts at ze
 
 test('temporary empty amount is only a draft; real failures toast once and recover without field actions',async({page})=>{
  const db=fixture();await ready(page,db);await amount(page).focus();await expect(amount(page)).toBeEditable();await amount(page).fill('');
- await expect(page.getByRole('status',{name:'預算同步狀態'})).toBeVisible();await page.waitForTimeout(1300);
+ await expect(page.getByRole('status',{name:'預算同步狀態'})).toHaveCount(0);await page.waitForTimeout(1300);
  expect(db.groupCalls.filter(c=>c.name==='patch_budget_metadata_group')).toHaveLength(0);await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
  db.patchError={code:'XX000',message:'server unavailable'};await amount(page).fill('11000');await expect(page.locator('[data-sonner-toast]')).toHaveCount(1);
  await expect(editor(page).getByRole('button',{name:/^重試$|捨棄此欄草稿|確認儲存結果/})).toHaveCount(0);await expect(editor(page).getByRole('alert')).toHaveCount(0);

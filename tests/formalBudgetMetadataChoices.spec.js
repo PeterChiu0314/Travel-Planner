@@ -30,7 +30,7 @@ test('links selector writes the full set once and snapshot updates another tab',
  }finally{await b.close();}
 });
 test('unknown payer result retries original request and full-editor handoff uses canonical',async({page})=>{
- const db=dbFor();await ready(page,db);db.losePatchAck=true;await choose(page,'付款人','B');await expect(page.getByRole('status',{name:'預算同步狀態'})).toBeVisible();
+ const db=dbFor();await ready(page,db);db.losePatchAck=true;await choose(page,'付款人','B');await expect(page.getByRole('status',{name:'預算同步狀態'})).toHaveCount(0);
  await expect.poll(()=>db.groupCalls.filter(c=>c.name==='patch_budget_metadata_group').length,{timeout:10000}).toBe(2);
  const calls=db.groupCalls.filter(c=>c.name==='patch_budget_metadata_group');expect(calls[0].args.p_request_id).toBe(calls[1].args.p_request_id);
  await page.getByRole('button',{name:'編輯完整項目',exact:true}).click();await expect(page.getByRole('button',{name:'儲存',exact:true})).toBeVisible();expect(db.rows.budget_items[0].payer_id).toBe('B');

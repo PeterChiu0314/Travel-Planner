@@ -54,7 +54,7 @@ test('peer-held groups keep normal controls, share collaborator outlines and nam
  await page.screenshot({path:test.info().outputPath('peer-fields.png'),fullPage:false});
 });
 
-test('admission and saving stay silent at field level and preserve the page unsynced state',async({page})=>{
+test('admission and saving stay silent at field level while the controller preserves pending work',async({page})=>{
  const db=await ready(page),normal=await style(title(page));
  db.metadataHold={actor:'A',action:'acquire'};await title(page).focus();
  await expect(title(page)).toHaveAttribute('aria-busy','true');
@@ -62,7 +62,7 @@ test('admission and saving stay silent at field level and preserve the page unsy
  expect(await style(title(page))).toEqual(normal);
  await title(page).fill('Appearance draft');db.releaseMetadata();
  db.metadataHold={actor:'A',action:'patch'};
- await expect(page.getByRole('status',{name:'預算同步狀態'})).toContainText('未同步');
+ await expect(page.getByRole('status',{name:'預算同步狀態'})).toHaveCount(0);
  await expect(group(page,'title').getByRole('alert')).toHaveCount(0);
  expect(await style(title(page))).toEqual(normal);
  db.releaseMetadata();await expect.poll(()=>db.rows.budget_items[0].title).toBe('Appearance draft');

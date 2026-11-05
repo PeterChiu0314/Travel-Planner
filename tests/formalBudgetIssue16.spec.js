@@ -19,7 +19,7 @@ test('peer denied admission after focus switches does not strand release and pee
 });
 test('failed release recovers in the background without field actions',async({page})=>{
  const db=metadataBackend();await ready(page,db);await title(page).focus();await expect(title(page)).toBeEditable();db.releaseFailure=true;await note(page).focus();
- await expect(page.getByRole('status',{name:'預算同步狀態'})).toBeVisible();await expect(titleGroup(page).getByRole('button',{name:'重試',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('status',{name:'預算同步狀態'})).toHaveCount(0);await expect(titleGroup(page).getByRole('button',{name:'重試',exact:true})).toHaveCount(0);
  db.releaseFailure=false;await expect.poll(()=>db.groupStates.get('budget:budget:title').actor,{timeout:10000}).toBe(null);await title(page).focus();await expect(title(page)).toBeEditable();await title(page).fill('Background recovered');await expect.poll(()=>db.rows.budget_items[0].title).toBe('Background recovered');
  await page.screenshot({path:test.info().outputPath('issue16-release-recovered.png'),fullPage:false});
 });

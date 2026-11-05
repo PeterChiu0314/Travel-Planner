@@ -189,7 +189,7 @@ test("typing continues during patch; old acknowledgement never replaces latest l
 test("confirmed canonical remains visible through failed snapshot and converges without another patch", async ({page})=>{
   const db=metadataBackend(); await ready(page,db); db.metadataHold={actor:"A",action:"patch"}; await write(title(page),"  Canonical new  ");
   await expect.poll(()=>db.metadataPending.length).toBe(1); db.snapshotDenied=true; db.releaseMetadata();
-  await expect(title(page)).toHaveValue("Canonical new"); await expect(page.getByRole("status",{name:"預算同步狀態"})).toBeVisible();
+  await expect(title(page)).toHaveValue("Canonical new"); await expect(page.getByRole("status",{name:"預算同步狀態"})).toHaveCount(0);
   expect(db.groupCalls.filter(c=>c.name==="patch_budget_metadata_group")).toHaveLength(1);
   db.snapshotDenied=false; await db.emit("budget_collaboration_signals");
   await expect(page.getByRole("status",{name:"預算同步狀態"})).toHaveCount(0); await expect(title(page)).toHaveValue("Canonical new");
@@ -211,7 +211,7 @@ for(const failure of ["patch","release"]) test(`${failure} failure prevents dirt
   const db=metadataBackend(); await ready(page,db); if(failure==="patch")db.patchError={code:"55P03"}; else db.releaseFailure=true;
   await write(title(page),"Keep through failure"); await page.getByRole("button",{name:"編輯完整項目",exact:true}).click();
   if(failure==="patch") {await expect(page.getByRole("dialog")).toBeVisible(); await page.getByRole("button",{name:"繼續編輯",exact:true}).click();}
-  else await expect(page.getByRole("status",{name:"預算同步狀態"})).toBeVisible();
+  else await expect(page.getByRole("status",{name:"預算同步狀態"})).toHaveCount(0);
   await expect(editor(page)).toBeVisible(); await expect(title(page)).toHaveValue("Keep through failure"); expect(db.leaseCalls).toHaveLength(0);
 });
 
@@ -227,7 +227,7 @@ test("dirty sidebar and close flush valid input without prompting or dropping it
 test("reload retains unknown request identity but no capability; explicit replay commits only once",async({page})=>{
   const db=metadataBackend(); await ready(page,db); db.losePatchAck=true; await write(title(page),"Lost ack reload");
   await expect.poll(()=>db.groupCalls.filter(c=>c.name==='patch_budget_metadata_group').length).toBe(1);
-  await expect(page.getByRole("status",{name:"預算同步狀態"})).toBeVisible();
+  await expect(page.getByRole("status",{name:"預算同步狀態"})).toHaveCount(0);
   const original=db.groupCalls.find(c=>c.name==="patch_budget_metadata_group").args;
   await page.reload(); await page.getByRole("button",{name:"Lost ack reload",exact:true}).click(); await page.getByRole("tab",{name:"編輯項目",exact:true}).click();
   await expect(title(page)).toHaveValue("Lost ack reload"); await expect.poll(()=>db.groupCalls.filter(c=>c.name==="patch_budget_metadata_group").length,{timeout:10000}).toBe(2);
@@ -243,6 +243,9 @@ test("late patch after changing trip cannot open a full editor in the new trip",
   // Stay is always safe while unresolved work exists.
   await expect(page.getByRole("dialog")).toBeVisible({timeout:15000}); await page.getByRole("button",{name:"繼續編輯",exact:true}).click();
   await expect(title(page)).toHaveValue("Old trip final"); db.releaseMetadata(); await expect.poll(()=>db.rows.budget_items[0].title).toBe("Old trip final");
+  // Silent UI is not an acknowledgement. Wait for exact group cleanup, which
+  // can occur only after the original request is confirmed and blur completes.
+  await title(page).blur();await expect.poll(()=>db.groupStates.get('budget:budget:title').actor,{timeout:10000}).toBe(null);
   await expect(page.getByRole('status',{name:'預算同步狀態'})).toHaveCount(0,{timeout:10000}); await expect(page.getByRole("button",{name:"確認儲存結果",exact:true})).toHaveCount(0);
   await page.getByRole("button",{name:"Other QA",exact:true}).click(); await expect(editor(page)).toHaveCount(0);
   await expect(page.getByRole("form",{name:"預算編輯",exact:true})).toHaveCount(0);
@@ -288,7 +291,7 @@ async function snapshotDeadline(page) {await page.clock.fastForward(budgetAuthor
 
 test("snapshot deadline frees Formal queue; retry confirms authority and never resends committed A",async({page})=>{
   const db=metadataBackend(),gate=await pendingSnapshot(page,db);
-  await expect(page.getByRole("status",{name:"預算同步狀態"})).toBeVisible();
+  await expect(page.getByRole("status",{name:"預算同步狀態"})).toHaveCount(0);
   await snapshotDeadline(page);await expect(title(page).locator("..").getByRole("button",{name:"重試",exact:true})).toHaveCount(0);
   if(process.env.BUDGET_SNAPSHOT_EVIDENCE){await fs.mkdir(process.env.BUDGET_SNAPSHOT_EVIDENCE,{recursive:true});await page.screenshot({path:path.join(process.env.BUDGET_SNAPSHOT_EVIDENCE,"formal-confirmed-A-queued-B-timeout.png")});}
   await expect(title(page)).toHaveValue("Queued B");expect(patches(db)).toHaveLength(1);expect(db.groupStates.get("budget:budget:title").revision).toBe(1);
@@ -383,7 +386,7 @@ test("Demo uses the same snapshot deadline and queued recovery without connectin
   await page.setViewportSize({width:1440,height:1000});await page.goto("/demo/budget");await page.getByRole("button",{name:"租車加油",exact:true}).click();
   await page.getByRole("tab",{name:"編輯項目",exact:true}).click();await write(title(page),"Demo A");await page.clock.fastForward(1001);
   await expect.poll(()=>page.evaluate(()=>window.demoSnapshotTest.pending)).toBe(true);await title(page).fill("Demo B");await snapshotDeadline(page);
-  await expect(page.getByRole("status",{name:"預算同步狀態"})).toBeVisible();
+  await expect(page.getByRole("status",{name:"預算同步狀態"})).toHaveCount(0);
   await page.clock.fastForward(6001);await expect(title(page)).toHaveValue("Demo B");
   await expect(page.getByRole("status",{name:"預算同步狀態"})).toHaveCount(0);await page.evaluate(()=>window.demoSnapshotTest.release());
   await expect(title(page)).toHaveValue("Demo B");expect((await page.evaluate(()=>window.demoSnapshotTest.patches)).map(p=>p.value)).toEqual(["Demo A","Demo B"]);
