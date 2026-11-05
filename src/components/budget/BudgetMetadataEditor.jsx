@@ -62,10 +62,10 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
         : !editable ? "目前沒有編輯權限" : !verified ? "協作狀態尚未確認" : !g.supported ? "此項目尚未支援分欄編輯，請使用完整項目編輯"
         : !g.ready ? "群組資料尚未確認" : g.request && !g.saving ? "儲存結果待確認，請重試原請求"
         : g.saving ? "儲存中…" : g.state === "pending" ? "正在取得編輯權，輸入暫存中…" : owner ? `${g.saved ? "已儲存；" : ""}${owner} 正在編輯${label}`
-        : g.conflict ? "版本衝突；本機草稿仍保留" : g.failed ? "尚未儲存／儲存失敗" : g.dirty ? "修改中" : g.saved ? "已儲存" : g.writable ? "可編輯" : "聚焦後取得編輯權";
+        : g.conflict ? "版本衝突；本機草稿仍保留" : g.failed ? "尚未儲存／儲存失敗" : g.dirty ? "修改中" : g.saved ? "已儲存" : "";
       const input = { id: `${hintId}-input`, name: g.group, value: g.display,
         readOnly: !g.acceptsIntent, "aria-readonly": !g.acceptsIntent, "aria-busy": g.state === "pending" || g.saving,
-        "aria-describedby": hintId, onFocus: () => { void client.focus(field); },
+        "aria-describedby": text ? hintId : undefined, onFocus: () => { void client.focus(field); },
         onPointerDown: () => { if (!g.acceptsIntent) void client.focus(field); },
         onKeyDown: event => {
           if (g.acceptsIntent || !["idle", "lost"].includes(g.state) || !verified || g.conflict || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -89,7 +89,7 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
         },
         onChange: event => client.input(field, event.target.value),
         onCompositionStart: () => client.composition(field, true), onCompositionEnd: () => client.composition(field, false) };
-      return <div key={g.group} className={`bw-metadata-group${owner || !g.acceptsIntent ? " is-readonly" : ""}`}
+      return <div key={g.group} className={`bw-metadata-group${owner ? " is-readonly" : !g.acceptsIntent ? " is-unclaimed" : ""}`}
         tabIndex={choice ? 0 : undefined} role={choice ? "group" : undefined} aria-label={choice ? label : undefined}
         onPointerDownCapture={() => { if (choice) void client.focus(field); }}
         onFocusCapture={() => { if (choice) void client.focus(field); }}
@@ -100,13 +100,13 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
         {g.group === "pricing" ? <PricingGroup client={client} field={field} view={g} record={record} kind={kind} members={members} /> : g.group === "links" ? <ItineraryPicker items={items} category={record.category} selectedIds={g.display} readOnly={!g.acceptsIntent}
           onChange={ids => client.input(field, ids)} />
           : choice ? <MenuSelect label={label} value={g.display || ""} editable={g.group === "category"} readOnly={!g.acceptsIntent} metadataPortal
-            inputProps={{ id: input.id, onKeyDown: input.onKeyDown, onPaste: input.onPaste, onCompositionStart: input.onCompositionStart, onCompositionEnd: input.onCompositionEnd, "aria-describedby": hintId }}
+            inputProps={{ id: input.id, onKeyDown: input.onKeyDown, onPaste: input.onPaste, onCompositionStart: input.onCompositionStart, onCompositionEnd: input.onCompositionEnd, "aria-describedby": text ? hintId : undefined }}
             onValueChange={(value, action) => client.input(field, g.group === "payer" ? value || null : value, { immediate: g.group !== "category" || Boolean(action?.selected) })}
             options={g.group === "payer" ? [{ value: "", label: "未指定" }, ...members.filter(m => m.status === "approved").map(m => ({ value: m.user_id, label: memberLabel(m) })),
               ...(g.display && !members.some(m => m.user_id === g.display && m.status === "approved") ? [{ value: g.display, label: `已退出／無效成員 · ${g.display}`, disabled: true }] : [])]
               : [...new Set([...categoryOptions, g.display].filter(Boolean))].map(value => ({ value, label: value }))} />
           : title ? <input {...input} /> : <textarea {...input} rows={4} />}
-        <span id={hintId} className="bw-metadata-status" aria-live={g.dirty && !g.failed && !g.conflict && !g.saving ? "off" : "polite"} aria-atomic="true">{text}</span>
+        {text ? <span id={hintId} className="bw-metadata-status" aria-live={g.dirty && !g.failed && !g.conflict && !g.saving ? "off" : "polite"} aria-atomic="true">{text}</span> : null}
         {g.error ? <p role="alert" className="bw-warning">{g.error}</p> : null}
         <div className="bw-metadata-actions">
           {g.request && !g.saving || g.failed || g.error && !g.conflict ? <button type="button" className="ghost-button compact" disabled={g.saving || g.releasing || g.conflict}

@@ -1,5 +1,9 @@
 # BUGS.md
 
+## 2026-11-05 Budget idle fields looked locked
+
+Fixed on the feature branch: BudgetMetadataEditor styled every non-accepting group as readonly, including unclaimed fields, and displayed an idle acquisition hint. Grey styling now applies only to a peer-held group; idle and own fields are normal and idle hints removed. Pricing mode/member controls keep authority gating but avoid disabled opacity before admission. Pending/saving/failure/conflict feedback and retry/discard remain unchanged.25 targeted mocked Playwright cases passed (appearance, choices, pricing, locks, save recovery and conflict), plus Build/diff. No lease/RPC/autosave/DB-permission modification or Hosted data write. Desktop screenshots inspected; mobile and new authenticated hosted interaction are not claimed.
+
 ## 2026-11-05 Staging manual handoff
 
 [Latest runbook](2026-11-05-budget-staging-manual-handoff.md):32 Passed/1 Failed/1 Blocked. D01/D02/D04/B01/B07 genuine Hosted Passed. C07 visibility prerequisite remains manual; D03 historical URL absent, not Passed. No new product P0/P1 identified. Fixed QA graph projection, audited retired canary continuation and traveling default Actual page targeting; financial/Baseline guards retained. Final automated sevenOFF audited, then exact fiveON per explicit user manual-test request. Receipt/Undo OFF; original83 relations/receipts/objects/security preserved; sessions/leases/jobs0. Only deliberate5174 manual frontend retained; no auto-shutoff, no Worker or admin key. Production NO-GO.
