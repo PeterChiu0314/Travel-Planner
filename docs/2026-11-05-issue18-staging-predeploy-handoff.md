@@ -1,8 +1,10 @@
 # Issue #18｜Staging 部署前交接（2026-11-05）
 
+本頁保留部署前阻擋紀錄。後續 Staging 已套用並開始手測，請以 [最新手測交接](2026-11-05-issue18-staging-manual-handoff.md) 為準。
+
 ## 本輪交付
 
-原分支加入同一支出 ID 的預算／實付編輯頁、逐群組租約與版本、一次付款、獨立參與者決策、旅程匯率更新、Realtime invalidation、住宿選取新支出，以及 Timeline 只讀成本投影。新模型不使用舊 Budget Source、Receipt 或 Undo；原始 Actual 與 Baseline 留存。CLI 產生的唯一 Forward 為 `supabase/migrations/20261105080725_issue18_single_expense.sql`，包含導入 8 筆舊 Actual／11 筆分攤、逐筆比對、舊寫入入口停用和 Ledger 新版本。
+原分支加入同一支出 ID 的預算／實付編輯頁、逐群組租約與版本、一次付款、獨立參與者決策、旅程匯率更新、Realtime invalidation、住宿選取新支出，以及 Timeline 只讀成本投影。新模型不使用舊 Budget Source、Receipt 或 Undo；原始 Actual 與 Baseline 留存。當時待安裝的 Forward 後來由 Supabase 安裝為 `supabase/migrations/20261105083233_issue18_single_expense.sql`，包含導入 8 筆舊 Actual／11 筆分攤、逐筆比對與舊寫入入口停用。
 
 ## 已驗證
 

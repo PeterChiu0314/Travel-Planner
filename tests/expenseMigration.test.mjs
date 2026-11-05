@@ -16,13 +16,13 @@ test('forward packet preserves two distinct historical Actual shapes and install
  await db.query("insert into public.actual_expenses values($1,$2,'Legacy fractional','其他',null,null,1.25,0.75,'JPY',0.6,null,'complete',true,null,null,'split_total')",[id1,trip]);
  await db.query("insert into public.actual_expenses values($1,$2,'Cancelled','其他',null,$3,2,2,'TWD',1,null,'complete',false,null,null,'custom')",[id2,trip,A]);
  await db.query('insert into public.actual_expense_participants values($1,$2,null),($3,$4,1)',[id1,A,id2,B]);
- let packet=await fs.readFile(new URL('../supabase/migrations/20261105080725_issue18_single_expense.sql',import.meta.url),'utf8');
+ let packet=await fs.readFile(new URL('../supabase/migrations/20261105083233_issue18_single_expense.sql',import.meta.url),'utf8');
  packet=packet.replace(/-- preflight\.sql[\s\S]*?(?=-- isolated-schema\.sql)/,'').replaceAll('<>8','<>2').replaceAll('<>11','<>2').replaceAll('<>1','<>0').replaceAll('<>18','<>0');
  await db.exec(packet);
  const rows=(await db.query('select id,paid,paid_at,payment_state from expense_stage_b.expense_items order by id')).rows;
  assert.equal(rows.length,2);assert.equal(rows.find(r=>r.id===id1).paid.twd_amount,.75);assert.equal(rows.find(r=>r.id===id1).paid_at,null);assert.equal(rows.find(r=>r.id===id1).payment_state,'paid');assert.equal(rows.find(r=>r.id===id2).payment_state,'unpaid');
  assert.equal((await db.query('select count(*)::int n from expense_stage_b.expense_participants')).rows[0].n,2);
  assert((await db.query("select relrowsecurity from pg_class where oid='public.expense_signals'::regclass")).rows[0].relrowsecurity);
- assert.equal((await db.query('select count(*)::int n from supabase_migrations.schema_migrations')).rows[0].n,1);
+ assert.equal((await db.query('select count(*)::int n from supabase_migrations.schema_migrations')).rows[0].n,0);
  }finally{await db.close();}
 });

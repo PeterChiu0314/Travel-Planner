@@ -403,5 +403,5 @@ end$$;
 revoke insert,update,delete on public.budget_items,public.budget_item_participants,public.itinerary_budget_items,
  public.actual_expenses,public.actual_expense_participants from public,anon,authenticated;
 
-insert into supabase_migrations.schema_migrations(version,name) values('20261105080725','issue18_single_expense');
 commit;
+
