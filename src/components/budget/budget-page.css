@@ -257,8 +257,6 @@
 .bw-filters > label input { height: 32px; min-height: 32px; }
 .bw-metadata-group { position: relative; display: grid; gap: 7px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .bw-metadata-group > label { font-size: 12px; color: var(--muted); }
-.bw-metadata-group.is-peer-held { background: var(--color-surface-subtle); }
-.bw-metadata-group.is-peer-held input, .bw-metadata-group.is-peer-held textarea, .bw-metadata-group.is-peer-held .menu-select { color: var(--muted); }
 /* Lease admission still gates these controls; an unclaimed group should look
    normal before focus. Do not restyle intentionally disabled computed totals
    or fixed historical currencies. */

@@ -1,5 +1,7 @@
 # Issue #18｜單一旅行支出項目：Review 方案
 
+最新狀態：[review修正與Ledger68交接](2026-11-05-issue17-18-review-followup.md)優先於下方歷史規畫／尚未部署文字。新模型已安裝；本輪修正legacy空分攤、精確release回執、Demo同模型與結算item-ID接線，未重規劃資料模型。#19新增入口規則獨立，不在本輪。使用者尚未手測，#18維持Open。
+
 日期：2026-11-05（Asia/Taipei）。分支：`codex/budget-collaboration-redesign`。
 
 ## Review 修訂與隔離 B 授權

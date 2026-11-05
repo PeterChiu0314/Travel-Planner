@@ -1,13 +1,12 @@
-import { applyDemoPricing } from "./lib/budgetPricingGroups.js";
 import { createBudgetPaymentController, createBudgetPaymentService } from "./lib/budgetPaymentGroups.js";
 import { createBudgetSourceController, createBudgetSourceService } from './lib/budgetSourceGroups.js';
 import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
-import {expenseModels} from './lib/expenseSnapshot.js';
+import {expenseModels,expenseFinancialSnapshot} from './lib/expenseSnapshot.js';
+import {createDemoExpenseService} from './demo/expenseService.js';
 import {budgetReceiptsEnabled,budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import {budgetFinanceGroupsEnabled,createBudgetRatesController,createBudgetRatesService} from './lib/budgetFinanceGroups.js';
 import {budgetLifecycleEnabled,isBudgetComplete} from './lib/budgetLifecycleValues.js';
 import {createBudgetLifecycleController,createBudgetLifecycleService} from './lib/budgetLifecycleGroups.js';
-import { applyDemoPaymentChanges } from "./demo/budgetPaymentGroups.js";
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
 import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
 import { onPostgresChangesReady } from "./lib/realtimePostgresReadiness.js";
@@ -27,7 +26,6 @@ import { createDemoLuggageItems, createDemoSharedLuggageItems } from "./demo/lug
 import { reorderLuggageItems, reorderLuggageSnapshot, privatizeLuggageItem, privatizeLuggageSnapshot, assignLuggageItem, assignLuggageSnapshot, mutateLuggageItem, transitionSharedLuggage, luggageErrorMessage } from "./lib/luggageService.js";
 import { budgetStage, recordForm, settlementBalances } from "./lib/budgetFinance.js";
 import { planningBudgetData } from "./lib/planningBudget.js";
-import { saveDemoBudgetRecord } from "./demo/saveBudgetRecord.js";
 import { persistBudgetWorkspace } from "./lib/budgetWorkspaceService.js";
 import { isBudgetConflict } from "./lib/budgetErrors.js";
 import { createBudgetEditLeaseClient } from "./lib/budgetEditLeases.js";
@@ -37,7 +35,7 @@ import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./lib/budgetM
 import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata, budgetAuthorityTimeoutMs } from "./lib/budgetMetadataService.js";
 import { createDemoBudgetMetadataService } from "./demo/budgetMetadata.js";
 import { demoBudgetQuote } from "./lib/tripBudgetRates.js";
-import { createDemoBudgetState, demoBudgetMembers, hydrateDemoBudgetScenario } from "./demo/budgetFixtures.js";
+import { demoBudgetMembers } from "./demo/budgetFixtures.js";
 import {
   closestCenter,
   DndContext,
@@ -8390,44 +8388,20 @@ function DemoApp({ initialSection }) {
   const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);
   const [timelineItems, setTimelineItems] = useState(() => createDemoTimelineItems());
   const [timelineAlternatives, setTimelineAlternatives] = useState([]);
-  const [demoBudgetByTrip, setDemoBudgetByTrip] = useState(() => Object.fromEntries(
-    demoTrips.map((trip) => [trip.id, createDemoBudgetState(trip, createDemoTimelineItems())]),
-  ));
+  const demoExpenseItems = useRef(timelineItems); demoExpenseItems.current = timelineItems;
+  const [demoExpenseServices, setDemoExpenseServices] = useState(() => Object.fromEntries(demoTrips.map(trip => [trip.id,
+    createDemoExpenseService({trip,members:demoMembers,getItems:()=>demoExpenseItems.current.filter(item=>item.trip_id===trip.id)})])));
+  const [demoExpenseSnapshots, setDemoExpenseSnapshots] = useState(() => Object.fromEntries(Object.entries(demoExpenseServices).map(([id,service])=>[id,service.snapshot()])));
   const [demoScenario, setDemoScenario] = useState("live");
   const [demoClock, setDemoClock] = useState(Date.now);
   const demoStage = demoScenario === "live" ? budgetStage(demoActiveTrip, new Date(demoClock)) : demoScenario;
-  const finance = demoBudgetByTrip[demoActiveTrip.id];
-  const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks, attachments: demoAttachments, baseline: demoBudgetBaseline } = finance;
-  const demoAttachmentUrls = useRef(new Set());
-  function setFinanceField(key, update) {
-    const tripId = demoActiveTrip.id;
-    setDemoBudgetByTrip((current) => ({ ...current, [tripId]: { ...current[tripId],
-      [key]: typeof update === "function" ? update(current[tripId][key]) : update } }));
-  }
-  const setBudgetItems = (update) => setFinanceField("budgetItems", update);
-  const setBudgetParticipants = (update) => setFinanceField("budgetParticipants", update);
-  const setActualExpenses = (update) => setFinanceField("actualExpenses", update);
-  const setActualParticipants = (update) => setFinanceField("actualParticipants", update);
-  const setItineraryBudgetLinks = (update) => setFinanceField("itineraryBudgetLinks", update);
+  const finance = expenseFinancialSnapshot(demoExpenseSnapshots[demoActiveTrip.id]);
+  const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks } = finance;
+  const demoBudgetBaseline = null;
   useEffect(() => {
     const timer = window.setInterval(() => setDemoClock(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => () => { demoAttachmentUrls.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
-  useEffect(() => {
-    const tripId = demoActiveTrip.id;
-    setDemoBudgetByTrip((current) => {
-      const previous = current[tripId];
-      let next = hydrateDemoBudgetScenario(previous, demoStage);
-      if (demoStage === "planning" && !previous.baseline?.frozen) {
-        next = { ...next, baseline: { trip_id: tripId, departure_at: `${demoActiveTrip.start_date}T00:00:00+08:00`,
-          captured_at: new Date().toISOString(), frozen: false,
-          payload: structuredClone({ items: budgetItems, participants: budgetParticipants, links: itineraryBudgetLinks,
-            itinerary: timelineItems.filter((item) => item.trip_id === tripId), members: demoMembers }) } };
-      } else if (previous.baseline && !previous.baseline.frozen) next = { ...next, baseline: { ...previous.baseline, frozen: true } };
-      return next === previous ? current : { ...current, [tripId]: next };
-    });
-  }, [demoActiveTrip.id, demoActiveTrip.start_date, demoStage, budgetItems, budgetParticipants, itineraryBudgetLinks, timelineItems]);
   const [demoSupportByTrip, setDemoSupportByTrip] = useState(() => Object.fromEntries(demoTrips.map((trip, index) => [trip.id, {
     accommodations: index === 0 ? createDemoStays(trip) : [],
     todoItems: index === 0 ? createDemoTodos(trip) : [],
@@ -8524,24 +8498,10 @@ function DemoApp({ initialSection }) {
   async function resetDemoBudget() {
     if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
     if (!await askDemo({ title: "重設 Demo 預算？", message: "將重設這個旅程的 Demo 預算、實付與附件。", confirmLabel: "重設", danger: true })) return;
-    demoAttachments.forEach((attachment) => { URL.revokeObjectURL(attachment.file_url); demoAttachmentUrls.current.delete(attachment.file_url); });
-    setDemoBudgetByTrip((current) => ({ ...current, [demoActiveTrip.id]: createDemoBudgetState(demoActiveTrip, timelineItems) }));
+    const service=createDemoExpenseService({trip:demoActiveTrip,members:demoMembers,getItems:()=>demoExpenseItems.current.filter(item=>item.trip_id===demoActiveTrip.id)});
+    setDemoExpenseServices(current=>({...current,[demoActiveTrip.id]:service}));
+    setDemoExpenseSnapshots(current=>({...current,[demoActiveTrip.id]:service.snapshot()}));
     setDemoScenario("live");
-  }
-
-  function uploadDemoAttachment(targetType, targetId, file) {
-    if (!file || file.size > 10 * 1024 * 1024) { void askDemo({ title: "無法上傳附件", message: "附件大小需小於 10MB", notice: true }); return; }
-    if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) { void askDemo({ title: "無法上傳附件", message: "請選擇 JPG、PNG、WebP 或 PDF。", notice: true }); return; }
-    const url = URL.createObjectURL(file);
-    demoAttachmentUrls.current.add(url);
-    setFinanceField("attachments", (current) => [...current, { id: demoId("demo-attachment"), trip_id: demoActiveTrip.id,
-      target_type: targetType, target_id: targetId, file_name: file.name, file_url: url, file_type: file.type, file_size: file.size, uploaded_by: "demo-peter" }]);
-  }
-
-  function deleteDemoAttachment(attachment) {
-    URL.revokeObjectURL(attachment.file_url);
-    demoAttachmentUrls.current.delete(attachment.file_url);
-    setFinanceField("attachments", (current) => current.filter((row) => row.id !== attachment.id));
   }
 
   async function returnToLogin() {
@@ -8862,13 +8822,6 @@ function DemoApp({ initialSection }) {
     return { ok: true };
   }
 
-  function commitDemoFinance(kind, payload, editingId, meta = {}) {
-    const result = saveDemoBudgetRecord(finance, kind, payload, editingId, meta, demoActiveTrip, demoMembers, demoStage);
-    if (result.ok) setDemoBudgetByTrip((current) => ({ ...current, [demoActiveTrip.id]: result.nextState }));
-    return result;
-  }
-  function saveBudgetItem(payload, editingId, meta = {}) { return commitDemoFinance("budget", payload, editingId, meta); }
-
   const demoLuggageRef = useRef(support);
   demoLuggageRef.current = support;
   function mutateDemoLuggage(scope, action, payload, id, meta = {}) {
@@ -8892,13 +8845,6 @@ function DemoApp({ initialSection }) {
     } catch(error) { return { ok: false, error: new Error(luggageErrorMessage(error)) }; }
   }
   function savePersonalLuggage(payload, editingId, meta) { return mutateDemoLuggage("personal", "save", payload, editingId, meta); }
-
-  function saveActualExpense(payload, editingId, meta = {}) { return commitDemoFinance("actual", payload, editingId, meta); }
-
-  function convertBudgetToActual(budget) {
-    return saveActualExpense({ ...recordForm(budget, budgetParticipants, "budget_item_id", demoMembers),
-      budget_item_id: budget.id, twd_amount_source: "estimated", actual_twd_amount: null }, null);
-  }
 
   function saveSharedLuggage(payload, editingId, meta) { return mutateDemoLuggage("shared", "save", payload, editingId, meta); }
 
@@ -9171,74 +9117,11 @@ function DemoApp({ initialSection }) {
           </>
         ) : null}
         {activeSection === "budget" ? (
-          <BudgetPanel
-            activeTrip={demoActiveTrip}
-            tripBudgetRates={finance.tripBudgetRates || demoBudgetQuote}
-            onUpdateBudgetRates={(quote, meta) => {
-              if (meta.tripId !== demoActiveTrip.id || demoStage !== "planning") return { ok: false, error: new Error("只有行前規劃可更新旅程預算匯率。") };
-              const next = { ...demoBudgetQuote, updated_at: new Date().toISOString() };
-              setDemoBudgetByTrip((current) => ({ ...current, [demoActiveTrip.id]: { ...current[demoActiveTrip.id], tripBudgetRates: next,
-                budgetItems: current[demoActiveTrip.id].budgetItems.map((row) => row.currency === "TWD" || current[demoActiveTrip.id].actualExpenses.some((expense) => expense.budget_item_id === row.id) ? row : { ...row, exchange_rate: next.rates[row.currency], twd_amount: Math.round(row.amount * next.rates[row.currency]), updated_at: next.updated_at }) } }));
-              return { ok: true, data: next };
-            }}
-            demoStage={demoStage}
-            budgetBaseline={demoBudgetBaseline?.trip_id === demoActiveTrip.id ? demoBudgetBaseline : null}
-            actualExpenses={actualExpenses}
-            actualParticipants={actualParticipants}
-            attachments={demoAttachments}
-            budgetItems={budgetItems}
-            budgetParticipants={budgetParticipants}
-            canEdit
-            currentUserId="demo-peter"
-            disableDraftAutosave
-            headingEyebrow="預算"
-            itineraryBudgetLinks={itineraryBudgetLinks}
-            items={timelineItems.filter((item) => item.trip_id === demoActiveTrip.id)}
-            members={demoMembers}
-            onConvertToActual={convertBudgetToActual}
-            onDelete={(budgetId) => {
-              setBudgetItems((current) => current.filter((item) => item.id !== budgetId));
-              setBudgetParticipants((current) => current.filter((participant) => participant.budget_item_id !== budgetId));
-              setItineraryBudgetLinks((current) => current.filter((link) => link.budget_item_id !== budgetId));
-              setActualExpenses((current) => current.map((expense) => expense.budget_item_id === budgetId ? { ...expense, budget_item_id: null, budget_origin_id: expense.budget_origin_id || budgetId } : expense));
-            }}
-            onDeleteActual={(expenseId) => {
-              demoAttachments.filter((attachment) => attachment.target_id === expenseId && attachment.target_type === "actual_expense").forEach(deleteDemoAttachment);
-              setActualExpenses((current) => current.filter((expense) => expense.id !== expenseId));
-              setActualParticipants((current) => current.filter((participant) => participant.actual_expense_id !== expenseId));
-              setBudgetItems((current) =>
-                current.map((item) =>
-                  item.auto_created_actual_expense_id === expenseId
-                    ? { ...item, auto_created_actual_expense_id: null }
-                    : item,
-                ),
-              );
-            }}
-            onDeleteAttachment={deleteDemoAttachment}
-            onOpenAttachment={(attachment) => window.open(attachment.file_url, "_blank", "noopener,noreferrer")}
-            onSave={saveBudgetItem}
-            onSaveActual={saveActualExpense}
-            onSaveMetadata={(kind, id, group, value) => {
-              if (group === "pricing") {
-                setDemoBudgetByTrip(current => ({...current, [demoActiveTrip.id]: applyDemoPricing(current[demoActiveTrip.id],kind,id,value)}));
-                return;
-              }
-              if (group === "links") {
-                setItineraryBudgetLinks(current => [...current.filter(link => link.budget_item_id !== id), ...value.map(itemId => ({ budget_item_id: id, itinerary_item_id: itemId }))]);
-                return;
-              }
-              const setter = kind === "budget" ? setBudgetItems : setActualExpenses;
-              setter(current => current.map(row => row.id === id ? { ...row, [group === "payer" ? "payer_id" : group]: value, updated_at: new Date().toISOString() } : row));
-            }}
-            onSavePayment={change => setDemoBudgetByTrip(current => ({ ...current, [demoActiveTrip.id]: applyDemoPaymentChanges(current[demoActiveTrip.id], change) }))}
-            onSaveSource={change => setDemoBudgetByTrip(current => ({ ...current, [demoActiveTrip.id]: applyDemoPaymentChanges(current[demoActiveTrip.id], change) }))}
-            onSaveReceipts={rows=>setFinanceField('attachments',()=>rows)}
-            onSaveRates={change=>setDemoBudgetByTrip(current=>({...current,[change.tripId]:{...current[change.tripId],tripBudgetRates:change.quote,budgetItems:current[change.tripId].budgetItems.map(b=>({...b,...change.rows.find(r=>r.id===b.id)}))}}))}
-            onSaveLifecycle={change=>setDemoBudgetByTrip(current=>({...current,[change.tripId]:{...current[change.tripId],...change}}))}
-            onUploadAttachment={uploadDemoAttachment}
-            restoreDrafts={false}
-            useEditLocks={false}
-          />
+          <ExpenseWorkspace key={demoExpenseServices[demoActiveTrip.id].instanceId} demo activeTrip={demoActiveTrip} demoStage={demoStage}
+            metadataSnapshot={finance} expenseService={demoExpenseServices[demoActiveTrip.id]}
+            onExpenseSnapshot={data=>setDemoExpenseSnapshots(current=>({...current,[data.tripId]:data}))}
+            canEdit currentUserId="demo-peter" services={budgetEditorServices}/>
+
         ) : null}
         {activeSection === "accommodation" ? <AccommodationPanel
           activeTrip={demoActiveTrip} trip={demoActiveTrip} accommodations={accommodations} attachments={[]} budgetItems={budgetItems}
@@ -9255,7 +9138,7 @@ function DemoApp({ initialSection }) {
           onDeleteGuide={(id) => { setGuideItems((current) => current.filter((item) => item.id !== id)); setTodoItems((current) => current.map((item) => item.guide_id === id ? { ...item, guide_id: "" } : item)); }}
           onToggleTodo={(item) => setTodoItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, completed: !entry.completed } : entry))}
         /> : null}
-        {activeSection === "settlement" ? <SettlementPanel activeTrip={demoActiveTrip} demoStage={demoStage} budgetBaseline={demoBudgetBaseline}
+        {activeSection === "settlement" ? <SettlementPanel activeTrip={demoActiveTrip} demoStage={demoStage} budgetBaseline={demoBudgetBaseline} expenseGraph={finance.expenseGraph}
           actualExpenses={actualExpenses} actualParticipants={actualParticipants} budgetItems={budgetItems} members={demoMembers} /> : null}
         {activeSection === "luggage" ? (
           <LuggagePanel key={`${demoActiveTrip.id}:demo-peter`}
@@ -9852,6 +9735,7 @@ function TripWorkspace(props) {
       <div className={isSettlementMode ? "" : "hidden-section"}>
         <SettlementPanel
           activeTrip={activeTrip}
+          expenseGraph={budgetSnapshot?.expenseGraph}
           budgetBaseline={budgetBaseline}
           actualExpenses={actualExpenses}
           actualParticipants={actualParticipants}
@@ -13418,16 +13302,16 @@ const budgetEditorServices = {
 };
 
 
-function SettlementPanel({ activeTrip, demoStage, budgetBaseline, actualExpenses: allExpenses, actualParticipants, budgetItems: rawBudgetItems, members }) {
+function SettlementPanel({ activeTrip, demoStage, budgetBaseline, expenseGraph, actualExpenses: allExpenses, actualParticipants, budgetItems: rawBudgetItems, members }) {
   const actualExpenses = allExpenses.filter((row) => isBudgetComplete(row)&&row.payment_active !== false);
   const approvedMembers = members.filter((member) => member.status === "approved");
-  const budgetItems = planningBudgetData(rawBudgetItems.filter(isBudgetComplete), allExpenses.filter(isBudgetComplete), actualParticipants, approvedMembers).rows;
+  const budgetItems = expenseGraph ? rawBudgetItems.filter(isBudgetComplete) : planningBudgetData(rawBudgetItems.filter(isBudgetComplete), allExpenses.filter(isBudgetComplete), actualParticipants, approvedMembers).rows;
   const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const participantsByExpense = useMemo(
     () => buildParticipantsMap(actualParticipants, "actual_expense_id"),
     [actualParticipants],
   );
-  const actualBudgetIds = new Set(actualExpenses.map((expense) => expense.budget_item_id).filter(Boolean));
+  const actualBudgetIds = new Set(actualExpenses.map((expense) => expenseGraph ? expense.id : expense.budget_item_id).filter(Boolean));
   const pendingBudgetItems = budgetItems.filter((budget) => !actualBudgetIds.has(budget.id));
   const hasBaseline = (demoStage || budgetStage(activeTrip)) === "settled" && budgetBaseline?.trip_id === activeTrip?.id;
   const plannedTotal = hasBaseline ? budgetBaseline.payload.items.reduce((sum, item) => sum + Number(item.twd_amount || 0), 0) : null;

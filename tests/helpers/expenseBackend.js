@@ -13,6 +13,7 @@ export async function expenseBackend(){
  await sql.query('insert into public.trips(id,budget_exchange_rates) values($1,$2)',[trip,db.trips[0].budget_exchange_rates]);
  for(const m of db.members)await sql.query('insert into public.trip_members values($1,$2,$3,$4,$5,$6)',[m.trip_id,m.user_id,m.display_name,m.email,m.status,m.role]);
  for(const file of ['isolated-schema.sql','isolated-rpc.sql','public-api.sql','rates.sql'])await sql.exec(await fs.readFile(new URL('../../docs/operations/issue18/'+file,import.meta.url),'utf8'));
+ await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261105132450_issue18_precise_lease_release.sql',import.meta.url),'utf8'));
  let chain=Promise.resolve();db.expenseCalls=[];db.dropAck=false;
  const signatures={read_expense_snapshot:['p_trip_id','p_session_id'],expense_group_lease:['p_id','p_group','p_session_id','p_token','p_action','p_base','p_epoch','p_seq','p_dirty'],mutate_expense_group:['p_id','p_group','p_session_id','p_token','p_epoch','p_base','p_value','p_request_id'],create_expense_item:['p_trip_id','p_id','p_session_id','p_request_id','p_view']};
  db.request=async req=>{if(req.op!=='rpc'||!signatures[req.name])return original(req);const run=async()=>{db.expenseCalls.push(structuredClone(req));try{

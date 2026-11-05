@@ -10,6 +10,7 @@ create function app_private.can_edit_trip(t uuid,a uuid) returns boolean languag
 grant usage on schema auth,app_private to authenticated;grant execute on function auth.uid(),app_private.can_read_trip(uuid,uuid) to authenticated;
 insert into public.trips(id) values('${trip}'),('${other}');insert into public.trip_members values('${trip}','${A}','approved','owner'),('${trip}','${B}','approved','editor'),('${trip}','${C}','approved','editor'),('${trip}','${viewer}','approved','viewer');`);
 for(const name of ['isolated-schema.sql','isolated-rpc.sql','rates.sql'])await db.exec(await fs.readFile(new URL('../docs/operations/issue18/'+name,import.meta.url),'utf8'));
+await db.exec(await fs.readFile(new URL('../supabase/migrations/20261105132450_issue18_precise_lease_release.sql',import.meta.url),'utf8'));
 await db.query("insert into expense_stage_b.expense_items(id,trip_id,title,payment_state) values($1,$2,'Original','unpaid')",[id,trip]);
 async function login(actor=A){await db.exec('reset role');await db.query("select set_config('test.actor',$1,false)",[actor]);await db.exec('set role authenticated');}
 async function lease(g,action='acquire',base=0,epoch=null,sid=session,cap=token){return (await db.query('select expense_stage_b.lease($1,$2,$3,$4,$5,$6,$7) d',[id,g,sid,cap,action,base,epoch])).rows[0].d;}

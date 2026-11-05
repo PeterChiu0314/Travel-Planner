@@ -1,0 +1,49 @@
+import {newExpense,priceExpense,confirmExpensePayment,cancelExpensePayment,expenseRows} from '../lib/expenseItems.js';
+import {createDemoExpenseModels} from './budgetFixtures.js';
+import {demoBudgetQuote} from '../lib/tripBudgetRates.js';
+
+const groups=['title','note','category','payer','links','budget','paid','payment','lifecycle'];
+const copy=value=>structuredClone(value);
+const fail=(message,code='22023')=>{throw Object.assign(new Error(message),{code});};
+export function createDemoExpenseService({trip,members,getItems}){
+ const leases=new Map(),receipts=new Map();let rateRevision=0,rates=copy(demoBudgetQuote),rateHeld=null;
+ let models=createDemoExpenseModels(trip,getItems()).map(item=>({...item,revisions:{...Object.fromEntries(groups.map(g=>[g,0])),...item.revisions}}));
+ function snapshot(session){const rows=models.map(expenseRows);return {schemaVersion:1,tripId:trip.id,items:rows.map(r=>r.item),participants:rows.flatMap(r=>r.participants),
+  links:models.flatMap(i=>(i.links||[]).map(itinerary_item_id=>({expense_id:i.id,itinerary_item_id}))),members:copy(members),itineraryItems:copy(getItems()),rates:copy(rates),
+  groups:models.flatMap(i=>groups.map(group=>{const l=leases.get(i.id+':'+group),held=Boolean(l&&l.expires>Date.now());return{id:i.id,group,revision:i.revisions[group]||0,epoch:l?.epoch||0,held,owner:held?'demo-peter':null,own_session:held&&l.session===session,expires_at:held?new Date(l.expires).toISOString():null};})),
+  rateState:{revision:rateRevision,held:Boolean(rateHeld),targets:models.filter(i=>i.budget&&i.budget.currency!=='TWD'&&i.payment_state!=='paid').map(i=>({id:i.id,revision:i.revisions.budget}))}};}
+ const result=fn=>async(...args)=>{try{return{data:copy(await fn(...args))};}catch(error){return{error};}};
+ const once=(key,signature,run)=>{if(receipts.has(key)){const saved=receipts.get(key);if(saved.signature!==signature)fail('Request mismatch');return saved.result;}const value=run();receipts.set(key,{signature,result:copy(value)});return value;};
+ const service={instanceId:crypto.randomUUID(),authorized:async()=>true,quote:async()=>copy(demoBudgetQuote),snapshot:()=>snapshot('demo-session'),read:result((_,session)=>snapshot(session)),
+  lease:result(r=>{const key=r.p_id+':'+r.p_group,item=models.find(i=>i.id===r.p_id),l=leases.get(key),active=Boolean(l&&l.expires>Date.now());
+   if(r.p_action==='release'){
+    const reply=(outcome,settled,extra={})=>({schemaVersion:1,action:'release',id:r.p_id,group:r.p_group,session_id:r.p_session_id,requested_epoch:r.p_epoch,granted:settled,settled,capability_active:!settled,outcome,...extra});
+    if(!active)return reply('inactive',true);
+    if(l.session===r.p_session_id&&l.token===r.p_token){if(l.epoch!==r.p_epoch)return reply('epoch_mismatch',false,{epoch:l.epoch});l.expires=0;return reply('released',true);}
+    return reply('superseded',true);
+   }
+   if(!item)fail('Item removed','55000');if((item.revisions[r.p_group]||0)!==r.p_base)fail('Version conflict','PT409');
+   if(active&&(l.session!==r.p_session_id||l.token!==r.p_token))return{granted:false};
+   if(r.p_action==='renew'&&(!active||l.epoch!==r.p_epoch))return{granted:false};
+   const held={session:r.p_session_id,token:r.p_token,epoch:active?l.epoch:(l?.epoch||0)+1,expires:Date.now()+420000};leases.set(key,held);return{granted:true,epoch:held.epoch,revision:r.p_base,expires_at:new Date(held.expires).toISOString()};
+  }),
+  create:result(r=>once(r.p_request_id,JSON.stringify(r),()=>{if(models.some(i=>i.id===r.p_id))fail('Duplicate item');models.push({...newExpense({id:r.p_id,tripId:trip.id,scope:r.p_view,members}),revisions:Object.fromEntries(groups.map(g=>[g,0])),links:[]});return{committed:true,request_id:r.p_request_id,expense_id:r.p_id};})),
+  mutate:result(r=>once(r.p_request_id,JSON.stringify({id:r.p_id,group:r.p_group,session:r.p_session_id,base:r.p_base,value:r.p_value}),()=>{
+   const index=models.findIndex(i=>i.id===r.p_id),item=models[index],held=leases.get(r.p_id+':'+r.p_group),v=r.p_value;
+   if(!item)fail('Item removed','55000');if(!held||held.session!==r.p_session_id||held.token!==r.p_token||held.epoch!==r.p_epoch||held.expires<=Date.now())fail('Lease required','55P03');
+   if(item.revisions[r.p_group]!==r.p_base)fail('Version conflict','PT409');let next=copy(item);
+   if(['budget','paid'].includes(r.p_group)){
+    const eligible=members.filter(m=>m.status==='approved').map(m=>m.user_id).sort();if(JSON.stringify(v.members)!==JSON.stringify(eligible))fail('Members changed','PT409');if(v.form.participantIds.some(id=>!eligible.includes(id)))fail('Invalid participant');
+    next=priceExpense(item,r.p_group,v.form,r.p_base);next.decisions[r.p_group]=Object.fromEntries(eligible.map(id=>[id,v.form.participantIds.includes(id)]));
+   }else if(r.p_group==='payment')next=v.action==='unpaid'?cancelExpensePayment(item,r.p_base):confirmExpensePayment(item,{paidAt:v.paid_at,payerId:item.payer_id,basePayment:r.p_base,baseBudget:v.budget_revision,basePaid:v.paid_revision});
+   else if(r.p_group==='lifecycle'){if(v.action!=='delete')fail('Invalid action');models.splice(index,1);}
+   else if(r.p_group==='links'){if(v.ids.some(id=>!getItems().some(i=>i.id===id)))fail('Invalid link');next.links=copy(v.ids);}
+   else if(r.p_group==='payer'){if(v.user_id&&!members.some(m=>m.user_id===v.user_id&&m.status==='approved'))fail('Invalid payer');next.payer_id=v.user_id;}
+   else if(['title','category','note'].includes(r.p_group))next[r.p_group]=v.text;else fail('Invalid group');
+   next.revisions[r.p_group]=r.p_base+1;if(r.p_group!=='lifecycle')models[index]=next;const rows=expenseRows(next);
+   return{committed:true,request_id:r.p_request_id,expense_id:r.p_id,group:r.p_group,revision:r.p_base+1,item:rows.item,participants:rows.participants};
+  })),
+  rateLease:result(r=>{if(r.p_action==='release'){rateHeld=null;return{granted:true};}rateHeld=r;return{granted:true,epoch:1};}),
+  rates:result(r=>once(r.p_request_id,JSON.stringify(r.p_value),()=>{if(r.p_base!==rateRevision)fail('Rates changed','PT409');rates=copy(r.p_value.quote);models=models.map(i=>i.budget&&i.payment_state!=='paid'&&i.budget.currency!=='TWD'?priceExpense(i,'budget',{...i.budget,exchange_rate:rates.rates[i.budget.currency]},i.revisions.budget):i);rateRevision++;return{committed:true,request_id:r.p_request_id,trip_id:trip.id,revision:rateRevision};}))
+ };return service;
+}

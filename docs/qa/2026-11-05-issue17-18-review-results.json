@@ -1,0 +1,222 @@
+{
+  "date": "2026-11-05",
+  "project": "uyqdopksfysbobhjcepk",
+  "scope": "Issue17/18 review fixes; Staging only",
+  "reviewURLs": [
+    "https://github.com/PeterChiu0314/Travel-Planner/issues/17#issuecomment-6653890830",
+    "https://github.com/PeterChiu0314/Travel-Planner/issues/18#issuecomment-6653891504"
+  ],
+  "migration": {
+    "version": "20261105132450",
+    "name": "issue18_precise_lease_release",
+    "sha256": "9c2dce20c010f3355c31aa4ad4bdf53aa67ec1b5e7b8a4e8d559fde9b64c3f62",
+    "immutable67Sha256": "8d472812fcecc87b3def9825d85bce8bbe227e5778883649c84e99c693391a50",
+    "dryRun": "Exact Forward +10 authenticated-role SQL assertions in Staging transaction/ROLLBACK; old source and Ledger67 restored",
+    "postInstall": "Same10 assertions in transaction/ROLLBACK; new source retained; active leases0; no financial mutation"
+  },
+  "before": {
+    "data": [
+      {
+        "n": 1,
+        "hash": "d425945ceea7c1f7b075afb2f3d817ca",
+        "name": "accommodations"
+      },
+      {
+        "n": 11,
+        "hash": "858bc98899ed11ae913df018467b7758",
+        "name": "actual_expense_participants"
+      },
+      {
+        "n": 8,
+        "hash": "78cd8400a0ea9a3e6a69766886f85ef8",
+        "name": "actual_expenses"
+      },
+      {
+        "n": 1,
+        "hash": "1471ebad2e22f07beedce8b8f71998a2",
+        "name": "attachments"
+      },
+      {
+        "n": 9,
+        "hash": "35da5ade3a7204b560819ac4cd268e37",
+        "name": "expense_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "expense_itinerary_links"
+      },
+      {
+        "n": 13,
+        "hash": "e308b95f744732ae416da4c60b5a85c7",
+        "name": "expense_participants"
+      },
+      {
+        "n": 26,
+        "hash": "e53de7d1797024cfc576d5906dfcaa0b",
+        "name": "itinerary_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "luggage_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "shared_luggage_items"
+      },
+      {
+        "n": 5,
+        "hash": "27ae5f1a0e94b4f4484f4c04e2f858f9",
+        "name": "trip_budget_baselines"
+      },
+      {
+        "n": 10,
+        "hash": "4a27e3910b83a1c0c7a1166c7c1a70a6",
+        "name": "trip_members"
+      },
+      {
+        "n": 6,
+        "hash": "715dceee14d6609ff817d9a0fe6358eb",
+        "name": "trips"
+      }
+    ],
+    "lease": {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "oid": "36431",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "definer": true,
+      "source_hash": "8fbf1a5677e5cc64e16965652392c58c"
+    },
+    "ledger": {
+      "n": 67,
+      "head": "20261105083233"
+    }
+  },
+  "after": {
+    "data": [
+      {
+        "n": 1,
+        "hash": "d425945ceea7c1f7b075afb2f3d817ca",
+        "name": "accommodations"
+      },
+      {
+        "n": 11,
+        "hash": "858bc98899ed11ae913df018467b7758",
+        "name": "actual_expense_participants"
+      },
+      {
+        "n": 8,
+        "hash": "78cd8400a0ea9a3e6a69766886f85ef8",
+        "name": "actual_expenses"
+      },
+      {
+        "n": 1,
+        "hash": "1471ebad2e22f07beedce8b8f71998a2",
+        "name": "attachments"
+      },
+      {
+        "n": 9,
+        "hash": "35da5ade3a7204b560819ac4cd268e37",
+        "name": "expense_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "expense_itinerary_links"
+      },
+      {
+        "n": 13,
+        "hash": "e308b95f744732ae416da4c60b5a85c7",
+        "name": "expense_participants"
+      },
+      {
+        "n": 26,
+        "hash": "e53de7d1797024cfc576d5906dfcaa0b",
+        "name": "itinerary_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "luggage_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "shared_luggage_items"
+      },
+      {
+        "n": 5,
+        "hash": "27ae5f1a0e94b4f4484f4c04e2f858f9",
+        "name": "trip_budget_baselines"
+      },
+      {
+        "n": 10,
+        "hash": "4a27e3910b83a1c0c7a1166c7c1a70a6",
+        "name": "trip_members"
+      },
+      {
+        "n": 6,
+        "hash": "715dceee14d6609ff817d9a0fe6358eb",
+        "name": "trips"
+      }
+    ],
+    "lease": {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "oid": "36431",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "definer": true,
+      "source_hash": "a74a600feea16fd46b33d341d7437616"
+    },
+    "ledger": {
+      "n": 68,
+      "head": "20261105132450"
+    }
+  },
+  "checks": {
+    "protectedData13": "identical",
+    "functionOIDOwnerACLDefinerSearchPath": "identical",
+    "advisor": {
+      "info24": "unchanged",
+      "definerWarning8": "unchanged",
+      "leakedPasswordWarning1": "unchanged"
+    },
+    "protocols": {
+      "metadata": true,
+      "finance": true,
+      "payment": true,
+      "source": true,
+      "lifecycle": true,
+      "receipt": false,
+      "undo": false
+    },
+    "nodeSQL": 46,
+    "playwright": 45,
+    "build": true,
+    "diffCheck": true
+  },
+  "limitations": [
+    "No genuine Hosted browser two-account/three-session acceptance claimed",
+    "User acceptance pending; issues17/18 remain open",
+    "#19 creation-entry/blank-item rules excluded",
+    "Production/main unchanged"
+  ],
+  "notes": [
+    "CLI generated file20261105130529; managed apply_migration assigned20261105132450; renamed local file to installed version without changing SQL bytes",
+    "Browser plugin unavailable; repository Playwright and isolated PGlite used",
+    "Screenshots inspected at1440x1000; mobile design deferred"
+  ]
+}

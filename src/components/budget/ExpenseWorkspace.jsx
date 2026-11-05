@@ -29,13 +29,15 @@ function Pricing({client,field,view,members,scope,rates,locked}){
 }
 export default function ExpenseWorkspace(props){
  const propsRef=useRef(props);propsRef.current=props;
- const transport=useMemo(()=>createExpenseService(props.supabase),[props.supabase]);
- const client=useMemo(()=>{return createExpenseEditor({service:{...transport,read:async()=>{const r=await propsRef.current.onRefreshBudget(propsRef.current.activeTrip.id);return r.ok?{data:r.data.expenseGraph}:{error:r.error||new Error('資料尚未同步，變更已保留。')};}},
-  actor:props.currentUserId,trip:props.activeTrip.id,sessionId:getBudgetMetadataSessionId(),storage:sessionStorage,onError:errorToast});},[props.supabase,props.currentUserId,props.activeTrip.id]);
- const planning=budgetStage(props.activeTrip)==='planning';
+ const transport=useMemo(()=>props.expenseService||createExpenseService(props.supabase),[props.expenseService,props.supabase]);
+ const sessionId=props.demo?'demo-session':getBudgetMetadataSessionId(),storage=props.demo?null:sessionStorage;
+ const client=useMemo(()=>{return createExpenseEditor({service:{...transport,read:async(trip,session)=>{if(propsRef.current.demo)return transport.read(trip,session);const r=await propsRef.current.onRefreshBudget(propsRef.current.activeTrip.id);return r.ok?{data:r.data.expenseGraph}:{error:r.error||new Error('資料尚未同步，變更已保留。')};}},
+  actor:props.currentUserId,trip:props.activeTrip.id,sessionId,storage,onError:errorToast,onSnapshot:data=>propsRef.current.onExpenseSnapshot?.(data)});},[transport,props.currentUserId,props.activeTrip.id,sessionId,storage]);
+ const planning=(props.demoStage||budgetStage(props.activeTrip))==='planning';
  const version=useSyncExternalStore(client.subscribe,client.getVersion),[selected,setSelected]=useState(null),[view,setView]=useState(()=>planning?'budget':'paid'),[query,setQuery]=useState('');
  const [panel,setPanel]=useState('stats'),[paymentFilter,setPaymentFilter]=useState(''),[collapsed,setCollapsed]=useState([]),[viewpoint,setViewpoint]=useState('average'),panelChosen=useRef(false);
  const {ask,dialog}=useSiteDialog();
+ useEffect(()=>{setView(planning?'budget':'paid');},[planning]);
  useEffect(()=>{if(props.metadataSnapshot?.expenseGraph)client.ingest(props.metadataSnapshot.expenseGraph);},[client,props.metadataSnapshot]);
  useEffect(()=>{const detach=client.attach();const offline=()=>client.invalidate(),online=()=>void client.refresh(),timer=setInterval(()=>void client.tick(),1000);window.addEventListener('offline',offline);window.addEventListener('online',online);window.addEventListener('focus',online);return()=>{clearInterval(timer);window.removeEventListener('offline',offline);window.removeEventListener('online',online);window.removeEventListener('focus',online);detach();};},[client]);
  const state=client.status(),graph=state.graph;
@@ -73,7 +75,7 @@ export default function ExpenseWorkspace(props){
    <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} groups={graph.groups} selected={selected} collapsed={collapsed} setCollapsed={next=>void handoff(()=>setCollapsed(next))} viewpoint={viewpoint} actual={actual} onSelect={select}/>
   </div>
   <aside className="bw-side"><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[['stats','旅程統計',ChartColumn],['detail','項目明細',List],['edit','編輯項目',Pencil]].map(([key,label,Icon])=><button key={key} role="tab" type="button" aria-label={label} aria-selected={panel===key} onClick={()=>changePanel(key)}><Icon size={14} strokeWidth={1.8}/><span>{label}</span></button>)}</div>
-  <div hidden={panel!=='stats'}><Stats records={rows} rows={participantRows} members={approved} actual={actual} budgets={rows} viewpoint={viewpoint} setViewpoint={setViewpoint} ratesSummary={<span/>}/><div className="bw-restored-rates" hidden={actual}><ExpenseRates service={transport} client={client} actor={props.currentUserId} trip={props.activeTrip.id} sessionId={getBudgetMetadataSessionId()} storage={sessionStorage} onError={errorToast} services={props.services} editable={editable}/></div></div>
+  <div hidden={panel!=='stats'}><Stats records={rows} rows={participantRows} members={approved} actual={actual} budgets={rows} viewpoint={viewpoint} setViewpoint={setViewpoint} ratesSummary={<span/>}/><div className="bw-restored-rates" hidden={actual}><ExpenseRates service={transport} client={client} actor={props.currentUserId} trip={props.activeTrip.id} sessionId={sessionId} storage={storage} onError={errorToast} services={props.services} editable={editable}/></div></div>
   {panel==='detail'?(item?<ExpenseDetail item={item} scope={view} members={members} links={links} items={graph.itineraryItems||[]} editable={editable} paymentDisabled={paymentDisabled} onEdit={()=>edit(item.id)} onRemove={()=>void remove()} onPayment={()=>{if(!paymentDisabled)void payment();}}/>:<div className="bw-empty">選取項目查看明細</div>):null}
   {panel==='edit'&&item?<section className="bw-editor bw-metadata-editor" aria-label="支出項目編輯"><div className="bw-detail-heading"><h3>編輯{actual?'實付':'預算'}</h3><button type="button" className="bw-icon" aria-label="關閉編輯" onClick={close}><X size={17}/></button></div>
    {frame('title','項目名稱',({v,locked,set})=><input aria-label="項目名稱" value={v.value} readOnly={locked} onChange={e=>set(e.target.value)}/>)}

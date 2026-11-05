@@ -2,6 +2,7 @@ import {withBudgetAuthorityTimeout} from './budgetMetadataService.js';
 import {expenseModels,validExpenseSnapshot} from './expenseSnapshot.js';
 import {calculatePricing,calculateActualPricing} from './budgetFinance.js';
 import {proposeExpenseMembers,expenseRows} from './expenseItems.js';
+import {expenseReleaseReceipt,expenseReleaseSettled} from './expenseLeaseReceipt.js';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 export function expenseFieldValue(data,id,group){
  const item=expenseModels(data).find(i=>i.id===id);if(!item)return null;
@@ -9,7 +10,7 @@ export function expenseFieldValue(data,id,group){
   const bundle=item[group];const selected=Object.entries(item.decisions[group]||{}).filter(([,yes])=>yes).map(([id])=>id);
   const storedSource=bundle?.twd_amount_source||'legacy',source=group==='paid'&&storedSource==='legacy'&&Number.isInteger(Number(bundle?.twd_amount))?'actual':storedSource;
   return bundle?{amount:bundle.amount,unit_amount:bundle.unit_amount,pricing_mode:bundle.pricing_mode,currency:bundle.currency,exchange_rate:bundle.exchange_rate,
-   participantIds:group==='paid'&&!bundle.participantIds.length&&bundle.record_status!=='incomplete'?(data.members||[]).filter(m=>m.status==='approved').map(m=>m.user_id):bundle.participantIds,shares:bundle.shares,twd_amount_source:source,actual_twd_amount:bundle.actual_twd_amount??bundle.twd_amount??''}
+   participantIds:bundle.participantIds,shares:bundle.shares,twd_amount_source:source,actual_twd_amount:bundle.actual_twd_amount??bundle.twd_amount??''}
    :{amount:'',unit_amount:'',pricing_mode:'split_total',currency:'TWD',exchange_rate:1,participantIds:selected,shares:{},twd_amount_source:'estimated',actual_twd_amount:''};
  }
  if(group==='payer')return item.payer_id||'';
@@ -26,6 +27,12 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
  const current=()=>!disposed;
  const owns=g=>verified&&g.token&&g.epoch!==null&&g.state==='held'&&!g.releasing&&g.expires>Date.now()&&!g.conflict;
  const dirty=g=>!same(g.value,g.canonical);
+ const display=g=>{
+  if(g.group!=='budget'||dirty(g)||g.request)return g.value;
+  const item=expenseModels(graph).find(i=>i.id===g.id);if(!item)return g.value;
+  const proposed=expenseRows(proposeExpenseMembers(item,'budget',graph.members));
+  return expenseFieldValue({...graph,items:graph.items.map(i=>i.id===g.id?proposed.item:i),participants:[...graph.participants.filter(p=>p.expense_id!==g.id),...proposed.participants]},g.id,g.group);
+ };
  const storageKey=g=>`travel-planner-expense:${actor}:${trip}:${g.id}:${g.group}`;
  function persist(g){try{if(!dirty(g)&&!g.request)storage?.removeItem(storageKey(g));else storage?.setItem(storageKey(g),JSON.stringify({value:g.value,base:g.base,request:g.request?{...g.request,p_token:null,p_epoch:null}:null}));}catch{/* Memory draft remains. */}}
  const remote=g=>graph?.groups.find(s=>s.id===g.id&&s.group===g.group);
@@ -53,8 +60,11 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
  }
  async function release(g){if(g.releaseWork)return g.releaseWork;clearTimeout(g.timer);g.focused=false;g.releasing=true;
   g.releaseWork=(async()=>{if(g.acquiring)await g.acquiring;if(g.request||g.saving)return false;if(!g.token){g.releasing=false;return true;}if(g.epoch===null)return false;
-   const request=args(g,'release');const r=await bounded(service.lease(request));if(!current())return false;
-   if(!r.error&&r.data?.granted){g.token=null;g.epoch=null;g.state='idle';g.releasing=false;g.error=null;emit();return true;}
+   let request=args(g,'release'),r=await bounded(service.lease(request));if(!current())return false;
+   if(!r.error&&expenseReleaseReceipt(r.data,request)&&r.data.outcome==='epoch_mismatch'&&r.data.capability_active===true&&Number.isSafeInteger(r.data.epoch)){
+    g.epoch=r.data.epoch;request=args(g,'release');r=await bounded(service.lease(request));if(!current())return false;
+   }
+   if(!r.error&&expenseReleaseSettled(r.data,request)){g.token=null;g.epoch=null;g.state='idle';g.releasing=false;g.error=null;emit();return true;}
    report(g,r.error||new Error('暫時無法完成同步，變更已保留。'));return false;
   })().finally(()=>{g.releaseWork=null;emit();});return g.releaseWork;
  }
@@ -66,16 +76,11 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
    const r=await withBudgetAuthorityTimeout(service.lease(request),{timeoutMs,late:async late=>{if(late.data?.granted){
     const relevant=current()&&g.token===token; if(relevant){g.epoch=late.data.epoch;g.releasing=true;}
     const cleaned=await service.lease({...request,p_action:'release',p_epoch:late.data.epoch});
-    if(relevant&&current()&&g.token===token&&cleaned.data?.granted){g.token=null;g.epoch=null;g.releasing=false;g.state='idle';emit();}
+    if(relevant&&current()&&g.token===token&&expenseReleaseSettled(cleaned.data,{...request,p_epoch:late.data.epoch})){g.token=null;g.epoch=null;g.releasing=false;g.state='idle';emit();}
    }}});
    if(!current()){if(r.data?.granted)void service.lease({...request,p_action:'release',p_epoch:r.data.epoch});return false;}
    if(r.error||!r.data?.granted){if(r.data?.granted===false||r.error?.code==='PT409')g.token=null;g.state='blocked';if(r.error?.code==='PT409'&&dirty(g))g.conflict=true;if(r.error&&r.error.code!=='PT409')report(g,r.error);void refresh();return false;}
    if(g.token!==token)return false;g.epoch=r.data.epoch;g.expires=Date.parse(r.data.expires_at);g.state='held';g.lastRenew=Date.now();
-   if(g.group==='budget'&&!dirty(g)){
-    const item=expenseModels(graph).find(i=>i.id===g.id),proposal=expenseRows(proposeExpenseMembers(item,'budget',graph.members));
-    const proposalGraph={...graph,items:graph.items.map(i=>i.id===g.id?proposal.item:i),participants:[...graph.participants.filter(p=>p.expense_id!==g.id),...proposal.participants]};
-    const candidate=expenseFieldValue(proposalGraph,g.id,g.group);if(!same(candidate,g.value))input(g,candidate);
-   }
    emit();return true;
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
  }
@@ -114,7 +119,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
  async function discard(){if(pendingCreate)return false;for(const g of fields.values()){if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
  const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,focus,input,save,release,finish,discard,
   status:()=>({graph,verified,dirty:Boolean(pendingCreate)||[...fields.values()].some(g=>dirty(g)||g.request||g.saving),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
-  view:g=>({value:g.value,dirty:dirty(g),editable:owns(g)||g.state==='pending',remote:remote(g),busy:g.saving||g.state==='pending',conflict:g.conflict}),
+  view:g=>({value:display(g),dirty:dirty(g),editable:owns(g)||g.state==='pending',remote:remote(g),busy:g.saving||g.state==='pending',conflict:g.conflict}),
   blur(g){g.focused=false;void(async()=>{if(g.acquiring)await g.acquiring;if(dirty(g)||g.request)await save(g);else await release(g);})();},
   async tick(){if(!current())return;if(Date.now()-lastRecovery<5000)return;lastRecovery=Date.now();if(pendingCreate&&!createWork)await create();await refresh();for(const g of fields.values()){
    if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);

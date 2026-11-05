@@ -1,4 +1,4 @@
-import { calculatePricing } from "../lib/budgetFinance.js";
+import {newExpense,priceExpense,confirmExpensePayment} from "../lib/expenseItems.js";
 
 export const demoBudgetMembers = [
   { user_id: "demo-peter", display_name: "Peter", email: "peter@example.com", role: "owner", status: "approved" },
@@ -51,87 +51,17 @@ const definitions = [
   { key: "esim", category: "其他", title: "eSIM・5 人上網", amount: 1250, currency: "TWD", payer: R, fixed: true },
 ];
 
-function makeRecord(definition, tripId, itinerary) {
-  const participantIds = definition.participants || (definition.shares ? Object.keys(definition.shares) : all);
-  const input = { participantIds, currency: definition.currency || "JPY", exchange_rate: definition.currency === "TWD" ? 1 : 0.22,
-    pricing_mode: definition.shares ? "custom" : definition.unit != null ? "per_person" : "split_total",
-    unit_amount: definition.unit, amount: definition.amount, shares: definition.shares };
-  const pricing = calculatePricing(input);
-  const linkedItems = (definition.links || []).map((title) => itinerary.find((item) => item.title === title)).filter(Boolean);
-  if (linkedItems.length !== (definition.links || []).length) throw new Error(`Demo itinerary link missing: ${definition.key}`);
-  return { record: { id: `demo-budget-${definition.key}`, trip_id: tripId, title: definition.title, category: definition.category,
-    subcategory: definition.subcategory || "", note: definition.note || "", payer_id: definition.payer || null,
-    ...input, ...pricing, is_fixed: Boolean(definition.fixed), auto_created_actual_expense_id: definition.fixed ? `demo-actual-${definition.key}` : null,
-    created_at: "2027-04-01T08:00:00.000Z", updated_at: "2027-04-01T08:00:00.000Z" }, participantIds, linkedItems, shares: pricing.shares };
-}
-
-export function createKyotoBudgetFixture(trip, itinerary) {
-  const data = definitions.map((definition) => makeRecord(definition, trip.id, itinerary));
-  const budgetItems = data.map(({ record }) => {
-    const { participantIds, allocations, shares, ...persisted } = record;
-    return persisted;
+// Synthetic Demo seed, built directly with the same single-expense operations.
+export function createDemoExpenseModels(trip,itinerary) {
+  if(trip.id!==kyotoDemoTripId)return [];
+  return definitions.map(definition=>{
+    const participantIds=definition.participants||(definition.shares?Object.keys(definition.shares):all);
+    let item={...newExpense({id:`demo-expense-${definition.key}`,tripId:trip.id,members:demoBudgetMembers}),
+      title:definition.title,category:definition.category,note:definition.note||"",payer_id:definition.payer||null};
+    item=priceExpense(item,'budget',{participantIds,currency:definition.currency||"JPY",exchange_rate:definition.currency==='TWD'?1:0.22,
+      pricing_mode:definition.shares?'custom':definition.unit!=null?'per_person':'split_total',unit_amount:definition.unit,amount:definition.amount,shares:definition.shares},0);
+    item.links=(definition.links||[]).map(title=>{const linked=itinerary.find(i=>i.title===title);if(!linked)throw new Error(`Demo itinerary link missing: ${title}`);return linked.id;});
+    if(definition.fixed)item=confirmExpensePayment(item,{paidAt:'2027-04-01T08:00:00.000Z',payerId:item.payer_id,basePayment:0,baseBudget:item.revisions.budget,basePaid:0});
+    return item;
   });
-  const budgetParticipants = data.flatMap(({ record, participantIds, shares }) => participantIds.map((user_id) => ({
-    id: `${record.id}-${user_id}`, budget_item_id: record.id, user_id, share_amount: record.pricing_mode === "custom" ? shares[user_id] : null,
-  })));
-  const itineraryBudgetLinks = data.flatMap(({ record, linkedItems }) => linkedItems.map((item) => ({ id: `${record.id}-${item.id}`, budget_item_id: record.id, itinerary_item_id: item.id })));
-  function actual(key, amount, overrides = {}) {
-    const source = budgetItems.find((row) => row.id === `demo-budget-${key}`);
-    const selected = budgetParticipants.filter((row) => row.budget_item_id === source.id);
-    const input = { ...source, pricing_mode: amount == null ? source.pricing_mode : "split_total",
-      participantIds: selected.map((row) => row.user_id), shares: Object.fromEntries(selected.map((row) => [row.user_id, row.share_amount])), ...overrides };
-    if (amount != null) input.amount = amount;
-    const pricing = calculatePricing(input);
-    const { is_fixed, auto_created_actual_expense_id, ...record } = source;
-    const sourceLinks = itineraryBudgetLinks.filter((link) => link.budget_item_id === source.id);
-    const linkedDays = sourceLinks.map((link) => itinerary.find((item) => item.id === link.itinerary_item_id)?.day_index).filter(Number.isFinite);
-    const paidAt = overrides.paid_at || new Date(new Date(`${trip.start_date}T13:00:00+08:00`).getTime()
-      + (source.is_fixed ? -4 : linkedDays.length ? Math.min(...linkedDays) : 0) * 86400000).toISOString();
-    return { ...record, ...pricing, ...overrides, id: `demo-actual-${key}`, budget_item_id: source.id, budget_origin_id: source.id,
-      paid_at: paidAt, updated_at: paidAt,
-      _participants: input.participantIds.map((user_id) => ({ user_id, share_amount: input.pricing_mode === "custom" ? pricing.shares[user_id] : null })) };
-  }
-  const prepaid = definitions.filter((row) => row.fixed).map((row) => actual(row.key));
-  const traveling = [actual("bus", 14000), actual("day1-lunch", 8200), actual("day1-dinner", 9800), actual("byodoin", 2100),
-    actual("boat", 3800), actual("uji-lunch", 8600), actual("uji-tea", 4100), actual("day2-dinner", 11800),
-    actual("rental", 49060), actual("lake-lunch", 10600), actual("hotpot")];
-  const settlement = [actual("fuel", 9100), actual("parking", 2400), actual("airport-train", 4900), actual("ic", 10000),
-    actual("castle", 5000), actual("italian", 12900), actual("bbq", null, { shares: { [P]: 6500, [D]: 5100, [S]: 4200, [C]: 5700, [R]: 4500 } }),
-    actual("burgers", 7900), actual("villa-dinner", 13400), actual("farm-lunch", 8000), actual("airport-dinner", 10200), actual("souvenir", 7200)];
-  // A single planned fuel line may have multiple real payments/payers.
-  settlement[0] = { ...actual("fuel", 5000), title: "租車加油・第一筆" };
-  settlement.push({ ...actual("fuel", 4100, { payer_id: C }), id: "demo-actual-fuel-second", title: "租車加油・第二筆" });
-  // Personal shopping intentionally stays unrecorded for the closing checklist.
-  const extraInput = { pricing_mode: "split_total", amount: 2100, currency: "JPY", exchange_rate: 0.22, participantIds: three };
-  traveling.push({ id: "demo-actual-extra-taxi", trip_id: trip.id, budget_item_id: null, budget_origin_id: null, title: "臨時計程車・下雨改搭車", category: "交通", subcategory: "計程車", ...extraInput, ...calculatePricing(extraInput), payer_id: S, note: "預算外支出，三人搭乘。", paid_at: "2027-04-06T11:00:00.000Z", updated_at: "2027-04-06T11:00:00.000Z", _participants: three.map((user_id) => ({ user_id, share_amount: null })) });
-  settlement.push({ id: "demo-actual-extra-coffee", trip_id: trip.id, budget_item_id: null, budget_origin_id: null, title: "Dora 個人咖啡", category: "餐飲", ...extraInput, ...calculatePricing({ ...extraInput, amount: 650, participantIds: [R] }), payer_id: P, note: "Peter 代付，僅 Dora 負擔。", paid_at: "2027-04-09T06:00:00.000Z", updated_at: "2027-04-09T06:00:00.000Z", _participants: [{ user_id: R, share_amount: null }] });
-  function expenseGraph(expenses) {
-    return { actualExpenses: expenses.map(({ _participants, participantIds, allocations, shares, ...record }) => record),
-      actualParticipants: expenses.flatMap((expense) => expense._participants.map((row) => ({ ...row, id: `${expense.id}-${row.user_id}`, actual_expense_id: expense.id }))) };
-  }
-  const initial = expenseGraph(prepaid);
-  const departure_at = `${trip.start_date}T00:00:00+08:00`;
-  return { budgetItems, budgetParticipants, itineraryBudgetLinks, ...initial, attachments: [], loadedScenarios: ["planning"],
-    scenarioFixtures: { traveling: expenseGraph(traveling), settled: expenseGraph([...traveling, ...settlement]) },
-    baseline: { trip_id: trip.id, departure_at, captured_at: new Date(new Date(departure_at).getTime() - 3600000).toISOString(), frozen: false,
-      payload: structuredClone({ items: budgetItems, participants: budgetParticipants, links: itineraryBudgetLinks, itinerary, members: demoBudgetMembers }) } };
-}
-
-export function createDemoBudgetState(trip, itinerary) {
-  return trip.id === kyotoDemoTripId ? createKyotoBudgetFixture(trip, itinerary) : {
-    budgetItems: [], budgetParticipants: [], itineraryBudgetLinks: [], actualExpenses: [], actualParticipants: [], attachments: [], baseline: null, loadedScenarios: ["planning"], scenarioFixtures: {},
-  };
-}
-
-export function hydrateDemoBudgetScenario(state, stage) {
-  if (stage === "planning" || state.loadedScenarios.includes(stage)) return state;
-  const fixture = state.scenarioFixtures[stage];
-  const ids = new Set([...state.actualExpenses.map((expense) => expense.id),
-    ...state.loadedScenarios.flatMap((scenario) => state.scenarioFixtures[scenario]?.actualExpenses.map((expense) => expense.id) || [])]);
-  const budgetIds = new Set(state.budgetItems.map((item) => item.id));
-  const newExpenses = fixture?.actualExpenses.filter((expense) => !ids.has(expense.id)).map((expense) =>
-    expense.budget_item_id && !budgetIds.has(expense.budget_item_id) ? { ...expense, budget_item_id: null } : expense) || [];
-  const newIds = new Set(newExpenses.map((expense) => expense.id));
-  return { ...state, loadedScenarios: [...state.loadedScenarios, stage], actualExpenses: [...state.actualExpenses, ...newExpenses],
-    actualParticipants: [...state.actualParticipants, ...(fixture?.actualParticipants.filter((row) => newIds.has(row.actual_expense_id)) || [])] };
 }

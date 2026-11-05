@@ -8,3 +8,4 @@ docs/operations/budget-b7-legacy-cutover/*.sql text eol=lf
 # Keep the installed Issue #18 Staging ledger source byte-for-byte reproducible.
 # The CRLF and final blank line are part of its recorded source hash.
 supabase/migrations/20261105083233_issue18_single_expense.sql -text -whitespace
+supabase/migrations/20261105132450_issue18_precise_lease_release.sql text eol=lf

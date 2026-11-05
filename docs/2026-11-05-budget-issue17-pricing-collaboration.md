@@ -1,5 +1,7 @@
 # Issue #17 — pricing initialization and quiet collaboration
 
+Latest review follow-up: [#17/#18 implementation and Staging Ledger68 evidence](2026-11-05-issue17-18-review-followup.md) supersedes the older pending implementation notes below. New-member suggestions are read-only local projections until an explicit pricing action; open/focus/blur/leave do not persist them. New-model/SQL/browser checks pass, but genuine Hosted multi-account and user acceptance are still pending; #17 stays Open.
+
 Branch: `codex/budget-collaboration-redesign`. Scope: shared Budget/Actual pricing and group editor UX. Production/main/deployment/migrations/protocol flags were not operated. This is a frontend/controller candidate, not full Hosted acceptance or permission to close #17.
 
 ## Review follow-up — quiet normal editing
