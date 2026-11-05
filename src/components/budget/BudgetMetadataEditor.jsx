@@ -109,7 +109,7 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
         {text ? <span id={hintId} className="bw-metadata-status" aria-live={g.dirty && !g.failed && !g.conflict && !g.saving ? "off" : "polite"} aria-atomic="true">{text}</span> : null}
         {g.error ? <p role="alert" className="bw-warning">{g.error}</p> : null}
         <div className="bw-metadata-actions">
-          {g.request && !g.saving || g.failed || g.error && !g.conflict ? <button type="button" className="ghost-button compact" disabled={g.saving || g.releasing || g.conflict}
+          {g.request && !g.saving || g.failed || g.error && !g.conflict ? <button type="button" className="ghost-button compact" disabled={g.saving || Boolean(g.releaseWork) || g.conflict}
             onClick={() => void client.retry(field)}>{g.request ? "確認儲存結果" : "重試"}</button> : null}
           {g.dirty || g.conflict || g.releasing ? <button type="button" className="ghost-button compact" disabled={g.saving || Boolean(g.request)} onClick={() => void client.discard(field)}>捨棄此欄草稿</button> : null}
         </div>

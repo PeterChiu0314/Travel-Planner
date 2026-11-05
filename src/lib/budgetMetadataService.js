@@ -102,11 +102,14 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     p_session_id: sessionId, p_token: g.token, p_action: action, p_base_revision: g.base,
     p_epoch: g.epoch ?? null, p_activity_seq: g.activity || 0, p_dirty: dirty(g),...(g.versions?{p_versions:g.versions}:{}) });
   const bounded = (work, late) => withBudgetAuthorityTimeout(work, { timeoutMs, late });
-  async function cleanup(g, epoch = g.epoch) {
-    if (!g.token) return { ok: true };
+  async function cleanup(g, epoch = g.epoch, token = g.token) {
+    if (!token) return { ok: true };
     if (epoch == null) return { ok: false }; // An unanswered admission is not a confirmed absence of authority.
+    // Freeze the capability before awaiting Auth/transport. A late result must
+    // never release a token acquired by a newer focus attempt.
+    const request = { ...args(g, "release"), p_epoch: epoch, p_token: token };
     if (!(await service.authorized(g.actor))) return { ok: false };
-    const result = await bounded(service.lease({ ...args(g, "release"), p_epoch: epoch }));
+    const result = await bounded(service.lease(request));
     return { ok: Boolean(!result.error && result.data?.granted), error: result.error };
   }
   function ingest(data) {
@@ -184,41 +187,63 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     }
     return g;
   }
-  async function release(g) {
-    if (!g || !current(g)) return true;
+  function release(g) {
+    if (!g || !current(g)) return Promise.resolve(true);
+    if (g.releaseWork) return g.releaseWork;
     cancelTimer(g);
     g.focused = false; g.releasing = true;
-    if (g.acquiring) { await g.acquiring; if (!current(g)) return false; }
-    const result = await cleanup(g);
-    if (!current(g)) return false;
-    if (result.ok) { g.state = "idle"; g.token = null; g.epoch = null; g.releasing = false; g.error = ""; }
-    else { g.state = "uncertain"; g.error = "尚未確認權限釋放，請重試結束編輯。"; }
-    emit(); return result.ok;
+    const work = (async () => {
+      if (g.acquiring) { await g.acquiring; if (!current(g)) return false; }
+      const result = await cleanup(g);
+      if (!current(g)) return false;
+      if (result.ok) { g.state = "idle"; g.token = null; g.epoch = null; g.releasing = false; g.error = ""; }
+      else { g.state = "uncertain"; g.error = "尚未確認權限釋放，請重試結束編輯。"; }
+      emit(); return result.ok;
+    })().finally(() => { if (g.releaseWork === work) { g.releaseWork = null; if (current(g)) emit(); } });
+    g.releaseWork = work; return work;
   }
   async function focus(g) {
-    if (!g || !allowed(g) || g.conflict || g.request || g.releasing || g.exiting) return false;
+    if (!g || !allowed(g) || g.conflict || g.request || g.exiting) return false;
+    if (g.releasing) {
+      if (!g.releaseWork) return false;
+      g.focused = true;
+      if (!(await g.releaseWork) || !current(g) || !g.focused) return false;
+      return focus(g);
+    }
     g.focused = true;
     if (owns(g)) return true;
     if (g.acquiring) return g.acquiring;
     const firstAdmission = !g.token;
     g.lastActivity = now(); g.activity = (g.activity || 0) + 1;
     g.state = "pending"; g.error = ""; g.token ||= makeId(); emit();
+    const admissionToken = g.token;
     const work = (async () => {
       if (!(await service.authorized(g.actor)) || !current(g)) { g.token = null; return false; }
       const result = await bounded(service.lease(args(g, "acquire")), async late => {
         if (late.data?.granted && version(late.data.epoch)) {
-          g.epoch = late.data.epoch;
-          const released = await cleanup(g);
-          if (current(g) && released.ok) { g.token = null; g.state = "idle"; g.releasing = false; emit(); }
+          const relevant = current(g) && g.token === admissionToken && (g.state !== "held" || g.epoch === late.data.epoch);
+          if (relevant) { g.epoch = late.data.epoch; g.releasing = true; }
+          const released = await cleanup(g, late.data.epoch, admissionToken);
+          if (relevant && current(g) && g.token === admissionToken && g.epoch === late.data.epoch) {
+            if (released.ok) { g.token = null; g.epoch = null; g.state = "idle"; g.releasing = false; }
+            else { g.state = "uncertain"; g.error = "尚未確認權限釋放，請重試結束編輯。"; }
+            emit();
+          }
         }
       });
-      if (!current(g) || g.releasing || !g.focused && !dirty(g)) {
-        if (result.data?.granted) { g.epoch = result.data.epoch; await cleanup(g); }
+      // A definite first refusal cannot have created a DB capability, even
+      // when blur/release began before the response. Earlier unknown attempts
+      // retain their token until exact cleanup is confirmed.
+      if (!current(g) || g.token !== admissionToken || g.releasing || !g.focused && !dirty(g)) {
+        if (firstAdmission && g.token === admissionToken && (result.data?.granted === false || result.error?.code === "PT409" && !result.data?.granted)) g.token = null;
+        if (current(g) && ["PT409", "40001"].includes(result.error?.code)) { g.conflict = true; g.error = "此欄位版本已更新，草稿已保留。"; }
+        if (result.data?.granted) { if (g.token === admissionToken) g.epoch = result.data.epoch; await cleanup(g, result.data.epoch, admissionToken); }
+        if (current(g)) void refresh();
         return false;
       }
       const data = result.data;
       if (result.error || !data?.granted || !version(data.epoch) || data.revision !== g.base || !Number.isFinite(Date.parse(data.expires_at))) {
-        if (!result.error && !data?.granted) g.token = null;
+        if (firstAdmission && !result.error && !data?.granted) g.token = null;
         // A first PT409 admission rolled back without granting a lease. Keep
         // its draft/conflict, but do not invent an unknown capability that can
         // never be released. An earlier unanswered attempt keeps its token.
@@ -231,6 +256,10 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       }
       g.epoch = data.epoch; g.expires = Date.parse(data.expires_at) - offset;
       g.admittedAt = now(); g.admissionExpiresAt = data.expires_at;
+      // A confirmed grant supersedes a stale peer hint immediately. This is
+      // receipt-derived authority, not ownership inferred from a Snapshot.
+      g.remote = { ...g.remote, held: true, own_session: true, owner_id: g.actor,
+        epoch: g.epoch, expires_at: data.expires_at };
       g.canonical = data.value ?? "";g.versions=data.versions??g.versions; g.value = localValue(g); delete g.staged;
       g.state = "held";
       persist(g); emit(); schedule(g); return true;
@@ -348,7 +377,8 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         const confirmed = await save(g); // Exact replay is checked by DB even after expiry.
         if (!current(g) || g.request || !dirty(g)) return confirmed;
       }
-      if (g.conflict || g.releasing) return false;
+      if (g.conflict) return false;
+      if (g.releasing && !(await release(g))) return false;
       g.failed = false;
       if (!owns(g) && !(await focus(g))) return false;
       return save(g);

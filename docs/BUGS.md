@@ -1,5 +1,9 @@
 # BUGS.md
 
+## Issue16 | Group release recovery — code fixed, Hosted acceptance pending
+
+[Investigation and evidence](2026-11-05-budget-issue16-lease-recovery.md). Confirmed client race: a denied first acquire arriving after blur retained a token without epoch; repeated releases were unsynchronized; failed-release Retry was blocked in controller and UI. Fixed exact capability capture, shared release work/waiting refocus, definite-refusal cleanup, recoverable late ACKs, enabled explicit Retry and receipt-owned hint. Initial3 regressions failed then passed;14 Node/68 controller/67 rendered Playwright/23 isolated serial SQL passed, Build/diff passed. No installed SQL/TTL/permissions change. Real Staging run was not dispatched: Preflight refused2 unrelated manual pricing leases, then automatic browser approval hit usage limit. Key cleared/owned processes closed; no fake HTTP/parallel SQL certification. Keep Issue16 open until requested genuine three-session acceptance; five manual protocols stay ON, Undo/Receipt OFF.
+
 ## 2026-11-05 Budget idle fields looked locked
 
 Fixed on the feature branch: BudgetMetadataEditor styled every non-accepting group as readonly, including unclaimed fields, and displayed an idle acquisition hint. Grey styling now applies only to a peer-held group; idle and own fields are normal and idle hints removed. Pricing mode/member controls keep authority gating but avoid disabled opacity before admission. Pending/saving/failure/conflict feedback and retry/discard remain unchanged.25 targeted mocked Playwright cases passed (appearance, choices, pricing, locks, save recovery and conflict), plus Build/diff. No lease/RPC/autosave/DB-permission modification or Hosted data write. Desktop screenshots inspected; mobile and new authenticated hosted interaction are not claimed.
