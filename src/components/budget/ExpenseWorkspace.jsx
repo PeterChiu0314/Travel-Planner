@@ -14,6 +14,7 @@ import {displayParticipants,expenseDisplayRows,ExpenseDetail,ExpenseTable} from 
 import MenuSelect from '../MenuSelect.jsx';
 import {useSiteDialog} from '../SiteDialog.jsx';
 import ExpenseRates from './ExpenseRates.jsx';
+import {createBudgetCollaboration} from '../../lib/budgetCollaboration.js';
 
 function errorToast(error){if(isConnectionError(error))notify.error(error);else notify.error(error.code==='PT409'?'內容已更新，未儲存的變更已保留；離開時可選擇不儲存。':error.code==='55P03'?'暫時無法儲存，變更已保留，系統會重新確認。':error.code==='22023'?'請確認金額、付款人與參與成員是否完整。':error,{id:'budget-editor-error'});}
 function Pricing({client,field,view,members,scope,rates,locked}){
@@ -36,11 +37,25 @@ export default function ExpenseWorkspace(props){
  const planning=(props.demoStage||budgetStage(props.activeTrip))==='planning';
  const version=useSyncExternalStore(client.subscribe,client.getVersion),[selected,setSelected]=useState(null),[view,setView]=useState(()=>planning?'budget':'paid'),[query,setQuery]=useState('');
  const [panel,setPanel]=useState('stats'),[paymentFilter,setPaymentFilter]=useState(''),[collapsed,setCollapsed]=useState([]),[viewpoint,setViewpoint]=useState('average'),panelChosen=useRef(false);
+ const [collaborators,setCollaborators]=useState([]);
+ const workspaceActive=props.workspaceActive??props.restoreDrafts!==false;
+ const approvedActor=(props.metadataSnapshot?.expenseGraph?.members||props.members||[]).some(m=>m.user_id===props.currentUserId&&m.status==='approved');
+ const collaboration=useMemo(()=>props.demo?null:createBudgetCollaboration({supabase:props.supabase,sessionId,onChange:setCollaborators,
+  protocol:{read:'read_expense_collaboration',write:'update_expense_selection',signals:'expense_signals',channel:'expense-collaboration',selectionProtocol:2}}),[props.demo,props.supabase,sessionId]);
  const {ask,dialog}=useSiteDialog();
  useEffect(()=>{setView(planning?'budget':'paid');},[planning]);
- useEffect(()=>{if(props.metadataSnapshot?.expenseGraph)client.ingest(props.metadataSnapshot.expenseGraph);},[client,props.metadataSnapshot]);
- useEffect(()=>{const detach=client.attach();const offline=()=>client.invalidate(),online=()=>void client.refresh(),timer=setInterval(()=>void client.tick(),1000);window.addEventListener('offline',offline);window.addEventListener('online',online);window.addEventListener('focus',online);return()=>{clearInterval(timer);window.removeEventListener('offline',offline);window.removeEventListener('online',online);window.removeEventListener('focus',online);detach();};},[client]);
+ useEffect(()=>{if(props.metadataSnapshot?.expenseGraph)client.ingest(props.metadataSnapshot.expenseGraph,{authoritative:props.metadataSnapshot.expenseVerified!==false});},[client,props.metadataSnapshot]);
+ useEffect(()=>{const detach=client.attach(),timer=setInterval(()=>void client.tick(),1000);return()=>{clearInterval(timer);detach();};},[client]);
+ useEffect(()=>{void collaboration?.configure(props.currentUserId,props.activeTrip.id,workspaceActive&&approvedActor);},[collaboration,props.currentUserId,props.activeTrip.id,workspaceActive,approvedActor]);
+ useEffect(()=>()=>{void collaboration?.dispose();},[collaboration]);
+ useEffect(()=>{
+  const reconcile=event=>{if(!workspaceActive||event?.type==='offline'||document.visibilityState==='hidden'||navigator.onLine===false){client.suspend();collaboration?.hide();}else{void client.resume();collaboration?.reconcile();}};
+  reconcile();window.addEventListener('offline',reconcile);window.addEventListener('online',reconcile);window.addEventListener('focus',reconcile);document.addEventListener('visibilitychange',reconcile);
+  return()=>{window.removeEventListener('offline',reconcile);window.removeEventListener('online',reconcile);window.removeEventListener('focus',reconcile);document.removeEventListener('visibilitychange',reconcile);};
+ },[client,collaboration,workspaceActive]);
  const state=client.status(),graph=state.graph;
+ const selectedExists=Boolean(graph?.items.some(i=>i.id===selected));
+ useEffect(()=>{if(workspaceActive)collaboration?.select(selectedExists?{kind:'expense',id:selected,tripId:props.activeTrip.id,userId:props.currentUserId}:null);},[collaboration,workspaceActive,selected,selectedExists,props.activeTrip.id,props.currentUserId]);
  props.services.useGuard(`expense-workspace:${props.currentUserId}:${props.activeTrip.id}`,useMemo(()=>({isActive:true,isDirty:state.dirty||state.pending,
   prepare:()=>client.finish(),finish:()=>client.finish(),save:()=>client.finish(),discard:()=>client.discard()}),[client,version,state.dirty,state.pending]));
  if(!graph)return <p className="bw-muted">讀取支出項目…</p>;
@@ -51,8 +66,8 @@ export default function ExpenseWorkspace(props){
  async function payment(){if(!await props.services.handoff({tripId:props.activeTrip.id}))return;const current=client.status().graph,model=expenseModels(current).find(i=>i.id===selected);if(!model)return;
   const ok=await client.execute(model.id,'payment',{action:model.payment_state==='paid'?'unpaid':'paid',paid_at:new Date().toISOString(),budget_revision:model.revisions.budget||0,paid_revision:model.revisions.paid||0,payer_revision:model.revisions.payer||0});if(!ok)void client.refresh();}
  async function remove(){if(!await props.services.handoff({tripId:props.activeTrip.id}))return;if(!await ask({title:'刪除支出項目？',message:'此項目將不再計入預算與結算。',confirmLabel:'刪除',danger:true}))return;if(await client.execute(item.id,'lifecycle',{action:'delete'})){setSelected(null);setPanel('stats');}}
- function frame(group,label,render){const field=client.get(item.id,group),v=client.view(field),owner=v.remote?.held&&!v.remote.own_session?v.remote.owner:null;
-  const locked=!editable||!v.editable;
+ function frame(group,label,render){const field=client.get(item.id,group),v=client.view(field),owner=collaborators.find(e=>e.resource_id===item.id&&e.group_key===group&&e.mode==='edit')?.user_id||(v.remote?.held&&!v.remote.own_session?v.remote.owner:null);
+  const locked=!editable||!v.editable||Boolean(owner);
   return <BudgetCollaborationFrame key={group} role="group" aria-label={label} tabIndex={0} label={label} ownerId={owner} ownerName={memberLabel(members.find(m=>m.user_id===owner))}
    className={owner?'is-peer-held':locked?'is-unclaimed':''} onPointerDownCapture={()=>{if(editable)void client.focus(field);}} onFocusCapture={()=>{if(editable)void client.focus(field);}}
    onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget)&&!e.relatedTarget?.closest('[data-budget-metadata-portal]'))client.blur(field);}}
@@ -72,7 +87,7 @@ export default function ExpenseWorkspace(props){
   <div className="bw-main"><div className="bw-toolbar">{!planning?<div className="bw-tabs" role="tablist" aria-label="費用資料檢視">{[['budget','預算'],['paid','實付']].map(([key,label])=><button type="button" role="tab" key={key} aria-selected={view===key} onClick={()=>void handoff(()=>setView(key))}>{label}</button>)}</div>:null}
    <div className="bw-filters"><label><Search size={15}/><input aria-label="搜尋項目" placeholder="搜尋項目" value={query} onChange={e=>setQuery(e.target.value)}/></label><MenuSelect label="付款篩選" value={paymentFilter} onValueChange={setPaymentFilter} options={[{value:'',label:'全部項目'},{value:'unpaid',label:'未付款'},{value:'paid',label:'已付款'}]}/><span>{displayRows.length} 筆</span></div><button type="button" className="primary-button compact bw-add" disabled={!editable} onClick={()=>void add()}><Plus size={15}/>{actual?'新增實付':'新增預算'}</button></div>
    {rows.some(r=>r.record_status!=='complete')?<p className="bw-muted" role="status">未完成 {rows.filter(r=>r.record_status!=='complete').length} 筆，尚未計入財務統計。</p>:null}
-   <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} groups={graph.groups} selected={selected} collapsed={collapsed} setCollapsed={next=>void handoff(()=>setCollapsed(next))} viewpoint={viewpoint} actual={actual} onSelect={select}/>
+   <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} collaborators={collaborators} selected={selected} collapsed={collapsed} setCollapsed={next=>void handoff(()=>setCollapsed(next))} viewpoint={viewpoint} actual={actual} onSelect={select}/>
   </div>
   <aside className="bw-side"><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[['stats','旅程統計',ChartColumn],['detail','項目明細',List],['edit','編輯項目',Pencil]].map(([key,label,Icon])=><button key={key} role="tab" type="button" aria-label={label} aria-selected={panel===key} onClick={()=>changePanel(key)}><Icon size={14} strokeWidth={1.8}/><span>{label}</span></button>)}</div>
   <div hidden={panel!=='stats'}><Stats records={rows} rows={participantRows} members={approved} actual={actual} budgets={rows} viewpoint={viewpoint} setViewpoint={setViewpoint} ratesSummary={<span/>}/><div className="bw-restored-rates" hidden={actual}><ExpenseRates service={transport} client={client} actor={props.currentUserId} trip={props.activeTrip.id} sessionId={sessionId} storage={storage} onError={errorToast} services={props.services} editable={editable}/></div></div>

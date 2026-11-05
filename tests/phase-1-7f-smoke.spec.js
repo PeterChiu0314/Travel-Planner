@@ -955,7 +955,7 @@ test("transport editor uses compact floating fields and preserves exact minute i
   const transportBudgetList = existingTransport.locator(".transport-card-details .linked-budget-list");
   const transportBudgetHeading = transportBudgetList.locator(".item-expanded-budget-heading");
   const transportBudgetContent = transportBudgetList.locator(".item-expanded-budget-content");
-  await expect(transportBudgetHeading).toContainText("預算");
+  await expect(transportBudgetHeading).toContainText("支出");
   await expect(transportBudgetHeading.locator(".lucide-wallet")).toHaveCount(1);
   await expect(transportBudgetHeading).toHaveCSS("font-weight", "400");
   await expect(transportBudgetList).toHaveCSS("flex-wrap", "wrap");

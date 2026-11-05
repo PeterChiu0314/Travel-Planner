@@ -1,0 +1,227 @@
+{
+  "date": "2026-11-05",
+  "project": "uyqdopksfysbobhjcepk",
+  "reason": "ExpenseWorkspace bypassed legacy collaboration publishing/receiving/lifecycle; native functional parity restoration",
+  "before": {
+    "data": [
+      {
+        "n": 1,
+        "hash": "d425945ceea7c1f7b075afb2f3d817ca",
+        "name": "accommodations"
+      },
+      {
+        "n": 11,
+        "hash": "858bc98899ed11ae913df018467b7758",
+        "name": "actual_expense_participants"
+      },
+      {
+        "n": 8,
+        "hash": "78cd8400a0ea9a3e6a69766886f85ef8",
+        "name": "actual_expenses"
+      },
+      {
+        "n": 1,
+        "hash": "1471ebad2e22f07beedce8b8f71998a2",
+        "name": "attachments"
+      },
+      {
+        "n": 9,
+        "hash": "35da5ade3a7204b560819ac4cd268e37",
+        "name": "expense_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "expense_itinerary_links"
+      },
+      {
+        "n": 13,
+        "hash": "e308b95f744732ae416da4c60b5a85c7",
+        "name": "expense_participants"
+      },
+      {
+        "n": 26,
+        "hash": "e53de7d1797024cfc576d5906dfcaa0b",
+        "name": "itinerary_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "luggage_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "shared_luggage_items"
+      },
+      {
+        "n": 5,
+        "hash": "27ae5f1a0e94b4f4484f4c04e2f858f9",
+        "name": "trip_budget_baselines"
+      },
+      {
+        "n": 10,
+        "hash": "4a27e3910b83a1c0c7a1166c7c1a70a6",
+        "name": "trip_members"
+      },
+      {
+        "n": 6,
+        "hash": "715dceee14d6609ff817d9a0fe6358eb",
+        "name": "trips"
+      }
+    ],
+    "lease": {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "oid": "36431",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "definer": true,
+      "source_hash": "a74a600feea16fd46b33d341d7437616"
+    },
+    "ledger": {
+      "n": 68,
+      "head": "20261105132450"
+    }
+  },
+  "after": {
+    "data": [
+      {
+        "n": 1,
+        "hash": "d425945ceea7c1f7b075afb2f3d817ca",
+        "name": "accommodations"
+      },
+      {
+        "n": 11,
+        "hash": "858bc98899ed11ae913df018467b7758",
+        "name": "actual_expense_participants"
+      },
+      {
+        "n": 8,
+        "hash": "78cd8400a0ea9a3e6a69766886f85ef8",
+        "name": "actual_expenses"
+      },
+      {
+        "n": 1,
+        "hash": "1471ebad2e22f07beedce8b8f71998a2",
+        "name": "attachments"
+      },
+      {
+        "n": 9,
+        "hash": "35da5ade3a7204b560819ac4cd268e37",
+        "name": "expense_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "expense_itinerary_links"
+      },
+      {
+        "n": 13,
+        "hash": "e308b95f744732ae416da4c60b5a85c7",
+        "name": "expense_participants"
+      },
+      {
+        "n": 26,
+        "hash": "e53de7d1797024cfc576d5906dfcaa0b",
+        "name": "itinerary_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "luggage_items"
+      },
+      {
+        "n": 0,
+        "hash": "d751713988987e9331980363e24189ce",
+        "name": "shared_luggage_items"
+      },
+      {
+        "n": 5,
+        "hash": "27ae5f1a0e94b4f4484f4c04e2f858f9",
+        "name": "trip_budget_baselines"
+      },
+      {
+        "n": 10,
+        "hash": "4a27e3910b83a1c0c7a1166c7c1a70a6",
+        "name": "trip_members"
+      },
+      {
+        "n": 6,
+        "hash": "715dceee14d6609ff817d9a0fe6358eb",
+        "name": "trips"
+      }
+    ],
+    "lease": {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "oid": "36431",
+      "owner": "postgres",
+      "config": [
+        "search_path=\"\""
+      ],
+      "definer": true,
+      "source_hash": "a74a600feea16fd46b33d341d7437616"
+    },
+    "ledger": {
+      "n": 69,
+      "head": "20261105142122"
+    }
+  },
+  "oldKernelBefore": [
+    {
+      "seal": {
+        "ledger68": "f547b1800a08760ca075b641b13ad830",
+        "functions": "f1b7624ed001f616db9cdf02ce40e96e"
+      }
+    }
+  ],
+  "oldKernelAfter": [
+    {
+      "seal": {
+        "ledger68": "f547b1800a08760ca075b641b13ad830",
+        "functions": "f1b7624ed001f616db9cdf02ce40e96e"
+      }
+    }
+  ],
+  "migration": {
+    "version": "20261105142122",
+    "name": "issue18_selection_collaboration",
+    "sha256": "c368cd0c2494711725145a46d73b8eb351f16b26328166d8ff6012c5b7408321"
+  },
+  "validation": {
+    "nodeSQL": 52,
+    "playwright": 56,
+    "playwrightRun": "55-case run54passed; one old Demo label assertion updated for native expense label and rerun Passed; added five-editor segmented color case Passed; two-account case repeated Passed",
+    "build": true,
+    "diffCheck": true,
+    "hostedSQL": "Exact Forward + two existing approved actors in authenticated-role transaction/ROLLBACK; same assertions rerun after apply; private table0 rows and active leases0 at final readback",
+    "data13": "unchanged",
+    "old68LedgerAndAllExistingApplicationFunctions": "unchanged",
+    "security": "Existing8 definer and1 Auth warnings unchanged; private deny-all selection table adds1 INFO (24 to25)",
+    "browser": "Repository Playwright,1440x1000,isolatedSQL backend; real browser ordinary-JWT/WebSocket multi-account acceptance not claimed"
+  },
+  "protected": [
+    "Production/main unchanged",
+    "Single-expense budget/paid model and original Actual/participants/Baseline unchanged",
+    "Receipt/Undo/Source business UI/multiple-payment remain removed",
+    "#19 entry behavior not changed",
+    "Unrelated local artifacts and icon exploration untouched"
+  ],
+  "functionalMatrix": [
+    "Selection publish/receive/hide/resume/expiry, genuine latest selection ordering, same-account third tab dedup",
+    "Row/field colors, hover and keyboard name,5-user segmented color, edit priority and read-only protection",
+    "Workspace/background clean lease release, authoritative resume and focused field reacquisition",
+    "Read failures and offline caches cannot certify authority; exact-base drafts survive cache/refresh",
+    "Budget/paid independent10000/9500, member exclusions, custom pricing, unknown ACK, guarded cancellation/lifecycle",
+    "Native trip Rates RPC reprice unpaid forecasts only",
+    "Paid-only Timeline and accommodation links/details; zero costs do not fall back to itinerary amount",
+    "Settlement,Demo graph parity/nonpersistence and auth/Demo/Share/Timeline smoke"
+  ]
+}

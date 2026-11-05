@@ -1,7 +1,7 @@
 import { createBudgetPaymentController, createBudgetPaymentService } from "./lib/budgetPaymentGroups.js";
 import { createBudgetSourceController, createBudgetSourceService } from './lib/budgetSourceGroups.js';
 import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
-import {expenseModels,expenseFinancialSnapshot} from './lib/expenseSnapshot.js';
+import {expenseModels,expenseFinancialSnapshot,expenseTimelineCosts} from './lib/expenseSnapshot.js';
 import {createDemoExpenseService} from './demo/expenseService.js';
 import {budgetReceiptsEnabled,budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import {budgetFinanceGroupsEnabled,createBudgetRatesController,createBudgetRatesService} from './lib/budgetFinanceGroups.js';
@@ -2488,7 +2488,7 @@ export default function App() {
     apply: applyBudgetSnapshot,
     onVerified: result => syncFeedback.verified("budget", result.feedbackCheckpoint),
     onError: error => {
-      if (budgetMetadataEnabled) setBudgetSnapshot(current => ({ ...current, metadataVerified: false, metadataError: "群組協作狀態尚未確認，草稿已保留。" }));
+      if (budgetMetadataEnabled) setBudgetSnapshot(current => ({ ...current, ...(current.expenseGraph?{expenseVerified:false}:{}), metadataVerified: false, metadataError: "群組協作狀態尚未確認，草稿已保留。" }));
       syncFeedback.failure("budget", error.code === "PGRST202" ? "預算快照尚未啟用，需先套用預算同步 migration。" : error);
     },
   });
@@ -8447,7 +8447,7 @@ function DemoApp({ initialSection }) {
   );
   const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteLayoutCollapsed);
   const budgetsByItem = useMemo(() => {
-    const byId = new Map(budgetItems.map((budget) => [budget.id, budget]));
+    const byId = new Map(expenseTimelineCosts(finance.expenseGraph).map(item=>[item.id,item]));
     const next = {};
     itineraryBudgetLinks.forEach((link) => {
       const budget = byId.get(link.budget_item_id);
@@ -9124,7 +9124,7 @@ function DemoApp({ initialSection }) {
 
         ) : null}
         {activeSection === "accommodation" ? <AccommodationPanel
-          activeTrip={demoActiveTrip} trip={demoActiveTrip} accommodations={accommodations} attachments={[]} budgetItems={budgetItems}
+          activeTrip={demoActiveTrip} trip={demoActiveTrip} accommodations={accommodations} attachments={[]} budgetItems={budgetItems} expenseGraph={finance.expenseGraph}
           canEdit currentUserId="demo-peter" disableDraftAutosave useEditLocks={false} restoreDrafts={false} enableAttachments={false}
           onSave={(form, id, meta) => saveDemoRecord("accommodations", form, id, meta)}
           onDelete={(id) => setAccommodations((current) => current.filter((item) => item.id !== id))}
@@ -9417,7 +9417,7 @@ function TripWorkspace(props) {
   }, [alternatives]);
   const budgetsByItem = useMemo(() => {
     const native=props.budgetSnapshot?.expenseGraph;
-    const byId = new Map(native?expenseModels(native).flatMap(item=>{const amount=item.payment_state==='paid'&&item.paid?item.paid:item.budget;return amount?[{...amount,id:item.id,title:item.title,category:item.category,payer_id:item.payer_id,trip_id:item.trip_id}]:[];}).map(item=>[item.id,item]):budgetItems.filter(isBudgetComplete).map((budget) => [budget.id, budget]));
+    const byId = new Map(native?expenseTimelineCosts(native).map(item=>[item.id,item]):budgetItems.filter(isBudgetComplete).map((budget) => [budget.id, budget]));
     const next = {};
     itineraryBudgetLinks.forEach((link) => {
       const budget = byId.get(link.budget_item_id);
@@ -9644,6 +9644,7 @@ function TripWorkspace(props) {
 
       <div className={isBudgetMode ? "" : "hidden-section"}>
         <BudgetPanel
+          workspaceActive={isBudgetMode}
           activeTrip={activeTrip}
           budgetItems={budgetItems}
           budgetParticipants={budgetParticipants}
@@ -10215,7 +10216,7 @@ function ExpandedBudgetRow({ budgets = [], emptyLabel = "尚未連動預算" }) 
     <div className="linked-budget-list">
       <div className="item-expanded-budget-heading">
         <Wallet aria-hidden="true" />
-        <strong>預算</strong>
+        <strong>{budgets.some(item=>item.expenseScope)?'支出':'預算'}</strong>
       </div>
       <div className="item-expanded-budget-content">
         <span className="item-expanded-section-divider" aria-hidden="true" />
@@ -10223,7 +10224,7 @@ function ExpandedBudgetRow({ budgets = [], emptyLabel = "尚未連動預算" }) 
           {budgets.length ? (
             budgets.map((budget) => (
               <span className="pill" key={budget.id}>
-                {budget.title} · {formatMoney(budget.twd_amount || budget.amount)}
+                {budget.title} · {formatMoney(budget.twd_amount ?? budget.amount)}
               </span>
             ))
           ) : (
@@ -12645,10 +12646,10 @@ function ItineraryTimeline({
             const destination = visitDestination(displayItem);
             const secondaryText = displayItem.note || displayItem.description || displayItem.transportation_note;
             const linkedBudgetTotal = (budgetsByItem[item.id] || []).reduce(
-              (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
+              (sum, budget) => sum + Number(budget.twd_amount ?? budget.amount ?? 0),
               0,
             );
-            const displayCost = linkedBudgetTotal || Number(displayItem.cost || 0);
+            const displayCost = (budgetsByItem[item.id] || []).length ? linkedBudgetTotal : Number(displayItem.cost || 0);
             const nextItem = visitItems[index + 1];
             const isTimedPair = isTimedVisit(item) && isTimedVisit(nextItem);
             const pairKey = isTimedPair ? transportPairKey(item.id, nextItem.id) : "";
@@ -12967,10 +12968,10 @@ function MultiDayTimelineColumns({
                 const destination = item.location_name || item.location || item.title;
                 const secondaryText = item.note || item.description || item.transportation_note;
                 const linkedBudgetTotal = (budgetsByItem[item.id] || []).reduce(
-                  (sum, budget) => sum + Number(budget.twd_amount || budget.amount || 0),
+                  (sum, budget) => sum + Number(budget.twd_amount ?? budget.amount ?? 0),
                   0,
                 );
-                const displayCost = linkedBudgetTotal || Number(item.cost || 0);
+                const displayCost = (budgetsByItem[item.id] || []).length ? linkedBudgetTotal : Number(item.cost || 0);
                 const hasAlternative = Boolean((alternativesByItem[item.id] || []).length);
                 const nextItem = visits[index + 1];
                 const pairKey = nextItem ? transportPairKey(item.id, nextItem.id) : "";
@@ -13406,7 +13407,7 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, expenseGraph, 
                     分攤：
                     {participants.length
                       ? participants.map((userId) => memberName(memberById.get(userId))).join("、")
-                      : "全部成員"}
+                      : expenseGraph ? "既有紀錄未記載名單" : "全部成員"}
                   </span>
                 </article>
               );
@@ -13871,10 +13872,12 @@ function AccommodationPanel({
                     開啟地圖
                   </a>
                 ) : null}
-                {selected.budget_item_id ? (
+                {expenseGraph ? (
+                  <p>{selected.expense_id?`關聯支出：${expenseModels(expenseGraph).find(item=>item.id===selected.expense_id)?.title||'已移除的支出'}`:'尚未關聯支出'}</p>
+                ) : selected.budget_item_id ? (
                   <p>連動預算：{budgetItems.find((budget) => budget.id === selected.budget_item_id)?.title || "已連動"}</p>
                 ) : (
-                  <p>尚未連動預算</p>
+                  <p>{expenseGraph?'尚未關聯支出':'尚未連動預算'}</p>
                 )}
                 {selected.custom_notes ? <p>{selected.custom_notes}</p> : null}
                 {enableAttachments ? <AttachmentList

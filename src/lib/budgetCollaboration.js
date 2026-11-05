@@ -15,9 +15,9 @@ export function primaryBudgetCollaborators(entries) {
   }).sort((a,b) => `${a.user_id}:${a.kind}:${a.resource_id}`.localeCompare(`${b.user_id}:${b.kind}:${b.resource_id}`));
 }
 
-export function createBudgetCollaboration({supabase,sessionId,onChange,onVerified=()=>{},now=Date.now,setTimer=setInterval,clearTimer=clearInterval,makeId=()=>crypto.randomUUID()}) {
+export function createBudgetCollaboration({supabase,sessionId,onChange,onVerified=()=>{},now=Date.now,setTimer=setInterval,clearTimer=clearInterval,makeId=()=>crypto.randomUUID(),protocol={}}) {
   let context=null,generation=0,channel=null,timer=null,scheduled=null,inFlight=null,dirty=false,visible=true,readEpoch=0;
-  let selection=null,entries=[],offset=0,lastRead=0,lastPing=0,selectionWork=Promise.resolve(),lastView="",selectionProtocol=null;
+  let selection=null,entries=[],offset=0,lastRead=0,lastPing=0,selectionWork=Promise.resolve(),lastView="",selectionProtocol=protocol.selectionProtocol??null;
   const current=(g,c)=>generation===g&&context===c;
   const emit=()=>{const visible=primaryBudgetCollaborators(entries.filter(e=>Date.parse(e.expires_at)>now()+offset)).filter(e=>!e.own_session),signature=JSON.stringify(visible);if(signature!==lastView){lastView=signature;onChange(visible);}};
   async function writeSelection(c,value,action) {
@@ -25,10 +25,11 @@ export function createBudgetCollaboration({supabase,sessionId,onChange,onVerifie
     if (selectionProtocol === null) return null;
     const auth=await supabase.auth.getSession().catch(()=>null);
     if(auth?.data?.session?.user?.id!==c.userId)return;
+    if(protocol.write&&!value?.activityId)return null;
     if(action!=="clear"&&(!visible||context!==c))return;
     try {
       if (selectionProtocol === 2 && value?.activityId) {
-        const result = await supabase.rpc("update_budget_selection_v2",{p_trip_id:c.tripId,p_session_id:sessionId,p_kind:value.kind,p_id:value.id,p_activity_id:value.activityId,p_action:action});
+        const result = await supabase.rpc(protocol.write||"update_budget_selection_v2",{p_trip_id:c.tripId,p_session_id:sessionId,p_kind:value.kind,p_id:value.id,p_activity_id:value.activityId,p_action:action});
         return result;
       }
       return await supabase.rpc("update_budget_selection",{p_trip_id:c.tripId,p_session_id:sessionId,p_kind:action === "clear" ? null : value?.kind||null,p_id:action === "clear" ? null : value?.id||null});
@@ -49,7 +50,7 @@ export function createBudgetCollaboration({supabase,sessionId,onChange,onVerifie
       do {
         dirty=false;const start=now();
         let result;
-        try { result=await supabase.rpc("read_budget_collaboration",{p_trip_id:c.tripId,p_session_id:sessionId}); }
+        try { result=await supabase.rpc(protocol.read||"read_budget_collaboration",{p_trip_id:c.tripId,p_session_id:sessionId}); }
         catch(error) { result={error}; }
         if(!current(g,c)||!visible||epoch!==readEpoch)return;
         if(result.error||!result.data||result.data.tripId!==c.tripId||!Array.isArray(result.data.entries)||!Number.isFinite(Date.parse(result.data.serverNow))){entries=[];emit();return;}
@@ -71,7 +72,7 @@ export function createBudgetCollaboration({supabase,sessionId,onChange,onVerifie
       if (selection && ((selection.tripId && selection.tripId !== tripId) || (selection.userId && selection.userId !== userId))) selection = null;
       if(!context)return;
       const c=context,g=generation;
-      channel=supabase.channel(`budget-collaboration:${tripId}`).on("postgres_changes",{event:"*",schema:"public",table:"budget_collaboration_signals",filter:`trip_id=eq.${tripId}`},()=>{if(current(g,c))schedule();})
+      channel=supabase.channel(`${protocol.channel||'budget-collaboration'}:${tripId}`).on("postgres_changes",{event:"*",schema:"public",table:protocol.signals||"budget_collaboration_signals",filter:`trip_id=eq.${tripId}`},()=>{if(current(g,c))schedule();})
         .subscribe(status=>{if(!current(g,c))return;if(status==="SUBSCRIBED")schedule();else if(["CLOSED","CHANNEL_ERROR","TIMED_OUT"].includes(status)){entries=[];emit();}});
       lastRead=now();lastPing=now();schedule();if(selection){void queueSelection(selection,selection.pendingAction?"select":"refresh");selection.pendingAction=false;}
       timer=setTimer(()=>{if(!visible)return;emit();if(now()-lastRead>=30000){lastRead=now();schedule();}if(selection&&now()-lastPing>=15000){lastPing=now();void queueSelection(selection);}},1000);timer?.unref?.();

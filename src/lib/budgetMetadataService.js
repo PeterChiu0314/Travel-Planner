@@ -53,8 +53,8 @@ export function validBudgetMetadataSnapshot(data, tripId) {
 }
 export function withoutBudgetMetadata(data) {
   const { metadataProtocol, metadataRecords, metadataVerified, metadataReadStartedAt, metadataError, metadataUserId,
-    paymentProtocol, paymentRecords, sourceProtocol, sourceRecords,receiptProtocol,receiptRecords,financeProtocol,ratesRecords,lifecycleProtocol,lifecycleRecords,undoRecords, collaboration, collaborationRevision, serverNow, nextRefreshAt, ...financial } = data;
-  return financial;
+    paymentProtocol, paymentRecords, sourceProtocol, sourceRecords,receiptProtocol,receiptRecords,financeProtocol,ratesRecords,lifecycleProtocol,lifecycleRecords,undoRecords, collaboration, collaborationRevision, serverNow, nextRefreshAt, expenseVerified, ...financial } = data;
+  return financial.expenseGraph ? {...financial,expenseGraph:{...financial.expenseGraph,groups:[]},expenseVerified:false} : financial;
 }
 export function createBudgetMetadataService(supabase) {
   const rpc = async (name, args) => { try { return await supabase.rpc(name, args); } catch (error) { return { error }; } };
