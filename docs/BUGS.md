@@ -1,5 +1,9 @@
 # BUGS.md
 
+## Issue #18 | Single expense model — analysis/Review stage
+
+[Model, dependencies and phased acceptance](2026-11-05-budget-issue18-single-expense-review.md). Existing planning projection overwrites displayed forecast with retained payment totals, and Source/Origin/bundle/snapshot dependencies prevent safe component-only removal. User now waives old Budget retention: no old Budget conversion or two-way compatibility plan. Candidate uses one expense identity with optional forecast/paid financial bundles, one participant-decision structure and no Source product flows. Actual-only values/IDs, other modules and frozen Baseline remain protected pending explicit mapping Review; no data deleted or DB restructured. Read-only inventory SQL is not executed. #17 newcomer-decision and genuine Hosted gaps remain open; #18 implementation/acceptance is not claimed Passed.
+
 ## Issue #17 Review | Normal autosave must not display a sync banner — fixed candidate
 
 Removed the editor-level pending/unverified status DOM, preserving internal pending/unknown state and existing leave guards. One shared Budget/Actual/Source Sonner slot deduplicates multi-field incidents; normal input/admission/release/save/version convergence stays silent.68 affected mocked rendered cases passed across67/68 full run plus targeted exact-cleanup rerun; three new cases cover quiet held A/B autosave, two failed groups/one Toast/original requests/guarded exit, and offline draft/Toast/reconnect. The stale test used a disappeared banner as acknowledgement; corrected to require exact lease cleanup. No Hosted/DB/protocol change. Earlier text describing a visible pending status is superseded by [Review follow-up](2026-11-05-budget-issue17-pricing-collaboration.md). Remaining newcomer-decision and Hosted gaps stay open under #17.
