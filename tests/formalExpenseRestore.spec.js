@@ -77,6 +77,6 @@ test('new model pricing controls persist participant changes independently and d
   await expect.poll(async()=>(await f.snapshot()).participants.find(p=>p.expense_id===f.models[0].id&&p.user_id===f.C).budget_selected).toBe(false);
   const s=await f.snapshot();expect(s.items.find(i=>i.id===f.models[0].id).paid.amount).toBe(9500);expect(s.participants.find(p=>p.expense_id===f.models[0].id&&p.user_id===f.C).paid_selected).toBe(null);
   await page.getByRole('button',{name:'完成',exact:true}).click();await page.getByRole('button',{name:'刪除項目',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'刪除',exact:true}).click();await expect.poll(async()=>(await f.snapshot()).items.some(i=>i.id===f.models[0].id)).toBe(false);
-  await page.getByRole('button',{name:'新增預算',exact:true}).click();await expect(page.getByRole('region',{name:'支出項目編輯'})).toBeVisible();await expect.poll(async()=>(await f.snapshot()).items.length).toBe(4);expect(page.qaErrors).toEqual([]);
+  await page.getByRole('button',{name:'新增項目',exact:true}).click();await expect(page.getByRole('region',{name:'支出項目編輯'})).toBeVisible();expect((await f.snapshot()).items).toHaveLength(3);await page.getByRole('textbox',{name:'項目名稱',exact:true}).fill('Named new item');await page.getByRole('textbox',{name:'項目名稱',exact:true}).blur();await expect.poll(async()=>(await f.snapshot()).items.length).toBe(4);expect(page.qaErrors).toEqual([]);
  }finally{await page.close();await f.close();}
 });
