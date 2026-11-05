@@ -3,6 +3,7 @@ import {budgetReceiptsEnabled} from './budgetReceiptConfig.js';
 import {budgetFinanceGroupsEnabled} from './budgetFinanceValues.js';
 import {budgetLifecycleEnabled} from './budgetLifecycleValues.js';
 import { validBudgetMetadataSnapshot, withBudgetAuthorityTimeout, budgetSnapshotTimeoutError } from "./budgetMetadataService.js";
+import {validExpenseSnapshot,expenseFinancialSnapshot} from './expenseSnapshot.js';
 export const emptyBudgetSnapshot = () => ({ tripId: null, budgetItems: [], budgetParticipants: [], actualExpenses: [], actualParticipants: [],
   itineraryBudgetLinks: [], budgetBaseline: null, items: [], members: [], attachments: [], tripBudgetRates: null });
 export const mergeBudgetAttachments = (attachments, snapshot) => [...attachments.filter(a => a.target_type !== "actual_expense"), ...snapshot.attachments];
@@ -10,6 +11,11 @@ export const mergeBudgetAttachments = (attachments, snapshot) => [...attachments
 export async function readBudgetSnapshot(supabase, tripId) {
   try {
     const started = Date.now();
+    if(budgetMetadataEnabled){
+      const expense=await supabase.rpc('read_expense_snapshot',{p_trip_id:tripId,p_session_id:getBudgetMetadataSessionId()});
+      if(!expense.error){if(!validExpenseSnapshot(expense.data,tripId))return{error:{code:'EXPENSE_SNAPSHOT_INVALID',message:'支出資料尚未確認，請稍後重試。'}};return{data:expenseFinancialSnapshot(expense.data),error:null};}
+      if(!['PGRST202','42883'].includes(expense.error.code))return expense;
+    }
     let result = await supabase.rpc(budgetMetadataEnabled ? budgetLifecycleEnabled ? "read_budget_metadata_snapshot_v9" : budgetFinanceGroupsEnabled ? "read_budget_metadata_snapshot_v8" : budgetReceiptsEnabled ? "read_budget_metadata_snapshot_v7" : "read_budget_metadata_snapshot_v6" : "read_budget_snapshot",
       { p_trip_id: tripId, ...(budgetMetadataEnabled ? { p_session_id: getBudgetMetadataSessionId() } : {}) });
     let metadataMissing = false;

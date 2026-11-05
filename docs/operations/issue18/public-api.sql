@@ -1,0 +1,9 @@
+-- Public invoker facade. No secret key or new readiness/protocol switches.
+begin;
+create function public.read_expense_snapshot(p_trip_id uuid,p_session_id uuid) returns jsonb language sql stable security invoker set search_path='' as $$select expense_stage_b.snapshot(p_trip_id,p_session_id)$$;
+create function public.expense_group_lease(p_id uuid,p_group text,p_session_id uuid,p_token uuid,p_action text,p_base bigint,p_epoch bigint,p_seq bigint default 0,p_dirty boolean default false) returns jsonb language sql security invoker set search_path='' as $$select expense_stage_b.lease(p_id,p_group,p_session_id,p_token,p_action,p_base,p_epoch,p_seq,p_dirty)$$;
+create function public.mutate_expense_group(p_id uuid,p_group text,p_session_id uuid,p_token uuid,p_epoch bigint,p_base bigint,p_value jsonb,p_request_id uuid) returns jsonb language sql security invoker set search_path='' as $$select expense_stage_b.mutate(p_id,p_group,p_session_id,p_token,p_epoch,p_base,p_value,p_request_id)$$;
+create function public.create_expense_item(p_trip_id uuid,p_id uuid,p_session_id uuid,p_request_id uuid,p_view text) returns jsonb language sql security invoker set search_path='' as $$select expense_stage_b.create_item(p_trip_id,p_id,p_session_id,p_request_id,p_view)$$;
+revoke all on function public.read_expense_snapshot(uuid,uuid),public.expense_group_lease(uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean),public.mutate_expense_group(uuid,text,uuid,uuid,bigint,bigint,jsonb,uuid),public.create_expense_item(uuid,uuid,uuid,uuid,text) from public,anon;
+grant execute on function public.read_expense_snapshot(uuid,uuid),public.expense_group_lease(uuid,text,uuid,uuid,text,bigint,bigint,bigint,boolean),public.mutate_expense_group(uuid,text,uuid,uuid,bigint,bigint,jsonb,uuid),public.create_expense_item(uuid,uuid,uuid,uuid,text) to authenticated;
+commit;

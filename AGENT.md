@@ -1,5 +1,7 @@
 # AGENT.md
 
+Issue #18 2026-11-05 predeploy handoff: see `docs/2026-11-05-issue18-staging-predeploy-handoff.md`. Feature branch now has native editor/RPC/CLI-generated Forward, but Hosted Staging installation failed the dry-run gate and was rejected by auto-review; independent readback shows no schema or data change. Do not mark Staging complete or rerun installed sources. Original Actual/Baseline and user icon exploration are protected. Obtain a passed Staging transaction dry run before applying the new Forward.
+
 This file is the operating guide for future AI agents working on this travel planner. It is intentionally project-specific. Do not treat this as generic SaaS boilerplate.
 
 ## Documentation Layout

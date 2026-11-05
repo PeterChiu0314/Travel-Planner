@@ -7,7 +7,7 @@ grant usage on schema expense_stage_b to authenticated;
 create table expense_stage_b.expense_items (
  id uuid primary key, trip_id uuid not null references public.trips(id),
  title text not null default '',category text not null default '其他',note text,
- payer_id uuid, budget jsonb, paid jsonb, paid_at timestamptz,
+ payer_id uuid, budget jsonb, paid jsonb, paid_at timestamptz,deleted_at timestamptz,
  payment_state text not null check(payment_state in('draft','unpaid','paid')),
  budget_decisions_known boolean not null default false,
  paid_decisions_known boolean not null default false,
@@ -45,11 +45,11 @@ alter table expense_stage_b.expense_items enable row level security;
 alter table expense_stage_b.expense_participants enable row level security;
 alter table expense_stage_b.expense_itinerary_links enable row level security;
 create policy expense_read on expense_stage_b.expense_items for select to authenticated
- using(app_private.can_read_trip(trip_id,auth.uid()));
+ using(deleted_at is null and app_private.can_read_trip(trip_id,auth.uid()));
 create policy people_read on expense_stage_b.expense_participants for select to authenticated
  using(exists(select 1 from expense_stage_b.expense_items e where e.id=expense_id));
 create policy links_read on expense_stage_b.expense_itinerary_links for select to authenticated
- using(app_private.can_read_trip(trip_id,auth.uid()));
+ using(exists(select 1 from expense_stage_b.expense_items e where e.id=expense_id));
 -- Write RPC/lease integration is intentionally not exposed in this foundation.
 revoke all on all tables in schema expense_stage_b from public,anon,authenticated;
 grant select on all tables in schema expense_stage_b to authenticated;

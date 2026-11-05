@@ -1,5 +1,9 @@
 # BUGS.md
 
+## Issue #18 Staging migration gate — 2026-11-05
+
+Native one-item implementation and Forward are ready for a controlled Staging trial, but not deployed. Dashboard SQL Editor's RLS-enabled transaction rollback test returned schema-not-found; this cannot certify the trial. Automatic approval rejected persistent application pending a passed Staging dry run. Independent remote readback confirms unchanged Ledger66, Actual and Baseline fingerprints and no new schema. See [predeploy handoff](2026-11-05-issue18-staging-predeploy-handoff.md). Production remains NO-GO.
+
 ## Issue #18 | Review corrections and isolated B foundation
 
 [Stage B delivery and limits](2026-11-05-budget-issue18-stage-b-foundation.md). Corrected independent forecast/paid participant decisions, removed proposed second Baseline, preserved legacy settlement eligibility including missing paid_at, and clarified pure old Budget link retirement versus other-module functionality.24 local model/request/isolated SQL cases passed; Build/diff passed. No client DML or write RPC exposed; no App/Hosted cutover. Genuine server lease/mutation/Realtime/UI and actual-data inventory remain unfinished; do not treat the isolated fixture as Hosted RLS parity or complete #18. Latest Review permits isolated B before #17 closure; destructive Staging D/E remains unauthorized.

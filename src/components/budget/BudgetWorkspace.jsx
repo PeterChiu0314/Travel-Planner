@@ -318,7 +318,7 @@ function itinerarySuggestionScore(item, category) {
   return (typeMatch ? 100 : 0) + (hintMatch ? 30 : 0);
 }
 
-function ItineraryPicker({ items, selectedIds, category, onChange, readOnly = false }) {
+export function ItineraryPicker({ items, selectedIds, category, onChange, readOnly = false }) {
   const [query, setQuery] = useState("");
   const [day, setDay] = useState("");
   const [open, setOpen] = useState(false);

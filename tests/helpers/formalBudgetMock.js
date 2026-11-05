@@ -22,6 +22,7 @@ export function backend({ empty = false, departed = false, leases = false } = {}
     async request({ op, table, columns, filters = [], patch, single, actor, name, args, action, path, paths }) {
       if(op==="storage") {this.storageCalls.push({action,path,paths});return {data:{},error:null};}
       if (op === "rpc") {
+        if(name==='read_expense_snapshot')return{error:{code:'PGRST202'}};
         if(name==="update_budget_selection_v2") {
           this.selectionCalls.push({actor,args});if(this.offline)return {error:{message:"offline"}};
           const key=`${args.p_trip_id}:${actor}:${args.p_session_id}`,previous=this.selections.get(key);
@@ -157,8 +158,9 @@ export async function boot(page, db, actor = "A") {
     return route.fulfill({ json: { result: "success", base_code: "TWD", time_last_update_unix: 1793059200,
       rates: { TWD: 1, JPY: 4, USD: 1 / 32, EUR: 1 / 35, KRW: 40, HKD: .25 } } });
   });
-  await page.addInitScript(actor => {
-    for (const user of ["A", "B", actor]) localStorage.setItem(`travel-planner-session-context:${user}`, JSON.stringify({ activeTripId: "trip", activeSection: "budget" }));
+  await page.addInitScript(({actor: initialActor, tripId}) => {
+    let actor=initialActor;
+    for (const user of ["A", "B", actor]) localStorage.setItem(`travel-planner-session-context:${user}`, JSON.stringify({ activeTripId: tripId, activeSection: "budget" }));
     const callbacks = [], channels = [];
     const session = () => ({ user: { id: actor, email: `${actor}@qa.invalid`, user_metadata: { full_name: actor } }, access_token: "qa-not-a-real-token" });
     const mock = window.budgetMock = { inFlight: 0,
@@ -189,7 +191,7 @@ export async function boot(page, db, actor = "A") {
       },
       removeChannel: async channel => { channel.closed = true; },
     };
-  }, actor);
+  }, {actor,tripId:db.trips[0].id});
   await page.goto("/");
   await expect(page.getByRole("table", { name: /^(預算|實付)明細$/ })).toBeVisible();
   await expect(page.locator("vite-error-overlay")).toHaveCount(0);

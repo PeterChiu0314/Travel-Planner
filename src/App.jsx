@@ -1,6 +1,8 @@
 import { applyDemoPricing } from "./lib/budgetPricingGroups.js";
 import { createBudgetPaymentController, createBudgetPaymentService } from "./lib/budgetPaymentGroups.js";
 import { createBudgetSourceController, createBudgetSourceService } from './lib/budgetSourceGroups.js';
+import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
+import {expenseModels} from './lib/expenseSnapshot.js';
 import {budgetReceiptsEnabled,budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import {budgetFinanceGroupsEnabled,createBudgetRatesController,createBudgetRatesService} from './lib/budgetFinanceGroups.js';
 import {budgetLifecycleEnabled,isBudgetComplete} from './lib/budgetLifecycleValues.js';
@@ -3950,6 +3952,7 @@ export default function App() {
         if (!payload.old?.trip_id || payload.old.trip_id === activeTripId) invalidateBudget();
       });
     if (budgetMetadataEnabled) channel.on("postgres_changes", { event: "*", schema: "public", table: "budget_collaboration_signals", filter: `trip_id=eq.${activeTripId}` }, invalidateBudget);
+    if (budgetMetadataEnabled) channel.on("postgres_changes", { event: "*", schema: "public", table: "expense_signals", filter: `trip_id=eq.${activeTripId}` }, invalidateBudget);
     subscribeSharedLuggage(channel, activeTripId, luggageRefreshRef.current);
     // JOIN can succeed before Postgres Changes is live. Re-read through the
     // existing guarded/coalesced path when CDC becomes ready, including rejoin.
@@ -5510,7 +5513,8 @@ export default function App() {
       map_url: payload.map_url.trim() || null,
       booking_code: payload.booking_code.trim() || null,
       payment_status: payload.payment_status || "unpaid",
-      budget_item_id: payload.budget_item_id || null,
+      budget_item_id: budgetSnapshot?.expenseGraph?null:payload.budget_item_id || null,
+      ...(budgetSnapshot?.expenseGraph?{expense_id:payload.expense_id||null}:{}),
       custom_notes: payload.custom_notes.trim() || null,
     };
     const result = editingId
@@ -9529,7 +9533,8 @@ function TripWorkspace(props) {
     return next;
   }, [alternatives]);
   const budgetsByItem = useMemo(() => {
-    const byId = new Map(budgetItems.filter(isBudgetComplete).map((budget) => [budget.id, budget]));
+    const native=props.budgetSnapshot?.expenseGraph;
+    const byId = new Map(native?expenseModels(native).flatMap(item=>{const amount=item.payment_state==='paid'&&item.paid?item.paid:item.budget;return amount?[{...amount,id:item.id,title:item.title,category:item.category,payer_id:item.payer_id,trip_id:item.trip_id}]:[];}).map(item=>[item.id,item]):budgetItems.filter(isBudgetComplete).map((budget) => [budget.id, budget]));
     const next = {};
     itineraryBudgetLinks.forEach((link) => {
       const budget = byId.get(link.budget_item_id);
@@ -9537,7 +9542,7 @@ function TripWorkspace(props) {
       next[link.itinerary_item_id] = [...(next[link.itinerary_item_id] || []), budget];
     });
     return next;
-  }, [budgetItems, itineraryBudgetLinks]);
+  }, [budgetItems, itineraryBudgetLinks,props.budgetSnapshot]);
   const itemsByDay = useMemo(
     () => days.map((_, index) => sortScheduleItems(items.filter((item) => item.day_index === index))),
     [days, items],
@@ -9790,6 +9795,7 @@ function TripWorkspace(props) {
           accommodations={accommodations}
           attachments={attachments}
           budgetItems={budgetItems}
+          expenseGraph={budgetSnapshot?.expenseGraph}
           canEdit={canEdit}
           currentUserId={currentUserId}
           trip={activeTrip}
@@ -13293,6 +13299,10 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 }
 
 function BudgetPanel(props) {
+  if(props.metadataSnapshot?.expenseGraph)return <ExpenseWorkspace key={`${props.currentUserId}:${props.activeTrip.id}`} {...props} supabase={supabase} services={budgetEditorServices}/>;
+  return <LegacyBudgetPanel {...props}/>;
+}
+function LegacyBudgetPanel(props) {
   const leases = useMemo(() => createBudgetEditLeaseClient({ supabase, sessionId: budgetMetadataEnabled ? getBudgetMetadataSessionId() : undefined }), []);
   const metadataProps = useRef(props); metadataProps.current = props;
   const { metadata, payments, sources, rates, lifecycle } = useMemo(() => {
@@ -13601,6 +13611,7 @@ function AccommodationPanel({
   accommodations,
   attachments,
   budgetItems,
+  expenseGraph,
   canEdit,
   currentUserId,
   trip,
@@ -13738,6 +13749,7 @@ function AccommodationPanel({
       booking_code: item.booking_code || "",
       payment_status: item.payment_status || "unpaid",
       budget_item_id: item.budget_item_id || "",
+      expense_id: item.expense_id || "",
       custom_notes: item.custom_notes || "",
     };
     flushDraft();
@@ -13876,18 +13888,11 @@ function AccommodationPanel({
               </select>
             </label>
             <label>
-              連動預算
-              <select
-                aria-label="連動預算"
-                value={form.budget_item_id}
-                onChange={(event) => setForm({ ...form, budget_item_id: event.target.value })}
-              >
+              {expenseGraph?'關聯支出':'連動預算'}
+              <select aria-label={expenseGraph?'關聯支出':'連動預算'} value={expenseGraph?form.expense_id||'':form.budget_item_id}
+                onChange={(event) => setForm({ ...form, [expenseGraph?'expense_id':'budget_item_id']: event.target.value })}>
                 <option value="">未連動</option>
-                {budgetItems.map((budget) => (
-                  <option key={budget.id} value={budget.id}>
-                    {budget.title}
-                  </option>
-                ))}
+                {(expenseGraph?expenseModels(expenseGraph):budgetItems).map((item) => <option key={item.id} value={item.id}>{item.title||'未命名項目'}</option>)}
               </select>
             </label>
           </div>
