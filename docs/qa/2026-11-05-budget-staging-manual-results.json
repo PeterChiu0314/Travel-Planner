@@ -1,0 +1,1305 @@
+{
+  "date": "2026-11-05T01:17:28.951Z",
+  "baseCommit": "623b03bc057146c80c7dc0f62c567c8643ece2af",
+  "project": "uyqdopksfysbobhjcepk",
+  "mode": "authorized-hosted-qa",
+  "mockedRoutes": false,
+  "rows": [
+    {
+      "id": "R01",
+      "name": "Live ledger, immutable source and twelve Undo ACLs",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "detail": {
+        "observedAt": "2026-11-05T01:17:12.97047+00:00",
+        "sourceAnd12Acls": true
+      },
+      "executedAt": "2026-11-05T01:17:28.969Z"
+    },
+    {
+      "id": "R02",
+      "name": "Seven protocols OFF; latches and readiness recorded",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "detail": {
+        "expectedState": "five authorized protocols ON; Undo/Receipt OFF",
+        "latches": {
+          "undo": {
+            "enabled": false,
+            "singleton": true,
+            "full_enabled": false
+          },
+          "source": {
+            "enabled": true,
+            "singleton": true
+          },
+          "finance": {
+            "enabled": true,
+            "activated": true,
+            "singleton": true
+          },
+          "payment": {
+            "enabled": true,
+            "singleton": true
+          },
+          "receipt": {
+            "enabled": false,
+            "activated": true,
+            "singleton": true,
+            "storage_verified": true,
+            "service_role_had_usage": false,
+            "cleanup_worker_verified": true,
+            "content_worker_verified": true,
+            "legacy_grants_expire_at": null
+          },
+          "metadata": {
+            "enabled": true,
+            "singleton": true
+          },
+          "lifecycle": {
+            "enabled": true,
+            "activated": true,
+            "singleton": true
+          }
+        }
+      },
+      "executedAt": "2026-11-05T01:17:28.970Z"
+    },
+    {
+      "id": "R03",
+      "name": "Existing receipts, objects, data coverage and reusable QA inventory",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "detail": {
+        "receiptMetadata": 1,
+        "objects": 2,
+        "qaUsers": 2,
+        "qaSessions": 0,
+        "localQaManifestMatchesLiveHashes": true,
+        "coverage": {
+          "complete": true,
+          "rowCount": 786,
+          "relations": 83
+        }
+      },
+      "executedAt": "2026-11-05T01:17:28.971Z"
+    },
+    {
+      "id": "R04",
+      "name": "Realtime publication, RLS and subscription grants",
+      "phase": "readonly",
+      "status": "Passed",
+      "environment": "Hosted catalog",
+      "detail": {
+        "catalogOnly": true,
+        "actualWebsocketNotYetVerified": true
+      },
+      "executedAt": "2026-11-05T01:17:28.971Z"
+    },
+    {
+      "id": "R05",
+      "name": "Staging public Auth health and settings",
+      "phase": "public-http",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "detail": {
+        "realStagingHttp": true,
+        "loginNotAttempted": true
+      },
+      "executedAt": "2026-11-05T01:17:29.455Z"
+    },
+    {
+      "id": "A01",
+      "name": "Two real users and three distinct verified Auth sessions",
+      "phase": "auth",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "detail": {
+        "users": 2,
+        "sessions": 3,
+        "sessionHashes": [
+          "27d50680e1efcefd19b2eea0f19ba08db14160312928464fb12f65ad8874df42",
+          "506a3c32754c67b0e218bd8cae712604d6cebb7b40580c21e9c7dc88cad1ef08",
+          "ff8b149294f374560b3496aab02197a56806d83681ec53dd02bb32c5002b030d"
+        ]
+      },
+      "executedAt": "2026-11-05T01:17:31.568Z"
+    },
+    {
+      "id": "A02",
+      "name": "All five public Undo RPC signatures reject ordinary JWTs",
+      "phase": "auth",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "ordinaryJwt": true,
+        "exactSignatures": 5
+      },
+      "executedAt": "2026-11-04T02:28:38.464Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "A03",
+      "name": "No custom Undo API or global key interception in live frontend",
+      "phase": "browser",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "evidenceKind": "dated-tracked-summary",
+        "source": "docs/qa/2026-11-04-budget-staging-continuation-stop.json",
+        "sourceSha256": "a6fb578fbbabc00c5749354197fbfc80783b0f7877043e1af1022e286f7d8924",
+        "description": "Passed after forcing the QA-only Vite child to use the static map provider",
+        "rawLatestReportUnavailable": true
+      },
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "A04",
+      "name": "Native title and note Undo; number key remains unprevented",
+      "phase": "browser",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "actualChromiumTextHistory": true,
+        "numberNativeEventNotPrevented": true,
+        "macHardwareNotClaimed": true
+      },
+      "executedAt": "2026-11-04T07:11:45.887Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "A05",
+      "name": "Saved data unchanged by outside-input Ctrl/Cmd+Z",
+      "phase": "browser",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "savedGraphUnchanged": true
+      },
+      "executedAt": "2026-11-04T07:11:47.556Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "B01",
+      "name": "Create and delete Budget through Lifecycle HTTP",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "ordinaryHttpCreateDelete": true
+      },
+      "executedAt": "2026-11-05T01:09:16.989Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "B02",
+      "name": "Title and note autosave reach canonical HTTP data",
+      "phase": "browser",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "realUiToHttp": true
+      },
+      "executedAt": "2026-11-04T06:48:20.859Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "B03",
+      "name": "Category and payer edits",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "canonicalConfirmed": true
+      },
+      "executedAt": "2026-11-04T02:28:39.742Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "B04",
+      "name": "Pricing equal and custom splits, currency and exchange rate",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "equalAndCustom": true,
+        "currencyAndRate": true,
+        "rateSource": "ExchangeRate-API",
+        "quoteDate": "2026-11-04T00:02:31+00:00",
+        "jpyRate": 0.20699
+      },
+      "executedAt": "2026-11-04T06:37:45.096Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "B05",
+      "name": "Pay, unpay and pay reuse one Actual and preserve history",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "oneActual": true,
+        "historyPrefixPreserved": true
+      },
+      "executedAt": "2026-11-04T06:41:27.954Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "B06",
+      "name": "Manual Actual first Source link and detach preserve financial data",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "firstLinkDetachOnly": true,
+        "historicalOriginRetained": true,
+        "secondCurrentActualRejected": true,
+        "duplicateGraphUnchanged": true
+      },
+      "executedAt": "2026-11-04T06:41:33.093Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "B07",
+      "name": "Planning Baseline freezes; traveling/settlement match canonical financial graph",
+      "phase": "travel",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "detail": {
+        "planningBaseline": true,
+        "frozenAfterDeparture": true,
+        "travelingAndSettledUi": true,
+        "canonicalSettlementZeroSum": true,
+        "productRulesUnchanged": true
+      },
+      "executedAt": "2026-11-05T01:17:37.383Z"
+    },
+    {
+      "id": "B08",
+      "name": "Failed stale save preserves complete financial graph",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "http": 409,
+        "code": "PT409",
+        "completeFinancialGraphUnchanged": true
+      },
+      "executedAt": "2026-11-04T06:41:26.138Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C01",
+      "name": "Different groups edit concurrently",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "distinctAccounts": true
+      },
+      "executedAt": "2026-11-04T06:37:45.687Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C02",
+      "name": "Same group blocks peer and second session of same user",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "differentUserAndSameUserSessionDenied": true
+      },
+      "executedAt": "2026-11-04T06:37:46.278Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C03",
+      "name": "Lease acquire, renew and release",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "acquiredRenewedReleased": true
+      },
+      "executedAt": "2026-11-04T06:37:46.668Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C04",
+      "name": "Real stale version returns HTTP409/PT409",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "http": 409,
+        "code": "PT409",
+        "completeFinancialGraphUnchanged": true
+      },
+      "executedAt": "2026-11-04T06:37:47.617Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C05",
+      "name": "Actual websocket postgres_changes delivery and peer UI convergence",
+      "phase": "realtime",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "evidenceKind": "dated-tracked-summary",
+        "source": "docs/qa/2026-11-04-budget-staging-continuation-stop.json",
+        "sourceSha256": "a6fb578fbbabc00c5749354197fbfc80783b0f7877043e1af1022e286f7d8924",
+        "description": "Passed with the product page's actual postgres_changes readiness and peer-frame evidence",
+        "rawLatestReportUnavailable": true
+      },
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C06",
+      "name": "Three contexts reload to canonical data",
+      "phase": "browser",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "evidenceKind": "dated-tracked-summary",
+        "source": "docs/qa/2026-11-04-budget-staging-continuation-stop.json",
+        "sourceSha256": "a6fb578fbbabc00c5749354197fbfc80783b0f7877043e1af1022e286f7d8924",
+        "description": "Passed: three real contexts reloaded canonical data",
+        "rawLatestReportUnavailable": true
+      },
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C07",
+      "name": "Real hidden/visible background page preserves edit",
+      "phase": "browser",
+      "status": "Failed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Paraphrase of tracked visibility prerequisite, not raw error: Expected: \"hidden\"; Received: \"visible\".",
+      "detail": {
+        "evidenceKind": "dated-tracked-summary",
+        "source": "docs/qa/2026-11-04-budget-staging-continuation-stop.json",
+        "description": "The real Chrome window did not expose document.visibilityState=hidden after an actual minimize attempt. This is a test-environment limitation, not a product pass; retain for manual browser verification.",
+        "rawLatestReportUnavailable": true
+      },
+      "retainedFailure": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C08",
+      "name": "Real offline context reconnects and restores canonical data",
+      "phase": "browser",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "evidenceKind": "dated-tracked-summary",
+        "source": "docs/qa/2026-11-04-budget-staging-continuation-stop.json",
+        "sourceSha256": "a6fb578fbbabc00c5749354197fbfc80783b0f7877043e1af1022e286f7d8924",
+        "description": "Passed: an offline context reconnected to canonical data",
+        "rawLatestReportUnavailable": true
+      },
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C09",
+      "name": "Cancel unsaved draft after rejected real admission",
+      "phase": "browser",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "evidenceKind": "dated-tracked-summary",
+        "source": "docs/qa/2026-11-04-budget-staging-continuation-stop.json",
+        "sourceSha256": "a6fb578fbbabc00c5749354197fbfc80783b0f7877043e1af1022e286f7d8924",
+        "description": "Passed: real PT409 and unsaved-draft cancellation",
+        "rawLatestReportUnavailable": true
+      },
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "C10",
+      "name": "Nonmember trip and revoked editor permissions isolated",
+      "phase": "finance",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "nonmemberAndRevokedEditor": true
+      },
+      "executedAt": "2026-11-04T06:41:26.415Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "D01",
+      "name": "Financial receipt metadata insert and upload reject",
+      "phase": "storage",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "metadataGuard": true,
+        "metadataHttpStatus": 500,
+        "metadataCode": "55000",
+        "realUploadPolicyRefusal": true
+      },
+      "executedAt": "2026-11-05T01:09:14.763Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "D02",
+      "name": "New financial receipt signing request rejects",
+      "phase": "storage",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "knownExistingCatalogPath": true,
+        "ordinaryMemberReadConfirmed": true,
+        "signRejected": true
+      },
+      "executedAt": "2026-11-05T01:09:16.337Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "D03",
+      "name": "Preexisting signed URL actual access before and after genuine expiry",
+      "phase": "legacy-url",
+      "status": "Blocked",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "No genuine pre-removal signed URL survives; cannot fabricate historical expiry evidence."
+    },
+    {
+      "id": "D04",
+      "name": "Accommodation attachment upload, sign, bytes read and delete",
+      "phase": "storage",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "reason": "Waiting for authorized execution",
+      "detail": {
+        "exactBytesMatched": true,
+        "normalMetadataAndStorageCleanup": true
+      },
+      "executedAt": "2026-11-05T01:09:16.205Z",
+      "reusedEvidence": true,
+      "previousReportSha256": "9551904fcb7392b83e4a4f415878955f676774cb0a654ab5a3e1e003f6ae6f73"
+    },
+    {
+      "id": "D05",
+      "name": "Original receipt metadata and objects unchanged after QA",
+      "phase": "after",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "executedAt": "2026-11-05T01:18:47.781503+00:00",
+      "detail": {
+        "originalNonQaRowsPreserved": true,
+        "protectedRelations": 83,
+        "protocolNotificationIncrement": 10,
+        "qaAuthRuntimeExcludedExplicitly": true,
+        "existingReceiptsAndObjectsPreserved": true,
+        "allProtocolsOff": true,
+        "ownedFinancialFixturesRetainedForAudit": true,
+        "qaSessionsZero": true,
+        "nativeCleanup": {
+          "observedAt": "2026-11-05T01:21:19.5828729Z",
+          "automatedProcesses": 0,
+          "qaListeners": 0,
+          "manualProcesses": 1,
+          "manual5174": 1
+        },
+        "manualFrontendRetainedDeliberately": true
+      }
+    },
+    {
+      "id": "Z01",
+      "name": "Owned fixtures cleaned or retained for audit; sessions revoked; all protocols OFF",
+      "phase": "after",
+      "status": "Passed",
+      "environment": "Hosted real Auth/HTTP/browser",
+      "executedAt": "2026-11-05T01:18:47.781503+00:00",
+      "detail": {
+        "originalNonQaRowsPreserved": true,
+        "protectedRelations": 83,
+        "protocolNotificationIncrement": 10,
+        "qaAuthRuntimeExcludedExplicitly": true,
+        "existingReceiptsAndObjectsPreserved": true,
+        "allProtocolsOff": true,
+        "ownedFinancialFixturesRetainedForAudit": true,
+        "qaSessionsZero": true,
+        "nativeCleanup": {
+          "observedAt": "2026-11-05T01:21:19.5828729Z",
+          "automatedProcesses": 0,
+          "qaListeners": 0,
+          "manualProcesses": 1,
+          "manual5174": 1
+        },
+        "manualFrontendRetainedDeliberately": true
+      }
+    }
+  ],
+  "requests": [
+    {
+      "path": "/auth/v1/health",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 395
+    },
+    {
+      "path": "/auth/v1/settings",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 87
+    },
+    {
+      "path": "/auth/v1/admin/users/:qa-id",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 157
+    },
+    {
+      "path": "/auth/v1/admin/generate_link",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 103
+    },
+    {
+      "path": "/auth/v1/verify",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 106
+    },
+    {
+      "path": "/auth/v1/user",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 64
+    },
+    {
+      "path": "/auth/v1/admin/users/:qa-id",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 69
+    },
+    {
+      "path": "/auth/v1/admin/generate_link",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 78
+    },
+    {
+      "path": "/auth/v1/verify",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 67
+    },
+    {
+      "path": "/auth/v1/user",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 58
+    },
+    {
+      "path": "/auth/v1/admin/users/:qa-id",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 78
+    },
+    {
+      "path": "/auth/v1/admin/generate_link",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": true,
+      "ms": 55
+    },
+    {
+      "path": "/auth/v1/verify",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 62
+    },
+    {
+      "path": "/auth/v1/user",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 68
+    },
+    {
+      "path": "/rest/v1/trips",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 223
+    },
+    {
+      "path": "/rest/v1/trip_members",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 86
+    },
+    {
+      "path": "/rest/v1/trips",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 67
+    },
+    {
+      "path": "/rest/v1/trip_members",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 84
+    },
+    {
+      "path": "/rest/v1/budget_items",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 79
+    },
+    {
+      "path": "/rest/v1/actual_expenses",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 97
+    },
+    {
+      "path": "/rest/v1/itinerary_items",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 74
+    },
+    {
+      "path": "/rest/v1/accommodations",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 71
+    },
+    {
+      "path": "/rest/v1/attachments",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 77
+    },
+    {
+      "path": "/rest/v1/trip_budget_baselines",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 91
+    },
+    {
+      "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 179
+    },
+    {
+      "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 177
+    },
+    {
+      "path": "/rest/v1/trips",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 68
+    },
+    {
+      "path": "/rest/v1/trip_budget_baselines",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 104
+    },
+    {
+      "path": "/rest/v1/trips",
+      "method": "PATCH",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 90
+    },
+    {
+      "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 150
+    },
+    {
+      "path": "/rest/v1/rpc/budget_metadata_group_lease_v2",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 103
+    },
+    {
+      "path": "/rest/v1/rpc/patch_budget_metadata_group_v2",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 111
+    },
+    {
+      "path": "/rest/v1/rpc/budget_metadata_group_lease_v2",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 65
+    },
+    {
+      "path": "/rest/v1/trip_budget_baselines",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 81
+    },
+    {
+      "path": "/rest/v1/rpc/read_budget_metadata_snapshot_v9",
+      "method": "POST",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 333
+    },
+    {
+      "path": "/rest/v1/trip_members",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 60
+    },
+    {
+      "path": "/rest/v1/trips",
+      "method": "PATCH",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 73
+    },
+    {
+      "path": "/rest/v1/trip_budget_baselines",
+      "method": "GET",
+      "status": 200,
+      "code": null,
+      "admin": false,
+      "ms": 77
+    },
+    {
+      "path": "/auth/v1/logout",
+      "method": "POST",
+      "status": 204,
+      "code": null,
+      "admin": false,
+      "ms": 185
+    },
+    {
+      "path": "/auth/v1/logout",
+      "method": "POST",
+      "status": 204,
+      "code": null,
+      "admin": false,
+      "ms": 54
+    },
+    {
+      "path": "/auth/v1/logout",
+      "method": "POST",
+      "status": 204,
+      "code": null,
+      "admin": false,
+      "ms": 62
+    }
+  ],
+  "failures": [],
+  "productionReady": false,
+  "before": {
+    "capturedAt": "2026-11-05T01:17:12.97047+00:00",
+    "ledger": 66,
+    "head": "20261103113253",
+    "protocols": {
+      "undo": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      },
+      "source": {
+        "enabled": true,
+        "singleton": true
+      },
+      "finance": {
+        "enabled": true,
+        "activated": true,
+        "singleton": true
+      },
+      "payment": {
+        "enabled": true,
+        "singleton": true
+      },
+      "receipt": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true,
+        "storage_verified": true,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": true,
+        "content_worker_verified": true,
+        "legacy_grants_expire_at": null
+      },
+      "metadata": {
+        "enabled": true,
+        "singleton": true
+      },
+      "lifecycle": {
+        "enabled": true,
+        "activated": true,
+        "singleton": true
+      }
+    },
+    "coverage": {
+      "complete": true,
+      "rowCount": 786,
+      "relations": 83
+    },
+    "installation": {
+      "undoAcl": [
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.clear_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.prepare_workspace_inverse(uuid,uuid,uuid,uuid,uuid,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.read_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.workspace_inverse_manifest()",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "budget_workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "clear_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "read_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "undo_budget_metadata_group(uuid,uuid,uuid,uuid,bigint,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+          "authenticated": false
+        }
+      ],
+      "observedAt": "2026-11-05T01:17:13.240437+00:00",
+      "actualIndex": "CREATE UNIQUE INDEX actual_expenses_one_budget ON public.actual_expenses USING btree (budget_item_id) WHERE (budget_item_id IS NOT NULL)",
+      "guardSha256": "38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6",
+      "activeLeases": 0,
+      "qaIdentities": [
+        {
+          "idSha256": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+          "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+        },
+        {
+          "idSha256": "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95",
+          "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+        }
+      ],
+      "sourceSha256": "7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c",
+      "authUserCount": 3,
+      "receiptDigest": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+      "storageDigest": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80",
+      "qaSessionCount": 0,
+      "realtimeTables": [
+        "accommodations",
+        "actual_expense_participants",
+        "actual_expenses",
+        "attachments",
+        "budget_collaboration_signals",
+        "budget_item_participants",
+        "budget_items",
+        "guide_items",
+        "itinerary_alternatives",
+        "itinerary_budget_items",
+        "itinerary_items",
+        "itinerary_route_override_nodes",
+        "itinerary_route_overrides",
+        "luggage_items",
+        "pack_items",
+        "share_links",
+        "shared_luggage_items",
+        "todo_items",
+        "trip_budget_baselines",
+        "trip_members",
+        "trips"
+      ],
+      "storageObjects": 2,
+      "pendingReceipts": 0,
+      "activeRatesLeases": 0,
+      "applicationRlsOff": 0,
+      "qaTaggedUserCount": 2,
+      "receiptPathHashes": [
+        "e008b2b6484b1fc999180248e2d74694aec3327264688bb4f2f50583d04f333b"
+      ],
+      "unfinishedCleanup": 0,
+      "receiptPolicyCount": 2,
+      "transactionReadOnly": "on",
+      "realtimeSignalSelect": true,
+      "financialReceiptMetadata": 1
+    }
+  },
+  "ownedFixtureState": {
+    "retainedForAudit": true,
+    "trips": 2,
+    "objectsPending": 0,
+    "scopeFileIgnored": true
+  },
+  "counts": {
+    "Passed": 32,
+    "Failed": 1,
+    "Blocked": 1,
+    "Not Run": 0
+  },
+  "manualTestReady": true,
+  "manualReadyScope": "Local Staging manual testing with explicit C07/D03 evidence limits; not complete automated certification",
+  "finalAutomatedOff": {
+    "capturedAt": "2026-11-05T01:18:47.781503+00:00",
+    "proof": {
+      "originalNonQaRowsPreserved": true,
+      "protectedRelations": 83,
+      "protocolNotificationIncrement": 10,
+      "qaAuthRuntimeExcludedExplicitly": true,
+      "existingReceiptsAndObjectsPreserved": true,
+      "allProtocolsOff": true,
+      "ownedFinancialFixturesRetainedForAudit": true,
+      "qaSessionsZero": true
+    }
+  },
+  "currentManualHandoff": {
+    "capturedAt": "2026-11-05T01:20:13.44904+00:00",
+    "protocolRows": {
+      "undo": {
+        "enabled": false,
+        "singleton": true,
+        "full_enabled": false
+      },
+      "source": {
+        "enabled": true,
+        "singleton": true
+      },
+      "finance": {
+        "enabled": true,
+        "activated": true,
+        "singleton": true
+      },
+      "payment": {
+        "enabled": true,
+        "singleton": true
+      },
+      "receipt": {
+        "enabled": false,
+        "activated": true,
+        "singleton": true,
+        "storage_verified": true,
+        "service_role_had_usage": false,
+        "cleanup_worker_verified": true,
+        "content_worker_verified": true,
+        "legacy_grants_expire_at": null
+      },
+      "metadata": {
+        "enabled": true,
+        "singleton": true
+      },
+      "lifecycle": {
+        "enabled": true,
+        "activated": true,
+        "singleton": true
+      }
+    },
+    "installation": {
+      "undoAcl": [
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.clear_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.finish_workspace_inverse(uuid,uuid,uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.prepare_budget_metadata_undo(uuid,uuid,uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.prepare_workspace_inverse(uuid,uuid,uuid,uuid,uuid,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.read_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.workspace_inverse_manifest()",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "app_private.workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "budget_workspace_undo_lease(uuid,uuid,uuid,uuid,text,bigint)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "clear_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "read_budget_metadata_undo(uuid,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "undo_budget_metadata_group(uuid,uuid,uuid,uuid,bigint,uuid)",
+          "authenticated": false
+        },
+        {
+          "anon": false,
+          "worker": false,
+          "signature": "undo_budget_workspace(uuid,uuid,uuid,uuid,bigint,uuid)",
+          "authenticated": false
+        }
+      ],
+      "observedAt": "2026-11-05T01:20:13.689709+00:00",
+      "actualIndex": "CREATE UNIQUE INDEX actual_expenses_one_budget ON public.actual_expenses USING btree (budget_item_id) WHERE (budget_item_id IS NOT NULL)",
+      "guardSha256": "38b69ef5f66604f4e5b470593055b7378746db5d11cecb92a50f7c2a16449dd6",
+      "activeLeases": 0,
+      "qaIdentities": [
+        {
+          "idSha256": "72949e554e70f57941d7f955cefa4f941103915a22163d22555c2b86cc33129a",
+          "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+        },
+        {
+          "idSha256": "69edd3de68527ef58324acf7b57ad1147742ffdce53400f36137d4059db06e95",
+          "runSha256": "3471a02c9ba739929fbd9b7e11544c43b42a0ac8be8059c1847df0cf3bbc3bf4"
+        }
+      ],
+      "sourceSha256": "7d4a96959bbe928c4bf4488311b82f6d5a400315d62eb8b6823dada27ba2e34c",
+      "authUserCount": 3,
+      "receiptDigest": "13f41bc58ba3bc69735bef0c3156626cad313e6e18a3136be996686f582b6bde",
+      "storageDigest": "6cb3f8b4454d038c1102f62a0575221edf7c7b2a48623b6663bf677a4ee05f80",
+      "qaSessionCount": 0,
+      "realtimeTables": [
+        "accommodations",
+        "actual_expense_participants",
+        "actual_expenses",
+        "attachments",
+        "budget_collaboration_signals",
+        "budget_item_participants",
+        "budget_items",
+        "guide_items",
+        "itinerary_alternatives",
+        "itinerary_budget_items",
+        "itinerary_items",
+        "itinerary_route_override_nodes",
+        "itinerary_route_overrides",
+        "luggage_items",
+        "pack_items",
+        "share_links",
+        "shared_luggage_items",
+        "todo_items",
+        "trip_budget_baselines",
+        "trip_members",
+        "trips"
+      ],
+      "storageObjects": 2,
+      "pendingReceipts": 0,
+      "activeRatesLeases": 0,
+      "applicationRlsOff": 0,
+      "qaTaggedUserCount": 2,
+      "receiptPathHashes": [
+        "e008b2b6484b1fc999180248e2d74694aec3327264688bb4f2f50583d04f333b"
+      ],
+      "unfinishedCleanup": 0,
+      "receiptPolicyCount": 2,
+      "transactionReadOnly": "on",
+      "realtimeSignalSelect": true,
+      "financialReceiptMetadata": 1
+    },
+    "native": {
+      "observedAt": "2026-11-05T01:21:19.5828729Z",
+      "automatedProcesses": 0,
+      "qaListeners": 0,
+      "manualProcesses": 1,
+      "manual5174": 1
+    },
+    "url": "http://127.0.0.1:5174",
+    "login": "Normal Google sign-in",
+    "automaticPause": false
+  },
+  "rawLatestHomeReportUnavailable": true,
+  "reusedHomePassEvidence": "A03/C05/C06/C08/C09 reused from the committed dated stop summary, explicitly labelled per row; no invented original execution time or raw trace."
+}

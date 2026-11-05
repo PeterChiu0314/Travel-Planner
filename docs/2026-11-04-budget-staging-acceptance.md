@@ -1,5 +1,7 @@
 # 2026-11-04 Staging acceptance continuation
 
+> Superseded current status: [2026-11-05 manual handoff](2026-11-05-budget-staging-manual-handoff.md),32 Passed/1 Failed/1 Blocked; five protocols stay ON for manual testing, Undo/Receipt OFF. Older statuses below are dated evidence.
+
 ## Latest controlled stop — 2026-11-04
 
 The historical account below remains evidence, but this is the current handoff. The masked RAM-only credential helper stopped and saved no key. The final controlled pause returned metadata/finance/payment/source/lifecycle to OFF; Undo and Receipt stayed OFF throughout. The independent closeout still records zero QA sessions and active leases, plus the original one financial-receipt metadata row and two Storage objects.

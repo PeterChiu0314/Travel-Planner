@@ -1,5 +1,9 @@
 # BUGS.md
 
+## 2026-11-05 Staging manual handoff
+
+[Latest runbook](2026-11-05-budget-staging-manual-handoff.md):32 Passed/1 Failed/1 Blocked. D01/D02/D04/B01/B07 genuine Hosted Passed. C07 visibility prerequisite remains manual; D03 historical URL absent, not Passed. No new product P0/P1 identified. Fixed QA graph projection, audited retired canary continuation and traveling default Actual page targeting; financial/Baseline guards retained. Final automated sevenOFF audited, then exact fiveON per explicit user manual-test request. Receipt/Undo OFF; original83 relations/receipts/objects/security preserved; sessions/leases/jobs0. Only deliberate5174 manual frontend retained; no auto-shutoff, no Worker or admin key. Production NO-GO.
+
 ## 2026-11-04 Staging QA tooling follow-up
 
 Subsequent user instruction revoked the10% quota stop rule. Conflicting local scratch artifacts were preserved and the portable scope restored;25/25 local safety checks pass. Fresh11:32:29Z READ ONLY matches the complete last-handoff OFF seals. C05 remains pending a reconnected masked credential helper; no new product failure or Hosted write.

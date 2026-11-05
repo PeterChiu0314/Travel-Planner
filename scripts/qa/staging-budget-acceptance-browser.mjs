@@ -30,7 +30,7 @@ export async function browserCases(r){
   page.on('websocket',socket=>{socket.on('framereceived',frame=>{if(observedRealtimeReady(frame.payload,trip))r.realtimeReady.add(i);const signal=observedRealtimeSignal(frame.payload,trip,i);if(signal)r.realtimeSignals.push(signal);});socket.on('close',()=>r.realtimeReady.delete(i));});
   page.on('pageerror',()=>r.browserErrors.push({kind:'pageerror',actor:i}));
   page.on('request',req=>{const u=new URL(req.url());if(u.hostname===`${project}.supabase.co`)r.browserRequests.push({actor:i,method:req.method(),path:u.pathname.replace(/[a-f0-9]{8}-[a-f0-9-]{27,}/gi,':id')});});
-  await page.goto(r.browserUrl);await expect(page.getByRole('button',{name:'新增預算',exact:true})).toBeVisible();
+  await page.goto(r.browserUrl);await expect(page.getByRole('button',{name:r.continuation?.startAt==='B07'?'新增實付':'新增預算',exact:true})).toBeVisible();
   await expect(page.getByText(r.tripName,{exact:true}).first()).toBeVisible();
  }
  const [a,b,c]=r.pages;

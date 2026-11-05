@@ -1,5 +1,7 @@
 # 回家接續 Staging 驗收
 
+> Superseded current status: [2026-11-05 manual handoff](2026-11-05-budget-staging-manual-handoff.md),32 Passed/1 Failed/1 Blocked; five protocols stay ON for manual testing, Undo/Receipt OFF. Older statuses below are dated evidence.
+
 ## 最新安全停止狀態（2026-11-04，優先於下方歷史說明）
 
 目前 masked helper 已停止，沒有保存 service-role key，也沒有進行中的 Hosted 工作。所有七個協定皆 OFF；Undo／Receipt 在本輪從未啟用。已觀察 QA session／active lease 為0，原有1筆收據 metadata與2個 Storage 物件保留。矩陣為 **27 Passed／2 Failed／5 Not Run／0 Blocked**；詳細安全快照見 [JSON](qa/2026-11-04-budget-staging-continuation-stop.json)。

@@ -10,9 +10,10 @@ export async function travelCase(r){
   const day=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Taipei'}));
   const date=offset=>{const d=new Date(day);d.setDate(d.getDate()+offset);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
   ok(await http(token,`/rest/v1/trips?id=eq.${trip}`,{method:'PATCH',body:{start_date:date(-1),end_date:date(1),status:'traveling'}}));
-  await api.patch(0,'budget',r.budget,'note',()=> 'QA after-departure change');
+  await api.patch(0,'budget',r.budget,'note',()=> `QA after-departure change ${Date.now()}`);
   assert.deepEqual((await api.read('trip_budget_baselines',`trip_id=eq.${trip}&select=payload`))[0].payload,payload,'Frozen Baseline must not backfill');
-  const page=r.pages[0];await page.reload();await expect(page.getByRole('button',{name:'新增預算',exact:true})).toBeVisible();
+  // Traveling opens Actual by design; certify that real phase's UI.
+  const page=r.pages[0];await page.reload();await expect(page.getByRole('button',{name:'新增實付',exact:true})).toBeVisible();
   const graph=await api.snap(),members=await api.read('trip_members',`trip_id=eq.${trip}&status=eq.approved&select=*`);
   const totals=settlementBalances(graph.actualExpenses,graph.actualParticipants,members);assert.equal(totals.incomplete,false);assert(Math.abs(totals.balances.reduce((n,b)=>n+b.balance,0))<0.001);
   await page.getByRole('button',{name:'分帳結算',exact:true}).click();await expect(page.locator('.settlement-panel')).toBeVisible();await expect(page.locator('.settlement-expense').filter({hasText:graph.actualExpenses.find(z=>z.id===r.retainedActual).title})).toHaveCount(1);

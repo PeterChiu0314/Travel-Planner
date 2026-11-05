@@ -14,10 +14,11 @@ export async function ensureQaEditor({http,sessions,trip}){
  const visible=ok(await http(editor.access_token,`/rest/v1/trips?id=eq.${trip}&select=id`));assert.deepEqual(visible,[{id:trip}]);
 }
 
-export async function assertOwnedQaTrip({http,session,trip,name,allowedUserIds}){
+export async function assertOwnedQaTrip({http,session,trip,name,allowedUserIds,expectedDates}){
  const read=async(table,filter)=>ok(await http(session.access_token,`/rest/v1/${table}?${filter}`));
  const rows=await read('trips',`id=eq.${trip}&select=id,title,name,owner_id,start_date,end_date`);
- assert.deepEqual(rows,[{id:trip,title:name,name,owner_id:session.user.id,start_date:'2099-01-01',end_date:'2099-01-03'}],'Resume only the exact confirmed empty QA trip');
+ if(expectedDates){assert.deepEqual(Object.keys(expectedDates).sort(),['end_date','start_date']);assert(Object.values(expectedDates).every(d=>/^20\d{2}-\d{2}-\d{2}$/.test(d)));}
+ assert.deepEqual(rows,[{id:trip,title:name,name,owner_id:session.user.id,start_date:'2099-01-01',end_date:'2099-01-03',...expectedDates}],'Resume only the exact confirmed QA trip and recorded dates');
  const members=await read('trip_members',`trip_id=eq.${trip}&select=user_id,role,status`);
  assert(members.some(m=>m.user_id===session.user.id&&m.role==='owner'&&m.status==='approved'));
  assert(members.every(m=>allowedUserIds.includes(m.user_id)),'Unexpected member in retained QA scope');
