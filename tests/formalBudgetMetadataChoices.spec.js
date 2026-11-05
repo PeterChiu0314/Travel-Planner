@@ -30,14 +30,14 @@ test('links selector writes the full set once and snapshot updates another tab',
  }finally{await b.close();}
 });
 test('unknown payer result retries original request and full-editor handoff uses canonical',async({page})=>{
- const db=dbFor();await ready(page,db);db.losePatchAck=true;await choose(page,'付款人','B');await expect(page.getByRole('button',{name:'確認儲存結果',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'確認儲存結果',exact:true}).click();await expect.poll(()=>db.groupCalls.filter(c=>c.name==='patch_budget_metadata_group').length).toBe(2);
+ const db=dbFor();await ready(page,db);db.losePatchAck=true;await choose(page,'付款人','B');await expect(page.getByRole('status',{name:'預算同步狀態'})).toBeVisible();
+ await expect.poll(()=>db.groupCalls.filter(c=>c.name==='patch_budget_metadata_group').length,{timeout:10000}).toBe(2);
  const calls=db.groupCalls.filter(c=>c.name==='patch_budget_metadata_group');expect(calls[0].args.p_request_id).toBe(calls[1].args.p_request_id);
  await page.getByRole('button',{name:'編輯完整項目',exact:true}).click();await expect(page.getByRole('button',{name:'儲存',exact:true})).toBeVisible();expect(db.rows.budget_items[0].payer_id).toBe('B');
 });
 test('retained record shows explicit unsupported group without new or legacy writes',async({page})=>{
  const db=dbFor();db.rows.actual_expenses=[{id:'paid',trip_id:'trip',budget_item_id:'budget',title:'Payment',amount:10,twd_amount:10,currency:'TWD',payment_origin:'budget_toggle',payment_active:true}];await ready(page,db);await choose(page,'分類','住宿');
- await expect(page.getByText('此項目尚未支援分欄編輯，請使用完整項目編輯').first()).toBeVisible();expect(db.groupCalls).toHaveLength(0);expect(db.leaseCalls).toHaveLength(0);expect(db.rows.budget_items[0].category).toBe('交通');
+ await expect(region(page).getByRole('combobox',{name:'分類',exact:true})).toHaveAttribute('aria-readonly','true');await expect(region(page).getByRole('alert')).toHaveCount(0);expect(db.groupCalls).toHaveLength(0);expect(db.leaseCalls).toHaveLength(0);expect(db.rows.budget_items[0].category).toBe('交通');
 });
 test('custom category debounces typing and rejects blank without a write',async({page})=>{
  const db=dbFor();await ready(page,db);const field=region(page).getByRole('combobox',{name:'分類',exact:true});await field.focus();await field.fill('地方小吃');
@@ -46,7 +46,7 @@ test('custom category debounces typing and rejects blank without a write',async(
 test('Demo category payer links use real shared UI and memory only',async({page})=>{
  await enableMetadata(page);const requests=[],errors=[];page.on('request',r=>{if(/\.supabase\.co|\/auth\/v1|\/rest\/v1|\/realtime\/v1|open.er-api.com/.test(r.url()))requests.push(r.url());});page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/demo/budget');await page.getByRole('button',{name:'租車加油',exact:true}).click();await page.getByRole('tab',{name:'編輯項目',exact:true}).click();await choose(page,'分類','餐飲');await choose(page,'付款人','未指定');
- await region(page).getByRole('button',{name:/關聯行程/}).click();const option=region(page).getByRole('checkbox').last();await option.focus();await option.setChecked(!(await option.isChecked()));await expect(region(page).getByText('已儲存',{exact:true}).last()).toBeVisible();
+ await region(page).getByRole('button',{name:/關聯行程/}).click();const option=region(page).getByRole('checkbox').last();await option.focus();await option.setChecked(!(await option.isChecked()));await expect(page.getByRole('status',{name:'預算同步狀態'})).toHaveCount(0);
  await page.getByRole('tab',{name:'項目明細',exact:true}).click();expect(requests).toEqual([]);expect(errors).toEqual([]);
 });
 test('category composition never commits intermediate IME text and blur flushes only after end',async({page})=>{

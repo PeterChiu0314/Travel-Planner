@@ -1,5 +1,39 @@
 import { calculatePricing, calculateActualPricing } from "./budgetFinance.js";
 
+// A new Lifecycle placeholder has no participant rows yet. This is a local
+// default only: the first intentional edit still goes through pricing admission.
+export function initialPricingDraft(value, record, members) {
+  if (record.record_status !== 'incomplete' || record.pricing_ready || value.participantIds.length) return value;
+  return { ...value, participantIds: members.filter(m => m.status === 'approved').map(m => m.user_id),
+    shares: value.pricing_mode === 'custom' ? Object.fromEntries(members.filter(m => m.status === 'approved').map(m => [m.user_id, 0])) : value.shares };
+}
+
+export function pricingModeDraft(value, mode, previousCustom) {
+  if (mode === value.pricing_mode) return value;
+  let pricing; try { pricing = calculatePricing(value); } catch { /* Keep incomplete amounts incomplete. */ }
+  let cached;
+  if (pricing && previousCustom) try {
+    const result = calculatePricing({ ...value, pricing_mode: 'custom', shares: previousCustom });
+    if (result.amount === pricing.amount) cached = previousCustom;
+  } catch { /* A stale/incomplete cache must not omit new participants. */ }
+  const next = { ...value, pricing_mode: mode };
+  if (pricing) next.amount = pricing.amount;
+  if (mode === 'per_person') next.unit_amount = pricing && value.participantIds.length
+    ? Math.round(pricing.amount / value.participantIds.length * 100) / 100 : value.unit_amount;
+  if (mode === 'custom') next.shares = Object.fromEntries(value.participantIds.map(id => [id,
+    cached ? cached[id] : pricing?.shares[id] ?? (pricing ? 0 : '')]));
+  return next;
+}
+
+export function pricingParticipantsDraft(value, participantIds) {
+  return { ...value, participantIds, shares: value.pricing_mode === 'custom'
+    ? { ...value.shares, ...Object.fromEntries(participantIds.filter(id => !Object.hasOwn(value.shares, id)).map(id => [id, 0])) } : value.shares };
+}
+
+export const incompletePricingInput = value => !value.participantIds.length || (value.pricing_mode === 'custom'
+  ? value.participantIds.some(id => String(value.shares[id] ?? '').trim() === '')
+  : String((value.pricing_mode === 'per_person' ? value.unit_amount : value.amount) ?? '').trim() === '');
+
 export const pricingInputs = (row, people = [], versions = null) => ({
   pricing_mode: row.pricing_mode || "split_total", amount: row.record_status==='incomplete'&&!row.pricing_ready?'':row.amount ?? "", unit_amount: row.unit_amount ?? null,
   currency: row.currency || "TWD", exchange_rate: row.exchange_rate ?? "",

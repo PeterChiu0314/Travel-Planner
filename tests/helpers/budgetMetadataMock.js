@@ -71,6 +71,9 @@ export function metadataBackend() {
         if (args.p_group === "links") db.rows.itinerary_budget_items = [...(db.rows.itinerary_budget_items || []).filter(link => link.budget_item_id !== row.id), ...value.map(id => ({ budget_item_id: row.id, itinerary_item_id: id }))];
         else if(args.p_group !== "pricing") row[metadataField(args.p_group)] = value;
         row.updated_at = new Date(db.now + (++db.groupRevision)).toISOString(); g.revision++;
+        // Pricing receipts contain the committed target revision, as does the
+        // real RPC. Returning pre-write versions leaves every valid save unknown.
+        if (args.p_group === 'pricing') value = { ...value, versions: valueFor(args.p_kind, rowFor(args), 'pricing').versions };
         const data = { id: row.id, kind: args.p_kind, group: args.p_group, revision: g.revision, value, request_id: args.p_request_id };
         if(db.nextSnapshotGate?.actor===actor){db.snapshotGate=db.nextSnapshotGate;db.nextSnapshotGate=null;}
         db.groupRequests.set(args.p_request_id, data); await db.emit("budget_items"); await db.emit("budget_collaboration_signals");

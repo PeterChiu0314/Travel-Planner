@@ -17,10 +17,10 @@ test('peer denied admission after focus switches does not strand release and pee
  await title(peer).focus();await expect(title(peer)).toBeEditable();await title(peer).fill('Peer recovered');await expect.poll(()=>db.rows.budget_items[0].title).toBe('Peer recovered');expect(peer.qaErrors).toEqual([]);
  }finally{db.releaseMetadata();await peer.close();}
 });
-test('failed release exposes an enabled retry and recovers through the visible control',async({page})=>{
+test('failed release recovers in the background without field actions',async({page})=>{
  const db=metadataBackend();await ready(page,db);await title(page).focus();await expect(title(page)).toBeEditable();db.releaseFailure=true;await note(page).focus();
- await expect(titleGroup(page).getByRole('alert')).toContainText('尚未確認權限釋放');const retry=titleGroup(page).getByRole('button',{name:'重試',exact:true});await expect(retry).toBeEnabled();
- db.releaseFailure=false;await retry.click();await expect(titleGroup(page).getByRole('alert')).toHaveCount(0);await title(page).focus();await expect(title(page)).toBeEditable();await title(page).fill('Visible retry recovered');await expect.poll(()=>db.rows.budget_items[0].title).toBe('Visible retry recovered');
+ await expect(page.getByRole('status',{name:'預算同步狀態'})).toBeVisible();await expect(titleGroup(page).getByRole('button',{name:'重試',exact:true})).toHaveCount(0);
+ db.releaseFailure=false;await expect.poll(()=>db.groupStates.get('budget:budget:title').actor,{timeout:10000}).toBe(null);await title(page).focus();await expect(title(page)).toBeEditable();await title(page).fill('Background recovered');await expect.poll(()=>db.rows.budget_items[0].title).toBe('Background recovered');
  await page.screenshot({path:test.info().outputPath('issue16-release-recovered.png'),fullPage:false});
 });
 test('immediate refocus during a delayed release waits then reacquires only that group',async({page})=>{

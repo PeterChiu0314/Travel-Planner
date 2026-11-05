@@ -2,6 +2,8 @@ import {Fragment,useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'r
 import MenuSelect from '../MenuSelect.jsx';
 import {useSiteDialog} from '../SiteDialog.jsx';
 import {memberLabel} from '../../lib/budgetFinance.js';
+import BudgetCollaborationFrame from './BudgetCollaborationFrame.jsx';
+import {useBudgetFailureToast} from './BudgetEditorFeedback.jsx';
 
 function changes(p,members) {
  const label={budget_item_id:'來源關聯',title:'項目名稱',category:'分類',note:'備註',payer_id:'付款人',amount:'金額',unit_amount:'每人單價',currency:'幣別',exchange_rate:'匯率',twd_amount:'台幣合計',pricing_mode:'計價方式',split_type:'分攤方式'};
@@ -20,6 +22,8 @@ export default function BudgetSourceEditor({client,metadata,record,members,servi
  const current=useRef(0),{ask,dialog}=useSiteDialog();useEffect(()=>()=>{current.current++;},[]);
  useEffect(()=>{if(!edited&&!state.active)setSelection(source?.value.budget_id||'');},[source?.value.budget_id,edited,state.active]);
  const pending=busy||state.active;
+ useBudgetFailureToast(error||(!/其他成員|正在編輯/.test(state.error||'')?state.error:''),'budget-source:'+record.id);
+ useEffect(()=>{const timer=setInterval(()=>{const next=client.view('actual',record.id),generation=current.current;if(next.active&&!next.busy)void client.retry('actual',record.id).then(ok=>{if(ok&&generation===current.current)setEdited(false);});},5000);return()=>clearInterval(timer);},[client,record.id]);
  services.useGuard(`budget-source:${record.id}:${record.trip_id}`,useMemo(()=>({isActive:edited||pending,isDirty:edited||pending,
   prepare:async()=>!edited&&!busy&&await client.prepare(),save:async()=>false,discard:async()=>{if(busy||client.hasPending())return false;setEdited(false);setSelection(source?.value.budget_id||'');return true;}}),[edited,pending,busy,client,source?.value.budget_id]));
  const enabled=metadata.status().editable&&metadata.status().verified&&snapshot?.sourceProtocol?.enabled&&source?.supported;
@@ -38,17 +42,12 @@ export default function BudgetSourceEditor({client,metadata,record,members,servi
   }catch(e){if(generation===current.current)setError(e.message||'來源操作未完成，原資料已保留。');}
   finally{if(generation===current.current)setBusy(false);}
  }
- return <section className="bw-metadata-group" aria-label="來源關聯" aria-busy={pending}>{dialog}
+ return <BudgetCollaborationFrame role="group" aria-label="來源關聯" aria-busy={pending} tabIndex={0} ownerId={owner?source.owner_id:null} ownerName={owner} label="來源關聯">{dialog}
   <h4>來源預算</h4><p className="bw-muted">目前來源：{title(source?.value.budget_id)}<br/>歷史來源：{title(source?.value.origin_id)}</p>
-  <MenuSelect label="來源預算" value={selection} readOnly={!enabled||pending} options={[{value:'',label:'無來源（保留歷史資訊）'},...(snapshot?.budgetItems||[]).map(b=>({value:b.id,label:b.title||'未命名預算',disabled:b.is_fixed}))]}
+  <MenuSelect label="來源預算" value={selection} readOnly={!enabled||pending||Boolean(owner)} options={[{value:'',label:'無來源（保留歷史資訊）'},...(snapshot?.budgetItems||[]).map(b=>({value:b.id,label:b.title||'未命名預算',disabled:b.is_fixed}))]}
    onValueChange={value=>{setSelection(value);setEdited(value!==(source?.value.budget_id||''));setError('');}}/>
   <p className="bw-muted">變更關聯只調整來源，金額、分攤、付款人與備註保持不變。</p>
   <div className="form-actions"><button className="ghost-button compact" type="button" disabled={!enabled||pending||Boolean(owner)} onClick={()=>void run('relink_only')}>變更來源關聯</button>
    <button className="ghost-button compact" type="button" disabled={!enabled||pending||!selection||Boolean(owner)} onClick={()=>void run('apply_source_data')}>預覽套用來源資料</button></div>
-  {!enabled?<p className="bw-muted">來源協作尚未啟用或狀態尚未確認。</p>:null}
-  {owner?<p className="bw-muted" role="status">{owner} 正在操作來源關聯</p>:null}
-  {pending?<p role="status">{state.unknown?'來源結果待確認':state.syncPending?'已提交，最新同步待確認':'來源操作中…'}</p>:null}
-  {error||state.error?<p role="alert" className="bw-warning">{error||state.error}</p>:null}
-  {state.active&&!state.busy?<button type="button" className="ghost-button compact" onClick={()=>{const generation=current.current;void client.retry('actual',record.id).then(ok=>{if(ok&&generation===current.current)setEdited(false);});}}>{state.unknown?'確認來源結果':'重新確認來源狀態'}</button>:null}
- </section>;
+ </BudgetCollaborationFrame>;
 }

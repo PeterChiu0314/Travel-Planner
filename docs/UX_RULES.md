@@ -263,6 +263,8 @@ Do not:
 
 ## Budget UX Rules
 
+Current Issue #17 collaboration/pricing rule (2026-11-05) supersedes older inline group UI: no field status/error text, retry or discard buttons. Peer-held fields use the existing account color outline and accessible hover/focus name, remain readable and cannot submit; normal admission/save/contention is silent. Genuine failures use deduplicated existing Sonner notifications; pending work remains explicitly visible at page/editor level and recoverable through the existing leave guard. New unpriced placeholders default approved participants locally; custom mode seeds every selected person's original-currency share with exact cents/tail differences. Preserve explicit exclusions and paid/history guards. Existing-item newcomer defaults await a reviewed single-expense member-decision contract with #18; never infer exclusions from missing rows. [Implementation and acceptance limits](2026-11-05-budget-issue17-pricing-collaboration.md).
+
 Desktop requirements approved 2026-10-22 supersede the older generic notes below:
 
 - Existing Sidebar | dense grouped details | personal-first statistics/item detail. No expanded child rows or repeated categories.

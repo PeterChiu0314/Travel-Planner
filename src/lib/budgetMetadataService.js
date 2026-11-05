@@ -1,5 +1,5 @@
 import { metadataGroupKeys as groups, metadataValue as patchValue, sameMetadataValue, validMetadataValue, recordMetadataValue } from "./budgetMetadataValues.js";
-import { pricingInputs, pricingInputError, validPricingVersions } from "./budgetPricingGroups.js";
+import { pricingInputs, pricingInputError, incompletePricingInput, validPricingVersions } from "./budgetPricingGroups.js";
 import { validPaymentSnapshot } from "./budgetPaymentValues.js";
 import { validSourceSnapshot } from "./budgetSourceValues.js";
 import {validReceiptSnapshot} from './budgetReceiptValues.js';
@@ -72,6 +72,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
   const entries = new Map(), listeners = new Set();
   let context = null, generation = 0, revision = 0, projectionRevision = 0, snapshot = null, verified = false, message = "正在確認協作狀態…", offset = 0;
   let readWork = null, renewAt = 0, refreshAt = Infinity, suspended = false, latestReadStartedAt = -Infinity;
+  let recoveryWork = null, recoverAt = 0;
   const emit = (projection = false) => { revision++; if (projection) projectionRevision++; listeners.forEach(fn => fn()); };
   const key = (kind, id, group) => `${kind}:${id}:${group}`;
   const current = g => g.generation === generation && g.actor === context?.actor && g.trip === context?.trip && entries.get(g.key) === g;
@@ -136,6 +137,9 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         if (!g.request) { g.conflict = true; g.error = "此欄位已由其他人更新，草稿已保留。請確認最新內容。"; }
       } else if (!dirty(g) && !g.request) {
         g.canonical = remote.value ?? ""; g.value = g.canonical; g.base = remote.revision;g.versions=remote.versions;
+        // A clean stale admission needs no human conflict resolution. Dirty
+        // drafts and unknown commits never enter this branch.
+        if (!g.releasing) { g.conflict = false; g.failed = false; g.error = ''; }
       }
       if (g.state === "held" && (!g.remote.own_session || g.remote.epoch !== g.epoch || !g.remote.held)) g.state = "lost";
     }
@@ -274,6 +278,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     else if (owns(g)) g.value = value;
     else return;
     g.localRevision++; g.lastActivity = now(); g.dueAt = now() + (immediate ? 0 : debounceMs);
+    if (g.autoRecoveryBlocked) { g.autoRecoveryBlocked = false; g.failed = false; g.error = ''; }
     g.activity = (g.activity || 0) + 1;
     if (g.invalid) { g.failed = false; g.invalid = false; g.error = ""; }
     persist(g); emit(); schedule(g);
@@ -292,6 +297,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     if (!current(g) || g.composing || suspended || !verified) return false;
     if (!g.request && (!owns(g) || g.conflict || !dirty(g))) return !dirty(g);
     if (g.group === "pricing" && !g.request) {
+      if (!g.flush && g.focused && incompletePricingInput(g.value)) return false;
       const error = pricingInputError(g.value);
       if (error) { g.invalid = true; g.failed = true; g.error = error; emit(); return false; }
     }
@@ -321,6 +327,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
         || !data.value.versions.targets.some(t => t.kind === g.kind && t.id === g.id && t.revision === data.revision))
       || !version(data?.revision) || ![request.p_base_revision, request.p_base_revision + 1].includes(data.revision)) {
       const code = result.error?.code;
+      g.autoRecoveryBlocked = ['PT409', 'PT500', '40001', '42501', '55000', '22023', '22P02', '0A000'].includes(code);
       if (["PT409", "PT500", "40001", "40P01", "55P03", "42501", "55000", "22023", "22P02", "0A000"].includes(code)) {
         g.request = null; g.state = "lost"; g.conflict = ["PT409", "40001"].includes(code);
       }
@@ -350,7 +357,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     g.value = remote?.value ?? g.canonical; g.canonical = g.value; g.base = remote?.revision ?? g.base;g.versions=remote?.versions??g.versions;
     cancelTimer(g); delete g.staged; g.conflict = false; g.failed = false; g.invalid = false; g.saved = false; persist(g); emit(); return true;
   }
-  return {
+  const editor = {
     sessionId, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, getVersion: () => revision,
     getProjectionVersion: () => projectionRevision,
     matches: (actor, trip) => context?.actor === actor && context?.trip === trip,
@@ -371,8 +378,8 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     groupKeys: kind => (snapshot?.metadataProtocol.groups || ["title", "note"]).filter(key => kind === "budget" || key !== "links"),
     composition(g, active) { if (!g || !current(g)) return; g.composing = active;
       if (active) cancelTimer(g); else { g.dueAt = g.focused ? now() + debounceMs : now(); schedule(g); } },
-    async retry(g) {
-      if (!g || !current(g) || !(await refresh()).ok || !current(g)) return false;
+    async retry(g, { refreshFirst = true } = {}) {
+      if (!g || !current(g) || refreshFirst && !(await refresh()).ok || !current(g)) return false;
       if (g.request) {
         const confirmed = await save(g); // Exact replay is checked by DB even after expiry.
         if (!current(g) || g.request || !dirty(g)) return confirmed;
@@ -383,7 +390,31 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       if (!owns(g) && !(await focus(g))) return false;
       return save(g);
     },
-    status: () => ({ verified, message, snapshot, editable: context?.editable }),
+    status: () => ({ verified, message, snapshot, editable: context?.editable,
+      pending: [...entries.values()].some(g => dirty(g) || g.request || g.saving || g.syncPending || g.releasing),
+      failures: [...entries.values()].filter(g => g.error && (g.failed || g.invalid || g.conflict && dirty(g) || g.releasing))
+        .map(g => ({ key: g.key, message: g.error, invalid: g.invalid, conflict: g.conflict, requiresDecision: g.autoRecoveryBlocked })) }),
+    async recover() {
+      if (!context?.active || suspended || recoveryWork || now() < recoverAt) return;
+      recoverAt = now() + 5000;
+      const candidates = [...entries.values()].filter(g => !g.composing && !g.saving && !g.saveWork && !g.acquiring
+        && !g.releaseWork && !g.invalid && !g.conflict && !g.autoRecoveryBlocked && (g.request || g.releasing || g.failed || g.syncPending
+          || (g.focused || dirty(g)) && ['blocked', 'uncertain', 'lost'].includes(g.state)));
+      if (!candidates.length) return;
+      const work = (async () => {
+        if (!(await refresh()).ok) return;
+        for (const g of candidates) {
+          if (!current(g) || g.conflict || g.composing || g.saving || g.saveWork || g.acquiring || g.releaseWork) continue;
+          if (g.releasing) { await release(g); continue; }
+          if (g.remote?.held && !g.remote.own_session && !g.request) continue;
+          if (!dirty(g) && !g.request && !g.focused) continue;
+          const focused = g.focused;
+          await editor.retry(g, { refreshFirst: false });
+          if (current(g) && !focused) { g.focused = false; if (!dirty(g) && !g.request) await release(g); }
+        }
+      })().finally(() => { if (recoveryWork === work) recoveryWork = null; });
+      recoveryWork = work; return work;
+    },
     invalidate(error = "協作狀態尚未確認，草稿已保留。") {
       verified = false; message = error;
       for (const g of entries.values()) cancelTimer(g);
@@ -402,11 +433,12 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
       if (context?.actor === actor && context?.trip === trip && context?.active === active && context?.editable === editable) return;
       generation++; for (const g of entries.values()) { cancelTimer(g); persist(g); g.releasing = true; if (!g.acquiring) void cleanup(g); }
       entries.clear(); context = actor && trip ? { actor, trip, active, editable: editable && active } : null;
-      verified = false; snapshot = null; readWork = null; refreshAt = Infinity; suspended = false; latestReadStartedAt = -Infinity;
+      verified = false; snapshot = null; readWork = null; recoveryWork = null; recoverAt = 0; refreshAt = Infinity; suspended = false; latestReadStartedAt = -Infinity;
       message = "正在確認協作狀態…"; emit(true);
     },
     async tick() {
       if (!context?.active || suspended) return;
+      await editor.recover();
       for (const g of entries.values()) {
         if (g.state === "held" && g.expires <= now()) { g.state = "lost"; g.error = "編輯權限已到期，草稿已保留。"; emit(); }
         if (g.token && !g.saving && now() - g.lastActivity >= (dirty(g) || g.failed || g.request ? 600000 : 120000) && !g.releasing) await release(g);
@@ -432,7 +464,7 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     },
     async saveAll(kind, id) {
       const selected = [...entries.values()].filter(g => g.kind === kind && g.id === id);
-      for (const g of selected) if ((dirty(g) || g.request || g.saveWork) && !(await save(g))) return false;
+      for (const g of selected) if ((dirty(g) || g.request || g.saveWork) && !(await (g.failed && !g.invalid && !g.conflict ? editor.retry(g) : save(g)))) return false;
       if (selected.some(g => !current(g) || dirty(g) || g.request || g.saveWork)) return false;
       return true;
     },
@@ -452,4 +484,5 @@ export function createBudgetMetadataEditor({ service, read, sessionId, storage =
     async dispose() { generation++; const previous = [...entries.values()]; entries.clear(); context = null;
       for (const g of previous) { cancelTimer(g); persist(g); g.releasing = true; if (!g.acquiring) await cleanup(g); } },
   };
+  return editor;
 }

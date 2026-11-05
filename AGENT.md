@@ -4,6 +4,8 @@ This file is the operating guide for future AI agents working on this travel pla
 
 ## Documentation Layout
 
+Current Budget field UX (2026-11-05, Issue #17 candidate): no field-level status/error/retry/discard UI. Use the existing collaborator palette/outline plus hover/focus name, existing Sonner for deduplicated genuine failures, and one page/editor pending-sync state with the existing leave guard. Preserve authority, drafts, exact request-id recovery and business-refusal/no-auto-replay rules. See `docs/2026-11-05-budget-issue17-pricing-collaboration.md`; newcomer decision persistence is pending the #18 single-expense data-contract Review, not a license to reselect excluded members. Older inline-UI rules are historical.
+
 Current Budget product rule (2026-11-03): no custom Undo for saved data. Preserve browser-native input Ctrl/Cmd+Z and cancellation of unsaved edits; never intercept global Undo keys or issue inverse RPCs. See `docs/2026-11-03-budget-custom-undo-removal.md`, `docs/2026-11-03-budget-undo-staging-install.md` and `CURRENT_TASK.md` for the Forward installed on Staging only and retained historical SQL dependencies. The applied source is immutable; Production deployment and activation remain unauthorized. Old B6/30-second Undo documents are historical, not activation instructions.
 
 Root Markdown files are entry points:

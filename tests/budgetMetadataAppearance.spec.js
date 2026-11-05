@@ -34,14 +34,19 @@ test('unclaimed and own fields keep the same normal appearance without admission
  await page.screenshot({path:test.info().outputPath('normal-fields.png'),fullPage:false});
 });
 
-test('only peer-held groups turn grey, identify the editor and remain readonly',async({page})=>{
+test('peer-held groups keep normal controls, share collaborator outlines and name the editor on focus',async({page})=>{
  const db=await ready(page),fields=controls(page),normal=await Promise.all(fields.map(style));
  for(const s of db.groupStates.values())Object.assign(s,{actor:'B',session:'peer-tab',expires:db.now+60000});
  await db.emit('budget_items');
- for(const label of ['項目名稱','備註','分類','付款人','計價與分攤'])await expect(page.getByText(`B 正在編輯${label}`,{exact:true})).toBeVisible();
+ for(const label of ['項目名稱','備註','分類','付款人','計價與分攤']){
+  const frame=page.getByRole('group',{name:label,exact:true});
+  await frame.locator('input:not(:disabled),textarea,button:not(:disabled)').first().focus();
+  await expect(page.getByRole('tooltip').filter({hasText:`B 正在編輯${label}`})).toBeVisible();
+  await expect(frame.locator('.bw-collaboration-outline')).toHaveAttribute('data-user','B');
+ }
  for(const [i,control] of fields.entries()){
   if(i===4)await expect(control).toHaveAttribute('readonly','');else await expect(control).toHaveAttribute('aria-readonly','true');
-  expect((await style(control)).background).not.toEqual(normal[i].background);
+  expect((await style(control)).background).toEqual(normal[i].background);
  }
  await title(page).focus();await title(page).press('x');
  await expect(title(page)).toHaveValue('JPY fare');
@@ -49,14 +54,16 @@ test('only peer-held groups turn grey, identify the editor and remain readonly',
  await page.screenshot({path:test.info().outputPath('peer-fields.png'),fullPage:false});
 });
 
-test('admission and saving keep necessary feedback without making the field grey',async({page})=>{
+test('admission and saving stay silent at field level and preserve the page unsynced state',async({page})=>{
  const db=await ready(page),normal=await style(title(page));
  db.metadataHold={actor:'A',action:'acquire'};await title(page).focus();
- await expect(page.getByText('正在取得編輯權，輸入暫存中…',{exact:true})).toBeVisible();
+ await expect(title(page)).toHaveAttribute('aria-busy','true');
+ await expect(page.locator('.bw-metadata-status,.bw-metadata-actions')).toHaveCount(0);
  expect(await style(title(page))).toEqual(normal);
  await title(page).fill('Appearance draft');db.releaseMetadata();
  db.metadataHold={actor:'A',action:'patch'};
- await expect(group(page,'title').getByText('儲存中…',{exact:true})).toBeVisible();
+ await expect(page.getByRole('status',{name:'預算同步狀態'})).toContainText('未同步');
+ await expect(group(page,'title').getByRole('alert')).toHaveCount(0);
  expect(await style(title(page))).toEqual(normal);
  db.releaseMetadata();await expect.poll(()=>db.rows.budget_items[0].title).toBe('Appearance draft');
 });

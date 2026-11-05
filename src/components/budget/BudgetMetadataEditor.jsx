@@ -5,22 +5,23 @@ import MenuSelect from "../MenuSelect.jsx";
 import { recordMetadataValue } from "../../lib/budgetMetadataValues.js";
 import {isBudgetComplete} from '../../lib/budgetLifecycleValues.js';
 import BudgetPricingFields from "./BudgetPricingFields.jsx";
-import { pricingPreview } from "../../lib/budgetPricingGroups.js";
+import { initialPricingDraft, pricingModeDraft, pricingPreview } from "../../lib/budgetPricingGroups.js";
 import BudgetSourceEditor from './BudgetSourceEditor.jsx';
+import BudgetCollaborationFrame from './BudgetCollaborationFrame.jsx';
+import BudgetEditorFeedback from './BudgetEditorFeedback.jsx';
 
 function PricingGroup({ client, field, view, record, kind, members }) {
   const [open, setOpen] = useState(false), custom = useRef(null);
-  const form = view.display, snapshot = client.status().snapshot;
+  const snapshot = client.status().snapshot;
   const canonical = (kind === "budget" ? snapshot?.budgetItems : snapshot?.actualExpenses)?.find(r => r.id === record.id) || record;
+  const form = !view.dirty && view.display?.participantIds ? initialPricingDraft(view.display, canonical, members) : view.display;
   const retained = kind === "budget" && (snapshot?.actualExpenses || []).some(a => (a.budget_origin_id || a.budget_item_id) === record.id);
   let pricing; try { pricing = pricingPreview(form, canonical, kind); } catch { pricing = null; }
   const input = next => client.input(field, next, { immediate: false });
   function changeMode(mode) {
     if (mode === form.pricing_mode) return;
     if (form.pricing_mode === "custom") custom.current = { ...form.shares };
-    input({ ...form, pricing_mode: mode, amount: pricing?.amount ?? form.amount,
-      unit_amount: mode === "per_person" && pricing ? Math.round(pricing.amount / form.participantIds.length * 100) / 100 : form.unit_amount,
-      shares: mode === "custom" ? custom.current || pricing?.shares || form.shares : form.shares });
+    input(pricingModeDraft(form, mode, custom.current));
     if (mode === "custom") setOpen(true);
   }
   // Unsupported retained/foreign pricing projections intentionally contain no
@@ -41,7 +42,7 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
   // Full-record editing is only a compatibility escape hatch for Budget.
   // Actual retains its existing form for fields outside this planning scope.
   const needsFullEditor = kind === "actual" || ["title", "note", "category", "payer", "links", "pricing"].some(key => !views.some(g => g.group === key && g.supported));
-  const { message, verified, editable } = client.status();
+  const { verified, editable } = client.status();
   const hasDraft = views.some(g => g.dirty || g.request || g.saving);
   const saveAll = () => client.saveAll(kind, record.id);
   const discardAll = async () => { for (const g of fields) if (!(await client.discard(g))) return false; return true; };
@@ -53,22 +54,16 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
   return <section className="bw-editor bw-metadata-editor" aria-label={kind === "actual" ? "實付群組編輯" : "預算群組編輯"}>
     <div className="bw-detail-heading"><h3>編輯{kind === "actual" ? "實付" : "預算"}</h3>
       <button className="bw-icon" type="button" aria-label="關閉編輯" onClick={onClose}><X size={17} /></button></div>
-    <p className="bw-muted">有效修改會自動儲存。</p>
-    {message ? <p className="bw-warning" role="status">{message}<button className="ghost-button compact" type="button" onClick={() => void client.refresh()}>重新整理</button></p> : null}
+    <BudgetEditorFeedback client={client} sourceClient={kind === 'actual' ? sourceClient : null} recordId={record.id} />
     {kind==='actual'&&sourceClient?<BudgetSourceEditor client={sourceClient} metadata={client} record={record} members={members} services={services}/>:null}
     {views.map((g, index) => {
       const field = fields[index], title = g.group === "title", choice = ["category", "payer", "links", "pricing"].includes(g.group);
       const label = { title: "項目名稱", note: "備註", category: "分類", payer: "付款人", links: "關聯行程", pricing: "計價與分攤" }[g.group];
       const hintId = `metadata-${kind}-${record.id}-${g.group}`;
       const owner = g.remote?.held && !g.remote.own_session ? memberLabel(members.find(m => m.user_id === g.remote.owner_id)) : null;
-      const text = g.saved && g.syncPending ? g.dirty ? "已儲存，最新同步待確認；另有尚未儲存的修改" : "已儲存，最新同步待確認"
-        : !editable ? "目前沒有編輯權限" : !verified ? "協作狀態尚未確認" : !g.supported ? "此項目尚未支援分欄編輯，請使用完整項目編輯"
-        : !g.ready ? "群組資料尚未確認" : g.request && !g.saving ? "儲存結果待確認，請重試原請求"
-        : g.saving ? "儲存中…" : g.state === "pending" ? "正在取得編輯權，輸入暫存中…" : owner ? `${g.saved ? "已儲存；" : ""}${owner} 正在編輯${label}`
-        : g.conflict ? "版本衝突；本機草稿仍保留" : g.failed ? "尚未儲存／儲存失敗" : g.dirty ? "修改中" : g.saved ? "已儲存" : "";
       const input = { id: `${hintId}-input`, name: g.group, value: g.display,
         readOnly: !g.acceptsIntent, "aria-readonly": !g.acceptsIntent, "aria-busy": g.state === "pending" || g.saving,
-        "aria-describedby": text ? hintId : undefined, onFocus: () => { void client.focus(field); },
+        onFocus: () => { void client.focus(field); },
         onPointerDown: () => { if (!g.acceptsIntent) void client.focus(field); },
         onKeyDown: event => {
           if (g.acceptsIntent || !["idle", "lost"].includes(g.state) || !verified || g.conflict || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -92,8 +87,8 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
         },
         onChange: event => client.input(field, event.target.value),
         onCompositionStart: () => client.composition(field, true), onCompositionEnd: () => client.composition(field, false) };
-      return <div key={g.group} className={`bw-metadata-group${owner ? " is-readonly" : !g.acceptsIntent ? " is-unclaimed" : ""}`}
-        tabIndex={choice ? 0 : undefined} role={choice ? "group" : undefined} aria-label={choice ? label : undefined}
+      return <BudgetCollaborationFrame key={g.group} className={!g.acceptsIntent ? 'is-unclaimed' : ''} ownerId={owner ? g.remote.owner_id : null} ownerName={owner} label={label}
+        tabIndex={choice ? 0 : undefined} role="group" aria-label={label}
         onPointerDownCapture={() => { if (choice) void client.focus(field); }}
         onFocusCapture={() => { if (choice) void client.focus(field); }}
         onCompositionStart={() => { if (g.group === "pricing") client.composition(field, true); }}
@@ -103,20 +98,13 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
         {g.group === "pricing" ? <PricingGroup client={client} field={field} view={g} record={record} kind={kind} members={members} /> : g.group === "links" ? <ItineraryPicker items={items} category={record.category} selectedIds={g.display} readOnly={!g.acceptsIntent}
           onChange={ids => client.input(field, ids)} />
           : choice ? <MenuSelect label={label} value={g.display || ""} editable={g.group === "category"} readOnly={!g.acceptsIntent} metadataPortal
-            inputProps={{ id: input.id, onKeyDown: input.onKeyDown, onPaste: input.onPaste, onCompositionStart: input.onCompositionStart, onCompositionEnd: input.onCompositionEnd, "aria-describedby": text ? hintId : undefined }}
+            inputProps={{ id: input.id, onKeyDown: input.onKeyDown, onPaste: input.onPaste, onCompositionStart: input.onCompositionStart, onCompositionEnd: input.onCompositionEnd }}
             onValueChange={(value, action) => client.input(field, g.group === "payer" ? value || null : value, { immediate: g.group !== "category" || Boolean(action?.selected) })}
             options={g.group === "payer" ? [{ value: "", label: "未指定" }, ...members.filter(m => m.status === "approved").map(m => ({ value: m.user_id, label: memberLabel(m) })),
               ...(g.display && !members.some(m => m.user_id === g.display && m.status === "approved") ? [{ value: g.display, label: `已退出／無效成員 · ${g.display}`, disabled: true }] : [])]
               : [...new Set([...categoryOptions, g.display].filter(Boolean))].map(value => ({ value, label: value }))} />
           : title ? <input {...input} /> : <textarea {...input} rows={4} />}
-        {text ? <span id={hintId} className="bw-metadata-status" aria-live={g.dirty && !g.failed && !g.conflict && !g.saving ? "off" : "polite"} aria-atomic="true">{text}</span> : null}
-        {g.error ? <p role="alert" className="bw-warning">{g.error}</p> : null}
-        <div className="bw-metadata-actions">
-          {g.request && !g.saving || g.failed || g.error && !g.conflict ? <button type="button" className="ghost-button compact" disabled={g.saving || Boolean(g.releaseWork) || g.conflict}
-            onClick={() => void client.retry(field)}>{g.request ? "確認儲存結果" : "重試"}</button> : null}
-          {g.dirty || g.conflict || g.releasing ? <button type="button" className="ghost-button compact" disabled={g.saving || Boolean(g.request)} onClick={() => void client.discard(field)}>捨棄此欄草稿</button> : null}
-        </div>
-      </div>;
+      </BudgetCollaborationFrame>;
     })}
     <div className="bw-metadata-summary"><span>分類 · {record.category || "其他"}</span><span>金額 · {isBudgetComplete(record)||record.pricing_ready?`${record.currency} ${record.amount}`:'尚未填寫'}</span></div>
     {isBudgetComplete(record) && needsFullEditor ? <button type="button" className="ghost-button" disabled={!editable} onClick={onLegacy}>編輯完整項目</button> : null}

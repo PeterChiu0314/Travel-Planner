@@ -13,6 +13,7 @@ import { calculateEntryPricing, isPaymentActive, planningBudgetData } from "../.
 import { preparePaymentChange } from "../../lib/budgetPayment.js";
 import { budgetCurrencies, fetchBudgetQuote } from "../../lib/tripBudgetRates.js";
 import { friendlyError } from "../../lib/notifications.js";
+import { pricingModeDraft } from "../../lib/budgetPricingGroups.js";
 
 const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
 const categoryIcons = { "機票": Plane, "交通": Car, "住宿": BedDouble, "門票": Ticket, "餐飲": UtensilsCrossed, "購物": ShoppingBag, "其他": Package };
@@ -370,12 +371,7 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
   function changeMode(mode) {
     if (mode === form.pricing_mode) return;
     if (form.pricing_mode === "custom") customShares.current = { ...form.shares };
-    const next = { ...form, pricing_mode: mode };
-    if (pricing) {
-      next.amount = pricing.amount;
-      if (mode === "per_person") next.unit_amount = Math.round(pricing.amount / form.participantIds.length * 100) / 100;
-      if (mode === "custom") next.shares = customShares.current || pricing.shares;
-    }
+    const next = pricingModeDraft(form, mode, customShares.current);
     setForm(next);
     if (mode === "custom") setMembersOpen(true);
   }

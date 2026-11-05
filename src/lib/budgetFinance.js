@@ -104,7 +104,7 @@ export function recordAllocations(record, participants) {
 }
 
 export function recordForm(record, rows, key, members, links = []) {
-  const participants = record ? participantsFor(record, rows, key, members) : members.map((member) => ({ user_id: member.user_id }));
+  const participants = record ? participantsFor(record, rows, key, members) : members.filter(member => member.status === 'approved').map((member) => ({ user_id: member.user_id }));
   return {
     category: record?.category || "其他", subcategory: record?.subcategory || "", title: record?.title || "",
     amount: record?.amount ?? 0, currency: record?.currency || "TWD", exchange_rate: record ? record.exchange_rate ?? "" : 1,
