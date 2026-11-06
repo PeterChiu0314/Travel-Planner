@@ -48,10 +48,10 @@ export function ExpenseTable({rows,members,links,items,collaborators=[],selected
    const show=event=>{if(!remote.length)return;setTooltip({id:row.id,...rowPeerPosition(event.currentTarget)});};
    return <tr key={row.id} data-expense-id={row.id} className={`bw-row${selected===row.id?' is-selected':''}${remote.length?' has-collaborators':''}`} tabIndex={remote.length?0:undefined} aria-describedby={tooltip?.id===row.id&&tooltipUsers.length?`expense-peers-${row.id}`:undefined} onMouseEnter={show} onMouseLeave={event=>{if(!event.currentTarget.contains(document.activeElement))setTooltip(null);}} onFocus={show} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))setTooltip(null);}} onClick={()=>onSelect(row.id)}>
     <td className="bw-day">{budgetDay(row,links,items)}<RowCollaboratorOutline users={remote}/></td>
-    <td>{cell(row,row.title||'未命名項目')}{row.record_status!=='complete'?<small> · 未完成</small>:null}</td>
+    <td>{cell(row,row.title||'未命名項目')}</td>
     <td className="bw-number">{row.record_status!=='complete'?'—':cell(row,row.pricing_mode==='custom'?'依成員':row.participantIds.length?`${row.twd_amount%row.participantIds.length?'≈ ':''}${money(row.twd_amount/row.participantIds.length)}`:'—','bw-person')}</td>
     <td className="bw-number bw-total">{row.record_status!=='complete'?'尚未填寫':cell(row,money(row.twd_amount))}</td>
-    <td><span className={`bw-status${row.hasActual?' paid':''}`}>{row.payment_state==='draft'?'未完成':row.hasActual?'已付款':'未付款'}</span></td>
+    <td><span className={`bw-status${row.hasActual?' paid':''}`}>{row.hasActual?'已付款':'未付款'}</span></td>
    </tr>;
   })}</Fragment>;
  })}</tbody></table>{!rows.length?<div className="bw-empty">沒有符合條件的項目</div>:null}</div>;

@@ -2,6 +2,10 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-06 — remove incomplete-item presentation
+
+User explicitly rejects「未完成」as a Budget/expense item state. Native and legacy Budget UI no longer render the row suffix or incomplete-count banner; native status is only「未付款／已付款」. Legacy detail now describes an empty amount as「金額尚未填寫」. Remove metadata-group dividers, retaining control borders and spacing. Null/zero distinction, paid eligibility and financial totals remain protected; internal compatibility validation keys are not a user-facing item state. [Audit and verification](docs/2026-11-06-budget-payment-labels.md).
+
 ## Latest 2026-11-06 — #20 single row outline and avatar cluster
 
 Newest visual steering: anchor the avatar cluster below the outline, left edges aligned, with a 2px gap. Position is measured from the actual outline for both initial hover/focus and scroll/resize recovery.
