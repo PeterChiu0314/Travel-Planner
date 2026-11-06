@@ -343,7 +343,7 @@ export function ItineraryPicker({ items, selectedIds, category, onChange, readOn
   </section>;
 }
 
-function PaymentToggle({ checked, disabled, onChange, busy = false }) {
+export function PaymentToggle({ checked, disabled, onChange, busy = false }) {
   const Icon = checked ? CircleCheck : Circle;
   return <button type="button" className={`bw-payment-toggle${checked ? " is-paid" : ""}`} aria-label="付款狀態" aria-pressed={checked} aria-busy={busy} disabled={disabled} onClick={() => onChange(!checked)}><Icon size={14} aria-hidden="true" /><span>{busy ? "處理中…" : checked ? "已付款" : "未付款"}</span></button>;
 }

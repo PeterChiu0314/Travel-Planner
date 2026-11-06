@@ -4,6 +4,10 @@ Updated 2026-11-06. This is the live handoff: current work, protected behavior, 
 
 ## Latest direction — planning only, one item editor and paid marker
 
+Payment control visual correction: user's reference is the existing rounded PaymentToggle (dark-green paid state with circle-check icon), not a native checkbox. Planning footer now directly reuses the exported existing component and original CSS/position; right-side save status stays. This supersedes the native-checkbox wording below.
+
+PaymentToggle correction verified: 14/14 Chromium (Demo7, creation5, workspace2), Build/diff Passed, desktop paid-pill screenshot inspected. No new styling system, DB or controller behavior changes.
+
 Latest footer/spacing steering: keep the planning editor footer, replace the changing payment button with a native「已付款」checkbox at the left, remove redundant 完成/取消 (both previously just called the same close handler), and show one footer save-status at the right. This explicitly supersedes the earlier no-normal-status UI rule only for this requested footer. Labels reflect authoritative saved / unsaved / saving / unknown receipt / failure / unverified connection; local drafts or unknown ACKs never show saved. Close-X and existing page leave guard retain recovery/discard behavior. Planning fields now use 14px gaps without stacked group padding, 60px note textarea, and no redundant category/amount summary; desktop footer remains at the bottom. Other stages unchanged.
 
 Footer validation: 19 distinct current Chromium cases passed across the initial group and corrected async-checkbox checks (17 initial passes,2 async .check assertions replaced by click + authoritative-state polling, final7/7 creation/workspace rerun). Nine SQL/controller cases passed including a new status regression for local draft, unknown create/mutation ACK, successful recovery and lost verification. Build/diff Passed; final desktop screenshot inspected. Browser plugin absent, existing repo Playwright/static maps/PGlite used; no Hosted data/schema changes.

@@ -9,7 +9,7 @@ import {pricingModeDraft} from '../../lib/budgetPricingGroups.js';
 import {notify,isConnectionError} from '../../lib/notifications.js';
 import BudgetPricingFields from './BudgetPricingFields.jsx';
 import BudgetCollaborationFrame from './BudgetCollaborationFrame.jsx';
-import {ItineraryPicker,Stats} from './BudgetWorkspace.jsx';
+import {ItineraryPicker,Stats,PaymentToggle} from './BudgetWorkspace.jsx';
 import {displayParticipants,expenseDisplayRows,ExpenseDetail,ExpenseTable} from './ExpensePresentation.jsx';
 import MenuSelect from '../MenuSelect.jsx';
 import {useSiteDialog} from '../SiteDialog.jsx';
@@ -101,7 +101,7 @@ export default function ExpenseWorkspace(props){
    {frame(view,view==='budget'?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing client={client} field={field} view={v} scope={view} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode}/>)}
    {!planning?<div className="bw-metadata-summary"><span>分類 · {item.category}</span><span>金額 · {item[view]?`${item[view].currency} ${money(item[view].amount)}`:'尚未填寫'}</span></div>:null}
    {!planning?<details className="bw-secondary-fields"><summary>{actual?'預算金額與分攤':'實付金額與分攤'}</summary>{frame(actual?'budget':'paid',actual?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing client={client} field={field} view={v} scope={actual?'budget':'paid'} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode}/>)}</details>:null}
-   <div className="bw-editor-actions">{planning?<><label className="bw-check bw-planning-paid"><input type="checkbox" checked={item.payment_state==='paid'} disabled={paymentDisabled} onChange={()=>void payment()}/>已付款</label><span className="bw-save-state" role="status" aria-label="儲存狀態">{client.saveStatus(item.id)}</span></>:<><button type="button" className="ghost-button compact" disabled={paymentDisabled} onClick={()=>void payment()}>{item.payment_state==='paid'?'改為未付款':'標記已付款'}</button><button type="button" className="ghost-button compact" onClick={close}>取消</button><button type="button" className="primary-button compact" disabled={!editable} onClick={close}>完成</button></>}</div>
+   <div className="bw-editor-actions">{planning?<><PaymentToggle checked={item.payment_state==='paid'} disabled={paymentDisabled} onChange={()=>void payment()}/><span className="bw-save-state" role="status" aria-label="儲存狀態">{client.saveStatus(item.id)}</span></>:<><button type="button" className="ghost-button compact" disabled={paymentDisabled} onClick={()=>void payment()}>{item.payment_state==='paid'?'改為未付款':'標記已付款'}</button><button type="button" className="ghost-button compact" onClick={close}>取消</button><button type="button" className="primary-button compact" disabled={!editable} onClick={close}>完成</button></>}</div>
   </section>:panel==='edit'?<div className="bw-empty">選取項目開始編輯</div>:null}</aside>
  </section>;
 }
