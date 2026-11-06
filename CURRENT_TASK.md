@@ -2,6 +2,12 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-06 — field leases20s clean /60s dirty
+
+[Lease TTL and renewal verification](docs/2026-11-06-expense-field-lease-ttl.md). Native field lease TTL is20s without pending edits,60s with edits; frontend checks every5s (or earlier near expiry), before snapshot recovery and in parallel across independent fields. Same-sequence valid DB renew now actually extends expiry; older activity is refused. Renewal is single-flight per field and late responses cannot restore released/replaced authority. Blur/background/draft/version/mutual-exclusion behavior retained. No unrelated UI or latest Rates changes; rates60s, selection45s/heartbeat15s, API10s unchanged.
+
+Staging Ledger73/head20261106055836_expense_field_lease_ttl installed, single sourceSHA25634bbe692ec2b16a43cb519d1e5e2584fb74802729c4340e5e17f80794020cb7a matches local bytes. Exact-source real rollback trial and postinstall two-actor authenticated-role assertions Passed. Business/financial/group data and non-target functions unchanged; ledger changed as expected, selection/signal seals also changed during the observation window (not claimed unchanged). Advisor25INFO/9WARN unchanged.17distinct Node/SQL tests and11Chromium Passed, including simultaneous two-account focus held beyond real22s then blur save/release/takeover. Production/main untouched.
+
 ## Latest 2026-11-06 — initial quote, planning-only rates and 60-second lease
 
 [Rates policy implementation](docs/2026-11-06-rates-initialization-planning.md). User rules: first new trip fetches one initial quote; later planning updates are manual; traveling/settled retain rates; paid amounts never reprice; native rates lease60s. Ordinary createTrip includes the fetched quote in its initial INSERT (failure retains creation and missing-quote fallback). ExpenseRates attempts missing quotes once per actor/trip mount only while active/editable/planning, never refreshes an existing quote on a timer, and checks fresh data before initialization. DB acquire and new-write gates enforce Taipei departure/status/frozen-baseline restrictions; committed exact receipt replay remains allowed after departure. Init requests cannot overwrite a concurrently established quote.

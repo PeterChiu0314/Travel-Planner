@@ -46,6 +46,17 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
  const remote=g=>graph?.groups.find(s=>s.id===g.id&&s.group===g.group);
  const args=(g,action)=>({p_id:g.id,p_group:g.group,p_session_id:sessionId,p_token:g.token,p_action:action,p_base:g.base,p_epoch:g.epoch,p_seq:g.activity,p_dirty:dirty(g)});
  const bounded=work=>withBudgetAuthorityTimeout(work,{timeoutMs});
+ function renew(g){
+  if(g.renewWork)return g.renewWork;
+  if(!owns(g)||(Date.now()-g.lastRenew<5000&&g.expires-Date.now()>15000))return;
+  const request=args(g,'renew');
+  g.renewWork=(async()=>{const r=await bounded(service.lease(request));
+   if(!current()||!active||g.releasing||g.token!==request.p_token||g.epoch!==request.p_epoch||g.state!=='held')return;
+   if(r.error?.code==='PT409'&&(g.saving||g.request||g.base!==request.p_base))return;
+   const expires=Date.parse(r.data?.expires_at);
+   if(!r.error&&r.data?.granted&&r.data.epoch===request.p_epoch&&expires>Date.now()){g.expires=expires;g.lastRenew=Date.now();}else{g.state='lost';persist(g);emit();}
+  })().finally(()=>{g.renewWork=null;});return g.renewWork;
+ }
  const report=(g,error)=>{g.error=error;persist(g);onError(error);emit();};
  function ingest(data,{authoritative=true}={}){
   if(!current()||!validExpenseSnapshot(data,trip))return false;
@@ -151,11 +162,10 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
   begin(){if(localDraft)return localDraft.id;localDraft={id:makeId(),trip,values:{}};emit();return localDraft.id;},
   view:g=>({value:display(g),dirty:dirty(g),editable:g.local?active:owns(g)||g.state==='pending',remote:g.local?null:remote(g),busy:g.saving||g.state==='pending',conflict:g.conflict}),
   blur(g){g.focused=false;g.resumeFocus=false;if(g.local){if(String(localDraft?.values.title||'').trim())void create();return;}void(async()=>{if(g.acquiring)await g.acquiring;if(dirty(g)||g.request)await save(g);else await release(g);})();},
-  async tick(){if(!current())return;if(!active){for(const g of fields.values())if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);return;}if(Date.now()-lastRecovery<5000)return;lastRecovery=Date.now();if((pendingCreate||localDraft)&&!createWork)await create();await refresh();for(const g of fields.values()){
+  async tick(){if(!current())return;if(!active){for(const g of fields.values())if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);return;}await Promise.all([...fields.values()].filter(g=>!g.local).map(renew));if(!current()||!active||Date.now()-lastRecovery<5000)return;lastRecovery=Date.now();if((pendingCreate||localDraft)&&!createWork)await create();await refresh();for(const g of fields.values()){
    if(g.local)continue;if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);
    if(g.request&&!g.saveWork)await save(g);
    if(!g.request&&!g.saveWork&&!g.conflict&&!g.autoBlocked&&g.state!=='held'&&dirty(g)&&!g.releasing&&!g.acquiring&&(!remote(g)?.held||remote(g)?.own_session)){const focused=g.focused;if(await focus(g)){g.focused=focused;await save(g);}}
-   if(owns(g)&&Date.now()-g.lastRenew>=60000){const r=await bounded(service.lease(args(g,'renew')));if(r.data?.granted){g.expires=Date.parse(r.data.expires_at);g.lastRenew=Date.now();}else g.state='lost';}
   }},
   invalidate(){verified=false;emit();},
   suspend(){if(!active)return;active=false;verified=false;clearTimeout(createTimer);for(const g of fields.values()){if(g.local)continue;clearTimeout(g.timer);g.resumeFocus=g.focused;g.focused=false;persist(g);if(!g.request&&!g.saving)void release(g);}emit();},

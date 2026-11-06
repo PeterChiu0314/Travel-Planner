@@ -14,6 +14,7 @@ export async function expenseBackend(){
  for(const m of db.members)await sql.query('insert into public.trip_members values($1,$2,$3,$4,$5,$6)',[m.trip_id,m.user_id,m.display_name,m.email,m.status,m.role]);
  for(const file of ['isolated-schema.sql','isolated-rpc.sql','public-api.sql','rates.sql'])await sql.exec(await fs.readFile(new URL('../../docs/operations/issue18/'+file,import.meta.url),'utf8'));
  await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261105132450_issue18_precise_lease_release.sql',import.meta.url),'utf8'));
+ await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261106055836_expense_field_lease_ttl.sql',import.meta.url),'utf8'));
  await sql.exec((await fs.readFile(new URL('../../docs/operations/issue18/realtime.sql',import.meta.url),'utf8')).replace('alter publication supabase_realtime add table public.expense_signals;',''));
  await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261105142122_issue18_selection_collaboration.sql',import.meta.url),'utf8'));
  await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261105150453_issue19_named_expense_create.sql',import.meta.url),'utf8'));
