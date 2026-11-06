@@ -1,6 +1,10 @@
 # CURRENT_TASK.md
 
-Updated 2026-11-05. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
+Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
+
+## Latest 2026-11-06 — #20 single row outline and avatar cluster
+
+[Issue #20 implementation and verification](docs/2026-11-06-issue20-row-collaboration.md). Native ExpenseTable now renders one collaborator outline, prioritizing editors then latest genuine selection, and a live hover/focus cluster of at most four avatars plus overflow. Account deduplication and existing collaborator colors remain; no row name/status list. This supersedes the earlier segmented/multiple row outline acceptance; field identity hints remain unchanged. No DB/RPC/lease/model changes. Local Chromium passed 20/20 (6 collaboration,14 editor regression), desktop/narrow screenshots inspected; Build/diff Passed. User explicitly approved commit/push to PeterChiu0314/Travel-Planner original branch after the initial automatic-review rejection; push and exact-SHA Preview verification now in progress. #20 stays Open for user acceptance; Production/main remain forbidden.
 
 ## Latest 2026-11-05 — #19 named local creation installed on Staging; user acceptance pending
 

@@ -54,6 +54,11 @@
 .bw-collaboration-tooltip { position: fixed; z-index: 1500; display: grid; gap: 4px; box-sizing: border-box; max-width: min(252px,calc(100vw - 16px)); padding: 6px 9px; background: var(--panel, #fff); border: 1px solid var(--line, #d7ddd6); border-radius: 5px; box-shadow: 0 4px 12px #0002; color: var(--ink, #28382f); font-size: 12px; pointer-events: none; overflow-wrap: anywhere; }
 .bw-collaboration-tooltip > span { display: flex; align-items: center; gap: 6px; }
 .bw-collaboration-tooltip i { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.bw-row-peer-tooltip { padding: 5px 7px; }
+.bw-peer-avatars { display: flex; align-items: center; padding-left: 5px; }
+.bw-peer-avatar { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; margin-left: -5px; border: 2px solid var(--panel, #fff); border-radius: 50%; box-sizing: border-box; overflow: hidden; color: white; font-size: 10px; font-weight: 500; }
+.bw-peer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.bw-peer-more { background: var(--color-surface-subtle); color: var(--color-text); }
 .bw-row:hover { background: #f1f3ed; }
 .bw-row.is-selected { background: #d7e7df; box-shadow: inset 3px 0 var(--color-primary); }
 .bw-row.is-selected:hover { background: #cfdfd6; }

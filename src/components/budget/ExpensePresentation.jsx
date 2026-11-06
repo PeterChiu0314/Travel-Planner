@@ -2,7 +2,7 @@ import {Fragment,useEffect,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ChevronDown, ChevronRight, Circle, CircleCheck, Package, Pencil, Trash2} from 'lucide-react';
 import {budgetDay, memberLabel, money, pricingLabels, recordAllocations} from '../../lib/budgetFinance.js';
-import {collaboratorColor} from '../../lib/collaboratorColors.js';
+import {rowCollaborators,RowCollaboratorOutline,RowCollaboratorAvatars} from './BudgetRowCollaborators.jsx';
 import {categoryOrder as order,categoryIcons as icons,categoryColor,PricingSummary} from './BudgetWorkspace.jsx';
 
 // Presentation-only projection: missing budget stays missing, even for paid items.
@@ -14,14 +14,25 @@ export function expenseDisplayRows(models,scope){
 export function displayParticipants(rows){return rows.flatMap(row=>row.participantIds.map(user_id=>({budget_item_id:row.id,actual_expense_id:row.id,user_id,share_amount:row.shares[user_id]})));}
 export function ExpenseTable({rows,members,links,items,collaborators=[],selected,collapsed,setCollapsed,viewpoint,actual,onSelect}){
  const [tooltip,setTooltip]=useState(null);
- useEffect(()=>{const clear=()=>setTooltip(null);window.addEventListener('scroll',clear,true);window.addEventListener('pointerdown',clear);return()=>{window.removeEventListener('scroll',clear,true);window.removeEventListener('pointerdown',clear);};},[]);
+ const tooltipUsers=tooltip&&rows.some(row=>row.id===tooltip.id&&!collapsed.includes(row.category))?rowCollaborators(collaborators.filter(entry=>entry.resource_id===tooltip.id)):[];
+ useEffect(()=>{
+  const clear=()=>setTooltip(null),key=event=>{if(event.key==='Escape')clear();};
+  const reposition=()=>setTooltip(current=>{
+   const row=document.activeElement?.closest('.bw-row');
+   if(!current||row?.dataset.expenseId!==current.id)return null;
+   const rect=row.getBoundingClientRect();
+   return rect.bottom<0||rect.top>window.innerHeight?null:{...current,left:Math.max(8,Math.min(rect.left,window.innerWidth-260)),top:Math.max(8,rect.top-42)};
+  });
+  window.addEventListener('scroll',reposition,true);window.addEventListener('resize',reposition);window.addEventListener('pointerdown',clear);window.addEventListener('keydown',key);
+  return()=>{window.removeEventListener('scroll',reposition,true);window.removeEventListener('resize',reposition);window.removeEventListener('pointerdown',clear);window.removeEventListener('keydown',key);};
+ },[]);
  const categories=[...new Set(rows.map(r=>r.category))].sort((a,b)=>(order.includes(a)?order.indexOf(a):99)-(order.includes(b)?order.indexOf(b):99)||a.localeCompare(b));
  const allCollapsed=categories.length>0&&categories.every(c=>collapsed.includes(c));
  const fold=(values,close)=>setCollapsed(current=>close?[...new Set([...current,...values])]:current.filter(c=>!values.includes(c)));
  const person=members.some(m=>m.user_id===viewpoint)?viewpoint:null;
  const people=row=>row.participantIds.map(user_id=>({user_id,share_amount:row.shares[user_id]}));
  const cell=(row,text,kind='')=><button type="button" className={`bw-cell ${kind}`} onClick={event=>{event.stopPropagation();onSelect(row.id);}}>{text}</button>;
- return <div className="bw-table-scroll">{tooltip?createPortal(<div id={`expense-peers-${tooltip.id}`} role="tooltip" className="bw-collaboration-tooltip" style={{left:tooltip.left,top:tooltip.top}}>{tooltip.users.map(entry=><span key={entry.user_id}><i style={{background:collaboratorColor(entry.user_id)}}/>{memberLabel(members.find(m=>m.user_id===entry.user_id))} · {entry.mode==='edit'?'編輯':'選取'}</span>)}</div>,document.body):null}<table className="bw-table" aria-label={actual?'實付明細':'預算明細'}><thead><tr onClick={()=>fold(categories,!allCollapsed)}><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{actual?'每人負擔':'每人預算'}<small>TWD</small></th><th className="bw-number">總額<small>TWD</small></th><th><button type="button" className="bw-fold-all" aria-label={allCollapsed?'展開所有分類':'收合所有分類'} aria-expanded={!allCollapsed} onClick={e=>{e.stopPropagation();fold(categories,!allCollapsed);}}>狀態</button></th></tr></thead>
+ return <div className="bw-table-scroll">{tooltipUsers.length?createPortal(<div id={`expense-peers-${tooltip.id}`} role="tooltip" className="bw-collaboration-tooltip bw-row-peer-tooltip" style={{left:tooltip.left,top:tooltip.top}}><RowCollaboratorAvatars users={tooltipUsers} members={members}/></div>,document.body):null}<table className="bw-table" aria-label={actual?'實付明細':'預算明細'}><thead><tr onClick={()=>fold(categories,!allCollapsed)}><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{actual?'每人負擔':'每人預算'}<small>TWD</small></th><th className="bw-number">總額<small>TWD</small></th><th><button type="button" className="bw-fold-all" aria-label={allCollapsed?'展開所有分類':'收合所有分類'} aria-expanded={!allCollapsed} onClick={e=>{e.stopPropagation();fold(categories,!allCollapsed);}}>狀態</button></th></tr></thead>
  <tbody>{categories.map(category=>{
   const grouped=rows.filter(r=>r.category===category),complete=grouped.filter(r=>r.record_status==='complete'),total=complete.reduce((sum,r)=>sum+Number(r.twd_amount),0);
   const allocations=person?complete.map(r=>recordAllocations(r,people(r))):[];
@@ -29,10 +40,10 @@ export function ExpenseTable({rows,members,links,items,collaborators=[],selected
   const Icon=icons[category]||Package,closed=collapsed.includes(category),Fold=closed?ChevronRight:ChevronDown;
   return <Fragment key={category}><tr className="bw-group" style={{'--bw-category-color':categoryColor(category)}} onClick={()=>fold([category],!closed)}><th colSpan={2} scope="rowgroup"><button className="bw-group-label" type="button" aria-expanded={!closed} aria-label={`${closed?'展開':'收合'}${category}`}><Icon size={14} strokeWidth={1.8}/><span>{category}</span><small>{grouped.length} 筆</small></button></th><td className="bw-number bw-group-person">{perPerson===null?'—':`${Number.isInteger(perPerson)?'':'≈ '}${money(perPerson)}`}</td><td className="bw-number">{money(total)}</td><td><Fold size={14}/></td></tr>
   {!closed&&grouped.map(row=>{
-   const remote=[...new Map(collaborators.filter(e=>e.resource_id===row.id).map(e=>[e.user_id,e])).values()];
-   const show=event=>{if(!remote.length)return;const rect=event.currentTarget.getBoundingClientRect();setTooltip({id:row.id,users:remote,left:Math.max(8,Math.min(rect.left,window.innerWidth-260)),top:Math.max(8,rect.top-35)});};
-   return <tr key={row.id} className={`bw-row${selected===row.id?' is-selected':''}${remote.length?' has-collaborators':''}`} tabIndex={remote.length?0:undefined} aria-describedby={tooltip?.id===row.id?`expense-peers-${row.id}`:undefined} onMouseEnter={show} onMouseLeave={()=>setTooltip(null)} onFocus={show} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))setTooltip(null);}} onClick={()=>onSelect(row.id)}>
-    <td className="bw-day">{budgetDay(row,links,items)}{remote.length>4?<span className="bw-collaboration-outline is-segmented" aria-hidden="true" style={{inset:'1px 1px 1px 5px','--bw-remote-gradient':remote.map((entry,index)=>`${collaboratorColor(entry.user_id)} ${index*100/remote.length}% ${(index+1)*100/remote.length}%`).join(',')}}/>:remote.map((entry,index)=><span key={entry.user_id} className="bw-collaboration-outline" data-user={entry.user_id} data-mode={entry.mode} aria-hidden="true" style={{'--bw-remote-color':collaboratorColor(entry.user_id),inset:`${1+index*3}px ${1+index*3}px ${1+index*3}px ${5+index*3}px`}}/>)}</td>
+   const remote=rowCollaborators(collaborators.filter(e=>e.resource_id===row.id));
+   const show=event=>{if(!remote.length)return;const rect=event.currentTarget.getBoundingClientRect();setTooltip({id:row.id,left:Math.max(8,Math.min(rect.left,window.innerWidth-260)),top:Math.max(8,rect.top-42)});};
+   return <tr key={row.id} data-expense-id={row.id} className={`bw-row${selected===row.id?' is-selected':''}${remote.length?' has-collaborators':''}`} tabIndex={remote.length?0:undefined} aria-describedby={tooltip?.id===row.id&&tooltipUsers.length?`expense-peers-${row.id}`:undefined} onMouseEnter={show} onMouseLeave={event=>{if(!event.currentTarget.contains(document.activeElement))setTooltip(null);}} onFocus={show} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))setTooltip(null);}} onClick={()=>onSelect(row.id)}>
+    <td className="bw-day">{budgetDay(row,links,items)}<RowCollaboratorOutline users={remote}/></td>
     <td>{cell(row,row.title||'未命名項目')}{row.record_status!=='complete'?<small> · 未完成</small>:null}</td>
     <td className="bw-number">{row.record_status!=='complete'?'—':cell(row,row.pricing_mode==='custom'?'依成員':row.participantIds.length?`${row.twd_amount%row.participantIds.length?'≈ ':''}${money(row.twd_amount/row.participantIds.length)}`:'—','bw-person')}</td>
     <td className="bw-number bw-total">{row.record_status!=='complete'?'尚未填寫':cell(row,money(row.twd_amount))}</td>
