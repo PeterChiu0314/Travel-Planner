@@ -116,6 +116,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  function body(g){if(['budget','paid'].includes(g.group))return {form:g.value,members:graph.members.filter(m=>m.status==='approved').map(m=>m.user_id).sort(),rates:graph.rates,planning:planning()};if(['payment','lifecycle'].includes(g.group))return {...g.value,planning:planning()};if(g.group==='payer'){if(!planning()&&g.value.mode==='advance'&&g.value.rows.length===1)return{user_id:g.value.rows[0].user_id};const item=expenseModels(graph).find(i=>i.id===g.id);return{planning:planning(),form:reconcilePayers(g.value,(item.budget||item.paid)?.amount),budget_revision:item.revisions.budget||0,paid_revision:item.revisions.paid||0};}if(g.group==='links')return{ids:g.value};return{text:g.value};}
  function save(g,flush=true){if(g.saveWork)return g.saveWork;clearTimeout(g.timer);
   if(g.local)return create();
+  let confirmedRevision=null;
   g.saveWork=(async()=>{if(g.acquiring)await g.acquiring;if(!current()||g.conflict||g.composing)return false;if(!g.request&&!dirty(g))return true;if(!active&&!g.request)return false;
    if(!g.request){if(!owns(g))return false;
     if(g.group==='payer'&&!validPayers(g.value,graph.members))return false;
@@ -129,7 +130,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    const receipt=r.data;if(!receipt?.committed||receipt.request_id!==request.p_request_id||receipt.expense_id!==g.id||receipt.group!==g.group||receipt.revision!==request.p_base+1||receipt.item?.id!==g.id||receipt.item.trip_id!==trip||!Array.isArray(receipt.participants)||receipt.participants.some(p=>p.expense_id!==g.id)){report(g,new Error('儲存結果待確認，變更已保留。'));return false;}
    const receiptGraph={...graph,items:graph.items.map(i=>i.id===g.id?receipt.item:i),participants:[...graph.participants.filter(p=>p.expense_id!==g.id),...receipt.participants],
     links:g.group==='links'?[...graph.links.filter(l=>l.expense_id!==g.id),...request.p_value.ids.map(itinerary_item_id=>({expense_id:g.id,itinerary_item_id}))]:graph.links};
-   g.base=receipt.revision;g.request=null;g.canonical=expenseFieldValue(receiptGraph,g.id,g.group);
+   confirmedRevision=g.submitted;g.base=receipt.revision;g.request=null;g.canonical=expenseFieldValue(receiptGraph,g.id,g.group);
    if(g.revision===g.submitted)g.value=structuredClone(g.canonical);persist(g);
    const after=await bounded(service.read(trip,sessionId));if(!current())return false;
    if(after.error){verified=false;report(g,after.error);return false;}
@@ -137,7 +138,11 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    // canonical snapshot; subsequent typing remains buffered independently.
    g.conflict=false;g.error=null;ingest(after.data);onSnapshot(after.data);persist(g);
    if(dirty(g))return false;if(!g.focused)await release(g);return true;
-  })().finally(()=>{g.saveWork=null;emit();});return g.saveWork;
+  })().finally(()=>{g.saveWork=null;
+   // A debounce can expire while this request is in flight. Once its receipt
+   // is confirmed, drain later input even when the focused row was removed.
+   if(confirmedRevision!==null&&g.revision>confirmedRevision&&dirty(g)&&owns(g)&&!g.request&&!g.error&&!g.autoBlocked&&!g.composing){clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),0);}
+   emit();});return g.saveWork;
  }
  async function create(){if(createWork)return createWork;if(!active||localDraft?.refused)return false;if(!pendingCreate){const title=String(localDraft?.values.title||'').trim();if(!title)return !draftDirty();pendingCreate={p_trip_id:trip,p_id:localDraft.id,p_session_id:sessionId,p_request_id:makeId(),p_title:title};try{storage?.setItem(createKey,JSON.stringify(pendingCreate));}catch{/* In-memory retained. */}}
   createWork=(async()=>{if(!(await service.authorized(actor)))return false;const request=pendingCreate,r=await bounded(service.create(request));if(!current())return false;
@@ -149,7 +154,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    pendingCreate=null;try{storage?.removeItem(createKey);}catch{/* No credentials stored. */}for(const g of fields.values())if(g.id===request.p_id&&!g.conflict){if(g.focused){if(active)await focus(g);else{g.resumeFocus=true;g.focused=false;}}if(dirty(g)&&active){clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),1000);}}emit();return request.p_id;
   })().finally(()=>{createWork=null;emit();});return createWork;
  }
- async function finish(){if(localDraft&&!draftDirty()&&!pendingCreate){clearDraft();emit();}if((pendingCreate||localDraft)&&!await create())return false;for(const g of fields.values()){g.resumeFocus=false;if(dirty(g)||g.request){if(!g.request&&!owns(g)&&!await focus(g))return false;if(!await save(g))return false;}if(!await release(g))return false;}return true;}
+ async function finish(){if(localDraft&&!draftDirty()&&!pendingCreate){clearDraft();emit();}if((pendingCreate||localDraft)&&!await create())return false;for(const g of fields.values()){g.resumeFocus=false;if(g.saveWork)await g.saveWork;if(dirty(g)||g.request){if(!g.request&&!owns(g)&&!await focus(g))return false;if(!await save(g))return false;}if(!await release(g))return false;}return true;}
  async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
  const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,focus,input,save,release,finish,discard,
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
