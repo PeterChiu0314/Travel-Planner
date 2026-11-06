@@ -34,4 +34,8 @@
 
 ## 交付紀錄
 
-Staging `uyqdopksfysbobhjcepk` 已安裝 Ledger75/head `20261106181006_timeline_expense_link_integrity`。Hosted 安裝前同來源回滾試跑及安裝後 authenticated-role 回滾驗證均通過。安裝記錄 SQL 與提交來源逐字相同（移除檔尾空白）；本機檔案 SHA256 `21f6abf70e0f90fc4074c408cfddb60da27347fe8234c9f1be23dccc076a4472`。五項資料 seal（trips、itinerary、expense_items、expense_participants、links）與安裝前相同。Security Advisor 維持既有25 INFO／9 WARN，沒有新增項目。最後96/96 Node／SQL 測試與 Build／diff check 通過。Preview 發布及 Hosted 瀏覽器驗收待記錄。
+Staging `uyqdopksfysbobhjcepk` 已安裝 Ledger75/head `20261106181006_timeline_expense_link_integrity`。Hosted 安裝前同來源回滾試跑及安裝後 authenticated-role 回滾驗證均通過。安裝記錄 SQL 與提交來源逐字相同（移除檔尾空白）；本機檔案 SHA256 `21f6abf70e0f90fc4074c408cfddb60da27347fe8234c9f1be23dccc076a4472`。五項資料 seal（trips、itinerary、expense_items、expense_participants、links）與安裝前相同。換行正規化後，僅四個預期的既有函式 body 變更（schedule、dates、delete card、expense mutation），其餘既有函式不變。Security Advisor 維持既有25 INFO／9 WARN，沒有新增項目。最後96/96 Node／SQL 測試與 Build／diff check 通過。
+
+實作 commit `8c8a0afb8a663a634e4cb94033d677b60c8ea9eb` 已推送原分支。Vercel deployment `dpl_4PPpmYNKEEAMEENuPcXbL7CcR9um` 回讀為 READY，Git SHA 相同，branch alias 指向此部署。Production/main 未變更。
+
+本輪 Hosted 瀏覽器驗收未完成：開啟 Preview 分頁時 Browser Use 回報使用者拒絕 origin approval，禁止另用其他瀏覽器／入口繞過。已停止 UI 操作；重新允許該 Preview 網址後，才續測 synthetic QA 旅程的新增卡、連結支出、交換、重整、刪卡與日期縮短。上述 Hosted SQL-role 回滾試跑與隔離 Chromium 回歸不代表這輪普通登入帳號 UI 或 WebSocket 驗收完成。
