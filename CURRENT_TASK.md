@@ -4,6 +4,8 @@ Updated 2026-11-06. This is the live handoff: current work, protected behavior, 
 
 ## Latest 2026-11-06 — planning editor annotations applied
 
+Last-payer guard: advance mode disables removal when one payer remains and rechecks the current row count after lease acquisition, preventing stale/rapid clicks from leaving an invalid empty draft. Switch to self-pay to stop assigning payers. Existing payer regression coverage now asserts the last row is disabled;8/8 Chromium and Build/diff Passed. No data model/controller/SQL changes.
+
 Planning editor order is title, category, note, live per-person/total summary, pricing, payment/payers and itinerary links last before the pinned footer. Removed the payer-total display only; financial allocation/reconciliation unchanged. Pricing buttons use12px text and5px outer corners matching payment modes. Retains hidden pricing legend with accessible fieldset name, divider above pricing, no summary divider and6px payer spacing.8/8 Chromium payer/removal/collaboration regressions,1440×900 geometry/screenshot and Build/diff Passed. Browser plugin unavailable; repository Playwright/static maps/isolated SQL used. No DB/controller/financial change; original-branch Preview delivery only.
 
 ## Latest 2026-11-06 — payer removal autosave race and first-click controls fixed
