@@ -4,6 +4,8 @@ Updated 2026-11-06. This is the live handoff: current work, protected behavior, 
 
 ## Latest 2026-11-06 — #20 single row outline and avatar cluster
 
+Newest visual steering: anchor the avatar cluster below the outline, left edges aligned, with a 2px gap. Position is measured from the actual outline for both initial hover/focus and scroll/resize recovery.
+
 Latest user visual refinement: remove the white tooltip container, use 22px circles (was28px), and one uppercase initial per collaborator. Six affected collaboration Chromium tests plus Build/diff Passed; desktop screenshot inspected. Original #20 code fa7a7d1 was pushed and its exact-SHA Preview confirmed READY/target:null. This refinement continues on the same explicitly authorized original-branch push scope; the earlier in-progress statement below refers to the original checkpoint.
 
 [Issue #20 implementation and verification](docs/2026-11-06-issue20-row-collaboration.md). Native ExpenseTable now renders one collaborator outline, prioritizing editors then latest genuine selection, and a live hover/focus cluster of at most four avatars plus overflow. Account deduplication and existing collaborator colors remain; no row name/status list. This supersedes the earlier segmented/multiple row outline acceptance; field identity hints remain unchanged. No DB/RPC/lease/model changes. Local Chromium passed 20/20 (6 collaboration,14 editor regression), desktop/narrow screenshots inspected; Build/diff Passed. User explicitly approved commit/push to PeterChiu0314/Travel-Planner original branch after the initial automatic-review rejection; push and exact-SHA Preview verification now in progress. #20 stays Open for user acceptance; Production/main remain forbidden.

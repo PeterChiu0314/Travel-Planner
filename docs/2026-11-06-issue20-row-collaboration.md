@@ -8,6 +8,8 @@ Hover／鍵盤 focus 僅顯示重疊圓形頭像：最多4位，其餘 `+N`。�
 
 ## 驗證
 
+最新位置精修：依使用者截圖，頭像群組改在協作框左下方，第一個圓圈左緣對齊實際 outline 的左緣，下方間距2px；hover／focus與捲動重定位使用同一個outline幾何，不再依整列左緣或固定上移量估算。
+
 - Browser plugin unavailable，使用 repository Playwright、既有 PGlite 隔離 SQL 與 localhost5175 static map provider；未新增依賴。首次未設 PGLITE_MODULE，測試未進入業務流程；設定現存 runtime 後重跑。首次 Google provider 被 sandbox 阻擋的 resource error，以測試 server static provider 排除，未忽略 console error。
 - 6/6 collaboration Chromium Passed：1～4人、5人+1、最新選取／編輯優先、同帳號分頁去重、即時離開、workspace hidden／返回、快照離線恢復及原Rates。修正新窄版 focus 測試揭露的自動捲動提示消失後整批6例通過。
 - 使用者頭像精修後，同6例重新通過，Build／diff Passed，桌面截圖確認只有22px單字母圓圈、無外層白方框。未重跑不受此呈現修改影響的14例。

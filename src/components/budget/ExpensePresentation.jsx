@@ -12,6 +12,10 @@ export function expenseDisplayRows(models,scope){
   record_status:item[scope]&&item.title.trim()&&(scope==='budget'||item.payment_state!=='draft')?'complete':'incomplete'}));
 }
 export function displayParticipants(rows){return rows.flatMap(row=>row.participantIds.map(user_id=>({budget_item_id:row.id,actual_expense_id:row.id,user_id,share_amount:row.shares[user_id]})));}
+function rowPeerPosition(row){
+ const rect=(row.querySelector('.bw-collaboration-outline')||row).getBoundingClientRect();
+ return {left:rect.left,top:rect.bottom+2};
+}
 export function ExpenseTable({rows,members,links,items,collaborators=[],selected,collapsed,setCollapsed,viewpoint,actual,onSelect}){
  const [tooltip,setTooltip]=useState(null);
  const tooltipUsers=tooltip&&rows.some(row=>row.id===tooltip.id&&!collapsed.includes(row.category))?rowCollaborators(collaborators.filter(entry=>entry.resource_id===tooltip.id)):[];
@@ -21,7 +25,7 @@ export function ExpenseTable({rows,members,links,items,collaborators=[],selected
    const row=document.activeElement?.closest('.bw-row');
    if(!current||row?.dataset.expenseId!==current.id)return null;
    const rect=row.getBoundingClientRect();
-   return rect.bottom<0||rect.top>window.innerHeight?null:{...current,left:Math.max(8,Math.min(rect.left,window.innerWidth-260)),top:Math.max(8,rect.top-28)};
+   return rect.bottom<0||rect.top>window.innerHeight?null:{...current,...rowPeerPosition(row)};
   });
   window.addEventListener('scroll',reposition,true);window.addEventListener('resize',reposition);window.addEventListener('pointerdown',clear);window.addEventListener('keydown',key);
   return()=>{window.removeEventListener('scroll',reposition,true);window.removeEventListener('resize',reposition);window.removeEventListener('pointerdown',clear);window.removeEventListener('keydown',key);};
@@ -41,7 +45,7 @@ export function ExpenseTable({rows,members,links,items,collaborators=[],selected
   return <Fragment key={category}><tr className="bw-group" style={{'--bw-category-color':categoryColor(category)}} onClick={()=>fold([category],!closed)}><th colSpan={2} scope="rowgroup"><button className="bw-group-label" type="button" aria-expanded={!closed} aria-label={`${closed?'展開':'收合'}${category}`}><Icon size={14} strokeWidth={1.8}/><span>{category}</span><small>{grouped.length} 筆</small></button></th><td className="bw-number bw-group-person">{perPerson===null?'—':`${Number.isInteger(perPerson)?'':'≈ '}${money(perPerson)}`}</td><td className="bw-number">{money(total)}</td><td><Fold size={14}/></td></tr>
   {!closed&&grouped.map(row=>{
    const remote=rowCollaborators(collaborators.filter(e=>e.resource_id===row.id));
-   const show=event=>{if(!remote.length)return;const rect=event.currentTarget.getBoundingClientRect();setTooltip({id:row.id,left:Math.max(8,Math.min(rect.left,window.innerWidth-260)),top:Math.max(8,rect.top-28)});};
+   const show=event=>{if(!remote.length)return;setTooltip({id:row.id,...rowPeerPosition(event.currentTarget)});};
    return <tr key={row.id} data-expense-id={row.id} className={`bw-row${selected===row.id?' is-selected':''}${remote.length?' has-collaborators':''}`} tabIndex={remote.length?0:undefined} aria-describedby={tooltip?.id===row.id&&tooltipUsers.length?`expense-peers-${row.id}`:undefined} onMouseEnter={show} onMouseLeave={event=>{if(!event.currentTarget.contains(document.activeElement))setTooltip(null);}} onFocus={show} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))setTooltip(null);}} onClick={()=>onSelect(row.id)}>
     <td className="bw-day">{budgetDay(row,links,items)}<RowCollaboratorOutline users={remote}/></td>
     <td>{cell(row,row.title||'未命名項目')}{row.record_status!=='complete'?<small> · 未完成</small>:null}</td>
