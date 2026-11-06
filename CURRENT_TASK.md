@@ -2,6 +2,10 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-06 — four planning editor spacing annotations applied
+
+Removed the visible pricing-mode legend while retaining the fieldset accessible name, added one divider above the pricing section, removed the per-person/total summary divider, and tightened payer labels/controls to6px. Planning-native styling only; other stages/legacy mode labels and all data/authority behavior retained.8/8 Chromium payer/removal regressions,1440×900 geometry/screenshot (top section border1px, summary borders0px, payer gap6px), Build/diff Passed. No DB/controller/financial change; original-branch Preview delivery only.
+
 ## Latest 2026-11-06 — payer removal autosave race and first-click controls fixed
 
 [Root cause / fix / validation](docs/2026-11-06-payer-removal-autosave-fix.md). A later removal debounce expired during an earlier write, and its confirmed receipt never queued the newer dirty revision; held fields stayed unsaved and guarded navigation/reload. Confirmed receipts now drain later input with valid authority; finish awaits the old write then flushes the latest value. Unknown receipts, invalid drafts, request identity and peer authority remain protected. Add/remove work from outside the sidebar by acquiring the existing payer lease; row changes retain focus on a valid control so blur/release is not lost when the old button disappears or disables. No database/RPC/migration change; Staging stays Ledger74 with installed sources immutable.29 Node/SQL and25 Chromium batch Passed, Build/diff Passed. Push original branch and verify exactSHA Preview READY. Production/main and unrelated artifacts remain untouched.
