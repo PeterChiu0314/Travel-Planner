@@ -37,7 +37,7 @@ export default function ExpenseWorkspace(props){
  const propsRef=useRef(props);propsRef.current=props;
  const transport=useMemo(()=>props.expenseService||createExpenseService(props.supabase),[props.expenseService,props.supabase]);
  const sessionId=props.demo?'demo-session':getBudgetMetadataSessionId(),storage=props.demo?null:sessionStorage;
- const client=useMemo(()=>{return createExpenseEditor({service:{...transport,read:async(trip,session)=>{if(propsRef.current.demo)return transport.read(trip,session);const r=await propsRef.current.onRefreshBudget(propsRef.current.activeTrip.id);return r.ok?{data:r.data.expenseGraph}:{error:r.error||new Error('資料尚未同步，變更已保留。')};}},
+ const client=useMemo(()=>{return createExpenseEditor({service:{...transport,read:async(trip,session)=>{const current=propsRef.current;if(current.demo)return transport.read(trip,session);if(current.activeTrip.id!==trip||current.currentUserId!==props.currentUserId)return{error:new Error('旅程已切換，變更已保留。')};const r=await current.onRefreshBudget(trip);return r.ok?{data:r.data.expenseGraph}:{error:r.error||new Error('資料尚未同步，變更已保留。')};}},
   actor:props.currentUserId,trip:props.activeTrip.id,sessionId,storage,planning:()=> (propsRef.current.demoStage||budgetStage(propsRef.current.activeTrip))==='planning',onError:errorToast,onSnapshot:data=>propsRef.current.onExpenseSnapshot?.(data)});},[transport,props.currentUserId,props.activeTrip.id,sessionId,storage]);
  const planning=(props.demoStage||budgetStage(props.activeTrip))==='planning';
  const version=useSyncExternalStore(client.subscribe,client.getVersion),[selected,setSelected]=useState(()=>client.status().draftId||null),[view,setView]=useState(()=>planning?'budget':'paid'),[query,setQuery]=useState('');
@@ -62,16 +62,18 @@ export default function ExpenseWorkspace(props){
  const state=client.status(),graph=state.graph;
  const selectedExists=Boolean(graph?.items.some(i=>i.id===selected));
  useEffect(()=>{if(workspaceActive)collaboration?.select(selectedExists?{kind:'expense',id:selected,tripId:props.activeTrip.id,userId:props.currentUserId}:null);},[collaboration,workspaceActive,selected,selectedExists,props.activeTrip.id,props.currentUserId]);
- props.services.useGuard(`expense-workspace:${props.currentUserId}:${props.activeTrip.id}`,useMemo(()=>({isActive:true,isDirty:state.dirty||state.pending,
-  prepare:()=>client.finish(),finish:()=>client.finish(),save:()=>client.finish(),discard:()=>client.discard()}),[client,version,state.dirty,state.pending]));
+ props.services.useGuard(`expense-workspace:${props.currentUserId}:${props.activeTrip.id}`,{tripId:props.activeTrip.id,workspace:'budget'},
+  useMemo(()=>({isActive:true,readState:client.guardState,cleanupInWorkspaceOnly:true,prepareFinishes:true,
+   prepare:()=>client.finish(),finish:()=>client.finish(),save:()=>client.finish(),discard:()=>client.discard()}),[client,version]));
  if(!graph)return <p className="bw-muted">讀取支出項目…</p>;
  const models=expenseModels(graph),item=client.draftItem()?.id===selected?client.draftItem():models.find(i=>i.id===selected),members=graph.members||[],approved=members.filter(m=>m.status==='approved');
  const editable=props.canEdit&&state.verified&&navigator.onLine!==false;
- async function handoff(action){if(await props.services.handoff({tripId:props.activeTrip.id}))action();}
- async function add(){if(adding.current)return;adding.current=true;try{if(client.status().draftId){setSelected(client.status().draftId);setPanel('edit');return;}if(!await props.services.handoff({tripId:props.activeTrip.id}))return;setSelected(client.begin());setPanel('edit');}finally{adding.current=false;}}
- async function payment(){if(!await props.services.handoff({tripId:props.activeTrip.id}))return;const current=client.status().graph,model=expenseModels(current).find(i=>i.id===selected);if(!model)return;
+ const handoffBudget=()=>props.services.handoff({tripId:props.activeTrip.id,workspace:'budget'});
+ async function handoff(action){if(await handoffBudget())action();}
+ async function add(){if(adding.current)return;adding.current=true;try{if(client.status().draftId){setSelected(client.status().draftId);setPanel('edit');return;}if(!await handoffBudget())return;setSelected(client.begin());setPanel('edit');}finally{adding.current=false;}}
+ async function payment(){if(!await handoffBudget())return;const current=client.status().graph,model=expenseModels(current).find(i=>i.id===selected);if(!model)return;
   const ok=await client.execute(model.id,'payment',{action:model.payment_state==='paid'?'unpaid':'paid',paid_at:new Date().toISOString(),budget_revision:model.revisions.budget||0,paid_revision:model.revisions.paid||0,payer_revision:model.revisions.payer||0});if(!ok)void client.refresh();}
- async function remove(){if(!await props.services.handoff({tripId:props.activeTrip.id}))return;if(!await ask({title:'刪除支出項目？',message:'此項目將不再計入預算與結算。',confirmLabel:'刪除',danger:true}))return;if(await client.execute(item.id,'lifecycle',{action:'delete'})){setSelected(null);setPanel('stats');}}
+ async function remove(){if(!await handoffBudget())return;if(!await ask({title:'刪除支出項目？',message:'此項目將不再計入預算與結算。',confirmLabel:'刪除',danger:true}))return;if(await client.execute(item.id,'lifecycle',{action:'delete'})){setSelected(null);setPanel('stats');}}
  function frame(group,label,render){const field=client.get(item.id,group),v=client.view(field),owner=collaborators.find(e=>e.kind==='expense'&&e.resource_id===item.id&&expenseGroupsConflict(group,e.group_key)&&e.mode==='edit')?.user_id||client.peerOwner(item.id,group);
   const locked=!editable||!v.editable||Boolean(owner);
   return <BudgetCollaborationFrame key={group} role="group" aria-label={label} tabIndex={0} label={label} ownerId={owner} ownerName={memberLabel(members.find(m=>m.user_id===owner))}

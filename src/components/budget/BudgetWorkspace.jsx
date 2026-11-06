@@ -183,7 +183,8 @@ function useWorkspaceEditor(kind, props) {
     } catch (err) { if (scopeCurrent(generation)) setError(err.message); return false; }
     finally { if (scopeCurrent(generation)) { savingRef.current = false; setSaving(false); } }
   }
-  services.useGuard(guardId, useMemo(() => ({ isActive: Boolean(context), isDirty: hasUnsavedChanges || saving, save, discard: () => close(true) }),
+  services.useGuard(guardId, { tripId: context?.tripId, workspace: "budget" },
+    useMemo(() => ({ isActive: Boolean(context), isDirty: hasUnsavedChanges, isPending: saving, needsHandoff: true, save, discard: () => close(true) }),
     [context, form, hasUnsavedChanges, saving]));
 
   useEffect(() => {
@@ -227,7 +228,7 @@ function useWorkspaceEditor(kind, props) {
     if (record && context?.id === record.id) return true;
     openingRef.current = true;
     try {
-      if (!(await services.handoff({ tripId: activeTrip.id }))) return false;
+      if (!(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return false;
       if (!scopeCurrent(generation)) return false;
       let locked = record;
       if (useEditLocks && record) {
@@ -351,7 +352,7 @@ export function PaymentToggle({ checked, disabled, onChange, busy = false }) {
 function ActualPaymentTime({ record, services, disabled, busy, onSubmit }) {
   const canonical = localDateTime(record.paid_at), [date, setDate] = useState(canonical);
   useEffect(() => { setDate(localDateTime(record.paid_at)); }, [record.id, record.paid_at]);
-  services.useGuard(`budget-paid-at:${record.trip_id}:${record.id}`, useMemo(() => ({ isActive: date !== canonical, isDirty: date !== canonical,
+  services.useGuard(`budget-paid-at:${record.trip_id}:${record.id}`, { tripId: record.trip_id, workspace: "budget" }, useMemo(() => ({ isActive: date !== canonical, isDirty: date !== canonical,
     save: async () => false, discard: async () => { setDate(canonical); return true; } }), [date, canonical]));
   return <form onSubmit={event => { event.preventDefault(); if (date) void onSubmit(new Date(date).toISOString()); }}>
     <label>付款時間<input type="datetime-local" required value={date} disabled={disabled || busy} onChange={event => setDate(event.target.value)} /></label>
@@ -469,7 +470,7 @@ export default function BudgetWorkspace(incoming) {
   const canRefreshRates = canEdit && stage === "planning" && Boolean(tripRates) && Boolean(props.onUpdateBudgetRates);
   async function refreshRates(initialize = false) {
     if (!canRefreshRates || ratesBusyRef.current) return;
-    if (!ratesState?.active&&!(await services.handoff({ tripId: activeTrip.id }))) return;
+    if (!ratesState?.active&&!(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return;
     if (ratesBusyRef.current) return;
     ratesBusyRef.current = true; setRatesBusy(true); setRatesError("");
     const tripId = activeTrip.id;
@@ -490,7 +491,7 @@ export default function BudgetWorkspace(incoming) {
       rateAttemptRef.current = activeTrip.id; void refreshRates(true);
     }
   }, [activeTrip.id, canRefreshRates, props.restoreDrafts, tripRates?.rates]);
-  services.useGuard(`budget-rates:${activeTrip.id}`, useMemo(() => ({ isActive: ratesBusy, isDirty: ratesBusy,
+  services.useGuard(`budget-rates:${activeTrip.id}`, { tripId: activeTrip.id, workspace: "budget" }, useMemo(() => ({ isActive: ratesBusy, isPending: ratesBusy,
     save: async () => false, discard: async () => false }), [ratesBusy]));
   async function saveBudgetWithPayment(payload, id, meta) {
     if (meta.operationId && budgetPaymentRequest.current?.id === meta.operationId) return props.onSave(budgetPaymentRequest.current.payload, id, meta);
@@ -555,8 +556,8 @@ export default function BudgetWorkspace(incoming) {
   const paymentPending = props.metadataRequested && props.paymentClient?.hasPending();
   if(props.metadataRequested&&selected?.kind==='actual')props.sourceClient?.view('actual',selected.id);
   const sourcePending=props.metadataRequested&&props.sourceClient?.hasPending();
-  services.useGuard(`budget-source-operation:${activeTrip.id}`,useMemo(()=>({isActive:Boolean(sourcePending),isDirty:Boolean(sourcePending),prepare:()=>props.sourceClient.prepare(),save:async()=>false,discard:async()=>false}),[sourcePending,props.sourceClient]));
-  services.useGuard(`budget-payment:${activeTrip.id}`, useMemo(() => ({ isActive: paymentBusy || paymentPending, isDirty: paymentBusy || paymentPending,
+  services.useGuard(`budget-source-operation:${activeTrip.id}`,{tripId:activeTrip.id,workspace:"budget"},useMemo(()=>({isActive:Boolean(sourcePending),isPending:Boolean(sourcePending),prepare:()=>props.sourceClient.prepare(),save:async()=>false,discard:async()=>false}),[sourcePending,props.sourceClient]));
+  services.useGuard(`budget-payment:${activeTrip.id}`, { tripId: activeTrip.id, workspace: "budget" }, useMemo(() => ({ isActive: paymentBusy || paymentPending, isPending: paymentBusy || paymentPending,
     prepare: () => props.metadataRequested ? props.paymentClient.prepare() : false,
     save: async () => false, discard: async () => false }), [paymentBusy, paymentPending, props.paymentClient, props.metadataRequested]));
   useEffect(() => { setPaymentError(""); }, [selected?.id, activeTrip.id]);
@@ -598,8 +599,8 @@ export default function BudgetWorkspace(incoming) {
     const scope = workspaceScope.current;
     panelTransition.current = true;
     try {
-        if((props.receiptPending||props.ratesPending||props.lifecyclePending)&&next!==panel&&!(await services.handoff({tripId:activeTrip.id})))return;
-      if (next !== "edit" && props.metadataRequested && !activeEditor && panel === "edit" && !(await services.handoff({ tripId: activeTrip.id }))) return;
+        if((props.receiptPending||props.ratesPending||props.lifecyclePending)&&next!==panel&&!(await services.handoff({tripId:activeTrip.id,workspace:"budget"})))return;
+      if (next !== "edit" && props.metadataRequested && !activeEditor && panel === "edit" && !(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return;
       if (next !== "edit" && activeEditor && !(await activeEditor.close(false, { sidebar: true }))) return;
       if (scope !== workspaceScope.current) return;
       panelChosen.current = true; setPanel(next);
@@ -615,14 +616,14 @@ export default function BudgetWorkspace(incoming) {
     if (event?.detail > 1) return;
     const same = selected?.id === row.id;
     if (same && (panel !== "edit" || activeEditor?.context?.id === row.id || props.metadataRequested && !activeEditor)) {
-      if (!(await services.handoff({ tripId: activeTrip.id }))) return;
+      if (!(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return;
       if (activeEditor && !(await activeEditor.close(true))) return;
       setSelected(null); return;
     }
     if (panel === "edit") {
-      if (props.metadataRequested && !activeEditor) { if (!(await services.handoff({ tripId: activeTrip.id }))) return; }
+      if (props.metadataRequested && !activeEditor) { if (!(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return; }
       else if (!(await (actual ? actualEditor : budgetEditor).open(row))) return;
-    } else if (activeEditor?.context?.id !== row.id && !(await services.handoff({ tripId: activeTrip.id }))) return;
+    } else if (activeEditor?.context?.id !== row.id && !(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return;
     setSelected({ kind: actual ? "actual" : "budget", id: row.id });
     if (!panelChosen.current && panel !== "edit") setPanel("detail");
 
@@ -630,18 +631,18 @@ export default function BudgetWorkspace(incoming) {
   const visibleCategories = categories.filter((value) => displayRows.some((row) => row.category === value));
   const allCollapsed = visibleCategories.length > 0 && visibleCategories.every((value) => collapsedCategories.includes(value));
   async function toggleCategories(values, collapse) {
-    if (collapse && !(await services.handoff({ tripId: activeTrip.id }))) return;
+    if (collapse && !(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return;
     setCollapsedCategories((current) => collapse ? [...new Set([...current, ...values])] : current.filter((value) => !values.includes(value)));
   }
   function cell(field, content) {
     return <button className={`bw-cell${field === "person" ? " bw-person" : ""}`} type="button" title="選取項目">{content}</button>;
   }
   async function changeView(next) {
-    if (!(await services.handoff({ tripId: activeTrip.id }))) return;
+    if (!(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return;
     setView(next); setSelected(null); setCategory(""); setQuery("");
   }
   async function add() {
-    if(props.lifecycleRequested){const scope=workspaceScope.current,kind=actual||compare?'actual':'budget';const pending=props.lifecycleClient.view('trip',activeTrip.id).active;if(!pending&&!(await services.handoff({tripId:activeTrip.id})))return;
+    if(props.lifecycleRequested){const scope=workspaceScope.current,kind=actual||compare?'actual':'budget';const pending=props.lifecycleClient.view('trip',activeTrip.id).active;if(!pending&&!(await services.handoff({tripId:activeTrip.id,workspace:"budget"})))return;
       const old=loadLatestDraftForEntity({entityType:kind==='actual'?'actual_expense':'budget_item',tripId:activeTrip.id,userId:props.currentUserId});if(!pending&&old?.entityId==='new'&&!await ask({title:'保留舊的本機草稿',message:'原草稿仍保留於本機，不會自動提交。繼續會建立一筆空白正式項目，原草稿不會刪除或匯入。',confirmLabel:'保留草稿並新增'}))return;
       const result=await props.lifecycleClient.create(activeTrip.id,kind);if(scope!==workspaceScope.current)return;if(result.ok){if(compare)setView('actual');setSelected({kind:result.kind,id:result.id});setPanel('edit');}return;}
     const editor = actual || compare ? actualEditor : budgetEditor;
@@ -649,7 +650,7 @@ export default function BudgetWorkspace(incoming) {
   }
   async function remove() {
     const pending=props.lifecycleRequested&&props.lifecycleClient.view(selected.kind,selectedRecord.id).active;
-    if (!pending&&!(await services.handoff({ tripId: activeTrip.id }))) return;
+    if (!pending&&!(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return;
     if (!await ask({ title: "刪除項目？", message: `刪除「${selectedRecord.title}」？此操作無法復原。`, confirmLabel: "刪除", danger: true })) return;
     const run = (leaseMeta = {}) => (selected.kind === "actual" ? props.onDeleteActual : props.onDelete)(selectedRecord.id, { baseUpdatedAt: selectedRecord.updated_at, tripId: activeTrip.id, ...leaseMeta });
     const result = props.lifecycleRequested?{ok:await(pending?props.lifecycleClient.retry(selected.kind,selectedRecord.id):props.lifecycleClient.remove(selected.kind,selectedRecord.id)),error:new Error(props.lifecycleClient.view(selected.kind,selectedRecord.id).error||'刪除未完成。')}:services.leaseProtocol && props.useEditLocks
@@ -658,7 +659,7 @@ export default function BudgetWorkspace(incoming) {
     setSelected(null);
   }
   async function togglePayment(paid) {
-    if (paymentBusyRef.current || !canEdit || !selectedRecord || !(await services.handoff({ tripId: activeTrip.id }))) return;
+    if (paymentBusyRef.current || !canEdit || !selectedRecord || !(await services.handoff({ tripId: activeTrip.id, workspace: "budget" }))) return;
     if (paymentBusyRef.current) return;
     paymentBusyRef.current = true; setPaymentBusy(true); setPaymentError("");
     try {
@@ -670,7 +671,7 @@ export default function BudgetWorkspace(incoming) {
     } finally { paymentBusyRef.current = false; setPaymentBusy(false); }
   }
   async function openActual(row) {
-    if(props.metadataRequested){const scope=workspaceScope.current;if(!(await services.handoff({tripId:activeTrip.id}))||scope!==workspaceScope.current)return;setSelected({kind:'actual',id:row.id});setPanel('edit');}
+    if(props.metadataRequested){const scope=workspaceScope.current;if(!(await services.handoff({tripId:activeTrip.id,workspace:"budget"}))||scope!==workspaceScope.current)return;setSelected({kind:'actual',id:row.id});setPanel('edit');}
     else if(await actualEditor.open(row)){setSelected({kind:'actual',id:row.id});setPanel('edit');}
   }
   function renderBudgetAttachments(budget) {
@@ -693,8 +694,8 @@ export default function BudgetWorkspace(incoming) {
   const metadataEditor = props.metadataRequested && !activeEditor && selectedRecord ? props.metadataClient ? <BudgetMetadataEditor
     key={`${props.currentUserId}:${activeTrip.id}:${selected.kind}:${selected.id}`} client={props.metadataClient} sourceClient={props.sourceClient} record={selectedRecord}
     kind={selected.kind} members={members} services={services} items={items} categoryOptions={categoryOrder} ItineraryPicker={ItineraryPicker}
-    onClose={async () => { const scope = workspaceScope.current; if (await services.handoff({ tripId: activeTrip.id }) && scope === workspaceScope.current) finishEditor(selected.kind, selected.id); }}
-    onLegacy={async () => { const scope = workspaceScope.current; if (!(await services.handoff({ tripId: activeTrip.id })) || scope !== workspaceScope.current) return;
+    onClose={async () => { const scope = workspaceScope.current; if (await services.handoff({ tripId: activeTrip.id, workspace: "budget" }) && scope === workspaceScope.current) finishEditor(selected.kind, selected.id); }}
+    onLegacy={async () => { const scope = workspaceScope.current; if (!(await services.handoff({ tripId: activeTrip.id, workspace: "budget" })) || scope !== workspaceScope.current) return;
       if (!(await props.metadataClient.refresh()).ok || scope !== workspaceScope.current) return;
       const graph = props.metadataClient.status().snapshot;
       const canonical = graph?.[selected.kind === "actual" ? "actualExpenses" : "budgetItems"]?.find(row => row.id === selected.id);

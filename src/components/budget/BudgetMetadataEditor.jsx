@@ -43,11 +43,13 @@ export default function BudgetMetadataEditor({ client, sourceClient, record, kin
   // Actual retains its existing form for fields outside this planning scope.
   const needsFullEditor = kind === "actual" || ["title", "note", "category", "payer", "links", "pricing"].some(key => !views.some(g => g.group === key && g.supported));
   const { verified, editable } = client.status();
-  const hasDraft = views.some(g => g.dirty || g.request || g.saving);
   const saveAll = () => client.saveAll(kind, record.id);
   const discardAll = async () => { for (const g of fields) if (!(await client.discard(g))) return false; return true; };
-  services.useGuard(`budget-metadata:${kind}:${record.id}:${record.trip_id}`, useMemo(() => ({ isActive: true,
-    isDirty: hasDraft, prepare: () => client.prepare(kind, record.id), finish: () => client.finish(kind, record.id), save: saveAll, discard: discardAll }), [client, record.id, kind, version, hasDraft]));
+  services.useGuard(`budget-metadata:${kind}:${record.id}:${record.trip_id}`, { tripId: record.trip_id, workspace: "budget" },
+    useMemo(() => ({ isActive: true, cleanupInWorkspaceOnly: true,
+      isDirty: views.some(g => g.dirty), isPending: views.some(g => g.request || g.saving),
+      needsHandoff: fields.some(g => g.token || g.acquiring || g.releasing),
+      prepare: () => client.prepare(kind, record.id), finish: () => client.finish(kind, record.id), save: saveAll, discard: discardAll }), [client, record.id, kind, version]));
   useEffect(() => {
     return () => { void client.close(kind, record.id); };
   }, [client, record.id, kind]);

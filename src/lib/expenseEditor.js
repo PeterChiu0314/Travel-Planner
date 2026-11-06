@@ -165,6 +165,12 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
  const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,focus,input,save,release,finish,discard,
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
+  guardState(){
+   const activeFields=[...fields.values()];
+   return {isDirty:draftDirty()||activeFields.some(g=>!g.local&&dirty(g)),
+    isPending:Boolean(pendingCreate)||activeFields.some(g=>g.request||g.saving),
+    needsHandoff:Boolean(localDraft)||activeFields.some(g=>g.token||g.acquiring||g.releasing)};
+  },
   saveStatus(id){
    const relevant=[...fields.values()].filter(g=>g.id===id);
    if(relevant.some(g=>g.request&&g.error)||pendingCreate&&localDraft?.id===id)return '儲存結果待確認';

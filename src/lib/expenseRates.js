@@ -23,5 +23,6 @@ export function createExpenseRates({service,actor,trip,sessionId,getGraph,refres
   pending={...cleanup,p_value:{quote:external,previous:graph.rates,targets:graph.rateState.targets,...(initialize?{initialize:true}:{})},p_request_id:crypto.randomUUID()};persist();return await retry();
  }catch(error){onError(error);return false;}finally{busy=false;emit();}}
  return{subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,status:()=>({busy:busy||Boolean(work),pending:Boolean(pending||cleanup)}),update,retry,
+  guardState:()=>({isPending:busy||Boolean(pending),needsHandoff:Boolean(cleanup)}),
   async finish(){if(busy)return false;return retry();},attach(){const n=++generation;return()=>queueMicrotask(()=>{if(n===generation){closed=true;listeners.clear();persist();if(cleanup&&!pending)void release();}});}};
 }

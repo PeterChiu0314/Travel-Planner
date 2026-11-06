@@ -24,7 +24,7 @@ export default function BudgetSourceEditor({client,metadata,record,members,servi
  const pending=busy||state.active;
  useBudgetFailureToast(error||(!/其他成員|正在編輯/.test(state.error||'')?state.error:''));
  useEffect(()=>{const timer=setInterval(()=>{const next=client.view('actual',record.id),generation=current.current;if(next.active&&!next.busy)void client.retry('actual',record.id).then(ok=>{if(ok&&generation===current.current)setEdited(false);});},5000);return()=>clearInterval(timer);},[client,record.id]);
- services.useGuard(`budget-source:${record.id}:${record.trip_id}`,useMemo(()=>({isActive:edited||pending,isDirty:edited||pending,
+ services.useGuard(`budget-source:${record.id}:${record.trip_id}`,{tripId:record.trip_id,workspace:"budget"},useMemo(()=>({isActive:edited||pending,isDirty:edited,isPending:pending,
   prepare:async()=>!edited&&!busy&&await client.prepare(),save:async()=>false,discard:async()=>{if(busy||client.hasPending())return false;setEdited(false);setSelection(source?.value.budget_id||'');return true;}}),[edited,pending,busy,client,source?.value.budget_id]));
  const enabled=metadata.status().editable&&metadata.status().verified&&snapshot?.sourceProtocol?.enabled&&source?.supported;
  const owner=source?.held&&!source.own_session?memberLabel(members.find(m=>m.user_id===source.owner_id)):null;

@@ -3,7 +3,7 @@ import { createBudgetSourceController, createBudgetSourceService } from './lib/b
 import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
 import {expenseModels,expenseFinancialSnapshot,expenseTimelineCosts} from './lib/expenseSnapshot.js';
 import {createDemoExpenseService} from './demo/expenseService.js';
-import {budgetReceiptsEnabled,budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
+import {budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import {budgetFinanceGroupsEnabled,createBudgetRatesController,createBudgetRatesService} from './lib/budgetFinanceGroups.js';
 import {budgetLifecycleEnabled,isBudgetComplete} from './lib/budgetLifecycleValues.js';
 import {createBudgetLifecycleController,createBudgetLifecycleService} from './lib/budgetLifecycleGroups.js';
@@ -32,7 +32,7 @@ import { createBudgetEditLeaseClient } from "./lib/budgetEditLeases.js";
 import { collaboratorColors as timelineCardSelectionColors } from "./lib/collaboratorColors.js";
 import { createBudgetCollaboration, primaryBudgetCollaborators } from "./lib/budgetCollaboration.js";
 import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./lib/budgetMetadataConfig.js";
-import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata, budgetAuthorityTimeoutMs } from "./lib/budgetMetadataService.js";
+import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata, budgetAuthorityTimeoutMs, withBudgetAuthorityTimeout } from "./lib/budgetMetadataService.js";
 import { createDemoBudgetMetadataService } from "./demo/budgetMetadata.js";
 import { demoBudgetQuote, fetchBudgetQuote } from "./lib/tripBudgetRates.js";
 import { demoBudgetMembers } from "./demo/budgetFixtures.js";
@@ -540,36 +540,39 @@ function notifyActiveEditorListeners() {
   activeEditorListeners.forEach((listener) => listener());
 }
 
-function registerActiveEditorGuard(id, guard) {
-  activeEditorGuards.set(id, guard);
+function registerActiveEditorGuard(key, guard) {
+  activeEditorGuards.set(key, guard);
   notifyActiveEditorListeners();
   return () => {
-    activeEditorGuards.delete(id);
+    activeEditorGuards.delete(key);
     notifyActiveEditorListeners();
   };
 }
 
-function activeEditorGuardTripId(id) {
-  const separatorIndex = id.lastIndexOf(":");
-  return separatorIndex >= 0 ? id.slice(separatorIndex + 1) : null;
+function subscribeToActiveEditors(listener) {
+  activeEditorListeners.add(listener);
+  return () => activeEditorListeners.delete(listener);
 }
 
-function getActiveEditorGuardEntries({ excludeId, excludeIds = [], tripId } = {}) {
-  return [...activeEditorGuards.entries()].filter(([id]) => {
-    if (excludeId && id === excludeId || excludeIds.includes(id)) return false;
-    if (tripId && activeEditorGuardTripId(id) !== tripId) return false;
+function getActiveEditorGuardEntries(options) {
+  const { excludeId, excludeIds = [], onlyId, tripId } = options ?? {};
+  return [...activeEditorGuards.entries()].filter(([, guard]) => {
+    if (options && (!tripId || guard.tripId !== tripId)) return false;
+    if (onlyId && guard.id !== onlyId) return false;
+    if (guard.id === excludeId || excludeIds.includes(guard.id)) return false;
     return true;
   });
+}
+
+function hasUnresolvedEdit(guard) {
+  const { isDirty, isPending } = guard.readState?.() ?? guard;
+  return Boolean(isDirty || isPending);
 }
 
 function getDirtyActiveEditorGuards(options) {
   return getActiveEditorGuardEntries(options)
     .map(([, guard]) => guard)
-    .filter((guard) => guard.isDirty);
-}
-
-function hasActiveEditorGuard(options) {
-  return getActiveEditorGuardEntries(options).length > 0;
+    .filter(hasUnresolvedEdit);
 }
 
 function showActiveEditorPrompt() {
@@ -580,44 +583,50 @@ function showActiveEditorPrompt() {
   });
 }
 
-async function requestActiveEditorGuardResolution(options) {
+async function resolveActiveEditorGuards(options, resolved) {
+  if (activeEditorPromptResolve) return false;
   // Narrow autosave editors flush valid work before asking how to keep a draft.
-  const prepared = new Set();
-  for (const [id, guard] of getActiveEditorGuardEntries(options)) {
-    if (guard.prepare && await guard.prepare()) prepared.add(id);
+  for (const [key, guard] of getActiveEditorGuardEntries(options)) {
+    if (hasUnresolvedEdit(guard) && guard.prepare && await guard.prepare()) resolved.add(key);
   }
-  const dirtyGuards = getActiveEditorGuardEntries(options).filter(([id, guard]) => guard.isDirty && !prepared.has(id)).map(([, guard]) => guard);
-  if (!dirtyGuards.length) return true;
+  const unresolved = ([key, guard]) => (!resolved.has(key) || guard.readState) && hasUnresolvedEdit(guard);
+  const dirtyKeys = new Set(getActiveEditorGuardEntries(options).filter(unresolved).map(([key]) => key));
+  if (!dirtyKeys.size) return true;
   const choice = await showActiveEditorPrompt();
   if (!choice) return false;
-  for (const guard of dirtyGuards) {
+  for (const [key, guard] of getActiveEditorGuardEntries(options).filter(unresolved)) {
+    if (!dirtyKeys.has(key)) return false;
     const ok = choice === "save" ? await guard.save() : await guard.discard();
     if (ok === false) return false;
+    resolved.add(key);
   }
-  return true;
+  return !getActiveEditorGuardEntries(options).some(unresolved);
+}
+
+function requestActiveEditorGuardResolution(options) {
+  return resolveActiveEditorGuards(options, new Set());
 }
 
 async function requestActiveEditorHandoff(options) {
-  const activeEntries = getActiveEditorGuardEntries(options);
-  if (!activeEntries.length) return true;
-  const dirtyEntries = activeEntries.filter(([, guard]) => guard.isDirty);
-  if (dirtyEntries.length) {
-    const canContinue = await requestActiveEditorGuardResolution(options);
-    if (!canContinue) return false;
-  }
-  const cleanEntries = getActiveEditorGuardEntries(options).filter(([, guard]) => guard.prepare || !guard.isDirty);
-  for (const [, guard] of cleanEntries) {
+  const resolved = new Set();
+  if (!await resolveActiveEditorGuards(options, resolved)) return false;
+  for (const [key, guard] of getActiveEditorGuardEntries(options)) {
+    const wasResolved = resolved.has(key);
+    if (wasResolved ? !guard.finish || guard.prepareFinishes : hasUnresolvedEdit(guard)) continue;
+    const { needsHandoff } = guard.readState?.() ?? guard;
+    if (!needsHandoff || guard.cleanupInWorkspaceOnly && options?.workspace !== guard.workspace) continue;
     const ok = await (guard.finish ? guard.finish() : guard.discard());
     if (ok === false) return false;
   }
-  return true;
+  return !getActiveEditorGuardEntries(options).some(([key, guard]) => (!resolved.has(key) || guard.readState) && hasUnresolvedEdit(guard));
 }
 
-function useActiveEditorGuard(id, guard) {
-  useEffect(() => {
-    if (!guard.isActive) return undefined;
-    return registerActiveEditorGuard(id, guard);
-  }, [id, guard]);
+function useActiveEditorGuard(id, { tripId, workspace }, guard) {
+  const key = useRef(Symbol());
+  useLayoutEffect(() => {
+    if (!guard.isActive || !tripId) return undefined;
+    return registerActiveEditorGuard(key.current, { ...guard, id, tripId, workspace });
+  }, [id, tripId, workspace, guard]);
 }
 
 export function ActiveEditorGuardDialog() {
@@ -625,8 +634,7 @@ export function ActiveEditorGuardDialog() {
 
   useEffect(() => {
     const listener = () => setIsOpen(Boolean(activeEditorPromptResolve));
-    activeEditorListeners.add(listener);
-    return () => activeEditorListeners.delete(listener);
+    return subscribeToActiveEditors(listener);
   }, []);
 
   useEffect(() => {
@@ -2390,9 +2398,20 @@ export default function App() {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState("");
   const [activeSection, setActiveSection] = useState("today");
-  async function receiptSafeSection(section){
-    if(budgetMetadataEnabled&&(budgetReceiptsEnabled||budgetFinanceGroupsEnabled||budgetLifecycleEnabled)&&getActiveEditorGuardEntries({tripId:activeTripId}).some(([id,g])=>(id.startsWith('budget-receipts:')||id.startsWith('budget-finance-rates:')||id.startsWith('budget-lifecycle:'))&&g.isDirty)&&!await requestActiveEditorHandoff({tripId:activeTripId}))return;
-    setActiveSection(section);
+  const navigationPending = useRef(false);
+  async function navigateWithEditorHandoff(action) {
+    if (navigationPending.current) return false;
+    navigationPending.current = true;
+    try {
+      if (!await requestActiveEditorHandoff({ tripId: activeTripId }) || !requestGuard.sameContext(tripDataContext)) return false;
+      action();
+      return true;
+    } finally {
+      navigationPending.current = false;
+    }
+  }
+  async function changeTripSection(section) {
+    return section === activeSection || navigateWithEditorHandoff(() => setActiveSection(section));
   }
   const [luggageTab, setLuggageTab] = useState("personal");
   const routeOverrideCoordinateSnapshotRef = useRef(new Map());
@@ -2616,19 +2635,15 @@ export default function App() {
     return byDay;
   }, [activeUserId, remoteTripPresences]);
 
-  const navigateToTripPresence = useCallback(
-    (presence) => {
-      if (!presence || presence.sessionId === timelineDragPresenceSessionIdRef.current || presence.userId === activeUserId) return;
-      const section = tripPresencePageToSection[presence.pageKey];
-      tripPresenceDebug("avatar click navigation", { payload: tripPresenceDebugPayload(presence), section });
-      if (!section) return;
-      setActiveSection(section);
-      if (presence.pageKey === "timeline" && Number.isInteger(Number(presence.dayIndex))) {
-        setActiveDay(Number(presence.dayIndex));
-      }
-    },
-    [activeUserId],
-  );
+  async function navigateToTripPresence(presence) {
+    if (!presence || presence.sessionId === timelineDragPresenceSessionIdRef.current || presence.userId === activeUserId) return;
+    const section = tripPresencePageToSection[presence.pageKey];
+    tripPresenceDebug("avatar click navigation", { payload: tripPresenceDebugPayload(presence), section });
+    if (!section || !await changeTripSection(section)) return;
+    if (presence.pageKey === "timeline" && Number.isInteger(Number(presence.dayIndex))) {
+      setActiveDay(Number(presence.dayIndex));
+    }
+  }
 
   useEffect(() => {
     setIsAccountMenuOpen(false);
@@ -4805,6 +4820,7 @@ export default function App() {
 
   async function createTrip(event) {
     event.preventDefault();
+    if (!await requestActiveEditorHandoff({ tripId: activeTripId }) || !requestGuard.sameContext(tripDataContext)) return;
     const user = session.user;
     const safeEndDate =
       tripForm.end_date < tripForm.start_date ? tripForm.start_date : tripForm.end_date;
@@ -6063,6 +6079,20 @@ export default function App() {
     if (!timelineSchedulePlan?.ok || !timelineScheduleOperation) {
       return { ok: false, errorMessage: "目前無法安全重新排程，請重新整理後再試。" };
     }
+    const movedSlots = slotItemIds.filter((id, index) => id !== packageSourceItemIds[index]);
+    if (budgetMetadataEnabled && movedSlots.length) {
+      // The current RPC swaps package content on stable slot IDs. It only
+      // remaps legacy budget links, so refuse swaps that would mislabel a native expense.
+      const snapshot = await withBudgetAuthorityTimeout(readBudgetSnapshot(supabase, activeTrip.id));
+      if (!requestGuard.sameContext(tripDataContext)) return { ok: false };
+      if (snapshot.error) return { ok: false, errorMessage: "目前無法確認行程的支出關聯，請稍後再試。" };
+      if (snapshot.data.expenseGraph?.links.some(link => movedSlots.includes(link.itinerary_item_id))) {
+        return { ok: false, errorMessage: "要移動的行程已關聯支出，目前無法安全交換時段。" };
+      }
+      if (getDirtyActiveEditorGuards({ tripId: activeTrip.id }).length) {
+        return { ok: false, errorMessage: "請先儲存或放棄目前編輯，再重排行程。" };
+      }
+    }
     return applyTimelineScheduleOperation({
       confirmedMajorEffect: confirmedScheduleEffect,
       dayIndex,
@@ -6251,13 +6281,12 @@ export default function App() {
   }
 
   async function selectTrip(nextTripId) {
-    if (nextTripId === activeTripId) return;
-    const canContinue = await requestActiveEditorGuardResolution();
-    if (canContinue) {
-      const nextTrip = trips.find((trip) => trip.id === nextTripId);
+    const nextTrip = trips.find((trip) => trip.id === nextTripId);
+    if (!nextTrip || nextTripId === activeTripId) return;
+    await navigateWithEditorHandoff(() => {
       setActiveDay(tripTodayIndex(nextTrip));
       setActiveTripId(nextTripId);
-    }
+    });
   }
 
   if (isDemoMode) {
@@ -6311,7 +6340,7 @@ export default function App() {
                 setIsSidebarCollapsed(false);
                 return;
               }
-              setActiveSection("today");
+              void changeTripSection("today");
             }}
           >
             <span className="brand-logo-text">TP</span>
@@ -6343,7 +6372,7 @@ export default function App() {
                 title={item.label}
                 aria-label={item.label}
                 aria-current={activeSection === item.id ? "page" : undefined}
-                onClick={() => void receiptSafeSection(item.id)}
+                onClick={() => void changeTripSection(item.id)}
               >
                 <span className="section-nav-icon" aria-hidden="true">
                   <Icon size={15} strokeWidth={2.2} />
@@ -6373,7 +6402,7 @@ export default function App() {
           isOpen={isAccountMenuOpen}
           name={userDisplayName}
           onClose={() => setIsAccountMenuOpen(false)}
-          onSettings={() => setActiveSection("settings")}
+          onSettings={() => void changeTripSection("settings")}
           onSignOut={signOut}
           onToggle={() => setIsAccountMenuOpen((value) => !value)}
           onVersion={() => setIsVersionDialogOpen(true)}
@@ -6500,7 +6529,7 @@ export default function App() {
             onReorderLuggage={reorderTripLuggage}
             onSaveTodo={saveTodo}
             onLuggageTabChange={setLuggageTab}
-            onSectionChange={receiptSafeSection}
+            onSectionChange={changeTripSection}
             onToggleLuggageItem={toggleLuggageItem}
             onToggleTodo={toggleTodo}
             onTogglePackItem={togglePackItem}
@@ -6518,7 +6547,7 @@ export default function App() {
             className={`bottom-nav-button${activeSection === item.id ? " active" : ""}`}
             key={item.id}
             type="button"
-            onClick={() => void receiptSafeSection(item.id)}
+            onClick={() => void changeTripSection(item.id)}
           >
             {item.label}
           </button>
@@ -8496,14 +8525,14 @@ function DemoApp({ initialSection }) {
 
   async function changeSection(section) {
     if (section === activeSection) return;
-    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id, workspace: activeSection }))) return;
     setActiveSection(section);
     window.history.pushState({}, "", `/demo/${section}`);
   }
 
   async function changeDemoTrip(tripId) {
     const nextTrip = demoTrips.find((trip) => trip.id === tripId);
-    if (!nextTrip || tripId === demoActiveTrip.id || !(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
+    if (!nextTrip || tripId === demoActiveTrip.id || !(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id, workspace: activeSection }))) return;
     setActiveDay(tripTodayIndex(nextTrip));
     setFocusedItemId(null);
     setDemoScenario("live");
@@ -8511,12 +8540,12 @@ function DemoApp({ initialSection }) {
   }
 
   async function changeDemoScenario(scenario) {
-    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id, workspace: "budget" }))) return;
     setDemoScenario(scenario);
   }
 
   async function resetDemoBudget() {
-    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id, workspace: "budget" }))) return;
     if (!await askDemo({ title: "重設 Demo 預算？", message: "將重設這個旅程的 Demo 預算、實付與附件。", confirmLabel: "重設", danger: true })) return;
     const service=createDemoExpenseService({trip:demoActiveTrip,members:demoMembers,getItems:()=>demoExpenseItems.current.filter(item=>item.trip_id===demoActiveTrip.id)});
     setDemoExpenseServices(current=>({...current,[demoActiveTrip.id]:service}));
@@ -8525,7 +8554,7 @@ function DemoApp({ initialSection }) {
   }
 
   async function returnToLogin() {
-    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id, workspace: activeSection }))) return;
     window.location.assign("/");
   }
 
@@ -9626,9 +9655,8 @@ function TripWorkspace(props) {
           packItems={packItems}
           trip={activeTrip}
           onGoBudget={() => onSectionChange("budget")}
-          onGoTimeline={() => {
-            selectTimelineDay(todayDayIndex);
-            onSectionChange("timeline");
+          onGoTimeline={async () => {
+            if (await onSectionChange("timeline")) selectTimelineDay(todayDayIndex);
           }}
         />
       ) : null}
@@ -10374,12 +10402,13 @@ function ItineraryTimeline({
       discard: () => closeEditor(true),
       isActive: isOpen,
       isDirty: hasUnsavedChanges,
+      needsHandoff: true,
       save: () => saveCurrentEditor(),
     }),
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, { tripId: editorTripId || activeTrip?.id, workspace: "timeline" }, activeEditorGuard);
 
   useEffect(() => {
     setExpandedId(null);
@@ -10389,8 +10418,11 @@ function ItineraryTimeline({
     setExpandedId((current) => (current && current !== focusedItemId ? null : current));
   }, [focusedItemId]);
 
-  const hasBlockingTimelineEditor =
-    isOpen || hasActiveEditorGuard({ excludeId: activeEditorGuardId, tripId: activeTrip?.id });
+  const hasDirtyTimelineHandoff = useCallback(() => getDirtyActiveEditorGuards({
+    excludeId: activeEditorGuardId, tripId: activeTrip?.id,
+  }).length > 0, [activeEditorGuardId, activeTrip?.id]);
+  const hasUnresolvedTimelineHandoff = useSyncExternalStore(subscribeToActiveEditors, hasDirtyTimelineHandoff);
+  const hasBlockingTimelineEditor = isOpen || hasUnresolvedTimelineHandoff;
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -10464,7 +10496,7 @@ function ItineraryTimeline({
   function canTargetDraggedVisit(item, sourceId = draggedVisitId) {
     const source = dayItems.find((candidate) => candidate.id === sourceId);
     if (!source || source.id === item?.id || isTransportationCard(item)) return false;
-    return isUntimedVisit(source) ? true : canDragReorderVisit(source);
+    return canDragVisit(source);
   }
 
   function sortableDropIntent(sourceItemId, targetItemId) {
@@ -10507,7 +10539,7 @@ function ItineraryTimeline({
 
   function handleSortableDragStart(event) {
     const sourceItem = dayItems.find((item) => item.id === event.active.id);
-    if (!sourceItem || !canDragVisit(sourceItem)) return;
+    if (!sourceItem || !canDragVisit(sourceItem) || hasDirtyTimelineHandoff()) return;
     if (typeof onClearCardSelection === "function") onClearCardSelection();
     const sourceRect = event.active.rect.current.initial;
     setDragOverlaySize(
@@ -10619,6 +10651,11 @@ function ItineraryTimeline({
   }
 
   async function commitVisitDrop(sourceItemId, targetItem, placement) {
+    if (isOpen || hasDirtyTimelineHandoff()) {
+      setFixedNotice("請先儲存或放棄目前編輯，再重排行程。");
+      clearVisitDrag("commit-editor-blocked");
+      return;
+    }
     if (!sourceItemId || sourceItemId === targetItem.id) {
       clearVisitDrag("commit-noop");
       return;
@@ -10791,6 +10828,10 @@ function ItineraryTimeline({
 
   async function confirmMoveReorder() {
     if (!reorderPreview) return;
+    if (isOpen || hasDirtyTimelineHandoff()) {
+      setFixedNotice("請先儲存或放棄目前編輯，再重排行程。");
+      return;
+    }
     if (foreignSameDayDragActive) {
       setFixedNotice(foreignDragSaveBlockedMessage);
       return;
@@ -10911,7 +10952,7 @@ function ItineraryTimeline({
     });
     if (!canOpenEditor) return;
     if (isOpen) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeEditor(true);
     }
@@ -10945,7 +10986,7 @@ function ItineraryTimeline({
     });
     if (!canOpenEditor) return;
     if (isOpen) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeEditor(true);
     }
@@ -10997,7 +11038,7 @@ function ItineraryTimeline({
     });
     if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeEditor(true);
     }
@@ -13245,12 +13286,12 @@ function LegacyBudgetPanel(props) {
   const metadataActive = props.useEditLocks === false || workspaceActive && props.activeTrip.membership?.status === "approved";
   if(budgetMetadataEnabled&&budgetFinanceGroupsEnabled)rates.view('trip',props.activeTrip.id);
   const ratesPending=budgetMetadataEnabled&&budgetFinanceGroupsEnabled&&rates.hasPending();
-  services.useGuard(`budget-finance-rates:${props.activeTrip.id}`,useMemo(()=>({isActive:ratesPending,isDirty:ratesPending,prepare:()=>rates.prepare(),finish:()=>rates.prepare(),save:async()=>false,discard:async()=>false}),[ratesPending,rates]));
+  services.useGuard(`budget-finance-rates:${props.activeTrip.id}`,{tripId:props.activeTrip.id,workspace:"budget"},useMemo(()=>({isActive:ratesPending,isPending:ratesPending,prepare:()=>rates.prepare(),save:async()=>false,discard:async()=>false}),[ratesPending,rates]));
   useEffect(()=>{rates.configure(props.currentUserId,props.activeTrip.id,budgetMetadataEnabled&&budgetFinanceGroupsEnabled&&metadataActive&&props.canEdit);},[rates,props.currentUserId,props.activeTrip.id,metadataActive,props.canEdit]);
   useEffect(()=>()=>{void rates.dispose();},[rates]);
   if(budgetMetadataEnabled&&budgetLifecycleEnabled){lifecycle.view('trip',props.activeTrip.id);for(const [kind,rows] of [['budget',props.budgetItems],['actual',props.actualExpenses]])for(const r of rows)lifecycle.view(kind,r.id);for(const r of metadata.status().snapshot?.lifecycleRecords||[])if(r.kind!=='trip')lifecycle.view(r.kind,r.id);}
   const lifecyclePending=budgetMetadataEnabled&&budgetLifecycleEnabled&&lifecycle.hasPending();
-  services.useGuard(`budget-lifecycle:${props.activeTrip.id}`,useMemo(()=>({isActive:lifecyclePending,isDirty:lifecyclePending,prepare:()=>lifecycle.prepare(),finish:()=>lifecycle.prepare(),save:async()=>false,discard:async()=>false}),[lifecyclePending,lifecycle]));
+  services.useGuard(`budget-lifecycle:${props.activeTrip.id}`,{tripId:props.activeTrip.id,workspace:"budget"},useMemo(()=>({isActive:lifecyclePending,isPending:lifecyclePending,prepare:()=>lifecycle.prepare(),save:async()=>false,discard:async()=>false}),[lifecyclePending,lifecycle]));
   useEffect(()=>{lifecycle.configure(props.currentUserId,props.activeTrip.id,budgetMetadataEnabled&&budgetLifecycleEnabled&&metadataActive&&props.canEdit);},[lifecycle,props.currentUserId,props.activeTrip.id,metadataActive,props.canEdit]);
   useEffect(()=>()=>{void lifecycle.dispose();},[lifecycle]);
   useEffect(() => {
@@ -13555,12 +13596,13 @@ function AccommodationPanel({
       discard: () => closeAccommodationForm(true),
       isActive: isOpen,
       isDirty: hasUnsavedChanges,
+      needsHandoff: true,
       save: () => saveCurrentAccommodation(),
     }),
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, { tripId: editorTripId || activeTrip?.id || trip?.id, workspace: "accommodation" }, activeEditorGuard);
 
   useEffect(() => {
     const currentTripId = activeTrip?.id || trip?.id || null;
@@ -13604,7 +13646,7 @@ function AccommodationPanel({
     });
     if (!canOpenEditor) return;
     if (isOpen) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeAccommodationForm(true);
     }
@@ -13632,7 +13674,7 @@ function AccommodationPanel({
     });
     if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeAccommodationForm(true);
     }
@@ -14028,12 +14070,13 @@ function TodoPanel({
       discard: () => closeTodoForm(true),
       isActive: isOpen,
       isDirty: hasUnsavedChanges,
+      needsHandoff: true,
       save: () => saveCurrentTodo(),
     }),
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, { tripId: editorTripId || activeTrip?.id, workspace: "todo" }, activeEditorGuard);
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -14076,7 +14119,7 @@ function TodoPanel({
     });
     if (!canOpenEditor) return;
     if (isOpen) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeTodoForm(true);
     }
@@ -14099,7 +14142,7 @@ function TodoPanel({
     });
     if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeTodoForm(true);
     }
@@ -14296,12 +14339,13 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
       discard: () => closeGuideForm(true),
       isActive: isOpen,
       isDirty: hasUnsavedChanges,
+      needsHandoff: true,
       save: () => saveCurrentGuide(),
     }),
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(activeEditorGuardId, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, { tripId: editorTripId || activeTrip?.id, workspace: "todo" }, activeEditorGuard);
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -14342,7 +14386,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     });
     if (!canOpenEditor) return;
     if (isOpen) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeGuideForm(true);
     }
@@ -14364,7 +14408,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     });
     if (!canOpenEditor) return;
     if (isOpen && editingId !== item.id) {
-      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution() : true;
+      const canContinue = hasUnsavedChanges ? await requestActiveEditorGuardResolution({ tripId: editorTripId, onlyId: activeEditorGuardId }) : true;
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeGuideForm(true);
     }
@@ -14514,7 +14558,8 @@ function useLuggageQuickAdd({ shared, activeTrip, currentUserId, restoreDrafts, 
     return true;
   }
   const dirty = Boolean(draft.form.title.trim() || draft.form.notes?.trim());
-  useActiveEditorGuard(guardId, useMemo(() => ({ isActive: dirty, isDirty: dirty, save, discard }), [dirty, draft.form, canEdit, onSave, performMutation]));
+  useActiveEditorGuard(guardId, { tripId: activeTrip?.id, workspace: "luggage" },
+    useMemo(() => ({ isActive: dirty, isDirty: dirty, save, discard }), [dirty, draft.form, canEdit, onSave, performMutation]));
   async function submit(event) { event.preventDefault(); return save(); }
   return { draft, guardId, submit };
 }
@@ -14578,7 +14623,7 @@ export function LuggagePanel({
   const [editingSharedId, setEditingSharedId] = useState(null);
   const [personalUpdatedAt, setPersonalUpdatedAt] = useState(null);
   const [sharedUpdatedAt, setSharedUpdatedAt] = useState(null);
-  const previousTripIdRef = useRef(`${activeTrip?.id}:${currentUserId}`);
+  const previousTripIdRef = useRef({ tripId: activeTrip?.id, userId: currentUserId });
   const openingEditor = useRef(0);
   const personalDraft = useDraftAutosave({
     disabled: disableDraftAutosave,
@@ -14632,6 +14677,7 @@ export function LuggagePanel({
       discard: () => discardPersonalEdit(),
       isActive: Boolean(editingPersonalId),
       isDirty: Boolean(editingPersonalId && personalDirty),
+      needsHandoff: true,
       save: () => saveCurrentPersonal(),
     }),
     [personalForm, personalDirty, editingPersonalId, personalUpdatedAt],
@@ -14641,6 +14687,7 @@ export function LuggagePanel({
       discard: () => discardSharedEdit(),
       isActive: Boolean(editingSharedId),
       isDirty: Boolean(editingSharedId && sharedDirty),
+      needsHandoff: true,
       save: () => saveCurrentShared(),
     }),
     [sharedForm, sharedDirty, editingSharedId, sharedUpdatedAt],
@@ -14652,13 +14699,12 @@ export function LuggagePanel({
   useEffect(() => () => {
     if (useEditLocks && editingSharedId) void releaseEditLock({ recordId: editingSharedId, supabase, table: "shared_luggage_items", userId: currentUserId });
   }, [editingSharedId, currentUserId, useEditLocks]);
-  useActiveEditorGuard(personalEditorGuardId, personalEditorGuard);
-  useActiveEditorGuard(sharedEditorGuardId, sharedEditorGuard);
+  useActiveEditorGuard(personalEditorGuardId, { tripId: previousTripIdRef.current.tripId, workspace: "luggage" }, personalEditorGuard);
+  useActiveEditorGuard(sharedEditorGuardId, { tripId: previousTripIdRef.current.tripId, workspace: "luggage" }, sharedEditorGuard);
 
   useEffect(() => {
-    const previousTripId = previousTripIdRef.current;
-    const currentTripId = `${activeTrip?.id}:${currentUserId}`;
-    if (previousTripId === currentTripId) return;
+    const previous = previousTripIdRef.current;
+    if (previous.tripId === activeTrip?.id && previous.userId === currentUserId) return;
     if (useEditLocks && editingPersonalId) {
       void releaseEditLock({ recordId: editingPersonalId, supabase, table: "luggage_items", userId: currentUserId });
     }
@@ -14673,7 +14719,7 @@ export function LuggagePanel({
     setSharedUpdatedAt(null);
     setEditingPersonalId(null);
     setEditingSharedId(null);
-    previousTripIdRef.current = currentTripId;
+    previousTripIdRef.current = { tripId: activeTrip?.id, userId: currentUserId };
   }, [activeTrip?.id, currentUserId, editingPersonalId, editingSharedId, personalDraft, sharedDraft]);
 
   const restoredEditor = useRef(false);
