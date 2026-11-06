@@ -4973,7 +4973,7 @@ export default function App() {
       notify.error("Invalid trip date range");
       return { ok: false };
     }
-    if (hasActiveEditorGuard({ tripId: activeTrip.id })) {
+    if (getDirtyActiveEditorGuards({ tripId: activeTrip.id }).length) {
       const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
       notify.error(message);
       return { ok: false, dirtyDraft: true, message };

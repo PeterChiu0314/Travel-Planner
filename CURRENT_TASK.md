@@ -2,6 +2,10 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-06 — empty trip date guard fixed
+
+[Cause / fix / QA](docs/2026-11-06-empty-trip-date-guard.md). Date change incorrectly treated any registered guard as unsaved input; clean native ExpenseWorkspace/Rates register continuously. One-line change uses existing dirty guards only. Real drafts/unknown requests, persisted drafts, owner/settlement/date/shortening validation and transactional RPC remain. Before0 date RPC calls on empty trip; after exactly1 and dates refresh.12/12 Chromium, Build/diff Passed. Date RPC isolated fixture capture only, no Hosted date/DB/model/Production/main change; original-branch Preview delivery.
+
 ## Latest 2026-11-06 — peer-disabled controls and member display
 
 [Implementation / QA](docs/2026-11-06-peer-disabled-controls.md). Unchecked participant amounts blank; selected0 retained. Peer-owned groups use native disabled fieldset plus dimming, keeping outline/name; inputs cannot focus and menus cannot open. Existing portal closes on peer takeover. Idle native participant choices remain normal/enabled and acquire the existing lease before changing fresh form; owned autosave buffering retained.27 distinct Chromium cases Passed, affected final6/6, Build/diff Passed; idle/peer desktop screenshots inspected. No DB/model/controller/financial change; original-branch Preview only.
