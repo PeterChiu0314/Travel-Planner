@@ -297,3 +297,7 @@
 .bw-metadata-editor.is-planning .bw-modes button { font-size: 12px; }
 .bw-metadata-editor.is-planning .bw-modes button:first-of-type { border-radius: 5px 0 0 5px; }
 .bw-metadata-editor.is-planning .bw-modes button:last-of-type { border-radius: 0 5px 5px 0; }
+
+/* Peer authority alone disables and dims controls; idle lease acquisition stays neutral. */
+.bw-collaboration-controls { margin: 0; padding: 0; border: 0; min-width: 0; }
+.bw-collaboration-controls[data-user] > :not(label) { opacity: .55; }

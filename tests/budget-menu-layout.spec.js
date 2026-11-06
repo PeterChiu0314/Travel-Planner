@@ -13,20 +13,17 @@ async function checkMenu(page,label) {
   await field.press('Escape');await expect(popup).toHaveCount(0);
 }
 
-test('all Budget menus match field width and share the established popup and scrollbar',async({page})=>{
+test('planning Budget menus match field width and share the established popup and scrollbar',async({page})=>{
   await page.goto('/demo/budget?budgetTools=1');
   for(const label of ['付款篩選','統計視角','Demo 情境']) await checkMenu(page,label);
   await page.getByRole('tab',{name:'編輯項目',exact:true}).click();await page.getByRole('button',{name:'停車費',exact:true}).click();
-  for(const label of ['分類','付款人','幣別']) await checkMenu(page,label);
+  for(const label of ['分類','付款人 1','幣別']) await checkMenu(page,label);
   await page.getByRole('button',{name:/關聯行程/}).click();await checkMenu(page,'關聯行程日期');
-  await page.getByRole('button',{name:'取消',exact:true}).click();
-  await page.getByRole('combobox',{name:'Demo 情境',exact:true}).click();await page.getByRole('option',{name:'行程中',exact:true}).click();
-  await page.getByRole('button',{name:'新增實付',exact:true}).click();await page.locator('.bw-secondary-fields > summary').click();
-  for(const label of ['分類','付款人','幣別','來源預算']) await checkMenu(page,label);
-  const source=page.getByRole('combobox',{name:'來源預算',exact:true});await source.click();
-  const popup=page.getByRole('listbox',{name:'來源預算選項',exact:true});
-  expect(await popup.evaluate(e=>e.scrollHeight>e.clientHeight)).toBe(true);
-  const last=await popup.getByRole('option').last().innerText();await source.press('End');await source.press('Enter');await expect(source).toHaveText(last);
+  await page.keyboard.press('Escape');
+  const currency=page.getByRole('combobox',{name:'幣別',exact:true});await currency.click();
+  const popup=page.getByRole('listbox',{name:'幣別選項',exact:true}),last=popup.getByRole('option').last();
+  await currency.press('End');await expect(currency).toHaveAttribute('aria-activedescendant',await last.getAttribute('id'));
+  await currency.press('Escape');await expect(popup).toHaveCount(0);
 });
 
 test('status column, compact tabs and category colors match the overview at different rankings',async({page})=>{

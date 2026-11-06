@@ -17,7 +17,7 @@ export default function BudgetCollaborationFrame({ ownerId, ownerName, label, ch
     onMouseEnter={show} onMouseLeave={event => { if (!event.currentTarget.contains(document.activeElement)) setPosition(null); }}
     onFocusCapture={event => { show(event); onFocusCapture?.(event); }}
     onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPosition(null); onBlur?.(event); }}>
-    <div className="bw-collaboration-controls" data-user={ownerId || undefined} style={ownerId ? {'--bw-remote-color': collaboratorColor(ownerId)} : undefined}>{children}</div>
+    <fieldset disabled={Boolean(ownerId)} onClickCapture={event => { if (ownerId) event.preventDefault(); }} onKeyDownCapture={event => { if (ownerId && ["Enter", " "].includes(event.key)) event.preventDefault(); }} className="bw-collaboration-controls" data-user={ownerId || undefined} style={ownerId ? {'--bw-remote-color': collaboratorColor(ownerId)} : undefined}>{children}</fieldset>
     {ownerId ? createPortal(<div id={id} role="tooltip" className="bw-collaboration-tooltip" hidden={!position} style={position || { display: 'none' }}>
       <span><i style={{ background: collaboratorColor(ownerId) }} />{description}</span>
     </div>, document.body) : null}

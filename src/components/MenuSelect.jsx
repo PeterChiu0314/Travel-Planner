@@ -11,20 +11,21 @@ export default function MenuSelect({ label, value, options, onValueChange, edita
   const [filter, setFilter] = useState("");
   const shown = editable && filter ? options.filter((option) => option.label.toLowerCase().includes(filter.toLowerCase())) : options;
   const selected = options.find((option) => String(option.value) === String(value));
+  const isDisabled = () => disabled || Boolean(root.current?.closest("fieldset:disabled"));
   function show() {
-    if (disabled) return;
+    if (isDisabled()) return;
     setFilter("");
     setActive(Math.max(0, options.findIndex((option) => String(option.value) === String(value))));
     setOpen(true);
   }
   function choose(option) {
-    if (disabled || readOnly || !option || option.disabled) return;
+    if (isDisabled() || readOnly || !option || option.disabled) return;
     if (metadataPortal) onValueChange(option.value, { selected: true }); else onValueChange(option.value);
     setOpen(false); setFilter(""); control.current?.focus();
   }
   useLayoutEffect(() => {
-    if (disabled) setOpen(false);
-  }, [disabled]);
+    if (isDisabled()) setOpen(false);
+  });
   useLayoutEffect(() => {
     if (!open) return;
     function place() {
@@ -50,7 +51,7 @@ export default function MenuSelect({ label, value, options, onValueChange, edita
     if (open) menu.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: "nearest" });
   }, [open, active, position]);
   function keyDown(event) {
-    if (disabled || event.isComposing || event.nativeEvent?.isComposing || event.defaultPrevented) return;
+    if (isDisabled() || event.isComposing || event.nativeEvent?.isComposing || event.defaultPrevented) return;
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); return; }
     if (event.key === "Tab") { setOpen(false); return; }
     if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {

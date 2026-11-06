@@ -2,6 +2,10 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-06 — peer-disabled controls and member display
+
+[Implementation / QA](docs/2026-11-06-peer-disabled-controls.md). Unchecked participant amounts blank; selected0 retained. Peer-owned groups use native disabled fieldset plus dimming, keeping outline/name; inputs cannot focus and menus cannot open. Existing portal closes on peer takeover. Idle native participant choices remain normal/enabled and acquire the existing lease before changing fresh form; owned autosave buffering retained.27 distinct Chromium cases Passed, affected final6/6, Build/diff Passed; idle/peer desktop screenshots inspected. No DB/model/controller/financial change; original-branch Preview only.
+
 ## Latest 2026-11-06 — pending membership read admission and Toast
 
 [Cause / fix / validation](docs/2026-11-06-pending-membership-toast.md). Pending/unknown members no longer issue protected trip/Budget/luggage reads or activate native/legacy Budget metadata; clear private in-memory data and fence pre-change responses. Approval reloads automatically. Removed top banner and duplicate invite notice; existing Sonner info Toast uses stable account/trip ID and dismisses on approval/departure. Raw42501 technical copy localized; real error behavior retained.31 distinct Chromium cases Passed including permission transitions, late response, notification and Budget/luggage guards; Build/diff Passed. No DB/schema/membership/Production/main changes; original-branch Preview delivery.
