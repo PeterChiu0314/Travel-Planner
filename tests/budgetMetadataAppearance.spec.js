@@ -42,7 +42,8 @@ test('peer-held groups keep normal controls, share collaborator outlines and nam
   const frame=page.getByRole('group',{name:label,exact:true});
   await frame.locator('input:not(:disabled),textarea,button:not(:disabled)').first().focus();
   await expect(page.getByRole('tooltip').filter({hasText:`B 正在編輯${label}`})).toBeVisible();
-  await expect(frame.locator('.bw-collaboration-outline')).toHaveAttribute('data-user','B');
+  await expect(frame.locator('.bw-collaboration-controls')).toHaveAttribute('data-user','B');
+  await expect(frame.locator('.bw-collaboration-outline')).toHaveCount(0);
  }
  for(const [i,control] of fields.entries()){
   if(i===4)await expect(control).toHaveAttribute('readonly','');else await expect(control).toHaveAttribute('aria-readonly','true');

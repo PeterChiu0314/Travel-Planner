@@ -261,6 +261,10 @@
 .bw-filters > label input { height: 32px; min-height: 32px; }
 .bw-metadata-group { position: relative; display: grid; gap: 7px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .bw-metadata-group > label { font-size: 12px; color: var(--muted); }
+.bw-collaboration-controls { display: contents; }
+.bw-collaboration-controls > label { font-size: 12px; color: var(--muted); }
+.bw-collaboration-controls[data-user] :is(input:not([type=checkbox]):not([type=radio]), textarea, .menu-select-trigger, .menu-select-editable, .bw-modes button) { border-color: var(--bw-remote-color); outline: none; }
+.bw-collaboration-controls[data-user] :is(input[type=checkbox], input[type=radio]) { accent-color: var(--bw-remote-color); }
 /* Lease admission still gates these controls; an unclaimed group should look
    normal before focus. Do not restyle intentionally disabled computed totals
    or fixed historical currencies. */

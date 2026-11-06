@@ -44,7 +44,7 @@ test('temporary empty amount is only a draft; real failures toast once and recov
 test('two users see the existing collaborator color with hover/focus name, no field status or normal-contention Toast',async({page,context})=>{
  const db=fixture();await ready(page,db);await title(page).focus();await expect(title(page)).toBeEditable();const peer=await context.newPage();
  try{await ready(peer,db,'B');await title(peer).focus();await expect(title(peer)).not.toBeEditable();const frame=editor(peer).getByRole('group',{name:'項目名稱',exact:true});
-  await expect(frame.locator('.bw-collaboration-outline')).toHaveAttribute('style',new RegExp(collaboratorColor('A')));await expect(peer.getByRole('tooltip').filter({hasText:'A 正在編輯項目名稱'})).toBeVisible();
+  await expect(frame.locator('.bw-collaboration-controls')).toHaveAttribute('style',new RegExp(collaboratorColor('A')));await expect(frame.locator('.bw-collaboration-outline')).toHaveCount(0);await expect(peer.getByRole('tooltip').filter({hasText:'A 正在編輯項目名稱'})).toBeVisible();
   await frame.hover();await expect(peer.getByRole('tooltip').filter({hasText:'A 正在編輯項目名稱'})).toBeVisible();await expect(editor(peer).locator('.bw-metadata-status,.bw-metadata-actions,[role=alert]')).toHaveCount(0);await expect(peer.locator('[data-sonner-toast]')).toHaveCount(0);
   const note=editor(peer).getByRole('textbox',{name:'備註',exact:true});await note.focus();await expect(note).toBeEditable();await note.fill('Peer note');await expect.poll(()=>db.rows.budget_items[0].note).toBe('Peer note');expect(peer.qaErrors).toEqual([]);
   await peer.screenshot({path:test.info().outputPath('peer-outline.png')});
