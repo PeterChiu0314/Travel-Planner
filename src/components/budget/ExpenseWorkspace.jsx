@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
 import {ChartColumn,List,Pencil,Plus,Search} from 'lucide-react';
-import {createExpenseEditor} from '../../lib/expenseEditor.js';
+import {createExpenseEditor,expenseGroupsConflict} from '../../lib/expenseEditor.js';
 import {createExpenseService} from '../../lib/expenseTransport.js';
 import {getBudgetMetadataSessionId} from '../../lib/budgetMetadataConfig.js';
 import {expenseModels} from '../../lib/expenseSnapshot.js';
@@ -72,10 +72,10 @@ export default function ExpenseWorkspace(props){
  async function payment(){if(!await props.services.handoff({tripId:props.activeTrip.id}))return;const current=client.status().graph,model=expenseModels(current).find(i=>i.id===selected);if(!model)return;
   const ok=await client.execute(model.id,'payment',{action:model.payment_state==='paid'?'unpaid':'paid',paid_at:new Date().toISOString(),budget_revision:model.revisions.budget||0,paid_revision:model.revisions.paid||0,payer_revision:model.revisions.payer||0});if(!ok)void client.refresh();}
  async function remove(){if(!await props.services.handoff({tripId:props.activeTrip.id}))return;if(!await ask({title:'刪除支出項目？',message:'此項目將不再計入預算與結算。',confirmLabel:'刪除',danger:true}))return;if(await client.execute(item.id,'lifecycle',{action:'delete'})){setSelected(null);setPanel('stats');}}
- function frame(group,label,render){const field=client.get(item.id,group),v=client.view(field),owner=collaborators.find(e=>e.resource_id===item.id&&e.group_key===group&&e.mode==='edit')?.user_id||(v.remote?.held&&!v.remote.own_session?v.remote.owner:null);
+ function frame(group,label,render){const field=client.get(item.id,group),v=client.view(field),owner=collaborators.find(e=>e.kind==='expense'&&e.resource_id===item.id&&expenseGroupsConflict(group,e.group_key)&&e.mode==='edit')?.user_id||client.peerOwner(item.id,group);
   const locked=!editable||!v.editable||Boolean(owner);
   return <BudgetCollaborationFrame key={group} role="group" aria-label={label} tabIndex={0} label={label} ownerId={owner} ownerName={memberLabel(members.find(m=>m.user_id===owner))}
-   className={`${owner?'is-peer-held':locked?'is-unclaimed':''}${['budget','paid'].includes(group)?' bw-pricing-group':''}`} onPointerDownCapture={()=>{if(editable)void client.focus(field);}} onFocusCapture={()=>{if(editable)void client.focus(field);}}
+   className={`${owner?'is-peer-held':locked?'is-unclaimed':''}${['budget','paid'].includes(group)?' bw-pricing-group':''}`} onPointerDownCapture={()=>{if(editable&&!owner)void client.focus(field);}} onFocusCapture={()=>{if(editable)void client.focus(field);}}
    onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget)&&!e.relatedTarget?.closest('[data-budget-metadata-portal]'))client.blur(field);}}
    onCompositionStart={()=>{field.composing=true;}} onCompositionEnd={()=>{field.composing=false;client.input(field,field.value);}}>
    <label>{label}</label>{render({field,v,locked,canChooseMode:editable&&!owner&&state.verified&&!v.conflict&&!field.request&&!field.releasing,set:value=>client.input(field,value)})}
@@ -87,7 +87,7 @@ export default function ExpenseWorkspace(props){
  const select=id=>void handoff(()=>{setSelected(selected===id?null:id);if(!panelChosen.current&&panel!=='edit')setPanel('detail');});
  const close=()=>void handoff(()=>{setPanel('detail');if(!client.status().graph.items.some(i=>i.id===selected))setSelected(null);});
  const changePanel=key=>void handoff(()=>{panelChosen.current=true;setPanel(key);});
- const paymentDisabled=!editable||!item||item.payment_state!=='paid'&&(!item.title.trim()||item.payment_mode!=='self'&&!item.payer_id&&!item.payer_allocations?.length||!item.paid&&!item.budget);
+ const paymentDisabled=!editable||!item||Boolean(item&&(client.peerOwner(item.id,'payment')||collaborators.some(e=>e.kind==='expense'&&e.resource_id===item.id&&e.mode==='edit'&&expenseGroupsConflict('payment',e.group_key))))||item.payment_state!=='paid'&&(!item.title.trim()||item.payment_mode!=='self'&&!item.payer_id&&!item.payer_allocations?.length||!item.paid&&!item.budget);
  return <section className="budget-panel budget-workspace" aria-label="支出工作區">{dialog}
   <div className="bw-main"><div className="bw-toolbar">{!planning?<div className="bw-tabs" role="tablist" aria-label="費用資料檢視">{[['budget','預算'],['paid','實付']].map(([key,label])=><button type="button" role="tab" key={key} aria-selected={view===key} onClick={()=>void handoff(()=>setView(key))}>{label}</button>)}</div>:null}
    <div className="bw-filters"><label><Search size={15}/><input aria-label="搜尋項目" placeholder="搜尋項目" value={query} onChange={e=>setQuery(e.target.value)}/></label><MenuSelect label="付款篩選" value={paymentFilter} onValueChange={setPaymentFilter} options={[{value:'',label:'全部項目'},{value:'unpaid',label:'未付款'},{value:'paid',label:'已付款'}]}/><span>{displayRows.length} 筆</span></div><button type="button" className="primary-button compact bw-add" disabled={!editable} onClick={()=>void add()}><Plus size={15}/>新增項目</button></div>

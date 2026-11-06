@@ -2,6 +2,10 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-06 — #21 cross-group peer admission and snapshot deduplication
+
+[Review fix / measurement / validation](docs/2026-11-06-issue21-peer-admission-review.md). Existing budget/paid/payer/payment groups recognize same-item cross-group peer leases in UI/controller; same-session and independent fields remain available. Pending acquisition cannot accept input. Recent authoritative snapshots satisfy only duplicate timer reads; renewal and every5s pending recovery remain. Local22s two-account measure:8renew/10signal both versions, snapshots25 to18.25 distinct Node/SQL and21 Chromium Passed; Build/diff Passed. No DB/RPC/trigger changes; Ledger74 immutable. Hosted two-account/WebSocket acceptance pending Preview delivery; Production/main and issue state untouched.
+
 ## Latest 2026-11-06 — planning editor annotations applied
 
 Last-payer guard: advance mode disables removal when one payer remains and rechecks the current row count after lease acquisition, preventing stale/rapid clicks from leaving an invalid empty draft. Switch to self-pay to stop assigning payers. Existing payer regression coverage now asserts the last row is disabled;8/8 Chromium and Build/diff Passed. No data model/controller/SQL changes.
