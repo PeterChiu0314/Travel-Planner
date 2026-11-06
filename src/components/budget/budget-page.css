@@ -293,3 +293,7 @@
 .bw-metadata-editor.is-planning .bw-pricing-group { border-top: 1px solid var(--line); padding-top: 14px; }
 .bw-metadata-editor.is-planning .bw-calculation { border-top: 0; }
 .bw-metadata-editor.is-planning .bw-payers { gap: 6px; align-content: start; }
+
+.bw-metadata-editor.is-planning .bw-modes button { font-size: 12px; }
+.bw-metadata-editor.is-planning .bw-modes button:first-of-type { border-radius: 5px 0 0 5px; }
+.bw-metadata-editor.is-planning .bw-modes button:last-of-type { border-radius: 0 5px 5px 0; }

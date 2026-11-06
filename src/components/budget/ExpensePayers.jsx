@@ -1,6 +1,6 @@
 import {Plus,X} from 'lucide-react';
 import MenuSelect from '../MenuSelect.jsx';
-import {memberLabel,money} from '../../lib/budgetFinance.js';
+import {memberLabel} from '../../lib/budgetFinance.js';
 import {reconcilePayers} from '../../lib/expensePayers.js';
 import {useLayoutEffect,useRef} from 'react';
 export default function ExpensePayers({client,field,view,members,total,currency,locked,canChooseMode}){
@@ -18,5 +18,5 @@ export default function ExpensePayers({client,field,view,members,total,currency,
  <MenuSelect label={`付款人 ${index+1}`} value={row.user_id} readOnly={locked} metadataPortal onValueChange={value=>update(index,'user_id',value)} options={[{value:'',label:'選擇付款人'},...members.filter(m=>!form.rows.some((r,i)=>i!==index&&r.user_id===m.user_id)).map(m=>({value:m.user_id,label:memberLabel(m)}))]}/>
  <input aria-label={`代付金額 ${index+1}`} type="number" min="0" step="1" readOnly={locked} value={row.amount} onChange={e=>update(index,'amount',e.target.value)}/><button type="button" className="bw-icon" aria-label={`移除付款人 ${index+1}`} disabled={!canChooseMode&&locked} onClick={()=>void remove(row.user_id)}><X size={15}/></button></div>)}
  <button type="button" className="ghost-button compact" disabled={(!canChooseMode&&locked)||form.rows.length>=members.length} onClick={()=>void add()}><Plus size={14}/>新增付款人</button>
- <div className="bw-stat-line"><span>代付合計 · {currency}</span><b>{form.rows.some(r=>r.amount==='')?'—':money(form.rows.reduce((n,r)=>n+Number(r.amount),0))}</b></div><p className="bw-muted">結算時依各人負擔與代付金額計算。</p></>:<p className="bw-muted">各人自行支付自己的負擔，不產生彼此轉帳。</p>}</div>;
+ <p className="bw-muted">結算時依各人負擔與代付金額計算。</p></>:<p className="bw-muted">各人自行支付自己的負擔，不產生彼此轉帳。</p>}</div>;
 }

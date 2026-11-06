@@ -2,9 +2,9 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
-## Latest 2026-11-06 — four planning editor spacing annotations applied
+## Latest 2026-11-06 — planning editor annotations applied
 
-Removed the visible pricing-mode legend while retaining the fieldset accessible name, added one divider above the pricing section, removed the per-person/total summary divider, and tightened payer labels/controls to6px. Planning-native styling only; other stages/legacy mode labels and all data/authority behavior retained.8/8 Chromium payer/removal regressions,1440×900 geometry/screenshot (top section border1px, summary borders0px, payer gap6px), Build/diff Passed. No DB/controller/financial change; original-branch Preview delivery only.
+Planning editor order is title, category, note, live per-person/total summary, pricing, payment/payers and itinerary links last before the pinned footer. Removed the payer-total display only; financial allocation/reconciliation unchanged. Pricing buttons use12px text and5px outer corners matching payment modes. Retains hidden pricing legend with accessible fieldset name, divider above pricing, no summary divider and6px payer spacing.8/8 Chromium payer/removal/collaboration regressions,1440×900 geometry/screenshot and Build/diff Passed. Browser plugin unavailable; repository Playwright/static maps/isolated SQL used. No DB/controller/financial change; original-branch Preview delivery only.
 
 ## Latest 2026-11-06 — payer removal autosave race and first-click controls fixed
 

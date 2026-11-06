@@ -4,7 +4,7 @@ import { pricingParticipantsDraft } from "../../lib/budgetPricingGroups.js";
 
 // One pricing surface for whole-record editors and the atomic group controller.
 export default function BudgetPricingFields({ form, pricing, members, locked, historical, tripRates, update, setForm,
-  membersOpen, setMembersOpen, changeMode, showModes = true, groupMode = false, editRate = false, fixedCurrency = false, modeLocked = locked, showModeLegend = true }) {
+  membersOpen, setMembersOpen, changeMode, showModes = true, groupMode = false, editRate = false, fixedCurrency = false, modeLocked = locked, showModeLegend = true, showSummary = true }) {
   const eligible = members.filter(m => m.status === 'approved');
   const options = [...eligible, ...form.participantIds.filter(id => !eligible.some(m => m.user_id === id)).map(user_id => ({ user_id, display_name: `已退出／無效成員 · ${user_id.slice(0, 6)}`, unavailable: true }))];
   return <>
@@ -21,6 +21,10 @@ export default function BudgetPricingFields({ form, pricing, members, locked, hi
         <input disabled={locked || member.unavailable && !form.participantIds.includes(member.user_id)} type="checkbox" checked={form.participantIds.includes(member.user_id)} onChange={() => setForm(pricingParticipantsDraft(form, form.participantIds.includes(member.user_id) ? form.participantIds.filter(id => id !== member.user_id) : [...form.participantIds, member.user_id]))} />{memberLabel(member)}
         {form.pricing_mode === "custom" && form.participantIds.includes(member.user_id) ? <input aria-label={`${memberLabel(member)} 分攤金額`} disabled={!groupMode && locked} readOnly={groupMode && locked} required min="0" step="0.01" type="number" value={form.shares[member.user_id] ?? ""} onChange={event => update("shares", { ...form.shares, [member.user_id]: event.target.value })} /> : <b>{pricing ? money(pricing.allocations[member.user_id] || 0) : "—"}</b>}
       </label>)}</fieldset></details>
-    {pricing ? <div className="bw-calculation"><div><span>每人</span><strong>{form.pricing_mode === "custom" ? "依成員" : form.participantIds.length ? `${pricing.twd_amount % form.participantIds.length ? "≈ " : ""}NT$ ${money(pricing.twd_amount / form.participantIds.length)}` : "—"}</strong></div><div><span>總額</span><strong>NT$ {money(pricing.twd_amount)}</strong>{form.currency !== "TWD" ? <small>{form.currency} {money(pricing.amount)}</small> : null}</div></div> : null}
+    {showSummary ? <BudgetPricingSummary form={form} pricing={pricing}/> : null}
   </>;
+}
+
+export function BudgetPricingSummary({form,pricing}) {
+  return pricing ? <div className="bw-calculation"><div><span>每人</span><strong>{form.pricing_mode === "custom" ? "依成員" : form.participantIds.length ? `${pricing.twd_amount % form.participantIds.length ? "≈ " : ""}NT$ ${money(pricing.twd_amount / form.participantIds.length)}` : "—"}</strong></div><div><span>總額</span><strong>NT$ {money(pricing.twd_amount)}</strong>{form.currency !== "TWD" ? <small>{form.currency} {money(pricing.amount)}</small> : null}</div></div> : null;
 }
