@@ -280,7 +280,12 @@
 .bw-metadata-editor.is-planning .bw-metadata-group textarea { height: 60px; min-height: 60px; }
 .bw-metadata-editor.is-planning .bw-editor-actions { justify-content: flex-start; }
 .bw-save-state { margin-left: auto; align-self: center; color: var(--muted); font-size: 11px; }
+.bw-native-panel .bw-calculation { border-bottom: 0; }
+.bw-side > .bw-native-panel { padding-bottom: 0; box-sizing: border-box; }
+.bw-native-panel > .bw-side-footer { align-items: center; flex-shrink: 0; margin-inline: -16px; padding: 8px 16px; border-top: 1px solid var(--line); background: var(--panel); }
 @media (min-width: 1101px) {
+ .bw-side > .bw-native-panel { min-height: calc(100% - var(--bw-side-tabs-space)); }
+ .bw-native-panel > .bw-side-footer { margin-top: auto; }
  .bw-side > .bw-editor.is-planning { min-height: calc(100% - var(--bw-side-tabs-space)); box-sizing: border-box; }
  .bw-editor.is-planning .bw-editor-actions { margin-top: auto; flex-shrink: 0; }
 }

@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
-import {ChartColumn,List,Pencil,Plus,Search,X} from 'lucide-react';
+import {ChartColumn,List,Pencil,Plus,Search} from 'lucide-react';
 import {createExpenseEditor} from '../../lib/expenseEditor.js';
 import {createExpenseService} from '../../lib/expenseTransport.js';
 import {getBudgetMetadataSessionId} from '../../lib/budgetMetadataConfig.js';
@@ -80,7 +80,6 @@ export default function ExpenseWorkspace(props){
  const participantRows=displayParticipants(rows),links=graph.links.map(l=>({budget_item_id:l.expense_id,itinerary_item_id:l.itinerary_item_id}));
  const displayRows=rows.filter(i=>(!paymentFilter||(i.payment_state==='paid')===(paymentFilter==='paid'))&&`${i.title} ${i.category} ${i.note}`.toLowerCase().includes(query.toLowerCase()));
  const select=id=>void handoff(()=>{setSelected(selected===id?null:id);if(!panelChosen.current&&panel!=='edit')setPanel('detail');});
- const edit=id=>void handoff(()=>{setSelected(id);setPanel('edit');});
  const close=()=>void handoff(()=>{setPanel('detail');if(!client.status().graph.items.some(i=>i.id===selected))setSelected(null);});
  const changePanel=key=>void handoff(()=>{panelChosen.current=true;setPanel(key);});
  const paymentDisabled=!editable||!item||item.payment_state!=='paid'&&(!item.title.trim()||!item.payer_id||!item.paid&&!item.budget);
@@ -91,8 +90,8 @@ export default function ExpenseWorkspace(props){
   </div>
   <aside className="bw-side"><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[['stats','旅程統計',ChartColumn],['detail','項目明細',List],['edit','編輯項目',Pencil]].map(([key,label,Icon])=><button key={key} role="tab" type="button" aria-label={label} aria-selected={panel===key} onClick={()=>changePanel(key)}><Icon size={14} strokeWidth={1.8}/><span>{label}</span></button>)}</div>
   <div hidden={panel!=='stats'}><Stats records={rows} rows={participantRows} members={approved} actual={actual} budgets={rows} viewpoint={viewpoint} setViewpoint={setViewpoint} ratesSummary={<span/>}/><div className="bw-restored-rates" hidden={actual}><ExpenseRates service={transport} client={client} actor={props.currentUserId} trip={props.activeTrip.id} sessionId={sessionId} storage={storage} onError={errorToast} services={props.services} editable={editable} planning={planning&&Boolean(props.activeTrip.start_date)} active={workspaceActive}/></div></div>
-  {panel==='detail'?(item?<ExpenseDetail item={item} scope={view} planning={planning} members={members} links={links} items={graph.itineraryItems||[]} editable={editable} paymentDisabled={paymentDisabled} onEdit={()=>edit(item.id)} onRemove={()=>void remove()} onPayment={()=>{if(!paymentDisabled)void payment();}}/>:<div className="bw-empty">選取項目查看明細</div>):null}
-  {panel==='edit'&&item?<section className={`bw-editor bw-metadata-editor${planning?' is-planning':''}`} aria-label="支出項目編輯"><div className="bw-detail-heading"><h3>{state.draftId===item.id?'新增項目':'編輯項目'}</h3><button type="button" className="bw-icon" aria-label="關閉編輯" onClick={close}><X size={17}/></button></div>
+  {panel==='detail'?(item?<ExpenseDetail item={item} scope={view} planning={planning} members={members} links={links} items={graph.itineraryItems||[]} editable={editable} paymentDisabled={paymentDisabled} onRemove={()=>void remove()} onPayment={()=>{if(!paymentDisabled)void payment();}}/>:<div className="bw-empty">選取項目查看明細</div>):null}
+  {panel==='edit'&&item?<section className={`bw-editor bw-metadata-editor bw-native-panel${planning?' is-planning':''}`} aria-label="支出項目編輯">
    {frame('title','項目名稱',({v,locked,set})=><input aria-label="項目名稱" value={v.value} readOnly={locked} onChange={e=>set(e.target.value)}/>)}
    {frame('note','備註',({v,locked,set})=><textarea aria-label="備註" value={v.value||''} rows={3} readOnly={locked} onChange={e=>set(e.target.value)}/>)}
    {frame('category','分類',({v,locked,set})=><MenuSelect label="分類" value={v.value} editable readOnly={locked} metadataPortal onValueChange={set} options={['機票','交通','住宿','門票','餐飲','購物','其他'].map(value=>({value,label:value}))}/>)}
@@ -101,7 +100,7 @@ export default function ExpenseWorkspace(props){
    {frame(view,view==='budget'?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing client={client} field={field} view={v} scope={view} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode}/>)}
    {!planning?<div className="bw-metadata-summary"><span>分類 · {item.category}</span><span>金額 · {item[view]?`${item[view].currency} ${money(item[view].amount)}`:'尚未填寫'}</span></div>:null}
    {!planning?<details className="bw-secondary-fields"><summary>{actual?'預算金額與分攤':'實付金額與分攤'}</summary>{frame(actual?'budget':'paid',actual?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing client={client} field={field} view={v} scope={actual?'budget':'paid'} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode}/>)}</details>:null}
-   <div className="bw-editor-actions">{planning?<><PaymentToggle checked={item.payment_state==='paid'} disabled={paymentDisabled} onChange={()=>void payment()}/><span className="bw-save-state" role="status" aria-label="儲存狀態">{client.saveStatus(item.id)}</span></>:<><button type="button" className="ghost-button compact" disabled={paymentDisabled} onClick={()=>void payment()}>{item.payment_state==='paid'?'改為未付款':'標記已付款'}</button><button type="button" className="ghost-button compact" onClick={close}>取消</button><button type="button" className="primary-button compact" disabled={!editable} onClick={close}>完成</button></>}</div>
+   <div className="bw-editor-actions bw-side-footer">{planning?<><PaymentToggle checked={item.payment_state==='paid'} disabled={paymentDisabled} onChange={()=>void payment()}/><span className="bw-save-state" role="status" aria-label="儲存狀態">{client.saveStatus(item.id)}</span></>:<><button type="button" className="ghost-button compact" disabled={paymentDisabled} onClick={()=>void payment()}>{item.payment_state==='paid'?'改為未付款':'標記已付款'}</button><button type="button" className="ghost-button compact" onClick={close}>取消</button><button type="button" className="primary-button compact" disabled={!editable} onClick={close}>完成</button></>}</div>
   </section>:panel==='edit'?<div className="bw-empty">選取項目開始編輯</div>:null}</aside>
  </section>;
 }

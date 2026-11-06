@@ -2,6 +2,10 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-06 — sidebar footer presentation
+
+[Sidebar footer verification](docs/2026-11-06-budget-sidebar-footer.md). Native detail/editor share a bottom-pinned, full-width-divided footer; calculation bottom divider, detail edit icon and editor heading/close row removed. Existing tabs preserve guarded navigation.12 local Chromium cases, two desktop geometry/screenshot checks and long-note scrolling passed; Build/diff passed. No DB/financial/lease/rates change. Issue #21 self-pay/multiple-payer implementation is deferred; three approved concept states are attached to the issue (assets-only commit7eb6a63).
+
 ## Latest 2026-11-06 — field leases20s clean /60s dirty
 
 [Lease TTL and renewal verification](docs/2026-11-06-expense-field-lease-ttl.md). Native field lease TTL is20s without pending edits,60s with edits; frontend checks every5s (or earlier near expiry), before snapshot recovery and in parallel across independent fields. Same-sequence valid DB renew now actually extends expiry; older activity is refused. Renewal is single-flight per field and late responses cannot restore released/replaced authority. Blur/background/draft/version/mutual-exclusion behavior retained. No unrelated UI or latest Rates changes; rates60s, selection45s/heartbeat15s, API10s unchanged.
