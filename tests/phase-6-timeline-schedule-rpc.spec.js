@@ -117,7 +117,9 @@ test("Phase 6 authoritative Planner restores the five-minute ceiling for automat
 });
 
 test("App callers use the unified RPC and no longer call legacy continuation or reorder RPCs", () => {
-  expect(appSource).toContain('supabase.rpc("apply_timeline_schedule_operation"');
+  expect(appSource).toContain("await submitTimelineSchedule(supabase, {");
+  const adapter = readFileSync("src/lib/timelineScheduleService.js", "utf8");
+  expect(adapter).toContain('client.rpc("apply_timeline_schedule_operation_link_safe"');
   expect(appSource).not.toContain("planTimelineAutoContinuation");
   expect(appSource).not.toContain("autoContinuationUpdates");
   expect(appSource).not.toContain("reorder_itinerary_fixed_anchor_continuation");

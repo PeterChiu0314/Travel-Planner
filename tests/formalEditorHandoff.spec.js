@@ -8,7 +8,7 @@ const workspace = page => page.getByRole("region", { name: "支出工作區", in
 const timeline = page => page.locator(".timeline .timeline-item:visible");
 const navigation = (page, name) => page.locator(".section-nav-button").getByText(name, { exact: true });
 const prompt = page => page.getByRole("dialog", { name: "您有未儲存的變更" });
-const scheduleCalls = fixture => fixture.db.expenseCalls.filter(call => call.name === "apply_timeline_schedule_operation");
+const scheduleCalls = fixture => fixture.db.expenseCalls.filter(call => call.name.startsWith("apply_timeline_schedule_operation"));
 
 async function open(page, fixture, { linked = false } = {}) {
   const first = randomUUID();
@@ -78,18 +78,53 @@ for (const { title, order } of [
   });
 }
 
-test("timed swap with a native expense link stops before writing", async ({ page }) => {
+test("timed swap persists and the native expense follows its original destination", async ({ page }) => {
   const fixture = await expenseBackend({ timeline: true });
   try {
     await open(page, fixture, { linked: true });
     await navigation(page, "行程路線").click();
     await drag(page, "Morning QA");
-    await expect(page.getByText("要移動的行程已關聯支出，目前無法安全交換時段。", { exact: true })).toBeVisible();
-    await expect(timeline(page).first()).toContainText("Morning QA");
-    expect(scheduleCalls(fixture)).toHaveLength(0);
-    expect((await fixture.snapshot()).links).toHaveLength(1);
+    await expect(timeline(page).first()).toContainText("Lunch QA");
+    expect(scheduleCalls(fixture).map(call => call.name)).toEqual(["apply_timeline_schedule_operation_link_safe"]);
+    await page.reload();
+    await expect(workspace(page)).toBeVisible();
+    await navigation(page, "行程路線").click();
+    await expect(timeline(page).first()).toContainText("Lunch QA");
+    const graph = await fixture.snapshot();
+    expect(graph.links).toHaveLength(1);
+    expect(graph.itineraryItems.find(item => item.id === graph.links[0].itinerary_item_id).title).toBe("Morning QA");
     expect(page.qaErrors).toEqual([]);
   } finally {
+    await page.close();
+    await fixture.close();
+  }
+});
+
+test("an unresolved budget snapshot does not stall Timeline loading or editing", async ({ page }) => {
+  const fixture = await expenseBackend({ timeline: true });
+  let settleBudget, started = 0;
+  const pending = new Promise(resolve => { settleBudget = resolve; });
+  try {
+    await open(page, fixture);
+    const request = fixture.db.request.bind(fixture.db);
+    fixture.db.request = async call => {
+      if (call.name === "read_expense_snapshot") {
+        started++;
+        return pending;
+      }
+      return request(call);
+    };
+    await page.reload();
+    await expect.poll(() => started).toBeGreaterThan(0);
+    await navigation(page, "行程路線").click();
+    await expect(timeline(page)).toHaveCount(3);
+    await page.getByRole("button", { name: "新增行程", exact: true }).click();
+    await expect(page.locator(".form-mode-label")).toHaveText("新增行程");
+    settleBudget({ error: { code: "42501", message: "Injected snapshot refusal" } });
+    await expect(timeline(page)).toHaveCount(3);
+    expect(page.qaErrors).toEqual([]);
+  } finally {
+    settleBudget({ error: { code: "42501", message: "Fixture closed" } });
     await page.close();
     await fixture.close();
   }

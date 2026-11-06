@@ -51,7 +51,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   return expenseFieldValue({...graph,items:graph.items.map(i=>i.id===g.id?proposed.item:i),participants:[...graph.participants.filter(p=>p.expense_id!==g.id),...proposed.participants]},g.id,g.group);
  };
  const storageKey=g=>`travel-planner-expense:${actor}:${trip}:${g.id}:${g.group}`;
- function persist(g){try{if(!dirty(g)&&!g.request)storage?.removeItem(storageKey(g));else storage?.setItem(storageKey(g),JSON.stringify({value:g.value,base:g.base,request:g.request?{...g.request,p_token:null,p_epoch:null}:null}));}catch{/* Memory draft remains. */}}
+ function persist(g){try{if(!dirty(g)&&!g.request)storage?.removeItem(storageKey(g));else storage?.setItem(storageKey(g),JSON.stringify({value:g.value,base:g.base,itineraryVersions:g.itineraryVersions,request:g.request?{...g.request,p_token:null,p_epoch:null}:null}));}catch{/* Memory draft remains. */}}
  const remote=g=>graph?.groups.find(s=>s.id===g.id&&s.group===g.group);
  const args=(g,action)=>({p_id:g.id,p_group:g.group,p_session_id:sessionId,p_token:g.token,p_action:action,p_base:g.base,p_epoch:g.epoch,p_seq:g.activity,p_dirty:dirty(g)});
  const bounded=work=>withBudgetAuthorityTimeout(work,{timeoutMs});
@@ -84,9 +84,9 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  }
  async function refresh(){if(readWork)return readWork;readWork=(async()=>{try{if(!(await service.authorized(actor)))return false;const r=await bounded(service.read(trip,sessionId));if(r.error||!ingest(r.data)){verified=false;if(r.error)onError(r.error);emit();return false;}onSnapshot(r.data);return true;}finally{readWork=null;}})();return readWork;}
  function get(id,group){const key=id+':'+group;if(fields.has(key))return fields.get(key);const r=graph?.groups.find(g=>g.id===id&&g.group===group);const value=expenseFieldValue(graph,id,group);
-  if(localDraft?.id===id){const canonical=draftValue(group);let value=structuredClone(localDraft.values[group]??canonical);if(group==='payer')value=compatiblePayer(value,expenseModels(draftGraph())[0]);const g={id,group,local:true,canonical,value,state:'local',revision:0};fields.set(key,g);return g;}
+  if(localDraft?.id===id){const canonical=draftValue(group);let value=structuredClone(localDraft.values[group]??canonical);if(group==='payer')value=compatiblePayer(value,expenseModels(draftGraph())[0]);const g={id,group,local:true,canonical,value,state:'local',revision:0,...(group==='links'?{itineraryVersions:localDraft.itineraryVersions}:{})};fields.set(key,g);return g;}
   const g={id,group,value,canonical:structuredClone(value),base:r?.revision??0,state:'idle',token:null,epoch:null,activity:0,focused:false,conflict:false,request:null,revision:0};
-  try{const draft=JSON.parse(storage?.getItem(storageKey(g))||'null');if(draft&&Number.isSafeInteger(draft.base)){g.value=draft.value;g.base=draft.base;g.request=draft.request;g.conflict=Boolean(!g.request&&verified&&r&&r.revision!==g.base);
+  try{const draft=JSON.parse(storage?.getItem(storageKey(g))||'null');if(draft&&Number.isSafeInteger(draft.base)){g.value=draft.value;g.base=draft.base;g.request=draft.request;g.itineraryVersions=draft.itineraryVersions;g.conflict=Boolean(!g.request&&verified&&r&&r.revision!==g.base);
    if(g.request){const v=g.request.p_value;const original=['budget','paid'].includes(group)?v.form:group==='payer'?v.form||v.user_id||'':group==='links'?v.ids:['payment','lifecycle'].includes(group)?v:v.text;g.submitted=same(original,g.value)?0:-1;}
   }}catch{/* Invalid persisted input never grants authority. */}
   if(group==='payer')g.value=compatiblePayer(g.value,expenseModels(graph).find(i=>i.id===id));
@@ -119,8 +119,51 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    emit();return true;
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
  }
- function input(g,value,{immediate=false}={}){if(g.group==='payer'&&typeof value==='string'){const item=expenseModels(graph).find(i=>i.id===g.id);value={mode:value?'advance':'self',rows:value?[{user_id:value,amount:Math.round(Number((item?.budget||item?.paid)?.amount||0)),order:0}]:[],sequence:0};}if(g.local){if(!active)return;localDraft.refused=false;g.value=structuredClone(value);localDraft.values[g.group]=g.value;persistDraft();emit();clearTimeout(createTimer);createTimer=setTimeout(()=>void create(),1000);return;}if(g.conflict||g.releasing||!owns(g))return;g.value=structuredClone(value);g.revision++;g.activity++;g.error=null;g.autoBlocked=false;persist(g);emit();clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),immediate?0:1000);}
- function body(g){if(['budget','paid'].includes(g.group))return {form:g.value,members:graph.members.filter(m=>m.status==='approved').map(m=>m.user_id).sort(),rates:graph.rates,planning:planning()};if(['payment','lifecycle'].includes(g.group))return {...g.value,planning:planning()};if(g.group==='payer'){if(!planning()&&g.value.mode==='advance'&&g.value.rows.length===1)return{user_id:g.value.rows[0].user_id};const item=expenseModels(graph).find(i=>i.id===g.id);return{planning:planning(),form:reconcilePayers(g.value,(item.budget||item.paid)?.amount),budget_revision:item.revisions.budget||0,paid_revision:item.revisions.paid||0};}if(g.group==='links')return{ids:g.value};return{text:g.value};}
+ function input(g, value, { immediate = false } = {}) {
+  if (g.group === 'payer' && typeof value === 'string') {
+   const item = expenseModels(graph).find(i => i.id === g.id);
+   value = { mode: value ? 'advance' : 'self', rows: value ? [{
+    user_id: value, amount: Math.round(Number((item?.budget || item?.paid)?.amount || 0)), order: 0,
+   }] : [], sequence: 0 };
+  }
+  if (g.local ? !active : g.conflict || g.releasing || !owns(g)) return;
+  // The displayed slot versions remain attached to this draft and its exact request.
+  if (g.group === 'links') {
+   g.itineraryVersions = Object.fromEntries((graph?.itineraryItems || [])
+    .filter(item => value.includes(item.id)).map(item => [item.id, item.updated_at]));
+  }
+  if (g.local) {
+   if (g.group === 'links') localDraft.itineraryVersions = g.itineraryVersions;
+   localDraft.refused = false;
+   g.value = structuredClone(value);
+   localDraft.values[g.group] = g.value;
+   persistDraft();
+   emit();
+   clearTimeout(createTimer);
+   createTimer = setTimeout(() => void create(), 1000);
+   return;
+  }
+  g.value = structuredClone(value);
+  g.revision++;
+  g.activity++;
+  g.error = null;
+  g.autoBlocked = false;
+  persist(g);
+  emit();
+  clearTimeout(g.timer);
+  g.timer = setTimeout(() => void save(g, false), immediate ? 0 : 1000);
+ }
+ function body(g) {
+  if (['budget','paid'].includes(g.group)) return {form:g.value,members:graph.members.filter(m=>m.status==='approved').map(m=>m.user_id).sort(),rates:graph.rates,planning:planning()};
+  if (['payment','lifecycle'].includes(g.group)) return {...g.value,planning:planning()};
+  if (g.group === 'payer') {
+   if (!planning() && g.value.mode === 'advance' && g.value.rows.length === 1) return {user_id:g.value.rows[0].user_id};
+   const item=expenseModels(graph).find(i=>i.id===g.id);
+   return {planning:planning(),form:reconcilePayers(g.value,(item.budget||item.paid)?.amount),budget_revision:item.revisions.budget||0,paid_revision:item.revisions.paid||0};
+  }
+  if (g.group === 'links') return {ids:g.value,itinerary_versions:g.itineraryVersions||{}};
+  return {text:g.value};
+ }
  function save(g,flush=true){if(g.saveWork)return g.saveWork;clearTimeout(g.timer);
   if(g.local)return create();
   let confirmedRevision=null;

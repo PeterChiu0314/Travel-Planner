@@ -9,6 +9,8 @@ import {budgetLifecycleEnabled,isBudgetComplete} from './lib/budgetLifecycleValu
 import {createBudgetLifecycleController,createBudgetLifecycleService} from './lib/budgetLifecycleGroups.js';
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
 import { createBudgetRefresh, emptyBudgetSnapshot, mergeBudgetAttachments, readBudgetSnapshot } from "./lib/budgetSync.js";
+import { getMapProviderConfig } from "./lib/mapProviderConfig.js";
+import { submitTimelineSchedule } from "./lib/timelineScheduleService.js";
 import { onPostgresChangesReady } from "./lib/realtimePostgresReadiness.js";
 import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
 import { luggageLengthError } from "./lib/luggageLimits.js";
@@ -32,7 +34,7 @@ import { createBudgetEditLeaseClient } from "./lib/budgetEditLeases.js";
 import { collaboratorColors as timelineCardSelectionColors } from "./lib/collaboratorColors.js";
 import { createBudgetCollaboration, primaryBudgetCollaborators } from "./lib/budgetCollaboration.js";
 import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./lib/budgetMetadataConfig.js";
-import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata, budgetAuthorityTimeoutMs, withBudgetAuthorityTimeout } from "./lib/budgetMetadataService.js";
+import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata, budgetAuthorityTimeoutMs } from "./lib/budgetMetadataService.js";
 import { createDemoBudgetMetadataService } from "./demo/budgetMetadata.js";
 import { demoBudgetQuote, fetchBudgetQuote } from "./lib/tripBudgetRates.js";
 import { demoBudgetMembers } from "./demo/budgetFixtures.js";
@@ -555,9 +557,10 @@ function subscribeToActiveEditors(listener) {
 }
 
 function getActiveEditorGuardEntries(options) {
-  const { excludeId, excludeIds = [], onlyId, tripId } = options ?? {};
+  const { excludeId, excludeIds = [], onlyId, workspace, tripId } = options ?? {};
   return [...activeEditorGuards.entries()].filter(([, guard]) => {
     if (options && (!tripId || guard.tripId !== tripId)) return false;
+    if (workspace && guard.workspace !== workspace) return false;
     if (onlyId && guard.id !== onlyId) return false;
     if (guard.id === excludeId || excludeIds.includes(guard.id)) return false;
     return true;
@@ -2514,7 +2517,28 @@ export default function App() {
     apply: applyBudgetSnapshot,
     onVerified: result => syncFeedback.verified("budget", result.feedbackCheckpoint),
     onError: error => {
-      if (budgetMetadataEnabled) setBudgetSnapshot(current => ({ ...current, ...(current.expenseGraph?{expenseVerified:false}:{}), metadataVerified: false, metadataError: "群組協作狀態尚未確認，草稿已保留。" }));
+      const { key } = budgetSnapshotRef.current;
+      let { data } = budgetSnapshotRef.current;
+      if (key && error.code === "42501") applyBudgetSnapshot(emptyBudgetSnapshot(), key);
+      else if (key) {
+        if (!data.tripId) {
+          const [userId, tripId] = JSON.parse(key);
+          const cached = readOfflineTripData(tripId, userId);
+          if (cached) {
+            data = cached.budgetSnapshot || { ...emptyBudgetSnapshot(), tripId, budgetItems: cached.budgetItems || [],
+              budgetParticipants: cached.budgetParticipants || [], budgetBaseline: cached.budgetBaseline,
+              actualExpenses: cached.actualExpenses || [], actualParticipants: cached.actualParticipants || [],
+              itineraryBudgetLinks: cached.itineraryBudgetLinks || [], items: cached.items || [], members: cached.members || [],
+              attachments: (cached.attachments || []).filter(attachment => attachment.target_type === "actual_expense") };
+            applyBudgetSnapshot(data, key, false);
+            data = budgetSnapshotRef.current.data;
+          }
+        }
+        const unverified = { ...data, ...(data.expenseGraph ? { expenseVerified: false } : {}), metadataVerified: false,
+          metadataError: "預算資料尚未確認，草稿已保留。" };
+        budgetSnapshotRef.current = { key, data: unverified };
+        setBudgetSnapshot(unverified);
+      }
       syncFeedback.failure("budget", error.code === "PGRST202" ? "預算快照尚未啟用，需先套用預算同步 migration。" : error);
     },
   });
@@ -3152,10 +3176,11 @@ export default function App() {
       return;
     }
 
-    const budgetToken = requestGuard.begin("budget");
+    // A financial read can fail or wait independently of the trip workspace.
+    void budgetRefreshRef.current.committed();
     const feedbackCheckpoint = syncFeedback.checkpoint();
     const [itemsResult, alternativesResult, accommodationsResult, guideResult, todoResult, luggageResult, sharedLuggageResult,
-      attachmentsResult, packResult, membersResult, budgetResult] = await Promise.all([
+      attachmentsResult, packResult, membersResult] = await Promise.all([
       supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
       supabase.from("itinerary_alternatives").select("*"),
       supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
@@ -3166,35 +3191,24 @@ export default function App() {
       supabase.from("attachments").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("trip_members").select("id,trip_id,user_id,role,status,created_at,display_name,email").eq("trip_id", tripId).order("created_at"),
-      readBudgetSnapshot(supabase, tripId),
     ]);
     if (!requestGuard.valid(token) || tripReadAccessRef.current !== access || !canReadTrip(token.key)) return;
-    const otherError = itemsResult.error || alternativesResult.error || accommodationsResult.error || guideResult.error || todoResult.error
+    const error = itemsResult.error || alternativesResult.error || accommodationsResult.error || guideResult.error || todoResult.error
       || luggageResult.error || sharedLuggageResult.error || attachmentsResult.error || packResult.error || membersResult.error;
-    const error = otherError || budgetResult.error;
-    const failureSource = otherError ? "trip-data" : "budget";
     if (error) {
       const cached = readOfflineTripData(tripId, userId);
-      if (requestGuard.valid(budgetToken) && budgetResult.error?.code === "42501") applyBudgetSnapshot(emptyBudgetSnapshot(), token.key);
       if (cached) {
         setItems(cached.items || []); setAlternatives(cached.alternatives || []);
-        if (requestGuard.valid(budgetToken) && budgetResult.error?.code !== "42501") {
-          const snapshot = cached.budgetSnapshot || { ...emptyBudgetSnapshot(), tripId, budgetItems: cached.budgetItems || [], budgetBaseline: cached.budgetBaseline,
-            budgetParticipants: cached.budgetParticipants || [], actualExpenses: cached.actualExpenses || [], actualParticipants: cached.actualParticipants || [],
-            itineraryBudgetLinks: cached.itineraryBudgetLinks || [], items: cached.items || [], members: cached.members || [], attachments: (cached.attachments || []).filter(a=>a.target_type==="actual_expense") };
-          applyBudgetSnapshot(snapshot, token.key, false);
-        }
         setAccommodations(cached.accommodations || []); setGuideItems(cached.guideItems || []); setTodoItems(cached.todoItems || []);
         if (requestGuard.valid(sharedToken)) { sharedSnapshotRef.current.rows = cached.sharedLuggageItems || []; setSharedLuggageItems(sharedSnapshotRef.current.rows); }
         setAttachments(mergeBudgetAttachments(cached.attachments || [], budgetSnapshotRef.current.data)); setPackItems(cached.packItems || []); setMembers(cached.members || []);
-        syncFeedback.failure(failureSource, error, { cached: true }); return { ok: false, error };
+        syncFeedback.failure("trip-data", error, { cached: true }); return { ok: false, error };
       }
-      syncFeedback.failure(failureSource, error); return { ok: false, error };
+      syncFeedback.failure("trip-data", error); return { ok: false, error };
     }
     const nextItems = itemsResult.data || [];
     const itemIds = new Set(nextItems.map(item => item.id));
     const nextAlternatives = (alternativesResult.data || []).filter(alternative => itemIds.has(alternative.itinerary_item_id));
-    if (requestGuard.valid(budgetToken)) applyBudgetSnapshot(budgetResult.data, token.key);
 
     // Apply itinerary-primary route invalidation in the same authoritative
     // load that receives changed endpoint coordinates.  Waiting for a later
@@ -3249,7 +3263,6 @@ export default function App() {
       members: membersResult.data || [],
     });
     syncFeedback.verified(["trip-data", "connection", "action",
-      ...(requestGuard.valid(budgetToken) ? ["budget"] : []),
       ...(requestGuard.valid(personalToken) ? ["luggage:personal"] : []),
       ...(requestGuard.valid(sharedToken) ? ["luggage:shared"] : [])], feedbackCheckpoint);
     return { ok: true };
@@ -4989,13 +5002,13 @@ export default function App() {
       notify.error("Invalid trip date range");
       return { ok: false };
     }
-    if (getDirtyActiveEditorGuards({ tripId: activeTrip.id }).length) {
+    if (getDirtyActiveEditorGuards({ tripId: activeTrip.id, workspace: "timeline" }).length) {
       const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
       notify.error(message);
       return { ok: false, dirtyDraft: true, message };
     }
     const latestTripDraft = session?.user?.id
-      ? findLatestDraftTrip({ entityTypes: activeEditDraftEntityTypes, userId: session.user.id })
+      ? findLatestDraftTrip({ entityTypes: ["itinerary_item"], userId: session.user.id })
       : null;
     if (latestTripDraft?.tripId === activeTrip.id) {
       const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
@@ -5048,7 +5061,8 @@ export default function App() {
     const ok = window.confirm(`刪除「${activeTrip.title}」？`);
     if (!ok) return;
     const { error } = await supabase.from("trips").delete().eq("id", activeTrip.id);
-    if (error) notify.error(error.details === "BUDGET_PARENT_DELETE_BLOCKED" ? "此旅程仍有預算、付款、收據或歷史快照，目前不支援連帶刪除，所有資料已保留。" : error.message);
+    if (error) notify.error(error.details === "BUDGET_PARENT_DELETE_BLOCKED" || error.code === "23503" && /expense_items_trip_id_fkey/.test(error.message)
+      ? "此旅程仍有預算、付款、收據或歷史快照，目前不支援連帶刪除，所有資料已保留。" : error.message);
     else await loadTrips();
   }
 
@@ -5113,7 +5127,7 @@ export default function App() {
   }) {
     if (!activeTrip || !plan?.ok || !operation || !itemUpdatedAtBaselines) return { ok: false };
     const sourceItems = items.filter((item) => Number(item.day_index) === Number(dayIndex));
-    const result = await supabase.rpc("apply_timeline_schedule_operation", {
+    const result = await submitTimelineSchedule(supabase, {
       confirmed_major_effect: confirmedMajorEffect,
       expected_visit_ids: expectedVisitIds || sortedVisitItems(sourceItems).map((item) => item.id),
       item_updated_at_baselines: itemUpdatedAtBaselines,
@@ -5125,7 +5139,8 @@ export default function App() {
       target_item_id: targetItemId,
       target_payload: targetPayload,
       target_trip_id: activeTrip.id,
-    });
+    }, () => requestGuard.sameContext(tripDataContext));
+    if (result.blocked) return { ok: false, errorMessage: result.blocked };
     const responseStatus = result.data?.status || null;
     if (result.error || responseStatus === "repreview_required") {
       const message = String(result.error?.message || responseStatus || "");
@@ -6078,20 +6093,6 @@ export default function App() {
     if (!activeTrip || !canEditActiveTripContent || dayIndex !== activeDay) return { ok: false };
     if (!timelineSchedulePlan?.ok || !timelineScheduleOperation) {
       return { ok: false, errorMessage: "目前無法安全重新排程，請重新整理後再試。" };
-    }
-    const movedSlots = slotItemIds.filter((id, index) => id !== packageSourceItemIds[index]);
-    if (budgetMetadataEnabled && movedSlots.length) {
-      // The current RPC swaps package content on stable slot IDs. It only
-      // remaps legacy budget links, so refuse swaps that would mislabel a native expense.
-      const snapshot = await withBudgetAuthorityTimeout(readBudgetSnapshot(supabase, activeTrip.id));
-      if (!requestGuard.sameContext(tripDataContext)) return { ok: false };
-      if (snapshot.error) return { ok: false, errorMessage: "目前無法確認行程的支出關聯，請稍後再試。" };
-      if (snapshot.data.expenseGraph?.links.some(link => movedSlots.includes(link.itinerary_item_id))) {
-        return { ok: false, errorMessage: "要移動的行程已關聯支出，目前無法安全交換時段。" };
-      }
-      if (getDirtyActiveEditorGuards({ tripId: activeTrip.id }).length) {
-        return { ok: false, errorMessage: "請先儲存或放棄目前編輯，再重排行程。" };
-      }
     }
     return applyTimelineScheduleOperation({
       confirmedMajorEffect: confirmedScheduleEffect,
@@ -9632,7 +9633,11 @@ function TripWorkspace(props) {
     onMapPointEditorActiveChange: setMapPointEditorState,
     onPickMapPoint: pickMapPoint,
     onSelectPlaceDetails: selectPlaceDetails,
-    onStartMapAddLocation: startMapAddLocation,
+    onStartMapAddLocation: getMapProviderConfig({
+      providerId: import.meta.env.VITE_MAP_PROVIDER,
+      apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+      enableRealMap: true,
+    }).canLoadRealMap ? startMapAddLocation : undefined,
     onStartMapSearchReplace: startMapSearchReplace,
     onStartMapPointPick: startMapPointPick,
   };
@@ -10418,11 +10423,7 @@ function ItineraryTimeline({
     setExpandedId((current) => (current && current !== focusedItemId ? null : current));
   }, [focusedItemId]);
 
-  const hasDirtyTimelineHandoff = useCallback(() => getDirtyActiveEditorGuards({
-    excludeId: activeEditorGuardId, tripId: activeTrip?.id,
-  }).length > 0, [activeEditorGuardId, activeTrip?.id]);
-  const hasUnresolvedTimelineHandoff = useSyncExternalStore(subscribeToActiveEditors, hasDirtyTimelineHandoff);
-  const hasBlockingTimelineEditor = isOpen || hasUnresolvedTimelineHandoff;
+  const hasBlockingTimelineEditor = isOpen;
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -10539,7 +10540,7 @@ function ItineraryTimeline({
 
   function handleSortableDragStart(event) {
     const sourceItem = dayItems.find((item) => item.id === event.active.id);
-    if (!sourceItem || !canDragVisit(sourceItem) || hasDirtyTimelineHandoff()) return;
+    if (!sourceItem || !canDragVisit(sourceItem)) return;
     if (typeof onClearCardSelection === "function") onClearCardSelection();
     const sourceRect = event.active.rect.current.initial;
     setDragOverlaySize(
@@ -10651,7 +10652,7 @@ function ItineraryTimeline({
   }
 
   async function commitVisitDrop(sourceItemId, targetItem, placement) {
-    if (isOpen || hasDirtyTimelineHandoff()) {
+    if (isOpen) {
       setFixedNotice("請先儲存或放棄目前編輯，再重排行程。");
       clearVisitDrag("commit-editor-blocked");
       return;
@@ -10828,7 +10829,7 @@ function ItineraryTimeline({
 
   async function confirmMoveReorder() {
     if (!reorderPreview) return;
-    if (isOpen || hasDirtyTimelineHandoff()) {
+    if (isOpen) {
       setFixedNotice("請先儲存或放棄目前編輯，再重排行程。");
       return;
     }
@@ -10947,6 +10948,7 @@ function ItineraryTimeline({
     }
     if (!initialPoint) onCancelMapPointPick?.();
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "timeline",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
@@ -10981,6 +10983,7 @@ function ItineraryTimeline({
       return;
     }
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "timeline",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
@@ -11033,6 +11036,7 @@ function ItineraryTimeline({
     }
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "timeline",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
@@ -12615,7 +12619,7 @@ function ItineraryTimeline({
           type="button"
           title="新增行程"
           aria-label="新增行程"
-          onClick={onStartMapAddLocation || openNewItem}
+          onClick={onStartMapAddLocation || (() => void openNewItem())}
         >
           <Plus aria-hidden="true" />
           <MapPin aria-hidden="true" />
@@ -13641,6 +13645,7 @@ function AccommodationPanel({
 
   async function openNewAccommodation() {
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "accommodation",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id || trip?.id,
     });
@@ -13669,6 +13674,7 @@ function AccommodationPanel({
   async function openEditAccommodation(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "accommodation",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id || trip?.id,
     });
@@ -14114,6 +14120,7 @@ function TodoPanel({
 
   async function openNewTodo() {
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "todo",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
@@ -14137,6 +14144,7 @@ function TodoPanel({
   async function openEditTodo(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "todo",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
@@ -14381,6 +14389,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
 
   async function openNewGuide() {
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "todo",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
@@ -14403,6 +14412,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   async function openEditGuide(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "todo",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
@@ -14773,6 +14783,7 @@ export function LuggagePanel({
     const lengthError = luggageLengthError(personalForm);
     if (lengthError) { setError(lengthError); return false; }
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "luggage",
       excludeId: personalEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
@@ -14794,6 +14805,7 @@ export function LuggagePanel({
 
   async function saveCurrentShared(changes) {
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "luggage",
       excludeId: sharedEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
@@ -14820,12 +14832,13 @@ export function LuggagePanel({
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const requestId = ++openingEditor.current;
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "luggage",
       excludeId: personalEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
     if (!canOpenEditor || requestId !== openingEditor.current) return;
     if (editingPersonalId !== item.id && personalDirty) {
-      const canContinue = await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds });
+      const canContinue = await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds });
       if (!canContinue) return;
     } else if (editingPersonalId && editingPersonalId !== item.id) {
       await discardPersonalEdit();
@@ -14860,11 +14873,11 @@ export function LuggagePanel({
   }
 
   async function cancelPersonalEdit() {
-    if (personalDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds });
+    if (personalDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds });
     else await discardPersonalEdit();
   }
   async function cancelSharedEdit() {
-    if (sharedDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds });
+    if (sharedDirty) await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds });
     else await discardSharedEdit();
   }
 
@@ -14872,12 +14885,13 @@ export function LuggagePanel({
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const requestId = ++openingEditor.current;
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "luggage",
       excludeId: sharedEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
     if (!canOpenEditor || requestId !== openingEditor.current) return;
     if (editingSharedId !== item.id && sharedDirty) {
-      const canContinue = await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds });
+      const canContinue = await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds });
       if (!canContinue) return;
     } else if (editingSharedId && editingSharedId !== item.id) {
       await discardSharedEdit();
@@ -14918,6 +14932,7 @@ export function LuggagePanel({
 
   async function updatePersonalForm(nextForm) {
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "luggage",
       excludeId: personalEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
@@ -14926,6 +14941,7 @@ export function LuggagePanel({
 
   async function updateSharedForm(nextForm) {
     const canOpenEditor = await requestActiveEditorHandoff({
+      workspace: "luggage",
       excludeId: sharedEditorGuardId, excludeIds: quickGuardIds,
       tripId: activeTrip?.id,
     });
@@ -14948,7 +14964,7 @@ export function LuggagePanel({
     const editingThis = isPersonal ? editingPersonalId === id : editingSharedId === id;
     const otherDirty = isPersonal ? sharedDirty : personalDirty;
     if (otherDirty) {
-      if (!await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return;
+      if (!await requestActiveEditorGuardResolution({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds })) return;
     }
     const hasDraft = editingThis && (isPersonal ? personalDirty : sharedDirty);
     if (!await ask({ title: "刪除物品？", message: `刪除「${item.title}」？${hasDraft ? "尚未儲存的修改也會捨棄。" : ""}此操作無法復原。`, confirmLabel: "刪除", danger: true })) return;
@@ -14968,7 +14984,7 @@ export function LuggagePanel({
     onTogglePersonal={(item) => performMutation(() => onTogglePersonal(item))}
     onUpdateShared={(id, patch, item) => performMutation(() => onUpdateShared(id, patch, item || sharedLuggageItems.find(row => row.id === id)))}
     onReorder={async (scope, item, target, placement, expectedItems) => {
-      if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return { ok: false };
+      if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds })) return { ok: false };
       const items = scope === "personal" ? luggageItems : sharedLuggageItems;
       if (!expectedItems || items.length !== expectedItems.length || !expectedItems.every(value => items.some(row => row.id === value.id && row.updated_at === value.updated_at))) {
         setError("物品已更新，請依最新清單重新拖曳。"); return { ok: false };
@@ -14981,7 +14997,7 @@ export function LuggagePanel({
       return performMutation(() => onReorder(scope, item, target, placement, items));
     }}
     onAssign={async (scope, item, assignedTo) => {
-      if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return { ok: false };
+      if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds })) return { ok: false };
       if (!assignedTo || !members.some(member => member.user_id === assignedTo && member.status === "approved")) return { ok: false, error: new Error("請選擇有效的負責成員。") };
       const actionContext = contextRef.current;
       if (scope === "personal") {
@@ -14998,14 +15014,14 @@ export function LuggagePanel({
       return performMutation(() => onAssign(scope, latest, assignedTo));
     }}
     onPrivatize={async (item, category) => {
-      if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return { ok: false };
+      if (!canEdit || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds })) return { ok: false };
       const actionContext = contextRef.current;
       if (!await ask({ title: "轉為個人物品？", message: <>「{item.title}」將移至你的個人行李，不再與團隊共享，並重置準備狀態。<br />原負責人的清單也會移除此物品。</>, confirmLabel: "確認" })) return { ok: false, cancelled: true };
       if (contextRef.current !== actionContext) return { ok: false, contextChanged: true };
       return performMutation(() => onPrivatize(item, category));
     }}
     onMovePersonal={async (item, category) => {
-      if (!canEdit || item.category === category || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, excludeIds: quickGuardIds })) return false;
+      if (!canEdit || item.category === category || !await requestActiveEditorHandoff({ tripId: activeTrip?.id, workspace: "luggage", excludeIds: quickGuardIds })) return false;
       const latest = luggageItems.find(row => row.id === item.id);
       if (!latest) return false;
       return performMutation(() => onSavePersonal({ title: latest.title, notes: latest.notes || "", category }, latest.id, { baseUpdatedAt: latest.updated_at, tripId: activeTrip?.id }));

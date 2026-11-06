@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';import {pathToFileURL} from 'node:url';import 
 import {backend,boot} from './formalBudgetMock.js';import {enableMetadata} from './budgetMetadataMock.js';
 import {nativeBootstrap} from './b7-native-bootstrap.mjs';
 export {boot,enableMetadata};
-async function installTimelineFixture(sql,trip,actor,members){
+export async function installTimelineFixture(sql,trip,actor,members){
  await sql.exec(nativeBootstrap);
  const dir=new URL('../../supabase/migrations/',import.meta.url);
  for(const name of (await fs.readdir(dir)).filter(name=>name.endsWith('.sql')).sort()){
@@ -40,9 +40,12 @@ export async function expenseBackend({timeline=false}={}){
  const signatures={create_named_expense_item:['p_trip_id','p_id','p_session_id','p_request_id','p_title'],expense_rates_lease:['p_trip_id','p_session_id','p_token','p_action','p_base','p_epoch'],update_expense_rates:['p_trip_id','p_session_id','p_token','p_epoch','p_base','p_value','p_request_id'],read_expense_snapshot:['p_trip_id','p_session_id'],read_expense_collaboration:['p_trip_id','p_session_id'],update_expense_selection:['p_trip_id','p_session_id','p_kind','p_id','p_activity_id','p_action'],expense_group_lease:['p_id','p_group','p_session_id','p_token','p_action','p_base','p_epoch','p_seq','p_dirty'],mutate_expense_group:['p_id','p_group','p_session_id','p_token','p_epoch','p_base','p_value','p_request_id'],create_expense_item:['p_trip_id','p_id','p_session_id','p_request_id','p_view']};
  if(timeline)Object.assign(signatures,{
   apply_timeline_schedule_operation:['target_trip_id','target_day_index','target_item_id','target_payload','operation_intent','expected_visit_ids','item_updated_at_baselines','confirmed_major_effect','preview_result','slot_item_ids','package_source_item_ids'],
+  apply_trip_date_change:['trip_id','new_start_date','new_end_date','confirm_timeline_removal'],
+  delete_itinerary_item_budget_safe:['p_trip_id','p_id'],
   assign_luggage_item:['p_trip_id','p_scope','p_item_id','p_expected_updated_at','p_assigned_to'],
   privatize_luggage_item:['p_trip_id','p_item_id','p_expected_updated_at','p_category'],
  });
+ if(timeline)signatures.apply_timeline_schedule_operation_link_safe=signatures.apply_timeline_schedule_operation;
  const syncItinerary=async()=>{db.rows.itinerary_items=(await sql.query('select * from public.itinerary_items')).rows;};
  const syncLuggage=async()=>{
   db.rows.luggage_items=(await sql.query('select to_jsonb(item) as value from public.luggage_items item')).rows.map(row=>row.value);
@@ -51,7 +54,7 @@ export async function expenseBackend({timeline=false}={}){
  db.request=async req=>{if(req.op!=='rpc'||!signatures[req.name])return original(req);if(db.offline)return{error:{message:'offline'}};const run=async()=>{db.expenseCalls.push(structuredClone(req));try{
   await sql.exec('reset role');await sql.query('select set_config($1,$2,false)',[timeline?'request.jwt.claim.sub':'test.actor',req.actor]);await sql.exec('set role authenticated');const keys=signatures[req.name];const args=keys.map(k=>req.args[k]??(k==='p_seq'?0:k==='p_dirty'?false:null));
   const r=(await sql.query(`select public.${req.name}(${keys.map((_,i)=>'$'+(i+1)).join(',')}) d`,args)).rows[0].d;
-  if(req.name==='apply_timeline_schedule_operation')await syncItinerary();
+  if(req.name.startsWith('apply_timeline_schedule_operation')||req.name==='apply_trip_date_change'||req.name==='delete_itinerary_item_budget_safe')await syncItinerary();
   else if(req.name==='assign_luggage_item'||req.name==='privatize_luggage_item')await syncLuggage();
   else if(!req.name.startsWith('read_'))await db.emit('expense_signals',{eventType:'UPDATE',new:{trip_id:trip}}).catch(()=>{});
   if(db.dropAck&&(req.name==='mutate_expense_group'||req.name==='create_named_expense_item')){db.dropAck=false;return{error:{message:'ACK lost'}};}return{data:r};

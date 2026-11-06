@@ -4,7 +4,7 @@ Updated 2026-11-07. This is the live handoff: current work, protected behavior, 
 
 ## Latest 2026-11-07 — Issue #23 editor handoff
 
-[Guard audit and QA](docs/2026-11-07-issue23-editor-handoff.md). Guards declare trip/workspace and distinguish dirty input, pending writes and clean cleanup. Hidden ExpenseWorkspace/Rates no longer prevent ordinary Timeline drag or unrelated editing. Both Timeline reorder paths persist through the existing RPC in isolated SQL. Guarded navigation preserves drafts and unknown request identity. Timed swaps with known native expense links are refused before the legacy slot swap, pending an atomic backend fix. Original branch Staging Preview only, with no migration or hosted business writes. See the audit for baseline test failures and remaining acceptance limits.
+[Domain isolation, link transaction and QA](docs/2026-11-07-issue23-domain-isolation.md) continues the [initial Guard repair](docs/2026-11-07-issue23-editor-handoff.md). Timeline submits through a neutral service to the link-safe RPC. Backend swaps move native links with destination packages and increment link revisions. Fresh link writes validate displayed itinerary versions, while exact committed receipts replay unchanged. Card deletion/shortening unlink removed items and retain expenses. Trip deletion cleans its native graph under existing owner/legacy guards. Budget refresh is independent of trip loading. Same-page actions use workspace scope and date admission checks Timeline drafts only. Static map new-card entry opens the ordinary editor. Migration/Preview rollout status belongs in the domain-isolation handoff.
 
 ## Latest 2026-11-06 — empty trip date guard fixed
 
