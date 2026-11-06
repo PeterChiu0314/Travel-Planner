@@ -5,6 +5,12 @@ const outline=(p,user,title='Review')=>row(p,title).locator(`.bw-collaboration-o
 async function open(p,f,actor=f.A){await enableMetadata(p);await boot(p,f.db,actor);}
 async function select(p,title='Review'){await row(p,title).getByRole('button',{name:title,exact:true}).click();}
 async function hidden(p,value){await p.evaluate(value=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:value?'hidden':'visible'});document.dispatchEvent(new Event('visibilitychange'));},value);}
+test('idle pricing modes work on the first click without focusing the sidebar; a peer lease still blocks changes',async({page,context})=>{
+ const f=await reviewFixture(),peer=await context.newPage();try{
+  await open(page,f);await select(page);await page.getByRole('tab',{name:'編輯項目',exact:true}).click();const group=page.getByRole('group',{name:'預算計價與分攤',exact:true}),custom=group.getByRole('button',{name:'自訂分攤',exact:true});await expect(custom).toBeEnabled();expect(f.db.expenseCalls.filter(c=>c.name==='expense_group_lease'&&c.args.p_group==='budget')).toHaveLength(0);await custom.click();await expect(custom).toHaveAttribute('aria-pressed','true');await expect.poll(async()=>(await f.snapshot()).items[0].budget.pricing_mode).toBe('custom');
+  await open(peer,f,f.B);await select(peer);await peer.getByRole('tab',{name:'編輯項目',exact:true}).click();const other=peer.getByRole('group',{name:'預算計價與分攤',exact:true});await expect(other.getByRole('button',{name:'總額均分',exact:true})).toBeDisabled();await page.screenshot({path:test.info().outputPath('idle-mode-first-click.png')});expect(page.qaErrors).toEqual([]);expect(peer.qaErrors).toEqual([]);
+ }finally{await page.close();await peer.close();f.c.dispose();await f.close();}
+});
 test('one to four selectors update an open avatar cluster; newest selection and editor priority choose one color',async({page})=>{
  const f=await reviewFixture(),people=[f.B,uuid(),uuid(),uuid()],sessions=people.map(()=>uuid()),activities=people.map(()=>uuid());
  const hint=(n,action='select')=>f.rpc('update_expense_selection',{p_trip_id:f.trip,p_session_id:sessions[n],p_kind:'expense',p_id:f.id,p_activity_id:activities[n],p_action:action},people[n]);

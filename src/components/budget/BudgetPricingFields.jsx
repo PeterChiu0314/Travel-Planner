@@ -4,11 +4,11 @@ import { pricingParticipantsDraft } from "../../lib/budgetPricingGroups.js";
 
 // One pricing surface for whole-record editors and the atomic group controller.
 export default function BudgetPricingFields({ form, pricing, members, locked, historical, tripRates, update, setForm,
-  membersOpen, setMembersOpen, changeMode, showModes = true, groupMode = false, editRate = false, fixedCurrency = false }) {
+  membersOpen, setMembersOpen, changeMode, showModes = true, groupMode = false, editRate = false, fixedCurrency = false, modeLocked = locked }) {
   const eligible = members.filter(m => m.status === 'approved');
   const options = [...eligible, ...form.participantIds.filter(id => !eligible.some(m => m.user_id === id)).map(user_id => ({ user_id, display_name: `已退出／無效成員 · ${user_id.slice(0, 6)}`, unavailable: true }))];
   return <>
-    {showModes ? <fieldset disabled={locked} className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset> : null}
+    {showModes ? <fieldset disabled={modeLocked} className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset> : null}
     <div className="bw-two-fields"><label>{form.pricing_mode === "per_person" ? "每人單價" : "總額"}<input name="amount" required min="0" step="0.01" type="number"
       disabled={!groupMode && locked || form.pricing_mode === "custom"} readOnly={groupMode && locked} value={form.pricing_mode === "custom" ? pricing?.amount ?? "" : form.pricing_mode === "per_person" ? form.unit_amount ?? "" : form.amount}
       onChange={event => update(form.pricing_mode === "per_person" ? "unit_amount" : "amount", event.target.value)} /></label>

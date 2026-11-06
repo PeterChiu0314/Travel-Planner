@@ -12,6 +12,10 @@ Hover／鍵盤 focus 僅顯示重疊圓形頭像：最多4位，其餘 `+N`。�
 
 編輯欄位修正：使用者指出色框錯框整個群組。移除共用BudgetCollaborationFrame的absolute群組overlay，改用display:contents的控制項容器傳遞既有owner色，直接上色input／textarea／選單／計價模式按鈕邊框，checkbox／radio使用同色accent。標籤與padding不畫框；唯讀、租約與原姓名提示不變。適用新Expense與舊共用editor，未動RPC或權限。
 
+後續提示／模式精修：姓名提示改以實際input／textarea／選單為錨，提示底部距輸入欄上緣4px，不再從含label/padding的群組往上35px。計價模式在未聚焦時因fieldset disabled而使用瀏覽器淡字；新Expense模式選項在有效可編輯、無peer租約／衝突／未確認請求時可直接選，單次點擊先等待原client.focus取得權限，再以最新view值轉換模式；失敗不改資料。其他財務輸入仍沿用原權限保護。非選中模式明確使用正常文字色。
+
+本次21/21 Chromium Passed（前述20例及新增「未先點側欄直接切自訂分攤／peer仍被阻擋」SQL-backed案例）；Build／diff Passed，desktop提示貼近input截圖已檢視，console errors空。未重做Hosted ordinary-JWT／WebSocket驗收。
+
 此修正20/20 Chromium Passed（metadata appearance3、Issue17 6、native collaboration6、UI restore5），Build／diff Passed。桌面peer輸入框色邊截圖已檢查，無群組色框，原只讀與姓名提示正常；Browser plugin未提供，沿用Playwright/static maps/隔離SQL。上一筆左下頭像提交79da775精確SHA Preview已READY。
 
 - Browser plugin unavailable，使用 repository Playwright、既有 PGlite 隔離 SQL 與 localhost5175 static map provider；未新增依賴。首次未設 PGLITE_MODULE，測試未進入業務流程；設定現存 runtime 後重跑。首次 Google provider 被 sandbox 阻擋的 resource error，以測試 server static provider 排除，未忽略 console error。

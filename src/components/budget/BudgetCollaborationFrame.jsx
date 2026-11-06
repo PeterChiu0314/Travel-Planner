@@ -7,8 +7,10 @@ export default function BudgetCollaborationFrame({ ownerId, ownerName, label, ch
   const id = useId(), [position, setPosition] = useState(null);
   const description = ownerId ? `${ownerName} 正在編輯${label}` : '';
   const show = event => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 260)), top: Math.max(8, rect.top - 35) });
+    const selector = 'input, textarea, .menu-select-trigger, .menu-select-editable, .bw-modes button';
+    const control = event.target.closest(selector) || event.currentTarget.querySelector(selector) || event.currentTarget;
+    const rect = control.getBoundingClientRect();
+    setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 260)), top: Math.max(8, rect.top - 4), transform: 'translateY(-100%)' });
   };
   return <div {...props} className={`bw-metadata-group ${className}${ownerId ? ' has-collaborators' : ''}`}
     aria-describedby={ownerId ? id : undefined}
