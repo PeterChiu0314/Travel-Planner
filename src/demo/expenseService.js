@@ -1,13 +1,14 @@
 import {newExpense,priceExpense,confirmExpensePayment,cancelExpensePayment,expenseRows} from '../lib/expenseItems.js';
 import {createDemoExpenseModels} from './budgetFixtures.js';
 import {demoBudgetQuote} from '../lib/tripBudgetRates.js';
+import {payerForm,reconcilePayers,validPayers} from '../lib/expensePayers.js';
 
 const groups=['title','note','category','payer','links','budget','paid','payment','lifecycle'];
 const copy=value=>structuredClone(value);
 const fail=(message,code='22023')=>{throw Object.assign(new Error(message),{code});};
 export function createDemoExpenseService({trip,members,getItems}){
  const leases=new Map(),receipts=new Map();let rateRevision=0,rates=copy(demoBudgetQuote),rateHeld=null;
- let models=createDemoExpenseModels(trip,getItems()).map(item=>({...item,revisions:{...Object.fromEntries(groups.map(g=>[g,0])),...item.revisions}}));
+ let models=createDemoExpenseModels(trip,getItems()).map(item=>{const form=payerForm(item);return{...item,payment_mode:form.mode,payer_allocations:form.rows,payer_sequence:form.sequence,revisions:{...Object.fromEntries(groups.map(g=>[g,0])),...item.revisions}};});
  function snapshot(session){const rows=models.map(expenseRows);return {schemaVersion:1,tripId:trip.id,items:rows.map(r=>r.item),participants:rows.flatMap(r=>r.participants),
   links:models.flatMap(i=>(i.links||[]).map(itinerary_item_id=>({expense_id:i.id,itinerary_item_id}))),members:copy(members),itineraryItems:copy(getItems()),rates:copy(rates),
   groups:models.flatMap(i=>groups.map(group=>{const l=leases.get(i.id+':'+group),held=Boolean(l&&l.expires>Date.now());return{id:i.id,group,revision:i.revisions[group]||0,epoch:l?.epoch||0,held,owner:held?'demo-peter':null,own_session:held&&l.session===session,expires_at:held?new Date(l.expires).toISOString():null};})),
@@ -27,7 +28,7 @@ export function createDemoExpenseService({trip,members,getItems}){
    if(r.p_action==='renew'&&(!active||l.epoch!==r.p_epoch))return{granted:false};
    const held={session:r.p_session_id,token:r.p_token,epoch:active?l.epoch:(l?.epoch||0)+1,expires:Date.now()+420000};leases.set(key,held);return{granted:true,epoch:held.epoch,revision:r.p_base,expires_at:new Date(held.expires).toISOString()};
   }),
-  create:result(r=>once(r.p_request_id,JSON.stringify(r),()=>{if(!r.p_title?.trim())fail('Name required');if(models.some(i=>i.id===r.p_id))fail('Duplicate item');const item=newExpense({id:r.p_id,tripId:trip.id,members});item.decisions.paid={...item.decisions.budget};models.push({...item,title:r.p_title.trim(),payment_state:'draft',revisions:Object.fromEntries(groups.map(g=>[g,0])),links:[]});return{committed:true,request_id:r.p_request_id,expense_id:r.p_id};})),
+  create:result(r=>once(r.p_request_id,JSON.stringify(r),()=>{if(!r.p_title?.trim())fail('Name required');if(models.some(i=>i.id===r.p_id))fail('Duplicate item');const item=newExpense({id:r.p_id,tripId:trip.id,members});item.decisions.paid={...item.decisions.budget};models.push({...item,title:r.p_title.trim(),payment_state:'draft',payment_mode:'self',payer_allocations:[],payer_sequence:0,planning_managed:true,revisions:Object.fromEntries(groups.map(g=>[g,0])),links:[]});return{committed:true,request_id:r.p_request_id,expense_id:r.p_id};})),
   mutate:result(r=>once(r.p_request_id,JSON.stringify({id:r.p_id,group:r.p_group,session:r.p_session_id,base:r.p_base,value:r.p_value}),()=>{
    const index=models.findIndex(i=>i.id===r.p_id),item=models[index],held=leases.get(r.p_id+':'+r.p_group),v=r.p_value;
    if(!item)fail('Item removed','55000');if(!held||held.session!==r.p_session_id||held.token!==r.p_token||held.epoch!==r.p_epoch||held.expires<=Date.now())fail('Lease required','55P03');
@@ -38,8 +39,13 @@ export function createDemoExpenseService({trip,members,getItems}){
    }else if(r.p_group==='payment')next=v.action==='unpaid'?cancelExpensePayment(item,r.p_base):confirmExpensePayment(item,{paidAt:v.paid_at,payerId:item.payer_id,basePayment:r.p_base,baseBudget:v.budget_revision,basePaid:v.paid_revision});
    else if(r.p_group==='lifecycle'){if(v.action!=='delete')fail('Invalid action');models.splice(index,1);}
    else if(r.p_group==='links'){if(v.ids.some(id=>!getItems().some(i=>i.id===id)))fail('Invalid link');next.links=copy(v.ids);}
-   else if(r.p_group==='payer'){if(v.user_id&&!members.some(m=>m.user_id===v.user_id&&m.status==='approved'))fail('Invalid payer');next.payer_id=v.user_id;}
+   else if(r.p_group==='payer'){if(!v.form){if(!members.some(m=>m.user_id===v.user_id&&m.status==='approved'))fail('Invalid payer');next.payment_mode='advance';next.payer_id=v.user_id;next.payer_allocations=[{user_id:v.user_id,amount:Math.round(Number((item.paid||item.budget)?.amount||0)),order:0}];}else{if(!validPayers(v.form,members))fail('Invalid payer');if(v.budget_revision!==(item.revisions.budget||0)||v.paid_revision!==(item.revisions.paid||0))fail('Pricing changed','PT409');const form=reconcilePayers(v.form,(item.budget||item.paid)?.amount);next.payment_mode=form.mode;next.payer_allocations=form.rows;next.payer_sequence=form.sequence;next.payer_id=form.mode==='advance'?form.rows[0]?.user_id:null;next.planning_managed=true;}}
    else if(['title','category','note'].includes(r.p_group))next[r.p_group]=v.text;else fail('Invalid group');
+   if(['budget','paid','payer','payment'].includes(r.p_group)){
+    if(v.planning&&r.p_group==='budget')next.planning_managed=true;
+    if(v.planning&&next.payment_state==='paid'&&next.budget&&['budget','payer','payment'].includes(r.p_group)&&JSON.stringify(next.paid)!==JSON.stringify(next.budget)){next.paid=copy(next.budget);next.decisions.paid=copy(next.decisions.budget);next.revisions.paid++;}
+    if(next.planning_managed||r.p_group==='payer'){const form=reconcilePayers(payerForm(next),(next.budget||next.paid)?.amount);if(JSON.stringify(next.payer_allocations)!==JSON.stringify(form.rows)){next.payer_allocations=form.rows;if(r.p_group!=='payer')next.revisions.payer++;}}
+   }
    next.revisions[r.p_group]=r.p_base+1;if(r.p_group!=='lifecycle')models[index]=next;const rows=expenseRows(next);
    return{committed:true,request_id:r.p_request_id,expense_id:r.p_id,group:r.p_group,revision:r.p_base+1,item:rows.item,participants:rows.participants};
   })),

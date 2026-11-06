@@ -1,5 +1,6 @@
-// Stage B isolated domain. Not wired to App or any Hosted transport.
+// Single-expense domain shared by native projections, Demo and regression checks.
 import { calculatePricing, calculateActualPricing, settlementBalances } from './budgetFinance.js';
+import {paymentCredits} from './expensePayers.js';
 const copy = value => structuredClone(value);
 const scopes = new Set(['budget', 'paid']);
 const checkScope = scope => { if (!scopes.has(scope)) throw new Error('Invalid pricing scope'); };
@@ -49,7 +50,7 @@ export function proposeExpenseMembers(item,scope,members) {
 export function confirmExpensePayment(item,{paidAt,payerId,basePayment,baseBudget,basePaid}) {
   if(basePayment!==item.revisions.payment||baseBudget!==item.revisions.budget||basePaid!==item.revisions.paid)
     throw Object.assign(new Error('Version conflict'),{code:'PT409'});
-  if(!payerId||!Number.isFinite(Date.parse(paidAt)))throw new Error('Explicit payment details required');
+  if(item.payment_mode!=='self'&&!payerId||!Number.isFinite(Date.parse(paidAt)))throw new Error('Explicit payment details required');
   const next=copy(item);
   if(!next.paid){if(!next.budget)throw new Error('Payment amount missing');next.paid={...copy(next.budget),twd_amount_source:'estimated',actual_twd_amount:null};next.decisions.paid=copy(next.decisions.budget);next.revisions.paid++;}
   next.payment_state='paid';next.payer_id=payerId;next.paid_at=paidAt;next.revisions.payment++;return next;
@@ -73,7 +74,7 @@ export function importActualExpense(actual,people) {
 export function expenseSettlement(items,members) {
   const rows=[],people=[];
   for(const item of items){if(!item.paid)continue;
-    rows.push({...item.paid,id:item.id,payer_id:item.payer_id,record_status:item.payment_state==='draft'?'incomplete':item.paid.record_status,
+    rows.push({...item.paid,id:item.id,payer_id:item.payer_id,payment_mode:item.payment_mode,payments:paymentCredits(item),record_status:item.payment_state==='draft'?'incomplete':item.paid.record_status,
       payment_active:item.payment_state==='paid'});
     for(const id of item.paid.participantIds)people.push({actual_expense_id:item.id,user_id:id,share_amount:item.paid.shares[id]});
   }
@@ -88,6 +89,7 @@ export function expenseRows(item) {
     ...Object.keys(item.decisions.budget||{}),...Object.keys(item.decisions.paid||{})])].sort();
   const selected=(scope,id)=>item.decisions[scope]?.[id]??(item[scope]?.participantIds.includes(id)?true:null);
   return {item:{id:item.id,trip_id:item.trip_id,title:item.title,category:item.category,note:item.note,payer_id:item.payer_id,
+    ...(item.payment_mode?{payment_mode:item.payment_mode,payer_allocations:copy(item.payer_allocations||[]),payer_sequence:item.payer_sequence||0,planning_managed:Boolean(item.planning_managed)}:{}),
     budget:bundle(item.budget),paid:bundle(item.paid),paid_at:item.paid_at,payment_state:item.payment_state,
     budget_decisions_known:item.decisions.budget!==null,paid_decisions_known:item.decisions.paid!==null},
     participants:ids.map(user_id=>({expense_id:item.id,user_id,budget_selected:selected('budget',user_id),paid_selected:selected('paid',user_id),

@@ -156,8 +156,14 @@ export function settlementBalances(expenses, participants, members) {
   expenses.filter((row) => isBudgetComplete(row)&&row.payment_active !== false).forEach((expense) => {
     const people = participantsFor(expense, participants, "actual_expense_id", members);
     const shares = recordAllocations(expense, people);
-    if (!shares || !totals[expense.payer_id]) incomplete = true;
-    if (totals[expense.payer_id]) totals[expense.payer_id].paid += Number(expense.twd_amount);
+    if(expense.payment_mode==='self'){
+      if(!shares)incomplete=true;
+      Object.entries(shares||{}).forEach(([id,amount])=>{if(!totals[id]){incomplete=true;return;}totals[id].paid+=amount;totals[id].shouldPay+=amount;});
+      return;
+    }
+    const payments=expense.payment_mode==='advance'?expense.payments||[]:[{user_id:expense.payer_id,twd_amount:expense.twd_amount}];
+    if (!shares || !payments.length) incomplete = true;
+    for(const payment of payments){if(!totals[payment.user_id]){incomplete=true;continue;}totals[payment.user_id].paid+=Number(payment.twd_amount);}
     Object.entries(shares || {}).forEach(([id, amount]) => {
       if (!totals[id]) { incomplete = true; return; }
       totals[id].shouldPay += amount;

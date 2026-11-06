@@ -14,6 +14,7 @@ import {displayParticipants,expenseDisplayRows,ExpenseDetail,ExpenseTable} from 
 import MenuSelect from '../MenuSelect.jsx';
 import {useSiteDialog} from '../SiteDialog.jsx';
 import ExpenseRates from './ExpenseRates.jsx';
+import ExpensePayers from './ExpensePayers.jsx';
 import {createBudgetCollaboration} from '../../lib/budgetCollaboration.js';
 
 function errorToast(error){if(isConnectionError(error))notify.error(error);else notify.error(error.code==='PT409'?'內容已更新，未儲存的變更已保留；離開時可選擇不儲存。':error.code==='55P03'?'暫時無法儲存，變更已保留，系統會重新確認。':error.code==='22023'?'請確認金額、付款人與參與成員是否完整。':error,{id:'budget-editor-error'});}
@@ -33,7 +34,7 @@ export default function ExpenseWorkspace(props){
  const transport=useMemo(()=>props.expenseService||createExpenseService(props.supabase),[props.expenseService,props.supabase]);
  const sessionId=props.demo?'demo-session':getBudgetMetadataSessionId(),storage=props.demo?null:sessionStorage;
  const client=useMemo(()=>{return createExpenseEditor({service:{...transport,read:async(trip,session)=>{if(propsRef.current.demo)return transport.read(trip,session);const r=await propsRef.current.onRefreshBudget(propsRef.current.activeTrip.id);return r.ok?{data:r.data.expenseGraph}:{error:r.error||new Error('資料尚未同步，變更已保留。')};}},
-  actor:props.currentUserId,trip:props.activeTrip.id,sessionId,storage,onError:errorToast,onSnapshot:data=>propsRef.current.onExpenseSnapshot?.(data)});},[transport,props.currentUserId,props.activeTrip.id,sessionId,storage]);
+  actor:props.currentUserId,trip:props.activeTrip.id,sessionId,storage,planning:()=> (propsRef.current.demoStage||budgetStage(propsRef.current.activeTrip))==='planning',onError:errorToast,onSnapshot:data=>propsRef.current.onExpenseSnapshot?.(data)});},[transport,props.currentUserId,props.activeTrip.id,sessionId,storage]);
  const planning=(props.demoStage||budgetStage(props.activeTrip))==='planning';
  const version=useSyncExternalStore(client.subscribe,client.getVersion),[selected,setSelected]=useState(()=>client.status().draftId||null),[view,setView]=useState(()=>planning?'budget':'paid'),[query,setQuery]=useState('');
  const [panel,setPanel]=useState(()=>client.status().draftId?'edit':'stats'),[paymentFilter,setPaymentFilter]=useState(''),[collapsed,setCollapsed]=useState([]),[viewpoint,setViewpoint]=useState('average'),panelChosen=useRef(false),adding=useRef(false);
@@ -45,7 +46,7 @@ export default function ExpenseWorkspace(props){
  const {ask,dialog}=useSiteDialog();
  useEffect(()=>{setSelected(client.status().draftId||null);setPanel(client.status().draftId?'edit':'stats');},[client]);
  useEffect(()=>{setView(planning?'budget':'paid');},[planning]);
- useEffect(()=>{if(props.metadataSnapshot?.expenseGraph)client.ingest(props.metadataSnapshot.expenseGraph,{authoritative:props.metadataSnapshot.expenseVerified!==false});},[client,props.metadataSnapshot]);
+ useEffect(()=>{if(props.demo&&client.status().graph)return;if(props.metadataSnapshot?.expenseGraph)client.ingest(props.metadataSnapshot.expenseGraph,{authoritative:props.metadataSnapshot.expenseVerified!==false});},[client,props.metadataSnapshot,props.demo]);
  useEffect(()=>{const detach=client.attach(),timer=setInterval(()=>void client.tick(),1000);return()=>{clearInterval(timer);detach();};},[client]);
  useEffect(()=>{void collaboration?.configure(props.currentUserId,props.activeTrip.id,workspaceActive&&approvedActor);},[collaboration,props.currentUserId,props.activeTrip.id,workspaceActive,approvedActor]);
  useEffect(()=>()=>{void collaboration?.dispose();},[collaboration]);
@@ -82,7 +83,7 @@ export default function ExpenseWorkspace(props){
  const select=id=>void handoff(()=>{setSelected(selected===id?null:id);if(!panelChosen.current&&panel!=='edit')setPanel('detail');});
  const close=()=>void handoff(()=>{setPanel('detail');if(!client.status().graph.items.some(i=>i.id===selected))setSelected(null);});
  const changePanel=key=>void handoff(()=>{panelChosen.current=true;setPanel(key);});
- const paymentDisabled=!editable||!item||item.payment_state!=='paid'&&(!item.title.trim()||!item.payer_id||!item.paid&&!item.budget);
+ const paymentDisabled=!editable||!item||item.payment_state!=='paid'&&(!item.title.trim()||item.payment_mode!=='self'&&!item.payer_id&&!item.payer_allocations?.length||!item.paid&&!item.budget);
  return <section className="budget-panel budget-workspace" aria-label="支出工作區">{dialog}
   <div className="bw-main"><div className="bw-toolbar">{!planning?<div className="bw-tabs" role="tablist" aria-label="費用資料檢視">{[['budget','預算'],['paid','實付']].map(([key,label])=><button type="button" role="tab" key={key} aria-selected={view===key} onClick={()=>void handoff(()=>setView(key))}>{label}</button>)}</div>:null}
    <div className="bw-filters"><label><Search size={15}/><input aria-label="搜尋項目" placeholder="搜尋項目" value={query} onChange={e=>setQuery(e.target.value)}/></label><MenuSelect label="付款篩選" value={paymentFilter} onValueChange={setPaymentFilter} options={[{value:'',label:'全部項目'},{value:'unpaid',label:'未付款'},{value:'paid',label:'已付款'}]}/><span>{displayRows.length} 筆</span></div><button type="button" className="primary-button compact bw-add" disabled={!editable} onClick={()=>void add()}><Plus size={15}/>新增項目</button></div>
@@ -95,9 +96,10 @@ export default function ExpenseWorkspace(props){
    {frame('title','項目名稱',({v,locked,set})=><input aria-label="項目名稱" value={v.value} readOnly={locked} onChange={e=>set(e.target.value)}/>)}
    {frame('note','備註',({v,locked,set})=><textarea aria-label="備註" value={v.value||''} rows={3} readOnly={locked} onChange={e=>set(e.target.value)}/>)}
    {frame('category','分類',({v,locked,set})=><MenuSelect label="分類" value={v.value} editable readOnly={locked} metadataPortal onValueChange={set} options={['機票','交通','住宿','門票','餐飲','購物','其他'].map(value=>({value,label:value}))}/>)}
-   {frame('payer','付款人',({v,locked,set})=><MenuSelect label="付款人" value={v.value} readOnly={locked} metadataPortal onValueChange={set} options={[{value:'',label:'未指定'},...approved.map(m=>({value:m.user_id,label:memberLabel(m)}))]}/>)}
+
    {frame('links','關聯行程',({v,locked,set})=><ItineraryPicker items={graph.itineraryItems||[]} category={item.category} selectedIds={v.value} readOnly={locked} onChange={set}/>)}
    {frame(view,view==='budget'?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing client={client} field={field} view={v} scope={view} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode}/>)}
+   {frame('payer','付款方式',({field,v,locked,canChooseMode})=>planning?<ExpensePayers client={client} field={field} view={v} members={approved} total={(item.budget||item.paid)?.amount??0} currency={(item.budget||item.paid)?.currency||'TWD'} locked={locked} canChooseMode={canChooseMode}/>:v.value.rows.length<=1?<MenuSelect label="付款人" value={v.value.rows[0]?.user_id||''} readOnly={locked} metadataPortal onValueChange={value=>client.input(field,value)} options={[{value:'',label:'未指定'},...approved.map(m=>({value:m.user_id,label:memberLabel(m)}))]}/>:<p>{v.value.mode==='self'?'各自付':v.value.rows.map(r=>memberLabel(approved.find(m=>m.user_id===r.user_id))).join('、')}</p>)}
    {!planning?<div className="bw-metadata-summary"><span>分類 · {item.category}</span><span>金額 · {item[view]?`${item[view].currency} ${money(item[view].amount)}`:'尚未填寫'}</span></div>:null}
    {!planning?<details className="bw-secondary-fields"><summary>{actual?'預算金額與分攤':'實付金額與分攤'}</summary>{frame(actual?'budget':'paid',actual?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing client={client} field={field} view={v} scope={actual?'budget':'paid'} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode}/>)}</details>:null}
    <div className="bw-editor-actions bw-side-footer">{planning?<><PaymentToggle checked={item.payment_state==='paid'} disabled={paymentDisabled} onChange={()=>void payment()}/><span className="bw-save-state" role="status" aria-label="儲存狀態">{client.saveStatus(item.id)}</span></>:<><button type="button" className="ghost-button compact" disabled={paymentDisabled} onClick={()=>void payment()}>{item.payment_state==='paid'?'改為未付款':'標記已付款'}</button><button type="button" className="ghost-button compact" onClick={close}>取消</button><button type="button" className="primary-button compact" disabled={!editable} onClick={close}>完成</button></>}</div>

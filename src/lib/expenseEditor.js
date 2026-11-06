@@ -3,7 +3,9 @@ import {expenseModels,validExpenseSnapshot} from './expenseSnapshot.js';
 import {calculatePricing,calculateActualPricing} from './budgetFinance.js';
 import {proposeExpenseMembers,expenseRows,newExpense} from './expenseItems.js';
 import {expenseReleaseReceipt,expenseReleaseSettled} from './expenseLeaseReceipt.js';
+import {payerForm,reconcilePayers,validPayers} from './expensePayers.js';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const compatiblePayer=(value,item)=>typeof value==='string'?payerForm({...item,payment_mode:value?'advance':'self',payer_id:value||null,payer_allocations:[],payer_sequence:0}):value;
 export function expenseFieldValue(data,id,group){
  const item=expenseModels(data).find(i=>i.id===id);if(!item)return null;
  if(['budget','paid'].includes(group)){
@@ -13,13 +15,13 @@ export function expenseFieldValue(data,id,group){
    participantIds:bundle.participantIds,shares:bundle.shares,twd_amount_source:source,actual_twd_amount:bundle.actual_twd_amount??bundle.twd_amount??''}
    :{amount:'',unit_amount:'',pricing_mode:'split_total',currency:'TWD',exchange_rate:1,participantIds:selected,shares:{},twd_amount_source:'estimated',actual_twd_amount:''};
  }
- if(group==='payer')return item.payer_id||'';
+ if(group==='payer')return payerForm(item);
  if(group==='payment')return {action:item.payment_state==='paid'?'paid':'unpaid',paid_at:item.paid_at,budget_revision:item.revisions.budget||0,paid_revision:item.revisions.paid||0,payer_revision:item.revisions.payer||0};
  if(group==='lifecycle')return null;
  if(group==='links')return data.links.filter(l=>l.expense_id===id).map(l=>l.itinerary_item_id).sort();
  return item[group]??'';
 }
-export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId=()=>crypto.randomUUID(),timeoutMs=10000,onError=()=>{},onSnapshot=()=>{}}){
+export function createExpenseEditor({service,actor,trip,sessionId,storage,planning=()=>false,makeId=()=>crypto.randomUUID(),timeoutMs=10000,onError=()=>{},onSnapshot=()=>{}}){
  let graph=null,verified=false,active=true,disposed=false,version=0,readWork=null,lastRecovery=0,createWork=null,pendingCreate=null,localDraft=null,createTimer=null,mountGeneration=0;const fields=new Map(),listeners=new Set();
  const createKey=`travel-planner-expense-create:${actor}:${trip}`;
  try{const saved=JSON.parse(storage?.getItem(createKey)||'null');if(saved?.p_trip_id===trip&&typeof saved.p_request_id==='string')pendingCreate=saved;}catch{/* Invalid persisted request ignored. */}
@@ -75,11 +77,12 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
  }
  async function refresh(){if(readWork)return readWork;readWork=(async()=>{try{if(!(await service.authorized(actor)))return false;const r=await bounded(service.read(trip,sessionId));if(r.error||!ingest(r.data)){verified=false;if(r.error)onError(r.error);emit();return false;}onSnapshot(r.data);return true;}finally{readWork=null;}})();return readWork;}
  function get(id,group){const key=id+':'+group;if(fields.has(key))return fields.get(key);const r=graph?.groups.find(g=>g.id===id&&g.group===group);const value=expenseFieldValue(graph,id,group);
-  if(localDraft?.id===id){const canonical=draftValue(group),g={id,group,local:true,canonical,value:structuredClone(localDraft.values[group]??canonical),state:'local',revision:0};fields.set(key,g);return g;}
+  if(localDraft?.id===id){const canonical=draftValue(group);let value=structuredClone(localDraft.values[group]??canonical);if(group==='payer')value=compatiblePayer(value,expenseModels(draftGraph())[0]);const g={id,group,local:true,canonical,value,state:'local',revision:0};fields.set(key,g);return g;}
   const g={id,group,value,canonical:structuredClone(value),base:r?.revision??0,state:'idle',token:null,epoch:null,activity:0,focused:false,conflict:false,request:null,revision:0};
   try{const draft=JSON.parse(storage?.getItem(storageKey(g))||'null');if(draft&&Number.isSafeInteger(draft.base)){g.value=draft.value;g.base=draft.base;g.request=draft.request;g.conflict=Boolean(!g.request&&verified&&r&&r.revision!==g.base);
-   if(g.request){const v=g.request.p_value;const original=['budget','paid'].includes(group)?v.form:group==='payer'?v.user_id||'':group==='links'?v.ids:['payment','lifecycle'].includes(group)?v:v.text;g.submitted=same(original,g.value)?0:-1;}
+   if(g.request){const v=g.request.p_value;const original=['budget','paid'].includes(group)?v.form:group==='payer'?v.form||v.user_id||'':group==='links'?v.ids:['payment','lifecycle'].includes(group)?v:v.text;g.submitted=same(original,g.value)?0:-1;}
   }}catch{/* Invalid persisted input never grants authority. */}
+  if(group==='payer')g.value=compatiblePayer(g.value,expenseModels(graph).find(i=>i.id===id));
   fields.set(key,g);return g;
  }
  async function release(g){if(g.local){g.focused=false;return true;}if(g.releaseWork)return g.releaseWork;clearTimeout(g.timer);g.focused=false;g.releasing=true;
@@ -92,7 +95,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
    report(g,r.error||new Error('暫時無法完成同步，變更已保留。'));return false;
   })().finally(()=>{g.releaseWork=null;emit();});return g.releaseWork;
  }
- async function focus(g){if(g.local){g.focused=true;return active;}if(!current()||!active||!verified||g.conflict||g.request)return false;g.focused=true;
+ async function focus(g){if(g.local){g.focused=true;return active;}if(['budget','paid','payer'].includes(g.group)){for(const other of fields.values())if(other!==g&&other.id===g.id&&['budget','paid','payer'].includes(other.group)&&other.saveWork&&!await other.saveWork)return false;}if(!current()||!active||!verified||g.conflict||g.request)return false;g.focused=true;
   if(g.releasing){if(!await release(g))return false;g.focused=true;}
   if(owns(g))return true;if(g.acquiring)return g.acquiring;
   g.token ||= makeId();g.state='pending';emit();const request=args(g,'acquire'),token=g.token;
@@ -109,12 +112,13 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
    emit();return true;
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
  }
- function input(g,value,{immediate=false}={}){if(g.local){if(!active)return;localDraft.refused=false;g.value=structuredClone(value);localDraft.values[g.group]=g.value;persistDraft();emit();clearTimeout(createTimer);createTimer=setTimeout(()=>void create(),1000);return;}if(g.conflict||g.releasing||!owns(g)&&g.state!=='pending')return;g.value=structuredClone(value);g.revision++;g.activity++;g.error=null;g.autoBlocked=false;persist(g);emit();clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),immediate?0:1000);}
- function body(g){if(['budget','paid'].includes(g.group))return {form:g.value,members:graph.members.filter(m=>m.status==='approved').map(m=>m.user_id).sort(),rates:graph.rates};if(['payment','lifecycle'].includes(g.group))return g.value;if(g.group==='payer')return{user_id:g.value||null};if(g.group==='links')return{ids:g.value};return{text:g.value};}
+ function input(g,value,{immediate=false}={}){if(g.group==='payer'&&typeof value==='string'){const item=expenseModels(graph).find(i=>i.id===g.id);value={mode:value?'advance':'self',rows:value?[{user_id:value,amount:Math.round(Number((item?.budget||item?.paid)?.amount||0)),order:0}]:[],sequence:0};}if(g.local){if(!active)return;localDraft.refused=false;g.value=structuredClone(value);localDraft.values[g.group]=g.value;persistDraft();emit();clearTimeout(createTimer);createTimer=setTimeout(()=>void create(),1000);return;}if(g.conflict||g.releasing||!owns(g)&&g.state!=='pending')return;g.value=structuredClone(value);g.revision++;g.activity++;g.error=null;g.autoBlocked=false;persist(g);emit();clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),immediate?0:1000);}
+ function body(g){if(['budget','paid'].includes(g.group))return {form:g.value,members:graph.members.filter(m=>m.status==='approved').map(m=>m.user_id).sort(),rates:graph.rates,planning:planning()};if(['payment','lifecycle'].includes(g.group))return {...g.value,planning:planning()};if(g.group==='payer'){if(!planning()&&g.value.mode==='advance'&&g.value.rows.length===1)return{user_id:g.value.rows[0].user_id};const item=expenseModels(graph).find(i=>i.id===g.id);return{planning:planning(),form:reconcilePayers(g.value,(item.budget||item.paid)?.amount),budget_revision:item.revisions.budget||0,paid_revision:item.revisions.paid||0};}if(g.group==='links')return{ids:g.value};return{text:g.value};}
  function save(g,flush=true){if(g.saveWork)return g.saveWork;clearTimeout(g.timer);
   if(g.local)return create();
   g.saveWork=(async()=>{if(g.acquiring)await g.acquiring;if(!current()||g.conflict||g.composing)return false;if(!g.request&&!dirty(g))return true;if(!active&&!g.request)return false;
    if(!g.request){if(!owns(g))return false;
+    if(g.group==='payer'&&!validPayers(g.value,graph.members))return false;
     if(['budget','paid'].includes(g.group)){if(!flush&&(g.value.pricing_mode==='custom'?g.value.participantIds.some(id=>String(g.value.shares[id]??'')===''):String(g.value.pricing_mode==='per_person'?g.value.unit_amount??'':g.value.amount??'')===''))return false;try{(g.group==='paid'?calculateActualPricing:calculatePricing)(g.value);}catch(error){report(g,error);return false;}}
     g.request={p_id:g.id,p_group:g.group,p_session_id:sessionId,p_token:g.token,p_epoch:g.epoch,p_base:g.base,p_value:body(g),p_request_id:makeId()};g.submitted=g.revision;
    }
@@ -142,7 +146,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
    // Keep the same request until both its receipt and authoritative row are known.
    // Copy all later typing into the existing group editor, never into another item.
    if(localDraft?.id===request.p_id){for(const group of Object.keys(localDraft.values))get(localDraft.id,group);for(const g of fields.values())if(g.local){g.local=false;g.state='idle';g.base=0;g.epoch=null;g.token=null;g.activity=0;g.canonical=expenseFieldValue(graph,g.id,g.group);if(g.group==='title'&&String(g.value).trim()===request.p_title&&remote(g)?.revision===0)g.value=structuredClone(g.canonical);g.conflict=Boolean(remote(g)?.revision>0&&dirty(g));persist(g);}localDraft=null;persistDraft();}
-   pendingCreate=null;try{storage?.removeItem(createKey);}catch{/* No credentials stored. */}for(const g of fields.values())if(g.id===request.p_id&&g.focused&&!g.conflict){if(active)await focus(g);else{g.resumeFocus=true;g.focused=false;}}emit();return request.p_id;
+   pendingCreate=null;try{storage?.removeItem(createKey);}catch{/* No credentials stored. */}for(const g of fields.values())if(g.id===request.p_id&&!g.conflict){if(g.focused){if(active)await focus(g);else{g.resumeFocus=true;g.focused=false;}}if(dirty(g)&&active){clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),1000);}}emit();return request.p_id;
   })().finally(()=>{createWork=null;emit();});return createWork;
  }
  async function finish(){if(localDraft&&!draftDirty()&&!pendingCreate){clearDraft();emit();}if((pendingCreate||localDraft)&&!await create())return false;for(const g of fields.values()){g.resumeFocus=false;if(dirty(g)||g.request){if(!g.request&&!owns(g)&&!await focus(g))return false;if(!await save(g))return false;}if(!await release(g))return false;}return true;}

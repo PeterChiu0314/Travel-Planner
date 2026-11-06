@@ -13406,7 +13406,7 @@ function SettlementPanel({ activeTrip, demoStage, budgetBaseline, expenseGraph, 
                     <span>{expense.paid_at ? new Date(expense.paid_at).toLocaleDateString("zh-TW") : "未設定日期"}</span>
                   </div>
                   <span>{workspaceMoney(expense.twd_amount)}</span>
-                  <span>付款人：{memberName(payer)}</span>
+                  <span>{expense.payment_mode==='self'?'各自付':expense.payment_mode==='advance'?'代付：'+(expense.payments||[]).map(p=>memberName(memberById.get(p.user_id))+' '+workspaceMoney(p.twd_amount)).join('、'):'付款人：'+memberName(payer)}</span>
                   <span>
                     分攤：
                     {participants.length

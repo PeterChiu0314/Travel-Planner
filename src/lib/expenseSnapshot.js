@@ -1,4 +1,5 @@
 import {isBudgetComplete} from './budgetLifecycleValues.js';
+import {paymentCredits} from './expensePayers.js';
 export function expenseModels(data){
  return data.items.map(row=>{
   const people=data.participants.filter(p=>p.expense_id===row.id),groups=data.groups.filter(g=>g.id===row.id);
@@ -17,7 +18,7 @@ export function expenseFinancialSnapshot(data){
    for(const p of data.participants.filter(p=>p.expense_id===i.id&&p.budget_selected))budgetParticipants.push({budget_item_id:i.id,user_id:p.user_id,share_amount:p.budget_share_amount});
   }
   if(i.paid||i.payment_state==='draft'){
-   actualExpenses.push({...i.paid,id:i.id,trip_id:i.trip_id,title:i.title,category:i.category,note:i.note,payer_id:i.payer_id,paid_at:i.paid_at,
+   actualExpenses.push({...i.paid,id:i.id,trip_id:i.trip_id,title:i.title,category:i.category,note:i.note,payer_id:i.payer_id,payment_mode:i.payment_mode,payments:paymentCredits(i),paid_at:i.paid_at,
     record_status:i.payment_state==='draft'?'incomplete':i.paid?.record_status,pricing_ready:Boolean(i.paid),payment_active:i.payment_state==='paid'});
    for(const p of data.participants.filter(p=>p.expense_id===i.id&&p.paid_selected))actualParticipants.push({actual_expense_id:i.id,user_id:p.user_id,share_amount:p.paid_share_amount});
   }

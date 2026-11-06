@@ -289,3 +289,4 @@
  .bw-side > .bw-editor.is-planning { min-height: calc(100% - var(--bw-side-tabs-space)); box-sizing: border-box; }
  .bw-editor.is-planning .bw-editor-actions { margin-top: auto; flex-shrink: 0; }
 }
+.bw-payers{display:grid;gap:12px}.bw-pricing-modes{display:flex}.bw-pricing-modes>button{flex:1;padding:7px;border:1px solid var(--color-border);background:transparent;color:var(--color-text)}.bw-pricing-modes>button[aria-pressed=true]{background:var(--color-success-bg);border-color:var(--color-primary);color:var(--color-primary);font-weight:600}.bw-pricing-modes>button:first-child{border-radius:5px 0 0 5px}.bw-pricing-modes>button:last-child{border-radius:0 5px 5px 0}.bw-payer-row,.bw-payer-labels{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 26px;gap:8px;align-items:center}.bw-payer-row input{width:100%;min-width:0}.bw-payer-labels{font-size:12px;color:var(--color-text-secondary)}
