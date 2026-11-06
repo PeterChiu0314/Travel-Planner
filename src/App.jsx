@@ -34,7 +34,7 @@ import { createBudgetCollaboration, primaryBudgetCollaborators } from "./lib/bud
 import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./lib/budgetMetadataConfig.js";
 import { createBudgetMetadataEditor, createBudgetMetadataService, withoutBudgetMetadata, budgetAuthorityTimeoutMs } from "./lib/budgetMetadataService.js";
 import { createDemoBudgetMetadataService } from "./demo/budgetMetadata.js";
-import { demoBudgetQuote } from "./lib/tripBudgetRates.js";
+import { demoBudgetQuote, fetchBudgetQuote } from "./lib/tripBudgetRates.js";
 import { demoBudgetMembers } from "./demo/budgetFixtures.js";
 import {
   closestCenter,
@@ -4796,6 +4796,9 @@ export default function App() {
       tripForm.destination_country,
       tripForm.destination_city,
     );
+    let initialRates;
+    try { initialRates = await fetchBudgetQuote(); }
+    catch (error) { notify.error(error); }
     const { error: tripError } = await supabase.from("trips").insert({
       id: tripId,
       title: tripForm.title.trim(),
@@ -4805,6 +4808,7 @@ export default function App() {
       end_date: safeEndDate,
       status: "planning",
       owner_id: user.id,
+      ...(initialRates ? { budget_exchange_rates: initialRates } : {}),
     });
 
     if (tripError) {

@@ -15,3 +15,12 @@ test('unknown rates receipt stays pending with the same immutable request until 
  const f=fixture();f.service.rates=async args=>{f.calls.push(args);return {error:{message:'network lost'}};};assert.equal(await f.controller.update(),false);assert(f.controller.status().pending);const request=f.calls.find(c=>c.p_request_id);assert.equal(await f.controller.finish(),false);assert.deepEqual(f.calls.filter(c=>c.p_request_id)[1],request);
  f.service.rates=async()=>({error:{code:'55000',message:'refused'}});await f.controller.retry();assert.equal(f.controller.status().pending,false);assert.equal(f.values.size,0);
 });
+test('initialization skips existing quotes and a concurrent initialization discovered after refresh',async()=>{
+ let graph={rates:null,rateState:{revision:0,targets:[]}},fetches=0,writes=0;
+ const full={rates:{JPY:.2,USD:32,EUR:35,KRW:.02,HKD:4}};
+ const controller=createExpenseRates({service:{authorized:async()=>true,rateLease:async()=>{writes++;return{data:{granted:true,epoch:1}};}},actor:'A',trip:'T',sessionId:'S',getGraph:()=>graph,refresh:async()=>{graph={...graph,rates:full};return true;},onError:()=>{},quote:async()=>{fetches++;return full;}});
+ assert.equal(await controller.update({initialize:true}),false);assert.equal(writes,0);assert.equal(await controller.update({initialize:true}),false);assert.equal(fetches,1);
+});
+test('outside planning no quote is fetched, but old unknown receipts can still be reconciled',async()=>{
+ let fetched=0;const f=fixture();const c=createExpenseRates({service:f.service,actor:'A',trip:'T',sessionId:'S',getGraph:()=>({}),refresh:async()=>true,onError:()=>{},canUpdate:()=>false,quote:async()=>{fetched++;}});assert.equal(await c.update(),false);assert.equal(fetched,0);assert(await c.finish());
+});
