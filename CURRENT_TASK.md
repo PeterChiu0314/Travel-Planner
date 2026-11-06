@@ -2,6 +2,12 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest direction — planning only, one item editor and paid marker
+
+User explicitly rejects separate paid amounts/shares or difference UI during planning. Planning ExpenseWorkspace now offers only the item's amount/participants and existing paid/unpaid action; remove the secondary paid editor and both-value/difference summary from planning details. Traveling/settlement require separate future design; this change does not redesign them or rewrite historical payments. Existing atomic payment RPC records the current item amount on first payment when no paid bundle exists; retained payment history is unchanged. This supersedes earlier planning paid-only/two-editor UI acceptance, not the protected financial validation contracts.
+
+Validation: 19/19 current Chromium cases Passed (Demo7, creation5, restore5, workspace2), including direct edit800→mark paid on the same item, no planning paid/difference UI, and existing nonplanning routes untouched. Build/diff Passed; desktop screenshot inspected. Browser plugin absent; repository Playwright/static maps/isolated SQL used. No migration/Hosted business write, Production/main operation or new comparison/snapshot system.
+
 ## Latest 2026-11-06 — remove incomplete-item presentation
 
 User explicitly rejects「未完成」as a Budget/expense item state. Native and legacy Budget UI no longer render the row suffix or incomplete-count banner; native status is only「未付款／已付款」. Legacy detail now describes an empty amount as「金額尚未填寫」. Remove metadata-group dividers, retaining control borders and spacing. Null/zero distinction, paid eligibility and financial totals remain protected; internal compatibility validation keys are not a user-facing item state. [Audit and verification](docs/2026-11-06-budget-payment-labels.md).

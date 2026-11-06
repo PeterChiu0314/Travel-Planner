@@ -32,11 +32,10 @@ test('Demo unified add discards blank drafts and protects unnamed substantive co
  const add=page.getByRole('button',{name:'新增項目',exact:true});await expect(add).toHaveCount(1);await add.click();await expect(page.locator('.bw-row')).toHaveCount(32);await editor(page).getByRole('button',{name:'關閉編輯',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.locator('.bw-row')).toHaveCount(32);
  await add.click();await editor(page).getByRole('textbox',{name:'備註',exact:true}).fill('尚未命名');await editor(page).getByRole('button',{name:'關閉編輯',exact:true}).click();const guard=page.getByRole('dialog',{name:'您有未儲存的變更'});await expect(guard).toBeVisible();await guard.getByRole('button',{name:'不儲存',exact:true}).click();await expect(page.locator('.bw-row')).toHaveCount(32);await expect(editor(page)).toHaveCount(0);
 });
-test('budget10000 paid9500 remain one item across navigation and cancel/repay',async({page})=>{
+test('planning uses one amount and a paid toggle without paid amounts or comparison UI',async({page})=>{
  await page.getByRole('button',{name:'新增項目',exact:true}).click();await title(page,'同筆支出');await amount(page,'budget','10000');await payer(page,'Peter');await editor(page).getByRole('button',{name:'標記已付款',exact:true}).click();
- await editor(page).getByText('實付金額與分攤',{exact:true}).click();await amount(page,'paid','9500');await editor(page).getByRole('button',{name:'完成',exact:true}).click();await expect(row(page,'同筆支出')).toContainText('10,000');await expect(page.locator('.bw-detail')).toContainText('實付 · TWD 9,500');
- await page.getByRole('button',{name:'付款狀態',exact:true}).click();await expect(row(page,'同筆支出')).toContainText('未付款');await page.getByRole('button',{name:'付款狀態',exact:true}).click();await expect(row(page,'同筆支出')).toContainText('已付款');await expect(page.locator('.bw-detail')).toContainText('實付 · TWD 9,500');
- await page.getByRole('navigation',{name:'Demo 導覽',exact:true}).getByRole('button',{name:'分帳結算',exact:true}).click();await expect(page.locator('.settlement-expense').filter({hasText:'同筆支出'})).toContainText('9,500');
+ await expect(editor(page).getByText(/實付/)).toHaveCount(0);await editor(page).getByRole('button',{name:'完成',exact:true}).click();await expect(row(page,'同筆支出')).toContainText('10,000');await expect(page.locator('.bw-detail')).not.toContainText('實付');
+ await page.getByRole('button',{name:'付款狀態',exact:true}).click();await expect(row(page,'同筆支出')).toContainText('未付款');await page.getByRole('button',{name:'付款狀態',exact:true}).click();await expect(row(page,'同筆支出')).toContainText('已付款');await expect(page.locator('.bw-detail')).not.toContainText('差額');
  await page.getByRole('button',{name:'預算管理',exact:true}).click();await expect(row(page,'同筆支出')).toHaveCount(1);await page.reload();await expect(row(page,'同筆支出')).toHaveCount(0);
 });
 test('paid-only lunch needs no budget or source and reaches settlement',async({page})=>{

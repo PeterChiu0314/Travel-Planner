@@ -56,14 +56,14 @@ export function ExpenseTable({rows,members,links,items,collaborators=[],selected
   })}</Fragment>;
  })}</tbody></table>{!rows.length?<div className="bw-empty">沒有符合條件的項目</div>:null}</div>;
 }
-export function ExpenseDetail({item,scope,members,links,items,editable,paymentDisabled,onEdit,onRemove,onPayment}){
+export function ExpenseDetail({item,scope,planning=false,members,links,items,editable,paymentDisabled,onEdit,onRemove,onPayment}){
  const bundle=item[scope],count=bundle?.participantIds.length||0,Icon=item.payment_state==='paid'?CircleCheck:Circle;
  return <section className="bw-detail"><div className="bw-detail-heading"><div className="bw-detail-title"><span>{item.category}</span><h3>{item.title||'未命名項目'}</h3></div><button className="bw-icon bw-edit-item" aria-label="編輯項目" type="button" disabled={!editable} onClick={onEdit}><Pencil size={18}/></button></div>
  {bundle?<PricingSummary amount={bundle.amount} twdAmount={bundle.twd_amount} currency={bundle.currency} mode={bundle.pricing_mode} count={count}/>:<p>未填，尚未計入財務統計</p>}
  <dl><div><dt>計價方式</dt><dd>{bundle?pricingLabels[bundle.pricing_mode]:'未填'}</dd></div><div><dt>參與成員</dt><dd>{bundle?`${count} 人`:'未填'}</dd></div><div><dt>付款人</dt><dd>{memberLabel(members.find(m=>m.user_id===item.payer_id))}</dd></div><div><dt>關聯行程</dt><dd>{budgetDay(item,links,items)}</dd></div></dl>
  <section><h4>各人負擔 <small>TWD</small></h4>{bundle?.participantIds.map(id=><div className="bw-stat-line" key={id}><span>{memberLabel(members.find(m=>m.user_id===id))}</span><b>{bundle.shares[id]===null?'待確認':money(bundle.shares[id])}</b></div>)}</section>
  {item.note?<section><h4>備註</h4><p>{item.note}</p></section>:null}
- <div className="bw-metadata-summary"><span>預算 · {item.budget?`${item.budget.currency} ${money(item.budget.amount)}`:'未填'}</span><span>實付 · {item.paid?`${item.paid.currency} ${money(item.paid.amount)}`:'未填'}</span>{item.payment_state==='paid'&&item.budget&&item.paid?<span>實付與預算差額 · NT$ {money(item.paid.twd_amount-item.budget.twd_amount)}</span>:null}</div>
+ {!planning?<div className="bw-metadata-summary"><span>預算 · {item.budget?`${item.budget.currency} ${money(item.budget.amount)}`:'未填'}</span><span>實付 · {item.paid?`${item.paid.currency} ${money(item.paid.amount)}`:'未填'}</span>{item.payment_state==='paid'&&item.budget&&item.paid?<span>實付與預算差額 · NT$ {money(item.paid.twd_amount-item.budget.twd_amount)}</span>:null}</div>:null}
  <div className="bw-detail-actions"><button type="button" className={`bw-payment-toggle${item.payment_state==='paid'?' is-paid':''}`} aria-label="付款狀態" aria-pressed={item.payment_state==='paid'} disabled={paymentDisabled} onClick={onPayment}><Icon size={14}/><span>{item.payment_state==='paid'?'已付款':'未付款'}</span></button><button className="bw-icon bw-danger" aria-label="刪除項目" type="button" disabled={!editable} onClick={onRemove}><Trash2 size={16}/></button></div>
  </section>;
 }
