@@ -25,8 +25,16 @@ Reproduce with local Vite/static maps, PGLITE_MODULE and PLAYWRIGHT_BROWSERS_PAT
 
 Optional PLAYWRIGHT_BASE_URL and EXPENSE_QA_OUTPUT control URL and JSON artifact location. Script creates only isolated SQL fixture data, never Hosted records.
 
+## Hosted discovery and deadline correction
+
+On Preview3548265, Chrome (TNT Chiu) and Edge (Peter Chiu) used their existing ordinary authenticated sessions against uyqdopksfysbobhjcepk. Product WebSocket phx_reply subscriptions included expense_signals and system postgres_changes status was ok on both; actual expense_signals frames arrived. Reciprocal budget/payer peer readonly, independent note save/convergence and release/takeover were observed on a dedicated temporary QA item.
+
+A40s Hosted observation with Chrome holding payer recorded39 clean renew requests,42 full snapshot reads and48 distinct signal revisions; Edge observer recorded41 full reads. This is a separate scenario from the local two-holder22s benchmark. Matching request wallTime to snapshot serverNow showed server clock about6004ms behind the client. Raw server expires_at compared directly to client Date.now made a20s clean lease appear below the15s early-renew threshold, causing1s ticks to renew continuously.
+
+Lease responses now translate the server deadline through the existing snapshot clock offset and cap the local deadline at request-start plus the unchanged clean20s/dirty60s TTL. The cap prevents response latency/offset approximation from extending capability lifetime. Renewal intervals remain measured on the client clock. No server TTL/protocol change; added a6s skew regression. Final Hosted observation pending this correction being published.
+
 ## Validation
 
-25 distinct Node/SQL tests passed across expensePeerAdmission, expenseLeaseTtl, expenseAutosaveFollowup, expenseReview and expensePayers (24 batch plus added concurrent cross-group case; final5/5 admission rerun).21 Chromium cases passed across formalExpensePeerAdmission, formalExpenseCollaboration, formalExpensePayers and formalExpensePayerRemoval. Covers reciprocal budget/payer readonly, independent notes, release/takeover/reload, delayed and simultaneous acquisition, same-account other-session exclusion, expiry,22s sustained renewal, exact unknown ACK replay and payer deletion autosave. Build/diff passed; existing Vite bundle-size warning remains.
+61/61 Node/SQL tests passed across expensePeerAdmission, expenseLeaseTtl, expenseAutosaveFollowup, expenseReview, expensePayers, expenseRpc, expenseCreation, expenseCollaboration and expenseRates.21 Chromium cases passed across formalExpensePeerAdmission, formalExpenseCollaboration, formalExpensePayers and formalExpensePayerRemoval. Covers reciprocal budget/payer readonly, independent notes, release/takeover/reload, delayed and simultaneous acquisition, same-account other-session exclusion, expiry,22s sustained renewal, exact unknown ACK replay and payer deletion autosave. Build/diff passed; existing Vite bundle-size warning remains.
 
 Hosted Chrome/Edge two-account Preview/WebSocket validation pending initial Preview delivery. No DB migration, RPC/trigger changes, Production/main changes or GitHub issue comment/closure. Staging Ledger74 remains installed and immutable.

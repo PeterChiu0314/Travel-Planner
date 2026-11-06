@@ -38,6 +38,9 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  const current=()=>!disposed;
  // Match DB admission across dependent groups, including other sessions of this actor.
  const peerOwner=(id,group)=>graph?.groups.find(r=>r.id===id&&expenseGroupsConflict(group,r.group)&&r.held&&!r.own_session&&Date.parse(r.expires_at)>Date.now()+serverOffset)?.owner||null;
+ // Translate server deadlines, capped at the request-start TTL so response latency
+ // or clock skew cannot extend the capability beyond its original lifetime.
+ const leaseDeadline=(expires,request,started)=>Math.min(expires-serverOffset,started+(request.p_dirty?60000:20000));
  const owns=g=>!peerOwner(g.id,g.group)&&active&&verified&&g.token&&g.epoch!==null&&g.state==='held'&&!g.releasing&&g.expires>Date.now()&&!g.conflict;
  const dirty=g=>!same(g.value,g.canonical);
  const display=g=>{
@@ -55,11 +58,11 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  function renew(g){
   if(g.renewWork)return g.renewWork;
   if(!owns(g)||(Date.now()-g.lastRenew<5000&&g.expires-Date.now()>15000))return;
-  const request=args(g,'renew');
+  const request=args(g,'renew'),started=Date.now();
   g.renewWork=(async()=>{const r=await bounded(service.lease(request));
    if(!current()||!active||g.releasing||g.token!==request.p_token||g.epoch!==request.p_epoch||g.state!=='held')return;
    if(r.error?.code==='PT409'&&(g.saving||g.request||g.base!==request.p_base))return;
-   const expires=Date.parse(r.data?.expires_at);
+   const expires=leaseDeadline(Date.parse(r.data?.expires_at),request,started);
    if(!r.error&&r.data?.granted&&r.data.epoch===request.p_epoch&&expires>Date.now()){g.expires=expires;g.lastRenew=Date.now();}else{g.state='lost';persist(g);emit();}
   })().finally(()=>{g.renewWork=null;});return g.renewWork;
  }
@@ -67,7 +70,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  function ingest(data,{authoritative=true}={}){
   if(!current()||!validExpenseSnapshot(data,trip))return false;
   if(!authoritative&&graph){verified=false;emit();return true;}
-  graph=data;serverOffset=Date.parse(data.serverNow)-Date.now();lastSnapshot=Date.now();verified=authoritative&&active&&globalThis.navigator?.onLine!==false;
+  graph=data;serverOffset=Number.isFinite(Date.parse(data.serverNow))?Date.parse(data.serverNow)-Date.now():0;verified=authoritative&&active&&globalThis.navigator?.onLine!==false;if(verified)lastSnapshot=Date.now();
   for(const g of fields.values()){
    if(g.local)continue;
    const r=remote(g);if(!r){g.conflict=true;g.state='lost';continue;}
@@ -102,7 +105,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  async function focus(g){if(g.local){g.focused=true;return active;}if(['budget','paid','payer'].includes(g.group)){for(const other of fields.values())if(other!==g&&other.id===g.id&&['budget','paid','payer'].includes(other.group)&&other.saveWork&&!await other.saveWork)return false;}if(!current()||!active||!verified||g.conflict||g.request||peerOwner(g.id,g.group))return false;g.focused=true;
   if(g.releasing){if(!await release(g))return false;g.focused=true;}
   if(owns(g))return true;if(g.acquiring)return g.acquiring;
-  g.token ||= makeId();g.state='pending';emit();const request=args(g,'acquire'),token=g.token;
+  g.token ||= makeId();g.state='pending';emit();const request=args(g,'acquire'),token=g.token,started=Date.now();
   g.acquiring=(async()=>{if(!(await service.authorized(actor)))return false;
    const r=await withBudgetAuthorityTimeout(service.lease(request),{timeoutMs,late:async late=>{if(late.data?.granted){
     const relevant=current()&&g.token===token; if(relevant){g.epoch=late.data.epoch;g.releasing=true;}
@@ -111,7 +114,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    }}});
    if(!current()){if(r.data?.granted)void service.lease({...request,p_action:'release',p_epoch:r.data.epoch});return false;}
    if(r.error||!r.data?.granted){if(r.data?.granted===false||r.error?.code==='PT409')g.token=null;g.state='blocked';if(r.error?.code==='PT409'&&dirty(g))g.conflict=true;if(r.error&&r.error.code!=='PT409')report(g,r.error);void refresh();return false;}
-   if(g.token!==token)return false;g.epoch=r.data.epoch;g.expires=Date.parse(r.data.expires_at);g.state='held';g.lastRenew=Date.now();
+   if(g.token!==token)return false;g.epoch=r.data.epoch;g.expires=leaseDeadline(Date.parse(r.data.expires_at),request,started);g.state='held';g.lastRenew=Date.now();
    if(!active){g.focused=false;queueMicrotask(()=>void release(g));emit();return false;}
    emit();return true;
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
