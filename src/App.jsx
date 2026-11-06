@@ -2457,6 +2457,10 @@ export default function App() {
   const requestGuard = useRef(createRequestGuard()).current;
   requestGuard.setContext(session?.user?.id && activeTripId ? JSON.stringify([session.user.id, activeTripId]) : null);
   const tripDataContext = requestGuard.context();
+  const tripReadAccessRef = useRef(null);
+  const membershipStatus = activeTrip?.membership?.status;
+  if (tripReadAccessRef.current?.key !== tripDataContext.key || tripReadAccessRef.current?.status !== membershipStatus) tripReadAccessRef.current = { key: tripDataContext.key, status: membershipStatus };
+  const canReadTrip = key => Boolean(key && tripReadAccessRef.current?.key === key && tripReadAccessRef.current?.status === "approved");
   const budgetReceiptIdsRef = useRef({ key: null, ids: new Set() });
   if (budgetReceiptIdsRef.current.key !== tripDataContext.key) budgetReceiptIdsRef.current = { key: tripDataContext.key, ids: new Set() };
   const budgetSnapshotRef = useRef({ key: null, data: emptyBudgetSnapshot() });
@@ -2483,7 +2487,10 @@ export default function App() {
     timeoutMs: budgetMetadataEnabled ? budgetAuthorityTimeoutMs : null,
     read: async key => {
       const feedbackCheckpoint = syncFeedback.checkpoint();
-      return { ...await readBudgetSnapshot(supabase, JSON.parse(key)[1]), feedbackCheckpoint };
+      const access = tripReadAccessRef.current;
+      if (!canReadTrip(key)) return { data: emptyBudgetSnapshot(), feedbackCheckpoint };
+      const result = await readBudgetSnapshot(supabase, JSON.parse(key)[1]);
+      return { ...(tripReadAccessRef.current === access && canReadTrip(key) ? result : { data: emptyBudgetSnapshot() }), feedbackCheckpoint };
     },
     apply: applyBudgetSnapshot,
     onVerified: result => syncFeedback.verified("budget", result.feedbackCheckpoint),
@@ -2508,9 +2515,12 @@ export default function App() {
     read: async (scope, key) => {
       const feedbackCheckpoint = syncFeedback.checkpoint();
       const [userId, tripId] = JSON.parse(key);
+      const access = tripReadAccessRef.current;
+      if (!canReadTrip(key)) return { data: [], feedbackCheckpoint };
       let query = supabase.from(scope === "personal" ? "luggage_items" : "shared_luggage_items").select("*").eq("trip_id", tripId);
       if (scope === "personal") query = query.eq("owner_id", userId);
-      return { ...await query.order("created_at"), feedbackCheckpoint };
+      const result = await query.order("created_at");
+      return { ...(tripReadAccessRef.current === access && canReadTrip(key) ? result : { data: [] }), feedbackCheckpoint };
     },
     apply: (scope, rows) => {
       (scope === "personal" ? setLuggageItems : setSharedLuggageItems)(rows);
@@ -2572,6 +2582,12 @@ export default function App() {
   const canManageShareLinks = isOwner;
   const canRenameActiveTrip = (canEdit || activeTrip?.owner_id === session?.user?.id) && !isTripDateLocked;
   const isPending = activeMembership?.status === "pending";
+  useEffect(() => {
+    if (isDemoMode || !isPending || !activeTripId || !session?.user?.id) return;
+    const id = `trip-membership-pending:${session.user.id}:${activeTripId}`;
+    notify.info("你已送出加入申請，旅程擁有者核准後即可共同編輯。", { id });
+    return () => notify.dismiss(id);
+  }, [isDemoMode, isPending, activeTripId, session?.user?.id]);
   const pendingMemberCount = isOwner ? members.filter((member) => member.status === "pending").length : 0;
   const remoteTripPresenceByUser = useMemo(() => {
     const byUser = new Map();
@@ -3103,10 +3119,12 @@ export default function App() {
     // Auth resets the guard to null before clearing, even through an older closure.
     const token = requestGuard.begin("trip");
     const personalToken = requestGuard.begin("personal"), sharedToken = requestGuard.begin("shared");
-    if (!tripId) {
+    const access = tripReadAccessRef.current;
+    if (!tripId || !canReadTrip(tripDataContext.key)) {
       setItems([]);
       setAlternatives([]);
-      setBudgetSnapshot(emptyBudgetSnapshot());
+      applyBudgetSnapshot(emptyBudgetSnapshot(), token.key, false);
+      sharedSnapshotRef.current.rows = [];
       setAccommodations([]);
       setGuideItems([]);
       setTodoItems([]);
@@ -3135,7 +3153,7 @@ export default function App() {
       supabase.from("trip_members").select("id,trip_id,user_id,role,status,created_at,display_name,email").eq("trip_id", tripId).order("created_at"),
       readBudgetSnapshot(supabase, tripId),
     ]);
-    if (!requestGuard.valid(token)) return;
+    if (!requestGuard.valid(token) || tripReadAccessRef.current !== access || !canReadTrip(token.key)) return;
     const otherError = itemsResult.error || alternativesResult.error || accommodationsResult.error || guideResult.error || todoResult.error
       || luggageResult.error || sharedLuggageResult.error || attachmentsResult.error || packResult.error || membersResult.error;
     const error = otherError || budgetResult.error;
@@ -3220,7 +3238,7 @@ export default function App() {
       ...(requestGuard.valid(personalToken) ? ["luggage:personal"] : []),
       ...(requestGuard.valid(sharedToken) ? ["luggage:shared"] : [])], feedbackCheckpoint);
     return { ok: true };
-  }, [tripDataContext.key, tripDataContext.generation]);
+  }, [tripDataContext.key, tripDataContext.generation, activeMembership?.status]);
 
   useEffect(() => {
     if (isDemoMode || !session?.user) return;
@@ -3404,7 +3422,6 @@ export default function App() {
         return;
       }
 
-      notify.info("已送出加入申請，等待旅程擁有者核准。");
       await loadTrips(tripId);
       clearInviteTokenFromUrl();
     }
@@ -6423,7 +6440,6 @@ export default function App() {
             dayItems={dayItems}
             days={days}
             isOwner={isOwner}
-            isPending={isPending}
             items={items}
             itineraryBudgetLinks={itineraryBudgetLinks}
             guideItems={guideItems}
@@ -9324,7 +9340,6 @@ function TripWorkspace(props) {
     dayItems,
     days,
     isOwner,
-    isPending,
     items,
     itineraryBudgetLinks,
     guideItems,
@@ -9601,9 +9616,6 @@ function TripWorkspace(props) {
 
   return (
     <section className="trip-editor">
-      {isPending ? (
-        <div className="pending-banner">你已送出加入申請，旅程擁有者核准後即可共同編輯。</div>
-      ) : null}
 
       {isTodayMode ? (
         <TodayMode
@@ -13188,7 +13200,7 @@ function BudgetSummaryPanel({ budgetItems, headingEyebrow = "Budget", items }) {
 }
 
 function BudgetPanel(props) {
-  if(props.metadataSnapshot?.expenseGraph)return <ExpenseWorkspace key={`${props.currentUserId}:${props.activeTrip.id}`} {...props} supabase={supabase} services={budgetEditorServices}/>;
+  if((!props.activeTrip.membership||props.activeTrip.membership.status==='approved')&&props.metadataSnapshot?.expenseGraph)return <ExpenseWorkspace key={`${props.currentUserId}:${props.activeTrip.id}`} {...props} supabase={supabase} services={budgetEditorServices}/>;
   return <LegacyBudgetPanel {...props}/>;
 }
 function LegacyBudgetPanel(props) {
@@ -13230,7 +13242,7 @@ function LegacyBudgetPanel(props) {
     },
   }), [leases, props.activeTrip.id]);
   const workspaceActive = props.restoreDrafts !== false;
-  const metadataActive = props.useEditLocks === false || workspaceActive;
+  const metadataActive = props.useEditLocks === false || workspaceActive && props.activeTrip.membership?.status === "approved";
   if(budgetMetadataEnabled&&budgetFinanceGroupsEnabled)rates.view('trip',props.activeTrip.id);
   const ratesPending=budgetMetadataEnabled&&budgetFinanceGroupsEnabled&&rates.hasPending();
   services.useGuard(`budget-finance-rates:${props.activeTrip.id}`,useMemo(()=>({isActive:ratesPending,isDirty:ratesPending,prepare:()=>rates.prepare(),finish:()=>rates.prepare(),save:async()=>false,discard:async()=>false}),[ratesPending,rates]));

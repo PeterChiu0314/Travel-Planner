@@ -6,6 +6,7 @@ function setup(){let online=true;const calls=[];const notify=Object.fromEntries(
 test('connection copy distinguishes offline and service failure without raw TypeError',()=>{
   expect(friendlyError(new TypeError('Failed to fetch'),true)).toContain('同步暫時失敗');
   expect(friendlyError(new TypeError('Failed to fetch'),false)).toContain('網路連線中斷');
+  expect(friendlyError({code:'42501',message:'Forbidden'})).toBe('目前沒有權限存取這份資料，請確認旅程成員資格。');
   expect(friendlyError({message:'付款金額不得為負數'})).toBe('付款金額不得為負數');
   expect(notificationDuration.error).toBe(Infinity);expect(notificationDuration.success).toBeLessThan(notificationDuration.warning);
 });
