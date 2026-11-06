@@ -1,4 +1,3 @@
-import {useState} from 'react';
 import {memberLabel} from '../../lib/budgetFinance.js';
 import {collaboratorColor} from '../../lib/collaboratorColors.js';
 
@@ -16,8 +15,8 @@ export function RowCollaboratorOutline({users}) {
  return owner?<span className="bw-collaboration-outline" data-user={owner.user_id} data-mode={owner.mode} aria-hidden="true" style={{inset:'1px 1px 1px 5px','--bw-remote-color':collaboratorColor(owner.user_id)}}/>:null;
 }
 function Avatar({entry,member}) {
- const [failed,setFailed]=useState(false),name=memberLabel(member),src=member?.avatar_url;
- return <span className="bw-peer-avatar" style={{background:collaboratorColor(entry.user_id)}}>{src&&!failed?<img src={src} alt="" referrerPolicy="no-referrer" onError={()=>setFailed(true)}/>:Array.from(name).slice(0,2).join('')}</span>;
+ const initial=Array.from(memberLabel(member).trim())[0]?.toLocaleUpperCase()||'?';
+ return <span className="bw-peer-avatar" style={{background:collaboratorColor(entry.user_id)}}>{initial}</span>;
 }
 export function RowCollaboratorAvatars({users,members}) {
  return <div className="bw-peer-avatars" aria-label={`${users.length} 位協作者`}>{users.slice(0,4).map(entry=><Avatar key={entry.user_id} entry={entry} member={members.find(member=>member.user_id===entry.user_id)}/>)}{users.length>4?<span className="bw-peer-avatar bw-peer-more">+{users.length-4}</span>:null}</div>;
