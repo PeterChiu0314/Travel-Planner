@@ -48,7 +48,7 @@ test('payment filter, search, category folds and explicit detail/edit tabs prese
   await page.getByRole('textbox',{name:'搜尋項目',exact:true}).fill('機場');await expect(table(page).locator('.bw-row')).toHaveCount(1);await table(page).getByRole('button',{name:'機場接送',exact:true}).click();
   await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toHaveAttribute('aria-selected','true');await expect(page.locator('.bw-detail')).toContainText('10,000');await expect(page.locator('.bw-detail')).not.toContainText('實付');await expect(page.locator('.bw-detail')).not.toContainText('差額');
   await page.getByRole('tab',{name:'編輯項目',exact:true}).click();const input=page.getByRole('textbox',{name:'項目名稱',exact:true});await input.focus();await expect(input).toBeEditable();await input.fill('機場接送更新');await input.blur();await expect.poll(async()=>(await f.snapshot()).items.find(i=>i.id===f.models[0].id).title).toBe('機場接送更新');
-  await page.getByRole('button',{name:'取消',exact:true}).click();await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toHaveAttribute('aria-selected','true');
+  await page.getByRole('button',{name:'關閉編輯',exact:true}).click();await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toHaveAttribute('aria-selected','true');
   await page.getByRole('tab',{name:'旅程統計',exact:true}).click();await table(page).getByRole('button',{name:'機場接送更新',exact:true}).click();await expect(page.getByRole('tab',{name:'旅程統計',exact:true})).toHaveAttribute('aria-selected','true');
   expect(page.qaErrors).toEqual([]);expect(f.db.expenseCalls.filter(c=>/budget_item|actual_expense/.test(c.name))).toEqual([]);
  }finally{await page.close();await f.close();}
@@ -67,8 +67,8 @@ test('failed autosave keeps draft through Continue, and explicit discard returns
  const f=await fixture();try{await open(page,f);await table(page).getByRole('button',{name:'機場接送',exact:true}).click();await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
   const original=f.db.request.bind(f.db);f.db.request=req=>req.name==='mutate_expense_group'&&req.args.p_group==='title'?Promise.resolve({error:{code:'22023',message:'Rejected test title'}}):original(req);
   const input=page.getByRole('textbox',{name:'項目名稱',exact:true});await input.focus();await expect(input).toBeEditable();await input.fill('保留我的草稿');await input.blur();
-  await page.getByRole('button',{name:'取消',exact:true}).click();const dialog=page.getByRole('dialog',{name:'您有未儲存的變更'});await expect(dialog).toBeVisible();await dialog.getByRole('button',{name:'繼續編輯',exact:true}).click();await expect(input).toHaveValue('保留我的草稿');
-  await page.getByRole('button',{name:'取消',exact:true}).click();await dialog.getByRole('button',{name:'不儲存',exact:true}).click();await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toHaveAttribute('aria-selected','true');await expect(page.locator('.bw-detail h3')).toHaveText('機場接送');expect((await f.snapshot()).items.find(i=>i.id===f.models[0].id).title).toBe('機場接送');
+  await page.getByRole('button',{name:'關閉編輯',exact:true}).click();const dialog=page.getByRole('dialog',{name:'您有未儲存的變更'});await expect(dialog).toBeVisible();await dialog.getByRole('button',{name:'繼續編輯',exact:true}).click();await expect(input).toHaveValue('保留我的草稿');
+  await page.getByRole('button',{name:'關閉編輯',exact:true}).click();await dialog.getByRole('button',{name:'不儲存',exact:true}).click();await expect(page.getByRole('tab',{name:'項目明細',exact:true})).toHaveAttribute('aria-selected','true');await expect(page.locator('.bw-detail h3')).toHaveText('機場接送');expect((await f.snapshot()).items.find(i=>i.id===f.models[0].id).title).toBe('機場接送');
  }finally{await page.close();await f.close();}
 });
 test('new model pricing controls persist participant changes independently and delete uses lifecycle RPC',async({page})=>{
@@ -76,7 +76,7 @@ test('new model pricing controls persist participant changes independently and d
   const group=page.getByRole('group',{name:'預算計價與分攤',exact:true});await group.focus();await group.getByText('參與成員 · 3 人',{exact:true}).click();await expect(group.getByRole('checkbox',{name:/^C\b/})).toBeEnabled();await group.getByRole('checkbox',{name:/^C\b/}).uncheck();await group.getByRole('button',{name:'總額均分',exact:true}).focus();
   await expect.poll(async()=>(await f.snapshot()).participants.find(p=>p.expense_id===f.models[0].id&&p.user_id===f.C).budget_selected).toBe(false);
   const s=await f.snapshot();expect(s.items.find(i=>i.id===f.models[0].id).paid.amount).toBe(9500);expect(s.participants.find(p=>p.expense_id===f.models[0].id&&p.user_id===f.C).paid_selected).toBe(null);
-  await page.getByRole('button',{name:'完成',exact:true}).click();await page.getByRole('button',{name:'刪除項目',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'刪除',exact:true}).click();await expect.poll(async()=>(await f.snapshot()).items.some(i=>i.id===f.models[0].id)).toBe(false);
+  await page.getByRole('button',{name:'關閉編輯',exact:true}).click();await page.getByRole('button',{name:'刪除項目',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'刪除',exact:true}).click();await expect.poll(async()=>(await f.snapshot()).items.some(i=>i.id===f.models[0].id)).toBe(false);
   await page.getByRole('button',{name:'新增項目',exact:true}).click();await expect(page.getByRole('region',{name:'支出項目編輯'})).toBeVisible();expect((await f.snapshot()).items).toHaveLength(3);await page.getByRole('textbox',{name:'項目名稱',exact:true}).fill('Named new item');await page.getByRole('textbox',{name:'項目名稱',exact:true}).blur();await expect.poll(async()=>(await f.snapshot()).items.length).toBe(4);expect(page.qaErrors).toEqual([]);
  }finally{await page.close();await f.close();}
 });

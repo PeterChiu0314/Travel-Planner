@@ -138,6 +138,15 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,makeId
  async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
  const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,focus,input,save,release,finish,discard,
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
+  saveStatus(id){
+   const relevant=[...fields.values()].filter(g=>g.id===id);
+   if(relevant.some(g=>g.request&&g.error)||pendingCreate&&localDraft?.id===id)return '儲存結果待確認';
+   if(relevant.some(g=>g.saving))return '儲存中…';
+   if(relevant.some(g=>g.error||g.conflict))return '儲存失敗，變更已保留';
+   if(!verified)return '連線待確認';
+   if(localDraft?.id===id||relevant.some(g=>dirty(g)||g.request))return '尚未儲存';
+   return '已儲存';
+  },
   draftItem:()=>localDraft?{...newExpense({id:localDraft.id,tripId:trip,members:graph?.members||[]}),...Object.fromEntries(Object.entries(localDraft.values).filter(([k])=>['title','note','category'].includes(k)))}:null,
   begin(){if(localDraft)return localDraft.id;localDraft={id:makeId(),trip,values:{}};emit();return localDraft.id;},
   view:g=>({value:display(g),dirty:dirty(g),editable:g.local?active:owns(g)||g.state==='pending',remote:g.local?null:remote(g),busy:g.saving||g.state==='pending',conflict:g.conflict}),
