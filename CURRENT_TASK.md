@@ -2,6 +2,10 @@
 
 Updated 2026-11-06. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-06 — Rates protocol refusal / navigation lock fixed
+
+[Root cause, Staging71 and validation](docs/2026-11-06-native-rates-recovery.md). Native update_rates previously hit the active legacy finance guard55000; client retained this definite refusal as unknown and kept the leave guard dirty. Client now retires55000, releases its capability and stops replay; idle finish/retry does not emit another guard update. Unknown network receipts still preserve exact request IDs. Staging only installed20261106033608_native_rates_compatibility, Ledger71, sourceSHA2562a91619b7b9f4b20550ca3fe81aba45b80e83318371055654ad0ec8de083372d. Exact transactional rollback trial and post-install authenticated-role checks Passed, including foreign repricing, paid preservation, direct-write fence, exact replay and deferred baseline protection. All30data seals and all non-target function seals unchanged; prior70ledger rows retained. Advisor25INFO/9WARN unchanged.2client tests and8distinct Chromium Passed (new refusal/navigation/unload case rerun with screenshot). No ordinary-JWT/WebSocket certification claimed. Production/main untouched; installed sources immutable.
+
 ## Latest direction — planning only, one item editor and paid marker
 
 Payment control visual correction: user's reference is the existing rounded PaymentToggle (dark-green paid state with circle-check icon), not a native checkbox. Planning footer now directly reuses the exported existing component and original CSS/position; right-side save status stays. This supersedes the native-checkbox wording below.

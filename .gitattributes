@@ -11,3 +11,4 @@ supabase/migrations/20261105083233_issue18_single_expense.sql -text -whitespace
 supabase/migrations/20261105132450_issue18_precise_lease_release.sql text eol=lf
 supabase/migrations/20261105142122_issue18_selection_collaboration.sql text eol=lf
 supabase/migrations/20261105150453_issue19_named_expense_create.sql text eol=lf
+supabase/migrations/20261106033608_native_rates_compatibility.sql -text -whitespace

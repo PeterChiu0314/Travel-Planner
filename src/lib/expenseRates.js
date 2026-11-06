@@ -8,11 +8,11 @@ export function createExpenseRates({service,actor,trip,sessionId,getGraph,refres
  const persist=()=>{try{if(pending)storage?.setItem(key,JSON.stringify({...pending,p_token:null,p_epoch:null}));else storage?.removeItem(key);}catch{/* Keep memory request. */}};
  async function release(){if(!cleanup)return true;const r=await withBudgetAuthorityTimeout(service.rateLease({...cleanup,p_action:'release'}));if(r.data?.granted){cleanup=null;emit();return true;}onError(r.error||new Error('匯率更新結果待確認。'));emit();return false;}
  async function confirm(){if(!pending)return release();if(!await service.authorized(actor))return false;const request=pending,r=await withBudgetAuthorityTimeout(service.rates(request));
-  if(r.error){if(['PT409','22023','42501','55P03'].includes(r.error.code)){pending=null;persist();await release();await refresh();}onError(r.error);emit();return false;}
+  if(r.error){if(['PT409','22023','42501','55P03','55000'].includes(r.error.code)){pending=null;persist();await release();await refresh();}onError(r.error);emit();return false;}
   if(!r.data?.committed||r.data.request_id!==request.p_request_id||r.data.trip_id!==trip||r.data.revision!==request.p_base+1){onError(new Error('匯率更新結果待確認。'));return false;}
   pending=null;persist();await release();await refresh();emit();return true;
  }
- function retry(){if(work)return work;work=confirm().finally(()=>{work=null;emit();});return work;}
+ function retry(){if(work)return work;if(!pending&&!cleanup)return Promise.resolve(true);work=confirm().finally(()=>{work=null;emit();});return work;}
  async function update(){if(work||busy||pending||cleanup)return retry();busy=true;emit();try{
   const external=await quote();if(closed||!await refresh()||!await service.authorized(actor))return false;const graph=getGraph();
   const lease={p_trip_id:trip,p_session_id:sessionId,p_token:crypto.randomUUID(),p_base:graph.rateState.revision,p_epoch:null};

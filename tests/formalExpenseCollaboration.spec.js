@@ -5,6 +5,12 @@ const outline=(p,user,title='Review')=>row(p,title).locator(`.bw-collaboration-o
 async function open(p,f,actor=f.A){await enableMetadata(p);await boot(p,f.db,actor);}
 async function select(p,title='Review'){await row(p,title).getByRole('button',{name:title,exact:true}).click();}
 async function hidden(p,value){await p.evaluate(value=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:value?'hidden':'visible'});document.dispatchEvent(new Event('visibilitychange'));},value);}
+test('55000 rates refusal allows sidebar navigation and removes the unload guard without automatic replay',async({page})=>{
+ const f=await reviewFixture();try{const original=f.db.request;let writes=0;f.db.request=async args=>args.name==='update_expense_rates'?(writes++,{error:{code:'55000',message:'Use atomic rates protocol'}}):original(args);
+  await open(page,f);await page.getByRole('button',{name:'更新匯率',exact:true}).click();await expect.poll(()=>writes).toBe(1);await page.getByRole('button',{name:'行程路線',exact:true}).click();await expect(page.getByRole('region',{name:'支出工作區'})).toBeHidden();await expect(page.getByRole('dialog')).toHaveCount(0);expect(writes).toBe(1);await page.screenshot({path:test.info().outputPath('rates-refusal-navigation-recovered.png')});
+  let unload=false;page.on('dialog',async d=>{unload=true;await d.accept();});await page.reload();expect(unload).toBe(false);expect(page.qaErrors).toEqual([]);
+ }finally{await page.close();f.c.dispose();await f.close();}
+});
 test('idle pricing modes work on the first click without focusing the sidebar; a peer lease still blocks changes',async({page,context})=>{
  const f=await reviewFixture(),peer=await context.newPage();try{
   await open(page,f);await select(page);await page.getByRole('tab',{name:'編輯項目',exact:true}).click();const group=page.getByRole('group',{name:'預算計價與分攤',exact:true}),custom=group.getByRole('button',{name:'自訂分攤',exact:true});await expect(custom).toBeEnabled();expect(f.db.expenseCalls.filter(c=>c.name==='expense_group_lease'&&c.args.p_group==='budget')).toHaveLength(0);await custom.click();await expect(custom).toHaveAttribute('aria-pressed','true');await expect.poll(async()=>(await f.snapshot()).items[0].budget.pricing_mode).toBe('custom');
