@@ -17,7 +17,19 @@ function read(userId, tripId, storage, now) {
     }
     // Private luggage is never recovered from persistent storage, including
     // a malformed/older envelope written by an earlier client.
-    return tripId ? { ...cached.payload, luggageItems: [] } : cached.payload;
+    if (!tripId) return cached.payload;
+    const payload = { ...cached.payload, luggageItems: [] };
+    if (payload.expenseGraph || payload.budgetSnapshot?.expenseGraph) {
+      const cachedAt = payload.expenseGraphCachedAt ?? cached.cachedAt;
+      if (!Number.isFinite(cachedAt) || cachedAt > now || now - cachedAt > ttl) {
+        delete payload.expenseGraph;
+        delete payload.budgetSnapshot;
+        delete payload.expenseGraphCachedAt;
+      } else {
+        payload.expenseGraphCachedAt = cachedAt;
+      }
+    }
+    return payload;
   } catch { return null; }
 }
 function write(userId, tripId, payload, storage, now) {
@@ -43,7 +55,7 @@ export function updateOfflineBudget(tripId, userId, expenseGraph, storage = loca
   for (const key of ["budgetSnapshot", "budgetBaseline", "budgetItems", "budgetParticipants",
     "actualExpenses", "actualParticipants", "itineraryBudgetLinks"]) delete cached[key];
   cached.attachments = (cached.attachments || []).filter(row => !["budget_item", "actual_expense"].includes(row.target_type));
-  write(userId, tripId, { ...cached, expenseGraph }, storage, now);
+  write(userId, tripId, { ...cached, expenseGraph, expenseGraphCachedAt: expenseGraph ? now : undefined }, storage, now);
 }
 export function clearOfflineAccount(userId, storage = localStorage) {
   try {

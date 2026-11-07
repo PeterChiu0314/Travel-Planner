@@ -10,8 +10,95 @@ test('two-account simultaneous focus has one owner and stays editable beyond the
   await page.waitForTimeout(22000);await expect(inputs[winner]).toBeEditable();await expect(inputs[1-winner]).not.toBeEditable();expect(f.db.expenseCalls.filter(c=>c.name==='expense_group_lease'&&c.args.p_action==='renew').length).toBeGreaterThanOrEqual(3);await inputs[winner].fill('Lease renewed');await inputs[winner].blur();await expect.poll(async()=>(await f.snapshot()).items[0].title).toBe('Lease renewed');await expect.poll(async()=>(await f.snapshot()).groups.find(g=>g.id===f.id&&g.group==='title').held).toBe(false);await inputs[1-winner].evaluate(e=>e.blur());await inputs[1-winner].focus();await expect(inputs[1-winner]).toBeEditable();expect(page.qaErrors).toEqual([]);expect(peer.qaErrors).toEqual([]);
  }finally{await page.close();await peer.close();f.c.dispose();await f.close();}
 });
-test('new trip obtains its initial quote before the trip INSERT',async({page})=>{
- const f=await reviewFixture();try{await open(page,f);await page.evaluate(()=>{const client=window.budgetMock.client,from=client.from.bind(client);client.from=table=>{const query=from(table);if(table==='trips')query.insert=async payload=>{window.capturedTrip=payload;return{error:{message:'QA captured without inserting'}};};return query;};});await page.getByRole('button',{name:'新增旅程',exact:true}).click();const form=page.locator('form.create-trip-dialog');await form.getByRole('textbox',{name:'旅程名稱',exact:true}).fill('Initial rates');await form.getByRole('button',{name:'建立',exact:true}).click();await expect.poll(()=>page.evaluate(()=>window.capturedTrip?.budget_exchange_rates?.rates?.JPY)).toBe(.25);expect(f.db.quoteReads).toBe(1);expect(page.qaErrors).toEqual([]);}finally{await page.close();f.c.dispose();await f.close();}
+test("a quote already available at submit still seeds a new trip", async ({ page }) => {
+  const fixture = await reviewFixture();
+  try {
+    await open(page, fixture);
+    await page.evaluate(() => {
+      const client = window.budgetMock.client;
+      const from = client.from.bind(client);
+      client.from = table => {
+        const query = from(table);
+        if (table === "trips") query.insert = async payload => {
+          window.capturedTrip = payload;
+          return { error: { message: "QA captured without inserting" } };
+        };
+        return query;
+      };
+    });
+    const response = page.waitForResponse("https://open.er-api.com/v6/latest/TWD");
+    await page.getByRole("button", { name: "新增旅程", exact: true }).click();
+    await (await response).finished();
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const form = page.locator("form.create-trip-dialog");
+    await form.getByRole("textbox", { name: "旅程名稱", exact: true }).fill("Initial rates");
+    await form.getByRole("button", { name: "建立", exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.capturedTrip?.budget_exchange_rates?.rates?.JPY)).toBe(.25);
+    expect(fixture.db.quoteReads).toBe(1);
+    expect(page.qaErrors).toEqual([]);
+  } finally {
+    await page.close();
+    fixture.c.dispose();
+    await fixture.close();
+  }
+});
+test("a slow, failing quote cannot delay or duplicate trip creation", async ({ page }) => {
+  const fixture = await reviewFixture();
+  let releaseQuote, releaseInsert;
+  const pendingQuote = new Promise(resolve => { releaseQuote = resolve; });
+  const pendingInsert = new Promise(resolve => { releaseInsert = resolve; });
+  const inserts = [];
+  let quoteRequested = false;
+  try {
+    await open(page, fixture);
+    await page.route("https://open.er-api.com/v6/latest/TWD", async route => {
+      quoteRequested = true;
+      await pendingQuote;
+      await route.fulfill({ status: 503, body: "QA unavailable" });
+    });
+    await page.exposeFunction("issue24Insert", async (table, payload) => {
+      if (table === "trips") {
+        inserts.push(payload);
+        await pendingInsert;
+        fixture.db.trips.push(payload);
+      } else if (table === "trip_members") fixture.db.members.push(payload);
+      return { error: null };
+    });
+    await page.evaluate(() => {
+      const client = window.budgetMock.client;
+      const from = client.from.bind(client);
+      client.from = table => {
+        const query = from(table);
+        query.insert = payload => window.issue24Insert(table, payload);
+        return query;
+      };
+    });
+    await page.getByRole("button", { name: "新增旅程", exact: true }).click();
+    const form = page.locator("form.create-trip-dialog");
+    await form.getByRole("textbox", { name: "旅程名稱", exact: true }).fill("Issue24 quote QA");
+    await form.getByRole("button", { name: "建立", exact: true }).click();
+    await expect.poll(() => quoteRequested).toBe(true);
+    await form.evaluate(element => element.requestSubmit());
+    const createdWhileQuotePending = await expect.poll(() => inserts.length, { timeout: 800 }).toBe(1)
+      .then(() => true, () => false);
+    await expect(form.getByRole("button", { name: "建立中…", exact: true })).toBeDisabled();
+    const response = page.waitForResponse("https://open.er-api.com/v6/latest/TWD");
+    releaseQuote();
+    await (await response).finished();
+    await expect.poll(() => inserts.length).toBeGreaterThan(0);
+    releaseInsert();
+    await expect(form).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Issue24 quote QA/ }).first()).toBeVisible();
+    expect({ createdWhileQuotePending, inserts: inserts.length }).toEqual({ createdWhileQuotePending: true, inserts: 1 });
+    expect(inserts[0]).not.toHaveProperty("budget_exchange_rates");
+    expect(page.qaErrors.filter(error => !error.includes("503"))).toEqual([]);
+  } finally {
+    releaseQuote();
+    releaseInsert();
+    await page.close();
+    fixture.c.dispose();
+    await fixture.close();
+  }
 });
 test('missing planning quote initializes once, while traveling budget view never fetches or updates rates',async({page,context})=>{
  const f=await reviewFixture();try{

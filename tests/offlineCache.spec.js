@@ -51,3 +51,16 @@ test("blocked browser storage is best effort", () => {
   expect(() => writeOfflineTripData("trip", "A", {}, s)).not.toThrow();
   expect(readOfflineTripData("trip", "A", s)).toBeNull();
 });
+
+test("a newer core snapshot cannot extend an older expense snapshot's TTL", () => {
+  const s = storage();
+  const initial = 100;
+  const hours = value => value * 60 * 60 * 1000;
+  writeOfflineTripData("trip", "A", { expenseGraph: { tripId: "trip" } }, s, initial);
+  const cached = readOfflineTripData("trip", "A", s, initial + hours(11));
+  expect(cached.expenseGraphCachedAt).toBe(initial);
+  writeOfflineTripData("trip", "A", { ...cached, items: [{ title: "Fresh visit" }] }, s, initial + hours(11));
+  const after = readOfflineTripData("trip", "A", s, initial + hours(13));
+  expect(after.expenseGraph).toBeUndefined();
+  expect(after.items).toEqual([{ title: "Fresh visit" }]);
+});

@@ -3,6 +3,10 @@ export const budgetCurrencies = ["JPY", "USD", "EUR", "KRW", "HKD"];
 let cachedQuote;
 let pendingQuote;
 
+export function getCachedBudgetQuote() {
+  return cachedQuote && Date.now() - cachedQuote.fetchedAt < 3600000 ? cachedQuote.value : undefined;
+}
+
 export function parseBudgetQuote(data) {
   if (data?.result !== "success" || data.base_code !== "TWD" || !Number.isFinite(data.time_last_update_unix)) throw new Error("匯率來源回傳無效資料。");
   for (const currency of budgetCurrencies) if (!data.rates?.[currency]) throw new Error(`無法取得 ${currency} 匯率。`);
@@ -16,7 +20,8 @@ export function parseBudgetQuote(data) {
 }
 
 export async function fetchBudgetQuote({ force = false } = {}) {
-  if (!force && cachedQuote && Date.now() - cachedQuote.fetchedAt < 3600000) return cachedQuote.value;
+  const available = !force && getCachedBudgetQuote();
+  if (available) return available;
   if (!pendingQuote) pendingQuote = (async () => {
     const response = await fetch("https://open.er-api.com/v6/latest/TWD", { signal: AbortSignal.timeout(10000), credentials: "omit", referrerPolicy: "no-referrer" });
     if (!response.ok) throw new Error("暫時無法取得匯率，請稍後再試。");

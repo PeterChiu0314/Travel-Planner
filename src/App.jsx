@@ -24,7 +24,7 @@ import { reorderLuggageItems, reorderLuggageSnapshot, privatizeLuggageItem, priv
 import { budgetStage, settlementBalances } from "./lib/budgetFinance.js";
 import { collaboratorColors as timelineCardSelectionColors } from "./lib/collaboratorColors.js";
 import { budgetAuthorityTimeoutMs } from "./lib/budgetMetadataService.js";
-import { fetchBudgetQuote } from "./lib/tripBudgetRates.js";
+import { fetchBudgetQuote, getCachedBudgetQuote } from "./lib/tripBudgetRates.js";
 import { demoBudgetMembers } from "./demo/budgetFixtures.js";
 import {
   closestCenter,
@@ -2352,8 +2352,7 @@ export default function App() {
   const [activeDay, setActiveDay] = useState(0);
   const [items, setItems] = useState([]);
   const [alternatives, setAlternatives] = useState([]);
-  const [budgetSnapshot, setBudgetSnapshot] = useState(emptyBudgetSnapshot);
-  const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks } = budgetSnapshot.tripId === activeTripId ? budgetSnapshot : emptyBudgetSnapshot();
+  const [budgetSnapshotState, setBudgetSnapshotState] = useState(null);
   const [accommodations, setAccommodations] = useState([]);
   const [guideItems, setGuideItems] = useState([]);
   const [todoItems, setTodoItems] = useState([]);
@@ -2379,6 +2378,14 @@ export default function App() {
   }, [isDemoMode, session?.user?.id, syncFeedback]);
   useEffect(() => () => syncFeedback.dispose(), [syncFeedback]);
   const [isTripDialogOpen, setIsTripDialogOpen] = useState(false);
+  const [tripCreating, setTripCreating] = useState(false);
+  const tripCreationInFlight = useRef(false);
+  useEffect(() => {
+    if (isTripDialogOpen) {
+      // An available quote can seed the trip. The budget workspace can initialize it later.
+      void fetchBudgetQuote().catch(() => {});
+    }
+  }, [isTripDialogOpen]);
   const [tripImportState, setTripImportState] = useState(null);
   const [aiExchangeState, setAiExchangeState] = useState(null);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
@@ -2470,16 +2477,25 @@ export default function App() {
   const membershipStatus = activeTrip?.membership?.status;
   if (tripReadAccessRef.current?.key !== tripDataContext.key || tripReadAccessRef.current?.status !== membershipStatus) tripReadAccessRef.current = { key: tripDataContext.key, status: membershipStatus };
   const canReadTrip = key => Boolean(key && tripReadAccessRef.current?.key === key && tripReadAccessRef.current?.status === "approved");
-  const budgetSnapshotRef = useRef({ key: null, data: emptyBudgetSnapshot() });
-  if (budgetSnapshotRef.current.key !== tripDataContext.key) budgetSnapshotRef.current = { key: tripDataContext.key, data: emptyBudgetSnapshot() };
+  const budgetSnapshot = canReadTrip(tripDataContext.key) && budgetSnapshotState
+    && requestGuard.sameContext(budgetSnapshotState.context) ? budgetSnapshotState.data : null;
+  const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks } = budgetSnapshot ?? emptyBudgetSnapshot();
+  const budgetSnapshotRef = useRef({ context: tripDataContext, data: emptyBudgetSnapshot() });
+  if (!requestGuard.sameContext(budgetSnapshotRef.current.context)) {
+    budgetSnapshotRef.current = { context: tripDataContext, data: emptyBudgetSnapshot() };
+  }
   function applyBudgetSnapshot(data, key, cache = true) {
-    budgetSnapshotRef.current = { key, data };
-    setBudgetSnapshot(data);
+    const context = requestGuard.context();
+    if (context.key !== key) return;
+    const verifiedAt = data.expenseVerified ? Date.now() : undefined;
+    const snapshot = { context, data, verifiedAt };
+    budgetSnapshotRef.current = snapshot;
+    setBudgetSnapshotState(snapshot);
     if (key && cache) {
       const [userId, tripId] = JSON.parse(key);
-      updateOfflineBudget(tripId, userId, cachedExpenseGraph(data.expenseGraph, tripId));
+      updateOfflineBudget(tripId, userId, cachedExpenseGraph(data.expenseGraph, tripId), localStorage, verifiedAt);
     }
-    if (data.tripId && data.tripBudgetRates) {
+    if (data.expenseVerified && data.tripBudgetRates) {
       setTrips(current => current.map(t => t.id === data.tripId ? { ...t, budget_exchange_rates: data.tripBudgetRates } : t));
     }
   }
@@ -2497,19 +2513,20 @@ export default function App() {
     apply: applyBudgetSnapshot,
     onVerified: result => syncFeedback.verified("budget", result.feedbackCheckpoint),
     onError: error => {
-      const { key } = budgetSnapshotRef.current;
-      let { data } = budgetSnapshotRef.current;
-      if (key && error.code === "42501") applyBudgetSnapshot({ ...emptyBudgetSnapshot(), expenseUnavailable: true }, key);
-      else if (key) {
-        if (!data.tripId) {
+      const { context, data } = budgetSnapshotRef.current;
+      const { key } = context;
+      if (!requestGuard.sameContext(context) || !canReadTrip(key)) return;
+      if (error.code === "42501") {
+        applyBudgetSnapshot({ ...emptyBudgetSnapshot(), expenseUnavailable: true }, key);
+      } else {
+        let visible = data;
+        if (!data.expenseGraph && !data.expenseUnavailable) {
           const [userId, tripId] = JSON.parse(key);
           const cached = readOfflineTripData(tripId, userId);
           const graph = cachedExpenseGraph(cached?.expenseGraph ?? cached?.budgetSnapshot?.expenseGraph, tripId);
-          if (graph) data = expenseFinancialSnapshot(graph);
+          if (graph) visible = expenseFinancialSnapshot(graph);
         }
-        const unverified = { ...data, expenseVerified: false, expenseUnavailable: true };
-        budgetSnapshotRef.current = { key, data: unverified };
-        setBudgetSnapshot(unverified);
+        applyBudgetSnapshot({ ...visible, expenseVerified: false, expenseUnavailable: true }, key, false);
       }
       syncFeedback.failure("budget", error.code === "PGRST202" ? "目前無法讀取支出，請稍後重試。" : error);
     },
@@ -3215,8 +3232,16 @@ export default function App() {
     setAttachments(nextAttachments);
     setPackItems(packResult.data || []);
     setMembers(membersResult.data || []);
+    const { data: finance, verifiedAt } = budgetSnapshotRef.current;
+    // A successful core load can finish before the independent expense read.
+    // Keep its scoped cache until that read supplies a graph or clears access.
+    const prior = !finance.expenseVerified && (finance.expenseGraph || !finance.expenseUnavailable)
+      ? readOfflineTripData(tripId, userId) : null;
+    const expenseGraph = cachedExpenseGraph(finance.expenseVerified
+      ? finance.expenseGraph : prior?.expenseGraph ?? prior?.budgetSnapshot?.expenseGraph, tripId);
     writeOfflineTripData(tripId, userId, {
-      expenseGraph: cachedExpenseGraph(budgetSnapshotRef.current.data.expenseGraph, tripId),
+      expenseGraph,
+      expenseGraphCachedAt: expenseGraph ? verifiedAt ?? prior?.expenseGraphCachedAt : undefined,
       items: nextItems,
       alternatives: nextAlternatives,
       accommodations: accommodationsResult.data || [],
@@ -4759,61 +4784,70 @@ export default function App() {
 
   async function createTrip(event) {
     event.preventDefault();
-    if (!await requestActiveEditorHandoff({ tripId: activeTripId }) || !requestGuard.sameContext(tripDataContext)) return;
-    const user = session.user;
-    const safeEndDate =
-      tripForm.end_date < tripForm.start_date ? tripForm.start_date : tripForm.end_date;
-    const tripId = crypto.randomUUID();
-    const destinationPatch = destinationPatchFromParts(
-      tripForm.destination_country,
-      tripForm.destination_city,
-    );
-    let initialRates;
-    try { initialRates = await fetchBudgetQuote(); }
-    catch (error) { notify.error(error); }
-    const { error: tripError } = await supabase.from("trips").insert({
-      id: tripId,
-      title: tripForm.title.trim(),
-      name: tripForm.title.trim(),
-      ...destinationPatch,
-      start_date: tripForm.start_date,
-      end_date: safeEndDate,
-      status: "planning",
-      owner_id: user.id,
-      ...(initialRates ? { budget_exchange_rates: initialRates } : {}),
-    });
+    if (tripCreationInFlight.current) return;
+    tripCreationInFlight.current = true;
+    setTripCreating(true);
+    const account = accountRef.current;
+    const isCurrent = () => accountRef.current === account && requestGuard.sameContext(tripDataContext);
+    try {
+      if (!await requestActiveEditorHandoff({ tripId: activeTripId }) || !isCurrent()) return;
+      const user = session.user;
+      const safeEndDate =
+        tripForm.end_date < tripForm.start_date ? tripForm.start_date : tripForm.end_date;
+      const tripId = crypto.randomUUID();
+      const destinationPatch = destinationPatchFromParts(
+        tripForm.destination_country,
+        tripForm.destination_city,
+      );
+      const initialRates = getCachedBudgetQuote();
+      const { error: tripError } = await supabase.from("trips").insert({
+        id: tripId,
+        title: tripForm.title.trim(),
+        name: tripForm.title.trim(),
+        ...destinationPatch,
+        start_date: tripForm.start_date,
+        end_date: safeEndDate,
+        status: "planning",
+        owner_id: user.id,
+        ...(initialRates ? { budget_exchange_rates: initialRates } : {}),
+      });
 
-    if (tripError) {
-      notify.error(tripError.message);
-      return;
+      if (tripError) {
+        if (isCurrent()) notify.error(tripError.message);
+        return;
+      }
+
+      const { error: memberError } = await supabase.from("trip_members").insert({
+        trip_id: tripId,
+        user_id: user.id,
+        role: "owner",
+        status: "approved",
+        display_name: user.user_metadata?.full_name || user.email,
+        email: user.email,
+      });
+
+      if (memberError) {
+        if (isCurrent()) notify.error(memberError.message);
+        return;
+      }
+
+      const packRows = defaultPackItems.map((title) => ({ trip_id: tripId, title }));
+      await supabase.from("pack_items").insert(packRows);
+      if (!isCurrent()) return;
+
+      setIsTripDialogOpen(false);
+      setTripForm({
+        title: "京都五日散策",
+        destination_country: "日本",
+        destination_city: "京都",
+        start_date: todayInput(),
+        end_date: todayInput(2),
+      });
+      await loadTrips(tripId);
+    } finally {
+      tripCreationInFlight.current = false;
+      setTripCreating(false);
     }
-
-    const { error: memberError } = await supabase.from("trip_members").insert({
-      trip_id: tripId,
-      user_id: user.id,
-      role: "owner",
-      status: "approved",
-      display_name: user.user_metadata?.full_name || user.email,
-      email: user.email,
-    });
-
-    if (memberError) {
-      notify.error(memberError.message);
-      return;
-    }
-
-    const packRows = defaultPackItems.map((title) => ({ trip_id: tripId, title }));
-    await supabase.from("pack_items").insert(packRows);
-
-    setIsTripDialogOpen(false);
-    setTripForm({
-      title: "京都五日散策",
-      destination_country: "日本",
-      destination_city: "京都",
-      start_date: todayInput(),
-      end_date: todayInput(2),
-    });
-    await loadTrips(tripId);
   }
 
   async function previewTripImport(file) {
@@ -6153,7 +6187,7 @@ export default function App() {
             accommodations={accommodations}
             alternatives={alternatives}
             attachments={attachments}
-            budgetSnapshot={budgetSnapshot.tripId === activeTrip.id ? budgetSnapshot : null}
+            budgetSnapshot={budgetSnapshot}
             onRefreshBudget={refreshBudget}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
@@ -6243,6 +6277,7 @@ export default function App() {
 
       {isTripDialogOpen ? (
         <TripDialog
+          busy={tripCreating}
           form={tripForm}
           onChange={setTripForm}
           onClose={() => setIsTripDialogOpen(false)}
@@ -14625,7 +14660,7 @@ function MembersPanel({ className = "", isOwner, members, onApprove, onReject })
   );
 }
 
-function TripDialog({ form, onChange, onClose, onImportAi, onImportFile, onSubmit }) {
+function TripDialog({ busy, form, onChange, onClose, onImportAi, onImportFile, onSubmit }) {
   const [dateSelectionStep, setDateSelectionStep] = useState(() => initialDateSelectionStep(form.start_date, form.end_date));
   const [startDateInput, setStartDateInput] = useState(() => formatHeaderDate(form.start_date) || "");
   const [endDateInput, setEndDateInput] = useState(() => formatHeaderDate(form.end_date) || "");
@@ -14737,7 +14772,7 @@ function TripDialog({ form, onChange, onClose, onImportAi, onImportFile, onSubmi
 
   return (
     <div className="modal-backdrop">
-      <form autoComplete="off" className="dialog-card create-trip-dialog" onSubmit={onSubmit}>
+      <form autoComplete="off" aria-busy={busy} className="dialog-card create-trip-dialog" onSubmit={onSubmit}>
         <h2>新增旅程</h2>
         <label>
           旅程名稱
@@ -14819,6 +14854,7 @@ function TripDialog({ form, onChange, onClose, onImportAi, onImportFile, onSubmi
             className="ghost-button create-trip-ai-button"
             title="AI 規劃"
             type="button"
+            disabled={busy}
             onClick={onImportAi}
           >
             <Bot aria-hidden="true" size={18} />
@@ -14831,6 +14867,7 @@ function TripDialog({ form, onChange, onClose, onImportAi, onImportFile, onSubmi
               accept="application/json,.json"
               aria-label="選擇旅程 JSON 檔案"
               type="file"
+              disabled={busy}
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
@@ -14838,11 +14875,11 @@ function TripDialog({ form, onChange, onClose, onImportAi, onImportFile, onSubmi
               }}
             />
           </label>
-          <button className="ghost-button" type="button" onClick={onClose}>
+          <button className="ghost-button" type="button" disabled={busy} onClick={onClose}>
             取消
           </button>
-          <button className="primary-button compact" type="submit" disabled={!canSubmitDates}>
-            建立
+          <button className="primary-button compact" type="submit" disabled={busy || !canSubmitDates}>
+            {busy ? "建立中…" : "建立"}
           </button>
         </div>
       </form>

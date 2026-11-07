@@ -2,6 +2,10 @@
 
 Updated 2026-11-07. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-07 — Issue #24 targeted Preview regression fixes
+
+[Fixed baselines, A/B/C evidence and verification](docs/2026-11-07-issue24-preview-regression.md). Expense read errors have a scoped retry, core refresh preserves a valid read-only expense cache and its TTL, and trip creation starts without waiting for rates and accepts one submit at a time. Staging Preview from the original feature branch is the delivery target. Issue #24 remains available for user acceptance of the failure flows.
+
 ## Latest 2026-11-07 — Issue #23 Legacy Budget retirement
 
 [Scope, object manifest, Staging counts and verification](docs/2026-11-07-issue23-legacy-budget-retirement.md). Native Expense is the sole runtime source. Forward `20261107035830` retires legacy financial tables and guards; preserves native, other workspace data, trip owner/RLS, and real in-flight write protection. Exact rollback trial and authorized install on Staging matched all 23 protected relation seals; ledger 78/head 20261107035830. Updated Preview and physical receipt cleanup are separate checks. Keep #23 open. No Production/main changes.

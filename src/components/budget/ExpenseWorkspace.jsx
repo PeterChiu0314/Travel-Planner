@@ -50,7 +50,13 @@ export default function ExpenseWorkspace(props){
  const {ask,dialog}=useSiteDialog();
  useEffect(()=>{setSelected(client.status().draftId||null);setPanel(client.status().draftId?'edit':'stats');},[client]);
  useEffect(()=>{setView(planning?'budget':'paid');},[planning]);
- useEffect(()=>{if(props.demo&&client.status().graph)return;if(props.metadataSnapshot?.expenseGraph)client.ingest(props.metadataSnapshot.expenseGraph,{authoritative:props.metadataSnapshot.expenseVerified!==false});},[client,props.metadataSnapshot,props.demo]);
+ const snapshot=props.metadataSnapshot;
+ const unavailableWithoutGraph=snapshot?.expenseUnavailable&&!snapshot.expenseGraph;
+ useEffect(()=>{
+  if(props.demo&&client.status().graph)return;
+  if(snapshot?.expenseGraph)client.ingest(snapshot.expenseGraph,{authoritative:snapshot.expenseVerified!==false});
+  else if(unavailableWithoutGraph)client.invalidate();
+ },[client,snapshot,props.demo,unavailableWithoutGraph]);
  useEffect(()=>{const detach=client.attach(),timer=setInterval(()=>void client.tick(),1000);return()=>{clearInterval(timer);detach();};},[client]);
  useEffect(()=>{void collaboration?.configure(props.currentUserId,props.activeTrip.id,workspaceActive&&approvedActor);},[collaboration,props.currentUserId,props.activeTrip.id,workspaceActive,approvedActor]);
  useEffect(()=>()=>{void collaboration?.dispose();},[collaboration]);
@@ -59,7 +65,7 @@ export default function ExpenseWorkspace(props){
   reconcile();window.addEventListener('offline',reconcile);window.addEventListener('online',reconcile);window.addEventListener('focus',reconcile);document.addEventListener('visibilitychange',reconcile);
   return()=>{window.removeEventListener('offline',reconcile);window.removeEventListener('online',reconcile);window.removeEventListener('focus',reconcile);document.removeEventListener('visibilitychange',reconcile);};
  },[client,collaboration,workspaceActive]);
- const state=client.status(),graph=state.graph;
+ const state=client.status(),graph=unavailableWithoutGraph?null:state.graph;
  const selectedExists=Boolean(graph?.items.some(i=>i.id===selected));
  useEffect(()=>{if(workspaceActive)collaboration?.select(selectedExists?{kind:'expense',id:selected,tripId:props.activeTrip.id,userId:props.currentUserId}:null);},[collaboration,workspaceActive,selected,selectedExists,props.activeTrip.id,props.currentUserId]);
  props.services.useGuard(`expense-workspace:${props.currentUserId}:${props.activeTrip.id}`,{tripId:props.activeTrip.id,workspace:'budget'},
@@ -69,7 +75,7 @@ export default function ExpenseWorkspace(props){
   ? <div role="status"><p className="bw-muted">目前無法讀取支出，草稿已保留。</p><button type="button" className="ghost-button" onClick={() => void props.onRefreshBudget(props.activeTrip.id)}>重新讀取支出</button></div>
   : <p className="bw-muted" role="status">讀取支出項目…</p>;
  const models=expenseModels(graph),item=client.draftItem()?.id===selected?client.draftItem():models.find(i=>i.id===selected),members=graph.members||[],approved=members.filter(m=>m.status==='approved');
- const editable=props.canEdit&&state.verified&&navigator.onLine!==false;
+ const editable=props.canEdit&&snapshot?.expenseVerified!==false&&state.verified&&navigator.onLine!==false;
  const handoffBudget=()=>props.services.handoff({tripId:props.activeTrip.id,workspace:'budget'});
  async function handoff(action){if(await handoffBudget())action();}
  async function add(){if(adding.current)return;adding.current=true;try{if(client.status().draftId){setSelected(client.status().draftId);setPanel('edit');return;}if(!await handoffBudget())return;setSelected(client.begin());setPanel('edit');}finally{adding.current=false;}}

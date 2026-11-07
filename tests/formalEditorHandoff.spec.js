@@ -125,6 +125,42 @@ test("timed swap persists and the native expense follows its original destinatio
   }
 });
 
+test("schedule refusal or uncertain response never triggers a second write endpoint", async ({ page }) => {
+  const fixture = await expenseBackend({ timeline: true });
+  const request = fixture.db.request.bind(fixture.db);
+  const writes = [];
+  let failure = { code: "PGRST202" };
+  fixture.db.request = async call => {
+    if (call.name?.startsWith("apply_timeline_schedule_operation")) {
+      writes.push(call.name);
+      return { error: failure };
+    }
+    return request(call);
+  };
+  try {
+    await open(page, fixture, { linked: true });
+    const before = await fixture.snapshot();
+    await navigation(page, "行程路線").click();
+    await drag(page, "Morning QA");
+    await expect(page.getByText("行程排程服務尚未更新，請稍後重新整理。", { exact: true })).toBeVisible();
+    expect(writes).toEqual(["apply_timeline_schedule_operation_link_safe"]);
+    await expect(timeline(page).first()).toContainText("Morning QA");
+
+    failure = { message: "Failed to fetch" };
+    await drag(page, "Morning QA");
+    await expect.poll(() => writes.length).toBe(2);
+    await expect(timeline(page).first()).toContainText("Morning QA");
+    expect(writes).toEqual(Array(2).fill("apply_timeline_schedule_operation_link_safe"));
+    const after = await fixture.snapshot();
+    expect(after.itineraryItems).toEqual(before.itineraryItems);
+    expect(after.links).toEqual(before.links);
+    expect(page.qaErrors).toEqual([]);
+  } finally {
+    await page.close();
+    await fixture.close();
+  }
+});
+
 test("an unresolved budget snapshot does not stall Timeline loading or editing", async ({ page }) => {
   const fixture = await expenseBackend({ timeline: true });
   let settleBudget, started = 0;
