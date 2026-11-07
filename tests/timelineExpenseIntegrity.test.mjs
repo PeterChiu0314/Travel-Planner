@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { randomUUID as uuid } from "node:crypto";
 import { expenseBackend } from "./helpers/expenseBackend.js";
 
@@ -147,6 +148,26 @@ test("owner trip deletion clears native children while other trips and their exp
   await query("insert into expense_stage_b.expense_itinerary_links values($1,$2,$3)", [expense, target, stop]);
   await query("insert into expense_stage_b.groups(expense_id,group_key) values($1,'links')", [expense]);
   await query("insert into expense_stage_b.rate_leases(trip_id) values($1)", [target]);
+  // Exercise every live native receipt writer, rather than testing empty receipts.
+  const created = uuid(), sid = uuid(), token = uuid();
+  const requests = [uuid(), uuid(), uuid()];
+  await asActor();
+  await query("select public.create_named_expense_item($1,$2,$3,$4,'Created QA')", [target, created, sid, requests[0]]);
+  const lease = (await query("select public.expense_group_lease($1,'note',$2,$3,'acquire',0,null,0,false) value", [created, sid, token])).rows[0].value;
+  await query("select public.mutate_expense_group($1,'note',$2,$3,$4,0,$5,$6)", [created, sid, token, lease.epoch, { text: "QA note" }, requests[1]]);
+  const rates = (await query("select public.expense_rates_lease($1,$2,$3,'acquire',0,null) value", [target, sid, token])).rows[0].value;
+  await admin();
+  const previous = (await query("select budget_exchange_rates value from trips where id=$1", [target])).rows[0].value;
+  const targets = (await query("select expense_stage_b.rate_targets($1) value", [target])).rows[0].value;
+  await asActor();
+  await query("select public.update_expense_rates($1,$2,$3,$4,0,$5,$6)", [target, sid, token, rates.epoch, {
+    previous, targets, quote: { rates: { JPY: .25, USD: 32, EUR: 35, KRW: .025, HKD: 4 }, source: "ExchangeRate-API", quoted_at: new Date().toISOString() },
+  }, requests[2]]);
+  await admin();
+  assert.equal((await query("select count(*)::int n from expense_stage_b.receipts where request_id=any($1::uuid[])", [requests])).rows[0].n, 3);
+  const ratesSignature = (await query("select signature from expense_stage_b.receipts where request_id=$1", [requests[2]])).rows[0].signature;
+  assert.equal(ratesSignature.trip, target);
+  assert.equal("id" in ratesSignature, false);
   await asActor(B);
   assert.equal((await query("delete from public.trips where id=$1 returning id", [target])).rows.length, 0);
   await asActor();
@@ -156,5 +177,68 @@ test("owner trip deletion clears native children while other trips and their exp
     assert.equal((await query(`select count(*)::int as n from expense_stage_b.${table} where trip_id=$1`, [target])).rows[0].n, 0);
   }
   assert.equal((await query("select count(*)::int as n from public.expense_signals where trip_id=$1", [target])).rows[0].n, 0);
+  assert.equal((await query("select count(*)::int n from expense_stage_b.receipts where request_id=any($1::uuid[])", [requests])).rows[0].n, 0);
   assert.equal((await query("select count(*)::int as n from expense_stage_b.expense_items where trip_id=$1", [trip])).rows[0].n, retained);
+});
+
+test("rates-only trip deletion removes its receipt and retains another trip's exact receipt", async () => {
+  await admin();
+  const target = uuid();
+  await query("insert into public.trips(id,title,name,destination,owner_id,start_date,end_date) values($1,'Rates only','Rates only','Japan',$2,'2090-01-01','2090-01-03')", [target, A]);
+  await query("insert into public.trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved') on conflict do nothing", [target, A]);
+  async function writeRates(tid) {
+    const sid = uuid(), token = uuid(), request = uuid();
+    await admin();
+    const previous = (await query("select budget_exchange_rates value from trips where id=$1", [tid])).rows[0].value;
+    const targets = (await query("select expense_stage_b.rate_targets($1) value", [tid])).rows[0].value;
+    const base = Number((await query("select revision from expense_stage_b.rate_leases where trip_id=$1", [tid])).rows[0]?.revision || 0);
+    await asActor();
+    const held = (await query("select public.expense_rates_lease($1,$2,$3,'acquire',$4,null) value", [tid, sid, token, base])).rows[0].value;
+    await query("select public.update_expense_rates($1,$2,$3,$4,$5,$6,$7)", [tid, sid, token, held.epoch, base, {
+      previous, targets, quote: { rates: { JPY: .25, USD: 32, EUR: 35, KRW: .025, HKD: 4 }, source: "ExchangeRate-API", quoted_at: new Date().toISOString() },
+    }, request]);
+    await admin();
+    return (await query("select * from expense_stage_b.receipts where request_id=$1", [request])).rows[0];
+  }
+  const removed = await writeRates(target), retained = await writeRates(trip);
+  assert.equal((await query("select count(*)::int n from expense_stage_b.expense_items where trip_id=$1", [target])).rows[0].n, 0);
+  await asActor();
+  await query("delete from trips where id=$1", [target]);
+  await admin();
+  assert.equal((await query("select count(*)::int n from expense_stage_b.receipts where request_id=$1", [removed.request_id])).rows[0].n, 0);
+  assert.deepEqual((await query("select * from expense_stage_b.receipts where request_id=$1", [retained.request_id])).rows[0], retained);
+});
+
+test("deployed active guard allows planning snapshot cascade but still preserves frozen history", async () => {
+  await admin();
+  const activeGuardSource = await readFile(new URL("../docs/operations/drafts/budget-b7-trip-cascade/20261031140648_budget_trip_cascade_lease_admission.sql", import.meta.url), "utf8");
+  // Load the exact installed guard body, not a stub or the dormant-only deployment wrapper.
+  const [guard] = activeGuardSource.match(/create or replace function app_private\.guard_budget_external_parent\(\)[\s\S]*?\$tripbody\$;/);
+  await sql.exec(guard);
+  const snapshotFix = await readFile(new URL("../supabase/migrations/20261107030622_issue23_allow_trip_delete_with_unfrozen_snapshot.sql", import.meta.url), "utf8");
+  const planning = uuid(), frozen = uuid(), legacy = uuid(), peerTrip = uuid(), expense = uuid();
+  for (const id of [planning, frozen, legacy, peerTrip]) {
+    await query("insert into trips(id,title,name,destination,owner_id,start_date,end_date) values($1,'Snapshot QA','Snapshot QA','Japan',$2,'2090-01-01','2090-01-03')", [id, A]);
+    await query("insert into trip_members(trip_id,user_id,role,status) values($1,$2,'owner','approved') on conflict do nothing", [id, A]);
+  }
+  await query("update trip_budget_baselines set departure_at=clock_timestamp()-interval '1 day' where trip_id=$1", [frozen]);
+  await query("insert into budget_items(trip_id,title,category,amount,twd_amount,currency,exchange_rate,payer_id) values($1,'Legacy QA','其他',100,100,'TWD',1,$2)", [legacy, A]);
+  await query("insert into expense_stage_b.expense_items(id,trip_id,title,payment_state,budget) values($1,$2,'Preview QA','unpaid','{\"amount\":100}')", [expense, planning]);
+  await sql.exec("update app_private.budget_finance_protocol set enabled=true where singleton; update app_private.budget_finance_protocol set enabled=false where singleton");
+  assert.equal((await query("select app_private.budget_finance_activated() as active")).rows[0].active, true);
+  const ownerDelete = id => query("delete from trips where id=$1 returning id", [id]);
+  const isProtected = err => err.code === "0A000" && err.detail === "BUDGET_PARENT_DELETE_BLOCKED";
+  await asActor();
+  await assert.rejects(() => ownerDelete(planning), isProtected);
+  await admin();
+  await sql.exec(snapshotFix);
+  await asActor(B);
+  assert.deepEqual((await ownerDelete(planning)).rows, []);
+  await asActor();
+  await assert.rejects(() => ownerDelete(frozen), isProtected);
+  await assert.rejects(() => ownerDelete(legacy), isProtected);
+  assert.deepEqual((await ownerDelete(planning)).rows, [{ id: planning }]);
+  await admin();
+  assert.deepEqual((await query("select trip_id from trip_budget_baselines where trip_id=any($1::uuid[]) order by trip_id", [[planning, frozen, peerTrip]])).rows.map(row => row.trip_id), [frozen, peerTrip].sort());
+  assert.equal((await query("select count(*)::int n from expense_stage_b.expense_items where id=$1", [expense])).rows[0].n, 0);
 });

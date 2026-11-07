@@ -8526,14 +8526,14 @@ function DemoApp({ initialSection }) {
 
   async function changeSection(section) {
     if (section === activeSection) return;
-    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id, workspace: activeSection }))) return;
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
     setActiveSection(section);
     window.history.pushState({}, "", `/demo/${section}`);
   }
 
   async function changeDemoTrip(tripId) {
     const nextTrip = demoTrips.find((trip) => trip.id === tripId);
-    if (!nextTrip || tripId === demoActiveTrip.id || !(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id, workspace: activeSection }))) return;
+    if (!nextTrip || tripId === demoActiveTrip.id || !(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
     setActiveDay(tripTodayIndex(nextTrip));
     setFocusedItemId(null);
     setDemoScenario("live");
@@ -8555,7 +8555,7 @@ function DemoApp({ initialSection }) {
   }
 
   async function returnToLogin() {
-    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id, workspace: activeSection }))) return;
+    if (!(await requestActiveEditorHandoff({ tripId: demoActiveTrip.id }))) return;
     window.location.assign("/");
   }
 
@@ -14353,7 +14353,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
     [form, hasUnsavedChanges, isOpen, editingId, baseUpdatedAt, draftKey],
   );
 
-  useActiveEditorGuard(activeEditorGuardId, { tripId: editorTripId || activeTrip?.id, workspace: "todo" }, activeEditorGuard);
+  useActiveEditorGuard(activeEditorGuardId, { tripId: editorTripId || activeTrip?.id, workspace: "guide" }, activeEditorGuard);
 
   useEffect(() => {
     if (!isOpen || !editorTripId || !activeTrip?.id || editorTripId === activeTrip.id) return;
@@ -14389,7 +14389,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
 
   async function openNewGuide() {
     const canOpenEditor = await requestActiveEditorHandoff({
-      workspace: "todo",
+      workspace: "guide",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
@@ -14412,7 +14412,7 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   async function openEditGuide(item) {
     if (useEditLocks && isLockedByAnotherUser(item, currentUserId)) return;
     const canOpenEditor = await requestActiveEditorHandoff({
-      workspace: "todo",
+      workspace: "guide",
       excludeId: activeEditorGuardId,
       tripId: activeTrip?.id,
     });
