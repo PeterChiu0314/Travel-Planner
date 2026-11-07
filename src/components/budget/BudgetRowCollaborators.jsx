@@ -12,7 +12,7 @@ export function rowCollaborators(entries) {
 }
 export function RowCollaboratorOutline({users}) {
  const owner=users[0];
- return owner?<span className="bw-collaboration-outline" data-user={owner.user_id} data-mode={owner.mode} aria-hidden="true" style={{inset:'1px 1px 1px 5px','--bw-remote-color':collaboratorColor(owner.user_id)}}/>:null;
+ return owner?<span className="bw-collaboration-outline" data-user={owner.user_id} data-mode={owner.mode} aria-hidden="true" style={{'--bw-remote-color':collaboratorColor(owner.user_id)}}/>:null;
 }
 function Avatar({entry,member}) {
  const initial=Array.from(memberLabel(member).trim())[0]?.toLocaleUpperCase()||'?';

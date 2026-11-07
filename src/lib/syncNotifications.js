@@ -4,13 +4,14 @@ import { friendlyError, isConnectionError, notificationDuration, syncToastId } f
 export function createSyncNotifications(notify, online = () => navigator.onLine !== false) {
   const failures = new Map();
   let account = null, trip = null, signature = "", retry = () => {}, revision = 0;
-  function render() {
+  function render({ offlineRetry = false } = {}) {
     if (!failures.size) return;
     const offline = !online();
     const messages = [...failures.values()].map(failure => failure.error);
     const network = offline || messages.some(isConnectionError);
     const message = offline ? "網路連線中斷，尚未同步的內容已保留。" : network ? "資料同步暫時失敗，請檢查連線或稍後重試。" : friendlyError(messages[0]);
-    const description = [...failures.values()].some(failure => failure.cached) ? "目前顯示已快取資料，重新核對後會更新。" : undefined;
+    const cached = [...failures.values()].some(failure => failure.cached);
+    const description = offline && offlineRetry ? "目前仍離線，請恢復網路後再試。" : cached ? "目前顯示已快取資料，重新核對後會更新。" : undefined;
     const nextSignature = JSON.stringify([message, description]);
     if (signature === nextSignature) return;
     signature = nextSignature;

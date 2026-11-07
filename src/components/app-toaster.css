@@ -3,6 +3,7 @@
   --normal-bg: var(--paper);
   --normal-text: var(--ink);
   --normal-border: var(--line);
+  --app-toast-max-height: clamp(64px, calc(100dvh - 200px - var(--app-keyboard-inset, 0px)), 220px);
   font-family: inherit;
   z-index: 85;
 }
@@ -13,7 +14,12 @@
   border-left: 3px solid var(--toast-accent, var(--color-info));
   box-shadow: 0 8px 28px rgba(36, 43, 38, .14);
   font-size: 13px;
-  max-height: clamp(64px, calc(100dvh - 200px - var(--app-keyboard-inset, 0px)), 220px);
+  max-height: var(--app-toast-max-height);
+  overflow: clip;
+}
+.app-toaster [data-sonner-toast] [data-content] {
+  min-width: 0;
+  max-height: calc(var(--app-toast-max-height) - 30px);
   overflow-y: auto;
 }
 .app-toaster [data-type="success"] { --toast-accent: var(--color-success); }
@@ -23,7 +29,7 @@
 .app-toaster [data-title] { white-space: pre-line; }
 .app-toaster [data-button] { background: var(--color-primary); color: white; min-height: 30px; }
 [data-sonner-toaster].app-toaster [data-sonner-toast] [data-close-button] {
-  left: auto; right: 8px; top: 8px; transform: none;
+  left: auto; right: 8px; top: 50%; transform: translateY(-50%);
   width: 32px; height: 32px; background: var(--paper); border-color: transparent;
 }
 .app-toaster :is([data-close-button], [data-button]):focus-visible {

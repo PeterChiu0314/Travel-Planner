@@ -41,9 +41,9 @@ function Pricing({client,field,view,members,scope,rates,locked,canChooseMode,sho
    {form.twd_amount_source==='actual'?<label>實際台幣扣款<input type="number" min="0" step="1" readOnly={locked} value={form.actual_twd_amount} onChange={e=>setForm({...form,actual_twd_amount:e.target.value})}/></label>:null}
   </fieldset>:null}</>;
 }
-function PlanningSummary({view:{value:form,dirty}}){
+function PlanningSummary({view:{value:form,dirty},storedAmount}){
  let pricing;try{pricing=calculatePricing(form,{wholeOriginal:dirty||form.original_scale===0});}catch{/* Incomplete input stays a local draft. */}
- return <BudgetPricingSummary form={form} pricing={pricing} showOriginalPrecision/>;
+ return <BudgetPricingSummary form={form} pricing={pricing} showOriginalPrecision keepVisible storedAmount={storedAmount}/>;
 }
 export default function ExpenseWorkspace(props){
  const propsRef=useRef(props);propsRef.current=props;
@@ -129,7 +129,7 @@ export default function ExpenseWorkspace(props){
    {frame('note','備註',({v,locked,set})=><textarea aria-label="備註" value={v.value||''} rows={3} readOnly={locked} onChange={e=>set(e.target.value)}/>)}
 
    {!planning&&frame('links','關聯行程',({v,locked,set})=><ItineraryPicker items={graph.itineraryItems||[]} category={item.category} selectedIds={v.value} readOnly={locked} onChange={set}/>)}
-   {planning?<PlanningSummary view={client.view(client.get(item.id,'budget'))}/>:null}
+   {planning?<PlanningSummary view={client.view(client.get(item.id,'budget'))} storedAmount={item.budget?.amount}/>:null}
    {frame(view,view==='budget'?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing key={field.id} client={client} field={field} view={v} scope={view} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode} showModeLegend={!planning} showSummary={!planning} planningIntegers={planning&&view==='budget'}/>)}
    {frame('payer','付款方式',({field,v,locked,canChooseMode})=>planning?<ExpensePayers client={client} field={field} view={v} members={approved} total={(item.budget||item.paid)?.amount??0} currency={(item.budget||item.paid)?.currency||'TWD'} locked={locked} canChooseMode={canChooseMode}/>:v.value.rows.length<=1?<MenuSelect label="付款人" value={v.value.rows[0]?.user_id||''} readOnly={locked} metadataPortal onValueChange={value=>client.input(field,value)} options={[{value:'',label:'未指定'},...approved.map(m=>({value:m.user_id,label:memberLabel(m)}))]}/>:<p>{v.value.mode==='self'?'各自付':v.value.rows.map(r=>memberLabel(approved.find(m=>m.user_id===r.user_id))).join('、')}</p>)}
    {!planning?<div className="bw-metadata-summary"><span>分類 · {item.category}</span><span>金額 · {item[view]?`${item[view].currency} ${money(item[view].amount)}`:'尚未填寫'}</span></div>:null}

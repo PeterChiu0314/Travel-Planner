@@ -25,7 +25,6 @@ export default function BudgetPricingFields({ form, pricing, members, locked, hi
         onValueChange={value => { if (!locked) setForm({ ...form, currency: value, exchange_rate: value === "TWD" ? 1 : tripRates?.rates?.[value] ?? "" }); }}
         options={[...new Set(["TWD", "JPY", "USD", "EUR", "KRW", "HKD", form.currency])].filter(Boolean).map(value => ({ value, label: value }))} /></div></div>
     {form.currency !== "TWD" ? editRate ? <label>參考匯率<input name="exchange_rate" type="number" min="0.000001" step="0.000001" readOnly={locked} value={form.exchange_rate} onChange={e => update("exchange_rate", e.target.value)} /></label> : <div className="bw-trip-rate"><span>{historical ? "歷史匯率" : "旅程估算匯率"}</span><b>1 {form.currency} = {form.exchange_rate || "—"} TWD</b></div> : null}
-    {planningIntegers ? <small className="bw-muted">原幣以整數儲存，小數會在儲存時四捨五入。</small> : null}
     <details className="bw-member-options" open={membersOpen} onToggle={event => setMembersOpen(event.currentTarget.open)}><summary>參與成員 · {form.participantIds.length} 人</summary>
       <fieldset className="bw-participants"><legend>各人負擔 · {planningIntegers || form.pricing_mode === "custom" ? form.currency : "TWD"}</legend>{options.map(member => <label key={member.user_id}>
         <input disabled={(!requestParticipantForm && locked) || member.unavailable && !form.participantIds.includes(member.user_id)} type="checkbox" checked={form.participantIds.includes(member.user_id)} onChange={() => void toggleParticipant(member)} />{memberLabel(member)}
@@ -35,10 +34,14 @@ export default function BudgetPricingFields({ form, pricing, members, locked, hi
   </>;
 }
 
-export function BudgetPricingSummary({form,pricing,showOriginalPrecision=false}) {
-  if (!pricing) return null;
+export function BudgetPricingSummary({form,pricing,showOriginalPrecision=false,keepVisible=false,storedAmount}) {
+  if (!pricing && !keepVisible) return null;
   const count = form.participantIds.length;
-  const uneven = pricing.original_scale === 0 && form.pricing_mode === "split_total" && pricing.amount % count !== 0;
-  const perPerson = form.pricing_mode === "custom" || uneven ? "依成員" : count ? `${pricing.twd_amount % count ? "≈ " : ""}NT$ ${money(pricing.twd_amount / count)}` : "—";
-  return <div className="bw-calculation"><div><span>每人</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>NT$ {money(pricing.twd_amount)}</strong>{form.currency !== "TWD" || showOriginalPrecision && !Number.isInteger(pricing.amount) ? <small>{form.currency} {showOriginalPrecision ? originalMoney(pricing.amount) : money(pricing.amount)}</small> : null}</div></div>;
+  const uneven = pricing?.original_scale === 0 && form.pricing_mode === "split_total" && pricing.amount % count !== 0;
+  let perPerson = "—";
+  if (pricing && (form.pricing_mode === "custom" || uneven)) perPerson = "依成員";
+  else if (pricing && count) perPerson = `${pricing.twd_amount % count ? "≈ " : ""}NT$ ${money(pricing.twd_amount / count)}`;
+  const showOriginal = form.currency !== "TWD" || showOriginalPrecision && Number.isFinite(storedAmount) && !Number.isInteger(storedAmount);
+  const original = pricing ? (showOriginalPrecision ? originalMoney(pricing.amount) : money(pricing.amount)) : "—";
+  return <div className="bw-calculation"><div><span>每人</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>{pricing ? `NT$ ${money(pricing.twd_amount)}` : "—"}</strong>{showOriginal ? <small>{form.currency} {original}</small> : null}</div></div>;
 }

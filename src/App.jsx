@@ -2372,6 +2372,7 @@ export default function App() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const syncFeedback = useMemo(() => createSyncNotifications(notify), []);
+  const [tripRealtimeAttempt, setTripRealtimeAttempt] = useState(0);
   useEffect(() => {
     if (!isDemoMode) syncFeedback.configure(session?.user?.id || null, activeTripId);
   }, [isDemoMode, session?.user?.id, activeTripId, syncFeedback]);
@@ -3264,17 +3265,22 @@ export default function App() {
 
   useEffect(() => {
     if (isDemoMode || !session?.user) return;
-    const retry = async () => {
+    const retry = async ({ manual = false } = {}) => {
       const pending = syncFeedback.pending();
-      if (!pending.length || navigator.onLine === false) { syncFeedback.online(); return; }
+      if (!pending.length || navigator.onLine === false) { syncFeedback.online({ offlineRetry: manual }); return; }
+      const reconnect = manual && activeTripId && pending.includes("realtime");
+      if (reconnect) {
+        syncFeedback.failure("realtime", "正在重新連線，請稍候。");
+        setTripRealtimeAttempt(attempt => attempt + 1);
+      }
       const work = [];
       if (pending.includes("trips")) work.push(loadTrips(activeTripId));
       if (pending.some(source => ["connection", "action", "trip-data"].includes(source))) {
         if (activeTripId) work.push(loadTripData(activeTripId));
         else if (!pending.includes("trips")) work.push(loadTrips());
       } else {
-        if (pending.includes("budget") || pending.includes("realtime")) budgetRefreshRef.current.schedule();
-        const scopes = ["personal", "shared"].filter(scope => pending.includes(`luggage:${scope}`) || pending.includes("realtime"));
+        if (pending.includes("budget") || !reconnect && pending.includes("realtime")) budgetRefreshRef.current.schedule();
+        const scopes = ["personal", "shared"].filter(scope => pending.includes(`luggage:${scope}`) || !reconnect && pending.includes("realtime"));
         if (scopes.length) luggageRefreshRef.current.schedule(scopes);
       }
       await Promise.allSettled(work);
@@ -3282,7 +3288,7 @@ export default function App() {
     };
     const offline = () => syncFeedback.failure("connection", "offline");
     const foreground = () => { if (document.visibilityState !== "hidden") void retry(); };
-    syncFeedback.setRetry(retry);
+    syncFeedback.setRetry(() => retry({ manual: true }));
     window.addEventListener("offline", offline); window.addEventListener("online", foreground); window.addEventListener("focus", foreground);
     if (navigator.onLine === false) offline();
     return () => { window.removeEventListener("offline", offline); window.removeEventListener("online", foreground); window.removeEventListener("focus", foreground); };
@@ -3895,7 +3901,8 @@ export default function App() {
     let subscriptionActive = true;
     const invalidateBudget = () => { if (requestGuard.sameContext(tripDataContext)) budgetRefreshRef.current.schedule(); };
     const channel = supabase
-      .channel(`trip-${activeTripId}`)
+      // A fresh topic avoids reusing the old channel while unsubscribe is in flight.
+      .channel(`trip-${activeTripId}${tripRealtimeAttempt ? `-retry-${tripRealtimeAttempt}` : ""}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "trips", filter: `id=eq.${activeTripId}` },
@@ -3967,7 +3974,7 @@ export default function App() {
       if (status === "SUBSCRIBED") { luggageRefreshRef.current.schedule(["personal", "shared"]); invalidateBudget(); }
     });
     return () => { subscriptionActive = false; budgetRefreshRef.current.cancel(); luggageRefreshRef.current.cancel(); supabase.removeChannel(channel); };
-  }, [activeDay, activeTripId, loadRouteOverrides, loadTripData, loadTrips, session?.user]);
+  }, [activeDay, activeTripId, loadRouteOverrides, loadTripData, loadTrips, session?.user, tripRealtimeAttempt]);
 
   useEffect(() => {
     if (isDemoMode || !session?.user || !activeTripId || activeSection !== "luggage") return;
