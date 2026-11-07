@@ -2,6 +2,7 @@ import {newExpense,priceExpense,confirmExpensePayment,cancelExpensePayment,expen
 import {createDemoExpenseModels} from './budgetFixtures.js';
 import {demoBudgetQuote} from '../lib/tripBudgetRates.js';
 import {payerForm,reconcilePayers,validPayers} from '../lib/expensePayers.js';
+import {calculatePricing} from '../lib/budgetFinance.js';
 
 const groups=['title','note','category','payer','links','budget','paid','payment','lifecycle'];
 const copy=value=>structuredClone(value);
@@ -35,7 +36,7 @@ export function createDemoExpenseService({trip,members,getItems}){
    if(item.revisions[r.p_group]!==r.p_base)fail('Version conflict','PT409');let next=copy(item);
    if(['budget','paid'].includes(r.p_group)){
     const eligible=members.filter(m=>m.status==='approved').map(m=>m.user_id).sort();if(JSON.stringify(v.members)!==JSON.stringify(eligible))fail('Members changed','PT409');if(v.form.participantIds.some(id=>!eligible.includes(id)))fail('Invalid participant');
-    next=priceExpense(item,r.p_group,v.form,r.p_base);next.decisions[r.p_group]=Object.fromEntries(eligible.map(id=>[id,v.form.participantIds.includes(id)]));
+    next=priceExpense(item,r.p_group,v.form,r.p_base,{wholeOriginal:r.p_group==='budget'&&v.planning});next.decisions[r.p_group]=Object.fromEntries(eligible.map(id=>[id,v.form.participantIds.includes(id)]));
    }else if(r.p_group==='payment')next=v.action==='unpaid'?cancelExpensePayment(item,r.p_base):confirmExpensePayment(item,{paidAt:v.paid_at,payerId:item.payer_id,basePayment:r.p_base,baseBudget:v.budget_revision,basePaid:v.paid_revision});
    else if(r.p_group==='lifecycle'){if(v.action!=='delete')fail('Invalid action');models.splice(index,1);}
    else if(r.p_group==='links'){if(v.ids.some(id=>!getItems().some(i=>i.id===id)))fail('Invalid link');next.links=copy(v.ids);}
@@ -43,13 +44,23 @@ export function createDemoExpenseService({trip,members,getItems}){
    else if(['title','category','note'].includes(r.p_group))next[r.p_group]=v.text;else fail('Invalid group');
    if(['budget','paid','payer','payment'].includes(r.p_group)){
     if(v.planning&&r.p_group==='budget')next.planning_managed=true;
-    if(v.planning&&next.payment_state==='paid'&&next.budget&&['budget','payer','payment'].includes(r.p_group)&&JSON.stringify(next.paid)!==JSON.stringify(next.budget)){next.paid=copy(next.budget);next.decisions.paid=copy(next.decisions.budget);next.revisions.paid++;}
+    if(v.planning&&next.payment_state==='paid'&&next.budget&&['budget','payment'].includes(r.p_group)&&JSON.stringify(next.paid)!==JSON.stringify(next.budget)){next.paid=copy(next.budget);next.decisions.paid=copy(next.decisions.budget);next.revisions.paid++;}
     if(next.planning_managed||r.p_group==='payer'){const form=reconcilePayers(payerForm(next),(next.budget||next.paid)?.amount);if(JSON.stringify(next.payer_allocations)!==JSON.stringify(form.rows)){next.payer_allocations=form.rows;if(r.p_group!=='payer')next.revisions.payer++;}}
    }
    next.revisions[r.p_group]=r.p_base+1;if(r.p_group!=='lifecycle')models[index]=next;const rows=expenseRows(next);
    return{committed:true,request_id:r.p_request_id,expense_id:r.p_id,group:r.p_group,revision:r.p_base+1,item:rows.item,participants:rows.participants};
   })),
   rateLease:result(r=>{if(r.p_action==='release'){rateHeld=null;return{granted:true};}rateHeld=r;return{granted:true,epoch:1};}),
-  rates:result(r=>once(r.p_request_id,JSON.stringify(r.p_value),()=>{if(r.p_base!==rateRevision)fail('Rates changed','PT409');rates=copy(r.p_value.quote);models=models.map(i=>i.budget&&i.payment_state!=='paid'&&i.budget.currency!=='TWD'?priceExpense(i,'budget',{...i.budget,exchange_rate:rates.rates[i.budget.currency]},i.revisions.budget):i);rateRevision++;return{committed:true,request_id:r.p_request_id,trip_id:trip.id,revision:rateRevision};}))
+  rates:result(r=>once(r.p_request_id,JSON.stringify(r.p_value),()=>{
+   if(r.p_base!==rateRevision)fail('Rates changed','PT409');
+   const quote=copy(r.p_value.quote);
+   models=models.map(i=>{
+    if(!i.budget||i.payment_state==='paid'||i.budget.currency==='TWD')return i;
+    const exchange_rate=quote.rates[i.budget.currency];
+    const {twd_amount,allocations}=calculatePricing({...i.budget,exchange_rate},{wholeOriginal:i.budget.original_scale===0});
+    return {...i,budget:{...i.budget,exchange_rate,twd_amount,allocations},revisions:{...i.revisions,budget:i.revisions.budget+1}};
+   });
+   rates=quote;rateRevision++;return{committed:true,request_id:r.p_request_id,trip_id:trip.id,revision:rateRevision};
+  }))
  };return service;
 }

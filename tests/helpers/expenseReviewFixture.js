@@ -2,8 +2,8 @@ import {randomUUID as uuid} from 'node:crypto';
 import {expenseBackend} from './expenseBackend.js';
 import {createExpenseEditor} from '../../src/lib/expenseEditor.js';
 import {newExpense,priceExpense,expenseRows} from '../../src/lib/expenseItems.js';
-export async function reviewFixture(legacy=false){
- const f=await expenseBackend(),id=uuid(),sid=uuid();
+export async function reviewFixture(legacy=false,backendOptions){
+ const f=await expenseBackend(backendOptions),id=uuid(),sid=uuid();
  let item={...newExpense({id,tripId:f.trip,members:f.db.members}),title:'Review',payer_id:f.A};
  if(legacy)item={...item,budget:null,paid:{amount:100,currency:'TWD',exchange_rate:1,twd_amount:100,pricing_mode:'split_total',participantIds:[],shares:{},record_status:'complete'},payment_state:'paid',decisions:{budget:null,paid:null}};
  else item=priceExpense(item,'budget',{amount:10000,currency:'TWD',exchange_rate:1,pricing_mode:'split_total',participantIds:[f.A]},0);

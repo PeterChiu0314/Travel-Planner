@@ -2,6 +2,12 @@
 
 Updated 2026-11-07. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-07 — Issue #25 planning budget precision
+
+[Issue #25](https://github.com/PeterChiu0314/Travel-Planner/issues/25) is implemented on `codex/budget-collaboration-redesign`. The [forward migration](supabase/migrations/20261107140000_issue25_whole_planning_pricing.sql) rounds newly edited planning budget amounts, unit prices and custom shares in original currency. Split remainders are assigned in stable member order. TWD conversion uses the reconciled original total. No data backfill. Existing receipts replay unchanged, and rate refresh preserves paid costs. Local Browser Use, 32 SQL-backed Chromium cases, 51 Node/SQL cases, and build passed.
+
+The Staging rollback trial and install both verified unchanged row counts and fingerprints across 9 tables, including 25 total expense rows, and unchanged mutation function permissions. Independent readback confirmed ledger 79/head `20261107140000`, 17 active expenses and installed source SHA256 `d8f48be0b1bcfc4900a2a6a0d3b371ed3c59a83083af6af8bd88a42a9fc43774`. Verify Preview against the branch commit's Vercel deployment record. Hosted two-account acceptance remains pending.
+
 ## Latest 2026-11-07 — Issue #22 Budget QA fixes
 
 [Issue #22](https://github.com/PeterChiu0314/Travel-Planner/issues/22) is implemented on `codex/budget-collaboration-redesign`. Leaving custom split collapses the participant list, and an unnamed expense draft explains the required title and focuses it on Continue. A pricing button alone uses the existing autosave and releases the lease after confirmation. Continued input keeps the lease, and an unknown receipt keeps the existing request and cross-group protection. Local Demo Browser Use, 26 Chromium cases, and 28 logic and database tests passed. Use the branch commit's Vercel deployment check for Preview status. Live Staging two-account acceptance remains pending.

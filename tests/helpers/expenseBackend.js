@@ -16,18 +16,19 @@ export async function installTimelineFixture(sql,trip,actor,members,{legacyBudge
  await sql.query('insert into public.trips(id,title,name,destination,owner_id,start_date,end_date,budget_exchange_rates) values($1,$2,$2,$3,$4,$5,$6,$7)',[trip.id,trip.title,trip.destination,actor,trip.start_date,trip.end_date,trip.budget_exchange_rates]);
  for(const member of members)await sql.query('insert into public.trip_members(trip_id,user_id,display_name,email,status,role) values($1,$2,$3,$4,$5,$6) on conflict(trip_id,user_id) do update set display_name=excluded.display_name,email=excluded.email',[trip.id,member.user_id,member.display_name,member.email,member.status,member.role]);
 }
-export async function expenseBackend({timeline=false,legacyBudget=false}={}){
+export async function expenseBackend({timeline=false,legacyBudget=false,wholePlanning=true}={}){
  const {PGlite}=await import(pathToFileURL(process.env.PGLITE_MODULE).href),sql=new PGlite(),db=backend({leases:true}),original=db.request.bind(db);
  const trip=uuid(),A=uuid(),B=uuid();db.trips.splice(0,db.trips.length,{...db.trips[0],id:trip,owner_id:A});db.members.splice(0,db.members.length,{trip_id:trip,user_id:A,display_name:'A',email:'a@qa.invalid',status:'approved',role:'owner'},{trip_id:trip,user_id:B,display_name:'B',email:'b@qa.invalid',status:'approved',role:'editor'});
  db.rows.budget_items=[];db.rows.actual_expenses=[];db.rows.budget_item_participants=[];db.rows.actual_expense_participants=[];db.rows.itinerary_budget_items=[];db.rows.itinerary_items=[];db.rows.attachments=[];
  if(timeline)await installTimelineFixture(sql,db.trips[0],A,db.members,{legacyBudget});
  else{
- await sql.exec(`create role anon;create role authenticated;create schema auth;create schema app_private;create table public.trips(id uuid primary key,budget_exchange_rates jsonb default '{}');create table public.trip_members(trip_id uuid,user_id uuid,display_name text,email text,status text,role text);create table public.itinerary_items(id uuid primary key,trip_id uuid,title text,day_index int);create table public.accommodations(id uuid,trip_id uuid,expense_id uuid);
+ await sql.exec(`create role anon;create role authenticated;create schema auth;create schema app_private;create table public.trips(id uuid primary key,budget_exchange_rates jsonb default '{}',start_date date,end_date date,status text not null default 'planning');create table public.trip_members(trip_id uuid,user_id uuid,display_name text,email text,status text,role text);create table public.itinerary_items(id uuid primary key,trip_id uuid,title text,day_index int,updated_at timestamptz);create table public.accommodations(id uuid,trip_id uuid,expense_id uuid);
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.actor',true),'')::uuid$$;
  create function app_private.can_read_trip(t uuid,a uuid) returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.trip_members where trip_id=t and user_id=a and status='approved')$$;
  create function app_private.can_edit_trip(t uuid,a uuid) returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.trip_members where trip_id=t and user_id=a and status='approved' and role in('owner','editor'))$$;
  grant usage on schema auth,app_private to authenticated;grant execute on function auth.uid(),app_private.can_read_trip(uuid,uuid) to authenticated;`);
- await sql.query('insert into public.trips(id,budget_exchange_rates) values($1,$2)',[trip,db.trips[0].budget_exchange_rates]);
+ const active=db.trips[0];
+ await sql.query('insert into public.trips(id,budget_exchange_rates,start_date,end_date,status) values($1,$2,$3,$4,$5)',[trip,active.budget_exchange_rates,active.start_date,active.end_date,active.status]);
  for(const m of db.members)await sql.query('insert into public.trip_members values($1,$2,$3,$4,$5,$6)',[m.trip_id,m.user_id,m.display_name,m.email,m.status,m.role]);
  for(const file of ['isolated-schema.sql','isolated-rpc.sql','public-api.sql','rates.sql'])await sql.exec(await fs.readFile(new URL('../../docs/operations/issue18/'+file,import.meta.url),'utf8'));
  await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261105132450_issue18_precise_lease_release.sql',import.meta.url),'utf8'));
@@ -36,6 +37,11 @@ export async function expenseBackend({timeline=false,legacyBudget=false}={}){
  await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261105142122_issue18_selection_collaboration.sql',import.meta.url),'utf8'));
  await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261105150453_issue19_named_expense_create.sql',import.meta.url),'utf8'));
  await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261106120016_issue21_payment_allocations.sql',import.meta.url),'utf8'));
+ if(wholePlanning){
+  const links=await fs.readFile(new URL('../../supabase/migrations/20261106181006_timeline_expense_link_integrity.sql',import.meta.url),'utf8');
+  await sql.exec(links.slice(links.indexOf('create function expense_stage_b.validate_link_targets'),links.indexOf('-- Only fresh link mutations')));
+  await sql.exec(await fs.readFile(new URL('../../supabase/migrations/20261107140000_issue25_whole_planning_pricing.sql',import.meta.url),'utf8'));
+ }
  }
  let chain=Promise.resolve();db.expenseCalls=[];db.dropAck=false;
  const signatures={create_named_expense_item:['p_trip_id','p_id','p_session_id','p_request_id','p_title'],expense_rates_lease:['p_trip_id','p_session_id','p_token','p_action','p_base','p_epoch'],update_expense_rates:['p_trip_id','p_session_id','p_token','p_epoch','p_base','p_value','p_request_id'],read_expense_snapshot:['p_trip_id','p_session_id'],read_expense_collaboration:['p_trip_id','p_session_id'],update_expense_selection:['p_trip_id','p_session_id','p_kind','p_id','p_activity_id','p_action'],expense_group_lease:['p_id','p_group','p_session_id','p_token','p_action','p_base','p_epoch','p_seq','p_dirty'],mutate_expense_group:['p_id','p_group','p_session_id','p_token','p_epoch','p_base','p_value','p_request_id'],create_expense_item:['p_trip_id','p_id','p_session_id','p_request_id','p_view']};

@@ -14,7 +14,7 @@ export function expenseFieldValue(data,id,group){
   const bundle=item[group];const selected=Object.entries(item.decisions[group]||{}).filter(([,yes])=>yes).map(([id])=>id);
   const storedSource=bundle?.twd_amount_source||'legacy',source=group==='paid'&&storedSource==='legacy'&&Number.isInteger(Number(bundle?.twd_amount))?'actual':storedSource;
   return bundle?{amount:bundle.amount,unit_amount:bundle.unit_amount,pricing_mode:bundle.pricing_mode,currency:bundle.currency,exchange_rate:bundle.exchange_rate,
-   participantIds:bundle.participantIds,shares:bundle.shares,twd_amount_source:source,actual_twd_amount:bundle.actual_twd_amount??bundle.twd_amount??''}
+   participantIds:bundle.participantIds,shares:bundle.shares,original_scale:bundle.original_scale,twd_amount_source:source,actual_twd_amount:bundle.actual_twd_amount??bundle.twd_amount??''}
    :{amount:'',unit_amount:'',pricing_mode:'split_total',currency:'TWD',exchange_rate:1,participantIds:selected,shares:{},twd_amount_source:'estimated',actual_twd_amount:''};
  }
  if(group==='payer')return payerForm(item);
@@ -127,7 +127,8 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    emit();return true;
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
  }
- function input(g, value, { immediate = false } = {}) {
+ function scheduleSave(g, delay=1000){clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),delay);}
+ function input(g, value, { immediate = false, deferRounding = false } = {}) {
   if (g.group === 'payer' && typeof value === 'string') {
    const item = expenseModels(graph).find(i => i.id === g.id);
    value = { mode: value ? 'advance' : 'self', rows: value ? [{
@@ -135,6 +136,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    }] : [], sequence: 0 };
   }
   if (g.local ? !active : g.conflict || g.releasing || !owns(g)) return;
+  g.deferRounding=deferRounding;
   // The displayed slot versions remain attached to this draft and its exact request.
   if (g.group === 'links') {
    g.itineraryVersions = Object.fromEntries((graph?.itineraryItems || [])
@@ -158,8 +160,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   g.autoBlocked = false;
   persist(g);
   emit();
-  clearTimeout(g.timer);
-  g.timer = setTimeout(() => void save(g, false), immediate ? 0 : 1000);
+  scheduleSave(g,immediate?0:1000);
  }
  function body(g) {
   if (['budget','paid'].includes(g.group)) return {form:g.value,members:graph.members.filter(m=>m.status==='approved').map(m=>m.user_id).sort(),rates:graph.rates,planning:planning()};
@@ -178,7 +179,10 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   g.saveWork=(async()=>{if(g.acquiring)await g.acquiring;if(!current()||g.conflict||g.composing)return false;if(!g.request&&!dirty(g))return true;if(!active&&!g.request)return false;
    if(!g.request){if(!owns(g))return false;
     if(g.group==='payer'&&!validPayers(g.value,graph.members))return false;
-    if(['budget','paid'].includes(g.group)){if(!flush&&(g.value.pricing_mode==='custom'?g.value.participantIds.some(id=>String(g.value.shares[id]??'')===''):String(g.value.pricing_mode==='per_person'?g.value.unit_amount??'':g.value.amount??'')===''))return false;try{(g.group==='paid'?calculateActualPricing:calculatePricing)(g.value);}catch(error){report(g,error);return false;}}
+    if(['budget','paid'].includes(g.group)){
+     if(!flush&&(g.deferRounding||(g.value.pricing_mode==='custom'?g.value.participantIds.some(id=>String(g.value.shares[id]??'')===''):String(g.value.pricing_mode==='per_person'?g.value.unit_amount??'':g.value.amount??'')==='')))return false;
+     try{if(g.group==='paid')calculateActualPricing(g.value);else calculatePricing(g.value,{wholeOriginal:planning()});}catch(error){report(g,error);return false;}
+    }
     g.request={p_id:g.id,p_group:g.group,p_session_id:sessionId,p_token:g.token,p_epoch:g.epoch,p_base:g.base,p_value:body(g),p_request_id:makeId()};g.submitted=g.revision;
    }
    if(!(await service.authorized(actor)))return false;const request=g.request;g.saving=true;persist(g);emit();
@@ -213,7 +217,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   })().finally(()=>{createWork=null;emit();});return createWork;
  }
  async function finish(){if(localDraft&&!draftDirty()&&!pendingCreate){clearDraft();emit();}if((pendingCreate||localDraft)&&!await create())return false;for(const g of fields.values()){g.resumeFocus=false;if(g.saveWork)await g.saveWork;if(dirty(g)||g.request){if(!g.request&&!owns(g)&&!await focus(g))return false;if(!await save(g))return false;}if(!await release(g))return false;}return true;}
- async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
+ async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.deferRounding=false;g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
  const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,focus,input,save,release,finish,discard,
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
   guardState(){
@@ -237,7 +241,12 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   begin(){if(localDraft)return localDraft.id;localDraft={id:makeId(),trip,values:{}};emit();return localDraft.id;},
   peerOwner,
   view:g=>({value:display(g),dirty:dirty(g),editable:g.local?active:Boolean(owns(g)),remote:g.local?null:remote(g),busy:g.saving||g.state==='pending',conflict:g.conflict}),
-  blur(g){g.focused=false;g.resumeFocus=false;if(g.local){if(String(localDraft?.values.title||'').trim())void create();return;}void(async()=>{if(g.acquiring)await g.acquiring;if(dirty(g)||g.request)await save(g);else await release(g);})();},
+  finishAmountInput(g){
+   if(!g.deferRounding)return;
+   g.deferRounding=false;
+   if(!g.local&&dirty(g))scheduleSave(g);
+  },
+  blur(g){g.focused=false;g.resumeFocus=false;g.deferRounding=false;if(g.local){if(String(localDraft?.values.title||'').trim())void create();return;}void(async()=>{if(g.acquiring)await g.acquiring;if(dirty(g)||g.request)await save(g);else await release(g);})();},
   // An authoritative Realtime/mutation snapshot satisfies only the fallback read;
   // pending writes, create recovery and lease renewal still run on their existing cadence.
   async tick(){if(!current())return;if(!active){for(const g of fields.values())if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);return;}await Promise.all([...fields.values()].filter(g=>!g.local).map(renew));if(!current()||!active||Date.now()-lastRecovery<5000)return;lastRecovery=Date.now();if((pendingCreate||localDraft)&&!createWork)await create();if(Date.now()-lastSnapshot>=5000)await refresh();for(const g of fields.values()){

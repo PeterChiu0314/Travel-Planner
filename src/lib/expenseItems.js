@@ -13,10 +13,10 @@ export function newExpense({id,tripId,scope='budget',members=[]}) {
     revisions:{budget:0,paid:0,payment:0}};
 }
 
-export function priceExpense(item,scope,form,baseRevision) {
+export function priceExpense(item,scope,form,baseRevision,{wholeOriginal=false}={}) {
   checkScope(scope);
   if (item.revisions[scope]!==baseRevision) throw Object.assign(new Error('Version conflict'),{code:'PT409'});
-  const pricing=scope==='paid'?calculateActualPricing({...form,twd_amount_source:form.twd_amount_source||'estimated'}):calculatePricing(form);
+  const pricing=scope==='paid'?calculateActualPricing({...form,twd_amount_source:form.twd_amount_source||'estimated'}):calculatePricing(form,{wholeOriginal});
   const next=copy(item),previous=next.decisions[scope];
   next[scope]={...pricing,currency:form.currency,participantIds:[...new Set(form.participantIds)].sort(),shares:pricing.shares};
   // Unknown legacy exclusions remain unknown until a deliberate participant decision.
@@ -39,11 +39,12 @@ export function decideExpenseParticipants(item,scope,selected,members,baseRevisi
 export function proposeExpenseMembers(item,scope,members) {
   checkScope(scope);const next=copy(item),decisions=next.decisions[scope];
   if(!decisions||scope==='paid'||item.payment_state==='paid')return next;
-  for(const m of members.filter(m=>m.status==='approved'))if(!Object.hasOwn(decisions,m.user_id)){
+  const newcomers=members.filter(m=>m.status==='approved'&&!Object.hasOwn(decisions,m.user_id));
+  for(const m of newcomers){
     decisions[m.user_id]=true;
     if(next[scope]){next[scope].participantIds.push(m.user_id);if(next[scope].pricing_mode==='custom')next[scope].shares[m.user_id]=0;}
   }
-  if(next[scope])next[scope]={...next[scope],...calculatePricing(next[scope])};
+  if(newcomers.length&&next[scope])next[scope]={...next[scope],...calculatePricing(next[scope],{wholeOriginal:next[scope].original_scale===0})};
   return next;
 }
 

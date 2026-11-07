@@ -8,18 +8,20 @@ export function initialPricingDraft(value, record, members) {
     shares: value.pricing_mode === 'custom' ? Object.fromEntries(members.filter(m => m.status === 'approved').map(m => [m.user_id, 0])) : value.shares };
 }
 
-export function pricingModeDraft(value, mode, previousCustom) {
+export function pricingModeDraft(value, mode, previousCustom, { wholeOriginal = false } = {}) {
   if (mode === value.pricing_mode) return value;
-  let pricing; try { pricing = calculatePricing(value); } catch { /* Keep incomplete amounts incomplete. */ }
+  let pricing; try { pricing = calculatePricing(value, { wholeOriginal }); } catch { /* Keep incomplete amounts incomplete. */ }
   let cached;
-  if (pricing && previousCustom) try {
-    const result = calculatePricing({ ...value, pricing_mode: 'custom', shares: previousCustom });
-    if (result.amount === pricing.amount) cached = previousCustom;
+  // A whole-currency split always carries its actual remainder into custom.
+  if (pricing && previousCustom && !(wholeOriginal && value.pricing_mode === 'split_total')) try {
+    const result = calculatePricing({ ...value, pricing_mode: 'custom', shares: previousCustom }, { wholeOriginal });
+    if (result.amount === pricing.amount) cached = wholeOriginal ? result.shares : previousCustom;
   } catch { /* A stale/incomplete cache must not omit new participants. */ }
   const next = { ...value, pricing_mode: mode };
   if (pricing) next.amount = pricing.amount;
   if (mode === 'per_person') next.unit_amount = pricing && value.participantIds.length
-    ? Math.round(pricing.amount / value.participantIds.length * 100) / 100 : value.unit_amount;
+    ? (wholeOriginal ? Math.round(pricing.amount / value.participantIds.length) : Math.round(pricing.amount / value.participantIds.length * 100) / 100)
+    : value.unit_amount;
   if (mode === 'custom') next.shares = Object.fromEntries(value.participantIds.map(id => [id,
     cached ? cached[id] : pricing?.shares[id] ?? (pricing ? 0 : '')]));
   return next;

@@ -1,7 +1,7 @@
 import {Fragment,useEffect,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ChevronDown, ChevronRight, Circle, CircleCheck, Package, Trash2} from 'lucide-react';
-import {budgetDay, memberLabel, money, pricingLabels, recordAllocations} from '../../lib/budgetFinance.js';
+import {budgetDay, memberLabel, money, originalMoney, pricingLabels, recordAllocations} from '../../lib/budgetFinance.js';
 import {rowCollaborators,RowCollaboratorOutline,RowCollaboratorAvatars} from './BudgetRowCollaborators.jsx';
 import {categoryOrder as order,categoryIcons as icons,categoryColor,PricingSummary} from './ExpenseWorkspaceParts.jsx';
 
@@ -16,7 +16,7 @@ function rowPeerPosition(row){
  const rect=(row.querySelector('.bw-collaboration-outline')||row).getBoundingClientRect();
  return {left:rect.left,top:rect.bottom+2};
 }
-export function ExpenseTable({rows,members,links,items,collaborators=[],selected,collapsed,setCollapsed,viewpoint,actual,onSelect}){
+export function ExpenseTable({rows,members,links,items,collaborators=[],selected,collapsed,setCollapsed,viewpoint,actual,planning,onSelect}){
  const [tooltip,setTooltip]=useState(null);
  const tooltipUsers=tooltip&&rows.some(row=>row.id===tooltip.id&&!collapsed.includes(row.category))?rowCollaborators(collaborators.filter(entry=>entry.resource_id===tooltip.id)):[];
  useEffect(()=>{
@@ -45,11 +45,13 @@ export function ExpenseTable({rows,members,links,items,collaborators=[],selected
   return <Fragment key={category}><tr className="bw-group" style={{'--bw-category-color':categoryColor(category)}} onClick={()=>fold([category],!closed)}><th colSpan={2} scope="rowgroup"><button className="bw-group-label" type="button" aria-expanded={!closed} aria-label={`${closed?'展開':'收合'}${category}`}><Icon size={14} strokeWidth={1.8}/><span>{category}</span><small>{grouped.length} 筆</small></button></th><td className="bw-number bw-group-person">{perPerson===null?'—':`${Number.isInteger(perPerson)?'':'≈ '}${money(perPerson)}`}</td><td className="bw-number">{money(total)}</td><td><Fold size={14}/></td></tr>
   {!closed&&grouped.map(row=>{
    const remote=rowCollaborators(collaborators.filter(e=>e.resource_id===row.id));
+   const count=row.participantIds.length;
+   const uneven=planning&&row.original_scale===0&&row.pricing_mode==='split_total'&&row.amount%count!==0;
    const show=event=>{if(!remote.length)return;setTooltip({id:row.id,...rowPeerPosition(event.currentTarget)});};
    return <tr key={row.id} data-expense-id={row.id} className={`bw-row${selected===row.id?' is-selected':''}${remote.length?' has-collaborators':''}`} tabIndex={remote.length?0:undefined} aria-describedby={tooltip?.id===row.id&&tooltipUsers.length?`expense-peers-${row.id}`:undefined} onMouseEnter={show} onMouseLeave={event=>{if(!event.currentTarget.contains(document.activeElement))setTooltip(null);}} onFocus={show} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget))setTooltip(null);}} onClick={()=>onSelect(row.id)}>
     <td className="bw-day">{budgetDay(row,links,items)}<RowCollaboratorOutline users={remote}/></td>
     <td>{cell(row,row.title||'未命名項目')}</td>
-    <td className="bw-number">{row.record_status!=='complete'?'—':cell(row,row.pricing_mode==='custom'?'依成員':row.participantIds.length?`${row.twd_amount%row.participantIds.length?'≈ ':''}${money(row.twd_amount/row.participantIds.length)}`:'—','bw-person')}</td>
+    <td className="bw-number">{row.record_status!=='complete'?'—':cell(row,row.pricing_mode==='custom'||uneven?'依成員':count?`${row.twd_amount%count?'≈ ':''}${money(row.twd_amount/count)}`:'—','bw-person')}</td>
     <td className="bw-number bw-total">{row.record_status!=='complete'?'尚未填寫':cell(row,money(row.twd_amount))}</td>
     <td><span className={`bw-status${row.hasActual?' paid':''}`}>{row.hasActual?'已付款':'未付款'}</span></td>
    </tr>;
@@ -59,9 +61,10 @@ export function ExpenseTable({rows,members,links,items,collaborators=[],selected
 export function ExpenseDetail({item,scope,planning=false,members,links,items,editable,paymentDisabled,onRemove,onPayment}){
  const bundle=item[scope],count=bundle?.participantIds.length||0,Icon=item.payment_state==='paid'?CircleCheck:Circle;
  return <section className="bw-detail bw-native-panel"><div className="bw-detail-heading"><div className="bw-detail-title"><span>{item.category}</span><h3>{item.title||'未命名項目'}</h3></div></div>
- {bundle?<PricingSummary amount={bundle.amount} twdAmount={bundle.twd_amount} currency={bundle.currency} mode={bundle.pricing_mode} count={count}/>:<p>未填，尚未計入財務統計</p>}
+ {bundle?<PricingSummary amount={bundle.amount} twdAmount={bundle.twd_amount} currency={bundle.currency} mode={bundle.pricing_mode} count={count}
+   showOriginalPrecision={planning} uneven={planning&&bundle.original_scale===0&&bundle.pricing_mode==='split_total'&&bundle.amount%count!==0}/>:<p>未填，尚未計入財務統計</p>}
  <dl><div><dt>計價方式</dt><dd>{bundle?pricingLabels[bundle.pricing_mode]:'未填'}</dd></div><div><dt>參與成員</dt><dd>{bundle?`${count} 人`:'未填'}</dd></div><div><dt>付款方式</dt><dd>{item.payment_mode==='self'?'各自付':item.payer_allocations?.length?'代付 · '+item.payer_allocations.map(p=>memberLabel(members.find(m=>m.user_id===p.user_id))+' '+money(p.amount)).join('、'):memberLabel(members.find(m=>m.user_id===item.payer_id))}</dd></div><div><dt>關聯行程</dt><dd>{budgetDay(item,links,items)}</dd></div></dl>
- <section><h4>各人負擔 <small>TWD</small></h4>{bundle?.participantIds.map(id=><div className="bw-stat-line" key={id}><span>{memberLabel(members.find(m=>m.user_id===id))}</span><b>{bundle.shares[id]===null?'待確認':money(bundle.shares[id])}</b></div>)}</section>
+ <section><h4>各人負擔 <small>{planning ? bundle?.currency||'TWD' : 'TWD'}</small></h4>{bundle?.participantIds.map(id=><div className="bw-stat-line" key={id}><span>{memberLabel(members.find(m=>m.user_id===id))}</span><b>{bundle.shares[id]==null?'待確認':planning?originalMoney(bundle.shares[id]):money(bundle.shares[id])}</b></div>)}</section>
  {item.note?<section><h4>備註</h4><p>{item.note}</p></section>:null}
  {!planning?<div className="bw-metadata-summary"><span>預算 · {item.budget?`${item.budget.currency} ${money(item.budget.amount)}`:'未填'}</span><span>實付 · {item.paid?`${item.paid.currency} ${money(item.paid.amount)}`:'未填'}</span>{item.payment_state==='paid'&&item.budget&&item.paid?<span>實付與預算差額 · NT$ {money(item.paid.twd_amount-item.budget.twd_amount)}</span>:null}</div>:null}
  <div className="bw-detail-actions bw-side-footer"><button type="button" className={`bw-payment-toggle${item.payment_state==='paid'?' is-paid':''}`} aria-label="付款狀態" aria-pressed={item.payment_state==='paid'} disabled={paymentDisabled} onClick={onPayment}><Icon size={14}/><span>{item.payment_state==='paid'?'已付款':'未付款'}</span></button><button className="bw-icon bw-danger" aria-label="刪除項目" type="button" disabled={!editable} onClick={onRemove}><Trash2 size={16}/></button></div>

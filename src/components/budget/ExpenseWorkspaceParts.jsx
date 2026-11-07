@@ -2,7 +2,7 @@ import { useState } from "react";
 import { BedDouble, Car, ChevronDown, ChevronRight, Circle, CircleCheck, Package, Plane, ShoppingBag, Ticket, UtensilsCrossed, X } from "lucide-react";
 import MenuSelect from "../MenuSelect.jsx";
 import { isBudgetComplete } from "../../lib/budgetLifecycleValues.js";
-import { memberLabel, money, participantsFor, recordAllocations } from "../../lib/budgetFinance.js";
+import { memberLabel, money, originalMoney, participantsFor, recordAllocations } from "../../lib/budgetFinance.js";
 import { budgetCurrencies } from "../../lib/tripBudgetRates.js";
 
 const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
@@ -46,9 +46,9 @@ export function Stats({ records, rows, members, actual, budgets, viewpoint, setV
   </section>;
 }
 
-export function PricingSummary({ amount, twdAmount, currency, mode, count }) {
-  const perPerson = mode === "custom" ? "依成員" : count ? `${twdAmount % count ? "≈ " : ""}NT$ ${money(twdAmount / count)}` : "—";
-  return <div className="bw-calculation"><div><span>每人</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>NT$ {money(twdAmount)}</strong>{currency !== "TWD" ? <small>{currency} {money(amount)}</small> : null}</div></div>;
+export function PricingSummary({ amount, twdAmount, currency, mode, count, showOriginalPrecision, uneven }) {
+  const perPerson = mode === "custom" || uneven ? "依成員" : count ? `${twdAmount % count ? "≈ " : ""}NT$ ${money(twdAmount / count)}` : "—";
+  return <div className="bw-calculation"><div><span>每人</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>NT$ {money(twdAmount)}</strong>{currency !== "TWD" || showOriginalPrecision && !Number.isInteger(amount) ? <small>{currency} {showOriginalPrecision ? originalMoney(amount) : money(amount)}</small> : null}</div></div>;
 }
 
 export function TripRatesSummary({ tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates }) {

@@ -19,10 +19,10 @@ import {createBudgetCollaboration} from '../../lib/budgetCollaboration.js';
 
 function errorToast(error){if(isConnectionError(error))notify.error(error);else notify.error(error.code==='PT409'?'內容已更新，未儲存的變更已保留；離開時可選擇不儲存。':error.code==='55P03'?'暫時無法儲存，變更已保留，系統會重新確認。':error.code==='22023'?'請確認金額、付款人與參與成員是否完整。':error,{id:'budget-editor-error'});}
 const isPricingModeButton=target=>Boolean(target?.closest('.bw-modes button'));
-function Pricing({client,field,view,members,scope,rates,locked,canChooseMode,showModeLegend=true,showSummary=true}){
+function Pricing({client,field,view,members,scope,rates,locked,canChooseMode,showModeLegend=true,showSummary=true,planningIntegers=false}){
  const [open,setOpen]=useState(false),custom=useRef(null);const form=view.value;let pricing;
- try{pricing=(scope==='paid'?calculateActualPricing:calculatePricing)(form);}catch{/* Incomplete input stays a local draft. */}
- const setForm=value=>client.input(field,value);
+ try{pricing=scope==='paid'?calculateActualPricing(form):calculatePricing(form,{wholeOriginal:planningIntegers&&(view.dirty||form.original_scale===0)});}catch{/* Incomplete input stays a local draft. */}
+ const setForm=(value,options)=>client.input(field,value,options);
  async function changeMode(mode){
   if(client.view(field).value.pricing_mode===mode){
    if(field.focused)client.blur(field);
@@ -31,18 +31,19 @@ function Pricing({client,field,view,members,scope,rates,locked,canChooseMode,sho
   if(!await client.focus(field,{retainFocus:false}))return;
   const current=client.view(field).value;
   if(current.pricing_mode==='custom')custom.current={...current.shares};
-  setForm(pricingModeDraft(current,mode,custom.current));
+  setForm(pricingModeDraft(current,mode,custom.current,{wholeOriginal:planningIntegers}));
   if(mode==='custom'||current.pricing_mode==='custom')setOpen(mode==='custom');
  }
  return <><BudgetPricingFields form={form} pricing={pricing} members={members} locked={locked} modeLocked={!canChooseMode} modeBusy={Boolean(field.request||field.releasing)} showModeLegend={showModeLegend} showSummary={showSummary} requestParticipantForm={async()=>(client.view(field).editable||await client.focus(field))?client.view(field).value:null} historical={false} tripRates={rates}
-  update={(key,value)=>setForm({...form,[key]:value})} setForm={setForm} membersOpen={open} setMembersOpen={setOpen} changeMode={changeMode} groupMode editRate={scope==='paid'} />
+  update={(key,value,options)=>setForm({...form,[key]:value},options)} setForm={setForm} membersOpen={open} setMembersOpen={setOpen} changeMode={changeMode} groupMode editRate={scope==='paid'}
+  planningIntegers={planningIntegers} finishAmountInput={planningIntegers?()=>client.finishAmountInput(field):undefined} />
   {scope==='paid'?<fieldset className="bw-cost-source"><legend>台幣金額</legend><div><button type="button" disabled={locked} aria-pressed={form.twd_amount_source==='estimated'} onClick={()=>setForm({...form,twd_amount_source:'estimated',actual_twd_amount:''})}>依匯率估算</button><button type="button" disabled={locked} aria-pressed={form.twd_amount_source==='actual'} onClick={()=>setForm({...form,twd_amount_source:'actual',actual_twd_amount:pricing?.twd_amount??''})}>實際扣款</button></div>
    {form.twd_amount_source==='actual'?<label>實際台幣扣款<input type="number" min="0" step="1" readOnly={locked} value={form.actual_twd_amount} onChange={e=>setForm({...form,actual_twd_amount:e.target.value})}/></label>:null}
   </fieldset>:null}</>;
 }
-function PlanningSummary({form}){
- let pricing;try{pricing=calculatePricing(form);}catch{/* Incomplete input stays a local draft. */}
- return <BudgetPricingSummary form={form} pricing={pricing}/>;
+function PlanningSummary({view:{value:form,dirty}}){
+ let pricing;try{pricing=calculatePricing(form,{wholeOriginal:dirty||form.original_scale===0});}catch{/* Incomplete input stays a local draft. */}
+ return <BudgetPricingSummary form={form} pricing={pricing} showOriginalPrecision/>;
 }
 export default function ExpenseWorkspace(props){
  const propsRef=useRef(props);propsRef.current=props;
@@ -117,7 +118,7 @@ export default function ExpenseWorkspace(props){
  return <section className="budget-panel budget-workspace" aria-label="支出工作區">{dialog}
   <div className="bw-main"><div className="bw-toolbar">{!planning?<div className="bw-tabs" role="tablist" aria-label="費用資料檢視">{[['budget','預算'],['paid','實付']].map(([key,label])=><button type="button" role="tab" key={key} aria-selected={view===key} onClick={()=>void handoff(()=>setView(key))}>{label}</button>)}</div>:null}
    <div className="bw-filters"><label><Search size={15}/><input aria-label="搜尋項目" placeholder="搜尋項目" value={query} onChange={e=>setQuery(e.target.value)}/></label><MenuSelect label="付款篩選" value={paymentFilter} onValueChange={setPaymentFilter} options={[{value:'',label:'全部項目'},{value:'unpaid',label:'未付款'},{value:'paid',label:'已付款'}]}/><span>{displayRows.length} 筆</span></div><button type="button" className="primary-button compact bw-add" disabled={!editable} onClick={()=>void add()}><Plus size={15}/>新增項目</button></div>
-   <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} collaborators={collaborators} selected={selected} collapsed={collapsed} setCollapsed={next=>void handoff(()=>setCollapsed(next))} viewpoint={viewpoint} actual={actual} onSelect={select}/>
+   <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} collaborators={collaborators} selected={selected} collapsed={collapsed} setCollapsed={next=>void handoff(()=>setCollapsed(next))} viewpoint={viewpoint} actual={actual} planning={planning} onSelect={select}/>
   </div>
   <aside className="bw-side"><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[['stats','旅程統計',ChartColumn],['detail','項目明細',List],['edit','編輯項目',Pencil]].map(([key,label,Icon])=><button key={key} role="tab" type="button" aria-label={label} aria-selected={panel===key} onClick={()=>changePanel(key)}><Icon size={14} strokeWidth={1.8}/><span>{label}</span></button>)}</div>
   <div hidden={panel!=='stats'}><Stats records={rows} rows={participantRows} members={approved} actual={actual} budgets={rows} viewpoint={viewpoint} setViewpoint={setViewpoint} ratesSummary={<span/>}/><div className="bw-restored-rates" hidden={actual}><ExpenseRates service={transport} client={client} actor={props.currentUserId} trip={props.activeTrip.id} sessionId={sessionId} storage={storage} onError={errorToast} services={props.services} editable={editable} planning={planning&&Boolean(props.activeTrip.start_date)} active={workspaceActive}/></div></div>
@@ -128,8 +129,8 @@ export default function ExpenseWorkspace(props){
    {frame('note','備註',({v,locked,set})=><textarea aria-label="備註" value={v.value||''} rows={3} readOnly={locked} onChange={e=>set(e.target.value)}/>)}
 
    {!planning&&frame('links','關聯行程',({v,locked,set})=><ItineraryPicker items={graph.itineraryItems||[]} category={item.category} selectedIds={v.value} readOnly={locked} onChange={set}/>)}
-   {planning?<PlanningSummary form={client.view(client.get(item.id,'budget')).value}/>:null}
-   {frame(view,view==='budget'?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing key={field.id} client={client} field={field} view={v} scope={view} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode} showModeLegend={!planning} showSummary={!planning}/>)}
+   {planning?<PlanningSummary view={client.view(client.get(item.id,'budget'))}/>:null}
+   {frame(view,view==='budget'?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing key={field.id} client={client} field={field} view={v} scope={view} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode} showModeLegend={!planning} showSummary={!planning} planningIntegers={planning&&view==='budget'}/>)}
    {frame('payer','付款方式',({field,v,locked,canChooseMode})=>planning?<ExpensePayers client={client} field={field} view={v} members={approved} total={(item.budget||item.paid)?.amount??0} currency={(item.budget||item.paid)?.currency||'TWD'} locked={locked} canChooseMode={canChooseMode}/>:v.value.rows.length<=1?<MenuSelect label="付款人" value={v.value.rows[0]?.user_id||''} readOnly={locked} metadataPortal onValueChange={value=>client.input(field,value)} options={[{value:'',label:'未指定'},...approved.map(m=>({value:m.user_id,label:memberLabel(m)}))]}/>:<p>{v.value.mode==='self'?'各自付':v.value.rows.map(r=>memberLabel(approved.find(m=>m.user_id===r.user_id))).join('、')}</p>)}
    {!planning?<div className="bw-metadata-summary"><span>分類 · {item.category}</span><span>金額 · {item[view]?`${item[view].currency} ${money(item[view].amount)}`:'尚未填寫'}</span></div>:null}
    {!planning?<details className="bw-secondary-fields"><summary>{actual?'預算金額與分攤':'實付金額與分攤'}</summary>{frame(actual?'budget':'paid',actual?'預算計價與分攤':'實付計價與分攤',({field,v,locked,canChooseMode})=><Pricing key={field.id} client={client} field={field} view={v} scope={actual?'budget':'paid'} members={members} rates={graph.rates} locked={locked} canChooseMode={canChooseMode}/>)}</details>:null}

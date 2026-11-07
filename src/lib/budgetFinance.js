@@ -3,6 +3,7 @@
 import {isBudgetComplete} from './budgetLifecycleValues.js';
 export const pricingLabels = { per_person: "每人計價", split_total: "總額均分", custom: "自訂分攤" };
 export const money = (value) => Math.round(Number(value || 0)).toLocaleString("zh-TW");
+export const originalMoney = value => Number(value).toLocaleString("zh-TW", { maximumFractionDigits: 2 });
 export const memberLabel = (member) => member?.display_name || member?.email || member?.user_id || "未指定";
 
 function decimal(value, digits, label) {
@@ -27,26 +28,31 @@ export function allocateWhole(total, weights) {
   return Object.fromEntries(shares.map((row) => [row.id, Number(row.value)]));
 }
 
-export function calculatePricing(form) {
+export function calculatePricing(form, { wholeOriginal = false } = {}) {
   const ids = [...new Set(form.participantIds || [])].sort();
   if (!ids.length) throw new Error("請至少選擇一位參與成員。");
   const mode = form.pricing_mode || "split_total";
   if (!pricingLabels[mode]) throw new Error("不支援的計價方式。");
   const rate = form.currency === "TWD" ? 1000000n : decimal(form.exchange_rate, 6, "匯率");
   if (!rate) throw new Error("匯率必須大於 0。");
-  const unit = mode === "per_person" ? decimal(form.unit_amount, 2, "每人單價") : null;
-  const weights = ids.map((id) => [id, mode === "custom" ? decimal(form.shares?.[id], 2, "成員金額") : 1n]);
-  const cents = mode === "per_person" ? unit * BigInt(ids.length) : mode === "custom"
-    ? weights.reduce((sum, [, amount]) => sum + amount, 0n) : decimal(form.amount, 2, "總額");
+  const originalUnit = wholeOriginal ? 100n : 1n;
+  const originalAmount = (value, label) => roundDivide(decimal(value, 2, label), originalUnit);
+  const unit = mode === "per_person" ? originalAmount(form.unit_amount, "每人單價") : null;
+  const weights = ids.map((id) => [id, mode === "custom" ? originalAmount(form.shares?.[id], "成員金額") : 1n]);
+  const total = mode === "per_person" ? unit * BigInt(ids.length) : mode === "custom"
+    ? weights.reduce((sum, [, amount]) => sum + amount, 0n) : originalAmount(form.amount, "總額");
+  const cents = total * originalUnit;
   if (cents > 999999999999n) throw new Error("總額超過可儲存範圍。");
   const twd = roundDivide(cents * rate, 100000000n);
   if (twd > 9999999999n) throw new Error("台幣總額超過可儲存範圍。");
-  const originalShares = allocateWhole(cents, weights);
+  const originalShares = allocateWhole(total, weights);
+  const twdWeights = wholeOriginal ? ids.map(id => [id, BigInt(originalShares[id])]) : weights;
   return {
-    amount: fromCents(cents), unit_amount: unit === null ? null : fromCents(unit), twd_amount: Number(twd),
+    amount: fromCents(cents), unit_amount: unit === null ? null : fromCents(unit * originalUnit), twd_amount: Number(twd),
     exchange_rate: Number(rate) / 1000000, pricing_mode: mode, split_type: mode === "custom" ? "custom" : "equal",
-    allocations: allocateWhole(twd, weights),
-    shares: Object.fromEntries(Object.entries(originalShares).map(([id, amount]) => [id, amount / 100])),
+    ...(wholeOriginal ? { original_scale: 0 } : {}),
+    allocations: allocateWhole(twd, twdWeights),
+    shares: Object.fromEntries(Object.entries(originalShares).map(([id, amount]) => [id, wholeOriginal ? amount : amount / 100])),
   };
 }
 
@@ -94,11 +100,11 @@ export function participantsFor(record, rows, key, members) {
 export function recordAllocations(record, participants) {
   if(!isBudgetComplete(record))return null;
   if ((record.twd_amount_source || "legacy") === "legacy" && !Number.isInteger(Number(record.twd_amount))) return null;
-  const custom = record.pricing_mode === "custom" || record.split_type === "custom";
-  const weights = participants.map((row) => [row.user_id, record.pricing_mode === "custom" || record.split_type === "custom"
+  const usesOriginalShares = record.original_scale === 0 || record.pricing_mode === "custom" || record.split_type === "custom";
+  const weights = participants.map((row) => [row.user_id, usesOriginalShares
     ? row.share_amount == null ? null : decimal(row.share_amount, 2, "分攤金額") : 1n]);
   if (weights.some(([, value]) => value === null)) return null;
-  if (custom && weights.reduce((sum, [, value]) => sum + value, 0n) !== decimal(record.amount, 2, "總額")) return null;
+  if (usesOriginalShares && weights.reduce((sum, [, value]) => sum + value, 0n) !== decimal(record.amount, 2, "總額")) return null;
   if (Number(record.twd_amount) > 0 && !weights.some(([, value]) => value > 0n)) return null;
   return allocateWhole(BigInt(Math.round(Number(record.twd_amount || 0))), weights);
 }

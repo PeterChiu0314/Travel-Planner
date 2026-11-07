@@ -19,7 +19,7 @@ async function fixture(){
   await f.sql.query('insert into expense_stage_b.expense_items(id,trip_id,title,category,note,payer_id,budget,paid,payment_state,budget_decisions_known,paid_decisions_known) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[item.id,item.trip_id,item.title,item.category,item.note,item.payer_id,item.budget,item.paid,item.payment_state,item.budget_decisions_known,item.paid_decisions_known]);
   for(const p of participants)await f.sql.query('insert into expense_stage_b.expense_participants values($1,$2,$3,$4,$5,$6)',[p.expense_id,p.user_id,p.budget_selected,p.paid_selected,p.budget_share_amount,p.paid_share_amount]);
  }
- const stop=uuid();await f.sql.query('insert into public.itinerary_items values($1,$2,$3,$4)',[stop,f.trip,'機場',1]);
+ const stop=uuid();await f.sql.query('insert into public.itinerary_items(id,trip_id,title,day_index) values($1,$2,$3,$4)',[stop,f.trip,'機場',1]);
  await f.sql.query('insert into expense_stage_b.expense_itinerary_links values($1,$2,$3)',[models[0].id,f.trip,stop]);
  return {...f,C,models};
 }
