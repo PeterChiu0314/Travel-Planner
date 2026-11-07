@@ -143,7 +143,7 @@ export function backend({ empty = false, departed = false, leases = false } = {}
   };
 }
 
-export async function boot(page, db, actor = "A") {
+export async function boot(page, db, actor = "A", { waitForBudget = true } = {}) {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -193,6 +193,6 @@ export async function boot(page, db, actor = "A") {
     };
   }, {actor,tripId:db.trips[0].id});
   await page.goto("/");
-  await expect(page.getByRole("table", { name: /^(預算|實付)明細$/ })).toBeVisible();
+  if (waitForBudget) await expect(page.getByRole("table", { name: /^(預算|實付)明細$/ })).toBeVisible();
   await expect(page.locator("vite-error-overlay")).toHaveCount(0);
 }

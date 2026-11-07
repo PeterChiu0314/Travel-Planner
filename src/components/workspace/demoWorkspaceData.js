@@ -1,8 +1,8 @@
 // Local preview fixtures only. The Formal container continues to own persisted data.
 export function createDemoStays(trip) {
   return [
-    { id: "demo-stay-1", name: "京都車站旅館", check_in_date: trip.start_date, check_out_date: trip.end_date, check_in_time: "15:00", check_out_time: "11:00", booking_code: "DEMO-KYOTO", payment_status: "paid", address: "京都車站周邊（預覽範例）", map_url: "https://www.google.com/maps/search/?api=1&query=Kyoto+Station", custom_notes: "入住時出示護照與訂房確認信。\n可先寄放行李，再開始第一天行程。", budget_item_id: "" },
-    { id: "demo-stay-2", name: "旅程備選住宿", check_in_date: trip.start_date, check_out_date: trip.end_date, check_in_time: "16:00", check_out_time: "10:00", booking_code: "", payment_status: "unpaid", address: "尚待確認", custom_notes: "供旅伴比較的備選方案；尚未確認預訂。", budget_item_id: "" },
+    { id: "demo-stay-1", name: "京都車站旅館", check_in_date: trip.start_date, check_out_date: trip.end_date, check_in_time: "15:00", check_out_time: "11:00", booking_code: "DEMO-KYOTO", payment_status: "paid", address: "京都車站周邊（預覽範例）", map_url: "https://www.google.com/maps/search/?api=1&query=Kyoto+Station", custom_notes: "入住時出示護照與訂房確認信。\n可先寄放行李，再開始第一天行程。", expense_id: "" },
+    { id: "demo-stay-2", name: "旅程備選住宿", check_in_date: trip.start_date, check_out_date: trip.end_date, check_in_time: "16:00", check_out_time: "10:00", booking_code: "", payment_status: "unpaid", address: "尚待確認", custom_notes: "供旅伴比較的備選方案；尚未確認預訂。", expense_id: "" },
   ];
 }
 

@@ -1,39 +1,27 @@
-import { budgetMetadataEnabled, getBudgetMetadataSessionId } from "./budgetMetadataConfig.js";
-import {budgetReceiptsEnabled} from './budgetReceiptConfig.js';
-import {budgetFinanceGroupsEnabled} from './budgetFinanceValues.js';
-import {budgetLifecycleEnabled} from './budgetLifecycleValues.js';
-import { validBudgetMetadataSnapshot, withBudgetAuthorityTimeout, budgetSnapshotTimeoutError } from "./budgetMetadataService.js";
-import {validExpenseSnapshot,expenseFinancialSnapshot} from './expenseSnapshot.js';
-export const emptyBudgetSnapshot = () => ({ tripId: null, budgetItems: [], budgetParticipants: [], actualExpenses: [], actualParticipants: [],
-  itineraryBudgetLinks: [], budgetBaseline: null, items: [], members: [], attachments: [], tripBudgetRates: null });
-export const mergeBudgetAttachments = (attachments, snapshot) => [...attachments.filter(a => a.target_type !== "actual_expense"), ...snapshot.attachments];
+import { getBudgetMetadataSessionId } from "./budgetMetadataConfig.js";
+import { withBudgetAuthorityTimeout, budgetSnapshotTimeoutError } from "./budgetMetadataService.js";
+import { validExpenseSnapshot, expenseFinancialSnapshot } from "./expenseSnapshot.js";
+
+export const emptyBudgetSnapshot = () => ({ tripId: null, budgetItems: [], budgetParticipants: [],
+  actualExpenses: [], actualParticipants: [], itineraryBudgetLinks: [], tripBudgetRates: null });
+export const nonFinancialAttachments = rows => rows.filter(row => !["budget_item", "actual_expense"].includes(row.target_type));
+
+// An offline graph is display-only: do not persist or restore live lease data.
+export function cachedExpenseGraph(graph, tripId) {
+  if (!validExpenseSnapshot(graph, tripId)) return null;
+  return { ...graph, groups: [] };
+}
 
 export async function readBudgetSnapshot(supabase, tripId) {
   try {
-    const started = Date.now();
-    if(budgetMetadataEnabled){
-      const expense=await supabase.rpc('read_expense_snapshot',{p_trip_id:tripId,p_session_id:getBudgetMetadataSessionId()});
-      if(!expense.error){if(!validExpenseSnapshot(expense.data,tripId))return{error:{code:'EXPENSE_SNAPSHOT_INVALID',message:'支出資料尚未確認，請稍後重試。'}};return{data:expenseFinancialSnapshot(expense.data),error:null};}
-      if(!['PGRST202','42883'].includes(expense.error.code))return expense;
-    }
-    let result = await supabase.rpc(budgetMetadataEnabled ? budgetLifecycleEnabled ? "read_budget_metadata_snapshot_v9" : budgetFinanceGroupsEnabled ? "read_budget_metadata_snapshot_v8" : budgetReceiptsEnabled ? "read_budget_metadata_snapshot_v7" : "read_budget_metadata_snapshot_v6" : "read_budget_snapshot",
-      { p_trip_id: tripId, ...(budgetMetadataEnabled ? { p_session_id: getBudgetMetadataSessionId() } : {}) });
-    let metadataMissing = false;
-    if (budgetMetadataEnabled && ["PGRST202", "42883"].includes(result.error?.code)) {
-      // Read-only financial fallback; the new editor stays fail-closed.
-      result = await supabase.rpc("read_budget_snapshot", { p_trip_id: tripId }); metadataMissing = true;
-    }
+    const result = await supabase.rpc("read_expense_snapshot", {
+      p_trip_id: tripId, p_session_id: getBudgetMetadataSessionId(),
+    });
     if (result.error) return result;
-    const data = result.data;
-    if (!data) return { error: { code: "42501", message: "目前無法讀取此旅程預算。" } };
-    if (data.tripId !== tripId || ["budgetItems", "budgetParticipants", "actualExpenses", "actualParticipants", "itineraryBudgetLinks", "items", "members", "attachments"].some(key => !Array.isArray(data[key]))) {
-      return { error: { code: "BUDGET_SNAPSHOT_INVALID", message: "預算資料尚未確認，請重新連線。" } };
-    }
-    if (budgetMetadataEnabled && !metadataMissing && !validBudgetMetadataSnapshot(data, tripId)) {
-      return { error: { code: "BUDGET_METADATA_INVALID", message: "群組協作資料尚未確認，請重新整理。" } };
-    }
-    return { data: budgetMetadataEnabled ? { ...data, metadataVerified: !metadataMissing, metadataReadStartedAt: started,
-      ...(metadataMissing ? { metadataError: "群組協作尚未啟用，目前僅供檢視。" } : {}) } : data, error: null };
+    if (!validExpenseSnapshot(result.data, tripId)) return {
+      error: { code: "EXPENSE_SNAPSHOT_INVALID", message: "支出資料尚未確認，請稍後重試。" },
+    };
+    return { data: expenseFinancialSnapshot(result.data), error: null };
   } catch (error) { return { error }; }
 }
 

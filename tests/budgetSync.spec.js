@@ -1,7 +1,7 @@
 import {expect,test} from "@playwright/test";
 import {mock} from "node:test";
 import {createRequestGuard} from "../src/lib/luggageSync.js";
-import {createBudgetRefresh,readBudgetSnapshot,emptyBudgetSnapshot} from "../src/lib/budgetSync.js";
+import {createBudgetRefresh,readBudgetSnapshot,cachedExpenseGraph,emptyBudgetSnapshot} from "../src/lib/budgetSync.js";
 import {budgetAuthorityTimeoutMs} from "../src/lib/budgetMetadataService.js";
 
 function setup(options = {}) {
@@ -37,7 +37,13 @@ test("adapter fails closed on missing RPC, forbidden, malformed and cross-trip s
   }
   const calls=[];
   expect((await readBudgetSnapshot({rpc:async name=>{calls.push(name);return {error:{code:"PGRST202"}};}},"trip")).error.code).toBe("PGRST202");
-  expect(calls).toEqual(["read_budget_snapshot"]);
+  expect(calls).toEqual(["read_expense_snapshot"]);
+  const graph = { schemaVersion: 1, tripId: "trip", items: [], participants: [], groups: [], links: [] };
+  const good = await readBudgetSnapshot({rpc:async()=>({data:graph,error:null})},"trip");
+  expect(good.data.expenseGraph).toEqual(graph);
+  expect(good.data.expenseVerified).toBe(true);
+  expect(cachedExpenseGraph({...graph,tripId:"other"},"trip")).toBeNull();
+  expect(cachedExpenseGraph({...graph,items:[{id:"x",trip_id:"trip",payment_state:"unpaid"}],groups:[{id:"x",revision:2,owner_id:"peer"}]},"trip").groups).toEqual([]);
 });
 
 test("pending coalesced snapshot releases its read slot after the authority deadline",async()=>{

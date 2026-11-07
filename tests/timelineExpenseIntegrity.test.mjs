@@ -116,7 +116,9 @@ test("card deletion and confirmed shortening unlink only removed destinations an
   await query("update public.itinerary_items set day_index=5 where id=$1", [ids[3]]);
   await asActor();
   await query("select public.delete_itinerary_item_budget_safe($1,$2)", [trip, ids[0]]);
-  await query("select public.apply_trip_date_change($1,'2090-04-05','2090-04-06',true)", [trip]);
+  await assert.rejects(() => query("select public.apply_trip_date_change($1,'2090-04-05','2090-04-06',false)", [trip]), /unsafe_shortening/);
+  const result = (await query("select public.apply_trip_date_change($1,'2090-04-05','2090-04-06',true) as value", [trip])).rows[0].value;
+  assert.equal(result.removed_budget_link_count, 1);
   const remaining = await links();
   assert.deepEqual(remaining.filter(link => link.expense_id === expense).map(link => link.title), [ids[2]]);
   assert.equal((await query("select budget->>'amount' as amount from expense_stage_b.expense_items where id=$1", [expense])).rows[0].amount, "100");
@@ -209,8 +211,16 @@ test("rates-only trip deletion removes its receipt and retains another trip's ex
   assert.deepEqual((await query("select * from expense_stage_b.receipts where request_id=$1", [retained.request_id])).rows[0], retained);
 });
 
-test("deployed active guard allows planning snapshot cascade but still preserves frozen history", async () => {
-  await admin();
+test("ledger 77 active guard allowed planning snapshot cascade but preserved frozen history", async t => {
+  const { sql, A, B, close } = await expenseBackend({ timeline: true, legacyBudget: true });
+  t.after(close);
+  const query = (sqlText, args) => sql.query(sqlText, args);
+  const admin = () => sql.exec("reset role");
+  const asActor = async (actor = A) => {
+    await admin();
+    await query("select set_config('request.jwt.claim.sub',$1,false)", [actor]);
+    await sql.exec("set role authenticated");
+  };
   const activeGuardSource = await readFile(new URL("../docs/operations/drafts/budget-b7-trip-cascade/20261031140648_budget_trip_cascade_lease_admission.sql", import.meta.url), "utf8");
   // Load the exact installed guard body, not a stub or the dormant-only deployment wrapper.
   const [guard] = activeGuardSource.match(/create or replace function app_private\.guard_budget_external_parent\(\)[\s\S]*?\$tripbody\$;/);

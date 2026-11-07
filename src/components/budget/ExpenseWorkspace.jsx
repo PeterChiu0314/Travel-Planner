@@ -9,7 +9,7 @@ import {pricingModeDraft} from '../../lib/budgetPricingGroups.js';
 import {notify,isConnectionError} from '../../lib/notifications.js';
 import BudgetPricingFields,{BudgetPricingSummary} from './BudgetPricingFields.jsx';
 import BudgetCollaborationFrame from './BudgetCollaborationFrame.jsx';
-import {ItineraryPicker,Stats,PaymentToggle} from './BudgetWorkspace.jsx';
+import {ItineraryPicker,Stats,PaymentToggle} from './ExpenseWorkspaceParts.jsx';
 import {displayParticipants,expenseDisplayRows,ExpenseDetail,ExpenseTable} from './ExpensePresentation.jsx';
 import MenuSelect from '../MenuSelect.jsx';
 import {useSiteDialog} from '../SiteDialog.jsx';
@@ -65,7 +65,9 @@ export default function ExpenseWorkspace(props){
  props.services.useGuard(`expense-workspace:${props.currentUserId}:${props.activeTrip.id}`,{tripId:props.activeTrip.id,workspace:'budget'},
   useMemo(()=>({isActive:true,readState:client.guardState,cleanupInWorkspaceOnly:true,prepareFinishes:true,
    prepare:()=>client.finish(),finish:()=>client.finish(),save:()=>client.finish(),discard:()=>client.discard()}),[client,version]));
- if(!graph)return <p className="bw-muted">讀取支出項目…</p>;
+ if (!graph) return props.metadataSnapshot?.expenseUnavailable
+  ? <div role="status"><p className="bw-muted">目前無法讀取支出，草稿已保留。</p><button type="button" className="ghost-button" onClick={() => void props.onRefreshBudget(props.activeTrip.id)}>重新讀取支出</button></div>
+  : <p className="bw-muted" role="status">讀取支出項目…</p>;
  const models=expenseModels(graph),item=client.draftItem()?.id===selected?client.draftItem():models.find(i=>i.id===selected),members=graph.members||[],approved=members.filter(m=>m.status==='approved');
  const editable=props.canEdit&&state.verified&&navigator.onLine!==false;
  const handoffBudget=()=>props.services.handoff({tripId:props.activeTrip.id,workspace:'budget'});

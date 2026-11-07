@@ -3,7 +3,7 @@ import {createPortal} from 'react-dom';
 import {ChevronDown, ChevronRight, Circle, CircleCheck, Package, Trash2} from 'lucide-react';
 import {budgetDay, memberLabel, money, pricingLabels, recordAllocations} from '../../lib/budgetFinance.js';
 import {rowCollaborators,RowCollaboratorOutline,RowCollaboratorAvatars} from './BudgetRowCollaborators.jsx';
-import {categoryOrder as order,categoryIcons as icons,categoryColor,PricingSummary} from './BudgetWorkspace.jsx';
+import {categoryOrder as order,categoryIcons as icons,categoryColor,PricingSummary} from './ExpenseWorkspaceParts.jsx';
 
 // Presentation-only projection: missing budget stays missing, even for paid items.
 export function expenseDisplayRows(models,scope){

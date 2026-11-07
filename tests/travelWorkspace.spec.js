@@ -41,7 +41,7 @@ test("accommodation search, detail selection and CRUD preserve booking fields", 
   await form.getByLabel("預約代碼", { exact: true }).fill("BOOK-123");
   await form.getByLabel("入住時間", { exact: true }).fill("16:30");
   await form.getByLabel("付款狀態", { exact: true }).selectOption("partial");
-  await form.getByLabel("連動預算", { exact: true }).selectOption("demo-budget-hotel");
+  await form.getByLabel("關聯支出", { exact: true }).selectOption({ label: "京都山科山樂酒店・2 晚" });
   await form.getByLabel("自訂備註", { exact: true }).fill("晚到需先聯絡\n保留行李寄放資訊");
   await form.getByRole("button", { name: "儲存", exact: true }).click();
   await list.getByRole("button", { name: /新預覽旅館/ }).click();
@@ -140,7 +140,7 @@ test("luggage CRUD and assignee packing synchronize without a second confirmatio
   await expect(shared).toHaveCount(0);
 });
 
-test("settlement retains latest payment propagation and frozen departure baseline", async ({ page }) => {
+test("settlement uses native payment in planning and settled scenarios", async ({ page }) => {
   await page.goto("/demo/settlement?budgetTools=1");
   const summary = page.locator(".travel-workspace-summary");
   await expect(summary).not.toContainText("出發前預算");
@@ -157,14 +157,14 @@ test("settlement retains latest payment propagation and frozen departure baselin
   await page.goto("/demo/settlement?budgetTools=1");
   await page.getByRole("combobox", { name: "Demo 情境", exact: true }).click();
   await page.getByRole("option", { name: "旅程結算", exact: true }).click();
-  await expect(summary).toContainText("出發前預算");
-  await expect(summary).toContainText("NT$ 174,851");
-  const frozen = await summary.locator("div").first().textContent();
+  await expect(summary).not.toContainText("出發前預算");
+  await expect(summary).toContainText("實際金額");
+  const settledTotal = await summary.locator("div").first().textContent();
   await navigate(page, "預算管理");
   await page.getByRole("tab", { name: "預算", exact: true }).click();
   await expect(page.locator(".bw-row")).toHaveCount(32);
   await navigate(page, "分帳結算");
-  await expect(summary.locator("div").first()).toHaveText(frozen);
+  await expect(summary.locator("div").first()).toHaveText(settledTotal);
   await expect(page.locator(".transfer-row")).not.toHaveCount(0);
 });
 

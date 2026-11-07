@@ -24,7 +24,7 @@ export function expenseFinancialSnapshot(data){
   }
  }
  return {tripId:data.tripId,budgetItems,budgetParticipants,actualExpenses,actualParticipants,itineraryBudgetLinks:data.links.map(l=>({budget_item_id:l.expense_id,itinerary_item_id:l.itinerary_item_id})),
-  budgetBaseline:null,items:data.itineraryItems||[],members:data.members||[],attachments:[],tripBudgetRates:data.rates,expenseGraph:data,expenseVerified:true,metadataVerified:false};
+  items:data.itineraryItems||[],members:data.members||[],attachments:[],tripBudgetRates:data.rates,expenseGraph:data,expenseVerified:true};
 }
 export function expenseTimelineCosts(data){return expenseModels(data).flatMap(item=>{const bundle=item.payment_state==='paid'&&item.paid?item.paid:item.budget;return bundle?[{...bundle,expenseScope:item.payment_state==='paid'&&item.paid?'paid':'budget',id:item.id,title:item.title,category:item.category,payer_id:item.payer_id,trip_id:item.trip_id}]:[];});}
 export const validExpenseSnapshot=(data,trip)=>data?.schemaVersion===1&&data.tripId===trip&&['items','participants','groups','links'].every(k=>Array.isArray(data[k]))

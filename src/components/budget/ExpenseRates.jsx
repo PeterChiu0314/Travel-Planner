@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useSyncExternalStore} from 'react';
 import {createExpenseRates,hasExpenseRates} from '../../lib/expenseRates.js';
-import {TripRatesSummary} from './BudgetWorkspace.jsx';
+import {TripRatesSummary} from './ExpenseWorkspaceParts.jsx';
 export default function ExpenseRates({service,client,actor,trip,sessionId,storage,onError,services,editable,planning,active}){
  const eligible=useRef(false),attempted=useRef(null);eligible.current=editable&&planning&&active;
  const controller=useMemo(()=>createExpenseRates({service,actor,trip,sessionId,storage,onError,canUpdate:()=>eligible.current,quote:service.quote,getGraph:()=>client.status().graph,refresh:()=>client.refresh()}),[service,actor,trip,sessionId,storage,onError,client]);

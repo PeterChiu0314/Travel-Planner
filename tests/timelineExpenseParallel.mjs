@@ -69,6 +69,22 @@ try {
   const claim = (await editor.query("select public.expense_group_lease($1,'links',$2,$3,'acquire',0,null,0,false) as value", [newExpense, session, newToken])).rows[0].value;
   await assert.rejects(() => editor.query(mutateQuery, [newExpense, session, newToken, claim.epoch, 0, value, uuid()]), error => error.code === "PT409");
   console.log("PASS new expense cannot attach stale slot after a swap");
+
+  const noteToken = uuid(), noteRequest = uuid();
+  const note = (await editor.query("select public.expense_group_lease($1,'note',$2,$3,'acquire',0,null,0,false) as value",
+    [newExpense, session, noteToken])).rows[0].value;
+  assert.equal(note.granted, true);
+  await editor.query("begin");
+  await editor.query("select public.mutate_expense_group($1,'note',$2,$3,$4,0,$5,$6)",
+    [newExpense, session, noteToken, note.epoch, { text: "Concurrent save" }, noteRequest]);
+  await scheduler.query("set statement_timeout='5s'");
+  const deleteTrip = () => scheduler.query("select public.delete_trip_with_expenses($1) as id", [trip]);
+  await assert.rejects(deleteTrip, error => error.code === "55P03");
+  assert.equal((await rows("select count(*)::int as n from trips where id=$1", [trip]))[0].n, 1);
+  await editor.query("commit");
+  assert.deepEqual((await deleteTrip()).rows, [{ id: trip }]);
+  assert.equal((await rows("select count(*)::int as n from expense_stage_b.receipts where request_id=$1", [noteRequest]))[0].n, 0);
+  console.log("PASS owner delete refuses a live expense transaction and succeeds after it commits");
 } finally {
   await Promise.allSettled([scheduler.query("rollback"), editor.query("rollback")]);
   await Promise.all([admin.end(), scheduler.end(), editor.end()]);

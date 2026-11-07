@@ -2,6 +2,10 @@
 
 Updated 2026-11-07. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-07 — Issue #23 Legacy Budget retirement
+
+[Scope, object manifest, Staging counts and verification](docs/2026-11-07-issue23-legacy-budget-retirement.md). Native Expense is the sole runtime source. Forward `20261107035830` retires legacy financial tables and guards; preserves native, other workspace data, trip owner/RLS, and real in-flight write protection. Exact rollback trial and authorized install on Staging matched all 23 protected relation seals; ledger 78/head 20261107035830. Updated Preview and physical receipt cleanup are separate checks. Keep #23 open. No Production/main changes.
+
 ## Latest 2026-11-07 — Issue #23 editor handoff
 
 [Guide/Todo and receipt contract audit](docs/2026-11-07-issue23-contract-audit.md): both reported gaps confirmed. Local-only follow-up isolates Guide scope, preserves trip-wide Demo departure safeguards, and appends a migration to include trip-scoped rates receipts in owner trip cleanup. Real writer regression failed before/passed after; 52 Node/SQL and 25 distinct Chromium checks passed. Two broader Demo tests also fail on unchanged HEAD; documented separately. Build/diff passed. Staging read-only check confirms installed cleanup still lacks rates ownership; current orphan trip receipts 0. No push/deploy/Hosted migration in this audit; #23 is not blanket-certified complete.

@@ -10,6 +10,31 @@ const navigation = (page, name) => page.locator(".section-nav-button").getByText
 const prompt = page => page.getByRole("dialog", { name: "您有未儲存的變更" });
 const scheduleCalls = fixture => fixture.db.expenseCalls.filter(call => call.name.startsWith("apply_timeline_schedule_operation"));
 
+test("owner must confirm trip deletion and the confirmed request removes the native graph", async ({ page }) => {
+  const fixture = await expenseBackend({ timeline: true });
+  try {
+    await open(page, fixture, { linked: true });
+    const deleteItem = page.getByRole("menuitem", { name: "刪除旅程", exact: true });
+    const requests = () => fixture.db.expenseCalls.filter(call => call.name === "delete_trip_with_expenses");
+    await page.getByRole("button", { name: "更多操作", exact: true }).click();
+    page.once("dialog", dialog => void dialog.dismiss());
+    await deleteItem.click();
+    expect(requests()).toHaveLength(0);
+    await page.getByRole("button", { name: "更多操作", exact: true }).click();
+    page.once("dialog", dialog => void dialog.accept());
+    await deleteItem.click();
+    await expect.poll(() => fixture.db.trips.length).toBe(0);
+    expect(requests()).toHaveLength(1);
+    expect(requests()[0].args).toEqual({ p_trip_id: fixture.trip });
+    await fixture.sql.exec("reset role");
+    expect((await fixture.sql.query("select count(*)::int n from expense_stage_b.expense_items")).rows[0].n).toBe(0);
+    expect(page.qaErrors).toEqual([]);
+  } finally {
+    await page.close();
+    await fixture.close();
+  }
+});
+
 async function open(page, fixture, { linked = false } = {}) {
   const first = randomUUID();
   await fixture.sql.query(`insert into public.itinerary_items(id,trip_id,day_index,sort_order,type,title,start_time,end_time)

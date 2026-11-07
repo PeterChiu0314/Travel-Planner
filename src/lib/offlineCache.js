@@ -37,12 +37,13 @@ export function updateOfflineSharedLuggage(tripId, userId, update, storage = loc
   const cached = read(userId, tripId, storage, now);
   if (cached) write(userId, tripId, { ...cached, sharedLuggageItems: update(cached.sharedLuggageItems || []) }, storage, now);
 }
-export function updateOfflineBudget(tripId, userId, snapshot, storage = localStorage, now = Date.now()) {
+export function updateOfflineBudget(tripId, userId, expenseGraph, storage = localStorage, now = Date.now()) {
   const cached = read(userId, tripId, storage, now);
   if (!cached) return;
-  const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks, budgetBaseline } = snapshot;
-  write(userId, tripId, { ...cached, budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks, budgetBaseline,
-    attachments: [...(cached.attachments || []).filter(a => a.target_type !== "actual_expense"), ...snapshot.attachments], budgetSnapshot: snapshot }, storage, now);
+  for (const key of ["budgetSnapshot", "budgetBaseline", "budgetItems", "budgetParticipants",
+    "actualExpenses", "actualParticipants", "itineraryBudgetLinks"]) delete cached[key];
+  cached.attachments = (cached.attachments || []).filter(row => !["budget_item", "actual_expense"].includes(row.target_type));
+  write(userId, tripId, { ...cached, expenseGraph }, storage, now);
 }
 export function clearOfflineAccount(userId, storage = localStorage) {
   try {

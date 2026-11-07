@@ -21,6 +21,7 @@ const fixedAnchorContinuationMigration = readFileSync(
 );
 const appSource = readFileSync("src/App.jsx", "utf8");
 const packageSource = readFileSync("package.json", "utf8");
+const collaboratorColorsSource = readFileSync("src/lib/collaboratorColors.js", "utf8");
 const stylesSource = readFileSync("src/styles.css", "utf8");
 
 function visit(id, title, startTime, sortOrder, extra = {}) {
@@ -575,7 +576,7 @@ test("023 RPC performs Phase 4.6 timed auto-continuation transactionally", () =>
   expect(timedAutoContinuationMigration).toContain("start_time = time '00:00' + make_interval(mins => next_start_minutes)");
   expect(timedAutoContinuationMigration).toContain("grant execute on function public.reorder_itinerary_timed_auto_continuation");
   expect(appSource).not.toContain('supabase.rpc("reorder_itinerary_timed_auto_continuation"');
-  expect(appSource).toContain('supabase.rpc("apply_timeline_schedule_operation"');
+  expect(appSource).toContain("submitTimelineSchedule(supabase, {");
 });
 
 test("024 RPC performs Phase 4.7 fixed-anchor continuation transactionally", () => {
@@ -588,7 +589,7 @@ test("024 RPC performs Phase 4.7 fixed-anchor continuation transactionally", () 
   expect(fixedAnchorContinuationMigration).toContain("start_time = null");
   expect(fixedAnchorContinuationMigration).toContain("grant execute on function public.reorder_itinerary_fixed_anchor_continuation");
   expect(appSource).not.toContain('supabase.rpc("reorder_itinerary_fixed_anchor_continuation"');
-  expect(appSource).toContain('supabase.rpc("apply_timeline_schedule_operation"');
+  expect(appSource).toContain("submitTimelineSchedule(supabase, {");
   expect(appSource).toContain("orderedTimedItemIds");
   expect(appSource).toContain("orderedVisitItemIds");
   expect(appSource).toContain("timelineScheduleOperation");
@@ -692,13 +693,13 @@ test("Phase 4.8d remote card selection is broadcast-only and does not lock the d
   expect(appSource).toContain("timeline-card-selection-clear");
   expect(appSource).toContain("const timelineCardSelectionStaleMs = 30000");
   expect(appSource).toContain("timelineCardSelectionColors");
-  expect(appSource).toContain('blue: "#2f6df6"');
-  expect(appSource).toContain('purple: "#7c4dff"');
-  expect(appSource).toContain('orange: "#e57a1f"');
-  expect(appSource).toContain('pink: "#d94d8c"');
-  expect(appSource).toContain('cyan: "#1598b7"');
-  expect(appSource).toContain('yellow: "#c99a00"');
-  expect(appSource).not.toContain("green:");
+  expect(collaboratorColorsSource).toContain('blue: "#2f6df6"');
+  expect(collaboratorColorsSource).toContain('purple: "#7c4dff"');
+  expect(collaboratorColorsSource).toContain('orange: "#e57a1f"');
+  expect(collaboratorColorsSource).toContain('pink: "#d94d8c"');
+  expect(collaboratorColorsSource).toContain('cyan: "#1598b7"');
+  expect(collaboratorColorsSource).toContain('yellow: "#c99a00"');
+  expect(collaboratorColorsSource).not.toContain("green:");
   expect(appSource).toContain("payload.sessionId === sessionId");
   expect(appSource).toContain("selection broadcast update");
   expect(appSource).toContain("selection broadcast clear");
