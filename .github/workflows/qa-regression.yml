@@ -37,8 +37,8 @@ jobs:
       PLAYWRIGHT_BASE_URL: "http://127.0.0.1:5173"
       TEST_SUITE: ${{ github.event.inputs.suite || 'core' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -104,7 +104,7 @@ jobs:
           fi
       - name: Upload failure evidence
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: travel-studio-qa-${{ github.run_id }}
           path: |
