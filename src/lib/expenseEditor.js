@@ -102,8 +102,16 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    report(g,r.error||new Error('暫時無法完成同步，變更已保留。'));return false;
   })().finally(()=>{g.releaseWork=null;emit();});return g.releaseWork;
  }
- async function focus(g){if(g.local){g.focused=true;return active;}if(['budget','paid','payer'].includes(g.group)){for(const other of fields.values())if(other!==g&&other.id===g.id&&['budget','paid','payer'].includes(other.group)&&other.saveWork&&!await other.saveWork)return false;}if(!current()||!active||!verified||g.conflict||g.request||peerOwner(g.id,g.group))return false;g.focused=true;
-  if(g.releasing){if(!await release(g))return false;g.focused=true;}
+ async function focus(g,{retainFocus=true}={}){
+  // A mode button may keep DOM focus for keyboard navigation after its edit ends.
+  // A later focus on a continuous editor must still be able to keep the lease.
+  if(!retainFocus){g.focused=false;g.resumeFocus=false;}
+  if(g.local){if(retainFocus)g.focused=true;return active;}
+  if(['budget','paid','payer'].includes(g.group)){for(const other of fields.values())if(other!==g&&other.id===g.id&&['budget','paid','payer'].includes(other.group)&&other.saveWork&&!await other.saveWork)return false;}
+  if(!current()||!active||!verified||g.conflict||peerOwner(g.id,g.group))return false;
+  if(g.request){if(retainFocus&&owns(g))g.focused=true;return false;}
+  if(retainFocus)g.focused=true;
+  if(g.releasing){if(!await release(g))return false;if(retainFocus)g.focused=true;}
   if(owns(g))return true;if(g.acquiring)return g.acquiring;
   g.token ||= makeId();g.state='pending';emit();const request=args(g,'acquire'),token=g.token,started=Date.now();
   g.acquiring=(async()=>{if(!(await service.authorized(actor)))return false;
@@ -210,8 +218,10 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
   guardState(){
    const activeFields=[...fields.values()];
-   return {isDirty:draftDirty()||activeFields.some(g=>!g.local&&dirty(g)),
+   const dirtyDraft=draftDirty();
+   return {isDirty:dirtyDraft||activeFields.some(g=>!g.local&&dirty(g)),
     isPending:Boolean(pendingCreate)||activeFields.some(g=>g.request||g.saving),
+    missingExpenseTitle:dirtyDraft&&!pendingCreate&&!String(localDraft.values.title||'').trim(),
     needsHandoff:Boolean(localDraft)||activeFields.some(g=>g.token||g.acquiring||g.releasing)};
   },
   saveStatus(id){

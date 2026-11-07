@@ -524,7 +524,7 @@ const emptySharedLuggageForm = {
 
 const activeEditorGuards = new Map();
 const activeEditorListeners = new Set();
-let activeEditorPromptResolve = null;
+let activeEditorPrompt = null;
 
 function notifyActiveEditorListeners() {
   activeEditorListeners.forEach((listener) => listener());
@@ -566,24 +566,26 @@ function getDirtyActiveEditorGuards(options) {
     .filter(hasUnresolvedEdit);
 }
 
-function showActiveEditorPrompt() {
-  if (activeEditorPromptResolve) return Promise.resolve(null);
+function showActiveEditorPrompt(blockingGuard) {
+  if (activeEditorPrompt) return Promise.resolve(null);
   return new Promise((resolve) => {
-    activeEditorPromptResolve = resolve;
+    activeEditorPrompt = { resolve, blockingGuard };
     notifyActiveEditorListeners();
   });
 }
 
 async function resolveActiveEditorGuards(options, resolved) {
-  if (activeEditorPromptResolve) return false;
+  if (activeEditorPrompt) return false;
   // Narrow autosave editors flush valid work before asking how to keep a draft.
   for (const [key, guard] of getActiveEditorGuardEntries(options)) {
     if (hasUnresolvedEdit(guard) && guard.prepare && await guard.prepare()) resolved.add(key);
   }
   const unresolved = ([key, guard]) => (!resolved.has(key) || guard.readState) && hasUnresolvedEdit(guard);
-  const dirtyKeys = new Set(getActiveEditorGuardEntries(options).filter(unresolved).map(([key]) => key));
-  if (!dirtyKeys.size) return true;
-  const choice = await showActiveEditorPrompt();
+  const dirtyEntries = getActiveEditorGuardEntries(options).filter(unresolved);
+  if (!dirtyEntries.length) return true;
+  const dirtyKeys = new Set(dirtyEntries.map(([key]) => key));
+  const blockingGuard = dirtyEntries.find(([, guard]) => guard.readState?.().missingExpenseTitle)?.[1];
+  const choice = await showActiveEditorPrompt(blockingGuard);
   if (!choice) return false;
   for (const [key, guard] of getActiveEditorGuardEntries(options).filter(unresolved)) {
     if (!dirtyKeys.has(key)) return false;
@@ -621,10 +623,10 @@ function useActiveEditorGuard(id, { tripId, workspace }, guard) {
 }
 
 export function ActiveEditorGuardDialog() {
-  const [isOpen, setIsOpen] = useState(Boolean(activeEditorPromptResolve));
+  const [prompt, setPrompt] = useState(activeEditorPrompt);
 
   useEffect(() => {
-    const listener = () => setIsOpen(Boolean(activeEditorPromptResolve));
+    const listener = () => setPrompt(activeEditorPrompt);
     return subscribeToActiveEditors(listener);
   }, []);
 
@@ -639,28 +641,29 @@ export function ActiveEditorGuardDialog() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
 
-  if (!isOpen) return null;
+  if (!prompt) return null;
 
   function choose(choice) {
-    const resolve = activeEditorPromptResolve;
-    activeEditorPromptResolve = null;
+    const current = activeEditorPrompt;
+    activeEditorPrompt = null;
     notifyActiveEditorListeners();
-    resolve?.(choice);
+    current?.resolve(choice);
+    if (choice === null) current?.blockingGuard?.focusMissingExpenseTitle();
   }
 
   return (
     <div className="modal-backdrop">
       <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="active-editor-guard-title">
         <h2 id="active-editor-guard-title">您有未儲存的變更</h2>
-        <p>是否儲存後繼續？</p>
+        <p>{prompt.blockingGuard ? "請先填寫項目名稱，才能儲存此支出。" : "是否儲存後繼續？"}</p>
         <div className="form-actions">
-          <button className="primary-button compact" type="button" onClick={() => choose("save")}>
-            儲存
+          <button className="primary-button compact" type="button" onClick={() => choose(prompt.blockingGuard ? null : "save")}>
+            {prompt.blockingGuard ? "繼續編輯" : "儲存"}
           </button>
           <button className="ghost-button" type="button" onClick={() => choose("discard")}>
             不儲存
           </button>
-          <button className="ghost-button" type="button" onClick={() => choose(null)}>繼續編輯</button>
+          {!prompt.blockingGuard ? <button className="ghost-button" type="button" onClick={() => choose(null)}>繼續編輯</button> : null}
         </div>
       </div>
     </div>

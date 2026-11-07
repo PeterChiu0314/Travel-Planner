@@ -113,10 +113,89 @@ test('55000 rates refusal allows sidebar navigation and removes the unload guard
   let unload=false;page.on('dialog',async d=>{unload=true;await d.accept();});await page.reload();expect(unload).toBe(false);expect(page.qaErrors).toEqual([]);
  }finally{await page.close();f.c.dispose();await f.close();}
 });
-test('idle pricing modes work on the first click without focusing the sidebar; a peer lease still blocks changes',async({page,context})=>{
- const f=await reviewFixture(),peer=await context.newPage();try{
-  await open(page,f);await select(page);await page.getByRole('tab',{name:'編輯項目',exact:true}).click();const group=page.getByRole('group',{name:'預算計價與分攤',exact:true}),custom=group.getByRole('button',{name:'自訂分攤',exact:true});await expect(custom).toBeEnabled();expect(f.db.expenseCalls.filter(c=>c.name==='expense_group_lease'&&c.args.p_group==='budget')).toHaveLength(0);await custom.click();await expect(custom).toHaveAttribute('aria-pressed','true');await expect.poll(async()=>(await f.snapshot()).items[0].budget.pricing_mode).toBe('custom');
-  await open(peer,f,f.B);await select(peer);await peer.getByRole('tab',{name:'編輯項目',exact:true}).click();const other=peer.getByRole('group',{name:'預算計價與分攤',exact:true});await expect(other.getByRole('button',{name:'總額均分',exact:true})).toBeDisabled();await page.screenshot({path:test.info().outputPath('idle-mode-first-click.png')});expect(page.qaErrors).toEqual([]);expect(peer.qaErrors).toEqual([]);
+test('discrete mode edit expands members, recovers an unknown receipt and releases for peer payment without losing button focus',async({page,context})=>{
+ const f=await reviewFixture(),peer=await context.newPage();
+ const {promise:mutationGate,resolve:allowMutation}=Promise.withResolvers();
+ const {promise:retryGate,resolve:allowRetry}=Promise.withResolvers();
+ const request=f.db.request;
+ let attempts=0;
+ f.db.request=async req=>{
+  if(req.name==='mutate_expense_group'&&req.actor===f.A&&req.args.p_group==='budget'){
+   if(++attempts===1)await mutationGate;
+   else await retryGate;
+  }
+  return request(req);
+ };
+ try{
+  for(const [p,actor] of [[page,f.A],[peer,f.B]]){
+   await open(p,f,actor);await select(p);await p.getByRole('tab',{name:'編輯項目',exact:true}).click();
+  }
+  const group=page.getByRole('group',{name:'預算計價與分攤',exact:true});
+  const participants=group.locator('.bw-member-options');
+  const custom=group.getByRole('button',{name:'自訂分攤',exact:true});
+  const advance=peer.getByRole('group',{name:'付款方式',exact:true}).getByRole('button',{name:'代付',exact:true});
+  await expect(participants).toHaveJSProperty('open',false);
+  await custom.focus();
+  expect(f.db.expenseCalls.filter(c=>c.name==='expense_group_lease'&&c.args.p_group==='budget')).toHaveLength(0);
+  await custom.press('Space');
+  await expect(custom).toHaveAttribute('aria-pressed','true');
+  await expect(participants).toHaveJSProperty('open',true);
+  await expect.poll(()=>attempts).toBe(1);
+  await expect(custom).toBeFocused();
+  await expect(advance).toBeDisabled();
+  expect((await f.snapshot()).items[0].budget.pricing_mode).toBe('split_total');
+  f.db.dropAck=true;
+  allowMutation();
+  await expect(page.getByRole('status',{name:'儲存狀態'})).toHaveText('儲存結果待確認');
+  await expect.poll(async()=>(await f.snapshot()).items[0].budget.pricing_mode).toBe('custom');
+  await expect(advance).toBeDisabled();
+  await expect(custom).toBeFocused();
+  allowRetry();
+  await expect(advance).toBeEnabled({timeout:12000});
+  await expect(custom).toBeFocused();
+  const writes=f.db.expenseCalls.filter(c=>c.name==='mutate_expense_group'&&c.args.p_group==='budget');
+  expect(writes).toHaveLength(2);
+  expect(writes[1].args).toEqual(writes[0].args);
+  await advance.click();
+  await peer.getByRole('textbox',{name:'搜尋項目',exact:true}).click();
+  await expect.poll(async()=>(await f.snapshot()).items[0].payment_mode).toBe('advance');
+  expect(page.qaErrors).toEqual([]);expect(peer.qaErrors).toEqual([]);
+ }finally{allowMutation();allowRetry();await page.close();await peer.close();f.c.dispose();await f.close();}
+});
+
+test('switching back to either ordinary mode collapses members and continued input keeps the same lease',async({page,context})=>{
+ const f=await reviewFixture(),peer=await context.newPage();
+ try{
+  for(const [p,actor] of [[page,f.A],[peer,f.B]]){
+   await open(p,f,actor);await select(p);await p.getByRole('tab',{name:'編輯項目',exact:true}).click();
+  }
+  const group=page.getByRole('group',{name:'預算計價與分攤',exact:true});
+  const participants=group.locator('.bw-member-options');
+  const custom=group.getByRole('button',{name:'自訂分攤',exact:true});
+  const advance=peer.getByRole('group',{name:'付款方式',exact:true}).getByRole('button',{name:'代付',exact:true});
+  for(const label of ['總額均分','每人計價']){
+   await custom.click();
+   await expect(participants).toHaveJSProperty('open',true);
+   await group.getByRole('button',{name:label,exact:true}).click();
+   await expect(participants).toHaveJSProperty('open',false);
+   await participants.locator('summary').click();
+   await expect(participants).toHaveJSProperty('open',true);
+   await participants.locator('summary').click();
+   await expect(participants).toHaveJSProperty('open',false);
+  }
+  const amount=group.getByRole('spinbutton',{name:'每人單價',exact:true});
+  await amount.fill('1234');
+  await expect.poll(async()=>(await f.snapshot()).items[0].budget.amount).toBe(1234);
+  await expect(amount).toBeEditable();
+  await expect(advance).toBeDisabled();
+  const writes=f.db.expenseCalls.filter(c=>c.name==='mutate_expense_group'&&c.args.p_group==='budget');
+  const leases=f.db.expenseCalls.filter(c=>c.name==='expense_group_lease'&&c.args.p_group==='budget');
+  expect(new Set([...writes,...leases].map(c=>c.args.p_token)).size).toBe(1);
+  expect(leases.some(c=>c.args.p_action==='release')).toBe(false);
+  await amount.blur();
+  await expect(advance).toBeEnabled();
+  expect((await f.snapshot()).participants.filter(p=>p.budget_selected).map(p=>p.user_id)).toEqual([f.A]);
+  expect(page.qaErrors).toEqual([]);expect(peer.qaErrors).toEqual([]);
  }finally{await page.close();await peer.close();f.c.dispose();await f.close();}
 });
 test('one to four selectors update an open avatar cluster; newest selection and editor priority choose one color',async({page})=>{

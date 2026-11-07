@@ -133,6 +133,7 @@
 .bw-modes button { border: 1px solid var(--line); background: transparent; padding: 7px 6px; font-size: 11px; flex: 1; white-space: nowrap; cursor: pointer; }
 .bw-modes button[aria-pressed=true] { background: #e7eee6; border-color: #8da495; color: var(--color-primary); font-weight: 600; }
 .bw-modes button[aria-pressed=false] { color: var(--ink); }
+.bw-modes button[aria-disabled=true] { cursor: default; }
 .bw-participants legend { display: flex; width: 100%; justify-content: space-between; }
 .bw-editor .bw-participants label { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-height: 30px; padding: 3px 0; color: var(--ink); }
 .bw-participants input[type=checkbox], .bw-editor input[type=checkbox] { flex: 0 0 14px; width: 14px; height: 14px; min-height: 14px; padding: 0; accent-color: var(--color-primary); margin: 0; }

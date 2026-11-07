@@ -2,6 +2,10 @@
 
 Updated 2026-11-07. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## Latest 2026-11-07 — Issue #22 Budget QA fixes
+
+[Issue #22](https://github.com/PeterChiu0314/Travel-Planner/issues/22) is implemented on `codex/budget-collaboration-redesign`. Leaving custom split collapses the participant list, and an unnamed expense draft explains the required title and focuses it on Continue. A pricing button alone uses the existing autosave and releases the lease after confirmation. Continued input keeps the lease, and an unknown receipt keeps the existing request and cross-group protection. Local Demo Browser Use, 26 Chromium cases, and 28 logic and database tests passed. Use the branch commit's Vercel deployment check for Preview status. Live Staging two-account acceptance remains pending.
+
 ## Latest 2026-11-07 — Issue #24 targeted Preview regression fixes
 
 [Fixed baselines, A/B/C evidence and verification](docs/2026-11-07-issue24-preview-regression.md). Expense read errors have a scoped retry, core refresh preserves a valid read-only expense cache and its TTL, and trip creation starts without waiting for rates and accepts one submit at a time. Staging Preview from the original feature branch is the delivery target. Issue #24 remains available for user acceptance of the failure flows.
