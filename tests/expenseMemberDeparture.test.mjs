@@ -8,6 +8,79 @@ const model = (snapshot,id) => expenseModels(snapshot).find(item=>item.id===id);
 const budget = (snapshot,id) => model(snapshot,id).budget;
 const people = (snapshot,id) => snapshot.participants.filter(person=>person.expense_id===id);
 
+test('approval atomically expands unpaid splits while preserving exclusions, history and payer identities',async()=>{
+  const f=await departureFixture({pending:true});
+  try {
+    const {A,B,C,D}=f;
+    const former=await f.addMember('Former');
+    const split=await f.seed('Split',{participantIds:[A,B]});
+    const perPerson=await f.seed('Per person',{participantIds:[A,B],pricing_mode:'per_person',unit_amount:300,currency:'JPY',exchange_rate:.2},{payer:A});
+    const custom=await f.seed('Custom',{participantIds:[A,B],pricing_mode:'custom',shares:{[A]:500,[B]:400}});
+    const paid=await f.seed('Paid',{participantIds:[A,former]},{paid:true,payer:former});
+    const pending=await f.seed('Needs participants',{participantIds:[former]});
+    const fractional=await f.seed('Fractional split',{participantIds:[A,B],amount:9.01},{wholeOriginal:false});
+    await f.remove([former]);
+    const applicant=await f.addMember('Pending only','pending');
+    const before=await f.snapshot();
+    assert.equal(before.members.find(member=>member.user_id===C).status,'pending');
+    assert.equal(before.participants.some(row=>row.user_id===applicant),false);
+    assert.deepEqual(budget(before,split).shares,{[A]:450,[B]:450});
+    assert.equal((await f.approve(C,B)).data.length,0);
+
+    const lease=await f.lease(split,'budget',B);
+    assert.equal(lease.result.data?.granted,true);
+    assert.equal((await f.approve(C)).error?.code,'55P03');
+    await lease.release();
+    // Corrupt the last item in the trigger's order so earlier writes must roll back.
+    const corruptId=[split,perPerson,custom,fractional].sort().at(-1);
+    await f.sql.exec('reset role');
+    await f.sql.query('update expense_stage_b.expense_participants set budget_share_amount=budget_share_amount+1 where expense_id=$1 and user_id=$2',[corruptId,B]);
+    const corrupt=await f.snapshot();
+    assert.equal((await f.approve(C)).error?.code,'22023');
+    const rolledBack=await f.snapshot();
+    assert.deepEqual(rolledBack.members,corrupt.members);
+    assert.deepEqual(rolledBack.items,corrupt.items);
+    assert.deepEqual(rolledBack.participants,corrupt.participants);
+    assert.deepEqual(rolledBack.groups,corrupt.groups);
+    await f.sql.exec('reset role');
+    await f.sql.query('update expense_stage_b.expense_participants set budget_share_amount=budget_share_amount-1 where expense_id=$1 and user_id=$2',[corruptId,B]);
+
+    assert.equal((await f.approve(C)).data.length,1);
+    const after=await f.snapshot(),first=[A,B,C].sort()[0];
+    assert.deepEqual(budget(after,split).shares,{[A]:300,[B]:300,[C]:300});
+    assert.equal(budget(after,split).amount,900);
+    assert.deepEqual(budget(after,perPerson).shares,{[A]:300,[B]:300,[C]:300});
+    assert.equal(budget(after,perPerson).unit_amount,300);
+    assert.equal(budget(after,perPerson).amount,900);
+    assert.equal(budget(after,perPerson).twd_amount,180);
+    assert.equal(model(after,perPerson).payer_id,A);
+    assert.deepEqual(model(after,perPerson).payer_allocations,[{user_id:A,amount:900,order:0}]);
+    assert.deepEqual(budget(after,custom).shares,{[A]:500,[B]:400,[C]:0});
+    assert.equal(budget(after,custom).amount,900);
+    assert.deepEqual(budget(after,fractional).shares,{[A]:3,[B]:3,[C]:3,[first]:3.01});
+    for(const id of [split,perPerson,custom,fractional]) {
+      assert.equal(people(after,id).find(p=>p.user_id===D).budget_selected,false);
+      assert.equal(model(after,id).revisions.budget,model(before,id).revisions.budget+1);
+    }
+    assert.deepEqual(model(after,paid),model(before,paid));
+    assert.deepEqual(people(after,paid),people(before,paid));
+    assert.deepEqual(after.departedMembers,before.departedMembers);
+    assert.deepEqual(model(after,pending),model(before,pending));
+    assert.deepEqual(people(after,pending),people(before,pending));
+    assert.equal((await f.approve(C)).error,null);
+    const replayed=await f.snapshot();
+    assert.deepEqual(replayed.items,after.items);
+    assert.deepEqual(replayed.participants,after.participants);
+    assert.deepEqual(replayed.groups,after.groups);
+
+    const newcomer=await f.addMember('Direct approval');
+    const direct=await f.snapshot();
+    assert.deepEqual(budget(direct,split).shares,{[A]:225,[B]:225,[C]:225,[newcomer]:225});
+    assert.equal(budget(direct,perPerson).amount,1200);
+    assert.equal(budget(direct,custom).shares[newcomer],0);
+  }finally{await f.close();}
+});
+
 test('removal reprices only selected unpaid participants, preserves paid history and repairs settlement',async()=>{
   const f=await departureFixture();
   try {

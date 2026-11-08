@@ -2,13 +2,20 @@ import { randomUUID as uuid } from 'node:crypto';
 import { expenseBackend } from './expenseBackend.js';
 import { expenseRows, newExpense, priceExpense } from '../../src/lib/expenseItems.js';
 
-export async function departureFixture() {
+export async function departureFixture({pending=false}={}) {
   const f = await expenseBackend({ timeline: true });
-  const C = uuid(), D = uuid();
-  for (const [id, name] of [[C, 'Charlie'], [D, 'Dora']]) {
-    await f.sql.query('insert into auth.users(id) values($1)', [id]);
-    await f.sql.query("insert into public.trip_members(trip_id,user_id,display_name,status,role) values($1,$2,$3,'approved','editor')", [f.trip,id,name]);
-    f.db.members.push({ trip_id:f.trip, user_id:id, display_name:name, status:'approved', role:'editor' });
+  async function addMember(name,status='approved') {
+    await f.sql.exec('reset role');
+    const userId=uuid();
+    await f.sql.query('insert into auth.users(id) values($1)', [userId]);
+    const {rows}=await f.sql.query("insert into public.trip_members(trip_id,user_id,display_name,status,role) values($1,$2,$3,$4,'editor') returning *", [f.trip,userId,name,status]);
+    f.db.members.push(rows[0]);
+    return userId;
+  }
+  const C=await addMember('Charlie',pending?'pending':'approved'),D=await addMember('Dora');
+  function approve(userId,actor=f.A) {
+    const member=f.db.members.find(member=>member.user_id===userId);
+    return f.db.request({op:'read',table:'trip_members',patch:{status:'approved'},filters:[['id',member.id],['trip_id',f.trip]],actor});
   }
 
   async function seed(title, form, { paid=false, payer, wholeOriginal=true, retained=false }={}) {
@@ -49,5 +56,5 @@ export async function departureFixture() {
       release:()=>rpc('expense_group_lease',{...params,p_epoch:result.data?.epoch,p_action:'release'},actor),
       mutate:(value,request=uuid())=>rpc('mutate_expense_group',{...params,p_epoch:result.data?.epoch,p_value:value,p_request_id:request},actor) };
   }
-  return {...f,C,D,seed,remove,rpc,lease};
+  return {...f,C,D,seed,remove,approve,addMember,rpc,lease};
 }

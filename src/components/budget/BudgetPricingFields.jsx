@@ -14,9 +14,9 @@ export default function BudgetPricingFields({ form, pricing, members, locked, hi
     if (!current) return;
     setForm(pricingParticipantsDraft(current, current.participantIds.includes(member.user_id) ? current.participantIds.filter(id => id !== member.user_id) : [...current.participantIds, member.user_id]));
   }
-  const amountInput = { min: 0, step: planningIntegers ? 1 : 0.01, type: "number", onBlur: finishAmountInput };
+  const amountInput = { min: 0, step: planningIntegers ? 1 : 0.01, type: "number", autoComplete: "off", onBlur: finishAmountInput };
   function updateAmount(key, value, raw = value) {
-    update(key, value, { deferRounding: planningIntegers && raw.includes(".") });
+    update(key, value, { deferAmountInput: (planningIntegers && raw.includes(".")) || (key === "shares" && raw === "") });
   }
   const modes = showModes ? <fieldset disabled={modeLocked} className="bw-modes" aria-label="計價方式">{showModeLegend?<legend>計價方式</legend>:null}{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} aria-disabled={modeBusy || undefined} onClick={() => { if (!modeBusy) changeMode(key); }}>{label}</button>)}</fieldset> : null;
   return <>
@@ -28,7 +28,7 @@ export default function BudgetPricingFields({ form, pricing, members, locked, hi
         onValueChange={value => { if (!locked) setForm({ ...form, currency: value, exchange_rate: value === "TWD" ? 1 : tripRates?.rates?.[value] ?? "" }); }}
         options={[...new Set(["TWD", "JPY", "USD", "EUR", "KRW", "HKD", form.currency])].filter(Boolean).map(value => ({ value, label: value }))} /></div></div>
     {headingAfterAmount && <><span className="bw-pricing-heading">{headingAfterAmount}</span>{modes}</>}
-    {form.currency !== "TWD" ? editRate ? <label>參考匯率<input name="exchange_rate" type="number" min="0.000001" step="0.000001" readOnly={locked} value={form.exchange_rate} onChange={e => update("exchange_rate", e.target.value)} /></label> : <div className="bw-trip-rate"><span>{historical ? "歷史匯率" : "旅程估算匯率"}</span><b>1 {form.currency} = {form.exchange_rate || "—"} TWD</b></div> : null}
+    {form.currency !== "TWD" ? editRate ? <label>參考匯率<input name="exchange_rate" type="number" autoComplete="off" min="0.000001" step="0.000001" readOnly={locked} value={form.exchange_rate} onChange={e => update("exchange_rate", e.target.value)} /></label> : <div className="bw-trip-rate"><span>{historical ? "歷史匯率" : "旅程估算匯率"}</span><b>1 {form.currency} = {form.exchange_rate || "—"} TWD</b></div> : null}
     <details className="bw-member-options" open={membersOpen} onToggle={event => setMembersOpen(event.currentTarget.open)}><summary>參與成員 · {form.participantIds.length} 人</summary>
       <fieldset className="bw-participants"><legend>各人負擔 · {planningIntegers || form.pricing_mode === "custom" ? form.currency : "TWD"}</legend>{options.map(member => <label key={member.user_id}>
         <input disabled={(!requestParticipantForm && locked) || member.unavailable && !form.participantIds.includes(member.user_id)} type="checkbox" checked={form.participantIds.includes(member.user_id)} onChange={() => void toggleParticipant(member)} />{memberLabel(member)}

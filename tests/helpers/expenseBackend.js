@@ -59,8 +59,24 @@ export async function expenseBackend({timeline=false,legacyBudget=false,wholePla
   db.rows.luggage_items=(await sql.query('select to_jsonb(item) as value from public.luggage_items item')).rows.map(row=>row.value);
   db.rows.shared_luggage_items=(await sql.query('select to_jsonb(item) as value from public.shared_luggage_items item')).rows.map(row=>row.value);
  };
- db.request=async req=>{if(req.op!=='rpc'||!signatures[req.name])return original(req);if(db.offline)return{error:{message:'offline'}};const run=async()=>{db.expenseCalls.push(structuredClone(req));try{
-  await sql.exec('reset role');await sql.query('select set_config($1,$2,false)',[timeline?'request.jwt.claim.sub':'test.actor',req.actor]);await sql.exec('set role authenticated');const keys=signatures[req.name];const args=keys.map(k=>req.args[k]??(k==='p_seq'?0:k==='p_dirty'?false:null));
+ db.request=async req=>{
+  const memberWrite=timeline&&req.table==='trip_members'&&(req.deleting||req.patch?.status==='approved');
+  if(!memberWrite&&(req.op!=='rpc'||!signatures[req.name]))return original(req);
+  if(db.offline)return{error:{message:'offline'}};const run=async()=>{db.expenseCalls.push(structuredClone(req));try{
+  await sql.exec('reset role');await sql.query('select set_config($1,$2,false)',[timeline?'request.jwt.claim.sub':'test.actor',req.actor]);await sql.exec('set role authenticated');
+  if(memberWrite){
+   const {id,trip_id}=Object.fromEntries(req.filters);
+   const command=req.deleting?'delete from public.trip_members':"update public.trip_members set status='approved'";
+   const {rows}=await sql.query(`${command} where id=$1 and trip_id=$2 returning *`,[id,trip_id]);
+   for(const row of rows){
+    const index=db.members.findIndex(member=>member.user_id===row.user_id&&member.trip_id===row.trip_id);
+    db.members.splice(index,1,...(req.deleting?[]:[row]));
+    await db.emit('trip_members',{eventType:req.deleting?'DELETE':'UPDATE',new:req.deleting?{}:row,old:req.deleting?row:{}});
+    await db.emit('expense_signals',{eventType:'UPDATE',new:{trip_id}});
+   }
+   return {data:rows,error:null};
+  }
+  const keys=signatures[req.name];const args=keys.map(k=>req.args[k]??(k==='p_seq'?0:k==='p_dirty'?false:null));
   const r=(await sql.query(`select public.${req.name}(${keys.map((_,i)=>'$'+(i+1)).join(',')}) d`,args)).rows[0].d;
   if(req.name.startsWith('apply_timeline_schedule_operation')||req.name==='apply_trip_date_change'||req.name==='delete_itinerary_item_budget_safe')await syncItinerary();
   else if(req.name==='delete_trip_with_expenses'){

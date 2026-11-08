@@ -35,19 +35,6 @@ export function decideExpenseParticipants(item,scope,selected,members,baseRevisi
   if(!item[scope])next.revisions[scope]++;return next;
 }
 
-// Local proposal only, never a write. Paid decisions/history are never auto-expanded.
-export function proposeExpenseMembers(item,scope,members) {
-  checkScope(scope);const next=copy(item),decisions=next.decisions[scope];
-  if(!decisions||scope==='paid'||item.payment_state==='paid'||item.budget?.requires_participants)return next;
-  const newcomers=members.filter(m=>m.status==='approved'&&!Object.hasOwn(decisions,m.user_id));
-  for(const m of newcomers){
-    decisions[m.user_id]=true;
-    if(next[scope]){next[scope].participantIds.push(m.user_id);if(next[scope].pricing_mode==='custom')next[scope].shares[m.user_id]=0;}
-  }
-  if(newcomers.length&&next[scope])next[scope]={...next[scope],...calculatePricing(next[scope],{wholeOriginal:next[scope].original_scale===0})};
-  return next;
-}
-
 export function confirmExpensePayment(item,{paidAt,payerId,basePayment,baseBudget,basePaid}) {
   if(basePayment!==item.revisions.payment||baseBudget!==item.revisions.budget||basePaid!==item.revisions.paid)
     throw Object.assign(new Error('Version conflict'),{code:'PT409'});

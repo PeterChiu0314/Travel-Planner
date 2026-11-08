@@ -2,11 +2,13 @@
 
 Updated 2026-11-08. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
-## 2026-11-08 — Issue #26 member departure
+## 2026-11-08 — Issue #26 membership changes
 
-[Issue #26](https://github.com/PeterChiu0314/Travel-Planner/issues/26) is implemented locally on `codex/budget-collaboration-redesign`. The [forward migration](supabase/migrations/20261108170000_issue26_expense_member_departure.sql) applies member removal and unpaid expense changes in one transaction with the existing expense leases and luggage restriction. Paid records retain historical participants and payers. Settlement uses historical names saved at departure and numbered labels for older records without a name snapshot. Older stale allocations can be corrected by explicitly saving the affected group. The migration does not backfill expenses.
+[Issue #26](https://github.com/PeterChiu0314/Travel-Planner/issues/26) is implemented on `codex/budget-collaboration-redesign`. The [departure migration](supabase/migrations/20261108170000_issue26_expense_member_departure.sql) applies member removal and unpaid expense changes in one transaction with the existing expense leases and luggage restriction. Paid records retain historical participants and payers. Settlement uses historical names saved at departure and numbered labels for older records without a name snapshot. Older stale allocations can be corrected by explicitly saving the affected group. The migration does not backfill expenses.
 
-Local validation passed 55 Node/SQL cases, 11 Chromium cases including the isolated two-account refresh and settlement flow, and build/diff checks. The Staging rollback trial and install preserved all 11 protected relation fingerprints, including 57 expense rows. Independent readback confirmed ledger 80/head `20261108170000`, exact migration source, four enabled membership triggers, and 42 active expenses. Live two-account acceptance is pending.
+The departure migration reached Staging ledger 80/head `20261108170000`; the rollback trial and install preserved 11 relation fingerprints. The reported 550/350 result matches the revision 5 receipt and revision 6 snapshot by `user_id`: the removed member held 300, and the remaining 400 and 200 each gained 150.
+
+The [approval migration](supabase/migrations/20261108190000_issue26_expense_member_approval.sql) adds only the newly approved member to eligible unpaid budgets in the membership transaction and invalidates the Budget snapshot. The editor reads saved participant decisions. Local validation passed 40 Node/SQL cases and 13 Chromium cases, including owner approval and removal through the member dialog and two-account refresh. Build and diff checks passed. The Staging rollback trial and install matched 11 relation fingerprints with 63 expense rows. Independent readback confirmed ledger 81/head `20261108190000`, exact source, four enabled approval triggers including both lock triggers, and 45 active expenses. Live two-account approval acceptance remains pending.
 
 ## Latest 2026-11-07 — Issue #25 planning budget precision
 

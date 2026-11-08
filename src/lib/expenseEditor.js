@@ -1,9 +1,10 @@
 import {withBudgetAuthorityTimeout} from './budgetMetadataService.js';
 import {expenseModels,validExpenseSnapshot} from './expenseSnapshot.js';
 import {calculatePricing,calculateActualPricing} from './budgetFinance.js';
-import {proposeExpenseMembers,expenseRows,newExpense} from './expenseItems.js';
+import {expenseRows,newExpense} from './expenseItems.js';
 import {expenseReleaseReceipt,expenseReleaseSettled} from './expenseLeaseReceipt.js';
 import {payerForm,reconcilePayers,validPayers} from './expensePayers.js';
+import {withoutBlankCustomShares} from './budgetPricingGroups.js';
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const compatiblePayer=(value,item)=>typeof value==='string'?payerForm({...item,payment_mode:value?'advance':'self',payer_id:value||null,payer_allocations:[],payer_sequence:0}):value;
 const coupledExpenseGroups=['budget','paid','payer','payment'];
@@ -43,13 +44,6 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  const leaseDeadline=(expires,request,started)=>Math.min(expires-serverOffset,started+(request.p_dirty?60000:20000));
  const owns=g=>!peerOwner(g.id,g.group)&&active&&verified&&g.token&&g.epoch!==null&&g.state==='held'&&!g.releasing&&g.expires>Date.now()&&!g.conflict;
  const dirty=g=>!same(g.value,g.canonical);
- const display=g=>{
-  if(g.local)return g.value;
-  if(g.group!=='budget'||dirty(g)||g.request)return g.value;
-  const item=expenseModels(graph).find(i=>i.id===g.id);if(!item)return g.value;
-  const proposed=expenseRows(proposeExpenseMembers(item,'budget',graph.members));
-  return expenseFieldValue({...graph,items:graph.items.map(i=>i.id===g.id?proposed.item:i),participants:[...graph.participants.filter(p=>p.expense_id!==g.id),...proposed.participants]},g.id,g.group);
- };
  const storageKey=g=>`travel-planner-expense:${actor}:${trip}:${g.id}:${g.group}`;
  function persist(g){try{if(!dirty(g)&&!g.request)storage?.removeItem(storageKey(g));else storage?.setItem(storageKey(g),JSON.stringify({value:g.value,base:g.base,itineraryVersions:g.itineraryVersions,request:g.request?{...g.request,p_token:null,p_epoch:null}:null}));}catch{/* Memory draft remains. */}}
  const remote=g=>graph?.groups.find(s=>s.id===g.id&&s.group===g.group);
@@ -128,7 +122,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
  }
  function scheduleSave(g, delay=1000){clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),delay);}
- function input(g, value, { immediate = false, deferRounding = false } = {}) {
+ function input(g, value, { immediate = false, deferAmountInput = false } = {}) {
   if (g.group === 'payer' && typeof value === 'string') {
    const item = expenseModels(graph).find(i => i.id === g.id);
    value = { mode: value ? 'advance' : 'self', rows: value ? [{
@@ -136,7 +130,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    }] : [], sequence: 0 };
   }
   if (g.local ? !active : g.conflict || g.releasing || !owns(g)) return;
-  g.deferRounding=deferRounding;
+  g.deferAmountInput=deferAmountInput;
   // The displayed slot versions remain attached to this draft and its exact request.
   if (g.group === 'links') {
    g.itineraryVersions = Object.fromEntries((graph?.itineraryItems || [])
@@ -180,8 +174,13 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    if(!g.request){if(!owns(g))return false;
     if(g.group==='payer'&&!validPayers(g.value,graph.members))return false;
     if(['budget','paid'].includes(g.group)){
-     if(!flush&&(g.deferRounding||(g.value.pricing_mode==='custom'?g.value.participantIds.some(id=>String(g.value.shares[id]??'')===''):String(g.value.pricing_mode==='per_person'?g.value.unit_amount??'':g.value.amount??'')==='')))return false;
-     try{if(g.group==='paid')calculateActualPricing(g.value);else calculatePricing(g.value,{wholeOriginal:planning()});}catch(error){report(g,error);return false;}
+     const form=withoutBlankCustomShares(g.value);
+     if(!form.participantIds.length&&g.value.participantIds.length)return false;
+     const amount=form.pricing_mode==='per_person'?form.unit_amount:form.amount;
+     if(!flush&&(g.deferAmountInput||form.pricing_mode!=='custom'&&String(amount??'').trim()===''))return false;
+     try{if(g.group==='paid')calculateActualPricing(form);else calculatePricing(form,{wholeOriginal:planning()});}catch(error){report(g,error);return false;}
+     // Store the submitted form with the exact request so recovery can retire it after acknowledgement.
+     g.value=form;
     }
     g.request={p_id:g.id,p_group:g.group,p_session_id:sessionId,p_token:g.token,p_epoch:g.epoch,p_base:g.base,p_value:body(g),p_request_id:makeId()};g.submitted=g.revision;
    }
@@ -217,7 +216,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   })().finally(()=>{createWork=null;emit();});return createWork;
  }
  async function finish(){if(localDraft&&!draftDirty()&&!pendingCreate){clearDraft();emit();}if((pendingCreate||localDraft)&&!await create())return false;for(const g of fields.values()){g.resumeFocus=false;if(g.saveWork)await g.saveWork;if(dirty(g)||g.request){if(!g.request&&!owns(g)&&!await focus(g))return false;if(!await save(g))return false;}if(!await release(g))return false;}return true;}
- async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.deferRounding=false;g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
+ async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.deferAmountInput=false;g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
  const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,focus,input,save,release,finish,discard,
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
   guardState(){
@@ -240,13 +239,13 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   draftItem:()=>localDraft?{...newExpense({id:localDraft.id,tripId:trip,members:graph?.members||[]}),...Object.fromEntries(Object.entries(localDraft.values).filter(([k])=>['title','note','category'].includes(k)))}:null,
   begin(){if(localDraft)return localDraft.id;localDraft={id:makeId(),trip,values:{}};emit();return localDraft.id;},
   peerOwner,
-  view:g=>({value:display(g),dirty:dirty(g),editable:g.local?active:Boolean(owns(g)),remote:g.local?null:remote(g),busy:g.saving||g.state==='pending',conflict:g.conflict}),
+  view:g=>({value:g.value,dirty:dirty(g),editable:g.local?active:Boolean(owns(g)),remote:g.local?null:remote(g),busy:g.saving||g.state==='pending',conflict:g.conflict}),
   finishAmountInput(g){
-   if(!g.deferRounding)return;
-   g.deferRounding=false;
+   if(!g.deferAmountInput)return;
+   g.deferAmountInput=false;
    if(!g.local&&dirty(g))scheduleSave(g);
   },
-  blur(g){g.focused=false;g.resumeFocus=false;g.deferRounding=false;if(g.local){if(String(localDraft?.values.title||'').trim())void create();return;}void(async()=>{if(g.acquiring)await g.acquiring;if(dirty(g)||g.request)await save(g);else await release(g);})();},
+  blur(g){g.focused=false;g.resumeFocus=false;g.deferAmountInput=false;if(g.local){if(String(localDraft?.values.title||'').trim())void create();return;}void(async()=>{if(g.acquiring)await g.acquiring;if(dirty(g)||g.request)await save(g);else await release(g);})();},
   // An authoritative Realtime/mutation snapshot satisfies only the fallback read;
   // pending writes, create recovery and lease renewal still run on their existing cadence.
   async tick(){if(!current())return;if(!active){for(const g of fields.values())if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);return;}await Promise.all([...fields.values()].filter(g=>!g.local).map(renew));if(!current()||!active||Date.now()-lastRecovery<5000)return;lastRecovery=Date.now();if((pendingCreate||localDraft)&&!createWork)await create();if(Date.now()-lastSnapshot>=5000)await refresh();for(const g of fields.values()){

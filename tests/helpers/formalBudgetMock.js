@@ -174,13 +174,13 @@ export async function boot(page, db, actor = "A", { waitForBudget = true } = {})
     mock.client = {
       auth: { getSession: async () => ({ data: { session: session() } }), onAuthStateChange(callback) { callbacks.push(callback); return { data: { subscription: { unsubscribe() {} } } }; }, signOut: async () => { callbacks.forEach(c => c("SIGNED_OUT", null)); return {}; } },
       from(table) {
-        const filters = []; let columns = "*", patch, single = false;
+        const filters = []; let columns = "*", patch, single = false, deleting = false;
         return {
           select(value = "*") { columns = value; return this; }, eq(key, value) { filters.push([key, value]); return this; }, in() { return this; }, order() { return this; },
-          update(value) { patch = value; return this; }, single() { single = true; return this; }, maybeSingle() { single = true; return this; },
+          update(value) { patch = value; return this; }, delete() { deleting = true; return this; }, single() { single = true; return this; }, maybeSingle() { single = true; return this; },
           then(resolve, reject) {
             mock.inFlight++;
-            return window.budgetBackend({ op: "read", table, columns, filters, patch, single, actor }).finally(() => { mock.inFlight--; }).then(resolve, reject);
+            return window.budgetBackend({ op: "read", table, columns, filters, patch, single, actor, deleting }).finally(() => { mock.inFlight--; }).then(resolve, reject);
           },
         };
       },

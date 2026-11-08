@@ -102,7 +102,7 @@ export function ItineraryPicker({ items, selectedIds, category, onChange, readOn
       return <li key={id}><span>{item ? `Day ${Number(item.day_index) + 1} · ${item.title}` : "已移除的行程"}</span><button type="button" className="bw-icon" disabled={readOnly} aria-label={`取消關聯 ${item?.title || "已移除的行程"}`} onClick={() => toggle(id)}><X size={13} /></button></li>;
     })}</ul> : null}
     <div className="bw-link-options" id="budget-link-options" hidden={!open}>
-      <div className="bw-link-filters"><input aria-label="搜尋關聯行程" placeholder="搜尋行程" value={query} onChange={(event) => setQuery(event.target.value)} /><MenuSelect label="關聯行程日期" value={day} onValueChange={setDay} options={[{value:"",label:"全部 Day"},...days.map(value=>({value:String(value),label:`Day ${value+1}`}))]} /></div>
+      <div className="bw-link-filters"><input aria-label="搜尋關聯行程" placeholder="搜尋行程" autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} /><MenuSelect label="關聯行程日期" value={day} onValueChange={setDay} options={[{value:"",label:"全部 Day"},...days.map(value=>({value:String(value),label:`Day ${value+1}`}))]} /></div>
       <div className="bw-link-results">{suggested.length ? <fieldset aria-label="建議行程" className="bw-link-suggestions"><legend>建議</legend>{suggested.map(option)}</fieldset> : null}{days.filter((value) => matches.some((item) => Number(item.day_index) === value)).map((value) => <fieldset key={value} aria-label={`Day ${value + 1} 行程`}><legend>Day {value + 1}</legend>{matches.filter((item) => Number(item.day_index) === value).map(option)}</fieldset>)}{!matches.length ? <p className="bw-muted">沒有符合的行程</p> : null}</div>
     </div>
   </section>;

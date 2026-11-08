@@ -32,6 +32,13 @@ export function pricingParticipantsDraft(value, participantIds) {
     ? { ...value.shares, ...Object.fromEntries(participantIds.filter(id => !Object.hasOwn(value.shares, id)).map(id => [id, 0])) } : value.shares };
 }
 
+export function withoutBlankCustomShares(form) {
+  if (form.pricing_mode !== 'custom') return form;
+  const participantIds = form.participantIds.filter(id => String(form.shares[id] ?? '').trim() !== '');
+  if (participantIds.length === form.participantIds.length) return form;
+  return { ...form, participantIds, shares: Object.fromEntries(participantIds.map(id => [id, form.shares[id]])) };
+}
+
 export const incompletePricingInput = value => !value.participantIds.length || (value.pricing_mode === 'custom'
   ? value.participantIds.some(id => String(value.shares[id] ?? '').trim() === '')
   : String((value.pricing_mode === 'per_person' ? value.unit_amount : value.amount) ?? '').trim() === '');

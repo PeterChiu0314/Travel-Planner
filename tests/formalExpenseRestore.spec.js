@@ -91,6 +91,58 @@ test('Demo shows the current actor’s custom share and opens their statistics b
  await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
  await expect(page.locator('.bw-editor .bw-calculation > div:first-child')).toHaveText('個人NT$ 440');
 });
+test('custom split saves the one filled share, keeps explicit zero, and deselects cleared shares',async({page})=>{
+ const f=await fixture();
+ try{
+  await open(page,f);
+  const {id}=f.models[2];
+  const members=async()=>(await f.snapshot()).participants.filter(p=>p.expense_id===id&&p.budget_selected)
+   .map(p=>[p.user_id,p.budget_share_amount]);
+  const item=table(page).getByRole('button',{name:'待填車票',exact:true});
+  const edit=page.getByRole('tab',{name:'編輯項目',exact:true});
+  await item.click();
+  await edit.click();
+  const group=page.getByRole('group',{name:'預算計價與分攤',exact:true});
+  const b=group.getByRole('spinbutton',{name:'B 分攤金額',exact:true});
+  const c=group.getByRole('spinbutton',{name:'C 分攤金額',exact:true});
+  const cCheckbox=group.getByRole('checkbox',{name:'C',exact:true});
+  await expect(group.getByRole('spinbutton',{name:'總額',exact:true})).toHaveAttribute('autocomplete','off');
+  await group.getByRole('button',{name:'自訂分攤',exact:true}).click();
+  await expect(group.getByRole('checkbox',{checked:true})).toHaveCount(3);
+  await b.focus();
+  await expect(b).toBeEditable();
+  await b.blur();
+  await expect(page.getByText('成員金額請輸入非負數，最多 2 位小數。')).toHaveCount(0);
+  expect((await f.snapshot()).items.find(row=>row.id===id).budget).toBeNull();
+
+  await b.focus();
+  await b.fill('500');
+  await expect(group.getByRole('spinbutton',{name:'總額',exact:true})).toHaveValue('500');
+  await expect.poll(members).toEqual([[f.B,500]]);
+  await expect(group.getByRole('checkbox',{checked:true})).toHaveCount(1);
+  await expect(b).toBeFocused();
+  await expect(b).toHaveAttribute('autocomplete','off');
+
+  await cCheckbox.check();
+  await expect(c).toHaveValue('0');
+  await expect.poll(async()=>Object.fromEntries(await members())).toEqual({[f.B]:500,[f.C]:0});
+  await c.focus();
+  await expect(c).toBeEditable();
+  await c.fill('');
+  await expect(c).toBeFocused();
+  await c.blur();
+  await expect.poll(members).toEqual([[f.B,500]]);
+  await expect(cCheckbox).not.toBeChecked();
+  await expect(page.getByText('成員金額請輸入非負數，最多 2 位小數。')).toHaveCount(0);
+
+  await page.reload();
+  await item.click();
+  await edit.click();
+  await expect(group.getByRole('spinbutton',{name:'總額',exact:true})).toHaveValue('500');
+  await expect(group.getByText('參與成員 · 1 人')).toBeVisible();
+  expect(page.qaErrors).toEqual([]);
+ }finally{await page.close();await f.close();}
+});
 test('payment filter, search, category folds and explicit detail/edit tabs preserve original interaction',async({page})=>{
  const f=await fixture();try{await open(page,f);
   await page.getByRole('combobox',{name:'付款篩選'}).click();await page.getByRole('option',{name:'未付款',exact:true}).click();await expect(table(page).getByRole('button',{name:'機場接送',exact:true})).toHaveCount(0);
