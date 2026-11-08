@@ -1,6 +1,12 @@
 # CURRENT_TASK.md
 
-Updated 2026-11-07. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
+Updated 2026-11-08. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
+
+## 2026-11-08 — Issue #26 member departure
+
+[Issue #26](https://github.com/PeterChiu0314/Travel-Planner/issues/26) is implemented locally on `codex/budget-collaboration-redesign`. The [forward migration](supabase/migrations/20261108170000_issue26_expense_member_departure.sql) applies member removal and unpaid expense changes in one transaction with the existing expense leases and luggage restriction. Paid records retain historical participants and payers. Settlement uses historical names saved at departure and numbered labels for older records without a name snapshot. Older stale allocations can be corrected by explicitly saving the affected group. The migration does not backfill expenses.
+
+Local validation passed 55 Node/SQL cases, 11 Chromium cases including the isolated two-account refresh and settlement flow, and build/diff checks. The Staging rollback trial and install preserved all 11 protected relation fingerprints, including 57 expense rows. Independent readback confirmed ledger 80/head `20261108170000`, exact migration source, four enabled membership triggers, and 42 active expenses. Live two-account acceptance is pending.
 
 ## Latest 2026-11-07 — Issue #25 planning budget precision
 

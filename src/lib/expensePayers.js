@@ -16,5 +16,9 @@ export function paymentCredits(item){
  const bundle=item.paid,rows=item.payer_allocations?.length?item.payer_allocations:item.payer_id?[{user_id:item.payer_id,amount:bundle?.amount||0}]:[];
  if(!bundle||!rows.length)return [];
  const total=Number(bundle.twd_amount),weight=rows.reduce((n,r)=>n+Number(r.amount),0);let assigned=0;
+ if(rows.some(r=>!r.user_id||r.amount==null||r.amount===''||!Number.isFinite(Number(r.amount))||Number(r.amount)<0)
+  ||new Set(rows.map(r=>r.user_id)).size!==rows.length||total>0&&weight<=0
+  ||item.planning_managed&&item.payer_allocations?.length&&weight!==Math.round(Number(bundle.amount))
+    &&weight!==Math.round(Number(item.budget?.amount)))return [];
  return rows.map((r,index)=>{const twd_amount=index===rows.length-1?total-assigned:weight?Math.floor(total*Number(r.amount)/weight):0;assigned+=twd_amount;return{user_id:r.user_id,amount:Number(r.amount),twd_amount};});
 }

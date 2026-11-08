@@ -156,24 +156,55 @@ export function comparisonRows(baseline, expenses) {
   return rows;
 }
 
-export function settlementBalances(expenses, participants, members) {
+export function settlementBalances(expenses, participants, members, departedMembers) {
   const totals = Object.fromEntries(members.map((member) => [member.user_id, { ...member, paid: 0, shouldPay: 0 }]));
+  const departed = new Map((departedMembers || []).map(member => [member.user_id, member]));
+  const addHistorical = (id, amount) => {
+    if (!Object.hasOwn(totals,id) && amount > 0) {
+      const name = departed.get(id)?.display_name;
+      totals[id] = { user_id:id, display_name:name ? `${name}（已退出）` : `已退出成員 ${++unknownMembers}`,
+        paid:0, shouldPay:0 };
+    }
+    return Object.hasOwn(totals,id) ? totals[id] : null;
+  };
+  let unknownMembers = 0;
   let incomplete = false;
-  expenses.filter((row) => isBudgetComplete(row)&&row.payment_active !== false).forEach((expense) => {
-    const people = participantsFor(expense, participants, "actual_expense_id", members);
-    const shares = recordAllocations(expense, people);
+  expenses.filter(row=>row.payment_active!==false && (departedMembers || isBudgetComplete(row))).forEach(expense=>{
+    const people = departedMembers ? participants.filter(row=>row.actual_expense_id===expense.id)
+      : participantsFor(expense, participants, "actual_expense_id", members);
+    const total = Number(expense.twd_amount);
+    let shares;
+    try { shares = recordAllocations(expense, people); } catch { shares = null; }
+    if (!isBudgetComplete(expense) || expense.twd_amount == null || expense.twd_amount === '' || !Number.isSafeInteger(total) || total<0
+      || !people.length || people.some(person=>!person.user_id)
+      || new Set(people.map(person=>person.user_id)).size!==people.length || !shares
+      || Object.values(shares).reduce((sum,amount)=>sum+amount,0)!==total) {
+      incomplete=true;
+      return;
+    }
     if(expense.payment_mode==='self'){
-      if(!shares)incomplete=true;
-      Object.entries(shares||{}).forEach(([id,amount])=>{if(!totals[id]){incomplete=true;return;}totals[id].paid+=amount;totals[id].shouldPay+=amount;});
+      for (const [id,amount] of Object.entries(shares)) {
+        const member=addHistorical(id,amount);
+        if (member) { member.paid+=amount; member.shouldPay+=amount; }
+      }
       return;
     }
     const payments=expense.payment_mode==='advance'?expense.payments||[]:[{user_id:expense.payer_id,twd_amount:expense.twd_amount}];
-    if (!shares || !payments.length) incomplete = true;
-    for(const payment of payments){if(!totals[payment.user_id]){incomplete=true;continue;}totals[payment.user_id].paid+=Number(payment.twd_amount);}
-    Object.entries(shares || {}).forEach(([id, amount]) => {
-      if (!totals[id]) { incomplete = true; return; }
-      totals[id].shouldPay += amount;
-    });
+    if (!payments.length || payments.some(payment=>!payment.user_id || payment.twd_amount==null || payment.twd_amount===''
+      || !Number.isSafeInteger(Number(payment.twd_amount)) || Number(payment.twd_amount)<0)
+      || new Set(payments.map(payment=>payment.user_id)).size!==payments.length
+      || payments.reduce((sum,payment)=>sum+Number(payment.twd_amount),0)!==total) {
+      incomplete=true;
+      return;
+    }
+    for (const payment of payments) {
+      const amount=Number(payment.twd_amount),member=addHistorical(payment.user_id,amount);
+      if (member) member.paid+=amount;
+    }
+    for (const [id,amount] of Object.entries(shares)) {
+      const member=addHistorical(id,amount);
+      if (member) member.shouldPay+=amount;
+    }
   });
   return { incomplete, balances: Object.values(totals).map((member) => ({ ...member, name: memberLabel(member), balance: member.paid - member.shouldPay })) };
 }

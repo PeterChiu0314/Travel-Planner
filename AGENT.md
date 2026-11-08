@@ -1,16 +1,14 @@
 # AGENT.md
 
-Latest 2026-11-06: Issue #21 self-pay / advance with multiple payer allocations is implemented on the original branch; read CURRENT_TASK.md and docs/2026-11-06-issue21-payment-allocations.md first. Staging Ledger74/head20261106120016 is installed and immutable. Planning keeps one amount/participant editor, one payer group, existing payment pill and bottom save status; no second paid form, difference, incomplete-state label, Source, Receipt or Undo. Preserve current single-outline/avatar UI, field20/60s and rates60s/planning restrictions. Production/main and original financial/other-module data remain protected. Earlier Ledger67/planning-only implementation statements below are historical.
+For Budget work, start with [CURRENT_TASK](CURRENT_TASK.md), [desktop design](DESIGN.md), [Budget UX rules](docs/UX_RULES.md#budget-ux-rules) and the [bug ledger](docs/BUGS.md). Check the current branch and commit before editing. Treat local code, Staging migration history and Preview acceptance as separate evidence. Applied migrations are immutable. Production/main and original financial and other workspace data remain protected.
 
 This file is the operating guide for future AI agents working on this travel planner. It is intentionally project-specific. Do not treat this as generic SaaS boilerplate.
 
 ## Documentation Layout
 
-Issue #18 planning (2026-11-05): user waives retaining old Budget data; do not build a legacy Budget migration or permanent dual-write layer. This does not authorize deleting Actual/settlement/other modules. The revised model in `docs/2026-11-05-budget-issue18-single-expense-review.md` has conditional Review approval for isolated Stage B. Budget/paid decisions must be independent; no new Baseline. See `docs/2026-11-05-budget-issue18-stage-b-foundation.md`; server writes/UI remain unfinished, and Staging D/E still require inventory/manifest Review. Its inventory SQL is a not-run read-only draft, not acceptance evidence.
+On `codex/budget-collaboration-redesign`, Native Expense is the sole Budget runtime. Use `ExpenseWorkspace` with `expenseEditor` and `expenseTransport`. Preserve scoped refresh and editor handoff, atomic itinerary links, field lease authority (20 seconds clean, 60 seconds dirty), the 60-second Rates lease and planning-only quote updates. Preserve drafts, explicit participant exclusions, version checks and exact request IDs for unknown responses. See the [legacy retirement handoff](docs/2026-11-07-issue23-legacy-budget-retirement.md).
 
-Current Budget field UX (2026-11-05, Issue #17 candidate): no field-level status/error/retry/discard UI. Use the existing collaborator palette/outline plus hover/focus name, existing Sonner for deduplicated genuine failures, and internal pending-sync state with the existing leave guard (no normal editor banner). Preserve authority, drafts, exact request-id recovery and business-refusal/no-auto-replay rules. See `docs/2026-11-05-budget-issue17-pricing-collaboration.md`; newcomer decision persistence is pending the #18 single-expense data-contract Review, not a license to reselect excluded members. Older inline-UI rules are historical.
-
-Current Budget product rule (2026-11-03): no custom Undo for saved data. Preserve browser-native input Ctrl/Cmd+Z and cancellation of unsaved edits; never intercept global Undo keys or issue inverse RPCs. See `docs/2026-11-03-budget-custom-undo-removal.md`, `docs/2026-11-03-budget-undo-staging-install.md` and `CURRENT_TASK.md` for the Forward installed on Staging only and retained historical SQL dependencies. The applied source is immutable; Production deployment and activation remain unauthorized. Old B6/30-second Undo documents are historical, not activation instructions.
+Keep the existing grouped table and right-side tabs. Planning uses one amount and participant editor, the existing payment pill and the footer save status. Preserve browser-native input undo and the existing Continue/Discard flow. The Budget UX rules cover removed workflows and payment behavior.
 
 Root Markdown files are entry points:
 
@@ -149,8 +147,7 @@ View-ish components inside `src/App.jsx` include:
 - `ItineraryTimeline`
 - `RoutePanel`
 - `BudgetSummaryPanel`
-- `BudgetPanel`
-- `ActualExpensePanel`
+- `ExpenseWorkspace` (shared Formal/Demo Budget view under `src/components/budget/`)
 - `SettlementPanel`
 - `AccommodationPanel`
 - `TodoGuidePanel`
@@ -184,23 +181,20 @@ Formal app data flow:
 4. `loadTripData(activeTripId)` loads all trip-scoped records in parallel:
    - `itinerary_items`
    - `itinerary_alternatives`
-   - `budget_items`
-   - `budget_item_participants`
-   - `actual_expenses`
-   - `actual_expense_participants`
    - `accommodations`
    - `guide_items`
    - `todo_items`
    - `luggage_items`
    - `shared_luggage_items`
    - `attachments`
-   - `itinerary_budget_items`
    - `pack_items`
    - `trip_members`
 5. RLS filters what the user can see and mutate.
 6. Local React state feeds view components.
 7. Most mutations call Supabase then reload trip data; luggage applies canonical RPC results and performs scoped refresh only for conflicts/recovery.
 8. Realtime also reloads trip data when relevant tables change.
+
+On the Budget feature branch, `read_expense_snapshot` loads the native expense graph independently. Timeline, accommodation and settlement use projections from that graph. A valid same-account and same-trip cached graph supports viewing only until an authoritative read succeeds.
 
 Offline read flow:
 
@@ -255,11 +249,7 @@ Important tables:
 - `trip_invites`: owner-generated invite tokens.
 - `itinerary_items`: timeline cards, with map/location fields and edit locks.
 - `itinerary_alternatives`: alternatives attached to one itinerary card.
-- `budget_items`: planned budget records. Equal split implemented; custom split reserved.
-- `budget_item_participants`: selected members for equal split.
-- `itinerary_budget_items`: many-to-many timeline/budget links.
-- `actual_expenses`: actual paid expenses.
-- `actual_expense_participants`: selected members for actual expense split.
+- Native Expense tables on the Budget feature branch store expense items, participants, itinerary links and editor state. The frontend uses the existing expense RPCs rather than direct table writes.
 - `accommodations`: one accommodation per stay, not one row per night.
 - `todo_items`: in-app todo items.
 - `guide_items`: reference guide links/notes.
@@ -334,20 +324,17 @@ The channel is named `trip-${activeTripId}` and listens to `postgres_changes` fo
 - `trips`
 - `itinerary_items`
 - `itinerary_alternatives`
-- `budget_items`
-- `budget_item_participants`
-- `actual_expenses`
-- `actual_expense_participants`
 - `accommodations`
 - `guide_items`
 - `todo_items`
 - `shared_luggage_items`
 - `attachments`
-- `itinerary_budget_items`
 - `pack_items`
 - `trip_members`
 
 Most events call `loadTripData(activeTripId)`. Trip and membership changes may also call `loadTrips(activeTripId)`.
+
+On the Budget feature branch, `expense_signals` invalidates the native expense snapshot through the scoped Budget refresh.
 
 Timeline collaborative drag presence uses a separate per-day channel:
 
@@ -406,7 +393,7 @@ Draft key format:
 
 Draft rules:
 
-- Drafts are local-only in `localStorage`.
+- Drafts stay in browser storage. Native Expense uses session-scoped storage in Formal and memory in Demo.
 - Drafts must never sync to Supabase or Realtime.
 - Active form state has priority over server state.
 - Draft autosave can preserve unfinished local work across interruptions.
@@ -416,13 +403,12 @@ Draft rules:
 - Reload / browser close should warn the user when there are unsaved changes.
 - If the user still leaves after the browser warning, restoring the draft on the next visit is intentional behavior.
 - Restored draft data is not considered saved data.
-- Only explicit Save writes form data to the database.
+- Forms with explicit Save write on that action. Native Expense autosaves valid field-group changes through the existing lease and queue.
 
 Forms currently using draft autosave include:
 
 - Timeline item.
-- Budget item.
-- Actual expense.
+- Native Expense fields in Formal use session-scoped draft recovery.
 - Accommodation.
 - Todo.
 - Guide.
@@ -447,8 +433,6 @@ Fields:
 Tables with lock columns:
 
 - `itinerary_items`
-- `budget_items`
-- `actual_expenses`
 - `accommodations`
 - `todo_items`
 - `guide_items`
@@ -458,6 +442,8 @@ Tables with lock columns:
 Current timeout:
 
 - `editLockTimeoutMs = 7 * 60 * 1000`.
+
+Native Expense uses its own field-group leases through `expense_group_lease`.
 
 Behavior:
 
@@ -519,7 +505,7 @@ Desktop layout:
 - Left sidebar for navigation and trips.
 - Main workspace for active trip.
 - Timeline can pair with route and budget side panels.
-- Budget can be card/table-like with overview.
+- Budget uses a grouped table with right-side Statistics, Detail and Edit tabs.
 - Accommodation has list/detail behavior.
 
 Mobile layout:
@@ -564,7 +550,7 @@ Demo design:
 Demo currently covers:
 
 - Timeline with formal-ish cards, route panel, budget summary.
-- Budget with planned budget and actual expense sections.
+- Budget with the shared expense workspace and memory-only mock data.
 - Luggage with personal and shared item flows.
 
 Demo banner:
@@ -593,13 +579,8 @@ Completed or substantially implemented:
 - Timeline collaborative drag presence for authenticated Formal users, using Realtime Presence + Broadcast without database writes.
 - Timeline alternatives.
 - Timeline map URL/link fields.
-- Timeline to budget many-to-many links.
-- Budget CRUD.
-- Equal split participant selection for budget.
-- Fixed budget flag.
-- Convert budget to actual expense.
-- Actual expense CRUD.
-- Equal split participant selection for actual expense.
+- Native expense creation, editing, payment status and itinerary links on the Budget feature branch.
+- Per-person pricing, total split and custom participant shares, with self-pay and multiple advance payers in planning.
 - Settlement calculation and simplified transfers.
 - Accommodation CRUD.
 - Todo CRUD and completion.
@@ -790,13 +771,10 @@ For Realtime/draft/lock changes:
 
 For budget changes:
 
-- Add/edit/delete budget.
-- Equal split participant chips work.
-- Timeline links persist.
-- Fixed cost flag persists.
-- Convert to actual creates actual expense and marks source budget.
-- Actual expense add/edit/delete works.
-- Settlement totals still calculate.
+- Create a named expense, edit it through the sidebar and verify confirmed autosave.
+- Check participant splits, payment mode and the paid/unpaid toggle on the same expense.
+- Check itinerary links and settlement totals when the change affects them.
+- Verify selection, focus, leave protection and peer-held controls when those paths are affected.
 
 For luggage changes:
 
@@ -811,7 +789,6 @@ For luggage changes:
 For attachments:
 
 - Upload accommodation proof.
-- Upload receipt/photo for actual expense.
 - Open uses signed URL.
 - Delete removes Storage object and metadata.
 
@@ -874,8 +851,8 @@ Demo testing flow:
 2. Add/edit/delete a timeline item.
 3. Expand details and map URL.
 4. Open `/demo/budget`.
-5. Add/edit/delete budget and actual expense.
-6. Convert budget to actual.
+5. Add/edit/delete a planning expense and check its paid/unpaid toggle.
+6. Verify the sidebar and draft behavior for the changed flow.
 7. Open `/demo/luggage`.
 8. Add/edit/delete/toggle personal and shared items.
 9. Confirm no Supabase/Auth/Storage/Realtime requests.

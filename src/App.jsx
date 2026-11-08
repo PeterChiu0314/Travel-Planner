@@ -1,5 +1,5 @@
 import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
-import {expenseModels,expenseFinancialSnapshot,expenseTimelineCosts} from './lib/expenseSnapshot.js';
+import {expenseModels,expenseFinancialSnapshot,expenseTimelineCosts,expenseHistoricalMembers} from './lib/expenseSnapshot.js';
 import {createDemoExpenseService} from './demo/expenseService.js';
 import {budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import {isBudgetComplete} from './lib/budgetLifecycleValues.js';
@@ -5969,7 +5969,7 @@ export default function App() {
     if (!ok) return { ok: false, cancelled: true };
     const { error } = await supabase.from("trip_members").delete().eq("id", memberId).eq("trip_id", activeTrip.id);
     if (error) {
-      notify.error(luggageErrorMessage(error));
+      notify.error(error.code === '55P03' ? '目前有支出或旅程資料正在更新，請稍後再移除成員。' : luggageErrorMessage(error));
       return { ok: false, error };
     }
     await loadTripData(activeTrip.id);
@@ -12911,7 +12911,6 @@ function SettlementPanel({ expenseGraph, actualExpenses: allExpenses, actualPart
   const actualExpenses = allExpenses.filter((row) => isBudgetComplete(row)&&row.payment_active !== false);
   const approvedMembers = members.filter((member) => member.status === "approved");
   const budgetItems = rawBudgetItems.filter(isBudgetComplete);
-  const memberById = new Map(approvedMembers.map((member) => [member.user_id, member]));
   const participantsByExpense = useMemo(
     () => buildParticipantsMap(actualParticipants, "actual_expense_id"),
     [actualParticipants],
@@ -12919,7 +12918,8 @@ function SettlementPanel({ expenseGraph, actualExpenses: allExpenses, actualPart
   const actualBudgetIds = new Set(actualExpenses.map((expense) => expense.id));
   const pendingBudgetItems = budgetItems.filter((budget) => !actualBudgetIds.has(budget.id));
   const actualTotal = actualExpenses.reduce((sum, expense) => sum + Number(expense.twd_amount || 0), 0);
-  const { balances, incomplete } = settlementBalances(actualExpenses, actualParticipants, approvedMembers);
+  const { balances, incomplete } = settlementBalances(allExpenses, actualParticipants, approvedMembers, expenseHistoricalMembers(expenseGraph));
+  const memberById = new Map(balances.map((member) => [member.user_id, member]));
   const transfers = incomplete ? [] : simplifyTransfers(balances);
   if (!expenseGraph) return <p className="muted-text">支出資料尚未確認，暫時無法計算分帳。</p>;
 

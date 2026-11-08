@@ -38,7 +38,7 @@ export function decideExpenseParticipants(item,scope,selected,members,baseRevisi
 // Local proposal only, never a write. Paid decisions/history are never auto-expanded.
 export function proposeExpenseMembers(item,scope,members) {
   checkScope(scope);const next=copy(item),decisions=next.decisions[scope];
-  if(!decisions||scope==='paid'||item.payment_state==='paid')return next;
+  if(!decisions||scope==='paid'||item.payment_state==='paid'||item.budget?.requires_participants)return next;
   const newcomers=members.filter(m=>m.status==='approved'&&!Object.hasOwn(decisions,m.user_id));
   for(const m of newcomers){
     decisions[m.user_id]=true;
@@ -72,14 +72,14 @@ export function importActualExpense(actual,people) {
     decisions:{budget:null,paid:null},revisions:{budget:0,paid:0,payment:0}};
 }
 
-export function expenseSettlement(items,members) {
+export function expenseSettlement(items,members,departedMembers) {
   const rows=[],people=[];
   for(const item of items){if(!item.paid)continue;
     rows.push({...item.paid,id:item.id,payer_id:item.payer_id,payment_mode:item.payment_mode,payments:paymentCredits(item),record_status:item.payment_state==='draft'?'incomplete':item.paid.record_status,
       payment_active:item.payment_state==='paid'});
     for(const id of item.paid.participantIds)people.push({actual_expense_id:item.id,user_id:id,share_amount:item.paid.shares[id]});
   }
-  return settlementBalances(rows,people,members);
+  return settlementBalances(rows,people,members,departedMembers);
 }
 
 // Single storage authority for participants: never persist a second selected

@@ -75,7 +75,7 @@ test('full row outline yields to local selection and empty budget keeps its summ
     await expect(amount).toBeEditable();
     const height = (await summary.boundingBox()).height;
     await amount.fill('');
-    await expect(summary).toHaveText('每人—總額—');
+    await expect(summary).toHaveText('個人—總額—');
     expect((await summary.boundingBox()).height).toBe(height);
     await expect(page.getByText('小數會在儲存時四捨五入。',{exact:false})).toHaveCount(0);
   } finally { await page.close(); f.c.dispose(); await f.close(); }

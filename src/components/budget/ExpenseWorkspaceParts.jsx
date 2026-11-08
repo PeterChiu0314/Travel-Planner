@@ -7,7 +7,7 @@ import { budgetCurrencies } from "../../lib/tripBudgetRates.js";
 
 const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
 const categoryIcons = { "機票": Plane, "交通": Car, "住宿": BedDouble, "門票": Ticket, "餐飲": UtensilsCrossed, "購物": ShoppingBag, "其他": Package };
-const palette = ["#52766a", "#a2b2a6", "#b6a28a", "#d3c6b2", "#829da0", "#aeb0a2", "#dcd8cd"];
+const palette = ["#4c819c", "#809e70", "#c0745e", "#d3a853", "#8a9290", "#907d92", "#917795"];
 // Category identity is stable even when cost ranking or member view changes.
 const categoryColors = { "機票": palette[0], "住宿": palette[1], "餐飲": palette[2], "交通": palette[3], "其他": palette[4], "購物": palette[5], "門票": palette[6] };
 function categoryColor(category) {
@@ -17,14 +17,24 @@ export {categoryOrder, categoryIcons, categoryColor};
 export function Stats({ records, rows, members, actual, budgets, viewpoint, setViewpoint, ratesControl, ratesSummary }) {
   records=records.filter(isBudgetComplete);budgets=budgets.filter(isBudgetComplete);
   const validView = ["average", "all", ...members.map((member) => member.user_id)].includes(viewpoint) ? viewpoint : "average";
-  const allocations = records.map((record) => recordAllocations(record, participantsFor(record, rows, actual ? "actual_expense_id" : "budget_item_id", members)));
+  const allocations = records.map((record) => Object.hasOwn(record, "allocations") ? record.allocations
+    : recordAllocations(record, participantsFor(record, rows, actual ? "actual_expense_id" : "budget_item_id", members)));
   const total = records.reduce((sum, row) => sum + Number(row.twd_amount || 0), 0);
   const unknown = allocations.some((value) => value === null || Object.keys(value).some((id) => !members.some((member) => member.user_id === id)));
-  const people = members.map((member) => ({ ...member, amount: allocations.reduce((sum, shares) => sum + (shares?.[member.user_id] || 0), 0) }));
-  const main = validView === "all" ? total : validView === "average" ? members.length ? total / members.length : 0 : people.find((person) => person.user_id === validView)?.amount || 0;
+  const missingShare = (record, index, id) => Object.hasOwn(record, "allocations")
+    ? allocations[index] === null && (!record.participantIds.length || record.participantIds.includes(id))
+    : unknown;
+  const people = members.map((member) => ({ ...member, amount: records.some((record, index) => missingShare(record, index, member.user_id))
+    ? null : allocations.reduce((sum, shares) => sum + (shares?.[member.user_id] ?? 0), 0) }));
+  const main = validView === "all" ? total : validView === "average" ? members.length ? total / members.length : 0 : people.find((person) => person.user_id === validView).amount;
   const categories = new Map();
+  const memberView = validView !== "all" && validView !== "average";
   records.forEach((record, index) => {
     const category = record.category || budgets.find((row) => row.id === record.budget_item_id)?.category || "其他";
+    if (categories.get(category) === null || memberView && missingShare(record, index, validView)) {
+      categories.set(category, null);
+      return;
+    }
     const value = validView === "all" ? Number(record.twd_amount) : validView === "average" ? members.length ? Number(record.twd_amount) / members.length : 0 : allocations[index]?.[validView] || 0;
     categories.set(category, (categories.get(category) || 0) + value);
   });
@@ -32,23 +42,25 @@ export function Stats({ records, rows, members, actual, budgets, viewpoint, setV
   return <section className="bw-stats" aria-label="旅程費用摘要">
     <div className="bw-viewpoint"><span>統計視角</span><MenuSelect label="統計視角" value={validView} onValueChange={setViewpoint} options={[{value:"average",label:"人均旅費"}, ...members.map((member)=>({value:member.user_id,label:memberLabel(member)})), {value:"all",label:"全旅程"}]} /></div>
     <div className="bw-hero"><span>{validView === "average" ? `人均${actual ? "實際" : "預估"}旅費` : validView === "all" ? `全旅程${actual ? "實付" : "預算"}` : `${memberLabel(members.find((row) => row.user_id === validView))} 的${actual ? "實際" : "預估"}負擔`}</span>
-      <strong><small>NT$</small> {unknown && validView !== "all" && validView !== "average" ? "—" : money(main)}</strong>
+      <strong><small>NT$</small> {main === null ? "—" : money(main)}</strong>
       <span className="bw-muted">{validView === "average" ? `全團平均 · ${members.length} 位成員` : "依參與項目計算"}</span>
     </div>
     {validView !== "all" ? <div className="bw-stat-line"><span>全旅程{actual ? "實付" : "預算"}</span><b>NT$ {money(total)}</b></div> : null}
     {unknown ? <p className="bw-warning">部分項目的分攤成員或金額待確認。</p> : null}
-    <section><h4>各成員{actual ? "實際" : "預估"}負擔</h4>{people.map((person) => <div className="bw-stat-line" key={person.user_id}><span>{memberLabel(person)}</span><b>{unknown ? "—" : money(person.amount)}</b></div>)}</section>
+    <section><h4>各成員{actual ? "實際" : "預估"}負擔</h4>{people.map((person) => <div className="bw-stat-line" key={person.user_id}><span>{memberLabel(person)}</span><b>{person.amount === null ? "—" : money(person.amount)}</b></div>)}</section>
     <section><h4>分類{actual ? "支出" : "預算"}</h4>
-      <div className="bw-distribution" role="img" aria-label="分類金額占比">{categoriesList.map(([category, value]) => <span key={category} style={{ flex: Math.max(value, 0), backgroundColor: categoryColor(category) }} title={`${category} ${money(value)}`} />)}</div>
-      {categoriesList.map(([category, value]) => <div className="bw-stat-line" key={category}><span className="bw-category-label"><i style={{ backgroundColor: categoryColor(category) }} />{category}</span><span><b>{unknown && validView !== "all" && validView !== "average" ? "—" : money(value)}</b><small>{main ? Math.round(value / main * 100) : 0}%</small></span></div>)}
+      <div className="bw-distribution" role="img" aria-label="分類金額占比">{main !== null && categoriesList.map(([category, value]) => <span key={category} style={{ flex: Math.max(value, 0), backgroundColor: categoryColor(category) }} title={`${category} ${money(value)}`} />)}</div>
+      {categoriesList.map(([category, value]) => <div className="bw-stat-line" key={category}><span className="bw-category-label"><i style={{ backgroundColor: categoryColor(category) }} />{category}</span><span><b>{value === null ? "—" : money(value)}</b><small>{main === null || value === null ? "—" : `${main ? Math.round(value / main * 100) : 0}%`}</small></span></div>)}
     </section>
     {actual ? null : <><div className="bw-stat-line bw-paid-summary"><span>已付款項目</span><span>{records.filter((row) => row.hasActual).length} / {records.length}</span></div>{ratesSummary ?? <TripRatesSummary {...ratesControl} />}</>}
   </section>;
 }
 
-export function PricingSummary({ amount, twdAmount, currency, mode, count, showOriginalPrecision, uneven }) {
-  const perPerson = mode === "custom" || uneven ? "依成員" : count ? `${twdAmount % count ? "≈ " : ""}NT$ ${money(twdAmount / count)}` : "—";
-  return <div className="bw-calculation"><div><span>每人</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>NT$ {money(twdAmount)}</strong>{currency !== "TWD" || showOriginalPrecision && !Number.isInteger(amount) ? <small>{currency} {showOriginalPrecision ? originalMoney(amount) : money(amount)}</small> : null}</div></div>;
+export function PricingSummary({ amount, twdAmount, currency, mode, count, showOriginalPrecision, uneven, personalAmount }) {
+  const perPerson = mode === "custom" || uneven ? "依成員" : count ? `NT$ ${money(twdAmount / count)}` : "—";
+  const personal = personalAmount !== undefined;
+  const share = personal ? (personalAmount === null ? "—" : `NT$ ${money(personalAmount)}`) : perPerson;
+  return <div className="bw-calculation"><div><span>{personal ? "個人" : "每人"}</span><strong>{share}</strong></div><div><span>總額</span><strong>NT$ {money(twdAmount)}</strong>{currency !== "TWD" || showOriginalPrecision && !Number.isInteger(amount) ? <small>{currency} {showOriginalPrecision ? originalMoney(amount) : money(amount)}</small> : null}</div></div>;
 }
 
 export function TripRatesSummary({ tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates }) {

@@ -263,35 +263,18 @@ Do not:
 
 ## Budget UX Rules
 
-Current Issue #17 collaboration/pricing rule (2026-11-05) supersedes older inline group UI: no field status/error text, retry or discard buttons. Peer-held fields use the existing account color outline and accessible hover/focus name, remain readable and cannot submit; normal admission/save/contention is silent. Genuine failures use deduplicated existing Sonner notifications; pending work remains internal and recoverable through the existing page-level leave guard; normal autosave/admission/synchronization renders no banner. New unpriced placeholders default approved participants locally; custom mode seeds every selected person's original-currency share with exact cents/tail differences. Preserve explicit exclusions and paid/history guards. Existing-item newcomer defaults await a reviewed single-expense member-decision contract with #18; never infer exclusions from missing rows. [Implementation and acceptance limits](2026-11-05-budget-issue17-pricing-collaboration.md).
+The current design and acceptance scope is desktop planning. Use the grouped table and the Statistics, Detail and Edit tabs. Keep Formal and Demo visually consistent. See [desktop design](../DESIGN.md#91-預算管理2026-11-08-更新) and [current handoff](../CURRENT_TASK.md).
 
-Desktop requirements approved 2026-10-22 supersede the older generic notes below:
-
-- Existing Sidebar | dense grouped details | personal-first statistics/item detail. No expanded child rows or repeated categories.
-- Readonly journey phase. Planning prioritizes budget; Traveling prioritizes quick actual recording. Comparison appears only in Settlement, using the last committed predeparture snapshot.
-- Per-person price, split total and optional advanced custom shares are approved. Payer and participants are separate. Legacy `amount` means total.
-- Single click opens detail, double click edits title or numbers through the same draft. Explicit Save/Enter only; blur never writes. Preserve Save/Discard/Active Editor Guard.
-- Issue #15 local opt-in exception (2026-10-29): supported title/note groups now autosave after about one second or blur, with IME/serial queue/authority checks and the existing exit guard. This supersedes the manual-save rule only for the default-off metadata slice; financial/full-record editing retains its existing Save flow. See [B-3 handoff](2026-10-29-budget-b3-metadata-autosave-handoff.md).
-- The same default-off slice now includes category/payer and Budget links on unlinked, nonfixed Budgets and standalone manual Actuals. Valid menu selections save immediately; custom category typing uses the one-second/blur/IME rules. Links submits the entire normalized set. Linked payments remain explicitly unsupported until DB bundles exist; no automatic whole-record fallback. See [dependency matrix and handoff](2026-10-29-budget-category-payer-links-handoff.md).
-- Status labels are `預算` and `實付`; display money rounded to integers while preserving precision and reconciling allocations internally.
-- Mobile only needs minimum operability in this phase; a new card design is not required.
-
-Budget is for travel planning and group clarity, not accounting bureaucracy.
-
-Do:
-
-- Keep planned budget and actual expense visually distinct.
-- Show category, amount, payer, split members, linked itinerary, and notes clearly.
-- Make "convert to actual" understandable.
-- Keep equal split simple.
-- Use cards on mobile.
-
-Do not:
-
-- Make it feel like accountant software.
-- Lead with ledger-like tables on mobile.
-- Mix planned budget and actual paid expenses without clear labels.
-- Add custom split UI before the base equal-split flow is stable.
+- Select an item with a single click. Edit through the sidebar. Search, filters and group collapse affect the list, while statistics still use the full trip.
+- Add Item opens a local draft. A valid trimmed name starts creation. A name alone is enough to create an item with no amount. An untouched draft can close silently. An unnamed draft with other input uses the existing Continue/Discard dialog. Continue focuses the name field. See [named creation](2026-11-05-issue19-named-creation.md).
+- Use one amount and participant editor in planning. Keep per-person pricing, split total and custom shares. Leaving custom mode collapses the participant list. Distinguish an unset amount from zero and preserve explicit participant exclusions. New planning edits store whole original-currency amounts and shares. Existing decimal values retain their precision until edited.
+- The item list, category subtotals and sidebar amounts use the signed-in member’s allocation. An excluded member or an invalid allocation shows `—`. Statistics opens in the signed-in member’s view and also supports trip averages, other members and trip totals.
+- Member removal and unpaid redistribution commit together. Redistribute among existing selections. If the last participant or payer leaves, require a new selection before payment. Paid history retains historical participants and payers for settlement.
+- Keep payers separate from participants. New items default to `各自付`. `代付` supports one or more payers. The payment pill toggles `未付款` and `已付款` on the same item, retaining payment settings. Planning uses this single editor and omits a separate paid form, difference display, Source, Receipt and custom saved-data Undo. Native input undo remains available. See [payment allocations](2026-11-06-issue21-payment-allocations.md).
+- Autosave valid changes by field group through the existing lease and queue. Keep normal saving quiet apart from the planning footer status, which reflects server confirmation. A pricing-mode click can save and release its lease after confirmation. Continued input keeps the lease. Preserve active input through refresh and Realtime updates. Unsaved edits and unknown responses go through the existing leave guard, and uncertain writes retain their original request ID for recovery.
+- Idle fields look available. Peer-held controls stay readable but disabled, with the collaborator color and an identity hint. Row selection and collaborator outlines indicate presence. Edit access requires the existing group authority and a verified snapshot.
+- Use the existing Sonner notification for sync failures. Retry verifies the affected data before restoring edit access. If an authoritative read fails, a valid same-account, same-trip cache is for viewing only. Without a snapshot, show the scoped expense retry. See [Preview regression fixes](2026-11-07-issue24-preview-regression.md).
+- Keep Budget editing and refresh scoped to Budget. Timeline owns scheduling, and server transactions preserve expense links when itinerary items move or remove the affected link when an item is deleted. See [domain isolation](2026-11-07-issue23-domain-isolation.md).
 
 ## Luggage UX Rules
 

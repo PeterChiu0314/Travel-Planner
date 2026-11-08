@@ -1,8 +1,20 @@
 # BUGS.md
 
-## Issue #18 UI regression — user rejected redesigned workspace; restore at home
+## Budget regressions and verification status — 2026-11-08
 
-The new `ExpenseWorkspace` replaced the user's existing grouped table, toolbar and right-side Stats/Detail/Edit presentation without authorization for a visual redesign. User requires restoration of that existing design with **presentation changes only**, retaining the installed single-expense model and its security/controller behavior. This documentation turn did not change UI or database. Model/schema/RPC tests rerun41/41; Hosted acceptance remains bounded by the prior evidence. [Concrete home handoff and acceptance](2026-11-05-issue18-ui-restore-home-handoff.md). Do not claim UI accepted or revert the schema/old writes to make the old screen appear.
+This section tracks the feature-branch implementation and recorded QA. Hosted Preview status and acceptance are tracked separately in [CURRENT_TASK](../CURRENT_TASK.md). Earlier entries retain their dated evidence.
+
+| Area | Fix on `codex/budget-collaboration-redesign` | Recorded verification |
+| --- | --- | --- |
+| Row selection and sync feedback | `df1d587` gives the local selection outline priority, keeps the planning summary visible for an unset amount, and makes sync retry reconnect the trip channel and verify expense data. An offline retry explains that the connection is still offline. | [Browser regression cases](../tests/budgetUiFeedback.spec.js) cover row and summary rendering, channel retry and Toast layout. |
+| #25 · Planning amount and split rounding | `0e44f20` rounds new planning edits in original currency, reconciles shares before TWD conversion and preserves existing records and paid costs on rate refresh. | Recorded 32 SQL-backed Chromium and 51 Node/SQL cases plus build. Staging recorded Ledger 79 with protected data seals. Hosted two-account acceptance remains pending. [Handoff](../CURRENT_TASK.md#latest-2026-11-07--issue-25-planning-budget-precision) |
+| #24 · Expense reads, offline cache and trip creation | `5d7b3a3` adds scoped expense retry, preserves valid read-only cached expenses and their expiry, and submits one trip creation without waiting for a rate quote. | Targeted Chromium, Node and isolated SQL. Hosted failure injection and two-account Realtime remain unverified. [Regression report](2026-11-07-issue24-preview-regression.md) |
+| #23 · Budget isolation and legacy retirement | Native Expense is the sole runtime source. Budget refresh is scoped, itinerary changes preserve the expense and reconcile its links, and owner trip deletion checks in-flight writes. | Staging retirement matched 23 protected relation seals. Hosted deletion, updated Preview and physical receipt cleanup have separate verification records. [Retirement handoff](2026-11-07-issue23-legacy-budget-retirement.md) |
+| #22 · Unnamed drafts and pricing controls | `22e3bab` explains the missing name and focuses it on Continue. Leaving custom split collapses participants. A pricing click alone saves and releases on confirmation. | Recorded 26 Chromium and 28 logic/database cases. Hosted two-account acceptance remains pending. [Handoff](../CURRENT_TASK.md#latest-2026-11-07--issue-22-budget-qa-fixes) |
+
+## Issue #18 UI regression — grouped workspace restored on the feature branch
+
+The first `ExpenseWorkspace` replaced the established grouped table, toolbar and right-side tabs. The follow-up restored them on the original branch while retaining the single-expense model, controller and database contract. The restoration recorded 41 Node/SQL and 40 distinct Chromium cases. Subsequent handoffs describe later changes to payment, collaboration and pricing. [Restoration and QA](2026-11-05-issue18-ui-restore-home-handoff.md)
 
 ## Issue #18 Staging installed; manual acceptance open — 2026-11-05
 

@@ -29,16 +29,67 @@ test('restored toolbar, category table and statistics use budget ABC, not paid A
  const f=await fixture();try{await open(page,f);
   await expect(page.getByRole('tab',{name:'實付',exact:true})).toHaveCount(0);
   await expect(table(page).getByRole('columnheader')).toHaveCount(5);
-  const row=table(page).getByRole('row').filter({hasText:'機場接送'});await expect(row).toContainText('Day 2');await expect(row).toContainText('10,000');await expect(row).toContainText('3,333');
+  await expect(table(page).getByRole('columnheader',{name:/個人預算/})).toBeVisible();
+  const ownShare=f.models[0].budget.allocations[f.A].toLocaleString('zh-TW');
+  const row=table(page).getByRole('row').filter({hasText:'機場接送'});await expect(row).toContainText('Day 2');await expect(row).toContainText('10,000');await expect(row.locator('.bw-person')).toHaveText(ownShare);
   await expect(table(page).getByRole('row').filter({hasText:'歷史午餐'})).toContainText('尚未填寫');
-  await expect(table(page).getByRole('row').filter({hasText:'免費接駁'})).toContainText('0');
-  const stats=page.getByRole('region',{name:'旅程費用摘要'});await expect(stats.locator('.bw-hero')).toContainText('3,333');await expect(stats).toContainText('10,000');await expect(stats.locator('.bw-paid-summary')).toContainText('1 / 2');
+  await expect(table(page).getByRole('row').filter({hasText:'免費接駁'}).getByRole('cell').nth(2)).toHaveText('0');
+  const stats=page.getByRole('region',{name:'旅程費用摘要'});await expect(stats.locator('.bw-hero')).toContainText(`A 的預估負擔`);await expect(stats.locator('.bw-hero')).toContainText(ownShare);await expect(stats).toContainText('10,000');await expect(stats.locator('.bw-paid-summary')).toContainText('1 / 2');
+  await expect(table(page).locator('.bw-group-person')).toHaveText(ownShare);
   await expect(page.locator('.bw-toolbar')).not.toContainText('更新匯率');await expect(page.locator('.bw-restored-rates')).toContainText('旅程估算匯率');
   await stats.getByRole('combobox',{name:'統計視角'}).click();await page.getByRole('option',{name:'C',exact:true}).click();await expect(stats.locator('.bw-hero')).toContainText(/3,33[34]/);
+  await expect(row.locator('.bw-person')).toHaveText(ownShare);
+  await stats.getByRole('combobox',{name:'統計視角'}).click();await page.getByRole('option',{name:'人均旅費',exact:true}).click();await expect(stats.locator('.bw-hero')).toContainText('3,333');
+  await stats.getByRole('combobox',{name:'統計視角'}).click();await page.getByRole('option',{name:'全旅程',exact:true}).click();await expect(stats.locator('.bw-hero')).toContainText('10,000');
   const amounts=await stats.locator('section').filter({has:page.getByRole('heading',{name:'各成員預估負擔',exact:true})}).locator('b').allTextContents();expect(amounts.reduce((sum,value)=>sum+Number(value.replaceAll(',','')),0)).toBe(10000);
   const s=await f.snapshot(),settlement=expenseSettlement(expenseModels(s),s.members);expect(settlement.balances.reduce((sum,m)=>sum+m.paid,0)).toBe(10300);expect(settlement.balances.find(m=>m.user_id===f.C).shouldPay).toBe(0);
   await page.screenshot({path:test.info().outputPath('restored-statistics.png')});expect(page.qaErrors).toEqual([]);
  }finally{await page.close();await f.close();}
+});
+test('personal budget distinguishes excluded and invalid shares from zero and updates while editing',async({page,context})=>{
+ const f=await fixture();try{
+  const [transfer,,,free]=f.models;
+  await f.sql.query('update expense_stage_b.expense_participants set budget_selected=false where expense_id=$1 and user_id=$2',[free.id,f.A]);
+  await open(page,f);
+  const personalCell=title=>table(page).getByRole('row').filter({hasText:title}).getByRole('cell').nth(2);
+  const personalSummary=page.locator('.bw-calculation > div:first-child');
+  await expect(personalCell('免費接駁')).toHaveText('—');
+  await expect(table(page).locator('.bw-group-person')).toHaveText(transfer.budget.allocations[f.A].toLocaleString('zh-TW'));
+  await table(page).getByRole('button',{name:'免費接駁',exact:true}).click();
+  await expect(personalSummary).toHaveText('個人—');
+  await table(page).getByRole('button',{name:'機場接送',exact:true}).click();
+  await expect(personalSummary).toHaveText(`個人NT$ ${transfer.budget.allocations[f.A].toLocaleString('zh-TW')}`);
+  await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
+  const amount=page.getByRole('spinbutton',{name:'總額',exact:true});
+  await amount.focus();await expect(amount).toBeEditable();await amount.fill('900');
+  await expect(personalSummary).toHaveText('個人NT$ 300');
+  await amount.fill('');await expect(personalSummary).toHaveText('個人—');
+  await page.close();
+  await f.sql.exec('reset role');
+  await f.sql.query("update expense_stage_b.expense_items set budget=budget || '{\"original_scale\":0}'::jsonb where id=$1",[transfer.id]);
+  await f.sql.query('update expense_stage_b.expense_participants set budget_share_amount=null where expense_id=$1 and user_id=$2',[transfer.id,f.A]);
+  const checkPage=await context.newPage();try{
+   await open(checkPage,f);
+   await expect(table(checkPage).getByRole('row').filter({hasText:'機場接送'}).getByRole('cell').nth(2)).toHaveText('—');
+   await expect(table(checkPage).locator('.bw-group-person')).toHaveText('—');
+   await expect(checkPage.locator('.bw-hero strong')).toHaveText('NT$ —');
+   await expect(checkPage.getByText('部分項目的分攤成員或金額待確認。')).toBeVisible();
+   await table(checkPage).getByRole('button',{name:'機場接送',exact:true}).click();
+   await expect(checkPage.locator('.bw-detail .bw-calculation > div:first-child')).toHaveText('個人—');
+   await checkPage.getByRole('tab',{name:'編輯項目',exact:true}).click();
+   await expect(checkPage.locator('.bw-editor .bw-calculation > div:first-child')).toHaveText('個人—');
+  }finally{await checkPage.close();}
+ }finally{await page.close();await f.close();}
+});
+test('Demo shows the current actor’s custom share and opens their statistics by default',async({page})=>{
+ await page.goto('/demo/budget');
+ const row=table(page).getByRole('row').filter({hasText:'Villa 火鍋食材'});
+ await expect(row.locator('.bw-person')).toHaveText('440');
+ await expect(page.locator('.bw-hero')).toContainText('Peter 的預估負擔');
+ await row.getByRole('button',{name:'Villa 火鍋食材',exact:true}).click();
+ await expect(page.locator('.bw-detail .bw-calculation > div:first-child')).toHaveText('個人NT$ 440');
+ await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
+ await expect(page.locator('.bw-editor .bw-calculation > div:first-child')).toHaveText('個人NT$ 440');
 });
 test('payment filter, search, category folds and explicit detail/edit tabs preserve original interaction',async({page})=>{
  const f=await fixture();try{await open(page,f);

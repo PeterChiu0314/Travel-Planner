@@ -421,7 +421,7 @@ test('shared menus support keyboard, dismissal, custom categories and source sel
 test('category person totals follow average and named allocations including partial and custom shares',async({page})=>{
   const group=(name)=>page.locator('.bw-group').filter({has:page.locator('.bw-group-label > span').getByText(name,{exact:true})});
   await expect(group('機票').locator('.bw-group-person')).toHaveText('11,566');
-  await expect(group('門票').locator('.bw-group-person')).toHaveText('≈ 480');
+  await expect(group('門票').locator('.bw-group-person')).toHaveText('480');
   const view=page.getByRole('combobox',{name:'統計視角',exact:true});
   await view.click(); await page.getByRole('option',{name:'Peter',exact:true}).click();
   await expect(group('門票').locator('.bw-group-person')).toHaveText('792');
@@ -430,7 +430,7 @@ test('category person totals follow average and named allocations including part
   await expect(group('門票').locator('.bw-group-person')).toHaveText('220');
   await expect(group('機票').locator('.bw-number').last()).toHaveText('57,830');
   await expect(page.locator('.bw-group-label svg')).toHaveCount(7);
-  await expect(rowByTitle(page,'名鐵・名古屋 → 中部機場').locator('.bw-person')).toHaveText('≈ 216');
+  await expect(rowByTitle(page,'名鐵・名古屋 → 中部機場').locator('.bw-person')).toHaveText('216');
   await rowByTitle(page,'關西機場 → 京都巴士').getByRole('button',{name:'關西機場 → 京都巴士',exact:true}).click();
   const colors=await page.locator('.bw-row.is-selected').evaluate(el=>({selected:getComputedStyle(el).backgroundColor,group:getComputedStyle(el.previousElementSibling).backgroundColor}));
   expect(colors.selected).not.toBe(colors.group);

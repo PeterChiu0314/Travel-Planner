@@ -8,6 +8,21 @@ export function expenseModels(data){
   return {...row,budget:bundle('budget'),paid:bundle('paid'),decisions:{budget:decisions('budget'),paid:decisions('paid')},revisions:Object.fromEntries(groups.map(g=>[g.group,g.revision]))};
  });
 }
+export function expenseHistoricalMembers(data) {
+ if (!data) return [];
+ const members = data.members || [];
+ const names = new Map([...members,...(data.departedMembers || [])].map(member=>[member.user_id,member.display_name]));
+ const approved = new Set(members.filter(member=>member.status==='approved').map(member=>member.user_id));
+ const ids = new Set(data.participants.filter(row=>row.budget_selected||row.paid_selected).map(row=>row.user_id));
+ for (const item of data.items) {
+  if (item.payer_id) ids.add(item.payer_id);
+  for (const payer of item.payer_allocations || []) ids.add(payer.user_id);
+ }
+ let unnamed=0;
+ return [...ids].filter(id=>id&&!approved.has(id)).sort().map(user_id=>({
+  user_id, display_name:names.get(user_id)||`歷史成員 ${++unnamed}`, status:'departed',
+ }));
+}
 // Read projections for existing Timeline/settlement consumers, never dual writes.
 export function expenseFinancialSnapshot(data){
  const models=expenseModels(data),budgetItems=[],actualExpenses=[],budgetParticipants=[],actualParticipants=[];
