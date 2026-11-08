@@ -27,6 +27,7 @@ export function expenseFieldValue(data,id,group){
 export function createExpenseEditor({service,actor,trip,sessionId,storage,planning=()=>false,makeId=()=>crypto.randomUUID(),timeoutMs=10000,onError=()=>{},onSnapshot=()=>{}}){
  let graph=null,verified=false,active=true,disposed=false,version=0,readWork=null,lastRecovery=0,lastSnapshot=0,createWork=null,pendingCreate=null,localDraft=null,createTimer=null,mountGeneration=0,serverOffset=0;const fields=new Map(),listeners=new Set();
  const createKey=`travel-planner-expense-create:${actor}:${trip}`;
+ const pendingCopies=new Map();
  try{const saved=JSON.parse(storage?.getItem(createKey)||'null');if(saved?.p_trip_id===trip&&typeof saved.p_request_id==='string')pendingCreate=saved;}catch{/* Invalid persisted request ignored. */}
  const draftKey=createKey+':draft';
  try{const saved=JSON.parse(storage?.getItem(draftKey)||'null');if(saved?.trip===trip&&typeof saved.id==='string'&&saved.values)localDraft=saved;}catch{/* Account/trip scoped local input only. */}
@@ -60,14 +61,17 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    if(!r.error&&r.data?.granted&&r.data.epoch===request.p_epoch&&expires>Date.now()){g.expires=expires;g.lastRenew=Date.now();}else{g.state='lost';persist(g);emit();}
   })().finally(()=>{g.renewWork=null;});return g.renewWork;
  }
- const report=(g,error)=>{g.error=error;persist(g);onError(error);emit();};
+ const report=(g,error,{quiet=false}={})=>{g.error=error;persist(g);if(!quiet)onError(error);emit();};
  function ingest(data,{authoritative=true}={}){
   if(!current()||!validExpenseSnapshot(data,trip))return false;
   if(!authoritative&&graph){verified=false;emit();return true;}
   graph=data;serverOffset=Number.isFinite(Date.parse(data.serverNow))?Date.parse(data.serverNow)-Date.now():0;verified=authoritative&&active&&globalThis.navigator?.onLine!==false;if(verified)lastSnapshot=Date.now();
   for(const g of fields.values()){
    if(g.local)continue;
-   const r=remote(g);if(!r){g.conflict=true;g.state='lost';continue;}
+   const r=remote(g);if(!r){
+    // A committed delete can disappear from the snapshot before its receipt arrives.
+    g.conflict=!(g.group==='lifecycle'&&g.request);g.state='lost';continue;
+   }
    if(r.revision<g.base)continue;
    if(r.revision===g.base&&dirty(g)&&!g.request&&!g.saving){g.canonical=expenseFieldValue(data,g.id,g.group);g.conflict=false;persist(g);}
    if(r.revision!==g.base&&dirty(g)&&!g.request){g.conflict=true;report(g,new Error('內容已更新，變更已保留；離開項目時可選擇保留或不儲存。'));}
@@ -187,14 +191,14 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    if(!(await service.authorized(actor)))return false;const request=g.request;g.saving=true;persist(g);emit();
    const transport=g.transport ||= service.mutate(request);const r=await bounded(transport);if(!r.error||r.error.code!=='METADATA_TIMEOUT')g.transport=null;
    if(!current())return false;g.saving=false;
-   if(r.error){if(['PT409','22023','42501','55P03','55000'].includes(r.error.code)){g.request=null;g.state='lost';g.conflict=r.error.code==='PT409';g.autoBlocked=r.error.code!=='55P03';}report(g,r.error);return false;}
+   if(r.error){if(['PT409','22023','42501','55P03','55000'].includes(r.error.code)){g.request=null;g.state='lost';g.conflict=r.error.code==='PT409';g.autoBlocked=r.error.code!=='55P03';if(g.group==='lifecycle')g.value=structuredClone(g.canonical);}report(g,r.error,{quiet:g.group==='lifecycle'});return false;}
    const receipt=r.data;if(!receipt?.committed||receipt.request_id!==request.p_request_id||receipt.expense_id!==g.id||receipt.group!==g.group||receipt.revision!==request.p_base+1||receipt.item?.id!==g.id||receipt.item.trip_id!==trip||!Array.isArray(receipt.participants)||receipt.participants.some(p=>p.expense_id!==g.id)){report(g,new Error('儲存結果待確認，變更已保留。'));return false;}
    const receiptGraph={...graph,items:graph.items.map(i=>i.id===g.id?receipt.item:i),participants:[...graph.participants.filter(p=>p.expense_id!==g.id),...receipt.participants],
     links:g.group==='links'?[...graph.links.filter(l=>l.expense_id!==g.id),...request.p_value.ids.map(itinerary_item_id=>({expense_id:g.id,itinerary_item_id}))]:graph.links};
    confirmedRevision=g.submitted;g.base=receipt.revision;g.request=null;g.canonical=expenseFieldValue(receiptGraph,g.id,g.group);
    if(g.revision===g.submitted)g.value=structuredClone(g.canonical);persist(g);
    const after=await bounded(service.read(trip,sessionId));if(!current())return false;
-   if(after.error){verified=false;report(g,after.error);return false;}
+   if(after.error){verified=false;report(g,after.error);return g.group==='lifecycle';}
    // A confirmed receipt retires the submitted draft before installing the
    // canonical snapshot; subsequent typing remains buffered independently.
    g.conflict=false;g.error=null;ingest(after.data);onSnapshot(after.data);persist(g);
@@ -257,7 +261,28 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   suspend(){if(!active)return;active=false;verified=false;clearTimeout(createTimer);for(const g of fields.values()){if(g.local)continue;clearTimeout(g.timer);g.resumeFocus=g.focused;g.focused=false;persist(g);if(!g.request&&!g.saving)void release(g);}emit();},
   async resume(){active=true;if(!await refresh()||!active)return false;for(const g of fields.values())if(g.resumeFocus&&!g.request){g.resumeFocus=false;await focus(g);}return true;},
   create,
-  async execute(id,group,value){const g=get(id,group);if(!await focus(g))return false;input(g,value);const ok=await save(g);if(ok)await release(g);return ok;},
+  async execute(id,group,value){
+   const g=get(id,group),lifecycle=group==='lifecycle';
+   if(!lifecycle||!g.request){if(!await focus(g,{retainFocus:!lifecycle}))return false;input(g,value);}
+   const ok=await save(g);if(ok||lifecycle&&!g.request)await release(g);return ok;
+  },
+  async copyExpense(source){
+   if(!current()||!active||!verified||!await service.authorized(actor)||!current()||!active)return 'failed';
+   const key=`travel-planner-expense-copy:${actor}:${trip}:${source}`;
+   let request=pendingCopies.get(source);
+   if(!request)try{request=JSON.parse(storage?.getItem(key)||'null');}catch{/* Ignore invalid local data. */}
+   if(request?.p_trip_id!==trip||request?.p_source_id!==source||typeof request?.p_id!=='string'||typeof request?.p_request_id!=='string'){
+    request={p_trip_id:trip,p_source_id:source,p_id:makeId(),p_request_id:makeId()};
+   }
+   pendingCopies.set(source,request);
+   try{storage?.setItem(key,JSON.stringify(request));}catch{/* Keep the request in memory. */}
+   const r=await bounded(service.copy(request));
+   const ok=r.data?.committed===true&&r.data.request_id===request.p_request_id&&r.data.expense_id===request.p_id;
+   if(!ok&&!['22023','42501','55000','23505'].includes(r.error?.code))return 'unconfirmed';
+   pendingCopies.delete(source);
+   try{storage?.removeItem(key);}catch{/* The server receipt makes a replay safe. */}
+   return ok?'success':'failed';
+  },
   dispose(){disposed=true;clearTimeout(createTimer);for(const g of fields.values()){if(g.local)continue;clearTimeout(g.timer);persist(g);if(g.token&&g.epoch!==null&&!g.request)void service.lease(args(g,'release'));}listeners.clear();}
  };return client;
 }

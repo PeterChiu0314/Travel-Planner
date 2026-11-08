@@ -28,7 +28,7 @@ const table=page=>page.getByRole('table',{name:'預算明細'});
 test('restored toolbar, category table and statistics use budget ABC, not paid AB or settlement balance',async({page})=>{
  const f=await fixture();try{await open(page,f);
   await expect(page.getByRole('tab',{name:'實付',exact:true})).toHaveCount(0);
-  await expect(table(page).getByRole('columnheader')).toHaveCount(5);
+  await expect(table(page).getByRole('columnheader')).toHaveCount(6);
   await expect(table(page).getByRole('columnheader',{name:/個人預算/})).toBeVisible();
   const ownShare=f.models[0].budget.allocations[f.A].toLocaleString('zh-TW');
   const row=table(page).getByRole('row').filter({hasText:'機場接送'});await expect(row).toContainText('Day 2');await expect(row).toContainText('10,000');await expect(row.locator('.bw-person')).toHaveText(ownShare);

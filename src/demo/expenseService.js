@@ -30,6 +30,20 @@ export function createDemoExpenseService({trip,members,getItems}){
    const held={session:r.p_session_id,token:r.p_token,epoch:active?l.epoch:(l?.epoch||0)+1,expires:Date.now()+420000};leases.set(key,held);return{granted:true,epoch:held.epoch,revision:r.p_base,expires_at:new Date(held.expires).toISOString()};
   }),
   create:result(r=>once(r.p_request_id,JSON.stringify(r),()=>{if(!r.p_title?.trim())fail('Name required');if(models.some(i=>i.id===r.p_id))fail('Duplicate item');const item=newExpense({id:r.p_id,tripId:trip.id,members});item.decisions.paid={...item.decisions.budget};models.push({...item,title:r.p_title.trim(),payment_state:'draft',payment_mode:'self',payer_allocations:[],payer_sequence:0,planning_managed:true,revisions:Object.fromEntries(groups.map(g=>[g,0])),links:[]});return{committed:true,request_id:r.p_request_id,expense_id:r.p_id};})),
+  copy:result(r=>once(r.p_request_id,JSON.stringify(r),()=>{
+   const source=models.find(i=>i.id===r.p_source_id);
+   if(!source||r.p_trip_id!==trip.id)fail('Item removed','55000');
+   if(models.some(i=>i.id===r.p_id))fail('Duplicate item','23505');
+   const eligible=new Set(members.filter(m=>m.status==='approved').map(m=>m.user_id));
+   if(source.budget?.participantIds.some(id=>!eligible.has(id)))fail('Budget participants must be current members');
+   const duplicate=copy(source);
+   const decisions=duplicate.decisions.budget;
+   models.push({...duplicate,id:r.p_id,title:(source.title.trim()||'未命名項目')+'（副本）',
+    paid:null,paid_at:null,payment_state:'unpaid',payment_mode:'self',payer_id:null,payer_allocations:[],payer_sequence:0,
+    decisions:{budget:decisions&&Object.fromEntries(Object.entries(decisions).filter(([id])=>eligible.has(id))),paid:null},
+    revisions:Object.fromEntries(groups.map(g=>[g,0]))});
+   return{committed:true,request_id:r.p_request_id,expense_id:r.p_id};
+  })),
   mutate:result(r=>once(r.p_request_id,JSON.stringify({id:r.p_id,group:r.p_group,session:r.p_session_id,base:r.p_base,value:r.p_value}),()=>{
    const index=models.findIndex(i=>i.id===r.p_id),item=models[index],held=leases.get(r.p_id+':'+r.p_group),v=r.p_value;
    if(!item)fail('Item removed','55000');if(!held||held.session!==r.p_session_id||held.token!==r.p_token||held.epoch!==r.p_epoch||held.expires<=Date.now())fail('Lease required','55P03');

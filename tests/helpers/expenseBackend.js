@@ -46,6 +46,7 @@ export async function expenseBackend({timeline=false,legacyBudget=false,wholePla
  let chain=Promise.resolve();db.expenseCalls=[];db.dropAck=false;
  const signatures={create_named_expense_item:['p_trip_id','p_id','p_session_id','p_request_id','p_title'],expense_rates_lease:['p_trip_id','p_session_id','p_token','p_action','p_base','p_epoch'],update_expense_rates:['p_trip_id','p_session_id','p_token','p_epoch','p_base','p_value','p_request_id'],read_expense_snapshot:['p_trip_id','p_session_id'],read_expense_collaboration:['p_trip_id','p_session_id'],update_expense_selection:['p_trip_id','p_session_id','p_kind','p_id','p_activity_id','p_action'],expense_group_lease:['p_id','p_group','p_session_id','p_token','p_action','p_base','p_epoch','p_seq','p_dirty'],mutate_expense_group:['p_id','p_group','p_session_id','p_token','p_epoch','p_base','p_value','p_request_id'],create_expense_item:['p_trip_id','p_id','p_session_id','p_request_id','p_view']};
  if(timeline)Object.assign(signatures,{
+  copy_expense_item:['p_trip_id','p_source_id','p_id','p_request_id'],
   apply_timeline_schedule_operation:['target_trip_id','target_day_index','target_item_id','target_payload','operation_intent','expected_visit_ids','item_updated_at_baselines','confirmed_major_effect','preview_result','slot_item_ids','package_source_item_ids'],
   apply_trip_date_change:['trip_id','new_start_date','new_end_date','confirm_timeline_removal'],
   delete_trip_with_expenses:['p_trip_id'],

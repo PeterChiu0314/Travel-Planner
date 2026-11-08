@@ -2,6 +2,10 @@
 
 Updated 2026-11-08. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## 2026-11-08 — Budget quick actions
+
+On `codex/budget-collaboration-redesign`, the shared Budget table now has row-end deletion and a multi-select mode for copying or deleting visible items. Each copy preserves the budget and itinerary links, starts unpaid, and can safely replay an unconfirmed request. Delete uses the existing lifecycle permissions and checks. The build, 11 Chromium cases and 23 Node/SQL cases passed locally. See the [UX rules](docs/UX_RULES.md#budget-ux-rules) and [browser coverage](tests/expenseBatchActions.spec.js). The [copy RPC migration](supabase/migrations/20261108210000_expense_item_copy.sql) adds no tables, columns, or backfill. Formal Preview requires the migration and a matching app deployment; neither has been rolled out.
+
 ## 2026-11-08 — Issue #26 membership changes
 
 [Issue #26](https://github.com/PeterChiu0314/Travel-Planner/issues/26) is implemented on `codex/budget-collaboration-redesign`. The [departure migration](supabase/migrations/20261108170000_issue26_expense_member_departure.sql) applies member removal and unpaid expense changes in one transaction with the existing expense leases and luggage restriction. Paid records retain historical participants and payers. Settlement uses historical names saved at departure and numbered labels for older records without a name snapshot. Older stale allocations can be corrected by explicitly saving the affected group. The migration does not backfill expenses.

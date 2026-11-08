@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState,useSyncExternalStore} from 'react';
-import {ChartColumn,List,Pencil,Plus,Search} from 'lucide-react';
+import {ChartColumn,Copy,List,Pencil,Plus,Search,SquareCheck,Trash2,X} from 'lucide-react';
 import {createExpenseEditor,expenseGroupsConflict} from '../../lib/expenseEditor.js';
 import {createExpenseService} from '../../lib/expenseTransport.js';
 import {getBudgetMetadataSessionId} from '../../lib/budgetMetadataConfig.js';
@@ -61,13 +61,14 @@ export default function ExpenseWorkspace(props){
  const version=useSyncExternalStore(client.subscribe,client.getVersion),[selected,setSelected]=useState(()=>client.status().draftId||null),[view,setView]=useState(()=>planning?'budget':'paid'),[query,setQuery]=useState('');
  const [panel,setPanel]=useState(()=>client.status().draftId?'edit':'stats'),[paymentFilter,setPaymentFilter]=useState(''),[collapsed,setCollapsed]=useState([]),[viewpoint,setViewpoint]=useState(props.currentUserId),panelChosen=useRef(false),adding=useRef(false);
  const [collaborators,setCollaborators]=useState([]);
+ const [checked,setChecked]=useState(null),[actionBusy,setActionBusy]=useState(false),actionRunning=useRef(false),actionDone=useRef(null);
  const workspaceActive=props.workspaceActive??props.restoreDrafts!==false;
  const approvedActor=(props.metadataSnapshot?.expenseGraph?.members||props.members||[]).some(m=>m.user_id===props.currentUserId&&m.status==='approved');
  const collaboration=useMemo(()=>props.demo?null:createBudgetCollaboration({supabase:props.supabase,sessionId,onChange:setCollaborators,
   protocol:{read:'read_expense_collaboration',write:'update_expense_selection',signals:'expense_signals',channel:'expense-collaboration',selectionProtocol:2}}),[props.demo,props.supabase,sessionId]);
  const {ask,dialog}=useSiteDialog();
- useEffect(()=>{setSelected(client.status().draftId||null);setPanel(client.status().draftId?'edit':'stats');},[client]);
- useEffect(()=>{setView(planning?'budget':'paid');},[planning]);
+ useEffect(()=>{setSelected(client.status().draftId||null);setPanel(client.status().draftId?'edit':'stats');setChecked(null);},[client]);
+ useEffect(()=>{setView(planning?'budget':'paid');setChecked(null);},[planning]);
  const snapshot=props.metadataSnapshot;
  const unavailableWithoutGraph=snapshot?.expenseUnavailable&&!snapshot.expenseGraph;
  useEffect(()=>{
@@ -87,9 +88,12 @@ export default function ExpenseWorkspace(props){
  const selectedExists=Boolean(graph?.items.some(i=>i.id===selected));
  useEffect(()=>{if(workspaceActive)collaboration?.select(selectedExists?{kind:'expense',id:selected,tripId:props.activeTrip.id,userId:props.currentUserId}:null);},[collaboration,workspaceActive,selected,selectedExists,props.activeTrip.id,props.currentUserId]);
  props.services.useGuard(`expense-workspace:${props.currentUserId}:${props.activeTrip.id}`,{tripId:props.activeTrip.id,workspace:'budget'},
-  useMemo(()=>({isActive:true,readState:client.guardState,cleanupInWorkspaceOnly:true,prepareFinishes:true,
-   prepare:()=>client.finish(),finish:()=>client.finish(),save:()=>client.finish(),discard:()=>client.discard(),
-   focusMissingExpenseTitle:()=>titleInput.current?.focus()}),[client,version]));
+  useMemo(()=>{
+   const finish=async()=>{await actionDone.current;return client.finish();};
+   return {isActive:true,readState:()=>{const state=client.guardState();return {...state,isPending:state.isPending||Boolean(actionDone.current)};},cleanupInWorkspaceOnly:true,prepareFinishes:true,
+    prepare:finish,finish,save:finish,discard:()=>actionDone.current?false:client.discard(),
+    focusMissingExpenseTitle:()=>titleInput.current?.focus()};
+  },[client,version]));
  if (!graph) return props.metadataSnapshot?.expenseUnavailable
   ? <div role="status"><p className="bw-muted">目前無法讀取支出，草稿已保留。</p><button type="button" className="ghost-button" onClick={() => void props.onRefreshBudget(props.activeTrip.id)}>重新讀取支出</button></div>
   : <p className="bw-muted" role="status">讀取支出項目…</p>;
@@ -99,25 +103,67 @@ export default function ExpenseWorkspace(props){
  const editable=props.canEdit&&snapshot?.expenseVerified!==false&&state.verified&&navigator.onLine!==false;
  const handoffBudget=()=>props.services.handoff({tripId:props.activeTrip.id,workspace:'budget'});
  async function handoff(action){if(await handoffBudget())action();}
- async function add(){if(adding.current)return;adding.current=true;try{if(client.status().draftId){setSelected(client.status().draftId);setPanel('edit');return;}if(!await handoffBudget())return;setSelected(client.begin());setPanel('edit');}finally{adding.current=false;}}
- async function payment(){if(!await handoffBudget())return;const current=client.status().graph,model=expenseModels(current).find(i=>i.id===selected);if(!model)return;
+ async function add(){if(adding.current||actionRunning.current)return;adding.current=true;try{if(client.status().draftId){setSelected(client.status().draftId);setPanel('edit');return;}if(!await handoffBudget()||actionRunning.current)return;setSelected(client.begin());setPanel('edit');}finally{adding.current=false;}}
+ async function payment(){if(actionRunning.current||!await handoffBudget()||actionRunning.current)return;const current=client.status().graph,model=expenseModels(current).find(i=>i.id===selected);if(!model)return;
   const ok=await client.execute(model.id,'payment',{action:model.payment_state==='paid'?'unpaid':'paid',paid_at:new Date().toISOString(),budget_revision:model.revisions.budget||0,paid_revision:model.revisions.paid||0,payer_revision:model.revisions.payer||0});if(!ok)void client.refresh();}
- async function remove(){if(!await handoffBudget())return;if(!await ask({title:'刪除支出項目？',message:'此項目將不再計入預算與結算。',confirmLabel:'刪除',danger:true}))return;if(await client.execute(item.id,'lifecycle',{action:'delete'})){setSelected(null);setPanel('stats');}}
+ async function runAction(action,targets,batch=false){
+  if(!editable||actionRunning.current||!targets.length)return;
+  actionRunning.current=true;
+  let done;
+  try{
+   if(!await handoffBudget())return;
+   if(action==='delete'&&!await ask({
+    title:batch?`刪除 ${targets.length} 筆支出項目？`:'刪除支出項目？',
+    message:batch?'所選項目將不再計入預算與結算。':`「${targets[0].title||'未命名項目'}」將不再計入預算與結算。`,
+    confirmLabel:'刪除',danger:true
+   }))return;
+   actionDone.current=new Promise(resolve=>{done=resolve;});
+   setActionBusy(true);
+   const succeeded=new Set(),failed=[],unconfirmed=[];
+   for(const target of targets){
+    let outcome;
+    try{
+     if(action==='copy')outcome=await client.copyExpense(target.id);
+     else if(await client.execute(target.id,'lifecycle',{action:'delete'}))outcome='success';
+     else outcome=client.get(target.id,'lifecycle').request?'unconfirmed':'failed';
+    }catch{outcome='unconfirmed';}
+    if(outcome==='success')succeeded.add(target.id);
+    else (outcome==='unconfirmed'?unconfirmed:failed).push(target.title||'未命名項目');
+   }
+   if(action==='copy'||failed.length||unconfirmed.length)await client.refresh();
+   if(action==='delete'&&succeeded.has(selected)){setSelected(null);setPanel('stats');}
+   if(batch)setChecked(current=>current&&new Set([...current].filter(id=>!succeeded.has(id))));
+   const label=action==='copy'?'複製':'刪除';
+   const summary=[succeeded.size?`已${label} ${succeeded.size} 筆`:null,failed.length?`失敗 ${failed.length} 筆`:null,unconfirmed.length?`待確認 ${unconfirmed.length} 筆`:null].filter(Boolean).join('，');
+   if(failed.length||unconfirmed.length){
+    const description=[failed.length?`失敗：${failed.join('、')}`:null,unconfirmed.length?`待確認：${unconfirmed.join('、')}`:null].filter(Boolean).join('；');
+    notify.error(summary,{description});
+   }else notify.success(summary,{description:action==='copy'&&(actual||paymentFilter==='paid')?'副本已新增至預算，狀態為未付款。':undefined});
+  }finally{actionRunning.current=false;actionDone.current=null;done?.();setActionBusy(false);}
+ }
  function frame(group,label,render){const field=client.get(item.id,group),v=client.view(field),owner=collaborators.find(e=>e.kind==='expense'&&e.resource_id===item.id&&expenseGroupsConflict(group,e.group_key)&&e.mode==='edit')?.user_id||client.peerOwner(item.id,group);
-  const locked=!editable||!v.editable||Boolean(owner);
+  const locked=!editable||actionBusy||!v.editable||Boolean(owner);
   const isPricing=group==='budget'||group==='paid';
   return <BudgetCollaborationFrame key={group} role="group" aria-label={label} tabIndex={0} label={label} ownerId={owner} ownerName={memberLabel(members.find(m=>m.user_id===owner))}
    className={`${owner?'is-peer-held':locked?'is-unclaimed':''}${isPricing?' bw-pricing-group':''}`}
-   onPointerDownCapture={e=>{if(editable&&!owner&&!isPricingModeButton(e.target))void client.focus(field);}}
-   onFocusCapture={e=>{if(editable&&!isPricingModeButton(e.target)&&(!isPricing||e.target!==e.currentTarget))void client.focus(field);}}
+   onPointerDownCapture={e=>{if(editable&&!actionBusy&&!owner&&!isPricingModeButton(e.target))void client.focus(field);}}
+   onFocusCapture={e=>{if(editable&&!actionBusy&&!isPricingModeButton(e.target)&&(!isPricing||e.target!==e.currentTarget))void client.focus(field);}}
    onBlur={e=>{if(isPricingModeButton(e.target)&&!field.focused)return;if(!e.currentTarget.contains(e.relatedTarget)&&!e.relatedTarget?.closest('[data-budget-metadata-portal]'))client.blur(field);}}
    onCompositionStart={()=>{field.composing=true;}} onCompositionEnd={()=>{field.composing=false;client.input(field,field.value);}}>
-   {!(planning&&isPricing)&&<label>{label}</label>}{render({field,v,locked,canChooseMode:editable&&!owner&&state.verified&&!v.conflict&&(isPricing||!field.request&&!field.releasing),set:value=>client.input(field,value)})}
+   {!(planning&&isPricing)&&<label>{label}</label>}{render({field,v,locked,canChooseMode:editable&&!actionBusy&&!owner&&state.verified&&!v.conflict&&(isPricing||!field.request&&!field.releasing),set:value=>client.input(field,value)})}
   </BudgetCollaborationFrame>;
  }
  const actual=view==='paid',pricingLabel=actual?'實付計價與分攤':'預算計價與分攤',rows=expenseDisplayRows(models.filter(i=>!actual||i.paid&&i.payment_state==='paid'||i.payment_state==='draft'),view);
  const links=graph.links.map(l=>({budget_item_id:l.expense_id,itinerary_item_id:l.itinerary_item_id}));
  const displayRows=rows.filter(i=>(!paymentFilter||(i.payment_state==='paid')===(paymentFilter==='paid'))&&`${i.title} ${i.category} ${i.note}`.toLowerCase().includes(query.toLowerCase()));
+ const multi=checked!==null,visibleRows=displayRows.filter(row=>!collapsed.includes(row.category)),targets=visibleRows.filter(row=>checked?.has(row.id));
+ const clearChecked=()=>setChecked(current=>current&&new Set());
+ const toggleChecked=id=>{if(!actionRunning.current)setChecked(current=>{if(!current)return current;const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});};
+ const toggleAll=()=>{if(!actionRunning.current)setChecked(new Set(targets.length===visibleRows.length?[]:visibleRows.map(row=>row.id)));};
+ const changeCollapsed=update=>{
+  if(actionRunning.current)return;
+  void handoff(()=>{const next=update(collapsed);setCollapsed(next);setChecked(current=>current&&new Set(displayRows.filter(row=>!next.includes(row.category)&&current.has(row.id)).map(row=>row.id)));});
+ };
  const select=id=>void handoff(()=>{setSelected(selected===id?null:id);if(!panelChosen.current&&panel!=='edit')setPanel('detail');});
  const close=()=>void handoff(()=>{setPanel('detail');if(!client.status().graph.items.some(i=>i.id===selected))setSelected(null);});
  const changePanel=key=>void handoff(()=>{panelChosen.current=true;setPanel(key);});
@@ -128,13 +174,23 @@ export default function ExpenseWorkspace(props){
     ||item.payer_allocations?.some(payer=>payer.user_id===member.user_id)));
  const paymentDisabled=!editable||!item||Boolean(item&&(client.peerOwner(item.id,'payment')||collaborators.some(e=>e.kind==='expense'&&e.resource_id===item.id&&e.mode==='edit'&&expenseGroupsConflict('payment',e.group_key))))||item.payment_state!=='paid'&&(participantsRequired||payerRequired||!item.title.trim()||!item.paid&&!item.budget);
  return <section className="budget-panel budget-workspace" aria-label="支出工作區">{dialog}
-  <div className="bw-main"><div className="bw-toolbar">{!planning?<div className="bw-tabs" role="tablist" aria-label="費用資料檢視">{[['budget','預算'],['paid','實付']].map(([key,label])=><button type="button" role="tab" key={key} aria-selected={view===key} onClick={()=>void handoff(()=>setView(key))}>{label}</button>)}</div>:null}
-   <div className="bw-filters"><label><Search size={15}/><input aria-label="搜尋項目" placeholder="搜尋項目" autoComplete="off" value={query} onChange={e=>setQuery(e.target.value)}/></label><MenuSelect label="付款篩選" value={paymentFilter} onValueChange={setPaymentFilter} options={[{value:'',label:'全部項目'},{value:'unpaid',label:'未付款'},{value:'paid',label:'已付款'}]}/><span>{displayRows.length} 筆</span></div><button type="button" className="primary-button compact bw-add" disabled={!editable} onClick={()=>void add()}><Plus size={15}/>新增項目</button></div>
-   <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} collaborators={collaborators} selected={selected} collapsed={collapsed} setCollapsed={next=>void handoff(()=>setCollapsed(next))} currentUserId={props.currentUserId} actual={actual} onSelect={select}/>
+  <div className="bw-main bw-expense-main"><div className={`bw-toolbar bw-expense-toolbar${multi?' is-multi':''}`}>{!planning?<div className="bw-tabs" role="tablist" aria-label="費用資料檢視">{[['budget','預算'],['paid','實付']].map(([key,label])=><button type="button" role="tab" key={key} disabled={actionBusy} aria-selected={view===key} onClick={()=>void handoff(()=>{setView(key);clearChecked();})}>{label}</button>)}</div>:null}
+   <div className="bw-filters"><label><Search size={15}/><input aria-label="搜尋項目" placeholder="搜尋項目" autoComplete="off" value={query} disabled={actionBusy} onChange={e=>{setQuery(e.target.value);clearChecked();}}/></label><MenuSelect label="付款篩選" value={paymentFilter} disabled={actionBusy} onValueChange={value=>{setPaymentFilter(value);clearChecked();}} options={[{value:'',label:'全部項目'},{value:'unpaid',label:'未付款'},{value:'paid',label:'已付款'}]}/>{!multi&&<span>{displayRows.length} 筆</span>}</div>
+   {multi?<div className="bw-batch-actions" role="group" aria-label="多選工具" aria-busy={actionBusy}>
+    <span aria-live="polite">已選 {targets.length} 筆</span>
+    <button type="button" className="bw-action-icon" aria-label="複製所選項目" title="複製所選項目" disabled={!editable||actionBusy||!targets.length} onClick={()=>void runAction('copy',targets,true)}><Copy size={17}/></button>
+    <button type="button" className="bw-action-icon is-danger" aria-label="刪除所選項目" title="刪除所選項目" disabled={!editable||actionBusy||!targets.length} onClick={()=>void runAction('delete',targets,true)}><Trash2 size={17}/></button>
+    <button type="button" className="bw-action-icon bw-batch-close" aria-label="關閉多選" title="關閉多選" disabled={actionBusy} onClick={()=>setChecked(null)}><X size={18}/></button>
+   </div>:<div className="bw-batch-actions">
+    <button type="button" className="bw-multi-trigger" disabled={!editable||actionBusy||!displayRows.length} onClick={()=>void handoff(()=>setChecked(new Set()))}><SquareCheck size={15}/>多選</button>
+    <button type="button" className="primary-button compact bw-add" disabled={!editable||actionBusy} onClick={()=>void add()}><Plus size={15}/>新增項目</button>
+   </div>}</div>
+   <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} collaborators={collaborators} selected={multi?null:selected} collapsed={collapsed} setCollapsed={changeCollapsed} currentUserId={props.currentUserId} actual={actual} onSelect={multi?toggleChecked:select}
+    checked={checked} visibleCount={visibleRows.length} checkedCount={targets.length} onToggleAll={toggleAll} actionBusy={actionBusy} canRemove={editable} onRemove={row=>void runAction('delete',[row])}/>
   </div>
   <aside className="bw-side"><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[['stats','旅程統計',ChartColumn],['detail','項目明細',List],['edit','編輯項目',Pencil]].map(([key,label,Icon])=><button key={key} role="tab" type="button" aria-label={label} aria-selected={panel===key} onClick={()=>changePanel(key)}><Icon size={14} strokeWidth={1.8}/><span>{label}</span></button>)}</div>
   <div hidden={panel!=='stats'}><Stats records={rows} members={approved} actual={actual} budgets={rows} viewpoint={viewpoint} setViewpoint={setViewpoint} ratesSummary={<span/>}/><div className="bw-restored-rates" hidden={actual}><ExpenseRates service={transport} client={client} actor={props.currentUserId} trip={props.activeTrip.id} sessionId={sessionId} storage={storage} onError={errorToast} services={props.services} editable={editable} planning={planning&&Boolean(props.activeTrip.start_date)} active={workspaceActive}/></div></div>
-  {panel==='detail'?(item?<ExpenseDetail item={item} scope={view} planning={planning} currentUserId={props.currentUserId} members={expenseMembers} links={links} items={graph.itineraryItems||[]} editable={editable} participantsRequired={participantsRequired} payerRequired={payerRequired} paymentDisabled={paymentDisabled} onRemove={()=>void remove()} onPayment={()=>{if(!paymentDisabled)void payment();}}/>:<div className="bw-empty">選取項目查看明細</div>):null}
+  {panel==='detail'?(item?<ExpenseDetail item={item} scope={view} planning={planning} currentUserId={props.currentUserId} members={expenseMembers} links={links} items={graph.itineraryItems||[]} editable={editable&&!actionBusy} participantsRequired={participantsRequired} payerRequired={payerRequired} paymentDisabled={paymentDisabled||actionBusy} onRemove={()=>void runAction('delete',[item])} onPayment={()=>{if(!paymentDisabled&&!actionBusy)void payment();}}/>:<div className="bw-empty">選取項目查看明細</div>):null}
   {panel==='edit'&&item?<section className={`bw-editor bw-metadata-editor bw-native-panel${planning?' is-planning':''}`} aria-label="支出項目編輯">
    {participantsRequired&&<p className="bw-warning">請重新指定參與者，再標記已付款。</p>}
    {payerRequired&&<p className="bw-warning">請重新指定付款人，再標記已付款。</p>}
