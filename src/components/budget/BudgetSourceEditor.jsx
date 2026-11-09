@@ -6,7 +6,7 @@ import BudgetCollaborationFrame from './BudgetCollaborationFrame.jsx';
 import {useBudgetFailureToast} from './BudgetEditorFeedback.jsx';
 
 function changes(p,members) {
- const label={budget_item_id:'來源關聯',title:'項目名稱',category:'分類',note:'備註',payer_id:'付款人',amount:'金額',unit_amount:'每人單價',currency:'幣別',exchange_rate:'匯率',twd_amount:'台幣合計',pricing_mode:'計價方式',split_type:'分攤方式'};
+ const label={budget_item_id:'來源關聯',title:'項目名稱',category:'分類',note:'備註',payer_id:'付款人',amount:'金額',unit_amount:'每人單價',currency:'幣別',exchange_rate:'匯率',twd_amount:'台幣合計',pricing_mode:'計算方式',split_type:'分攤方式'};
  const value=(k,v)=>k==='payer_id'?(v?memberLabel(members.find(m=>m.user_id===v)):'未指定'):v??'未填';
  const result=Object.entries(label).filter(([k])=>k!=='budget_item_id'&&JSON.stringify(p.before[k]??null)!==JSON.stringify(p.after[k]??null)).map(([k,l])=>`${l}：${value(k,p.before[k])} → ${value(k,p.after[k])}`);
  if(JSON.stringify(p.people_before)!==JSON.stringify(p.people_after)) {

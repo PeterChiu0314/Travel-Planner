@@ -99,13 +99,13 @@ export function ExpenseDetail({item,scope,planning=false,members,links,items,edi
  {payerRequired&&<p className="bw-warning">請重新指定付款人，再標記已付款。</p>}
  <dl className="bw-detail-facts">
   <div className="bw-detail-payment">
-   <dt>付款方式</dt><dd>{item.payment_mode==='self'?'各自付':showPayers?`代付 · ${payers.length}人`:'未指定'}</dd>
+   <dt>付款方式</dt><dd>{item.payment_mode==='self'?'各自付':showPayers?`指定付款人 · ${payers.length}人`:'未指定'}</dd>
    {showPayers&&<dd className="bw-detail-payment-breakdown"><ul className="bw-detail-payers" aria-label="代付金額">
     {payers.map(payer=><li key={payer.user_id}><span>{payerName(payer.user_id)}</span><b>{payerAmount(payer)}</b></li>)}
    </ul></dd>}
   </div>
   <div className="bw-detail-itinerary"><dt>關聯行程</dt><dd>{budgetDay(item,links,items)}</dd></div>
-  <div><dt>計價方式</dt><dd>{bundle?pricingLabels[bundle.pricing_mode]:'未填'}</dd></div>
+  <div><dt>計算方式</dt><dd>{bundle?pricingLabels[bundle.pricing_mode]:'未填'}</dd></div>
   <div><dt>參與成員</dt><dd>{bundle?`${count} 人`:'未填'}</dd></div>
  </dl>
  {item.note?<section><h4>備註</h4><p>{item.note}</p></section>:null}

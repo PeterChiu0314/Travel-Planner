@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BedDouble, Car, ChevronDown, ChevronRight, Circle, CircleCheck, Package, Plane, RefreshCw, ShoppingBag, Ticket, UtensilsCrossed, X } from "lucide-react";
+import { BedDouble, Car, ChevronRight, Circle, CircleCheck, Package, Plane, RefreshCw, ShoppingBag, Ticket, UtensilsCrossed, X } from "lucide-react";
 import MenuSelect from "../MenuSelect.jsx";
 import { isBudgetComplete } from "../../lib/budgetLifecycleValues.js";
 import { memberLabel, money, originalMoney, participantsFor, recordAllocations } from "../../lib/budgetFinance.js";
@@ -42,7 +42,7 @@ export function Stats({ records, rows, members, actual, budgets, viewpoint, setV
   return <section className="bw-stats" aria-label="旅程費用摘要">
     <div className="bw-viewpoint"><span>統計視角</span><MenuSelect label="統計視角" value={validView} onValueChange={setViewpoint} options={[{value:"average",label:"人均旅費"}, ...members.map((member)=>({value:member.user_id,label:memberLabel(member)})), {value:"all",label:"全旅程"}]} /></div>
     <div className="bw-stats-overview">
-      <div className="bw-hero"><span>{validView === "average" ? `人均${actual ? "實際" : "預估"}旅費` : validView === "all" ? `全旅程${actual ? "實付" : "預算"}` : `${memberLabel(members.find((row) => row.user_id === validView))} 的${actual ? "實際" : "預估"}負擔`}</span>
+      <div className="bw-hero"><span>{validView === "average" ? `人均${actual ? "實際" : "預估"}旅費` : validView === "all" ? `全旅程${actual ? "實付" : "預算"}` : `${memberLabel(members.find((row) => row.user_id === validView))} 的${actual ? "實際負擔" : "預算"}`}</span>
         <strong><small>NT$</small> {main === null ? "—" : money(main)}</strong>
       </div>
       {validView !== "all" ? <div className="bw-trip-total"><span>全旅程{actual ? "實付" : "預算"}</span><b>NT$ {money(total)}</b></div> : null}
@@ -53,7 +53,7 @@ export function Stats({ records, rows, members, actual, budgets, viewpoint, setV
       <div className="bw-distribution" role="img" aria-label="分類金額占比">{main !== null && categoriesList.map(([category, value]) => <span key={category} style={{ flex: Math.max(value, 0), backgroundColor: categoryColor(category) }} title={`${category} ${money(value)}`} />)}</div>
       {categoriesList.map(([category, value]) => <div className="bw-stat-line" key={category}><span className="bw-category-label"><i style={{ backgroundColor: categoryColor(category) }} />{category}</span><span><b>{value === null ? "—" : money(value)}</b><small>{main === null || value === null ? "—" : `${main ? Math.round(value / main * 100) : 0}%`}</small></span></div>)}
     </section>
-    <section><h4>各成員{actual ? "實際" : "預估"}負擔</h4>{people.map((person) => <div className="bw-stat-line" key={person.user_id}><span>{memberLabel(person)}</span><b>{person.amount === null ? "—" : money(person.amount)}</b></div>)}</section>
+    <section><h4>{actual ? "各成員實際負擔" : "成員預算明細"}</h4>{people.map((person) => <div className="bw-stat-line" key={person.user_id}><span>{memberLabel(person)}</span><b>{person.amount === null ? "—" : money(person.amount)}</b></div>)}</section>
     {actual ? null : ratesSummary ?? <TripRatesSummary {...ratesControl} />}
   </section>;
 }
@@ -119,7 +119,7 @@ export function ItineraryPicker({ items, selectedIds, category, onChange, readOn
   function toggle(id) { if (!readOnly) onChange(selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id]); }
   function option(item) { return <label key={item.id}><input type="checkbox" disabled={readOnly} checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} /><span>{item.title}</span></label>; }
   return <section className="bw-link-picker" aria-label="關聯行程">
-    <button className="bw-link-heading" type="button" aria-expanded={open} aria-controls="budget-link-options" onClick={() => setOpen(!open)}><span>{open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}關聯行程</span><small>{selectedIds.length} 項</small></button>
+    <button className="bw-link-heading" type="button" aria-expanded={open} aria-controls="budget-link-options" onClick={() => setOpen(!open)}><span>關聯行程</span><small>{selectedIds.length} 項</small></button>
     {selectedIds.length ? <ul className="bw-linked-items">{selectedIds.map((id) => {
       const item = items.find((row) => row.id === id);
       return <li key={id}><span>{item ? `Day ${Number(item.day_index) + 1} · ${item.title}` : "已移除的行程"}</span><button type="button" className="bw-icon" disabled={readOnly} aria-label={`取消關聯 ${item?.title || "已移除的行程"}`} onClick={() => toggle(id)}><X size={13} /></button></li>;

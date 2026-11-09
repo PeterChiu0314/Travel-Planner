@@ -34,14 +34,14 @@ test('restored toolbar, category table and statistics use budget ABC, not paid A
   const row=table(page).getByRole('row').filter({hasText:'機場接送'});await expect(row).toContainText('Day 2');await expect(row).toContainText('10,000');await expect(row.locator('.bw-person')).toHaveText(ownShare);
   await expect(table(page).getByRole('row').filter({hasText:'歷史午餐'})).toContainText('尚未填寫');
   await expect(table(page).getByRole('row').filter({hasText:'免費接駁'}).getByRole('cell').nth(2)).toHaveText('0');
-  const stats=page.getByRole('region',{name:'旅程費用摘要'});await expect(stats.locator('.bw-hero')).toContainText(`A 的預估負擔`);await expect(stats.locator('.bw-hero')).toContainText(ownShare);await expect(stats).toContainText('10,000');await expect(stats.locator('.bw-paid-summary')).toContainText('1 / 2');
+  const stats=page.getByRole('region',{name:'旅程費用摘要'});await expect(stats.locator('.bw-hero')).toContainText(`A 的預算`);await expect(stats.locator('.bw-hero')).toContainText(ownShare);await expect(stats).toContainText('10,000');await expect(stats.locator('.bw-paid-summary')).toContainText('1 / 2');
   await expect(table(page).locator('.bw-group-person')).toHaveText(ownShare);
   await expect(page.locator('.bw-toolbar')).not.toContainText('更新匯率');await expect(page.locator('.bw-restored-rates')).toContainText('旅程估算匯率');
-  await stats.getByRole('combobox',{name:'統計視角'}).click();await page.getByRole('option',{name:'C',exact:true}).click();await expect(stats.locator('.bw-hero')).toContainText(/3,33[34]/);
+  await stats.getByRole('combobox',{name:'統計視角'}).click();await page.getByRole('option',{name:'C',exact:true}).click();await expect(stats.locator('.bw-hero')).toContainText('C 的預算');await expect(stats.locator('.bw-hero')).toContainText(/3,33[34]/);
   await expect(row.locator('.bw-person')).toHaveText(ownShare);
   await stats.getByRole('combobox',{name:'統計視角'}).click();await page.getByRole('option',{name:'人均旅費',exact:true}).click();await expect(stats.locator('.bw-hero')).toContainText('3,333');
   await stats.getByRole('combobox',{name:'統計視角'}).click();await page.getByRole('option',{name:'全旅程',exact:true}).click();await expect(stats.locator('.bw-hero')).toContainText('10,000');
-  const amounts=await stats.locator('section').filter({has:page.getByRole('heading',{name:'各成員預估負擔',exact:true})}).locator('b').allTextContents();expect(amounts.reduce((sum,value)=>sum+Number(value.replaceAll(',','')),0)).toBe(10000);
+  const amounts=await stats.locator('section').filter({has:page.getByRole('heading',{name:'成員預算明細',exact:true})}).locator('b').allTextContents();expect(amounts.reduce((sum,value)=>sum+Number(value.replaceAll(',','')),0)).toBe(10000);
   const s=await f.snapshot(),settlement=expenseSettlement(expenseModels(s),s.members);expect(settlement.balances.reduce((sum,m)=>sum+m.paid,0)).toBe(10300);expect(settlement.balances.find(m=>m.user_id===f.C).shouldPay).toBe(0);
   await page.screenshot({path:test.info().outputPath('restored-statistics.png')});expect(page.qaErrors).toEqual([]);
  }finally{await page.close();await f.close();}
@@ -85,7 +85,7 @@ test('Demo shows the current actor’s custom share and opens their statistics b
  await page.goto('/demo/budget');
  const row=table(page).getByRole('row').filter({hasText:'Villa 火鍋食材'});
  await expect(row.locator('.bw-person')).toHaveText('440');
- await expect(page.locator('.bw-hero')).toContainText('Peter 的預估負擔');
+ await expect(page.locator('.bw-hero')).toContainText('Peter 的預算');
  await row.getByRole('button',{name:'Villa 火鍋食材',exact:true}).click();
  await expect(page.locator('.bw-detail .bw-calculation > div:first-child')).toHaveText('個人NT$ 440');
  await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
@@ -139,7 +139,7 @@ test('custom split saves the one filled share, keeps explicit zero, and deselect
   await item.click();
   await edit.click();
   await expect(group.getByRole('spinbutton',{name:'總額',exact:true})).toHaveValue('500');
-  await expect(group.getByText('參與成員 · 1 人')).toBeVisible();
+  await expect(group.getByText('參與成員 1 人',{exact:true})).toBeVisible();
   expect(page.qaErrors).toEqual([]);
  }finally{await page.close();await f.close();}
 });
@@ -176,7 +176,7 @@ test('failed autosave keeps draft through Continue, and explicit discard returns
 });
 test('new model pricing controls persist participant changes independently and delete uses lifecycle RPC',async({page})=>{
  const f=await fixture();try{await open(page,f);await table(page).getByRole('button',{name:'機場接送',exact:true}).click();await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
-  const group=page.getByRole('group',{name:'預算計價與分攤',exact:true});await group.focus();await group.getByText('參與成員 · 3 人',{exact:true}).click();await expect(group.getByRole('checkbox',{name:/^C\b/})).toBeEnabled();await group.getByRole('checkbox',{name:/^C\b/}).uncheck();await group.getByRole('button',{name:'總額均分',exact:true}).focus();
+  const group=page.getByRole('group',{name:'預算計價與分攤',exact:true});await group.focus();await group.getByText('參與成員 全部',{exact:true}).click();await expect(group.getByRole('checkbox',{name:/^C\b/})).toBeEnabled();await group.getByRole('checkbox',{name:/^C\b/}).uncheck();await group.getByRole('button',{name:'總額均分',exact:true}).focus();
   await expect.poll(async()=>(await f.snapshot()).participants.find(p=>p.expense_id===f.models[0].id&&p.user_id===f.C).budget_selected).toBe(false);
   const s=await f.snapshot();expect(s.items.find(i=>i.id===f.models[0].id).paid.amount).toBe(10000);expect(s.participants.find(p=>p.expense_id===f.models[0].id&&p.user_id===f.C).paid_selected).toBe(false);
   await page.getByRole('tab',{name:'項目明細',exact:true}).click();await page.getByRole('button',{name:'刪除項目',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'刪除',exact:true}).click();await expect.poll(async()=>(await f.snapshot()).items.some(i=>i.id===f.models[0].id)).toBe(false);

@@ -7,7 +7,7 @@ const row=(p,title)=>p.locator('.bw-row').filter({has:p.getByRole('button',{name
 const editor=p=>p.getByRole('region',{name:'支出項目編輯'});
 async function title(p,text){const input=editor(p).getByRole('textbox',{name:'項目名稱',exact:true});await input.focus();await expect(input).toBeEditable();await input.fill(text);await input.blur();}
 async function amount(p,scope,value){const group=editor(p).getByRole('group',{name:scope==='paid'?'實付計價與分攤':'預算計價與分攤',exact:true});const input=group.getByRole('spinbutton',{name:'總額',exact:true});await input.focus();await expect(input).toBeEditable();await input.fill(value);await input.blur();}
-async function payer(p,name){const g=editor(p).getByRole('group',{name:'付款方式',exact:true});await g.focus();const mode=g.getByRole('button',{name:'代付',exact:true});if(await mode.count())await mode.click();await g.getByRole('combobox').first().click();await p.getByRole('option',{name,exact:true}).click();}
+async function payer(p,name){const g=editor(p).getByRole('group',{name:'付款方式',exact:true});await g.focus();const mode=g.getByRole('button',{name:'指定付款人',exact:true});if(await mode.count())await mode.click();await g.getByRole('combobox').first().click();await p.getByRole('option',{name,exact:true}).click();}
 
 test('synthetic fixture has one item identity and valid Timeline links without Source or Baseline',()=>{
  const items=createDemoExpenseModels(trip,trip.itinerary_items);expect(items).toHaveLength(32);expect(new Set(items.map(i=>i.id)).size).toBe(32);expect(items.filter(i=>i.payment_state==='paid')).toHaveLength(8);

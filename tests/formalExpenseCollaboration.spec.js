@@ -133,7 +133,7 @@ test('discrete mode edit expands members, recovers an unknown receipt and releas
   const group=page.getByRole('group',{name:'預算計價與分攤',exact:true});
   const participants=group.locator('.bw-member-options');
   const custom=group.getByRole('button',{name:'自訂分攤',exact:true});
-  const advance=peer.getByRole('group',{name:'付款方式',exact:true}).getByRole('button',{name:'代付',exact:true});
+  const advance=peer.getByRole('group',{name:'付款方式',exact:true}).getByRole('button',{name:'指定付款人',exact:true});
   await expect(participants).toHaveJSProperty('open',false);
   await custom.focus();
   expect(f.db.expenseCalls.filter(c=>c.name==='expense_group_lease'&&c.args.p_group==='budget')).toHaveLength(0);
@@ -172,7 +172,7 @@ test('switching back to either ordinary mode collapses members and continued inp
   const group=page.getByRole('group',{name:'預算計價與分攤',exact:true});
   const participants=group.locator('.bw-member-options');
   const custom=group.getByRole('button',{name:'自訂分攤',exact:true});
-  const advance=peer.getByRole('group',{name:'付款方式',exact:true}).getByRole('button',{name:'代付',exact:true});
+  const advance=peer.getByRole('group',{name:'付款方式',exact:true}).getByRole('button',{name:'指定付款人',exact:true});
   for(const label of ['總額均分','每人計價']){
    await custom.click();
    await expect(participants).toHaveJSProperty('open',true);

@@ -29,7 +29,7 @@ test('legacy decimals stay untouched until an edit, then three shares reconcile 
   await open(page,f,f.A);
   await open(peer,f,f.B);
   const group=pricing(page),amount=group.getByRole('spinbutton',{name:'總額',exact:true});
-  const payer=editor(peer).getByRole('button',{name:'代付',exact:true});
+  const payer=editor(peer).getByRole('button',{name:'指定付款人',exact:true});
   const getShares=async()=>(await f.snapshot()).participants.filter(p=>p.budget_selected).map(p=>p.budget_share_amount);
   await expect(amount).toHaveValue('1000.41');
   await expect(amount).toHaveAttribute('step','1');

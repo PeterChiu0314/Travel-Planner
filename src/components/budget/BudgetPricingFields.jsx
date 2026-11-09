@@ -5,7 +5,7 @@ import { PricingSummaryCard } from "./ExpenseWorkspaceParts.jsx";
 
 // One pricing surface for whole-record editors and the atomic group controller.
 export default function BudgetPricingFields({ form, pricing, members, locked, historical, tripRates, update, setForm,
-  membersOpen, setMembersOpen, changeMode, showModes = true, groupMode = false, editRate = false, fixedCurrency = false, modeLocked = locked, modeBusy = false, showModeLegend = true, showSummary = true, requestParticipantForm, planningIntegers = false, finishAmountInput, headingAfterAmount, personalAmount }) {
+  membersOpen, setMembersOpen, changeMode, showModes = true, groupMode = false, editRate = false, actual = editRate, fixedCurrency = false, modeLocked = locked, modeBusy = false, showModeLegend = true, showSummary = true, requestParticipantForm, planningIntegers = false, finishAmountInput, pricingHeading, personalAmount }) {
   const eligible = members.filter(m => m.status === 'approved');
   const options = [...eligible, ...form.participantIds.filter(id => !eligible.some(m => m.user_id === id)).map(user_id => ({
     user_id, display_name: members.find(m=>m.user_id===user_id)?.display_name || "已退出／無效成員", unavailable: true,
@@ -19,19 +19,24 @@ export default function BudgetPricingFields({ form, pricing, members, locked, hi
   function updateAmount(key, value, raw = value) {
     update(key, value, { deferAmountInput: (planningIntegers && raw.includes(".")) || (key === "shares" && raw === "") });
   }
-  const modes = showModes ? <fieldset disabled={modeLocked} className="bw-modes" aria-label="計價方式">{showModeLegend?<legend>計價方式</legend>:null}{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} aria-disabled={modeBusy || undefined} onClick={() => { if (!modeBusy) changeMode(key); }}>{label}</button>)}</fieldset> : null;
+  const modes = showModes ? <fieldset disabled={modeLocked} className={`bw-modes${pricingHeading ? " bw-mode-switch" : ""}`} aria-label="計算方式">{showModeLegend?<legend>計算方式</legend>:null}{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} aria-disabled={modeBusy || undefined} onClick={() => { if (!modeBusy) changeMode(key); }}>{label}</button>)}</fieldset> : null;
+  const participantCount = form.participantIds.length;
+  const allParticipants = pricingHeading && eligible.length > 0 && eligible.length === participantCount
+    && eligible.every(member => form.participantIds.includes(member.user_id));
+  const participantSummary = allParticipants ? "全部" : `${participantCount} 人`;
   return <>
-    {!headingAfterAmount && modes}
-    <div className="bw-two-fields"><label>{form.pricing_mode === "per_person" ? "每人單價" : "總額"}<input name="amount" required {...amountInput}
+    {pricingHeading ? <span className="bw-pricing-heading">{pricingHeading}</span> : modes}
+    <div className="bw-two-fields"><label><span className="bw-amount-heading">{form.pricing_mode === "per_person" ? "每人單價" : "總額"}{pricingHeading && form.currency !== "TWD" && pricing && <small aria-hidden="true">約 {pricing.twd_amount} TWD</small>}</span><input name="amount" required {...amountInput}
       disabled={!groupMode && locked || form.pricing_mode === "custom"} readOnly={groupMode && locked} value={form.pricing_mode === "custom" ? pricing?.amount ?? "" : form.pricing_mode === "per_person" ? form.unit_amount ?? "" : form.amount}
       onChange={event => updateAmount(form.pricing_mode === "per_person" ? "unit_amount" : "amount", event.target.value)} /></label>
       <div className="bw-field"><span>幣別</span><MenuSelect disabled={fixedCurrency || !groupMode && locked} readOnly={locked} metadataPortal={groupMode} label="幣別" value={form.currency}
         onValueChange={value => { if (!locked) setForm({ ...form, currency: value, exchange_rate: value === "TWD" ? 1 : tripRates?.rates?.[value] ?? "" }); }}
         options={[...new Set(["TWD", "JPY", "USD", "EUR", "KRW", "HKD", form.currency])].filter(Boolean).map(value => ({ value, label: value }))} /></div></div>
-    {headingAfterAmount && <><span className="bw-pricing-heading">{headingAfterAmount}</span>{modes}</>}
-    {form.currency !== "TWD" ? editRate ? <label>參考匯率<input name="exchange_rate" type="number" autoComplete="off" min="0.000001" step="0.000001" readOnly={locked} value={form.exchange_rate} onChange={e => update("exchange_rate", e.target.value)} /></label> : <div className="bw-trip-rate"><span>{historical ? "歷史匯率" : "旅程估算匯率"}</span><b>1 {form.currency} = {form.exchange_rate || "—"} TWD</b></div> : null}
-    <details className="bw-member-options" open={membersOpen} onToggle={event => setMembersOpen(event.currentTarget.open)}><summary>參與成員 · {form.participantIds.length} 人</summary>
-      <fieldset className="bw-participants"><legend>各人負擔 · {planningIntegers || form.pricing_mode === "custom" ? form.currency : "TWD"}</legend>{options.map(member => <label key={member.user_id}>
+    {pricingHeading && modes && <><span className="bw-mode-label">計算方式</span>{modes}</>}
+    {form.currency !== "TWD" ? editRate ? <label>參考匯率<input name="exchange_rate" type="number" autoComplete="off" min="0.000001" step="0.000001" readOnly={locked} value={form.exchange_rate} onChange={e => update("exchange_rate", e.target.value)} /></label> : !pricingHeading && <div className="bw-trip-rate"><span>{historical ? "歷史匯率" : "旅程估算匯率"}</span><b>1 {form.currency} = {form.exchange_rate || "—"} TWD</b></div> : null}
+    <details className="bw-member-options" open={membersOpen} onToggle={event => setMembersOpen(event.currentTarget.open)}>
+      <summary>參與成員{pricingHeading ? <> <span className="bw-member-count">{participantSummary}</span></> : ` · ${participantSummary}`}</summary>
+      <fieldset className="bw-participants"><legend>{actual ? "各人負擔" : "成員預算明細"} · {planningIntegers || form.pricing_mode === "custom" ? form.currency : "TWD"}</legend>{options.map(member => <label key={member.user_id}>
         <input disabled={(!requestParticipantForm && locked) || member.unavailable && !form.participantIds.includes(member.user_id)} type="checkbox" checked={form.participantIds.includes(member.user_id)} onChange={() => void toggleParticipant(member)} />{memberLabel(member)}
         {form.pricing_mode === "custom" && form.participantIds.includes(member.user_id) ? <input aria-label={`${memberLabel(member)} 分攤金額`} disabled={!groupMode && locked} readOnly={groupMode && locked} required {...amountInput} value={form.shares[member.user_id] ?? ""} onChange={event => updateAmount("shares", { ...form.shares, [member.user_id]: event.target.value }, event.target.value)} /> : <b>{form.participantIds.includes(member.user_id) ? pricing ? planningIntegers ? originalMoney(pricing.shares[member.user_id]) : money(pricing.allocations[member.user_id] || 0) : "—" : ""}</b>}
       </label>)}</fieldset></details>

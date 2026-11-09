@@ -289,7 +289,7 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
     {error ? <p role="alert" className="bw-warning">{friendlyError(error)}</p> : null}
     <label>項目<input name="title" required value={form.title} onChange={(event) => update("title", event.target.value)} /></label>
     {!actual ? <div className="bw-two-fields"><div className="bw-field"><span>分類</span><MenuSelect editable label="分類" value={form.category} onValueChange={(value)=>update("category",value)} options={categoryOrder.map(value=>({value,label:value}))} /></div>{payer}</div> : null}
-    <BudgetPricingFields form={form} pricing={pricing} members={members} locked={locked} historical={historical} tripRates={tripRates} update={update}
+    <BudgetPricingFields form={form} pricing={pricing} members={members} locked={locked} historical={historical} actual={actual} tripRates={tripRates} update={update}
       setForm={next => setForm({ ...next, ...(actual ? { twd_amount_source: "estimated", actual_twd_amount: "" } : {}) })}
       membersOpen={membersOpen} setMembersOpen={setMembersOpen} changeMode={changeMode} showModes={!actual} />
     {actual ? payer : null}
@@ -305,7 +305,7 @@ function RecordEditor({ editor, actual, members, items, budgets, budgetParticipa
           const seed = recordForm(budget, budgetParticipants, "budget_item_id", members);
           setForm({ ...form, ...seed, budget_item_id: budget.id, paid_at: form.paid_at, twd_amount_source: "estimated", actual_twd_amount: "" });
         }} options={[{value:"",label:"直接新增"},...budgets.map(row=>({value:row.id,label:row.title}))]} />{sourceProtocolRequested?<small>請在分欄編輯中以「變更來源關聯」或「套用來源資料」操作。</small>:null}</div>
-        <fieldset className="bw-modes"><legend>計價方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset>
+        <fieldset className="bw-modes"><legend>計算方式</legend>{Object.entries(pricingLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={form.pricing_mode === key} onClick={() => changeMode(key)}>{label}</button>)}</fieldset>
       </details>
     </> : <>
       <ItineraryPicker items={items} category={form.category} selectedIds={form.linkedItemIds} onChange={(ids) => update("linkedItemIds", ids)} />
@@ -324,13 +324,13 @@ function RecordDetail({ record, actual, participants, members, links, items, pay
     {isBudgetComplete(record)?<PricingSummary amount={record.amount} twdAmount={record.twd_amount} currency={record.currency} mode={mode} count={participants.length} />:<p>金額尚未填寫</p>}
     {paymentError ? <p className="bw-warning" role="alert">{friendlyError(paymentError)}</p> : null}
     {paymentPending ? <button type="button" className="ghost-button compact" disabled={paymentBusy} onClick={onPaymentRetry}>確認付款結果</button> : null}
-    <dl><div><dt>計價方式</dt><dd>{pricingLabels[mode]}</dd></div>{mode === "per_person" ? <div><dt>每人單價</dt><dd>{record.currency} {money(record.unit_amount)}</dd></div> : null}<div><dt>參與成員</dt><dd>{participants.length} 人</dd></div>
+    <dl><div><dt>計算方式</dt><dd>{pricingLabels[mode]}</dd></div>{mode === "per_person" ? <div><dt>每人單價</dt><dd>{record.currency} {money(record.unit_amount)}</dd></div> : null}<div><dt>參與成員</dt><dd>{participants.length} 人</dd></div>
       <div><dt>付款人</dt><dd>{memberLabel(members.find((row) => row.user_id === record.payer_id))}</dd></div>
       {actual ? <div><dt>台幣金額來源</dt><dd>{record.twd_amount_source === "actual" ? "實際扣款" : record.twd_amount_source === "estimated" ? "匯率估算" : "既有紀錄（來源未註記）"}</dd></div> : null}
       {record.currency !== "TWD" && record.exchange_rate ? <div><dt>{actual ? "參考匯率" : "換算匯率"}</dt><dd>1 {record.currency} = {record.exchange_rate} TWD</dd></div> : null}
       <div><dt>關聯行程</dt><dd>{budgetDay(record, links, items)}</dd></div>
       {actual ? <div><dt>付款時間</dt><dd>{record.paid_at?new Date(record.paid_at).toLocaleString("zh-TW", { hour12: false }):'尚未填寫'}</dd></div> : null}
-    </dl><section><h4>各人負擔 <small>TWD</small></h4>{participants.map((participant) => <div className="bw-stat-line" key={participant.user_id}><span>{memberLabel(members.find((member) => member.user_id === participant.user_id))}</span><b>{shares ? money(shares[participant.user_id]) : "待確認"}</b></div>)}</section>
+    </dl><section><h4>{actual ? "各人負擔" : "成員預算明細"} <small>TWD</small></h4>{participants.map((participant) => <div className="bw-stat-line" key={participant.user_id}><span>{memberLabel(members.find((member) => member.user_id === participant.user_id))}</span><b>{shares ? money(shares[participant.user_id]) : "待確認"}</b></div>)}</section>
     {record.note ? <section><h4>備註</h4><p>{record.note}</p></section> : null}
     {renderAttachments?.(record)}
     {paymentTime}
