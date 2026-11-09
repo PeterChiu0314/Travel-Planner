@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BedDouble, Car, ChevronDown, ChevronRight, Circle, CircleCheck, Package, Plane, ShoppingBag, Ticket, UtensilsCrossed, X } from "lucide-react";
+import { BedDouble, Car, ChevronDown, ChevronRight, Circle, CircleCheck, Package, Plane, RefreshCw, ShoppingBag, Ticket, UtensilsCrossed, X } from "lucide-react";
 import MenuSelect from "../MenuSelect.jsx";
 import { isBudgetComplete } from "../../lib/budgetLifecycleValues.js";
 import { memberLabel, money, originalMoney, participantsFor, recordAllocations } from "../../lib/budgetFinance.js";
@@ -41,34 +41,57 @@ export function Stats({ records, rows, members, actual, budgets, viewpoint, setV
   const categoriesList = [...categories].sort((a, b) => b[1] - a[1]);
   return <section className="bw-stats" aria-label="旅程費用摘要">
     <div className="bw-viewpoint"><span>統計視角</span><MenuSelect label="統計視角" value={validView} onValueChange={setViewpoint} options={[{value:"average",label:"人均旅費"}, ...members.map((member)=>({value:member.user_id,label:memberLabel(member)})), {value:"all",label:"全旅程"}]} /></div>
-    <div className="bw-hero"><span>{validView === "average" ? `人均${actual ? "實際" : "預估"}旅費` : validView === "all" ? `全旅程${actual ? "實付" : "預算"}` : `${memberLabel(members.find((row) => row.user_id === validView))} 的${actual ? "實際" : "預估"}負擔`}</span>
-      <strong><small>NT$</small> {main === null ? "—" : money(main)}</strong>
-      <span className="bw-muted">{validView === "average" ? `全團平均 · ${members.length} 位成員` : "依參與項目計算"}</span>
+    <div className="bw-stats-overview">
+      <div className="bw-hero"><span>{validView === "average" ? `人均${actual ? "實際" : "預估"}旅費` : validView === "all" ? `全旅程${actual ? "實付" : "預算"}` : `${memberLabel(members.find((row) => row.user_id === validView))} 的${actual ? "實際" : "預估"}負擔`}</span>
+        <strong><small>NT$</small> {main === null ? "—" : money(main)}</strong>
+      </div>
+      {validView !== "all" ? <div className="bw-trip-total"><span>全旅程{actual ? "實付" : "預算"}</span><b>NT$ {money(total)}</b></div> : null}
     </div>
-    {validView !== "all" ? <div className="bw-stat-line"><span>全旅程{actual ? "實付" : "預算"}</span><b>NT$ {money(total)}</b></div> : null}
+    {actual ? null : <div className="bw-stat-line bw-paid-summary"><span>已付款項目</span><b>{records.filter((row) => row.hasActual).length} / {records.length}</b></div>}
     {unknown ? <p className="bw-warning">部分項目的分攤成員或金額待確認。</p> : null}
-    <section><h4>各成員{actual ? "實際" : "預估"}負擔</h4>{people.map((person) => <div className="bw-stat-line" key={person.user_id}><span>{memberLabel(person)}</span><b>{person.amount === null ? "—" : money(person.amount)}</b></div>)}</section>
     <section><h4>分類{actual ? "支出" : "預算"}</h4>
       <div className="bw-distribution" role="img" aria-label="分類金額占比">{main !== null && categoriesList.map(([category, value]) => <span key={category} style={{ flex: Math.max(value, 0), backgroundColor: categoryColor(category) }} title={`${category} ${money(value)}`} />)}</div>
       {categoriesList.map(([category, value]) => <div className="bw-stat-line" key={category}><span className="bw-category-label"><i style={{ backgroundColor: categoryColor(category) }} />{category}</span><span><b>{value === null ? "—" : money(value)}</b><small>{main === null || value === null ? "—" : `${main ? Math.round(value / main * 100) : 0}%`}</small></span></div>)}
     </section>
-    {actual ? null : <><div className="bw-stat-line bw-paid-summary"><span>已付款項目</span><span>{records.filter((row) => row.hasActual).length} / {records.length}</span></div>{ratesSummary ?? <TripRatesSummary {...ratesControl} />}</>}
+    <section><h4>各成員{actual ? "實際" : "預估"}負擔</h4>{people.map((person) => <div className="bw-stat-line" key={person.user_id}><span>{memberLabel(person)}</span><b>{person.amount === null ? "—" : money(person.amount)}</b></div>)}</section>
+    {actual ? null : ratesSummary ?? <TripRatesSummary {...ratesControl} />}
   </section>;
+}
+
+export function PricingSummaryCard({ shareLabel, share, total, original }) {
+  return <div className="bw-calculation">
+    <div><span>{shareLabel}</span><strong>{share}</strong></div>
+    <div><span>總額</span><strong>{total}</strong>{original && <small>{original}</small>}</div>
+  </div>;
 }
 
 export function PricingSummary({ amount, twdAmount, currency, mode, count, showOriginalPrecision, uneven, personalAmount }) {
   const perPerson = mode === "custom" || uneven ? "依成員" : count ? `NT$ ${money(twdAmount / count)}` : "—";
   const personal = personalAmount !== undefined;
   const share = personal ? (personalAmount === null ? "—" : `NT$ ${money(personalAmount)}`) : perPerson;
-  return <div className="bw-calculation"><div><span>{personal ? "個人" : "每人"}</span><strong>{share}</strong></div><div><span>總額</span><strong>NT$ {money(twdAmount)}</strong>{currency !== "TWD" || showOriginalPrecision && !Number.isInteger(amount) ? <small>{currency} {showOriginalPrecision ? originalMoney(amount) : money(amount)}</small> : null}</div></div>;
+  const showOriginal = currency !== "TWD" || showOriginalPrecision && !Number.isInteger(amount);
+  return <PricingSummaryCard shareLabel={personal ? "個人" : "每人"} share={share} total={`NT$ ${money(twdAmount)}`}
+    original={showOriginal ? `${currency} ${showOriginalPrecision ? originalMoney(amount) : money(amount)}` : null} />;
 }
 
-export function TripRatesSummary({ tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates }) {
-  return <section className="bw-trip-rate"><div><h4>旅程估算匯率</h4><button type="button" className="ghost-button compact" disabled={!canRefreshRates || ratesBusy} onClick={onRefreshRates}>{ratesBusy ? "更新中…" : "更新匯率"}</button></div>
+export function TripRatesSummary({ tripRates, ratesBusy, ratesError, canRefreshRates, onRefreshRates, collapsible }) {
+  const details = <>
     {Object.entries(tripRates?.rates || {}).filter(([currency]) => budgetCurrencies.includes(currency)).map(([currency, rate]) => <div key={currency}><span>1 {currency}</span><b>{rate} TWD</b></div>)}
     <small>{tripRates?.quoted_at ? `${tripRates.source} · ${new Date(tripRates.quoted_at).toLocaleDateString("zh-TW")}` : tripRates ? "首次自動取得，之後手動更新" : "旅程統一匯率尚待啟用"}</small>
     <small>更新整個旅程的未付款預算；已付款金額不變。</small>
     {tripRates?.source === "ExchangeRate-API" ? <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a> : null}
+  </>;
+  return <section className="bw-trip-rate">
+    {collapsible ? <>
+      <details className="bw-rate-disclosure">
+        <summary><h4><ChevronRight size={14} aria-hidden="true" />旅程估算匯率</h4></summary>
+        <div className="bw-rate-details">{details}</div>
+      </details>
+      <button type="button" className="ghost-button compact bw-rate-refresh" aria-label="更新匯率" aria-busy={ratesBusy} title={ratesBusy ? "更新中…" : "更新匯率"} disabled={!canRefreshRates || ratesBusy} onClick={onRefreshRates}><RefreshCw size={15} aria-hidden="true" /></button>
+    </> : <>
+      <div><h4>旅程估算匯率</h4><button type="button" className="ghost-button compact" disabled={!canRefreshRates || ratesBusy} onClick={onRefreshRates}>{ratesBusy ? "更新中…" : "更新匯率"}</button></div>
+      {details}
+    </>}
     {ratesError ? <small role="alert">{ratesError}</small> : null}
   </section>;
 }

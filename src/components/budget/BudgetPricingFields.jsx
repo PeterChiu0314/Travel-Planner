@@ -1,6 +1,7 @@
 import MenuSelect from "../MenuSelect.jsx";
 import { memberLabel, money, originalMoney, pricingLabels } from "../../lib/budgetFinance.js";
 import { pricingParticipantsDraft } from "../../lib/budgetPricingGroups.js";
+import { PricingSummaryCard } from "./ExpenseWorkspaceParts.jsx";
 
 // One pricing surface for whole-record editors and the atomic group controller.
 export default function BudgetPricingFields({ form, pricing, members, locked, historical, tripRates, update, setForm,
@@ -59,5 +60,6 @@ export function BudgetPricingSummary({form,pricing,showOriginalPrecision=false,k
   }
   const showOriginal = form.currency !== "TWD" || showOriginalPrecision && Number.isFinite(storedAmount) && !Number.isInteger(storedAmount);
   const original = pricing ? (showOriginalPrecision ? originalMoney(pricing.amount) : money(pricing.amount)) : "—";
-  return <div className="bw-calculation"><div><span>{perPersonLabel}</span><strong>{perPerson}</strong></div><div><span>總額</span><strong>{pricing ? `NT$ ${money(pricing.twd_amount)}` : "—"}</strong>{showOriginal ? <small>{form.currency} {original}</small> : null}</div></div>;
+  return <PricingSummaryCard shareLabel={perPersonLabel} share={perPerson} total={pricing ? `NT$ ${money(pricing.twd_amount)}` : "—"}
+    original={showOriginal ? `${form.currency} ${original}` : null} />;
 }

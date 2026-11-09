@@ -120,6 +120,39 @@ test('filtered select-all and batch retries preserve the correct targets without
  }finally{await page.close();await f.close();}
 });
 
+test('Demo aligns the table controls and selects only visible rows in a category',async({page})=>{
+ await page.goto('/demo/budget');
+ const rows=page.locator('.bw-row');
+ const count=await rows.count();
+ const collapseAll=page.getByRole('button',{name:'收合所有分類'});
+ const collapseFlights=page.getByRole('button',{name:'收合機票',exact:true});
+ const header=await collapseAll.boundingBox(),group=await collapseFlights.boundingBox();
+ expect(Math.abs((header.x+header.width/2)-(group.x+group.width/2))).toBeLessThan(1);
+ await collapseAll.click();
+ await expect(rows).toHaveCount(0);
+ await page.getByRole('button',{name:'展開所有分類'}).press('Enter');
+ await expect(rows).toHaveCount(count);
+ await page.getByRole('button',{name:'多選',exact:true}).click();
+ const flights=page.getByRole('checkbox',{name:'全選「機票」'});
+ const outbound=page.getByRole('checkbox',{name:'選取「去程機票・桃園 → 關西」'});
+ const inbound=page.getByRole('checkbox',{name:'選取「回程機票・名古屋 → 桃園」'});
+ const bus=page.getByRole('checkbox',{name:'選取「關西機場 → 京都巴士」'});
+ await bus.check();
+ await outbound.check();
+ await expect(flights).toHaveJSProperty('indeterminate',true);
+ await flights.check();
+ await expect(inbound).toBeChecked();
+ await flights.uncheck();
+ await expect(outbound).not.toBeChecked();
+ await expect(bus).toBeChecked();
+ await page.getByRole('textbox',{name:'搜尋項目'}).fill('去程');
+ await flights.check();
+ await expect(page.getByText('已選 1 筆',{exact:true})).toBeVisible();
+ await page.locator('.bw-group-label').filter({hasText:'機票'}).click();
+ await expect(flights).toBeDisabled();
+ await expect(page.getByText('已選 0 筆',{exact:true})).toBeVisible();
+});
+
 test('Demo copies and deletes multiple items through the same controls',async({page})=>{
  await page.goto('/demo/budget');
  const rows=page.locator('.bw-row');

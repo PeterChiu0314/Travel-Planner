@@ -160,6 +160,20 @@ export default function ExpenseWorkspace(props){
  const clearChecked=()=>setChecked(current=>current&&new Set());
  const toggleChecked=id=>{if(!actionRunning.current)setChecked(current=>{if(!current)return current;const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});};
  const toggleAll=()=>{if(!actionRunning.current)setChecked(new Set(targets.length===visibleRows.length?[]:visibleRows.map(row=>row.id)));};
+ const toggleGroup=category=>{
+  if(actionRunning.current)return;
+  const group=visibleRows.filter(row=>row.category===category);
+  setChecked(current=>{
+   if(!current)return current;
+   const next=new Set(current);
+   const allSelected=group.every(row=>current.has(row.id));
+   for(const {id} of group){
+    if(allSelected)next.delete(id);
+    else next.add(id);
+   }
+   return next;
+  });
+ };
  const changeCollapsed=update=>{
   if(actionRunning.current)return;
   void handoff(()=>{const next=update(collapsed);setCollapsed(next);setChecked(current=>current&&new Set(displayRows.filter(row=>!next.includes(row.category)&&current.has(row.id)).map(row=>row.id)));});
@@ -186,7 +200,7 @@ export default function ExpenseWorkspace(props){
     <button type="button" className="primary-button compact bw-add" disabled={!editable||actionBusy} onClick={()=>void add()}><Plus size={15}/>新增項目</button>
    </div>}</div>
    <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} collaborators={collaborators} selected={multi?null:selected} collapsed={collapsed} setCollapsed={changeCollapsed} currentUserId={props.currentUserId} actual={actual} onSelect={multi?toggleChecked:select}
-    checked={checked} visibleCount={visibleRows.length} checkedCount={targets.length} onToggleAll={toggleAll} actionBusy={actionBusy} canRemove={editable} onRemove={row=>void runAction('delete',[row])}/>
+    checked={checked} visibleCount={visibleRows.length} checkedCount={targets.length} onToggleAll={toggleAll} onToggleGroup={toggleGroup} actionBusy={actionBusy} canRemove={editable} onRemove={row=>void runAction('delete',[row])}/>
   </div>
   <aside className="bw-side"><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[['stats','旅程統計',ChartColumn],['detail','項目明細',List],['edit','編輯項目',Pencil]].map(([key,label,Icon])=><button key={key} role="tab" type="button" aria-label={label} aria-selected={panel===key} onClick={()=>changePanel(key)}><Icon size={14} strokeWidth={1.8}/><span>{label}</span></button>)}</div>
   <div hidden={panel!=='stats'}><Stats records={rows} members={approved} actual={actual} budgets={rows} viewpoint={viewpoint} setViewpoint={setViewpoint} ratesSummary={<span/>}/><div className="bw-restored-rates" hidden={actual}><ExpenseRates service={transport} client={client} actor={props.currentUserId} trip={props.activeTrip.id} sessionId={sessionId} storage={storage} onError={errorToast} services={props.services} editable={editable} planning={planning&&Boolean(props.activeTrip.start_date)} active={workspaceActive}/></div></div>
