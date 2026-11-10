@@ -201,6 +201,8 @@ export default function ExpenseWorkspace(props){
     <button type="button" className="primary-button compact bw-add" disabled={!editable||actionBusy} onClick={()=>void add()}><Plus size={15}/>新增項目</button>
    </div>}</div>
    <ExpenseTable rows={displayRows} members={approved} links={links} items={graph.itineraryItems||[]} collaborators={collaborators} selected={multi?null:selected} collapsed={collapsed} setCollapsed={changeCollapsed} currentUserId={props.currentUserId} actual={actual} onSelect={multi?toggleChecked:select}
+    ordering={{graph,active:workspaceActive,enabled:workspaceActive&&editable&&Boolean(graph.ordering)&&!query&&!paymentFilter&&!multi&&!actionBusy,
+     unfiltered:!query&&!paymentFilter&&!multi,viewKey:view,service:transport,actor:props.currentUserId,session:sessionId,storage,refresh:client.refreshAfterMutation}}
     checked={checked} visibleCount={visibleRows.length} checkedCount={targets.length} onToggleAll={toggleAll} onToggleGroup={toggleGroup} actionBusy={actionBusy} canRemove={editable} onRemove={row=>void runAction('delete',[row])}/>
   </div>
   <aside className="bw-side"><div className="bw-side-tabs" role="tablist" aria-label="右側面板">{[['stats','旅程統計',ChartColumn],['detail','項目明細',List],['edit','編輯項目',Pencil]].map(([key,label,Icon])=><button key={key} role="tab" type="button" aria-label={label} aria-selected={panel===key} onClick={()=>changePanel(key)}><Icon size={14} strokeWidth={1.8}/><span>{label}</span></button>)}</div>

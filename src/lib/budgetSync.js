@@ -9,7 +9,7 @@ export const nonFinancialAttachments = rows => rows.filter(row => !["budget_item
 // An offline graph is display-only: do not persist or restore live lease data.
 export function cachedExpenseGraph(graph, tripId) {
   if (!validExpenseSnapshot(graph, tripId)) return null;
-  return { ...graph, groups: [] };
+  return { ...graph, groups: [], ...(graph.ordering ? { ordering: { ...graph.ordering, drags: [] } } : {}) };
 }
 
 export async function readBudgetSnapshot(supabase, tripId) {

@@ -65,6 +65,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  function ingest(data,{authoritative=true}={}){
   if(!current()||!validExpenseSnapshot(data,trip))return false;
   if(!authoritative&&graph){verified=false;emit();return true;}
+  if(graph?.snapshotRevision>data.snapshotRevision)return true;
   graph=data;serverOffset=Number.isFinite(Date.parse(data.serverNow))?Date.parse(data.serverNow)-Date.now():0;verified=authoritative&&active&&globalThis.navigator?.onLine!==false;if(verified)lastSnapshot=Date.now();
   for(const g of fields.values()){
    if(g.local)continue;
@@ -81,6 +82,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   emit();return true;
  }
  async function refresh(){if(readWork)return readWork;readWork=(async()=>{try{if(!(await service.authorized(actor)))return false;const r=await bounded(service.read(trip,sessionId));if(r.error||!ingest(r.data)){verified=false;if(r.error)onError(r.error);emit();return false;}onSnapshot(r.data);return true;}finally{readWork=null;}})();return readWork;}
+ async function refreshAfterMutation(){await readWork;return refresh();}
  function get(id,group){const key=id+':'+group;if(fields.has(key))return fields.get(key);const r=graph?.groups.find(g=>g.id===id&&g.group===group);const value=expenseFieldValue(graph,id,group);
   if(localDraft?.id===id){const canonical=draftValue(group);let value=structuredClone(localDraft.values[group]??canonical);if(group==='payer')value=compatiblePayer(value,expenseModels(draftGraph())[0]);const g={id,group,local:true,canonical,value,state:'local',revision:0,...(group==='links'?{itineraryVersions:localDraft.itineraryVersions}:{})};fields.set(key,g);return g;}
   const g={id,group,value,canonical:structuredClone(value),base:r?.revision??0,state:'idle',token:null,epoch:null,activity:0,focused:false,conflict:false,request:null,revision:0};
@@ -221,7 +223,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  }
  async function finish(){if(localDraft&&!draftDirty()&&!pendingCreate){clearDraft();emit();}if((pendingCreate||localDraft)&&!await create())return false;for(const g of fields.values()){g.resumeFocus=false;if(g.saveWork)await g.saveWork;if(dirty(g)||g.request){if(!g.request&&!owns(g)&&!await focus(g))return false;if(!await save(g))return false;}if(!await release(g))return false;}return true;}
  async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.deferAmountInput=false;g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
- const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,focus,input,save,release,finish,discard,
+ const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,refreshAfterMutation,focus,input,save,release,finish,discard,
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
   guardState(){
    const activeFields=[...fields.values()];

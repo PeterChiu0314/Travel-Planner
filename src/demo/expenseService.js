@@ -3,20 +3,75 @@ import {createDemoExpenseModels} from './budgetFixtures.js';
 import {demoBudgetQuote} from '../lib/tripBudgetRates.js';
 import {payerForm,reconcilePayers,validPayers} from '../lib/expensePayers.js';
 import {calculatePricing} from '../lib/budgetFinance.js';
+import {expenseCategories,insertExpenseOrder,orderedExpenseRows} from '../lib/expenseOrdering.js';
 
 const groups=['title','note','category','payer','links','budget','paid','payment','lifecycle'];
 const copy=value=>structuredClone(value);
 const fail=(message,code='22023')=>{throw Object.assign(new Error(message),{code});};
 export function createDemoExpenseService({trip,members,getItems}){
  const leases=new Map(),receipts=new Map();let rateRevision=0,rates=copy(demoBudgetQuote),rateHeld=null;
+ const drags=new Map(),positions={};
+ let categories=[...expenseCategories],categoryRevision=0;
  let models=createDemoExpenseModels(trip,getItems()).map(item=>{const form=payerForm(item);return{...item,payment_mode:form.mode,payer_allocations:form.rows,payer_sequence:form.sequence,revisions:{...Object.fromEntries(groups.map(g=>[g,0])),...item.revisions}};});
+ const categoryList=()=>[...new Set([...categories,...models.map(item=>item.category)])];
  function snapshot(session){const rows=models.map(expenseRows);return {schemaVersion:1,tripId:trip.id,items:rows.map(r=>r.item),participants:rows.flatMap(r=>r.participants),
+  serverNow:new Date().toISOString(),ordering:{categories:categoryList(),revision:categoryRevision,items:copy(positions),drags:[]},
   links:models.flatMap(i=>(i.links||[]).map(itinerary_item_id=>({expense_id:i.id,itinerary_item_id}))),members:copy(members),itineraryItems:copy(getItems()),rates:copy(rates),
   groups:models.flatMap(i=>groups.map(group=>{const l=leases.get(i.id+':'+group),held=Boolean(l&&l.expires>Date.now());return{id:i.id,group,revision:i.revisions[group]||0,epoch:l?.epoch||0,held,owner:held?'demo-peter':null,own_session:held&&l.session===session,expires_at:held?new Date(l.expires).toISOString():null};})),
   rateState:{revision:rateRevision,held:Boolean(rateHeld),targets:models.filter(i=>i.budget&&i.budget.currency!=='TWD'&&i.payment_state!=='paid').map(i=>({id:i.id,revision:i.revisions.budget}))}};}
  const result=fn=>async(...args)=>{try{return{data:copy(await fn(...args))};}catch(error){return{error};}};
  const once=(key,signature,run)=>{if(receipts.has(key)){const saved=receipts.get(key);if(saved.signature!==signature)fail('Request mismatch');return saved.result;}const value=run();receipts.set(key,{signature,result:copy(value)});return value;};
+ const dragKey=r=>JSON.stringify([r.p_kind,r.p_id]);
+ const ownsDrag=(r,held)=>held&&held.session===r.p_session_id&&held.token===r.p_token;
  const service={instanceId:crypto.randomUUID(),authorized:async()=>true,quote:async()=>copy(demoBudgetQuote),snapshot:()=>snapshot('demo-session'),read:result((_,session)=>snapshot(session)),
+  dragLease:result(r=>{
+   const key=dragKey(r),held=drags.get(key);
+   if(r.p_action==='release'){
+    if(ownsDrag(r,held))drags.delete(key);
+    return {granted:true};
+   }
+   if(held?.expires>Date.now())return {granted:false};
+   if(r.p_kind==='item'?!models.some(item=>item.id===r.p_id):!categoryList().includes(r.p_id))fail('Source removed','PT409');
+   const now=Date.now(),expires=now+30000;
+   drags.set(key,{session:r.p_session_id,token:r.p_token,expires});
+   return {granted:true,expires_at:new Date(expires).toISOString(),server_now:new Date(now).toISOString()};
+  }),
+  moveOrder:result(r=>{
+   const key=dragKey(r),held=drags.get(key),intent=r.p_intent;
+   const signature=JSON.stringify({...r,p_confirm:false});
+   if(r.p_confirm&&!receipts.has(r.p_request_id)){
+    if(ownsDrag(r,held))drags.delete(key);
+    return once(r.p_request_id,signature,()=>({committed:false,request_id:r.p_request_id}));
+   }
+   return once(r.p_request_id,signature,()=>{
+    if(!ownsDrag(r,held)||held.expires<=Date.now())fail('Drag lease required','55P03');
+    let revision;
+    if(r.p_kind==='category'){
+     const list=categoryList();
+     if(intent.revision!==categoryRevision||!list.includes(r.p_id))fail('Order changed','PT409');
+     const next=insertExpenseOrder(list,r.p_id,intent.target,intent.side);
+     if(!next)fail('Order target changed','PT409');
+     categories=next;
+     revision=++categoryRevision;
+    }else{
+     const item=models.find(item=>item.id===r.p_id),anchor=models.find(item=>item.id===intent.target);
+     const base=positions[r.p_id]?.revision??0;
+     if(!item||item.category!==intent.sourceCategory||item.revisions.category!==intent.categoryRevision||base!==intent.revision
+      ||!categoryList().includes(intent.category)||intent.target&&(!anchor||anchor.category!==intent.category||anchor.revisions.category!==intent.targetCategoryRevision))fail('Order changed','PT409');
+     if(item.category!==intent.category){
+      if(leases.get(item.id+':category')?.expires>Date.now())fail('Category is being edited','55P03');
+      item.category=intent.category;
+      item.revisions.category++;
+     }
+     const ids=orderedExpenseRows(models.filter(row=>row.category===intent.category),positions).map(row=>row.id);
+     const next=insertExpenseOrder(ids,item.id,intent.target,intent.side);
+     revision=base+1;
+     next.forEach((id,index)=>{positions[id]={position:index+1,revision:id===item.id?revision:positions[id]?.revision??0};});
+    }
+    drags.delete(key);
+    return {committed:true,request_id:r.p_request_id,revision};
+   });
+  }),
   lease:result(r=>{const key=r.p_id+':'+r.p_group,item=models.find(i=>i.id===r.p_id),l=leases.get(key),active=Boolean(l&&l.expires>Date.now());
    if(r.p_action==='release'){
     const reply=(outcome,settled,extra={})=>({schemaVersion:1,action:'release',id:r.p_id,group:r.p_group,session_id:r.p_session_id,requested_epoch:r.p_epoch,granted:settled,settled,capability_active:!settled,outcome,...extra});
@@ -52,10 +107,13 @@ export function createDemoExpenseService({trip,members,getItems}){
     const eligible=members.filter(m=>m.status==='approved').map(m=>m.user_id).sort();if(JSON.stringify(v.members)!==JSON.stringify(eligible))fail('Members changed','PT409');if(v.form.participantIds.some(id=>!eligible.includes(id)))fail('Invalid participant');
     next=priceExpense(item,r.p_group,v.form,r.p_base,{wholeOriginal:r.p_group==='budget'&&v.planning});next.decisions[r.p_group]=Object.fromEntries(eligible.map(id=>[id,v.form.participantIds.includes(id)]));
    }else if(r.p_group==='payment')next=v.action==='unpaid'?cancelExpensePayment(item,r.p_base):confirmExpensePayment(item,{paidAt:v.paid_at,payerId:item.payer_id,basePayment:r.p_base,baseBudget:v.budget_revision,basePaid:v.paid_revision});
-   else if(r.p_group==='lifecycle'){if(v.action!=='delete')fail('Invalid action');models.splice(index,1);}
+   else if(r.p_group==='lifecycle'){if(v.action!=='delete')fail('Invalid action');models.splice(index,1);delete positions[item.id];}
    else if(r.p_group==='links'){if(v.ids.some(id=>!getItems().some(i=>i.id===id)))fail('Invalid link');next.links=copy(v.ids);}
    else if(r.p_group==='payer'){if(!v.form){if(!members.some(m=>m.user_id===v.user_id&&m.status==='approved'))fail('Invalid payer');next.payment_mode='advance';next.payer_id=v.user_id;next.payer_allocations=[{user_id:v.user_id,amount:Math.round(Number((item.paid||item.budget)?.amount||0)),order:0}];}else{if(!validPayers(v.form,members))fail('Invalid payer');if(v.budget_revision!==(item.revisions.budget||0)||v.paid_revision!==(item.revisions.paid||0))fail('Pricing changed','PT409');const form=reconcilePayers(v.form,(item.budget||item.paid)?.amount);next.payment_mode=form.mode;next.payer_allocations=form.rows;next.payer_sequence=form.sequence;next.payer_id=form.mode==='advance'?form.rows[0]?.user_id:null;next.planning_managed=true;}}
-   else if(['title','category','note'].includes(r.p_group))next[r.p_group]=v.text;else fail('Invalid group');
+   else if(['title','category','note'].includes(r.p_group)){
+    if(r.p_group==='category'&&item.category!==v.text)delete positions[item.id];
+    next[r.p_group]=v.text;
+   }else fail('Invalid group');
    if(['budget','paid','payer','payment'].includes(r.p_group)){
     if(v.planning&&r.p_group==='budget')next.planning_managed=true;
     if(v.planning&&next.payment_state==='paid'&&next.budget&&['budget','payment'].includes(r.p_group)&&JSON.stringify(next.paid)!==JSON.stringify(next.budget)){next.paid=copy(next.budget);next.decisions.paid=copy(next.decisions.budget);next.revisions.paid++;}

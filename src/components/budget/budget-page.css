@@ -68,6 +68,32 @@
 /* Keep the selection outline inside the row without adding a table column. */
 .bw-row.is-selected > .bw-day::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 2px var(--color-primary); pointer-events: none; z-index: 2; border-radius: 2px; }
 .bw-row.is-selected .bw-collaboration-outline { visibility: hidden; }
+.bw-expense-table :is(.bw-group, .bw-row) { position: relative; }
+.bw-expense-table .bw-group:has(.bw-drag-handle) > th { padding-left: 37px; }
+.bw-drag-handle {
+  position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 25px; height: 28px; padding: 0;
+  border: 0; background: transparent; color: var(--muted); cursor: grab; touch-action: none;
+}
+.bw-drag-handle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.bw-drag-handle:disabled { cursor: default; opacity: .35; }
+.bw-remote-move { cursor: default; touch-action: auto; }
+.bw-row.is-selected.has-remote-drag > .bw-day::after { content: none; }
+.bw-row.is-selected.has-remote-drag .bw-collaboration-outline { visibility: visible; }
+.bw-expense-table .is-drag-source > * { opacity: .34; }
+.bw-expense-table .is-drop-before > * { box-shadow: inset 0 2px var(--color-primary); }
+.bw-expense-table .is-drop-after > *, .bw-expense-table .is-drop-group-after > tr:last-child > * {
+  box-shadow: inset 0 -2px var(--color-primary);
+}
+.bw-expense-table .is-drop-end > * { background-color: color-mix(in srgb, var(--color-primary) 12%, var(--panel)); }
+.bw-drag-preview {
+  pointer-events: none; background: var(--panel); color: var(--ink);
+  box-shadow: 0 4px 16px #0002, inset 0 0 0 1px var(--line); border-radius: 4px;
+}
+@media (max-width: 820px) {
+  .bw-expense-table .bw-row > .bw-day:has(.bw-drag-handle) { padding-left: 27px; }
+  .bw-expense-table .bw-drag-handle { left: 2px; width: 23px; }
+}
 .bw-row .bw-day { font-size: 11px; white-space: nowrap; color: var(--muted); }
 .bw-row td:last-child { text-align: center; font-size: 11px; }
 .bw-cell { border: 0; background: transparent; padding: 11px 0; width: 100%; color: inherit; cursor: pointer; text-align: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 0; font-size: 13px; }

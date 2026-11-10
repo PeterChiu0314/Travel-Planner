@@ -1,10 +1,16 @@
 # CURRENT_TASK.md
 
-Updated 2026-11-08. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
+Updated 2026-11-10. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
+
+## 2026-11-10 — Issue #27 Budget ordering
+
+Item and category dragging share a persisted trip order across Budget and Actual views. Formal uses independent 30-second drag capabilities, authoritative snapshot refresh and exact request confirmation. Demo uses the same UI and in-memory order. A peer drag uses the same color for the left Move icon and single row outline. See the [implementation and Staging hand test](docs/2026-11-10-issue27-expense-ordering.md).
+
+Staging installed `20261110100000` at ledger 83 after an exact-source rollback rehearsal. Both transactions checked six protected relation fingerprints and RPC permissions. Independent readback matched SHA-256 `ddf4008705d43f16b810bee182ef91bf2430e31ad58365429387b3a7a43d7c9b` with RLS enabled on all three new tables. The copy RPC was already present at ledger 82. Build, 23 Node/SQL and 30 distinct Chromium cases passed locally. Verify the matching Preview deployment by SHA before hosted two-account acceptance.
 
 ## 2026-11-08 — Budget quick actions
 
-On `codex/budget-collaboration-redesign`, the shared Budget table now has row-end deletion and a multi-select mode for copying or deleting visible items. Each copy preserves the budget and itinerary links, starts unpaid, and can safely replay an unconfirmed request. Delete uses the existing lifecycle permissions and checks. The build, 11 Chromium cases and 23 Node/SQL cases passed locally. See the [UX rules](docs/UX_RULES.md#budget-ux-rules) and [browser coverage](tests/expenseBatchActions.spec.js). The [copy RPC migration](supabase/migrations/20261108210000_expense_item_copy.sql) adds no tables, columns, or backfill. Formal Preview requires the migration and a matching app deployment; neither has been rolled out.
+On `codex/budget-collaboration-redesign`, the shared Budget table now has row-end deletion and a multi-select mode for copying or deleting visible items. Each copy preserves the budget and itinerary links, starts unpaid, and can safely replay an unconfirmed request. Delete uses the existing lifecycle permissions and checks. The build, 11 Chromium cases and 23 Node/SQL cases passed locally. See the [UX rules](docs/UX_RULES.md#budget-ux-rules) and [browser coverage](tests/expenseBatchActions.spec.js). The [copy RPC migration](supabase/migrations/20261108210000_expense_item_copy.sql) adds no tables, columns, or backfill. Issue #27 preflight confirmed the copy RPC on Staging at ledger 82.
 
 ## 2026-11-08 — Issue #26 membership changes
 

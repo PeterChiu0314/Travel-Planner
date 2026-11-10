@@ -5,7 +5,7 @@ import { isBudgetComplete } from "../../lib/budgetLifecycleValues.js";
 import { memberLabel, money, originalMoney, participantsFor, recordAllocations } from "../../lib/budgetFinance.js";
 import { budgetCurrencies } from "../../lib/tripBudgetRates.js";
 
-const categoryOrder = ["機票", "交通", "住宿", "門票", "餐飲", "購物", "其他"];
+import {expenseCategories as categoryOrder} from '../../lib/expenseOrdering.js';
 const categoryIcons = { "機票": Plane, "交通": Car, "住宿": BedDouble, "門票": Ticket, "餐飲": UtensilsCrossed, "購物": ShoppingBag, "其他": Package };
 const palette = ["#4c819c", "#809e70", "#c0745e", "#d3a853", "#8a9290", "#907d92", "#917795"];
 // Category identity is stable even when cost ranking or member view changes.

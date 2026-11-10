@@ -23,7 +23,7 @@ test.beforeEach(async({page})=>{
 });
 test.afterEach(async({page})=>{expect(page.qaErrors).toEqual([]);expect(page.forbidden).toEqual([]);const keys=await page.evaluate(()=>[...Object.keys(localStorage),...Object.keys(sessionStorage)].filter(k=>k.startsWith('travel-planner-expense')));expect(keys).toEqual([]);});
 test('Demo uses restored shared UI and stats with explicit detail selection',async({page})=>{
- await expect(page.locator('.bw-row')).toHaveCount(32);await expect(page.getByRole('tab',{name:'實付',exact:true})).toHaveCount(0);await expect(page.getByRole('table',{name:'預算明細'}).getByRole('columnheader')).toHaveCount(5);
+ await expect(page.locator('.bw-row')).toHaveCount(32);await expect(page.getByRole('tab',{name:'實付',exact:true})).toHaveCount(0);await expect(page.getByRole('table',{name:'預算明細'}).getByRole('columnheader')).toHaveCount(6);
  await page.getByRole('combobox',{name:'統計視角'}).click();await page.getByRole('option',{name:'Peter',exact:true}).click();const stats=page.getByRole('region',{name:'旅程費用摘要'}),before=await stats.textContent();
  await page.getByRole('tab',{name:'項目明細',exact:true}).click();await row(page,'Villa 火鍋食材').getByRole('button',{name:'Villa 火鍋食材',exact:true}).click();await expect(page.locator('.bw-detail')).toContainText('自訂分攤');
  await page.getByRole('tab',{name:'旅程統計',exact:true}).click();await expect(stats).toHaveText(before);await expect(page.getByText(/來源預算|目前來源|變更來源關聯|編輯完整項目/)).toHaveCount(0);await page.screenshot({path:test.info().outputPath('shared-demo.png')});
