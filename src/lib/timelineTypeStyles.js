@@ -5,6 +5,13 @@ import {
 } from "./designColorTokens.js";
 
 export const timelineTypeColors = designTypeColors;
+export const timelineTypeLabels = {
+  attraction: "景點",
+  food: "餐飲",
+  hotel: "住宿",
+  transport: "交通",
+  note: "備註",
+};
 export const timelineTypeMarkerColors = designTypeColors;
 export const timelineTypeMarkerFillColors = designTypeFillColors;
 export const timelineTypeMarkerTextColors = designTypeTextColors;

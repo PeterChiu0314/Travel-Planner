@@ -111,7 +111,8 @@ import {
   normalizeTransportSnapshotTime,
 } from "./lib/timelineTransportationRoles.js";
 import { buildRoutePanelStops, getFocusedMapState } from "./lib/timelineMapMarkers.js";
-import { timelineTypeColors } from "./lib/timelineTypeStyles.js";
+import { timelineTypeColors, timelineTypeLabels as typeLabels } from "./lib/timelineTypeStyles.js";
+import { tripDays } from "./lib/timelineTime.js";
 import {
   normalizeRouteOverridePoints,
   routeOverridePointsEqual,
@@ -416,14 +417,6 @@ const mobileNavItems = [
   { id: "luggage", label: "行李" },
   { id: "settings", label: "更多" },
 ];
-
-const typeLabels = {
-  attraction: "景點",
-  food: "餐飲",
-  hotel: "住宿",
-  transport: "交通",
-  note: "備註",
-};
 
 const typeColors = timelineTypeColors;
 
@@ -1834,18 +1827,6 @@ function useTimelineMapTransition() {
     openRouteMap,
     toggleRouteMap,
   };
-}
-
-function tripDays(trip) {
-  if (!trip?.start_date || !trip?.end_date) return [];
-  const start = new Date(`${trip.start_date}T00:00:00`);
-  const end = new Date(`${trip.end_date}T00:00:00`);
-  const diff = Math.max(0, Math.round((end - start) / 86400000));
-  return Array.from({ length: diff + 1 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return date;
-  });
 }
 
 function getTimelineDayPosition(item) {

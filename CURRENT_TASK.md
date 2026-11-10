@@ -2,6 +2,10 @@
 
 Updated 2026-11-10. This is the live handoff: current work, protected behavior, rollout evidence and next step. Detailed implementation/QA belongs in linked documents; completed checkpoint logs belong in docs/archive/.
 
+## 2026-11-10 — Issue #28 Mini Dayboard for expense links
+
+The Native Expense editor opens a read-only Timeline projection with responsive Day columns and autosaving selection. The existing links RPC and exact-receipt recovery drive the dialog. The links session alone tracks 20-second clean and 60-second dirty idle limits. See the [Staging hand test](docs/2026-11-10-issue28-mini-dayboard.md).
+
 ## 2026-11-10 — Issue #27 Budget ordering
 
 Item and category dragging share a persisted trip order across Budget and Actual views. Formal uses independent 30-second drag capabilities, authoritative snapshot refresh and exact request confirmation. Demo uses the same UI and in-memory order. A peer drag uses the same color for the left Move icon and single row outline. See the [implementation and Staging hand test](docs/2026-11-10-issue27-expense-ordering.md).

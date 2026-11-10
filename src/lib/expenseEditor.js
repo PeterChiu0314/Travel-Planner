@@ -45,6 +45,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  const leaseDeadline=(expires,request,started)=>Math.min(expires-serverOffset,started+(request.p_dirty?60000:20000));
  const owns=g=>!peerOwner(g.id,g.group)&&active&&verified&&g.token&&g.epoch!==null&&g.state==='held'&&!g.releasing&&g.expires>Date.now()&&!g.conflict;
  const dirty=g=>!same(g.value,g.canonical);
+ const linksIdleLimit=g=>dirty(g)||g.request?60000:20000;
  const storageKey=g=>`travel-planner-expense:${actor}:${trip}:${g.id}:${g.group}`;
  function persist(g){try{if(!dirty(g)&&!g.request)storage?.removeItem(storageKey(g));else storage?.setItem(storageKey(g),JSON.stringify({value:g.value,base:g.base,itineraryVersions:g.itineraryVersions,request:g.request?{...g.request,p_token:null,p_epoch:null}:null}));}catch{/* Memory draft remains. */}}
  const remote=g=>graph?.groups.find(s=>s.id===g.id&&s.group===g.group);
@@ -52,6 +53,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  const bounded=work=>withBudgetAuthorityTimeout(work,{timeoutMs});
  function renew(g){
   if(g.renewWork)return g.renewWork;
+  if(g.group==='links'&&!g.linksSession?.admitted)return;
   if(!owns(g)||(Date.now()-g.lastRenew<5000&&g.expires-Date.now()>15000))return;
   const request=args(g,'renew'),started=Date.now();
   g.renewWork=(async()=>{const r=await bounded(service.lease(request));
@@ -61,7 +63,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    if(!r.error&&r.data?.granted&&r.data.epoch===request.p_epoch&&expires>Date.now()){g.expires=expires;g.lastRenew=Date.now();}else{g.state='lost';persist(g);emit();}
   })().finally(()=>{g.renewWork=null;});return g.renewWork;
  }
- const report=(g,error,{quiet=false}={})=>{g.error=error;persist(g);if(!quiet)onError(error);emit();};
+ const report=(g,error,{quiet=false}={})=>{g.error=error;persist(g);if(!quiet)onError(error,g.group);emit();};
  function ingest(data,{authoritative=true}={}){
   if(!current()||!validExpenseSnapshot(data,trip))return false;
   if(olderExpenseSnapshot(graph,data))return 'stale';
@@ -103,7 +105,11 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    if(!r.error&&expenseReleaseReceipt(r.data,request)&&r.data.outcome==='epoch_mismatch'&&r.data.capability_active===true&&Number.isSafeInteger(r.data.epoch)){
     g.epoch=r.data.epoch;request=args(g,'release');r=await bounded(service.lease(request));if(!current())return false;
    }
-   if(!r.error&&expenseReleaseSettled(r.data,request)){g.token=null;g.epoch=null;g.state='idle';g.releasing=false;g.error=null;emit();return true;}
+   if(!r.error&&expenseReleaseSettled(r.data,request)){
+    g.token=null;g.epoch=null;g.state='idle';g.releasing=false;
+    if(g.group!=='links'||!dirty(g))g.error=null;
+    emit();return true;
+   }
    report(g,r.error||new Error('暫時無法完成同步，變更已保留。'));return false;
   })().finally(()=>{g.releaseWork=null;emit();});return g.releaseWork;
  }
@@ -133,6 +139,48 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
  }
  function scheduleSave(g, delay=1000){clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),delay);}
+ async function beginLinks(g){
+  if(g.local||g.group!=='links'||g.linksCloseWork)return false;
+  const session={admitted:false,lastActivity:0};
+  g.linksSession=session;
+  const granted=await refresh()&&g.linksSession===session&&await focus(g);
+  if(g.linksSession!==session)return false;
+  if(granted){
+   session.admitted=true;
+   session.lastActivity=Date.now();
+   if(dirty(g)&&!g.autoBlocked){
+    g.error=null;
+    scheduleSave(g);
+   }
+  }else{
+   g.linksSession=null;
+   g.focused=false;
+  }
+  emit();
+  return granted;
+ }
+ function touchLinks(g){
+  if(!g.linksSession?.admitted||!owns(g))return;
+  g.linksSession.lastActivity=Date.now();
+  g.activity++;
+ }
+ function endLinks(g){
+  if(g.linksCloseWork)return g.linksCloseWork;
+  if(!g.linksSession)return Promise.resolve();
+  g.linksSession=null;
+  clearTimeout(g.timer);
+  g.linksCloseWork=(async()=>{
+   await g.acquiring;
+   await g.saveWork;
+   if(!g.request&&dirty(g)&&!g.error&&owns(g))await save(g);
+   g.focused=false;
+   g.resumeFocus=false;
+   persist(g);
+   if(!g.request&&!g.saving)await release(g);
+  })().finally(()=>{g.linksCloseWork=null;emit();});
+  emit();
+  return g.linksCloseWork;
+ }
  function input(g, value, { immediate = false, deferAmountInput = false } = {}) {
   if (g.group === 'payer' && typeof value === 'string') {
    const item = expenseModels(graph).find(i => i.id === g.id);
@@ -144,8 +192,11 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   g.deferAmountInput=deferAmountInput;
   // The displayed slot versions remain attached to this draft and its exact request.
   if (g.group === 'links') {
+   value=[...new Set(value)].sort();
+   const previous=dirty(g)||g.request?g.itineraryVersions||{}:{};
    g.itineraryVersions = Object.fromEntries((graph?.itineraryItems || [])
-    .filter(item => value.includes(item.id)).map(item => [item.id, item.updated_at]));
+    .filter(item => value.includes(item.id)).map(item => [item.id,
+     g.value.includes(item.id)&&Object.hasOwn(previous,item.id)?previous[item.id]:item.updated_at]));
   }
   if (g.local) {
    if (g.group === 'links') localDraft.itineraryVersions = g.itineraryVersions;
@@ -159,6 +210,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    return;
   }
   g.value = structuredClone(value);
+  if(g.linksSession)g.linksSession.lastActivity=Date.now();
   g.revision++;
   g.activity++;
   g.error = null;
@@ -228,7 +280,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  }
  async function finish(){if(localDraft&&!draftDirty()&&!pendingCreate){clearDraft();emit();}if((pendingCreate||localDraft)&&!await create())return false;for(const g of fields.values()){g.resumeFocus=false;if(g.saveWork)await g.saveWork;if(dirty(g)||g.request){if(!g.request&&!owns(g)&&!await focus(g))return false;if(!await save(g))return false;}if(!await release(g))return false;}return true;}
  async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.deferAmountInput=false;g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
- const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,refreshAfterMutation,focus,input,save,release,finish,discard,
+ const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,refreshAfterMutation,focus,input,save,release,finish,discard,beginLinks,touchLinks,endLinks,
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
   guardState(){
    const activeFields=[...fields.values()];
@@ -238,8 +290,8 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
     missingExpenseTitle:dirtyDraft&&!pendingCreate&&!String(localDraft.values.title||'').trim(),
     needsHandoff:Boolean(localDraft)||activeFields.some(g=>g.token||g.acquiring||g.releasing)};
   },
-  saveStatus(id){
-   const relevant=[...fields.values()].filter(g=>g.id===id);
+  saveStatus(id,group){
+   const relevant=[...fields.values()].filter(g=>g.id===id&&(!group||g.group===group));
    if(relevant.some(g=>g.request&&g.error)||pendingCreate&&localDraft?.id===id)return '儲存結果待確認';
    if(relevant.some(g=>g.saving))return '儲存中…';
    if(relevant.some(g=>g.error||g.conflict))return '儲存失敗，變更已保留';
@@ -259,13 +311,15 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   blur(g){g.focused=false;g.resumeFocus=false;g.deferAmountInput=false;if(g.local){if(String(localDraft?.values.title||'').trim())void create();return;}void(async()=>{if(g.acquiring)await g.acquiring;if(dirty(g)||g.request)await save(g);else await release(g);})();},
   // An authoritative Realtime/mutation snapshot satisfies only the fallback read;
   // pending writes, create recovery and lease renewal still run on their existing cadence.
-  async tick(){if(!current())return;if(!active){for(const g of fields.values())if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);return;}await Promise.all([...fields.values()].filter(g=>!g.local).map(renew));if(!current()||!active||Date.now()-lastRecovery<5000)return;lastRecovery=Date.now();if((pendingCreate||localDraft)&&!createWork)await create();if(Date.now()-lastSnapshot>=5000)await refresh();for(const g of fields.values()){
+  async tick(){if(!current())return;if(!active){for(const g of fields.values())if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);return;}
+   for(const g of fields.values())if(g.linksSession?.admitted&&(Date.now()-g.linksSession.lastActivity>=linksIdleLimit(g)||g.state==='lost'))void endLinks(g);
+   await Promise.all([...fields.values()].filter(g=>!g.local).map(renew));if(!current()||!active||Date.now()-lastRecovery<5000)return;lastRecovery=Date.now();if((pendingCreate||localDraft)&&!createWork)await create();if(Date.now()-lastSnapshot>=5000)await refresh();for(const g of fields.values()){
    if(g.local)continue;if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);
    if(g.request&&!g.saveWork)await save(g);
-   if(!g.request&&!g.saveWork&&!g.conflict&&!g.autoBlocked&&g.state!=='held'&&dirty(g)&&!g.releasing&&!g.acquiring&&(!remote(g)?.held||remote(g)?.own_session)){const focused=g.focused;if(await focus(g)){g.focused=focused;await save(g);}}
+   if(g.group!=='links'&&!g.request&&!g.saveWork&&!g.conflict&&!g.autoBlocked&&g.state!=='held'&&dirty(g)&&!g.releasing&&!g.acquiring&&(!remote(g)?.held||remote(g)?.own_session)){const focused=g.focused;if(await focus(g)){g.focused=focused;await save(g);}}
   }},
   invalidate(){verified=false;emit();},
-  suspend(){if(!active)return;active=false;verified=false;clearTimeout(createTimer);for(const g of fields.values()){if(g.local)continue;clearTimeout(g.timer);g.resumeFocus=g.focused;g.focused=false;persist(g);if(!g.request&&!g.saving)void release(g);}emit();},
+  suspend(){if(!active)return;active=false;verified=false;clearTimeout(createTimer);for(const g of fields.values()){if(g.local)continue;clearTimeout(g.timer);g.resumeFocus=g.focused&&g.group!=='links';g.linksSession=null;g.focused=false;persist(g);if(!g.request&&!g.saving)void release(g);}emit();},
   async resume(){active=true;if(!await refresh()||!active)return false;for(const g of fields.values())if(g.resumeFocus&&!g.request){g.resumeFocus=false;await focus(g);}return true;},
   create,
   async execute(id,group,value){
