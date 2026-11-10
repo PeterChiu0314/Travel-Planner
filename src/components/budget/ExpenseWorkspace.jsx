@@ -174,9 +174,10 @@ export default function ExpenseWorkspace(props){
   </BudgetCollaborationFrame>;
  }
  function linksEditor(){
-  const owner=groupOwner('links');
+  const owner=client.peerOwner(item.id,'links')||groupOwner('links');
+  const canInteract=props.canEdit&&workspaceActive&&!actionBusy&&navigator.onLine!==false;
   return <ExpenseLinks key={item.id} client={client} field={client.get(item.id,'links')} trip={props.activeTrip}
-   items={graph.itineraryItems||[]} enabled={editable&&workspaceActive&&!actionBusy} owner={owner} ownerName={ownerName(owner)}/>;
+   items={graph.itineraryItems||[]} enabled={editable&&canInteract} canInteract={canInteract} owner={owner} ownerName={ownerName(owner)}/>;
  }
  const actual=view==='paid',pricingLabel=actual?'實付計價與分攤':'預算計價與分攤',rows=expenseDisplayRows(models.filter(i=>!actual||i.paid&&i.payment_state==='paid'||i.payment_state==='draft'),view);
  const links=graph.links.map(l=>({budget_item_id:l.expense_id,itinerary_item_id:l.itinerary_item_id}));

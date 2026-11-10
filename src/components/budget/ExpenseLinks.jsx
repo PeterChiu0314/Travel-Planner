@@ -1,4 +1,4 @@
-import {useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from 'react';
+import {useCallback,useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {Check,Link2,Search,X} from 'lucide-react';
 import {buildTimelineVisitDisplayOrder} from '../../lib/timelineUntimedOrdering.js';
@@ -36,15 +36,28 @@ function dayboardDays(trip,items){
  });
 }
 
-function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close}){
+function LinksDialog({client,field,trip,items,enabled,canInteract,session,close}){
  const titleId=useId(),dialog=useRef(null),viewport=useRef(null),closeButton=useRef(null);
  const scrollIntent=useRef(0),lastScroll=useRef({top:0,left:0});
+ const scrollRecoveryUsed=useRef(false);
  const pointer=useRef(null),suppressClick=useRef(false);
  const [query,setQuery]=useState(''),[type,setType]=useState(''),[columns,setColumns]=useState(1);
+ const [selectionNotice,setSelectionNotice]=useState('');
  const days=useMemo(()=>dayboardDays(trip,items),[trip,items]);
  const types=[...new Set(items.map(typeOf))];
- const editable=enabled&&!owner&&field.linksSession?.admitted&&client.view(field).editable&&!field.linksCloseWork;
- const acquiring=Boolean(field.linksSession&&!field.linksSession.admitted);
+ const editable=enabled&&session.editable;
+ const canSelect=editable||(canInteract&&!session.editable&&!session.peer&&!session.preparing&&!session.unresolved);
+ const status=client.saveStatus(field.id,'links');
+ let footerStatus=status;
+ if(session.unresolved&&!editable){
+  if(status==='連線待確認')footerStatus='連線待確認，變更已保留';
+  else if(status==='尚未儲存')footerStatus='變更已保留';
+ }
+ else if(!session.unresolved&&!editable){
+  if(session.preparing)footerStatus='準備中…';
+  else if(status!=='連線待確認')footerStatus='編輯已暫停';
+ }
+ if(selectionNotice&&!session.unresolved&&!session.preparing)footerStatus=selectionNotice;
  const selectedIds=client.view(field).value||[];
  const selected=new Set(selectedIds);
 
@@ -56,8 +69,8 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
   return()=>resize.disconnect();
  },[]);
  useLayoutEffect(()=>{
-  if(!editable&&document.activeElement===document.body)closeButton.current.focus({preventScroll:true});
- },[editable]);
+  if(!canSelect&&document.activeElement===document.body)closeButton.current.focus({preventScroll:true});
+ },[canSelect]);
 
  function onKeyDown(event){
   if(event.key==='Escape'){
@@ -76,14 +89,24 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
   }
  }
 
- const noteActivity=event=>{if(event.nativeEvent.isTrusted)client.touchLinks(field);};
+ function noteActivity(event,recover=true){
+  if(!event.nativeEvent.isTrusted||!canInteract||session.peer)return;
+  setSelectionNotice('');
+  void client.actOnLinks(field,null,{recover});
+ }
  function armScroll(event){
-  if(event.nativeEvent.isTrusted)scrollIntent.current=performance.now()+800;
+  if(!event.nativeEvent.isTrusted)return;
+  const now=performance.now();
+  if(now>=scrollIntent.current)scrollRecoveryUsed.current=false;
+  scrollIntent.current=now+800;
  }
  function onScroll(event){
   const {scrollTop:top,scrollLeft:left}=event.currentTarget;
   const moved=top!==lastScroll.current.top||left!==lastScroll.current.left;
-  if(moved&&performance.now()<scrollIntent.current&&event.nativeEvent.isTrusted)client.touchLinks(field);
+  if(moved&&performance.now()<scrollIntent.current){
+   noteActivity(event,!scrollRecoveryUsed.current);
+   if(!client.linksDialogState(field).editable)scrollRecoveryUsed.current=true;
+  }
   lastScroll.current={top,left};
  }
  function startPan(event){
@@ -141,10 +164,12 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
   }))return;
   if(matching.length)region.scrollLeft+=matching[0].getBoundingClientRect().left-bounds.left;
  }
- function toggle(id){
-  if(!editable)return;
-  const latest=client.view(field).value;
-  client.input(field,latest.includes(id)?latest.filter(value=>value!==id):[...latest,id]);
+ async function toggle(event,item,checked){
+  if(!event.nativeEvent.isTrusted||!canSelect)return;
+  setSelectionNotice('');
+  const result=await client.actOnLinks(field,{id:item.id,version:item.updated_at,selected:!checked});
+  if(result==='changed')setSelectionNotice('行程已更新，請重新選取');
+  if(result==='paused')setSelectionNotice('未變更關聯，請再試一次');
  }
  return createPortal(<div className="modal-backdrop bw-link-backdrop">
   <section ref={dialog} className="bw-link-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
@@ -157,9 +182,6 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
     <select aria-label="行程分類" value={type} onChange={event=>changeFilter(event,query,event.target.value)}>
      <option value="">全部</option>{types.map(value=><option value={value} key={value}>{typeLabel(value)}</option>)}
     </select>
-    {!editable&&<button type="button" className="ghost-button compact" disabled={!enabled||Boolean(owner)||busy||acquiring||Boolean(field.linksCloseWork)||Boolean(field.request)||field.conflict} onClick={acquire}>
-     {busy||acquiring?'正在取得編輯權…':'取得編輯權'}
-    </button>}
    </div>
    <div ref={viewport} className="bw-link-dayboard" tabIndex={0} role="region" aria-label="多日行程"
     onScroll={onScroll} onWheel={armScroll} onTouchMove={armScroll} onKeyDown={scrollWithKey}
@@ -175,7 +197,7 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
       {filtered.map(item=>{
        const category=typeOf(item),checked=selected.has(item.id);
        return <button type="button" className="bw-link-card" key={item.id} aria-label={item.title||'未命名行程'} aria-pressed={checked}
-        disabled={!editable} onClick={event=>{if(event.nativeEvent.isTrusted)toggle(item.id);}} style={{'--bw-link-type':timelineTypeColor(category)}}>
+        disabled={!canSelect} onClick={event=>void toggle(event,item,checked)} style={{'--bw-link-type':timelineTypeColor(category)}}>
         <span className="bw-link-card-meta">{item.start_time?.slice(0,5)||'未定時間'}<span>{typeLabel(category)}</span></span>
         <strong>{item.title||'未命名行程'}</strong>{checked&&<Check size={17} className="bw-link-card-check" aria-hidden="true"/>}
        </button>;
@@ -185,39 +207,44 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
     })}
     {!days.length&&<p className="bw-link-empty">尚無行程</p>}
    </div>
-   <footer><span>已關聯 {selectedIds.length} 項</span><span role="status" aria-label="關聯儲存狀態">{client.saveStatus(field.id,'links')}</span></footer>
+   <footer><span>已關聯 {selectedIds.length} 項</span><span role="status" aria-label="關聯儲存狀態">{footerStatus}</span></footer>
   </div>
  </section></div>,document.body);
 }
 
-export default function ExpenseLinks({client,field,trip,items,enabled,owner,ownerName}){
+export default function ExpenseLinks({client,field,trip,items,enabled,canInteract,owner,ownerName}){
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
  const working=useRef(false),trigger=useRef(null);
  const selected=client.view(field).value||[];
+ const session=client.linksDialogState(field);
  useEffect(()=>()=>{void client.endLinks(field);},[client,field]);
- async function acquire({dialog=false}={}){
-  if(working.current)return false;
-  working.current=true;
-  setBusy(true);
-  try{return await client.beginLinks(field,{dialog});}
-  finally{working.current=false;setBusy(false);}
- }
  function show(){
   setOpen(true);
-  void acquire({dialog:true});
+  void client.openLinks(field);
  }
- function close(){
+ const close=useCallback(()=>{
   setOpen(false);
   void client.endLinks(field).finally(()=>requestAnimationFrame(()=>{
-   if(document.activeElement===document.body)trigger.current?.focus({preventScroll:true});
+   if(document.activeElement===document.body){
+    const target=trigger.current?.disabled?trigger.current.closest('[role="group"]'):trigger.current;
+    target?.focus({preventScroll:true});
+   }
   }));
- }
+ },[client,field]);
+ useLayoutEffect(()=>{
+  if(open&&session.peer&&!session.unresolved)close();
+ },[open,session.peer,session.unresolved,close]);
  async function remove(id){
-  if(!await acquire())return;
-  client.input(field,client.view(field).value.filter(value=>value!==id));
-  await client.endLinks(field);
+  if(working.current)return;
+  working.current=true;
+  setBusy(true);
+  try{
+   if(!await client.beginLinks(field))return;
+   client.input(field,client.view(field).value.filter(value=>value!==id));
+   await client.endLinks(field);
+  }finally{working.current=false;setBusy(false);}
  }
- const disabled=!enabled||field.local||busy||Boolean(field.linksCloseWork);
+ const disabled=!enabled||field.local||open||busy||Boolean(owner)||Boolean(field.linksCloseWork);
  return <>
   <BudgetCollaborationFrame role="group" aria-label="關聯行程" tabIndex={0} label="關聯行程" ownerId={owner} ownerName={ownerName}
    className={`bw-link-summary${owner?' is-peer-held':''}`}>
@@ -233,6 +260,6 @@ export default function ExpenseLinks({client,field,trip,items,enabled,owner,owne
       aria-label={`取消關聯 ${title}`} onClick={()=>void remove(id)}><X size={13}/></button></li>;
    })}</ul>}
   </BudgetCollaborationFrame>
-  {open&&<LinksDialog {...{client,field,trip,items,enabled,owner,busy,close}} acquire={()=>void acquire({dialog:true})}/>}
+  {open&&<LinksDialog {...{client,field,trip,items,enabled,canInteract,session,close}}/>}
  </>;
 }

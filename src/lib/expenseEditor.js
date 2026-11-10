@@ -139,23 +139,22 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
  }
  function scheduleSave(g, delay=1000){clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),delay);}
- async function beginLinks(g,{dialog=false,fromForeground=false}={}){
-  if(g.local||g.group!=='links'||g.linksCloseWork)return false;
+ const linksUnresolved=g=>Boolean(dirty(g)||g.request||g.saveWork||g.conflict);
+ const linksEditable=g=>Boolean(g.linksSession?.admitted&&owns(g)&&Date.now()-g.linksSession.lastActivity<linksIdleLimit(g));
+ async function beginLinks(g,{dialog=null,clean=false,fromForeground=false}={}){
+  if(!current()||!active||g.local||g.group!=='links'||g.linksCloseWork||(dialog&&g.linksDialog!==dialog))return false;
   g.linksReturn=null;
-  const session={admitted:false,lastActivity:0,dialog};
+  const session={admitted:false,lastActivity:0,dialog,startRevision:g.revision};
   g.linksSession=session;
+  emit();
   // A foreground admission starts a new lease, after any background release settles.
   if(fromForeground&&g.releaseWork)await g.releaseWork;
-  const ready=fromForeground?verified&&!g.token&&!g.request&&!g.saveWork&&!dirty(g)&&!g.conflict:await refresh();
-  const granted=ready&&g.linksSession===session&&await focus(g);
+  const ready=fromForeground?verified&&!g.token:await (clean?refreshAfterMutation():refresh());
+  const granted=ready&&(!clean||!linksUnresolved(g))&&g.linksSession===session&&await focus(g)&&owns(g);
   if(g.linksSession!==session)return false;
   if(granted){
    session.admitted=true;
    session.lastActivity=Date.now();
-   if(dirty(g)&&!g.autoBlocked){
-    g.error=null;
-    scheduleSave(g);
-   }
   }else{
    g.linksSession=null;
    g.focused=false;
@@ -164,20 +163,20 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   return granted;
  }
  function touchLinks(g){
-  if(!g.linksSession?.admitted||!owns(g))return;
+  if(!linksEditable(g))return;
   g.linksSession.lastActivity=Date.now();
   g.activity++;
  }
- function endLinks(g){
-  g.linksReturn=null;
+ function pauseLinks(g){
   if(g.linksCloseWork)return g.linksCloseWork;
-  if(!g.linksSession)return Promise.resolve();
+  const session=g.linksSession;
+  if(!session)return Promise.resolve();
   g.linksSession=null;
   clearTimeout(g.timer);
   g.linksCloseWork=(async()=>{
    await g.acquiring;
    await g.saveWork;
-   if(!g.request&&dirty(g)&&!g.error&&owns(g))await save(g);
+   if(!g.request&&dirty(g)&&!g.error&&owns(g)&&(!session.dialog||g.revision!==session.startRevision))await save(g);
    g.focused=false;
    g.resumeFocus=false;
    persist(g);
@@ -185,6 +184,44 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   })().finally(()=>{g.linksCloseWork=null;emit();});
   emit();
   return g.linksCloseWork;
+ }
+ function endLinks(g){
+  g.linksDialog=null;
+  g.linksReturn=null;
+  return pauseLinks(g);
+ }
+ function openLinks(g){
+  const dialog={recovering:false};
+  g.linksDialog=dialog;
+  return beginLinks(g,{dialog});
+ }
+ function linksDialogState(g){
+  return {
+   editable:linksEditable(g)&&!(g.request&&g.error),
+   preparing:Boolean(g.linksDialog?.recovering||g.linksReturn?.attempted||(g.linksSession&&!g.linksSession.admitted)),
+   unresolved:linksUnresolved(g),
+   peer:active&&verified&&globalThis.navigator?.onLine!==false?peerOwner(g.id,'links'):null,
+  };
+ }
+ async function actOnLinks(g,intent,{recover=true}={}){
+  const dialog=g.linksDialog;
+  if(!dialog||!current()||!active)return 'paused';
+  if(!linksEditable(g)){
+   if(!recover||dialog.recovering||g.linksReturn?.attempted||(g.linksSession&&!g.linksSession.admitted)||linksUnresolved(g))return 'paused';
+   dialog.recovering=true;
+   emit();
+   try{
+    await pauseLinks(g);
+    if(!await beginLinks(g,{dialog,clean:true}))return 'paused';
+   }finally{dialog.recovering=false;emit();}
+  }
+  if(g.linksDialog!==dialog||!linksEditable(g)||(g.request&&g.error))return 'paused';
+  if(!intent){touchLinks(g);return 'ready';}
+  const item=graph.itineraryItems?.find(item=>item.id===intent.id);
+  if(!item||item.updated_at!==intent.version)return 'changed';
+  if(g.value.includes(intent.id)===intent.selected){touchLinks(g);return 'ready';}
+  input(g,intent.selected?[...g.value,intent.id]:g.value.filter(id=>id!==intent.id));
+  return 'ready';
  }
  function input(g, value, { immediate = false, deferAmountInput = false } = {}) {
   if (g.group === 'payer' && typeof value === 'string') {
@@ -285,7 +322,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  }
  async function finish(){if(localDraft&&!draftDirty()&&!pendingCreate){clearDraft();emit();}if((pendingCreate||localDraft)&&!await create())return false;for(const g of fields.values()){g.resumeFocus=false;if(g.saveWork)await g.saveWork;if(dirty(g)||g.request){if(!g.request&&!owns(g)&&!await focus(g))return false;if(!await save(g))return false;}if(!await release(g))return false;}return true;}
  async function discard(){if(pendingCreate||createWork)return false;clearDraft();for(const g of fields.values()){g.resumeFocus=false;if(g.request||g.saving)return false;if(!await release(g))return false;g.value=structuredClone(g.canonical);g.deferAmountInput=false;g.conflict=false;g.error=null;persist(g);}await refresh();emit();return true;}
- const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,refreshAfterMutation,focus,input,save,release,finish,discard,beginLinks,touchLinks,endLinks,
+ const client={attach(){const generation=++mountGeneration;return()=>queueMicrotask(()=>{if(generation===mountGeneration)client.dispose();});},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getVersion:()=>version,get,ingest,refresh,refreshAfterMutation,focus,input,save,release,finish,discard,beginLinks,touchLinks,endLinks,openLinks,actOnLinks,linksDialogState,
   status:()=>({graph,verified,draftId:localDraft?.id,dirty:Boolean(pendingCreate)||draftDirty()||[...fields.values()].some(g=>!g.local&&(dirty(g)||g.request||g.saving)),pending:Boolean(pendingCreate)||[...fields.values()].some(g=>g.request||g.releasing)}),
   guardState(){
    const activeFields=[...fields.values()];
@@ -317,7 +354,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   // An authoritative Realtime/mutation snapshot satisfies only the fallback read;
   // pending writes, create recovery and lease renewal still run on their existing cadence.
   async tick(){if(!current())return;if(!active){for(const g of fields.values())if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);return;}
-   for(const g of fields.values())if(g.linksSession?.admitted&&(Date.now()-g.linksSession.lastActivity>=linksIdleLimit(g)||g.state==='lost'))void endLinks(g);
+   for(const g of fields.values())if(g.linksSession?.admitted&&(Date.now()-g.linksSession.lastActivity>=linksIdleLimit(g)||g.state==='lost'))void pauseLinks(g);
    await Promise.all([...fields.values()].filter(g=>!g.local).map(renew));if(!current()||!active||Date.now()-lastRecovery<5000)return;lastRecovery=Date.now();if((pendingCreate||localDraft)&&!createWork)await create();if(Date.now()-lastSnapshot>=5000)await refresh();for(const g of fields.values()){
    if(g.local)continue;if(g.releasing&&!g.releaseWork&&!g.request&&!g.saving)await release(g);
    if(g.request&&!g.saveWork)await save(g);
@@ -328,8 +365,9 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    if(!background)for(const g of fields.values())g.linksReturn=null;
    if(!active)return;
    for(const g of fields.values())if(g.group==='links'){
-    g.linksReturn=background&&g.linksSession?.dialog&&g.linksSession.admitted&&owns(g)
-     &&Date.now()-g.linksSession.lastActivity<linksIdleLimit(g)?{attempted:false}:null;
+    g.linksReturn=background&&g.linksSession?.dialog&&linksEditable(g)?{attempted:false,dialog:g.linksDialog}:null;
+    // Start the last debounce while the current lease still authorizes it.
+    if(g.linksReturn&&dirty(g)&&!g.request&&!g.error&&g.revision!==g.linksSession.startRevision)void save(g);
    }
    active=false;verified=false;clearTimeout(createTimer);
    for(const g of fields.values()){
@@ -347,8 +385,13 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    }
    active=true;
    // A read already in flight may have started before visibility changed.
-   if(!(await (returning.length?refreshAfterMutation():refresh()))||!active)return false;
-   for(const [g,marker] of returning)if(g.linksReturn===marker)await beginLinks(g,{dialog:true,fromForeground:true});
+   if(returning.length)emit();
+   const refreshed=await (returning.length?refreshAfterMutation():refresh());
+   for(const [g,marker] of returning)if(g.linksReturn===marker){
+    if(refreshed&&active)await beginLinks(g,{dialog:marker.dialog,clean:true,fromForeground:true});
+    if(g.linksReturn===marker){g.linksReturn=null;emit();}
+   }
+   if(!refreshed||!active)return false;
    for(const g of fields.values())if(g.resumeFocus&&!g.request){g.resumeFocus=false;await focus(g);}
    return true;
   },
