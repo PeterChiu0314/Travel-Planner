@@ -1,5 +1,5 @@
 import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
-import {expenseModels,expenseFinancialSnapshot,expenseTimelineCosts,expenseHistoricalMembers} from './lib/expenseSnapshot.js';
+import {expenseModels,expenseFinancialSnapshot,expenseTimelineCosts,expenseHistoricalMembers,olderExpenseSnapshot} from './lib/expenseSnapshot.js';
 import {createDemoExpenseService} from './demo/expenseService.js';
 import {budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import {isBudgetComplete} from './lib/budgetLifecycleValues.js';
@@ -2491,6 +2491,7 @@ export default function App() {
   function applyBudgetSnapshot(data, key, cache = true) {
     const context = requestGuard.context();
     if (context.key !== key) return;
+    if (olderExpenseSnapshot(budgetSnapshotRef.current.data.expenseGraph, data.expenseGraph)) return;
     const verifiedAt = data.expenseVerified ? Date.now() : undefined;
     const snapshot = { context, data, verifiedAt };
     budgetSnapshotRef.current = snapshot;

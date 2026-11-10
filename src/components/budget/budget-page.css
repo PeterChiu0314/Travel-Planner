@@ -80,11 +80,17 @@
 .bw-remote-move { cursor: default; touch-action: auto; }
 .bw-row.is-selected.has-remote-drag > .bw-day::after { content: none; }
 .bw-row.is-selected.has-remote-drag .bw-collaboration-outline { visibility: visible; }
+.bw-table-scroll.is-sorting { overflow-anchor: none; }
 .bw-expense-table .is-drag-source > * { opacity: .34; }
-.bw-expense-table .is-drop-before > * { box-shadow: inset 0 2px var(--color-primary); }
-.bw-expense-table .is-drop-after > *, .bw-expense-table .is-drop-group-after > tr:last-child > * {
-  box-shadow: inset 0 -2px var(--color-primary);
+.bw-expense-table .bw-drag-concealed { visibility: collapse; }
+.bw-expense-table .bw-insertion-ghost > td { position: relative; padding: 0; border: 0; }
+.bw-ghost-card {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--panel));
+  border-radius: 4px; outline: 1px dashed var(--color-primary); outline-offset: -1px;
 }
+.bw-ghost-preview { opacity: .6; pointer-events: none; }
+.bw-ghost-preview .bw-row-remove { visibility: hidden; }
 .bw-expense-table .is-drop-end > * { background-color: color-mix(in srgb, var(--color-primary) 12%, var(--panel)); }
 .bw-drag-preview {
   pointer-events: none; background: var(--panel); color: var(--ink);

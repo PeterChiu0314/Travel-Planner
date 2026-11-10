@@ -1,5 +1,5 @@
 import {withBudgetAuthorityTimeout} from './budgetMetadataService.js';
-import {expenseModels,validExpenseSnapshot} from './expenseSnapshot.js';
+import {expenseModels,olderExpenseSnapshot,validExpenseSnapshot} from './expenseSnapshot.js';
 import {calculatePricing,calculateActualPricing} from './budgetFinance.js';
 import {expenseRows,newExpense} from './expenseItems.js';
 import {expenseReleaseReceipt,expenseReleaseSettled} from './expenseLeaseReceipt.js';
@@ -64,8 +64,8 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
  const report=(g,error,{quiet=false}={})=>{g.error=error;persist(g);if(!quiet)onError(error);emit();};
  function ingest(data,{authoritative=true}={}){
   if(!current()||!validExpenseSnapshot(data,trip))return false;
+  if(olderExpenseSnapshot(graph,data))return 'stale';
   if(!authoritative&&graph){verified=false;emit();return true;}
-  if(graph?.snapshotRevision>data.snapshotRevision)return true;
   graph=data;serverOffset=Number.isFinite(Date.parse(data.serverNow))?Date.parse(data.serverNow)-Date.now():0;verified=authoritative&&active&&globalThis.navigator?.onLine!==false;if(verified)lastSnapshot=Date.now();
   for(const g of fields.values()){
    if(g.local)continue;
@@ -81,7 +81,12 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   }
   emit();return true;
  }
- async function refresh(){if(readWork)return readWork;readWork=(async()=>{try{if(!(await service.authorized(actor)))return false;const r=await bounded(service.read(trip,sessionId));if(r.error||!ingest(r.data)){verified=false;if(r.error)onError(r.error);emit();return false;}onSnapshot(r.data);return true;}finally{readWork=null;}})();return readWork;}
+ function acceptRead(data){
+  const adopted=ingest(data);
+  if(adopted===true)onSnapshot(data);
+  return adopted!==false;
+ }
+ async function refresh(){if(readWork)return readWork;readWork=(async()=>{try{if(!(await service.authorized(actor)))return false;const r=await bounded(service.read(trip,sessionId));if(r.error||!acceptRead(r.data)){verified=false;if(r.error)onError(r.error);emit();return false;}return true;}finally{readWork=null;}})();return readWork;}
  async function refreshAfterMutation(){await readWork;return refresh();}
  function get(id,group){const key=id+':'+group;if(fields.has(key))return fields.get(key);const r=graph?.groups.find(g=>g.id===id&&g.group===group);const value=expenseFieldValue(graph,id,group);
   if(localDraft?.id===id){const canonical=draftValue(group);let value=structuredClone(localDraft.values[group]??canonical);if(group==='payer')value=compatiblePayer(value,expenseModels(draftGraph())[0]);const g={id,group,local:true,canonical,value,state:'local',revision:0,...(group==='links'?{itineraryVersions:localDraft.itineraryVersions}:{})};fields.set(key,g);return g;}
@@ -203,7 +208,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    if(after.error){verified=false;report(g,after.error);return g.group==='lifecycle';}
    // A confirmed receipt retires the submitted draft before installing the
    // canonical snapshot; subsequent typing remains buffered independently.
-   g.conflict=false;g.error=null;ingest(after.data);onSnapshot(after.data);persist(g);
+   g.conflict=false;g.error=null;acceptRead(after.data);persist(g);
    if(dirty(g))return false;if(!g.focused)await release(g);return true;
   })().finally(()=>{g.saveWork=null;
    // A debounce can expire while this request is in flight. Once its receipt

@@ -8,6 +8,8 @@ Item and category dragging share a persisted trip order across Budget and Actual
 
 Staging installed `20261110100000` at ledger 83 after an exact-source rollback rehearsal. Both transactions checked six protected relation fingerprints and RPC permissions. Independent readback matched SHA-256 `ddf4008705d43f16b810bee182ef91bf2430e31ad58365429387b3a7a43d7c9b` with RLS enabled on all three new tables. The copy RPC was already present at ledger 82. Build, 23 Node/SQL and 30 distinct Chromium cases passed locally. Verify the matching Preview deployment by SHA before hosted two-account acceptance.
 
+The desktop follow-up adds a layout-sized Ghost Card, whole-group targeting from the category body, and continuous placement while saving. Rejected older snapshots are withheld from subscribers and the offline cache. Staging acceptance is focused on the updated drag behavior.
+
 ## 2026-11-08 — Budget quick actions
 
 On `codex/budget-collaboration-redesign`, the shared Budget table now has row-end deletion and a multi-select mode for copying or deleting visible items. Each copy preserves the budget and itinerary links, starts unpaid, and can safely replay an unconfirmed request. Delete uses the existing lifecycle permissions and checks. The build, 11 Chromium cases and 23 Node/SQL cases passed locally. See the [UX rules](docs/UX_RULES.md#budget-ux-rules) and [browser coverage](tests/expenseBatchActions.spec.js). The [copy RPC migration](supabase/migrations/20261108210000_expense_item_copy.sql) adds no tables, columns, or backfill. Issue #27 preflight confirmed the copy RPC on Staging at ledger 82.

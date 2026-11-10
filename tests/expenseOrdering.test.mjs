@@ -3,6 +3,46 @@ import test from 'node:test';
 import {randomUUID as uuid} from 'node:crypto';
 import {departureFixture} from './helpers/expenseDepartureFixture.js';
 import {orderedExpenseRows} from '../src/lib/expenseOrdering.js';
+import {createExpenseEditor} from '../src/lib/expenseEditor.js';
+
+test('a delayed order snapshot cannot publish older category or item order',async()=>{
+ const trip='trip',items=['a','b'].map(id=>({id,trip_id:trip,payment_state:'unpaid'}));
+ const snapshot=(snapshotRevision,categories,first,second)=>({
+  schemaVersion:1,tripId:trip,snapshotRevision,items,groups:[],links:[],participants:[],
+  ordering:{categories,items:{[first]:{position:1},[second]:{position:2}}},
+ });
+ const older=snapshot(1,['機票','交通'],'a','b');
+ const newer=snapshot(2,['交通','機票'],'b','a');
+ const latest=snapshot(3,['交通','機票'],'a','b');
+ let resolveDelayed,startDelayed;
+ const started=new Promise(resolve=>{startDelayed=resolve;});
+ const delayed=new Promise(resolve=>{resolveDelayed=resolve;});
+ const responses=[newer,delayed,latest];
+ const published=[];
+ const client=createExpenseEditor({actor:'actor',trip,sessionId:'session',
+  service:{authorized:async()=>true,read:async()=>{
+   const next=responses.shift();
+   if(next===delayed)startDelayed();
+   return {data:await next};
+  }},onSnapshot:data=>published.push(data),
+ });
+ try{
+  assert.equal(await client.refresh(),true);
+  const pending=client.refresh();
+  await started;
+  client.ingest(newer);
+  resolveDelayed(older);
+  assert.equal(await pending,true);
+  assert.equal(client.status().verified,true);
+  assert.deepEqual(published,[newer]);
+  for(const graph of [client.status().graph,published.at(-1)]){
+   assert.deepEqual(graph.ordering.categories,['交通','機票']);
+   assert.deepEqual(orderedExpenseRows(graph.items,graph.ordering.items).map(item=>item.id),['b','a']);
+  }
+  assert.equal(await client.refreshAfterMutation(),true);
+  assert.deepEqual(published,[newer,latest]);
+ }finally{client.dispose();}
+});
 
 test('expense ordering validates intent, protects fields and fences unknown writes',async()=>{
  const f=await departureFixture();

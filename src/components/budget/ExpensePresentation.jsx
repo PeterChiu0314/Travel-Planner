@@ -1,10 +1,10 @@
-import {useEffect,useState} from 'react';
+import {Fragment,useEffect,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {ChevronDown, ChevronRight, Circle, CircleCheck, Package, Trash2, X} from 'lucide-react';
 import {budgetDay, memberLabel, money, originalMoney, pricingLabels, recordAllocations} from '../../lib/budgetFinance.js';
 import {rowCollaborators,RowCollaboratorOutline,RowCollaboratorAvatars} from './BudgetRowCollaborators.jsx';
 import {categoryOrder as order,categoryIcons as icons,categoryColor,PricingSummary} from './ExpenseWorkspaceParts.jsx';
-import ExpenseDragBoard,{ExpenseDragRow} from './ExpenseDragBoard.jsx';
+import ExpenseDragBoard,{ExpenseDragRow,ExpenseInsertionGhost} from './ExpenseDragBoard.jsx';
 import {orderedExpenseRows} from '../../lib/expenseOrdering.js';
 
 export function expenseDisplayAllocations(bundle) {
@@ -45,7 +45,7 @@ export function ExpenseTable({ordering,rows,...props}){
   {layout=><ExpenseTableRows {...props} {...layout} sort={saved} categoryGroups={graph.groups}/>}
  </ExpenseDragBoard>;
 }
-function ExpenseTableRows({rows,categories,enabled,peer,indicator,sort,categoryGroups,members,links,items,collaborators=[],selected,collapsed,setCollapsed,currentUserId,actual,onSelect,checked,visibleCount,checkedCount,onToggleAll,onToggleGroup,actionBusy,canRemove,onRemove}){
+function ExpenseTableRows({rows,categories,enabled,peer,board,sorting,source,ghost,destination,sort,categoryGroups,members,links,items,collaborators=[],selected,collapsed,setCollapsed,currentUserId,actual,onSelect,checked,visibleCount,checkedCount,onToggleAll,onToggleGroup,actionBusy,canRemove,onRemove}){
  const [tooltip,setTooltip]=useState(null);
  const usersFor=(kind,id)=>{
   const drag=peer({kind,id});
@@ -78,7 +78,9 @@ function ExpenseTableRows({rows,categories,enabled,peer,indicator,sort,categoryG
  const FoldAll=allCollapsed?ChevronRight:ChevronDown;
  const fold=(values,close)=>setCollapsed(current=>close?[...new Set([...current,...values])]:current.filter(c=>!values.includes(c)));
  const cell=(row,text,kind='')=><button type="button" className={`bw-cell ${kind}`} onClick={event=>{event.stopPropagation();onSelect(row.id);}}>{text}</button>;
- return <div className="bw-table-scroll">{tooltipUsers.length?createPortal(<div id={tooltipId} role="tooltip" className="bw-collaboration-tooltip bw-row-peer-tooltip" style={{left:tooltip.left,top:tooltip.top}}><RowCollaboratorAvatars users={tooltipUsers} members={members}/></div>,document.body):null}<table className="bw-table bw-expense-table" aria-label={actual?'實付明細':'預算明細'}><thead><tr onClick={()=>fold(categories,!allCollapsed)}><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{actual?'個人負擔':'個人預算'}<small>TWD</small></th><th className="bw-number">總額<small>TWD</small></th><th className="bw-status-cell">狀態</th><th className="bw-action-cell" aria-label={checked?'多選':'操作'} onClick={e=>e.stopPropagation()}>
+ const insertGhost=(resource,side)=>ghost&&destination.target.kind===resource.kind&&destination.target.id===resource.id&&destination.side===side
+  ?<ExpenseInsertionGhost preview={ghost}/>:null;
+ return <div ref={board} className={`bw-table-scroll${sorting?' is-sorting':''}`}>{tooltipUsers.length?createPortal(<div id={tooltipId} role="tooltip" className="bw-collaboration-tooltip bw-row-peer-tooltip" style={{left:tooltip.left,top:tooltip.top}}><RowCollaboratorAvatars users={tooltipUsers} members={members}/></div>,document.body):null}<table className="bw-table bw-expense-table" aria-label={actual?'實付明細':'預算明細'}><thead><tr onClick={()=>fold(categories,!allCollapsed)}><th className="bw-day">Day</th><th className="bw-title">項目</th><th className="bw-number">{actual?'個人負擔':'個人預算'}<small>TWD</small></th><th className="bw-number">總額<small>TWD</small></th><th className="bw-status-cell">狀態</th><th className="bw-action-cell" aria-label={checked?'多選':'操作'} onClick={e=>e.stopPropagation()}>
   {checked?<SelectRowsCheckbox label="全選可見項目" count={visibleCount} selectedCount={checkedCount} disabled={actionBusy} onChange={onToggleAll}/>
    :<button type="button" className="bw-action-icon bw-group-toggle" aria-label={allCollapsed?'展開所有分類':'收合所有分類'} aria-expanded={categories.length>0&&!allCollapsed} disabled={actionBusy||!categories.length} onClick={()=>fold(categories,!allCollapsed)}><FoldAll size={14}/></button>}
  </th></tr></thead>
@@ -88,10 +90,12 @@ function ExpenseTableRows({rows,categories,enabled,peer,indicator,sort,categoryG
   const personalSubtotal=missingShare?null:complete.reduce((sum,row)=>sum+(row.allocations?.[currentUserId]??0),0);
   const Icon=icons[category]||Package,closed=collapsed.includes(category),Fold=closed?ChevronRight:ChevronDown;
   const group={kind:'category',id:category,category,label:category,revision:sort?.revision??0};
-  const groupPeer=peer(group),groupDrop=indicator(group);
-  return <tbody key={category} data-expense-category={category} className={groupDrop==='after'?'is-drop-group-after':undefined}>
-  <ExpenseDragRow resource={group} enabled={enabled} peer={groupPeer} indicator={groupDrop==='after'?null:groupDrop}>{handle=>
-  <tr className="bw-group" {...tooltipEvents('category',category,usersFor('category',category))} style={{'--bw-category-color':categoryColor(category)}} onClick={()=>fold([category],!closed)}><th colSpan={2} scope="rowgroup">{sort&&handle}<span className="bw-group-label"><Icon size={14} strokeWidth={1.8}/><span>{category}</span><small>{grouped.length} 筆</small></span>{groupPeer&&<RowCollaboratorOutline users={[{...groupPeer,mode:'drag'}]}/>}</th><td className="bw-number bw-group-person">{personalSubtotal===null?'—':money(personalSubtotal)}</td><td className="bw-number">{money(total)}</td><td className="bw-status-cell"></td><td className="bw-action-cell" onClick={event=>event.stopPropagation()}>
+  const groupPeer=peer(group),movingGroup=source?.kind==='category'&&source.id===category;
+  const append=destination?.target.id===category&&destination.side==='end';
+  return <tbody key={category} data-expense-category={category}>
+  {insertGhost(group,'before')}
+  <ExpenseDragRow resource={group} enabled={enabled} peer={groupPeer} pickedUp={movingGroup} concealed={movingGroup&&Boolean(ghost)}>{handle=>
+  <tr className={`bw-group${append?' is-drop-end':''}`} {...tooltipEvents('category',category,usersFor('category',category))} style={{'--bw-category-color':categoryColor(category)}} onClick={()=>fold([category],!closed)}><th colSpan={2} scope="rowgroup">{sort&&handle}<span className="bw-group-label"><Icon size={14} strokeWidth={1.8}/><span>{category}</span><small>{grouped.length} 筆</small></span>{groupPeer&&<RowCollaboratorOutline users={[{...groupPeer,mode:'drag'}]}/>}</th><td className="bw-number bw-group-person">{personalSubtotal===null?'—':money(personalSubtotal)}</td><td className="bw-number">{money(total)}</td><td className="bw-status-cell"></td><td className="bw-action-cell" onClick={event=>event.stopPropagation()}>
    {checked?<SelectRowsCheckbox label={`全選「${category}」`} count={closed?0:grouped.length} selectedCount={grouped.filter(row=>checked.has(row.id)).length} disabled={actionBusy} onChange={()=>onToggleGroup(category)}/>
     :<button type="button" className="bw-action-icon bw-group-toggle" aria-expanded={!closed} aria-label={`${closed?'展開':'收合'}${category}`} disabled={actionBusy} onClick={()=>fold([category],!closed)}><Fold size={14}/></button>}
   </td></tr>}</ExpenseDragRow>
@@ -100,7 +104,9 @@ function ExpenseTableRows({rows,categories,enabled,peer,indicator,sort,categoryG
    const personalAmount=row.allocations?.[currentUserId];
    const label=row.title||'未命名項目';
    const resource={kind:'item',id:row.id,category:row.category,label,revision:sort?.items[row.id]?.revision??0,categoryRevision:categoryRevisions.get(row.id)??0};
-   return <ExpenseDragRow key={row.id} resource={resource} enabled={enabled} peer={peer(resource)} indicator={indicator(resource)}>{handle=>
+   const pickedUp=movingGroup||source?.kind==='item'&&source.id===row.id;
+   return <Fragment key={row.id}>{insertGhost(resource,'before')}
+   <ExpenseDragRow resource={resource} enabled={enabled} peer={peer(resource)} pickedUp={pickedUp} concealed={pickedUp&&Boolean(ghost)}>{handle=>
    <tr data-expense-id={row.id} className={`bw-row${selected===row.id?' is-selected':''}${checked?.has(row.id)?' is-checked':''}${remote.length?' has-collaborators':''}`} {...tooltipEvents('item',row.id,remote)} onClick={()=>onSelect(row.id)}>
     <td className="bw-day">{sort&&handle}{budgetDay(row,links,items)}<RowCollaboratorOutline users={remote}/></td>
     <td>{cell(row,row.title||'未命名項目')}</td>
@@ -111,8 +117,10 @@ function ExpenseTableRows({rows,categories,enabled,peer,indicator,sort,categoryG
      {checked?<label className="bw-action-check"><input type="checkbox" aria-label={`選取「${label}」`} checked={checked.has(row.id)} disabled={actionBusy} onChange={()=>onSelect(row.id)}/></label>
       :canRemove&&<button type="button" className="bw-action-icon bw-row-remove is-danger" aria-label={`刪除「${label}」`} title={`刪除「${label}」`} disabled={actionBusy} onClick={()=>onRemove(row)}><X size={14}/></button>}
     </td>
-   </tr>}</ExpenseDragRow>;
-  })}</tbody>;
+   </tr>}</ExpenseDragRow>{insertGhost(resource,'after')}</Fragment>;
+  })}
+  {insertGhost(group,'after')||insertGhost(group,'end')}
+  </tbody>;
  })}</table>{!rows.length?<div className="bw-empty">沒有符合條件的項目</div>:null}</div>;
 }
 export function ExpenseDetail({item,scope,planning=false,members,links,items,editable,participantsRequired,payerRequired,paymentDisabled,onRemove,onPayment,currentUserId}){

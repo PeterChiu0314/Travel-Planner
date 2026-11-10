@@ -1,5 +1,6 @@
 import {isBudgetComplete} from './budgetLifecycleValues.js';
 import {paymentCredits} from './expensePayers.js';
+export const olderExpenseSnapshot=(current,incoming)=>current?.snapshotRevision>incoming?.snapshotRevision;
 export function expenseModels(data){
  return data.items.map(row=>{
   const people=data.participants.filter(p=>p.expense_id===row.id),groups=data.groups.filter(g=>g.id===row.id);
