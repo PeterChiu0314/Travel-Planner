@@ -8,6 +8,10 @@ const summary=page=>page.getByRole('group',{name:'關聯行程',exact:true});
 const entry=page=>summary(page).getByRole('button',{name:/^(新增|編輯)關聯行程$/});
 const status=page=>dialog(page).getByRole('status',{name:'關聯儲存狀態'});
 const card=(page,name)=>dialog(page).getByRole('button',{name,exact:true});
+const visibility=(page,value)=>page.evaluate(visibilityState=>{
+ Object.defineProperty(document,'visibilityState',{configurable:true,value:visibilityState});
+ document.dispatchEvent(new Event('visibilitychange'));
+},value);
 async function edit(page,title){
  await page.locator('.bw-row').getByRole('button',{name:title,exact:true}).click();
  await page.getByRole('tab',{name:'編輯項目',exact:true}).click();
@@ -20,7 +24,7 @@ async function seedStop(f,title,day,type='attraction',sortOrder=0){
  return id;
 }
 
-test('Mini Dayboard pages and filters without losing selections and flushes the latest links on close',async({page})=>{
+test('Mini Dayboard pans and filters without losing selections and flushes the latest links on close',async({page})=>{
  const f=await departureFixture();
  try{
   const expense=await f.seed('多日關聯測試',{});
@@ -43,10 +47,31 @@ test('Mini Dayboard pages and filters without losing selections and flushes the 
   await edit(page,'多日關聯測試');
   await entry(page).click();
   const board=dialog(page).getByRole('region',{name:'多日行程'});
-  await expect(board.getByRole('region',{name:/Day [1-4] 行程/})).toHaveCount(4);
-  expect(await board.evaluate(node=>node.scrollWidth===node.clientWidth&&node.scrollHeight>node.clientHeight)).toBe(true);
+  await expect(board.getByRole('region',{name:/Day [1-6] 行程/})).toHaveCount(6);
+  await expect(dialog(page).locator('.day-tab')).toHaveCount(0);
+  await expect(dialog(page).getByRole('button',{name:/前一天|後一天/})).toHaveCount(0);
+  expect(await board.evaluate(node=>node.scrollWidth>node.clientWidth&&node.scrollHeight>node.clientHeight)).toBe(true);
   await expect(dialog(page).getByRole('checkbox')).toHaveCount(0);
   const twoCards=card(page,'首日美術館');
+  const box=await twoCards.last().boundingBox();
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down();
+  await page.mouse.move(box.x+box.width/2-75,box.y+box.height/2,{steps:8});
+  await page.mouse.up();
+  await expect.poll(()=>board.evaluate(node=>node.scrollLeft)).toBeGreaterThan(50);
+  await expect(twoCards.first()).toHaveAttribute('aria-pressed','false');
+  expect(f.db.expenseCalls.filter(call=>call.name==='mutate_expense_group'&&call.args.p_group==='links')).toHaveLength(0);
+  await page.mouse.wheel(2000,0);
+  await expect.poll(()=>board.evaluate(node=>Math.abs(node.scrollWidth-node.clientWidth-node.scrollLeft))).toBeLessThanOrEqual(1);
+  await page.mouse.wheel(-2000,0);
+  await expect.poll(()=>board.evaluate(node=>node.scrollLeft)).toBe(0);
+  const headerBefore=await dialog(page).locator('header').boundingBox();
+  const footerBefore=await dialog(page).locator('footer').boundingBox();
+  await page.mouse.wheel(0,240);
+  await expect.poll(()=>board.evaluate(node=>node.scrollTop)).toBeGreaterThan(0);
+  expect(await board.evaluate(node=>node.scrollLeft)).toBe(0);
+  expect(await dialog(page).locator('header').boundingBox()).toEqual(headerBefore);
+  expect(await dialog(page).locator('footer').boundingBox()).toEqual(footerBefore);
   await twoCards.first().click();
   await expect(twoCards.last()).toHaveAttribute('aria-pressed','true');
   await card(page,'第二天午餐').click();
@@ -64,8 +89,8 @@ test('Mini Dayboard pages and filters without losing selections and flushes the 
   await expect(entry(page)).toBeFocused();
 
   await entry(page).click();
-  await dialog(page).getByRole('button',{name:'後一天'}).click();
-  await expect(dialog(page).getByRole('region',{name:'Day 5 行程'})).toBeVisible();
+  await board.press('ArrowRight');
+  await expect.poll(()=>board.evaluate(node=>node.scrollLeft)).toBeGreaterThan(0);
   await dialog(page).getByRole('textbox',{name:'搜尋關聯行程'}).fill('第六日');
   await expect(card(page,'第六日飯店')).toHaveAttribute('aria-pressed','true');
   await dialog(page).getByRole('button',{name:'關閉關聯行程'}).click();
@@ -73,6 +98,31 @@ test('Mini Dayboard pages and filters without losing selections and flushes the 
   await expect.poll(ids).toEqual([museum,meal].sort());
   expect(page.qaErrors).toEqual([]);
  }finally{await page.close();await f.close();}
+});
+
+test('touch swipes pan the Dayboard without toggling a card',async({browser})=>{
+ const context=await browser.newContext({viewport:{width:390,height:820},hasTouch:true,isMobile:true});
+ try{
+  const page=await context.newPage();
+  await page.goto('/demo/budget');
+  await edit(page,'去程機票・桃園 → 關西');
+  await entry(page).click();
+  const board=dialog(page).getByRole('region',{name:'多日行程'});
+  const first=board.locator('.bw-link-card').first();
+  await expect(first).toBeEnabled();
+  const checked=await first.getAttribute('aria-pressed');
+  const {x,y,width,height}=await first.boundingBox();
+  const input=await context.newCDPSession(page);
+  const touch=(type,screenX,screenY)=>input.send('Input.dispatchTouchEvent',{
+   type,touchPoints:type==='touchEnd'?[]:[{x:screenX,y:screenY}],
+  });
+  await touch('touchStart',x+width*.8,y+height/2);
+  for(let step=1;step<=8;step++)await touch('touchMove',x+width*(.8-step*.07),y+height/2);
+  await touch('touchEnd');
+  await expect.poll(()=>board.evaluate(node=>node.scrollLeft)).toBeGreaterThan(50);
+  await expect(first).toHaveAttribute('aria-pressed',checked);
+  await expect(status(page)).toHaveText('已儲存');
+ }finally{await context.close();}
 });
 
 test('links admission is per expense, replays an unknown close and recovers after going offline',async({browser})=>{
@@ -122,16 +172,32 @@ test('links admission is per expense, replays an unknown close and recovers afte
   await expect(card(a,'其他行程')).toBeDisabled();
   await dialog(a).getByRole('button',{name:'取得編輯權',exact:true}).click();
   await expect(card(a,'其他行程')).toBeEnabled();
-  await a.evaluate(()=>{
-   Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});
-   document.dispatchEvent(new Event('visibilitychange'));
-  });
+  const acquisitions=()=>f.db.expenseCalls.filter(call=>call.actor===f.A&&call.name==='expense_group_lease'
+   &&call.args.p_id===first&&call.args.p_group==='links'&&call.args.p_action==='acquire');
+  const beforeReturn=acquisitions().length;
+  await visibility(a,'hidden');
   await expect(entry(b)).toBeEnabled();
-  await a.evaluate(()=>{
-   delete document.visibilityState;
-   document.dispatchEvent(new Event('visibilitychange'));
-  });
+  await visibility(a,'visible');
+  await visibility(a,'visible');
+  await expect(card(a,'其他行程')).toBeEnabled();
+  expect(acquisitions()).toHaveLength(beforeReturn+1);
+  expect(acquisitions().at(-1).args.p_token).not.toBe(acquisitions().at(-2).args.p_token);
+  await expect(entry(b)).toBeDisabled();
+
+  await visibility(a,'hidden');
+  await expect(entry(b)).toBeEnabled();
+  await entry(b).click();
+  await expect(card(b,'其他行程')).toBeEnabled();
+  const snapshots=()=>f.db.expenseCalls.filter(call=>call.actor===f.A&&call.name==='read_expense_snapshot').length;
+  const beforePeerReturn=snapshots();
+  await visibility(a,'visible');
+  await expect.poll(snapshots).toBeGreaterThan(beforePeerReturn);
+  await expect(summary(a).locator('.bw-collaboration-controls')).toHaveAttribute('data-user',f.B);
+  await expect(card(a,'其他行程')).toBeDisabled();
+  await expect(dialog(a).getByRole('button',{name:'取得編輯權',exact:true})).toBeDisabled();
+  await dialog(b).getByRole('button',{name:'關閉關聯行程'}).click();
   await expect(dialog(a).getByRole('button',{name:'取得編輯權',exact:true})).toBeEnabled();
+  expect(acquisitions()).toHaveLength(beforeReturn+1);
   expect((await f.snapshot()).links.some(link=>link.expense_id===first&&link.itinerary_item_id===museum)).toBe(true);
  }finally{await aContext.close();await bContext.close();await f.close();}
 });

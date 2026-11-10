@@ -1,6 +1,6 @@
 import {useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Check,ChevronLeft,ChevronRight,Link2,Search,X} from 'lucide-react';
+import {Check,Link2,Search,X} from 'lucide-react';
 import {buildTimelineVisitDisplayOrder} from '../../lib/timelineUntimedOrdering.js';
 import {isEstablishedTransportPair,isTransportationCard} from '../../lib/timelineTransportationRoles.js';
 import {timelineTypeColor,timelineTypeLabels} from '../../lib/timelineTypeStyles.js';
@@ -38,17 +38,15 @@ function dayboardDays(trip,items){
 
 function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close}){
  const titleId=useId(),dialog=useRef(null),viewport=useRef(null),closeButton=useRef(null);
- const scrollIntent=useRef(0),scrollTop=useRef(0);
+ const scrollIntent=useRef(0),lastScroll=useRef({top:0,left:0});
+ const pointer=useRef(null),suppressClick=useRef(false);
  const [query,setQuery]=useState(''),[type,setType]=useState(''),[columns,setColumns]=useState(1);
- const [first,setFirst]=useState(0),[activeDay,setActiveDay]=useState(0);
  const days=useMemo(()=>dayboardDays(trip,items),[trip,items]);
  const types=[...new Set(items.map(typeOf))];
  const editable=enabled&&!owner&&field.linksSession?.admitted&&client.view(field).editable&&!field.linksCloseWork;
+ const acquiring=Boolean(field.linksSession&&!field.linksSession.admitted);
  const selectedIds=client.view(field).value||[];
  const selected=new Set(selectedIds);
- const lastStart=Math.max(0,days.length-columns),start=Math.min(first,lastStart);
- const visible=days.slice(start,start+columns);
- const selectedDay=Math.max(start,Math.min(activeDay,start+visible.length-1));
 
  useLayoutEffect(()=>{
   const region=viewport.current;
@@ -83,16 +81,48 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
   if(event.nativeEvent.isTrusted)scrollIntent.current=performance.now()+800;
  }
  function onScroll(event){
-  const top=event.currentTarget.scrollTop;
-  if(top!==scrollTop.current&&performance.now()<scrollIntent.current&&event.nativeEvent.isTrusted)client.touchLinks(field);
-  scrollTop.current=top;
+  const {scrollTop:top,scrollLeft:left}=event.currentTarget;
+  const moved=top!==lastScroll.current.top||left!==lastScroll.current.left;
+  if(moved&&performance.now()<scrollIntent.current&&event.nativeEvent.isTrusted)client.touchLinks(field);
+  lastScroll.current={top,left};
  }
- function changeDay(event,index,windowStart=start){
-  noteActivity(event);
-  scrollIntent.current=0;
-  viewport.current.scrollTop=0;
-  setFirst(windowStart);
-  setActiveDay(index);
+ function startPan(event){
+  if(!event.nativeEvent.isTrusted||!event.isPrimary)return;
+  suppressClick.current=false;
+  if(event.pointerType!=='mouse'||event.button!==0)return;
+  pointer.current={id:event.pointerId,x:event.clientX,y:event.clientY,left:event.currentTarget.scrollLeft,axis:null};
+ }
+ function movePan(event){
+  const drag=pointer.current;
+  if(!drag||drag.id!==event.pointerId||!event.nativeEvent.isTrusted)return;
+  const dx=event.clientX-drag.x,dy=event.clientY-drag.y;
+  const region=event.currentTarget;
+  if(!drag.axis){
+   if(Math.max(Math.abs(dx),Math.abs(dy))<7)return;
+   suppressClick.current=true;
+   drag.axis=Math.abs(dx)>Math.abs(dy)?'horizontal':'vertical';
+   if(drag.axis==='horizontal'){
+    region.setPointerCapture(drag.id);
+    region.dataset.panning='';
+   }
+  }
+  if(drag.axis!=='horizontal')return;
+  armScroll(event);
+  region.scrollLeft=drag.left-dx;
+ }
+ function finishPan(event){
+  if(pointer.current?.id!==event.pointerId)return;
+  pointer.current=null;
+  delete event.currentTarget.dataset.panning;
+ }
+ function scrollWithKey(event){
+  if(event.target!==event.currentTarget)return;
+  if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
+   event.preventDefault();
+   armScroll(event);
+   const lane=event.currentTarget.querySelector('.bw-link-day');
+   if(lane)event.currentTarget.scrollLeft+=(lane.offsetWidth+8)*(event.key==='ArrowLeft'?-1:1);
+  }else if(scrollKeys.has(event.key))armScroll(event);
  }
  const matches=(item,text=query,category=type)=>(!category||typeOf(item)===category)
   &&String(item.title||'').toLocaleLowerCase().includes(text.trim().toLocaleLowerCase());
@@ -101,13 +131,15 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
   setQuery(text);
   setType(category);
   scrollIntent.current=0;
-  viewport.current.scrollTop=0;
-  if(visible.some(day=>day.items.some(item=>matches(item,text,category))))return;
-  const found=days.findIndex(day=>day.items.some(item=>matches(item,text,category)));
-  if(found>=0){
-   setFirst(Math.min(found,lastStart));
-   setActiveDay(found);
-  }
+  const region=viewport.current;
+  region.scrollTop=0;
+  const bounds=region.getBoundingClientRect();
+  const matching=days.flatMap((day,index)=>day.items.some(item=>matches(item,text,category))?[region.children[index]]:[]);
+  if(matching.some(lane=>{
+   const rect=lane.getBoundingClientRect();
+   return rect.right>bounds.left&&rect.left<bounds.right;
+  }))return;
+  if(matching.length)region.scrollLeft+=matching[0].getBoundingClientRect().left-bounds.left;
  }
  function toggle(id){
   if(!editable)return;
@@ -125,25 +157,18 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
     <select aria-label="行程分類" value={type} onChange={event=>changeFilter(event,query,event.target.value)}>
      <option value="">全部</option>{types.map(value=><option value={value} key={value}>{typeLabel(value)}</option>)}
     </select>
-    {!editable&&<button type="button" className="ghost-button compact" disabled={!enabled||Boolean(owner)||busy||Boolean(field.linksCloseWork)||Boolean(field.request)||field.conflict} onClick={acquire}>
-     {busy?'正在取得編輯權…':'取得編輯權'}
+    {!editable&&<button type="button" className="ghost-button compact" disabled={!enabled||Boolean(owner)||busy||acquiring||Boolean(field.linksCloseWork)||Boolean(field.request)||field.conflict} onClick={acquire}>
+     {busy||acquiring?'正在取得編輯權…':'取得編輯權'}
     </button>}
    </div>
-   <nav className="bw-link-days" aria-label="關聯行程日期" style={{'--bw-link-columns':visible.length||1}}>
-    <button type="button" className="bw-icon" aria-label="前一天" disabled={start===0} onClick={event=>changeDay(event,start-1,start-1)}><ChevronLeft size={17}/></button>
-    {visible.map((day,offset)=><button type="button" key={day.index} aria-pressed={start+offset===selectedDay}
-     className={`day-tab${start+offset===selectedDay?' active':''}`}
-     onClick={event=>changeDay(event,start+offset)}>
-     <span className="day-tab-index">DAY {day.index+1}</span>{day.date&&<><span className="day-tab-separator" aria-hidden="true"/><span className="day-tab-date">{dayDate.format(day.date)}</span></>}
-    </button>)}
-    <button type="button" className="bw-icon" aria-label="後一天" disabled={start>=lastStart} onClick={event=>changeDay(event,start+1,start+1)}><ChevronRight size={17}/></button>
-   </nav>
    <div ref={viewport} className="bw-link-dayboard" tabIndex={0} role="region" aria-label="多日行程"
-    onScroll={onScroll} onWheel={armScroll} onTouchMove={armScroll}
-    onPointerDown={event=>{if(event.target===event.currentTarget)armScroll(event);}}
-    onKeyDown={event=>{if(event.target===event.currentTarget&&scrollKeys.has(event.key))armScroll(event);}}
-    style={{'--bw-link-columns':visible.length||1}}>
-    {visible.map(day=>{
+    onScroll={onScroll} onWheel={armScroll} onTouchMove={armScroll} onKeyDown={scrollWithKey}
+    onPointerDownCapture={startPan} onPointerMove={movePan} onPointerUp={finishPan}
+    onPointerLeave={event=>{if(!event.currentTarget.hasPointerCapture(event.pointerId))finishPan(event);}}
+    onPointerCancel={finishPan} onLostPointerCapture={finishPan}
+    onClickCapture={event=>{if(suppressClick.current&&event.detail>0){event.preventDefault();event.stopPropagation();}}}
+    style={{'--bw-link-columns':Math.min(columns,days.length)||1}}>
+    {days.map(day=>{
      const filtered=day.items.filter(item=>matches(item));
      return <section key={day.index} className="bw-link-day" aria-label={`Day ${day.index+1} 行程`}>
       <h3>Day {day.index+1}{day.date&&<small>{dayDate.format(day.date)}</small>}</h3>
@@ -158,7 +183,7 @@ function LinksDialog({client,field,trip,items,enabled,owner,busy,acquire,close})
       {!filtered.length&&<p className="bw-link-empty">{query||type?'沒有符合的行程':'尚無行程'}</p>}
      </section>;
     })}
-    {!visible.length&&<p className="bw-link-empty">尚無行程</p>}
+    {!days.length&&<p className="bw-link-empty">尚無行程</p>}
    </div>
    <footer><span>已關聯 {selectedIds.length} 項</span><span role="status" aria-label="關聯儲存狀態">{client.saveStatus(field.id,'links')}</span></footer>
   </div>
@@ -170,16 +195,16 @@ export default function ExpenseLinks({client,field,trip,items,enabled,owner,owne
  const working=useRef(false),trigger=useRef(null);
  const selected=client.view(field).value||[];
  useEffect(()=>()=>{void client.endLinks(field);},[client,field]);
- async function acquire(){
+ async function acquire({dialog=false}={}){
   if(working.current)return false;
   working.current=true;
   setBusy(true);
-  try{return await client.beginLinks(field);}
+  try{return await client.beginLinks(field,{dialog});}
   finally{working.current=false;setBusy(false);}
  }
  function show(){
   setOpen(true);
-  void acquire();
+  void acquire({dialog:true});
  }
  function close(){
   setOpen(false);
@@ -208,6 +233,6 @@ export default function ExpenseLinks({client,field,trip,items,enabled,owner,owne
       aria-label={`取消關聯 ${title}`} onClick={()=>void remove(id)}><X size={13}/></button></li>;
    })}</ul>}
   </BudgetCollaborationFrame>
-  {open&&<LinksDialog {...{client,field,trip,items,enabled,owner,busy,acquire,close}}/>}
+  {open&&<LinksDialog {...{client,field,trip,items,enabled,owner,busy,close}} acquire={()=>void acquire({dialog:true})}/>}
  </>;
 }

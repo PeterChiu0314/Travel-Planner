@@ -82,3 +82,33 @@ test('dirty links get the longer idle window and stop renewing while an unknown 
  assert.ok(writes.length>1);
  assert.ok(writes.every(write=>write.p_request_id===request.p_request_id));
 });
+
+test('foreground preserves a pending draft without admitting the links dialog',async t=>{
+ const {client,id,calls,writes}=fixture(t);
+ await client.refresh();
+ const links=client.get(id,'links');
+ assert.equal(await client.beginLinks(links,{dialog:true}),true);
+ client.input(links,['stop']);
+ await client.save(links);
+ const request=links.request;
+ client.suspend({background:true});
+ await client.resume({foreground:true});
+ assert.equal(links.request,request);
+ assert.equal(calls.filter(call=>call.p_action==='acquire').length,1);
+ assert.equal(writes.length,1);
+ assert.equal(links.linksSession,null);
+ assert.deepEqual(client.view(links).value,['stop']);
+});
+
+test('closing a suspended links dialog prevents background return from acquiring a lease',async t=>{
+ const {client,id,calls}=fixture(t);
+ await client.refresh();
+ const links=client.get(id,'links');
+ assert.equal(await client.beginLinks(links,{dialog:true}),true);
+ client.suspend({background:true});
+ await client.endLinks(links);
+ await links.releaseWork;
+ await client.resume({foreground:true});
+ assert.equal(calls.filter(call=>call.p_action==='acquire').length,1);
+ assert.equal(client.view(links).editable,false);
+});

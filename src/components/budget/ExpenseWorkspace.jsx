@@ -89,7 +89,15 @@ export default function ExpenseWorkspace(props){
  useEffect(()=>{void collaboration?.configure(props.currentUserId,props.activeTrip.id,workspaceActive&&approvedActor);},[collaboration,props.currentUserId,props.activeTrip.id,workspaceActive,approvedActor]);
  useEffect(()=>()=>{void collaboration?.dispose();},[collaboration]);
  useEffect(()=>{
-  const reconcile=event=>{if(!workspaceActive||event?.type==='offline'||document.visibilityState==='hidden'||navigator.onLine===false){client.suspend();collaboration?.hide();}else{void client.resume();collaboration?.reconcile();}};
+  const reconcile=event=>{
+   const online=event?.type!=='offline'&&navigator.onLine!==false;
+   const background=workspaceActive&&online&&document.visibilityState==='hidden';
+   if(!workspaceActive||!online||background){
+    client.suspend({background});collaboration?.hide();
+   }else{
+    void client.resume({foreground:event?.type==='visibilitychange'});collaboration?.reconcile();
+   }
+  };
   reconcile();window.addEventListener('offline',reconcile);window.addEventListener('online',reconcile);window.addEventListener('focus',reconcile);document.addEventListener('visibilitychange',reconcile);
   return()=>{window.removeEventListener('offline',reconcile);window.removeEventListener('online',reconcile);window.removeEventListener('focus',reconcile);document.removeEventListener('visibilitychange',reconcile);};
  },[client,collaboration,workspaceActive]);

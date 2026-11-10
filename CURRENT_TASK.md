@@ -4,7 +4,7 @@ Updated 2026-11-10. This is the live handoff: current work, protected behavior, 
 
 ## 2026-11-10 — Issue #28 Mini Dayboard for expense links
 
-The Native Expense editor opens a read-only Timeline projection with responsive Day columns and autosaving selection. The existing links RPC and exact-receipt recovery drive the dialog. The links session alone tracks 20-second clean and 60-second dirty idle limits. See the [Staging hand test](docs/2026-11-10-issue28-mini-dayboard.md).
+The Native Expense editor opens a Timeline projection with horizontally pannable Day columns and autosaving selection. The links session tracks 20-second clean and 60-second dirty idle limits. A return from the background makes one fresh admission attempt for the same dialog when the snapshot and draft are clear. The existing links RPC and exact-receipt recovery drive the dialog. See the [Staging hand test](docs/2026-11-10-issue28-mini-dayboard.md).
 
 ## 2026-11-10 — Issue #27 Budget ordering
 

@@ -334,7 +334,7 @@
   background: var(--panel); color: var(--ink); box-shadow: 0 20px 64px #15231e38;
 }
 .bw-link-backdrop { overscroll-behavior: contain; }
-.bw-link-dialog-shell { height: 100%; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
+.bw-link-dialog-shell { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; }
 .bw-link-dialog :is(header, footer) { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 18px; }
 .bw-link-dialog h2 { margin: 0; font-size: 18px; }
 .bw-link-dialog footer { min-height: 46px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
@@ -347,16 +347,19 @@
 .bw-link-search:focus-within { border-color: var(--color-primary); }
 .bw-link-search input { flex: 1; min-width: 0; padding-inline: 0; border: 0; background: transparent; outline: none; }
 .bw-link-toolbar select { width: auto; max-width: 100%; }
-.bw-link-days {
-  display: grid; grid-template-columns: 32px repeat(var(--bw-link-columns), minmax(0, 1fr)) 32px;
-  align-items: center; gap: 8px; padding: 0 18px 10px;
-}
-.bw-link-days .day-tab { width: 100%; min-width: 0; overflow: hidden; gap: 4px; }
 .bw-link-dayboard {
-  display: grid; grid-template-columns: repeat(var(--bw-link-columns), minmax(0, 1fr));
-  align-items: start; gap: 8px; min-width: 0; overflow: hidden auto; overscroll-behavior: contain;
+  display: grid; grid-auto-flow: column;
+  grid-auto-columns: calc((100% + 8px) / var(--bw-link-columns) - 8px);
+  align-items: start; gap: 8px; min-width: 0; overflow: auto; overscroll-behavior: contain;
   background: var(--color-bg); border-top: 1px solid var(--line); padding: 12px 18px;
+  cursor: grab; user-select: none;
 }
+.bw-link-dayboard::-webkit-scrollbar:horizontal { height: 0; }
+@supports not selector(::-webkit-scrollbar) {
+  .bw-link-dayboard { scrollbar-width: none; }
+}
+.bw-link-dayboard[data-panning], .bw-link-dayboard[data-panning] * { cursor: grabbing; }
+.bw-link-dayboard:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .bw-link-day { display: grid; gap: 6px; min-width: 0; }
 .bw-link-day h3 { display: flex; justify-content: space-between; gap: 6px; margin: 0 0 3px; font-size: 13px; }
 .bw-link-day h3 small { font-weight: 400; color: var(--muted); }

@@ -139,11 +139,15 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   })().finally(()=>{g.acquiring=null;emit();});return g.acquiring;
  }
  function scheduleSave(g, delay=1000){clearTimeout(g.timer);g.timer=setTimeout(()=>void save(g,false),delay);}
- async function beginLinks(g){
+ async function beginLinks(g,{dialog=false,fromForeground=false}={}){
   if(g.local||g.group!=='links'||g.linksCloseWork)return false;
-  const session={admitted:false,lastActivity:0};
+  g.linksReturn=null;
+  const session={admitted:false,lastActivity:0,dialog};
   g.linksSession=session;
-  const granted=await refresh()&&g.linksSession===session&&await focus(g);
+  // A foreground admission starts a new lease, after any background release settles.
+  if(fromForeground&&g.releaseWork)await g.releaseWork;
+  const ready=fromForeground?verified&&!g.token&&!g.request&&!g.saveWork&&!dirty(g)&&!g.conflict:await refresh();
+  const granted=ready&&g.linksSession===session&&await focus(g);
   if(g.linksSession!==session)return false;
   if(granted){
    session.admitted=true;
@@ -165,6 +169,7 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
   g.activity++;
  }
  function endLinks(g){
+  g.linksReturn=null;
   if(g.linksCloseWork)return g.linksCloseWork;
   if(!g.linksSession)return Promise.resolve();
   g.linksSession=null;
@@ -319,8 +324,34 @@ export function createExpenseEditor({service,actor,trip,sessionId,storage,planni
    if(g.group!=='links'&&!g.request&&!g.saveWork&&!g.conflict&&!g.autoBlocked&&g.state!=='held'&&dirty(g)&&!g.releasing&&!g.acquiring&&(!remote(g)?.held||remote(g)?.own_session)){const focused=g.focused;if(await focus(g)){g.focused=focused;await save(g);}}
   }},
   invalidate(){verified=false;emit();},
-  suspend(){if(!active)return;active=false;verified=false;clearTimeout(createTimer);for(const g of fields.values()){if(g.local)continue;clearTimeout(g.timer);g.resumeFocus=g.focused&&g.group!=='links';g.linksSession=null;g.focused=false;persist(g);if(!g.request&&!g.saving)void release(g);}emit();},
-  async resume(){active=true;if(!await refresh()||!active)return false;for(const g of fields.values())if(g.resumeFocus&&!g.request){g.resumeFocus=false;await focus(g);}return true;},
+  suspend({background=false}={}){
+   if(!background)for(const g of fields.values())g.linksReturn=null;
+   if(!active)return;
+   for(const g of fields.values())if(g.group==='links'){
+    g.linksReturn=background&&g.linksSession?.dialog&&g.linksSession.admitted&&owns(g)
+     &&Date.now()-g.linksSession.lastActivity<linksIdleLimit(g)?{attempted:false}:null;
+   }
+   active=false;verified=false;clearTimeout(createTimer);
+   for(const g of fields.values()){
+    if(g.local)continue;
+    clearTimeout(g.timer);g.resumeFocus=g.focused&&g.group!=='links';g.linksSession=null;g.focused=false;
+    persist(g);if(!g.request&&!g.saving)void release(g);
+   }
+   emit();
+  },
+  async resume({foreground=false}={}){
+   const returning=[];
+   if(foreground)for(const g of fields.values()){
+    const marker=g.linksReturn;
+    if(marker&&!marker.attempted){marker.attempted=true;returning.push([g,marker]);}
+   }
+   active=true;
+   // A read already in flight may have started before visibility changed.
+   if(!(await (returning.length?refreshAfterMutation():refresh()))||!active)return false;
+   for(const [g,marker] of returning)if(g.linksReturn===marker)await beginLinks(g,{dialog:true,fromForeground:true});
+   for(const g of fields.values())if(g.resumeFocus&&!g.request){g.resumeFocus=false;await focus(g);}
+   return true;
+  },
   create,
   async execute(id,group,value){
    const g=get(id,group),lifecycle=group==='lifecycle';
