@@ -177,6 +177,7 @@ export default function ExpenseWorkspace(props){
   const owner=client.peerOwner(item.id,'links')||groupOwner('links');
   const canInteract=props.canEdit&&workspaceActive&&!actionBusy&&navigator.onLine!==false;
   return <ExpenseLinks key={item.id} client={client} field={client.get(item.id,'links')} trip={props.activeTrip}
+   budgetCategory={client.view(client.get(item.id,'category')).value||item.category}
    items={graph.itineraryItems||[]} enabled={editable&&canInteract} canInteract={canInteract} owner={owner} ownerName={ownerName(owner)}/>;
  }
  const actual=view==='paid',pricingLabel=actual?'實付計價與分攤':'預算計價與分攤',rows=expenseDisplayRows(models.filter(i=>!actual||i.paid&&i.payment_state==='paid'||i.payment_state==='draft'),view);

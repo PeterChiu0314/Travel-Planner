@@ -3,7 +3,7 @@ import {randomUUID as uuid} from 'node:crypto';
 import {boot} from './helpers/expenseBackend.js';
 import {departureFixture} from './helpers/expenseDepartureFixture.js';
 
-const dialog=page=>page.getByRole('dialog',{name:'關聯行程',exact:true});
+const dialog=page=>page.getByRole('dialog',{name:'選取關聯行程',exact:true});
 const summary=page=>page.getByRole('group',{name:'關聯行程',exact:true});
 const entry=page=>summary(page).getByRole('button',{name:/^(新增|編輯)關聯行程$/});
 const status=page=>dialog(page).getByRole('status',{name:'關聯儲存狀態'});
@@ -29,6 +29,7 @@ test('Mini Dayboard pans and filters without losing selections and flushes the l
  const f=await departureFixture();
  try{
   const expense=await f.seed('多日關聯測試',{});
+  await f.sql.query("update expense_stage_b.expense_items set category='餐飲' where id=$1",[expense]);
   const museum=await seedStop(f,'首日美術館',0),meal=await seedStop(f,'第二天午餐',1,'food');
   const late=await seedStop(f,'第六日飯店',5,'hotel');
   for(let i=0;i<12;i++)await seedStop(f,`景點 ${i+1}`,0,'attraction',i+1);
@@ -47,6 +48,11 @@ test('Mini Dayboard pans and filters without losing selections and flushes the l
   await boot(page,f.db,f.A);
   await edit(page,'多日關聯測試');
   await entry(page).click();
+  const categories=dialog(page).getByRole('group',{name:'行程分類'});
+  await expect(categories.getByRole('button',{name:'餐飲',exact:true})).toHaveAttribute('aria-pressed','true');
+  await expect(card(page,'第二天午餐')).toHaveAttribute('aria-pressed','false');
+  await expect(card(page,'首日美術館')).toHaveCount(0);
+  await categories.getByRole('button',{name:'全部',exact:true}).click();
   const board=dialog(page).getByRole('region',{name:'多日行程'});
   await expect(board.getByRole('region',{name:/Day [1-6] 行程/})).toHaveCount(6);
   await expect(dialog(page).locator('.day-tab')).toHaveCount(0);
@@ -76,11 +82,15 @@ test('Mini Dayboard pans and filters without losing selections and flushes the l
   await twoCards.first().click();
   await expect(twoCards.last()).toHaveAttribute('aria-pressed','true');
   await card(page,'第二天午餐').click();
-  await dialog(page).getByRole('combobox',{name:'行程分類'}).selectOption('hotel');
+  const category=categories.getByRole('button',{name:'住宿',exact:true});
+  expect((await category.boundingBox()).height).toBe(36);
+  expect((await dialog(page).locator('.bw-link-search').boundingBox()).height).toBe(36);
+  await category.press('Space');
+  await expect(category).toHaveAttribute('aria-pressed','true');
   await expect(twoCards).toHaveCount(0);
   await expect(card(page,'第六日飯店')).toBeEnabled();
   await card(page,'第六日飯店').click();
-  await page.keyboard.press('Escape');
+  await page.mouse.click(12,12);
   await expect(dialog(page)).toHaveCount(0);
   const ids=async()=>(await f.snapshot()).links.filter(link=>link.expense_id===expense).map(link=>link.itinerary_item_id).sort();
   await expect.poll(ids).toEqual([museum,meal,late].sort());
@@ -90,6 +100,8 @@ test('Mini Dayboard pans and filters without losing selections and flushes the l
   await expect(entry(page)).toBeFocused();
 
   await entry(page).click();
+  await expect(categories.getByRole('button',{name:'餐飲',exact:true})).toHaveAttribute('aria-pressed','true');
+  await categories.getByRole('button',{name:'全部',exact:true}).click();
   await board.press('ArrowRight');
   await expect.poll(()=>board.evaluate(node=>node.scrollLeft)).toBeGreaterThan(0);
   await dialog(page).getByRole('textbox',{name:'搜尋關聯行程'}).fill('第六日');

@@ -9,6 +9,9 @@ import BudgetCollaborationFrame from './BudgetCollaborationFrame.jsx';
 
 const typeOf=item=>isTransportationCard(item)?'transport':item.type||'attraction';
 const typeLabel=type=>timelineTypeLabels[type]||type;
+const budgetCategoryAliases=new Map([['機票','transport'],['門票','attraction']]);
+const matchesFilter=(item,query,type)=>(!type||typeOf(item)===type)
+ &&String(item.title||'').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
 const dayDate=new Intl.DateTimeFormat('zh-TW',{month:'numeric',day:'numeric'});
 const scrollKeys=new Set(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' ']);
 
@@ -36,15 +39,33 @@ function dayboardDays(trip,items){
  });
 }
 
-function LinksDialog({client,field,trip,items,enabled,canInteract,session,close}){
+function revealMatchingDay(region,days,query,type){
+ const bounds=region.getBoundingClientRect();
+ const matching=days.flatMap((day,index)=>day.items.some(item=>matchesFilter(item,query,type))?[region.children[index]]:[]);
+ if(matching.some(lane=>{
+  const rect=lane.getBoundingClientRect();
+  return rect.left>=bounds.left&&rect.right<=bounds.right;
+ }))return;
+ if(matching.length)region.scrollLeft+=matching[0].getBoundingClientRect().left-bounds.left;
+}
+
+function LinksDialog({client,field,trip,items,budgetCategory,enabled,canInteract,session,close}){
  const titleId=useId(),dialog=useRef(null),viewport=useRef(null),closeButton=useRef(null);
  const scrollIntent=useRef(0),lastScroll=useRef({top:0,left:0});
  const scrollRecoveryUsed=useRef(false);
  const pointer=useRef(null),suppressClick=useRef(false);
- const [query,setQuery]=useState(''),[type,setType]=useState(''),[columns,setColumns]=useState(1);
- const [selectionNotice,setSelectionNotice]=useState('');
+ const backdropPress=useRef(false);
+ const initialPositioned=useRef(false);
  const days=useMemo(()=>dayboardDays(trip,items),[trip,items]);
- const types=[...new Set(items.map(typeOf))];
+ const types=[...new Set(days.flatMap(day=>day.items.map(typeOf)))];
+ const [filterType,setType]=useState(()=>{
+  const category=budgetCategory?.trim();
+  const alias=budgetCategoryAliases.get(category);
+  return types.find(value=>value===alias||typeLabel(value)===category)||'';
+ });
+ const type=types.includes(filterType)?filterType:'';
+ const [query,setQuery]=useState(''),[columns,setColumns]=useState(0);
+ const [selectionNotice,setSelectionNotice]=useState('');
  const editable=enabled&&session.editable;
  const canSelect=editable||(canInteract&&!session.editable&&!session.peer&&!session.preparing&&!session.unresolved);
  const status=client.saveStatus(field.id,'links');
@@ -64,10 +85,15 @@ function LinksDialog({client,field,trip,items,enabled,canInteract,session,close}
  useLayoutEffect(()=>{
   const region=viewport.current;
   closeButton.current.focus({preventScroll:true});
-  const resize=new ResizeObserver(([entry])=>setColumns(Math.max(1,Math.min(4,Math.floor(entry.contentRect.width/225)))));
+  const resize=new ResizeObserver(([entry])=>setColumns(Math.max(1,Math.min(4,Math.floor(entry.contentRect.width/215)))));
   resize.observe(region);
   return()=>resize.disconnect();
  },[]);
+ useLayoutEffect(()=>{
+  if(!columns||initialPositioned.current)return;
+  initialPositioned.current=true;
+  if(type)revealMatchingDay(viewport.current,days,query,type);
+ },[columns,days,query,type]);
  useLayoutEffect(()=>{
   if(!canSelect&&document.activeElement===document.body)closeButton.current.focus({preventScroll:true});
  },[canSelect]);
@@ -147,8 +173,6 @@ function LinksDialog({client,field,trip,items,enabled,canInteract,session,close}
    if(lane)event.currentTarget.scrollLeft+=(lane.offsetWidth+8)*(event.key==='ArrowLeft'?-1:1);
   }else if(scrollKeys.has(event.key))armScroll(event);
  }
- const matches=(item,text=query,category=type)=>(!category||typeOf(item)===category)
-  &&String(item.title||'').toLocaleLowerCase().includes(text.trim().toLocaleLowerCase());
  function changeFilter(event,text,category){
   noteActivity(event);
   setQuery(text);
@@ -156,13 +180,7 @@ function LinksDialog({client,field,trip,items,enabled,canInteract,session,close}
   scrollIntent.current=0;
   const region=viewport.current;
   region.scrollTop=0;
-  const bounds=region.getBoundingClientRect();
-  const matching=days.flatMap((day,index)=>day.items.some(item=>matches(item,text,category))?[region.children[index]]:[]);
-  if(matching.some(lane=>{
-   const rect=lane.getBoundingClientRect();
-   return rect.right>bounds.left&&rect.left<bounds.right;
-  }))return;
-  if(matching.length)region.scrollLeft+=matching[0].getBoundingClientRect().left-bounds.left;
+  revealMatchingDay(region,days,text,category);
  }
  async function toggle(event,item,checked){
   if(!event.nativeEvent.isTrusted||!canSelect)return;
@@ -171,17 +189,20 @@ function LinksDialog({client,field,trip,items,enabled,canInteract,session,close}
   if(result==='changed')setSelectionNotice('行程已更新，請重新選取');
   if(result==='paused')setSelectionNotice('未變更關聯，請再試一次');
  }
- return createPortal(<div className="modal-backdrop bw-link-backdrop">
+ return createPortal(<div className="modal-backdrop bw-link-backdrop"
+  onPointerDown={event=>{backdropPress.current=event.target===event.currentTarget;}}
+  onClick={event=>{if(backdropPress.current&&event.target===event.currentTarget)close();}}>
   <section ref={dialog} className="bw-link-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
   <div className="bw-link-dialog-shell">
-   <header><h2 id={titleId}>關聯行程</h2><button ref={closeButton} type="button" className="bw-icon" aria-label="關閉關聯行程" onClick={close}><X size={20}/></button></header>
+   <header><h2 id={titleId}>選取關聯行程</h2><button ref={closeButton} type="button" className="bw-icon" aria-label="關閉關聯行程" onClick={close}><X size={20}/></button></header>
    <div className="bw-link-toolbar">
     <label className="bw-link-search"><Search size={16} aria-hidden="true"/>
      <input aria-label="搜尋關聯行程" placeholder="搜尋行程名稱" autoComplete="off" value={query} onChange={event=>changeFilter(event,event.target.value,type)}/>
     </label>
-    <select aria-label="行程分類" value={type} onChange={event=>changeFilter(event,query,event.target.value)}>
-     <option value="">全部</option>{types.map(value=><option value={value} key={value}>{typeLabel(value)}</option>)}
-    </select>
+    <div className="bw-link-type-filters" role="group" aria-label="行程分類">
+     {['',...types].map(value=><button key={value} type="button" aria-pressed={type===value}
+      onClick={event=>changeFilter(event,query,value)}>{value?typeLabel(value):'全部'}</button>)}
+    </div>
    </div>
    <div ref={viewport} className="bw-link-dayboard" tabIndex={0} role="region" aria-label="多日行程"
     onScroll={onScroll} onWheel={armScroll} onTouchMove={armScroll} onKeyDown={scrollWithKey}
@@ -191,7 +212,7 @@ function LinksDialog({client,field,trip,items,enabled,canInteract,session,close}
     onClickCapture={event=>{if(suppressClick.current&&event.detail>0){event.preventDefault();event.stopPropagation();}}}
     style={{'--bw-link-columns':Math.min(columns,days.length)||1}}>
     {days.map(day=>{
-     const filtered=day.items.filter(item=>matches(item));
+     const filtered=day.items.filter(item=>matchesFilter(item,query,type));
      return <section key={day.index} className="bw-link-day" aria-label={`Day ${day.index+1} 行程`}>
       <h3>Day {day.index+1}{day.date&&<small>{dayDate.format(day.date)}</small>}</h3>
       {filtered.map(item=>{
@@ -212,7 +233,7 @@ function LinksDialog({client,field,trip,items,enabled,canInteract,session,close}
  </section></div>,document.body);
 }
 
-export default function ExpenseLinks({client,field,trip,items,enabled,canInteract,owner,ownerName}){
+export default function ExpenseLinks({client,field,trip,items,budgetCategory,enabled,canInteract,owner,ownerName}){
  const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
  const working=useRef(false),trigger=useRef(null);
  const selected=client.view(field).value||[];
@@ -260,6 +281,6 @@ export default function ExpenseLinks({client,field,trip,items,enabled,canInterac
       aria-label={`取消關聯 ${title}`} onClick={()=>void remove(id)}><X size={13}/></button></li>;
    })}</ul>}
   </BudgetCollaborationFrame>
-  {open&&<LinksDialog {...{client,field,trip,items,enabled,canInteract,session,close}}/>}
+  {open&&<LinksDialog {...{client,field,trip,items,budgetCategory,enabled,canInteract,session,close}}/>}
  </>;
 }
