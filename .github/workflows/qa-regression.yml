@@ -54,6 +54,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Production build
         run: npm run build
+      - name: Budget ordering SQL contract
+        run: node --test tests/expenseOrdering.test.mjs
       - name: Cross-workspace Playwright regression
         shell: bash
         run: |
@@ -87,9 +89,10 @@ jobs:
               tests/formalTripDateGuard.spec.js \
               tests/phase-6-timeline-schedule-rpc.spec.js \
               tests/phase-6-timeline-schedule-planner.spec.js \
+              tests/expenseOrdering.spec.js \
               --workers=1 --retries=1 --reporter=list,html
           else
-            core_pattern='company budget workspace remains authoritative|accommodation search, detail selection and CRUD|todo completion, filtering, linked guides|luggage CRUD and assignee packing|settlement uses native payment|and its sibling retain independent drafts|account/trip-bound offline envelopes|a newer core snapshot cannot extend|real App rejects delayed A responses|older full loads cannot roll back|late trip A callback cannot invalidate|demo timeline renders without authentication|demo new timed visit preserves|demo time edit has one unified save action|demo navigation can switch to budget and luggage|owner must confirm trip deletion|timed swap persists|schedule refusal or uncertain response|an unresolved budget snapshot does not stall|a dirty unnamed expense survives|dirty guard applies to the departing trip|clean hidden expense guards|first expense read recovers|a snapshot permission refusal|a slow, failing quote cannot delay or duplicate'
+            core_pattern='company budget workspace remains authoritative|accommodation search, detail selection and CRUD|todo completion, filtering, linked guides|luggage CRUD and assignee packing|settlement uses native payment|and its sibling retain independent drafts|account/trip-bound offline envelopes|a newer core snapshot cannot extend|real App rejects delayed A responses|older full loads cannot roll back|late trip A callback cannot invalidate|demo timeline renders without authentication|demo new timed visit preserves|demo time edit has one unified save action|demo navigation can switch to budget and luggage|owner must confirm trip deletion|timed swap persists|schedule refusal or uncertain response|an unresolved budget snapshot does not stall|a dirty unnamed expense survives|dirty guard applies to the departing trip|clean hidden expense guards|first expense read recovers|a snapshot permission refusal|a slow, failing quote cannot delay or duplicate|Demo sorts items and categories and accepts an empty|mobile touch starts on the handle|two accounts share drag presence and ordering'
             npx playwright test \
               tests/travelWorkspace.spec.js \
               tests/guideTodoIsolation.spec.js \
@@ -99,6 +102,7 @@ jobs:
               tests/formalEditorHandoff.spec.js \
               tests/expenseReadRecovery.spec.js \
               tests/formalExpenseCollaboration.spec.js \
+              tests/expenseOrdering.spec.js \
               --grep "$core_pattern" \
               --workers=1 --retries=1 --reporter=list,html
           fi
