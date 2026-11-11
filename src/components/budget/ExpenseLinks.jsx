@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useId,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Check,Link2,Search,X} from 'lucide-react';
+import {Check,CircleHelp,Pencil,Search,X} from 'lucide-react';
 import {buildTimelineVisitDisplayOrder} from '../../lib/timelineUntimedOrdering.js';
 import {isEstablishedTransportPair,isTransportationCard} from '../../lib/timelineTransportationRoles.js';
 import {timelineTypeColor,timelineTypeLabels} from '../../lib/timelineTypeStyles.js';
@@ -51,6 +51,8 @@ function revealMatchingDay(region,days,query,type){
 
 function LinksDialog({client,field,trip,items,budgetCategory,enabled,canInteract,session,close}){
  const titleId=useId(),dialog=useRef(null),viewport=useRef(null),closeButton=useRef(null);
+ const helpId=useId(),help=useRef(null),helpButton=useRef(null);
+ const [helpOpen,setHelpOpen]=useState(false);
  const scrollIntent=useRef(0),lastScroll=useRef({top:0,left:0});
  const scrollRecoveryUsed=useRef(false);
  const pointer=useRef(null),suppressClick=useRef(false);
@@ -102,6 +104,11 @@ function LinksDialog({client,field,trip,items,budgetCategory,enabled,canInteract
   if(event.key==='Escape'){
    event.preventDefault();
    event.stopPropagation();
+   if(helpOpen){
+    setHelpOpen(false);
+    helpButton.current.focus({preventScroll:true});
+    return;
+   }
    close();
    return;
   }
@@ -192,9 +199,28 @@ function LinksDialog({client,field,trip,items,budgetCategory,enabled,canInteract
  return createPortal(<div className="modal-backdrop bw-link-backdrop"
   onPointerDown={event=>{backdropPress.current=event.target===event.currentTarget;}}
   onClick={event=>{if(backdropPress.current&&event.target===event.currentTarget)close();}}>
-  <section ref={dialog} className="bw-link-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
+  <section ref={dialog} className="bw-link-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}
+   onClickCapture={event=>{if(helpOpen&&!help.current.contains(event.target))setHelpOpen(false);}}>
   <div className="bw-link-dialog-shell">
-   <header><h2 id={titleId}>選取關聯行程</h2><button ref={closeButton} type="button" className="bw-icon" aria-label="關閉關聯行程" onClick={close}><X size={20}/></button></header>
+   <header>
+    <div className="bw-link-heading-tools">
+     <h2 id={titleId}>選取關聯行程</h2>
+     <div ref={help} className="bw-link-help-anchor">
+      <button ref={helpButton} type="button" className="bw-icon" aria-label="關聯行程操作說明" title="操作說明"
+       aria-expanded={helpOpen} aria-controls={helpId} onClick={()=>setHelpOpen(open=>!open)}><CircleHelp size={17} aria-hidden="true"/></button>
+      <div id={helpId} className="bw-link-help" hidden={!helpOpen}>
+       <strong>操作說明</strong>
+       <ul>
+        <li>輸入行程名稱或選擇分類進行篩選。</li>
+        <li>使用滑鼠拖曳，或左右方向鍵切換日期。</li>
+        <li>點選卡片設定關聯，再點一次可取消。</li>
+        <li>變更會自動儲存。</li>
+       </ul>
+      </div>
+     </div>
+    </div>
+    <button ref={closeButton} type="button" className="bw-icon" aria-label="關閉關聯行程" onClick={close}><X size={20}/></button>
+   </header>
    <div className="bw-link-toolbar">
     <label className="bw-link-search"><Search size={16} aria-hidden="true"/>
      <input aria-label="搜尋關聯行程" placeholder="搜尋行程名稱" autoComplete="off" value={query} onChange={event=>changeFilter(event,event.target.value,type)}/>
@@ -266,20 +292,21 @@ export default function ExpenseLinks({client,field,trip,items,budgetCategory,ena
   }finally{working.current=false;setBusy(false);}
  }
  const disabled=!enabled||field.local||open||busy||Boolean(owner)||Boolean(field.linksCloseWork);
+ const actionLabel=selected.length?'編輯':'新增';
  return <>
   <BudgetCollaborationFrame role="group" aria-label="關聯行程" tabIndex={0} label="關聯行程" ownerId={owner} ownerName={ownerName}
    className={`bw-link-summary${owner?' is-peer-held':''}`}>
    <div className="bw-link-summary-header"><span>關聯行程 <small>{selected.length} 項</small></span>
-    <button ref={trigger} type="button" className="bw-link-open" aria-haspopup="dialog" disabled={disabled} onClick={show}>
-     <Link2 size={14} aria-hidden="true"/>{selected.length?'編輯關聯行程':'新增關聯行程'}
+    <button ref={trigger} type="button" className="bw-link-open" aria-label={`${actionLabel}關聯行程`} aria-haspopup="dialog" disabled={disabled} onClick={show}>
+     <Pencil size={14} aria-hidden="true"/>{actionLabel}
     </button>
    </div>
-   {selected.length>0&&<ul className="bw-linked-items">{selected.map(id=>{
+   {selected.length>0?<ul className="bw-linked-items">{selected.map(id=>{
     const item=items.find(entry=>entry.id===id),title=item?.title||'已移除的行程';
     return <li key={id}><span>{item?`Day ${Number(item.day_index)+1} · ${title}`:title}</span>
      <button type="button" className="bw-icon" disabled={disabled||Boolean(field.request)||field.conflict}
       aria-label={`取消關聯 ${title}`} onClick={()=>void remove(id)}><X size={13}/></button></li>;
-   })}</ul>}
+   })}</ul>:<p className="bw-link-empty">尚未關聯行程</p>}
   </BudgetCollaborationFrame>
   {open&&<LinksDialog {...{client,field,trip,items,budgetCategory,enabled,canInteract,session,close}}/>}
  </>;

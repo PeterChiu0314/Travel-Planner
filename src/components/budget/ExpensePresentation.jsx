@@ -150,7 +150,7 @@ export function ExpenseDetail({item,scope,planning=false,members,links,items,edi
  </dl>
  {item.note?<section><h4>備註</h4><p>{item.note}</p></section>:null}
  {count>0&&<details key={`${item.id}:${scope}`} className="bw-detail-shares">
-  <summary><h4><ChevronRight size={14} aria-hidden="true" />每人負擔 <small>{count} 人 · {planning?bundle.currency:'TWD'}</small></h4></summary>
+  <summary><h4><ChevronRight size={14} aria-hidden="true" />成員分攤明細 <small>{count} 人 · {planning?bundle.currency:'TWD'}</small></h4></summary>
   {bundle.participantIds.map(id=><div className="bw-stat-line" key={id}><span>{memberLabel(members.find(m=>m.user_id===id))}</span><b>{bundle.shares[id]==null?'待確認':planning?originalMoney(bundle.shares[id]):money(bundle.shares[id])}</b></div>)}
  </details>}
  {!planning?<div className="bw-metadata-summary"><span>預算 · {item.budget?`${item.budget.currency} ${money(item.budget.amount)}`:'未填'}</span><span>實付 · {item.paid?`${item.paid.currency} ${money(item.paid.amount)}`:'未填'}</span>{item.payment_state==='paid'&&item.budget&&item.paid?<span>實付與預算差額 · NT$ {money(item.paid.twd_amount-item.budget.twd_amount)}</span>:null}</div>:null}

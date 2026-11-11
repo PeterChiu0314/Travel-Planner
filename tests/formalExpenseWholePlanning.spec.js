@@ -57,7 +57,7 @@ test('legacy decimals stay untouched until an edit, then three shares reconcile 
   await peer.reload();
   await select(peer);
   const breakdown=peer.locator('.bw-detail-shares');
-  await breakdown.locator('summary').getByText('每人負擔',{exact:false}).click();
+  await breakdown.locator('summary').getByText('成員分攤明細',{exact:false}).click();
   await expect(breakdown).toContainText('700');
   await expect(breakdown).toContainText('500');
   expect(page.qaErrors).toEqual([]);
