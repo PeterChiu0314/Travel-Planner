@@ -76,10 +76,8 @@ test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", 
   expect(appSource).toContain("+ 建立第一個旅程");
   expect(appSource).not.toContain('className="primary-button create-trip-button"');
   expect(appSource).not.toContain('className="sidebar-members"');
-  expect(appSource).toContain("const canContinue = await requestActiveEditorGuardResolution();");
-  expect(appSource).toContain("if (canContinue) {");
-  expect(appSource).toContain("setActiveDay(tripTodayIndex(nextTrip));");
-  expect(appSource).toContain("setActiveTripId(nextTripId);");
+  expect(appSource).toContain("if (!await requestActiveEditorHandoff({ tripId: activeTripId }) || !requestGuard.sameContext(tripDataContext)) return false;");
+  expect(appSource).toMatch(/async function selectTrip\(nextTripId\) \{[^}]*await navigateWithEditorHandoff\(\(\) => \{\s*setActiveDay\(tripTodayIndex\(nextTrip\)\);\s*setActiveTripId\(nextTripId\);/);
 });
 
 test("phase 2.3 app shell owns desktop scroll and demo sidebar uses local parity shell", () => {
