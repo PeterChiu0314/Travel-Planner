@@ -3,7 +3,7 @@
 // BroadcastChannel models incoming trip snapshots; SQL tests separately verify RLS.
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { LuggagePanel } from "../../src/App.jsx";
+import { LuggagePanel } from "../../src/components/luggage/LuggagePanel.jsx";
 import { ActiveEditorGuardDialog } from "../../src/app/activeEditorGuard.jsx";
 import { reorderLuggageSnapshot, privatizeLuggageSnapshot, assignLuggageSnapshot, luggageErrorMessage, transitionSharedLuggage } from "../../src/lib/luggageService.js";
 import "../../src/styles.css";
