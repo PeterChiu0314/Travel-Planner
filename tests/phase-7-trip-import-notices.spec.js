@@ -81,7 +81,7 @@ test("simplifying presentation preserves raw diagnostics and blocking import val
   const blocked = parseUnifiedTripJsonText(readFileSync("tests/fixtures/manual/phase-7-ai-blocking-error.json", "utf8"));
   expect(blocked.ok).toBe(false);
   expect(blocked.errors.some((issue) => issue.code === "fixed_requires_time")).toBe(true);
-  const source = readFileSync("src/App.jsx", "utf8");
+  const source = readFileSync("src/components/trip-import/TripImportPreviewDialog.jsx", "utf8");
   expect(source).toContain("!hasBlockingError ? <TripImportNotices warnings={warnings} /> : null");
 });
 

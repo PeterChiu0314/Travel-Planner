@@ -175,6 +175,7 @@ test("clipboard failure exposes only the prompt for manual copying, without anot
 
 test("App auto-detects both JSON contracts before one atomic confirmation path", async ({ page }) => {
   const source = readFileSync("src/App.jsx", "utf8");
+  const previewSource = readFileSync("src/components/trip-import/TripImportPreviewDialog.jsx", "utf8");
   const previewBody = source.match(/async function previewTripImport\(file\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function confirmTripImport/)?.[1] || "";
   const confirmBody = source.match(/async function confirmTripImport\(\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function updateTrip/)?.[1] || "";
 
@@ -191,9 +192,9 @@ test("App auto-detects both JSON contracts before one atomic confirmation path",
   expect(planningButton).toContain("onClick={onImportAi}");
   expect(source).toContain("<FileUp");
   expect(source).toContain("returnFromAiTripCreateExchange");
-  expect(source).toContain('<TripImportPreviewBoard days={preview?.days} trip={trip} />');
-  expect(source).not.toContain("isAiImport");
-  expect(source).not.toContain("ai-trip-import-summary");
+  expect(previewSource).toContain('<TripImportPreviewBoard days={preview?.days} trip={trip} />');
+  expect(source + previewSource).not.toContain("isAiImport");
+  expect(source + previewSource).not.toContain("ai-trip-import-summary");
   expect(existsSync("src/components/trip-import/AiTripImportDialog.jsx")).toBe(false);
 
   await page.goto("/demo/timeline");
