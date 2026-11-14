@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const appSource = readFileSync("src/App.jsx", "utf8");
+const membersDialogSource = readFileSync("src/components/members/MembersInviteDialog.jsx", "utf8");
+const memberNameSource = readFileSync("src/lib/memberName.js", "utf8");
 const shareDialogSource = readFileSync("src/components/share/ShareDialog.jsx", "utf8");
 const sidebarTripSource = readFileSync("src/components/sidebar/SidebarTripSection.jsx", "utf8");
 const sidebarAccountSource = readFileSync("src/components/sidebar/SidebarAccountMenu.jsx", "utf8");
@@ -31,6 +33,7 @@ test("phase 1.8 editor share dialog can copy active links but cannot manage them
 test("phase 1.8 member mutations keep owner-only lock and trip boundary", () => {
   expect(appSource).toContain("if (!activeTrip || !canInviteMembers) return;");
   expect(appSource).toContain("if (!activeTrip || !canInviteMembers) return { ok: false };");
+  expect(appSource).toMatch(/async function createMemberInviteToken\(\)\s*\{\s*if \(!activeTrip \|\| !canInviteMembers\) \{\s*const message = isTripDateLocked\s*\? "旅程已進入結算階段，無法邀請或管理成員。"/);
   expect(appSource).toContain(".update({ status: \"approved\" })");
   expect(appSource).toContain(".update({ role: nextRole })");
   expect(appSource).toContain(".delete().eq(\"id\", memberId).eq(\"trip_id\", activeTrip.id)");
@@ -41,17 +44,17 @@ test("phase 1.8 member mutations keep owner-only lock and trip boundary", () => 
 });
 
 test("phase 1.8 members dialog keeps required labels and disabled states", () => {
-  expect(appSource).toContain('owner: "擁有者"');
-  expect(appSource).toContain('editor: "編輯者"');
-  expect(appSource).toContain('viewer: "檢視者"');
-  expect(appSource).toContain("旅程已進入結算階段，無法邀請或管理成員。");
-  expect(appSource).toContain("<h3>邀請成員</h3>");
-  expect(appSource).toContain("<h3>權限說明</h3>");
-  expect(appSource).toContain("邀請朋友一起規劃這趟旅程。");
-  expect(appSource).toContain('const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];');
+  expect(memberNameSource).toContain('owner: "擁有者"');
+  expect(memberNameSource).toContain('editor: "編輯者"');
+  expect(memberNameSource).toContain('viewer: "檢視者"');
+  expect(membersDialogSource).toContain("旅程已進入結算階段，無法邀請或管理成員。");
+  expect(membersDialogSource).toContain("<h3>邀請成員</h3>");
+  expect(membersDialogSource).toContain("<h3>權限說明</h3>");
+  expect(membersDialogSource).toContain("邀請朋友一起規劃這趟旅程。");
+  expect(membersDialogSource).toContain('const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];');
   expect(appSource).toContain('className="trip-header-member-pending"');
-  expect(appSource).toContain("disabled={!canManageMembers || busy}");
-  expect(appSource).toContain('const canEditRole = canManageMembers && member.role !== "owner" && member.user_id !== currentUserId;');
+  expect(membersDialogSource).toContain("disabled={!canManageMembers || busy}");
+  expect(membersDialogSource).toContain('const canEditRole = canManageMembers && member.role !== "owner" && member.user_id !== currentUserId;');
 });
 
 test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", () => {
