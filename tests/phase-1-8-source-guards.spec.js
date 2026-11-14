@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 
 const appSource = readFileSync("src/App.jsx", "utf8");
 const shareDialogSource = readFileSync("src/components/share/ShareDialog.jsx", "utf8");
+const sidebarTripSource = readFileSync("src/components/sidebar/SidebarTripSection.jsx", "utf8");
+const sidebarAccountSource = readFileSync("src/components/sidebar/SidebarAccountMenu.jsx", "utf8");
 const styleSource = readFileSync("src/styles.css", "utf8");
 
 test("phase 1.8 formal member and share gates stay separated", () => {
@@ -66,16 +68,16 @@ test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", 
   expect(styleSource).toContain("gap: 18px");
   expect(styleSource).toContain("padding: 5px 8px 5px 12px");
   expect(appSource).not.toContain('{ id: "settings", label: "設定", shortLabel: "設" }');
-  expect(appSource).toContain("function SidebarTripSection({");
+  expect(sidebarTripSource).toContain("function SidebarTripSection({");
   expect(appSource).toContain('headingId="sidebar-trips-title"');
   expect(appSource).toContain('headingId="demo-sidebar-trips-title"');
-  expect(appSource).toContain('className="mini-button sidebar-create-trip"');
-  expect(appSource).toContain('className={`mini-button sidebar-trip-menu-button${isFlyoutOpen ? " active" : ""}`}');
-  expect(appSource).toContain("<TripList trips={trips} activeTripId={activeTripId} compact={false} onCreate={handleCreate} onSelect={handleSelect} />");
-  expect(appSource).toContain('className="trip-empty-card"');
-  expect(appSource).toContain("+ 建立第一個旅程");
-  expect(appSource).not.toContain('className="primary-button create-trip-button"');
-  expect(appSource).not.toContain('className="sidebar-members"');
+  expect(sidebarTripSource).toContain('className="mini-button sidebar-create-trip"');
+  expect(sidebarTripSource).toContain('className={`mini-button sidebar-trip-menu-button${isFlyoutOpen ? " active" : ""}`}');
+  expect(sidebarTripSource).toContain("<TripList trips={trips} activeTripId={activeTripId} compact={false} onCreate={handleCreate} onSelect={handleSelect} />");
+  expect(sidebarTripSource).toContain('className="trip-empty-card"');
+  expect(sidebarTripSource).toContain("+ 建立第一個旅程");
+  expect(appSource + sidebarTripSource).not.toContain('className="primary-button create-trip-button"');
+  expect(appSource + sidebarTripSource).not.toContain('className="sidebar-members"');
   expect(appSource).toContain("if (!await requestActiveEditorHandoff({ tripId: activeTripId }) || !requestGuard.sameContext(tripDataContext)) return false;");
   expect(appSource).toMatch(/async function selectTrip\(nextTripId\) \{[^}]*await navigateWithEditorHandoff\(\(\) => \{\s*setActiveDay\(tripTodayIndex\(nextTrip\)\);\s*setActiveTripId\(nextTripId\);/);
 });
@@ -110,6 +112,8 @@ test("development version dialog stays in the formal account menu", () => {
   expect(appSource).toContain('className="modal-backdrop version-dialog-backdrop"');
   expect(appSource).toContain("Collaborative Travel Web App");
   expect(appSource).toContain("onVersion={() => setIsVersionDialogOpen(true)}");
+  expect(sidebarAccountSource).toContain('aria-label="帳號選單"');
+  expect(sidebarAccountSource).toContain("onVersion();");
   expect(styleSource).toContain(".version-dialog {");
   expect(styleSource).toContain("background: var(--map-glass-bg);");
   expect(styleSource).toContain("backdrop-filter: blur(18px) saturate(var(--map-glass-saturation));");
@@ -123,8 +127,8 @@ test("phase 2.6 collapsed sidebar trip flyout stays local to formal and demo sid
   expect(appSource).toContain("const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);");
   expect(appSource).toContain('flyoutId="sidebar-trips-flyout"');
   expect(appSource).toContain('flyoutId="demo-sidebar-trips-flyout"');
-  expect(appSource).toContain('className="sidebar-trip-menu-divider"');
-  expect(appSource).toContain('<LayoutList size={19} strokeWidth={2.2} aria-hidden="true" />');
+  expect(sidebarTripSource).toContain('className="sidebar-trip-menu-divider"');
+  expect(sidebarTripSource).toContain('<LayoutList size={19} strokeWidth={2.2} aria-hidden="true" />');
   expect(styleSource).toContain(".sidebar.collapsed .sidebar-trip-section-collapsed");
   expect(styleSource).toContain(".sidebar.collapsed .sidebar-trip-menu-divider");
   expect(styleSource).toContain(".sidebar.collapsed .sidebar-trip-flyout");

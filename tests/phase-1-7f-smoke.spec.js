@@ -661,8 +661,14 @@ test("demo trip switch resets an out-of-range selected day board", async ({ page
   await expect(page.locator(".day-tab.active")).toHaveCount(1);
   await expect(page.locator(".timeline-day-column.active")).toHaveCount(1);
   await expect(page.locator('.timeline-day-column[data-day-index="5"]')).toHaveCount(0);
+  await page.getByRole("button", { name: "收合側欄", exact: true }).click();
+  await page.getByRole("button", { name: "我的旅程", exact: true }).click();
+  await expect(page.locator("#demo-sidebar-trips-flyout")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Demo 模式不支援新增旅程", exact: true })).toBeDisabled();
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
+  await page.getByRole("button", { name: "Return to login", exact: true }).click();
+  await expect(page).toHaveURL("/");
 });
 
 test("Phase 5.8 Timeline cards stage focus before expansion and reset across markers and days", async ({ page }) => {
