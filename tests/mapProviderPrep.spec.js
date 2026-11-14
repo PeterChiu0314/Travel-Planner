@@ -391,6 +391,7 @@ test("Phase 5.8b keeps the Map behind a full-height Dayboard glass panel", () =>
 test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icons", () => {
   const appSource = readRepoFile("src/App.jsx");
   const stylesSource = readRepoFile("src/styles.css");
+  const transportCategoriesSource = readRepoFile("src/lib/timelineTransportCategories.js");
 
   expect(stylesSource).toContain(".timeline {\n  display: grid;\n  gap: 4px");
   expect(stylesSource).toContain(".timeline-sortable-entry.has-flow-attachments {\n  gap: 4px");
@@ -417,18 +418,18 @@ test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icon
   expect(stylesSource).toContain(".transport-icon svg");
   expect(appSource).toContain("function TransportCategoryIcon({ category })");
   expect(appSource).toContain('<span className="transport-insert-icon" aria-hidden="true">');
-  expect(appSource).toContain('{ value: "drive", label: "自駕", icon: CarFront }');
-  expect(appSource).not.toContain('icon: "🚗"');
+  expect(transportCategoriesSource).toContain('{ value: "drive", label: "自駕", icon: CarFront }');
+  expect(appSource + transportCategoriesSource).not.toContain('icon: "🚗"');
 });
 
 test("Phase 5.2 map point warning overlays without resizing the map canvas", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const stylesSource = readRepoFile("src/styles.css");
 
-  expect(appSource).toContain("countMissingMapPoints(dayItems)");
+  expect(routePanelSource).toContain("countMissingMapPoints(dayItems)");
   expect(mapPanelSource).toContain("missingMapPointCount = 0");
   expect(googleProviderSource).toContain("missingMapPointCount > 0");
   expect(staticProviderSource).toContain("missingMapPointCount > 0");
@@ -451,6 +452,7 @@ test("Phase 5.2 map URL parsing is wired into hidden coordinate persistence only
 
 test("Phase 5.9 destination editor keeps invalid Map URL feedback inside the expandable point section", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
   const mapPointSource = readRepoFile("src/lib/mapPoint.js");
   const stylesSource = readRepoFile("src/styles.css");
 
@@ -466,8 +468,8 @@ test("Phase 5.9 destination editor keeps invalid Map URL feedback inside the exp
   expect(applyMapUrlDraftSource).not.toContain("setIsMapPointExpanded(false)");
   expect(appSource).toContain("previewMapPoint: mapPointEditorState.previewMapPoint || null");
   expect(appSource).toContain("onMapPointEditorActiveChange?.({ canPick: true, isOpen: true, previewMapPoint })");
-  expect(appSource).toContain("const previewDayItems = previewMapPoint?.itemId");
-  expect(appSource).toContain("buildRoutePanelStops(sortedVisitItems(previewDayItems)");
+  expect(routePanelSource).toContain("const previewDayItems = previewMapPoint?.itemId");
+  expect(routePanelSource).toContain("buildRoutePanelStops(buildTimelineVisitDisplayOrder(previewDayItems)");
   expect(appSource).toContain("field-inline-error");
   expect(mapPointSource).toContain("請貼上有效 Map URL");
   expect(mapPointSource).toContain("無法取得有效點位");
@@ -1120,8 +1122,9 @@ test("Phase 5.1e Google map preserves user-adjusted viewport until the day or ma
 
 test("Phase 5.1a wires Demo RoutePanel through explicit demo mode", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
 
   expect(appSource).toContain('mode="demo"');
   expect(appSource).toContain('mode="formal"');
-  expect(appSource).toContain("mode={mode}");
+  expect(routePanelSource).toContain("mode={mode}");
 });

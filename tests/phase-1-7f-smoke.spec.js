@@ -727,10 +727,15 @@ test("Phase 5.8 Timeline cards stage focus before expansion and reset across mar
 
   const markers = page.locator(".static-map-marker");
   expect(await markers.count()).toBeGreaterThan(1);
-  await markers.nth(1).evaluate((marker) => marker.click());
+  const marker = markers.nth(1);
+  const markerLabel = await marker.locator(".static-map-marker-label").innerText();
+  await marker.evaluate((button) => button.click());
+  await expect(marker).toHaveClass(/\bfocused\b/);
   await expect(firstVisit).not.toHaveClass(/focused/);
   await expect(firstVisit).not.toHaveClass(/expanded/);
-  await expect(page.locator(".timeline-day-column.active .timeline-item.focused")).toHaveCount(1);
+  const focusedVisit = page.locator(".timeline-day-column.active .timeline-item.focused");
+  await expect(focusedVisit).toHaveCount(1);
+  await expect(focusedVisit).toContainText(markerLabel);
   await expect(page.locator(".timeline-day-column.active .timeline-item.expanded")).toHaveCount(0);
 
   const firstTransport = page.locator(".timeline-day-column.active .transport-card").first();
@@ -742,10 +747,20 @@ test("Phase 5.8 Timeline cards stage focus before expansion and reset across mar
   await expect(firstTransport).toHaveClass(/focused/);
   await expect(firstTransport).toHaveClass(/expanded/);
 
+  const routePanel = page.locator(".side-panels > .route-panel");
+  await page.getByRole("button", { name: "隱藏地圖", exact: true }).click();
+  await expect(routePanel).toHaveCount(0);
+  await expect(firstTransport).toHaveClass(/\bfocused\b/);
+
   await page.locator('.day-tab[data-day-index="1"]').click();
   await expect(page.locator('.timeline-day-column.active[data-day-index="1"]')).toHaveCount(1);
   await expect(page.locator(".timeline-day-column.active .focused")).toHaveCount(0);
   await expect(page.locator(".timeline-day-column.active .expanded")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "顯示地圖", exact: true }).click();
+  await expect(routePanel).toBeVisible();
+  await expect(markers.first()).toBeVisible();
+  await expect(routePanel.locator(".focused, .route-stop-transport-endpoint")).toHaveCount(0);
 
   await page.locator('.day-tab[data-day-index="0"]').click();
   await expect(page.locator('.timeline-day-column.active[data-day-index="0"]')).toHaveCount(1);
