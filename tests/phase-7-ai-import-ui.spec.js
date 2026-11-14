@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { buildAiItineraryCreatePrompt, buildAiItineraryUsageInstructions, buildBlankAiItineraryTemplate } from "../src/lib/aiItineraryAdapters.js";
+import { backend, boot } from "./helpers/formalBudgetMock.js";
 
 const validFixture = JSON.parse(readFileSync("tests/fixtures/manual/phase-7-ai-valid-complete.json", "utf8"));
 
@@ -173,8 +174,77 @@ test("clipboard failure exposes only the prompt for manual copying, without anot
   await expect(page.getByLabel("給 AI 的提示詞")).not.toBeVisible();
 });
 
+test("Formal New Trip keeps the date picker and AI and JSON entry points connected", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 15, 12));
+  await page.route("https://commons.wikimedia.org/w/api.php?**", (route) =>
+    route.fulfill({ json: { query: { pages: {} } } }),
+  );
+  await boot(page, backend(), "A", { waitForBudget: false });
+  await page.getByRole("button", { name: "新增旅程", exact: true }).click();
+
+  const form = page.locator("form.create-trip-dialog");
+  const start = form.getByRole("textbox", { name: "開始日期", exact: true });
+  const end = form.getByRole("textbox", { name: "結束日期", exact: true });
+  const create = form.getByRole("button", { name: "建立", exact: true });
+  const months = form.locator(".trip-date-range-month");
+  await expect(months).toHaveText([/2026年11月/, /2026年12月/]);
+  await form.getByRole("button", { name: "上一個月份" }).click();
+  await expect(months).toHaveText([/2026年10月/, /2026年11月/]);
+
+  await form.getByRole("button", { name: /^2026年10月31日/ }).click();
+  await expect(start).toHaveValue("2026/10/31");
+  await expect(create).toBeDisabled();
+  const novemberSecond = form.getByRole("button", { name: /^2026年11月2日/ });
+  await novemberSecond.hover();
+  await expect(form.getByText("旅程天數：3 天（預覽）")).toBeVisible();
+  await novemberSecond.click();
+  await expect(end).toHaveValue("2026/11/02");
+  await expect(create).toBeEnabled();
+
+  await end.fill("20261131");
+  await end.press("Enter");
+  await expect(form.getByRole("alert")).toHaveText("請輸入有效日期");
+  await form.getByRole("button", { name: "清除", exact: true }).click();
+  await expect(start).toBeFocused();
+  await expect(start).toHaveValue("");
+  await expect(end).toHaveValue("");
+  await expect(create).toBeDisabled();
+
+  const title = form.getByRole("textbox", { name: "旅程名稱" });
+  const country = form.getByRole("textbox", { name: "國家" });
+  const city = form.getByRole("textbox", { name: "城市" });
+  await title.fill("跨月旅程");
+  await country.fill("日本");
+  await city.fill("大阪");
+  await start.fill("20261031");
+  await start.press("Enter");
+  await end.fill("20261102");
+  await end.press("Enter");
+  await form.getByRole("button", { name: "AI 規劃", exact: true }).click();
+  await expect(form).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "AI 規劃", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "返回", exact: true }).click();
+  await expect(title).toHaveValue("跨月旅程");
+  await expect(country).toHaveValue("日本");
+  await expect(city).toHaveValue("大阪");
+  await expect(start).toHaveValue("2026/10/31");
+  await expect(end).toHaveValue("2026/11/02");
+
+  await form.getByLabel("選擇旅程 JSON 檔案").setInputFiles({
+    name: "ai-result.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(validFixture)),
+  });
+  const preview = page.getByRole("region", { name: "匯入旅程預覽" });
+  await expect(form).toHaveCount(0);
+  await expect(preview.getByText(validFixture.trip.title, { exact: true })).toBeVisible();
+  await expect(preview.getByRole("button", { name: "確認匯入", exact: true })).toBeEnabled();
+  expect(page.qaErrors).toEqual([]);
+});
+
 test("App auto-detects both JSON contracts before one atomic confirmation path", async ({ page }) => {
   const source = readFileSync("src/App.jsx", "utf8");
+  const tripDialogSource = readFileSync("src/components/trip/TripDialog.jsx", "utf8");
   const previewSource = readFileSync("src/components/trip-import/TripImportPreviewDialog.jsx", "utf8");
   const previewBody = source.match(/async function previewTripImport\(file\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function confirmTripImport/)?.[1] || "";
   const confirmBody = source.match(/async function confirmTripImport\(\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function updateTrip/)?.[1] || "";
@@ -185,12 +255,12 @@ test("App auto-detects both JSON contracts before one atomic confirmation path",
   expect(confirmBody.match(/supabase\.rpc\("import_trip_timeline_v1"/g)).toHaveLength(1);
   expect(source).not.toContain("AiTripImportDialog");
   expect(source).not.toContain("aiTripImportMode");
-  expect(source).toContain('aria-label="AI 規劃"');
-  const planningButton = source.match(/<button\s+aria-label="AI 規劃"[\s\S]*?<\/button>/)?.[0] || "";
+  expect(tripDialogSource).toContain('aria-label="AI 規劃"');
+  const planningButton = tripDialogSource.match(/<button\s+aria-label="AI 規劃"[\s\S]*?<\/button>/)?.[0] || "";
   expect(planningButton).toContain('<Bot aria-hidden="true" size={18} />');
   expect(planningButton).toContain("<span>AI規劃</span>");
   expect(planningButton).toContain("onClick={onImportAi}");
-  expect(source).toContain("<FileUp");
+  expect(tripDialogSource).toContain("<FileUp");
   expect(source).toContain("returnFromAiTripCreateExchange");
   expect(previewSource).toContain('<TripImportPreviewBoard days={preview?.days} trip={trip} />');
   expect(source + previewSource).not.toContain("isAiImport");
