@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const appSource = readFileSync("src/App.jsx", "utf8");
+const shareDialogSource = readFileSync("src/components/share/ShareDialog.jsx", "utf8");
 const styleSource = readFileSync("src/styles.css", "utf8");
 
 test("phase 1.8 formal member and share gates stay separated", () => {
@@ -18,12 +19,11 @@ test("phase 1.8 formal member and share gates stay separated", () => {
 });
 
 test("phase 1.8 editor share dialog can copy active links but cannot manage them", () => {
-  expect(appSource).toContain("primaryLink.is_active ? (");
-  expect(appSource).toContain("onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}");
-  expect(appSource).toContain("{canManage ? (");
-  expect(appSource).toContain("onClick={() => toggleShareLink(primaryLink)}");
-  expect(appSource).toContain("{canManage ? (");
-  expect(appSource).toContain("onClick={createShareLink}");
+  expect(shareDialogSource).toContain("primaryLink.is_active ? (");
+  expect(shareDialogSource).toContain("onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}");
+  expect(shareDialogSource).toContain("{canManage ? (");
+  expect(shareDialogSource).toContain("onClick={() => toggleShareLink(primaryLink)}");
+  expect(shareDialogSource).toContain("onClick={createShareLink}");
 });
 
 test("phase 1.8 member mutations keep owner-only lock and trip boundary", () => {
