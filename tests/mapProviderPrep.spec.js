@@ -556,24 +556,27 @@ test("Phase 5.9 destination editor reuses the existing map point picker through 
 
 test("Phase 5.9 visit editor uses compact linked time controls and a draft-only point workflow", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const formFieldsSource = readRepoFile("src/components/timeline/TimelineFormFields.jsx");
+  const timelineTimeSource = readRepoFile("src/lib/timelineTime.js");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const stylesSource = readRepoFile("src/styles.css");
 
   expect(appSource).toContain("visit-editor-primary-row");
   expect(appSource).toContain("visit-editor-time-row");
-  expect(appSource).toContain("function OutlinedField");
-  expect(appSource).toContain("function TimelineTypeField");
-  expect(appSource).toContain('<OutlinedMenuField\n      className="visit-type-field"');
+  expect(formFieldsSource).toContain("function OutlinedField");
+  expect(formFieldsSource).toContain("function TimelineTypeField");
+  expect(formFieldsSource).toContain('<OutlinedMenuField\n      className="visit-type-field"');
   expect(appSource).toContain('<TimelineTypeField value={form.type}');
   expect(appSource).toContain('<OutlinedField className="destination-field" label="目的地">');
-  expect(appSource).toContain('className={`visit-time-field timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`}');
+  expect(formFieldsSource).toContain('className={`visit-time-field timeline-segmented-time-field${isMenuOpen ? " menu-open" : ""}`}');
   expect(appSource).toContain("<TimelineDurationField");
   expect(appSource).toContain('<FloatingOutlinedField className="full-label visit-note-field" label="備註">');
   expect(appSource).toContain('<OutlinedField className="visit-map-url-editor" invalid={Boolean(mapUrlError)} label="Google Maps URL">');
   expect(appSource).toContain('<div className="form-mode-label">{editingId ? "編輯行程" : "新增行程"}</div>');
-  expect(appSource).toContain("normalizeTimelineTimeInput");
-  expect(appSource).toContain("TimelineSegmentedTimeField");
-  expect(appSource).toContain("timeline-time-menu");
+  expect(timelineTimeSource).toContain("function normalizeTimelineTimeInput");
+  expect(appSource).toContain("normalizeTimelineTimeInput(submittedForm.start_time)");
+  expect(appSource).toContain("<TimelineSegmentedTimeField");
+  expect(formFieldsSource).toContain("timeline-time-menu");
   expect(appSource).toContain("visit-map-point-toggle");
   expect(appSource).toContain('{includeAlternative ? "更多設定" : "更改地點"}');
   expect(appSource).toContain("visit-settings-heading");

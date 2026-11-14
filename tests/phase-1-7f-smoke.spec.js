@@ -503,6 +503,12 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(startInput).toHaveValue("09:45");
   await startField.locator(".timeline-time-segment.minute").press("ArrowUp");
   await expect(startInput).toHaveValue("09:50");
+  await startField.locator(".timeline-time-segment.hour").evaluate((input) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/plain", "0957");
+    input.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }));
+  });
+  await expect(startInput).toHaveValue("09:55");
 
   await startField.locator(".timeline-time-menu-toggle").click();
   const startTimeMenu = startField.locator(".timeline-time-menu");
