@@ -14,6 +14,16 @@ import SettlementPanel from "./components/SettlementPanel.jsx";
 import { memberName } from "./lib/memberName.js";
 import TodayMode from "./components/TodayMode.jsx";
 import { dateToInputValue, formatDate, formatMoney, formatTimeDisplay, todayInput } from "./lib/displayFormat.js";
+import {
+  dateRangeDayCount,
+  formatDateKey,
+  formatHeaderDate,
+  initialDateSelectionStep,
+  isDateBefore,
+  parseDateOnly,
+  parseDateTextInput,
+  startOfMonth,
+} from "./lib/tripDateUi.js";
 import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
 import {expenseFinancialSnapshot,expenseTimelineCosts,olderExpenseSnapshot} from './lib/expenseSnapshot.js';
 import {createDemoExpenseService} from './demo/expenseService.js';
@@ -143,6 +153,7 @@ import {
   serializeTripToAiItinerary,
 } from "./lib/aiItineraryAdapters.js";
 import MapPanel from "./components/map/MapPanel.jsx";
+import TripDateRangeSelector from "./components/trip/TripDateRangeSelector.jsx";
 import TripImportPreviewDialog from "./components/trip-import/TripImportPreviewDialog.jsx";
 import AiTripExchangeDialog from "./components/trip-import/AiTripExchangeDialog.jsx";
 import {
@@ -487,80 +498,10 @@ const emptyItemForm = {
 };
 
 
-function parseDateOnly(value) {
-  if (!value) return null;
-  const [year, month, day] = String(value).split("-").map(Number);
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return date;
-}
-
-function formatDateKey(date) {
-  return dateToInputValue(date);
-}
-
-function startOfMonth(date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function addMonths(date, amount) {
-  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
-}
-
 function addDays(date, amount) {
   const next = new Date(date);
   next.setDate(date.getDate() + amount);
   return next;
-}
-
-function daysInMonth(date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-}
-
-function calendarMonthCells(monthDate) {
-  const monthStart = startOfMonth(monthDate);
-  const leadingDays = monthStart.getDay();
-  const totalDays = daysInMonth(monthStart);
-  const cells = [];
-  for (let index = 0; index < 42; index += 1) {
-    const monthDay = index - leadingDays + 1;
-    if (monthDay < 1 || monthDay > totalDays) {
-      cells.push({ blank: true, key: `blank-${formatDateKey(monthStart)}-${index}` });
-      continue;
-    }
-    const date = new Date(monthStart);
-    date.setDate(monthDay);
-    cells.push({ date, key: formatDateKey(date), day: date.getDate() });
-  }
-  return cells;
-}
-
-function isSameDate(first, second) {
-  return Boolean(first && second && first === second);
-}
-
-function isDateBefore(first, second) {
-  return Boolean(first && second && first < second);
-}
-
-function isDateInRange(value, start, end) {
-  return Boolean(value && start && end && value >= start && value <= end);
-}
-
-function normalizeDateInput(value) {
-  const text = String(value || "").trim();
-  let match = text.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (!match) match = text.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
-  if (!match) return "";
-  const [, year, month, day] = match;
-  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-}
-
-function parseDateTextInput(value) {
-  const normalized = normalizeDateInput(value);
-  if (!normalized) return "";
-  return parseDateOnly(normalized) ? normalized : "";
 }
 
 function normalizeTimelineTimeInput(value) {
@@ -1327,24 +1268,6 @@ function formatDayTabDate(date) {
   }).format(date);
 }
 
-function formatHeaderDate(value) {
-  if (!value) return "";
-  const date = parseDateOnly(value);
-  if (!date) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}/${month}/${day}`;
-}
-
-function dateRangeDayCount(startDate, endDate) {
-  if (!startDate || !endDate) return null;
-  const start = parseDateOnly(startDate);
-  const end = parseDateOnly(endDate);
-  if (!start || !end || end < start) return null;
-  return Math.round((end - start) / 86400000) + 1;
-}
-
 function getTodayDateKey() {
   return todayInput();
 }
@@ -1352,10 +1275,6 @@ function getTodayDateKey() {
 function normalizeDateOnlyKey(value) {
   const date = parseDateOnly(value);
   return date ? formatDateKey(date) : "";
-}
-
-function initialDateSelectionStep(startDate, endDate) {
-  return startDate && !endDate ? "end" : "start";
 }
 
 function deriveTripStage(startDate, endDate, todayDate = getTodayDateKey()) {
@@ -6369,171 +6288,6 @@ function SidebarAccountMenu({
         </span>
       </button>
     </div>
-  );
-}
-
-function TripDateRangeSelector({
-  activeStep,
-  disabled = false,
-  endDate,
-  endInput,
-  errorId,
-  minDateKey = "",
-  onCommitInput,
-  onEndInputChange,
-  onHoverDate,
-  onInputKeyDown,
-  onSelectDate,
-  onStartInputChange,
-  onVisibleMonthChange,
-  previewEndDate = "",
-  startDate,
-  startInput,
-  startInputRef,
-  visibleMonth,
-}) {
-  const monthFormat = useMemo(() => new Intl.DateTimeFormat("zh-TW", { month: "long", year: "numeric" }), []);
-  const fullDateFormat = useMemo(
-    () => new Intl.DateTimeFormat("zh-TW", { day: "numeric", month: "long", year: "numeric" }),
-    [],
-  );
-
-  function renderMonth(monthDate, controls = {}) {
-    const cells = calendarMonthCells(monthDate);
-    const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
-    return (
-      <section className="trip-date-range-month" key={formatDateKey(monthDate)}>
-        <div className="trip-date-range-month-header">
-          {controls.previous ? (
-            <button
-              type="button"
-              className="mini-button"
-              disabled={disabled}
-              aria-label="上一個月份"
-              onClick={() => onVisibleMonthChange(addMonths(visibleMonth, -1))}
-            >
-              &lt;
-            </button>
-          ) : (
-            <span />
-          )}
-          <strong>{monthFormat.format(monthDate)}</strong>
-          {controls.next ? (
-            <button
-              type="button"
-              className="mini-button"
-              disabled={disabled}
-              aria-label="下一個月份"
-              onClick={() => onVisibleMonthChange(addMonths(visibleMonth, 1))}
-            >
-              &gt;
-            </button>
-          ) : (
-            <span />
-          )}
-        </div>
-        <div className="trip-date-range-weekdays" aria-hidden="true">
-          {weekdays.map((weekday) => (
-            <span key={weekday}>{weekday}</span>
-          ))}
-        </div>
-        <div className="trip-date-range-grid">
-          {cells.map((cell) => {
-            if (cell.blank) {
-              return <span className="trip-date-range-day-blank" key={cell.key} aria-hidden="true" />;
-            }
-            const isDisabledDate = Boolean(minDateKey && isDateBefore(cell.key, minDateKey));
-            const isRangeStart = isSameDate(cell.key, startDate);
-            const isRangeEnd = isSameDate(cell.key, endDate);
-            const isSingleDay = Boolean(startDate && endDate && isSameDate(startDate, endDate) && isRangeStart);
-            const isInRange = isDateInRange(cell.key, startDate, endDate) && !isRangeStart && !isRangeEnd;
-            const isPreviewRange =
-              !isDisabledDate && Boolean(previewEndDate) && isDateInRange(cell.key, startDate, previewEndDate) && !isRangeStart;
-            const classNames = [
-              "trip-date-range-day",
-              isDisabledDate ? "is-disabled" : "",
-              isSameDate(cell.key, todayInput()) ? "is-today" : "",
-              isRangeStart ? "is-range-start" : "",
-              isInRange ? "is-in-range" : "",
-              isRangeEnd ? "is-range-end" : "",
-              isSingleDay ? "is-single-day" : "",
-              isPreviewRange ? "is-preview-range" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-            const selectionLabel = isRangeStart
-              ? "，開始日期"
-              : isRangeEnd
-                ? "，結束日期"
-                : isInRange || isPreviewRange
-                  ? "，行程範圍內"
-                  : "";
-            return (
-              <button
-                className={classNames}
-                key={cell.key}
-                type="button"
-                disabled={disabled || isDisabledDate}
-                aria-label={`${fullDateFormat.format(cell.date)}${selectionLabel}`}
-                aria-disabled={isDisabledDate ? "true" : undefined}
-                aria-selected={isRangeStart || isRangeEnd || isInRange}
-                onClick={() => onSelectDate(cell.key)}
-                onMouseEnter={() => {
-                  if (!disabled && !isDisabledDate && activeStep === "end" && startDate && !endDate) onHoverDate(cell.key);
-                }}
-                onFocus={() => {
-                  if (!disabled && !isDisabledDate && activeStep === "end" && startDate && !endDate) onHoverDate(cell.key);
-                }}
-              >
-                <span>{cell.day}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <>
-      <div className="trip-date-range-summary" aria-live="polite">
-        <label className={`trip-date-range-summary-item${activeStep === "start" ? " is-active" : ""}`}>
-          <span>開始日期</span>
-          <input
-            ref={startInputRef}
-            type="text"
-            inputMode="numeric"
-            placeholder="YYYYMMDD"
-            value={startInput}
-            disabled={disabled}
-            aria-describedby={errorId}
-            onBlur={() => onCommitInput("start")}
-            onChange={(event) => onStartInputChange(event.target.value)}
-            onKeyDown={(event) => onInputKeyDown(event, "start")}
-          />
-        </label>
-        <label className={`trip-date-range-summary-item${activeStep === "end" ? " is-active" : ""}`}>
-          <span>結束日期</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="YYYYMMDD"
-            value={endInput}
-            disabled={disabled}
-            aria-describedby={errorId}
-            onBlur={() => onCommitInput("end")}
-            onChange={(event) => onEndInputChange(event.target.value)}
-            onKeyDown={(event) => onInputKeyDown(event, "end")}
-          />
-        </label>
-      </div>
-      <div className="trip-date-range-picker">
-        <div className="trip-date-range-months" onMouseLeave={() => onHoverDate("")}>
-          {renderMonth(visibleMonth, { previous: true })}
-          {renderMonth(addMonths(visibleMonth, 1), { next: true })}
-        </div>
-      </div>
-    </>
   );
 }
 
