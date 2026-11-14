@@ -643,6 +643,38 @@ test("Phase 5.9 new visit editor uses the same transparent card controls as the 
   expect(failures).toEqual([]);
 });
 
+test("Demo date tabs scroll on drag and still select a date on click", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/demo/timeline");
+  const tabs = page.getByRole("navigation", { name: "日期切換" });
+  const shell = page.locator(".timeline-top-row .day-tabs-shell");
+  const initialDay = await tabs.locator(".day-tab.active").getAttribute("data-day-index");
+  await tabs.scrollIntoViewIfNeeded();
+  const box = await tabs.boundingBox();
+  expect(box).not.toBeNull();
+
+  await expect.poll(() => tabs.evaluate((nav) => nav.scrollWidth - nav.clientWidth)).toBeGreaterThan(0);
+  const dragDirection = await tabs.evaluate((nav) => nav.scrollLeft > 0 ? 1 : -1);
+  const initialScroll = await tabs.evaluate((nav) => nav.scrollLeft);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dragDirection * 70, y, { steps: 7 });
+  await page.mouse.up();
+  await expect.poll(() => tabs.evaluate((nav) => nav.scrollLeft)).not.toBe(initialScroll);
+  await expect(tabs.locator(".day-tab.active")).toHaveAttribute("data-day-index", initialDay);
+
+  const nextDay = String(Number(initialDay) === 0 ? 1 : 0);
+  const nextTab = tabs.locator(`[data-day-index="${nextDay}"]`);
+  await nextTab.click();
+  await expect(nextTab).toHaveClass(/\bactive\b/);
+  await expect(page.locator(`.timeline-day-column.active[data-day-index="${nextDay}"]`)).toHaveCount(1);
+  await page.getByRole("button", { name: "隱藏地圖", exact: true }).click();
+  await expect(shell).toHaveClass(/is-collapsed/);
+  await expect(nextTab).toHaveClass(/\bactive\b/);
+});
+
 test("demo trip switch resets an out-of-range selected day board", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
