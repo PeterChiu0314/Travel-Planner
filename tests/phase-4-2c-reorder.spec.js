@@ -20,6 +20,7 @@ const fixedAnchorContinuationMigration = readFileSync(
   "utf8",
 );
 const appSource = readFileSync("src/App.jsx", "utf8");
+const tripHeaderPartsSource = readFileSync("src/components/trip/TripHeaderParts.jsx", "utf8");
 const packageSource = readFileSync("package.json", "utf8");
 const collaboratorColorsSource = readFileSync("src/lib/collaboratorColors.js", "utf8");
 const stylesSource = readFileSync("src/styles.css", "utf8");
@@ -757,7 +758,7 @@ test("Phase 4.8e trip-level online member presence stays navigation-only", () =>
   expect(appSource).toContain('overview: "today"');
   expect(appSource).toContain('packing: "luggage"');
   expect(appSource).toContain('timeline: "timeline"');
-  expect(appSource).toContain("HeaderMemberPresencePreview");
+  expect(appSource).toContain("<HeaderMemberPresencePreview");
   expect(appSource).toContain("remotePresenceByUser");
   expect(appSource).toContain("timelineDayTabPresenceByDay");
   expect(appSource).toContain("dayTabPresenceByDay");
@@ -765,7 +766,8 @@ test("Phase 4.8e trip-level online member presence stays navigation-only", () =>
   expect(appSource).toContain("timeline-day-presence-dots");
   expect(appSource).toContain("timeline-day-presence-dot");
   expect(appSource).toContain("tripPresenceSelectedItem");
-  expect(appSource).toContain("member.user_id !== currentUserId");
+  expect(tripHeaderPartsSource).toContain("member.user_id !== currentUserId");
+  expect(tripHeaderPartsSource).toContain("onPresenceNavigate(presence)");
   expect(appSource).toContain("setActiveSection(section)");
   expect(appSource).toContain("setActiveDay(Number(presence.dayIndex))");
   expect(appSource).toContain("channel.track(nextPayload)");

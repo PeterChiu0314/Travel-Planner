@@ -7,3 +7,7 @@ export function collaboratorColorKey(seed = "") {
   return Object.keys(collaboratorColors)[hash % Object.keys(collaboratorColors).length] || "blue";
 }
 export const collaboratorColor = userId => collaboratorColors[collaboratorColorKey(userId)];
+
+export function timelineCardSelectionColor(colorKey) {
+  return collaboratorColors[colorKey] || collaboratorColors.blue;
+}

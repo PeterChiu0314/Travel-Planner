@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const appSource = readFileSync("src/App.jsx", "utf8");
+const tripHeaderPartsSource = readFileSync("src/components/trip/TripHeaderParts.jsx", "utf8");
 const membersDialogSource = readFileSync("src/components/members/MembersInviteDialog.jsx", "utf8");
 const memberNameSource = readFileSync("src/lib/memberName.js", "utf8");
 const shareDialogSource = readFileSync("src/components/share/ShareDialog.jsx", "utf8");
@@ -52,7 +53,7 @@ test("phase 1.8 members dialog keeps required labels and disabled states", () =>
   expect(membersDialogSource).toContain("<h3>權限說明</h3>");
   expect(membersDialogSource).toContain("邀請朋友一起規劃這趟旅程。");
   expect(membersDialogSource).toContain('const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];');
-  expect(appSource).toContain('className="trip-header-member-pending"');
+  expect(tripHeaderPartsSource).toContain('className="trip-header-member-pending"');
   expect(membersDialogSource).toContain("disabled={!canManageMembers || busy}");
   expect(membersDialogSource).toContain('const canEditRole = canManageMembers && member.role !== "owner" && member.user_id !== currentUserId;');
 });
