@@ -2,6 +2,12 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const appSource = readFileSync("src/App.jsx", "utf8");
+const tripHeaderPartsSource = readFileSync("src/components/trip/TripHeaderParts.jsx", "utf8");
+const membersDialogSource = readFileSync("src/components/members/MembersInviteDialog.jsx", "utf8");
+const memberNameSource = readFileSync("src/lib/memberName.js", "utf8");
+const shareDialogSource = readFileSync("src/components/share/ShareDialog.jsx", "utf8");
+const sidebarTripSource = readFileSync("src/components/sidebar/SidebarTripSection.jsx", "utf8");
+const sidebarAccountSource = readFileSync("src/components/sidebar/SidebarAccountMenu.jsx", "utf8");
 const styleSource = readFileSync("src/styles.css", "utf8");
 
 test("phase 1.8 formal member and share gates stay separated", () => {
@@ -18,17 +24,17 @@ test("phase 1.8 formal member and share gates stay separated", () => {
 });
 
 test("phase 1.8 editor share dialog can copy active links but cannot manage them", () => {
-  expect(appSource).toContain("primaryLink.is_active ? (");
-  expect(appSource).toContain("onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}");
-  expect(appSource).toContain("{canManage ? (");
-  expect(appSource).toContain("onClick={() => toggleShareLink(primaryLink)}");
-  expect(appSource).toContain("{canManage ? (");
-  expect(appSource).toContain("onClick={createShareLink}");
+  expect(shareDialogSource).toContain("primaryLink.is_active ? (");
+  expect(shareDialogSource).toContain("onClick={() => copyShareUrl(primaryLink.token, primaryLink.id)}");
+  expect(shareDialogSource).toContain("{canManage ? (");
+  expect(shareDialogSource).toContain("onClick={() => toggleShareLink(primaryLink)}");
+  expect(shareDialogSource).toContain("onClick={createShareLink}");
 });
 
 test("phase 1.8 member mutations keep owner-only lock and trip boundary", () => {
   expect(appSource).toContain("if (!activeTrip || !canInviteMembers) return;");
   expect(appSource).toContain("if (!activeTrip || !canInviteMembers) return { ok: false };");
+  expect(appSource).toMatch(/async function createMemberInviteToken\(\)\s*\{\s*if \(!activeTrip \|\| !canInviteMembers\) \{\s*const message = isTripDateLocked\s*\? "旅程已進入結算階段，無法邀請或管理成員。"/);
   expect(appSource).toContain(".update({ status: \"approved\" })");
   expect(appSource).toContain(".update({ role: nextRole })");
   expect(appSource).toContain(".delete().eq(\"id\", memberId).eq(\"trip_id\", activeTrip.id)");
@@ -39,17 +45,17 @@ test("phase 1.8 member mutations keep owner-only lock and trip boundary", () => 
 });
 
 test("phase 1.8 members dialog keeps required labels and disabled states", () => {
-  expect(appSource).toContain('owner: "擁有者"');
-  expect(appSource).toContain('editor: "編輯者"');
-  expect(appSource).toContain('viewer: "檢視者"');
-  expect(appSource).toContain("旅程已進入結算階段，無法邀請或管理成員。");
-  expect(appSource).toContain("<h3>邀請成員</h3>");
-  expect(appSource).toContain("<h3>權限說明</h3>");
-  expect(appSource).toContain("邀請朋友一起規劃這趟旅程。");
-  expect(appSource).toContain('const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];');
-  expect(appSource).toContain('className="trip-header-member-pending"');
-  expect(appSource).toContain("disabled={!canManageMembers || busy}");
-  expect(appSource).toContain('const canEditRole = canManageMembers && member.role !== "owner" && member.user_id !== currentUserId;');
+  expect(memberNameSource).toContain('owner: "擁有者"');
+  expect(memberNameSource).toContain('editor: "編輯者"');
+  expect(memberNameSource).toContain('viewer: "檢視者"');
+  expect(membersDialogSource).toContain("旅程已進入結算階段，無法邀請或管理成員。");
+  expect(membersDialogSource).toContain("<h3>邀請成員</h3>");
+  expect(membersDialogSource).toContain("<h3>權限說明</h3>");
+  expect(membersDialogSource).toContain("邀請朋友一起規劃這趟旅程。");
+  expect(membersDialogSource).toContain('const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];');
+  expect(tripHeaderPartsSource).toContain('className="trip-header-member-pending"');
+  expect(membersDialogSource).toContain("disabled={!canManageMembers || busy}");
+  expect(membersDialogSource).toContain('const canEditRole = canManageMembers && member.role !== "owner" && member.user_id !== currentUserId;');
 });
 
 test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", () => {
@@ -66,20 +72,18 @@ test("phase 2.2 sidebar keeps trip selection guarded and moves creation entry", 
   expect(styleSource).toContain("gap: 18px");
   expect(styleSource).toContain("padding: 5px 8px 5px 12px");
   expect(appSource).not.toContain('{ id: "settings", label: "設定", shortLabel: "設" }');
-  expect(appSource).toContain("function SidebarTripSection({");
+  expect(sidebarTripSource).toContain("function SidebarTripSection({");
   expect(appSource).toContain('headingId="sidebar-trips-title"');
   expect(appSource).toContain('headingId="demo-sidebar-trips-title"');
-  expect(appSource).toContain('className="mini-button sidebar-create-trip"');
-  expect(appSource).toContain('className={`mini-button sidebar-trip-menu-button${isFlyoutOpen ? " active" : ""}`}');
-  expect(appSource).toContain("<TripList trips={trips} activeTripId={activeTripId} compact={false} onCreate={handleCreate} onSelect={handleSelect} />");
-  expect(appSource).toContain('className="trip-empty-card"');
-  expect(appSource).toContain("+ 建立第一個旅程");
-  expect(appSource).not.toContain('className="primary-button create-trip-button"');
-  expect(appSource).not.toContain('className="sidebar-members"');
-  expect(appSource).toContain("const canContinue = await requestActiveEditorGuardResolution();");
-  expect(appSource).toContain("if (canContinue) {");
-  expect(appSource).toContain("setActiveDay(tripTodayIndex(nextTrip));");
-  expect(appSource).toContain("setActiveTripId(nextTripId);");
+  expect(sidebarTripSource).toContain('className="mini-button sidebar-create-trip"');
+  expect(sidebarTripSource).toContain('className={`mini-button sidebar-trip-menu-button${isFlyoutOpen ? " active" : ""}`}');
+  expect(sidebarTripSource).toContain("<TripList trips={trips} activeTripId={activeTripId} compact={false} onCreate={handleCreate} onSelect={handleSelect} />");
+  expect(sidebarTripSource).toContain('className="trip-empty-card"');
+  expect(sidebarTripSource).toContain("+ 建立第一個旅程");
+  expect(appSource + sidebarTripSource).not.toContain('className="primary-button create-trip-button"');
+  expect(appSource + sidebarTripSource).not.toContain('className="sidebar-members"');
+  expect(appSource).toContain("if (!await requestActiveEditorHandoff({ tripId: activeTripId }) || !requestGuard.sameContext(tripDataContext)) return false;");
+  expect(appSource).toMatch(/async function selectTrip\(nextTripId\) \{[^}]*await navigateWithEditorHandoff\(\(\) => \{\s*setActiveDay\(tripTodayIndex\(nextTrip\)\);\s*setActiveTripId\(nextTripId\);/);
 });
 
 test("phase 2.3 app shell owns desktop scroll and demo sidebar uses local parity shell", () => {
@@ -112,6 +116,8 @@ test("development version dialog stays in the formal account menu", () => {
   expect(appSource).toContain('className="modal-backdrop version-dialog-backdrop"');
   expect(appSource).toContain("Collaborative Travel Web App");
   expect(appSource).toContain("onVersion={() => setIsVersionDialogOpen(true)}");
+  expect(sidebarAccountSource).toContain('aria-label="帳號選單"');
+  expect(sidebarAccountSource).toContain("onVersion();");
   expect(styleSource).toContain(".version-dialog {");
   expect(styleSource).toContain("background: var(--map-glass-bg);");
   expect(styleSource).toContain("backdrop-filter: blur(18px) saturate(var(--map-glass-saturation));");
@@ -125,8 +131,8 @@ test("phase 2.6 collapsed sidebar trip flyout stays local to formal and demo sid
   expect(appSource).toContain("const [isDemoSidebarTripMenuOpen, setIsDemoSidebarTripMenuOpen] = useState(false);");
   expect(appSource).toContain('flyoutId="sidebar-trips-flyout"');
   expect(appSource).toContain('flyoutId="demo-sidebar-trips-flyout"');
-  expect(appSource).toContain('className="sidebar-trip-menu-divider"');
-  expect(appSource).toContain('<LayoutList size={19} strokeWidth={2.2} aria-hidden="true" />');
+  expect(sidebarTripSource).toContain('className="sidebar-trip-menu-divider"');
+  expect(sidebarTripSource).toContain('<LayoutList size={19} strokeWidth={2.2} aria-hidden="true" />');
   expect(styleSource).toContain(".sidebar.collapsed .sidebar-trip-section-collapsed");
   expect(styleSource).toContain(".sidebar.collapsed .sidebar-trip-menu-divider");
   expect(styleSource).toContain(".sidebar.collapsed .sidebar-trip-flyout");
