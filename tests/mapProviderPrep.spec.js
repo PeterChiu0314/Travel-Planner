@@ -391,6 +391,7 @@ test("Phase 5.8b keeps the Map behind a full-height Dayboard glass panel", () =>
 test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icons", () => {
   const appSource = readRepoFile("src/App.jsx");
   const stylesSource = readRepoFile("src/styles.css");
+  const transportIconSource = readRepoFile("src/components/timeline/TransportCategoryIcon.jsx");
   const transportCategoriesSource = readRepoFile("src/lib/timelineTransportCategories.js");
 
   expect(stylesSource).toContain(".timeline {\n  display: grid;\n  gap: 4px");
@@ -416,7 +417,7 @@ test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icon
   expect(stylesSource).toContain("padding: 4px 14px");
   expect(stylesSource).toContain(".transport-card-main strong {\n  font-size: 13px");
   expect(stylesSource).toContain(".transport-icon svg");
-  expect(appSource).toContain("function TransportCategoryIcon({ category })");
+  expect(transportIconSource).toContain("function TransportCategoryIcon({ category })");
   expect(appSource).toContain('<span className="transport-insert-icon" aria-hidden="true">');
   expect(transportCategoriesSource).toContain('{ value: "drive", label: "自駕", icon: CarFront }');
   expect(appSource + transportCategoriesSource).not.toContain('icon: "🚗"');

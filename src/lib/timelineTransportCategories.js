@@ -9,6 +9,7 @@ import {
   TrainFront,
   TramFront,
 } from "lucide-react";
+import { formatTransportDurationMinutes } from "./timelineTime.js";
 
 export const transportCategories = [
   { value: "jr", label: "JR", icon: TrainFront },
@@ -21,3 +22,21 @@ export const transportCategories = [
   { value: "flight", label: "飛機", icon: Plane },
   { value: "other", label: "其他", icon: CircleEllipsis },
 ];
+
+export function transportCategoryMeta(category) {
+  return transportCategories.find((item) => item.value === category) || transportCategories[transportCategories.length - 1];
+}
+
+export function transportNameValue(item) {
+  const explicitName = String(item?.transport_name || "").trim();
+  if (explicitName) return explicitName;
+  const legacyTitle = String(item?.title || "").trim();
+  const categoryLabel = transportCategoryMeta(item?.transport_category).label;
+  return legacyTitle && legacyTitle !== categoryLabel ? legacyTitle : "";
+}
+
+export function transportCardTitle(item) {
+  const name = transportNameValue(item) || transportCategoryMeta(item?.transport_category).label;
+  const duration = formatTransportDurationMinutes(item?.transport_duration_minutes);
+  return duration ? `${name}・${duration}` : name;
+}

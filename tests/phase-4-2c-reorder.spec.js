@@ -21,6 +21,7 @@ const fixedAnchorContinuationMigration = readFileSync(
 );
 const appSource = readFileSync("src/App.jsx", "utf8");
 const dayTabsSource = readFileSync("src/components/timeline/DayTabs.jsx", "utf8");
+const multiDayColumnsSource = readFileSync("src/components/timeline/MultiDayTimelineColumns.jsx", "utf8");
 const tripHeaderPartsSource = readFileSync("src/components/trip/TripHeaderParts.jsx", "utf8");
 const packageSource = readFileSync("package.json", "utf8");
 const collaboratorColorsSource = readFileSync("src/lib/collaboratorColors.js", "utf8");
@@ -766,8 +767,8 @@ test("Phase 4.8e trip-level online member presence stays navigation-only", () =>
   expect(dayTabsSource).toContain("const firstPresence = presences[0] || null;");
   expect(dayTabsSource).toContain("timelineCardSelectionColor(firstPresence.colorKey)");
   expect(appSource).toContain("dayBoardPresenceByDay");
-  expect(appSource).toContain("timeline-day-presence-dots");
-  expect(appSource).toContain("timeline-day-presence-dot");
+  expect(multiDayColumnsSource).toContain('className="timeline-day-presence-dots"');
+  expect(multiDayColumnsSource).toContain('className="timeline-day-presence-dot"');
   expect(appSource).toContain("tripPresenceSelectedItem");
   expect(tripHeaderPartsSource).toContain("member.user_id !== currentUserId");
   expect(tripHeaderPartsSource).toContain("onPresenceNavigate(presence)");
