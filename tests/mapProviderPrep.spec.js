@@ -739,6 +739,7 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
 
 test("Phase 5.5 Google map area custom point add flow stays provider scoped", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const editorFormSource = readRepoFile("src/components/timeline/timelineEditorForm.js");
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
@@ -750,8 +751,10 @@ test("Phase 5.5 Google map area custom point add flow stays provider scoped", ()
   expect(pickerSource).toContain("source: mapPickingMode || \"editor\"");
   expect(appSource).toContain('if (pickedMapPoint.source === "map-add")');
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
-  expect(appSource).toContain("buildNewVisitForm(initialPoint = null)");
-  expect(appSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
+  expect(appSource).toContain("const nextForm = buildNewVisitForm({");
+  expect(editorFormSource).toContain("latitude: hasPoint ? latitude : null");
+  expect(editorFormSource).toContain("longitude: hasPoint ? longitude : null");
+  expect(editorFormSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
   expect(appSource).toContain("onMapPointEditorActiveChange?.({ canPick: Boolean(isOpen && !isTransportEditor), isOpen })");
   expect(pickerSource).toContain("!mapPointEditorState.isOpen || mapPointEditorState.canPick");
   expect(mapPanelSource).toContain("hasActiveMapPointEditor = false");

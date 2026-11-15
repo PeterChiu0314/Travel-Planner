@@ -74,7 +74,7 @@ test("new and existing visit editors share the same point editing section", () =
   expect(appSource).not.toContain('editingId || !useEditLocks ? <div className={`visit-map-point-section');
   expect(appSource).toContain("更改地點");
   expect(appSource).toContain("搜尋替換");
-  expect(appSource).toContain("const nextForm = buildNewVisitForm(initialPoint)");
+  expect(appSource).toMatch(/const nextForm = buildNewVisitForm\(\{[\s\S]*?initialPoint,[\s\S]*?lastItem: sortedVisitItems\(dayItems\)\.at\(-1\)/);
 });
 
 test("Phase 5.6b normalizes Places autocomplete predictions without Place Details", () => {
@@ -235,6 +235,7 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const appSource = readRepoFile("src/App.jsx");
+  const editorFormSource = readRepoFile("src/components/timeline/timelineEditorForm.js");
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const adapterSource = readRepoFile("src/lib/googlePlacesAdapter.js");
@@ -311,9 +312,9 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(pickerSource).toContain("googleMapsUri: isMapUrlPoint");
   expect(pickerSource).toContain("? details.googleMapsUri || googleMapsPointUrl(latitude, longitude)");
   expect(pickerSource).toContain(": googleMapsPointUrl(latitude, longitude)");
-  expect(appSource).toContain("title: placeName");
-  expect(appSource).toContain("location_name: placeName");
-  expect(appSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
+  expect(editorFormSource).toContain("title: placeName");
+  expect(editorFormSource).toContain("location_name: placeName");
+  expect(editorFormSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
   expect(appSource).not.toContain("provider_place_id");
   expect(staticProviderSource).not.toContain("places-search-overlay");
   expect(staticProviderSource).not.toContain("map-route-edit-button");
@@ -390,6 +391,7 @@ test("Map search handles Google Maps URLs without Places requests", () => {
 test("Phase 5.6d places details show a map preview before opening the add editor", () => {
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const appSource = readRepoFile("src/App.jsx");
+  const editorFormSource = readRepoFile("src/components/timeline/timelineEditorForm.js");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const stylesSource = readRepoFile("src/styles.css");
   const previewDialogCss = stylesSource.match(/\.places-preview-dialog \{[\s\S]*?\n\}/)?.[0] || "";
@@ -427,7 +429,7 @@ test("Phase 5.6d places details show a map preview before opening the add editor
   expect(googleProviderSource).toContain("setPlacesPreview(null)");
   expect(googleProviderSource).not.toContain("setPickedMapPoint(nextPreview)");
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
-  expect(appSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
+  expect(editorFormSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
   expect(staticProviderSource).not.toContain("places-preview-dialog");
   expect(stylesSource).toContain(".places-preview-dialog");
   expect(stylesSource).toContain(".places-preview-add-button");
