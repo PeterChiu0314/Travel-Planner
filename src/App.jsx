@@ -153,6 +153,7 @@ import SidebarTripSection from "./components/sidebar/SidebarTripSection.jsx";
 import DayTabs from "./components/timeline/DayTabs.jsx";
 import { buildExistingItemForm, buildNewTransportForm, buildNewVisitForm } from "./components/timeline/timelineEditorForm.js";
 import useTimelineMapPointPicker from "./components/timeline/useTimelineMapPointPicker.js";
+import useTimelineVisitDragSession from "./components/timeline/useTimelineVisitDragSession.js";
 import MultiDayTimelineColumns from "./components/timeline/MultiDayTimelineColumns.jsx";
 import TransportCategoryIcon from "./components/timeline/TransportCategoryIcon.jsx";
 import {
@@ -8132,9 +8133,6 @@ function ItineraryTimeline({
   const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
-  const [draggedVisitId, setDraggedVisitId] = useState(null);
-  const [dragOverlaySize, setDragOverlaySize] = useState(null);
-  const [dragTarget, setDragTarget] = useState(null);
   const [reorderPreview, setReorderPreview] = useState(null);
   const [isReorderingDestination, setIsReorderingDestination] = useState(false);
   const [isReorderingUntimed, setIsReorderingUntimed] = useState(false);
@@ -8210,7 +8208,16 @@ function ItineraryTimeline({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const lastDndOverIdRef = useRef(null);
+  const {
+    clearVisitDrag,
+    draggedVisitId,
+    dragOverlaySize,
+    dragTarget,
+    lastDndOverIdRef,
+    setDraggedVisitId,
+    setDragOverlaySize,
+    setDragTarget,
+  } = useTimelineVisitDragSession({ activeDay, tripId: activeTrip?.id, onClearDragPresence });
   const activeDayColumnRef = useRef(null);
   const activeTimelineListRef = useRef(null);
   const newVisitEditorRef = useRef(null);
@@ -8233,22 +8240,6 @@ function ItineraryTimeline({
     },
     [dragOverlaySize?.height],
   );
-
-  useEffect(() => {
-    clearVisitDrag("scope-change");
-  }, [activeDay, activeTrip?.id]);
-
-  useEffect(() => {
-    if (!draggedVisitId) return undefined;
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") clearVisitDrag("escape");
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      lastDndOverIdRef.current = null;
-    };
-  }, [draggedVisitId]);
 
   function canDragReorderVisit(item) {
     return (
@@ -8423,14 +8414,6 @@ function ItineraryTimeline({
     }
     event.dataTransfer.dropEffect = "move";
     setDragTarget({ disabled: false, itemId: item.id, placement });
-  }
-
-  function clearVisitDrag(reason = "manual") {
-    setDraggedVisitId(null);
-    setDragOverlaySize(null);
-    setDragTarget(null);
-    lastDndOverIdRef.current = null;
-    if (typeof onClearDragPresence === "function") onClearDragPresence(reason);
   }
 
   async function commitVisitDrop(sourceItemId, targetItem, placement) {
