@@ -453,6 +453,7 @@ test("Phase 5.2 map URL parsing is wired into hidden coordinate persistence only
 
 test("Phase 5.9 destination editor keeps invalid Map URL feedback inside the expandable point section", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
   const mapPointSource = readRepoFile("src/lib/mapPoint.js");
   const stylesSource = readRepoFile("src/styles.css");
@@ -467,7 +468,7 @@ test("Phase 5.9 destination editor keeps invalid Map URL feedback inside the exp
   expect(appSource).toContain("applyMapUrlDraft");
   const applyMapUrlDraftSource = appSource.match(/async function applyMapUrlDraft\(\) \{[\s\S]*?\n  \}/)?.[0] || "";
   expect(applyMapUrlDraftSource).not.toContain("setIsMapPointExpanded(false)");
-  expect(appSource).toContain("previewMapPoint: mapPointEditorState.previewMapPoint || null");
+  expect(pickerSource).toContain("previewMapPoint: mapPointEditorState.previewMapPoint || null");
   expect(appSource).toContain("onMapPointEditorActiveChange?.({ canPick: true, isOpen: true, previewMapPoint })");
   expect(routePanelSource).toContain("const previewDayItems = previewMapPoint?.itemId");
   expect(routePanelSource).toContain("buildRoutePanelStops(buildTimelineVisitDisplayOrder(previewDayItems)");
@@ -544,6 +545,7 @@ test("Phase 5.3 hotfix scrolls and spaces the bottom add editor", () => {
 
 test("Phase 5.9 destination editor reuses the existing map point picker through a text action", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const stylesSource = readRepoFile("src/styles.css");
 
   expect(appSource).toContain("map-point-picker-button");
@@ -551,7 +553,7 @@ test("Phase 5.9 destination editor reuses the existing map point picker through 
   expect(appSource).toContain("onCancelMapPointPick?.()");
   expect(appSource).toContain('isPickingMapPoint ? "取消選點" : "調整點位"');
   expect(appSource).toContain('isMapSearchReplaceActive ? "取消搜尋" : "搜尋替換"');
-  expect(appSource).toContain("canPickMapPoint: !isRouteLayoutCollapsed && canEdit");
+  expect(pickerSource).toContain("canPickMapPoint: !isRouteLayoutCollapsed && canEdit");
   expect(appSource).toContain("canPickMapPoint: false");
   expect(stylesSource).toContain(".map-point-picker-button");
   expect(stylesSource).toContain(".visit-map-point-actions");
@@ -559,6 +561,7 @@ test("Phase 5.9 destination editor reuses the existing map point picker through 
 
 test("Phase 5.9 visit editor uses compact linked time controls and a draft-only point workflow", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const formFieldsSource = readRepoFile("src/components/timeline/TimelineFormFields.jsx");
   const timelineTimeSource = readRepoFile("src/lib/timelineTime.js");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
@@ -598,7 +601,7 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
   expect(appSource).toContain("handleDurationWheel");
   expect(appSource).toContain('rows="2"');
   expect(appSource).toContain('onStartMapSearchReplace?.()');
-  expect(appSource).toContain('source: isMapUrlPoint || !isMapSearchReplaceActive ? "places-details" : "places-replace"');
+  expect(pickerSource).toContain('source: isMapUrlPoint || !isMapSearchReplaceActive ? "places-details" : "places-replace"');
   expect(googleProviderSource).toContain(': "更改地點"');
   expect(googleProviderSource).toContain("map-search-replace-overlay");
   expect(stylesSource).toContain(".visit-editor-primary-row");
@@ -620,6 +623,7 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
 
 test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
@@ -628,9 +632,9 @@ test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () =
   expect(appSource).toContain("googleMapsPointUrl(latitude, longitude)");
   expect(appSource).toContain("pickedMapPoint?.pickedAt");
   expect(appSource).toContain("setForm({");
-  expect(appSource).toContain("document.addEventListener(\"pointerdown\", handleDocumentPointerDown, true)");
-  expect(appSource).toContain(".google-map-surface");
-  expect(appSource).toContain(".map-point-picker-button");
+  expect(pickerSource).toContain("document.addEventListener(\"pointerdown\", handleDocumentPointerDown, true)");
+  expect(pickerSource).toContain(".google-map-surface");
+  expect(pickerSource).toContain(".map-point-picker-button");
   expect(mapPanelSource).toContain("isPickingMapPoint = false");
   expect(mapPanelSource).toContain("mapPointPickFeedback = \"\"");
   expect(mapPanelSource).toContain("onPickMapPoint");
@@ -735,20 +739,21 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
 
 test("Phase 5.5 Google map area custom point add flow stays provider scoped", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const stylesSource = readRepoFile("src/styles.css");
 
-  expect(appSource).toContain("const [mapPickingMode, setMapPickingMode] = useState(null)");
-  expect(appSource).toContain('setMapPickingMode(mode === "map-add" ? "map-add" : "editor")');
-  expect(appSource).toContain("source: mapPickingMode || \"editor\"");
+  expect(pickerSource).toContain("const [mapPickingMode, setMapPickingMode] = useState(null)");
+  expect(pickerSource).toContain('setMapPickingMode(mode === "map-add" ? "map-add" : "editor")');
+  expect(pickerSource).toContain("source: mapPickingMode || \"editor\"");
   expect(appSource).toContain('if (pickedMapPoint.source === "map-add")');
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
   expect(appSource).toContain("buildNewVisitForm(initialPoint = null)");
   expect(appSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
   expect(appSource).toContain("onMapPointEditorActiveChange?.({ canPick: Boolean(isOpen && !isTransportEditor), isOpen })");
-  expect(appSource).toContain("!mapPointEditorState.isOpen || mapPointEditorState.canPick");
+  expect(pickerSource).toContain("!mapPointEditorState.isOpen || mapPointEditorState.canPick");
   expect(mapPanelSource).toContain("hasActiveMapPointEditor = false");
   expect(mapPanelSource).toContain("mapPickingMode = null");
   expect(mapPanelSource).toContain("onStartMapPointPick");

@@ -17,16 +17,17 @@ function readRepoFile(filePath) {
 
 test("Dayboard add waits for a ready Map and enters the shared add-location flow", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
 
-  expect(appSource).toContain("onClick={onStartMapAddLocation || openNewItem}");
-  expect(appSource).toContain("if (isRouteLayoutCollapsed || isMapClosing)");
-  expect(appSource).toContain("openRouteMap();");
-  expect(appSource).toContain('animation.animationName === "timeline-map-reveal"');
-  expect(appSource).toContain("Promise.allSettled(revealAnimations.map((animation) => animation.finished))");
-  expect(appSource).toContain("function toggleRouteMapWithAddLocationCleanup()");
-  expect(appSource).toContain("if (!isRouteCollapsed && (isMapAddLocationActive || isMapAddLocationPending)) cancelMapAddLocation()");
+  expect(appSource).toContain("onClick={onStartMapAddLocation || (() => void openNewItem())}");
+  expect(pickerSource).toContain("if (isRouteLayoutCollapsed || isMapClosing)");
+  expect(pickerSource).toContain("openRouteMap();");
+  expect(pickerSource).toContain('animation.animationName === "timeline-map-reveal"');
+  expect(pickerSource).toContain("Promise.allSettled(revealAnimations.map((animation) => animation.finished))");
+  expect(pickerSource).toContain("function toggleRouteMapWithAddLocationCleanup()");
+  expect(pickerSource).toContain("if (!isRouteCollapsed && (isMapAddLocationActive || isMapAddLocationPending)) cancelMapAddLocation()");
   expect(appSource).toContain("onClick={toggleRouteMapWithAddLocationCleanup}");
   expect(mapPanelSource).toContain("isMapAddLocationActive");
   expect(googleProviderSource).toContain("new ResizeObserver(focusWhenMapHasSize)");
@@ -36,9 +37,10 @@ test("Dayboard add waits for a ready Map and enters the shared add-location flow
 
 test("add-location cancellation and all point sources keep the existing confirmation handoff", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
 
-  expect(appSource).toContain("setPickedMapPoint(null)");
+  expect(pickerSource).toContain("setPickedMapPoint(null)");
   expect(appSource).toContain('if (pickedMapPoint.source === "map-add")');
   expect(googleProviderSource).toContain("function exitMapAddLocation()");
   expect(googleProviderSource).toContain("clearPendingPoi();");
@@ -52,9 +54,10 @@ test("add-location cancellation and all point sources keep the existing confirma
 
 test("custom Map points open a coordinate-backed new editor with an immediate draft marker", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
 
-  expect(appSource).toContain('source: mapPickingMode || "editor"');
+  expect(pickerSource).toContain('source: mapPickingMode || "editor"');
   expect(appSource).toContain('if (pickedMapPoint.source === "map-add")');
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
   expect(routePanelSource).toContain('id: "itinerary-editor-preview"');
@@ -232,6 +235,7 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const appSource = readRepoFile("src/App.jsx");
+  const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const adapterSource = readRepoFile("src/lib/googlePlacesAdapter.js");
   const stylesSource = readRepoFile("src/styles.css");
@@ -300,13 +304,13 @@ test("Phase 5.6c autocomplete source fetches details before opening the add edit
   expect(googleProviderSource).not.toContain("onSaveItem");
   expect(googleProviderSource).not.toContain("supabase");
   expect(mapPanelSource).toContain("onSelectPlaceDetails");
-  expect(appSource).toContain('? "places-details" : "places-replace"');
+  expect(pickerSource).toContain('? "places-details" : "places-replace"');
   expect(appSource).toContain('pickedMapPoint.source === "places-details"');
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
-  expect(appSource).toContain("displayName: details.displayName || \"\"");
-  expect(appSource).toContain("googleMapsUri: isMapUrlPoint");
-  expect(appSource).toContain("? details.googleMapsUri || googleMapsPointUrl(latitude, longitude)");
-  expect(appSource).toContain(": googleMapsPointUrl(latitude, longitude)");
+  expect(pickerSource).toContain("displayName: details.displayName || \"\"");
+  expect(pickerSource).toContain("googleMapsUri: isMapUrlPoint");
+  expect(pickerSource).toContain("? details.googleMapsUri || googleMapsPointUrl(latitude, longitude)");
+  expect(pickerSource).toContain(": googleMapsPointUrl(latitude, longitude)");
   expect(appSource).toContain("title: placeName");
   expect(appSource).toContain("location_name: placeName");
   expect(appSource).toContain('String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)');
