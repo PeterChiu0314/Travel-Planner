@@ -52,14 +52,15 @@ test("add-location cancellation and all point sources keep the existing confirma
 
 test("custom Map points open a coordinate-backed new editor with an immediate draft marker", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
 
   expect(appSource).toContain('source: mapPickingMode || "editor"');
   expect(appSource).toContain('if (pickedMapPoint.source === "map-add")');
   expect(appSource).toContain("void openNewItem(pickedMapPoint)");
-  expect(appSource).toContain('id: "itinerary-editor-preview"');
+  expect(routePanelSource).toContain('id: "itinerary-editor-preview"');
   expect(appSource).toContain("locationName: activeVisitForm.location_name || activeVisitForm.location || activeVisitForm.title || \"新增地點\"");
-  expect(appSource).toContain("latitude: previewMapPoint.latitude");
-  expect(appSource).toContain("longitude: previewMapPoint.longitude");
+  expect(routePanelSource).toContain("latitude: previewMapPoint.latitude");
+  expect(routePanelSource).toContain("longitude: previewMapPoint.longitude");
 });
 
 test("new and existing visit editors share the same point editing section", () => {

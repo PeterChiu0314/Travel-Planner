@@ -34,3 +34,7 @@ export function transportRoleForPayload(payload) {
   if (!isTransportationCard(payload)) return null;
   return payload.from_item_id && payload.to_item_id ? transportRoles.normalPair : null;
 }
+
+export function transportPairKey(fromItemId, toItemId) {
+  return `${fromItemId || ""}->${toItemId || ""}`;
+}

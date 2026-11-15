@@ -503,6 +503,12 @@ test("Phase 5.9 visit editor keeps the compact layout and normalizes linked time
   await expect(startInput).toHaveValue("09:45");
   await startField.locator(".timeline-time-segment.minute").press("ArrowUp");
   await expect(startInput).toHaveValue("09:50");
+  await startField.locator(".timeline-time-segment.hour").evaluate((input) => {
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/plain", "0957");
+    input.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }));
+  });
+  await expect(startInput).toHaveValue("09:55");
 
   await startField.locator(".timeline-time-menu-toggle").click();
   const startTimeMenu = startField.locator(".timeline-time-menu");
@@ -643,6 +649,38 @@ test("Phase 5.9 new visit editor uses the same transparent card controls as the 
   expect(failures).toEqual([]);
 });
 
+test("Demo date tabs scroll on drag and still select a date on click", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/demo/timeline");
+  const tabs = page.getByRole("navigation", { name: "日期切換" });
+  const shell = page.locator(".timeline-top-row .day-tabs-shell");
+  const initialDay = await tabs.locator(".day-tab.active").getAttribute("data-day-index");
+  await tabs.scrollIntoViewIfNeeded();
+  const box = await tabs.boundingBox();
+  expect(box).not.toBeNull();
+
+  await expect.poll(() => tabs.evaluate((nav) => nav.scrollWidth - nav.clientWidth)).toBeGreaterThan(0);
+  const dragDirection = await tabs.evaluate((nav) => nav.scrollLeft > 0 ? 1 : -1);
+  const initialScroll = await tabs.evaluate((nav) => nav.scrollLeft);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dragDirection * 70, y, { steps: 7 });
+  await page.mouse.up();
+  await expect.poll(() => tabs.evaluate((nav) => nav.scrollLeft)).not.toBe(initialScroll);
+  await expect(tabs.locator(".day-tab.active")).toHaveAttribute("data-day-index", initialDay);
+
+  const nextDay = String(Number(initialDay) === 0 ? 1 : 0);
+  const nextTab = tabs.locator(`[data-day-index="${nextDay}"]`);
+  await nextTab.click();
+  await expect(nextTab).toHaveClass(/\bactive\b/);
+  await expect(page.locator(`.timeline-day-column.active[data-day-index="${nextDay}"]`)).toHaveCount(1);
+  await page.getByRole("button", { name: "隱藏地圖", exact: true }).click();
+  await expect(shell).toHaveClass(/is-collapsed/);
+  await expect(nextTab).toHaveClass(/\bactive\b/);
+});
+
 test("demo trip switch resets an out-of-range selected day board", async ({ page }) => {
   const failures = collectConsoleFailures(page);
   const supabaseRequests = collectSupabaseRequests(page);
@@ -661,8 +699,14 @@ test("demo trip switch resets an out-of-range selected day board", async ({ page
   await expect(page.locator(".day-tab.active")).toHaveCount(1);
   await expect(page.locator(".timeline-day-column.active")).toHaveCount(1);
   await expect(page.locator('.timeline-day-column[data-day-index="5"]')).toHaveCount(0);
+  await page.getByRole("button", { name: "收合側欄", exact: true }).click();
+  await page.getByRole("button", { name: "我的旅程", exact: true }).click();
+  await expect(page.locator("#demo-sidebar-trips-flyout")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Demo 模式不支援新增旅程", exact: true })).toBeDisabled();
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);
+  await page.getByRole("button", { name: "Return to login", exact: true }).click();
+  await expect(page).toHaveURL("/");
 });
 
 test("Phase 5.8 Timeline cards stage focus before expansion and reset across markers and days", async ({ page }) => {
@@ -683,10 +727,15 @@ test("Phase 5.8 Timeline cards stage focus before expansion and reset across mar
 
   const markers = page.locator(".static-map-marker");
   expect(await markers.count()).toBeGreaterThan(1);
-  await markers.nth(1).evaluate((marker) => marker.click());
+  const marker = markers.nth(1);
+  const markerLabel = await marker.locator(".static-map-marker-label").innerText();
+  await marker.evaluate((button) => button.click());
+  await expect(marker).toHaveClass(/\bfocused\b/);
   await expect(firstVisit).not.toHaveClass(/focused/);
   await expect(firstVisit).not.toHaveClass(/expanded/);
-  await expect(page.locator(".timeline-day-column.active .timeline-item.focused")).toHaveCount(1);
+  const focusedVisit = page.locator(".timeline-day-column.active .timeline-item.focused");
+  await expect(focusedVisit).toHaveCount(1);
+  await expect(focusedVisit).toContainText(markerLabel);
   await expect(page.locator(".timeline-day-column.active .timeline-item.expanded")).toHaveCount(0);
 
   const firstTransport = page.locator(".timeline-day-column.active .transport-card").first();
@@ -698,10 +747,20 @@ test("Phase 5.8 Timeline cards stage focus before expansion and reset across mar
   await expect(firstTransport).toHaveClass(/focused/);
   await expect(firstTransport).toHaveClass(/expanded/);
 
+  const routePanel = page.locator(".side-panels > .route-panel");
+  await page.getByRole("button", { name: "隱藏地圖", exact: true }).click();
+  await expect(routePanel).toHaveCount(0);
+  await expect(firstTransport).toHaveClass(/\bfocused\b/);
+
   await page.locator('.day-tab[data-day-index="1"]').click();
   await expect(page.locator('.timeline-day-column.active[data-day-index="1"]')).toHaveCount(1);
   await expect(page.locator(".timeline-day-column.active .focused")).toHaveCount(0);
   await expect(page.locator(".timeline-day-column.active .expanded")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "顯示地圖", exact: true }).click();
+  await expect(routePanel).toBeVisible();
+  await expect(markers.first()).toBeVisible();
+  await expect(routePanel.locator(".focused, .route-stop-transport-endpoint")).toHaveCount(0);
 
   await page.locator('.day-tab[data-day-index="0"]').click();
   await expect(page.locator('.timeline-day-column.active[data-day-index="0"]')).toHaveCount(1);

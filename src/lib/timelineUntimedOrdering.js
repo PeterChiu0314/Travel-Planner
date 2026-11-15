@@ -62,6 +62,14 @@ export function isUntimedVisit(item) {
   return Boolean(item) && !isTransportationCard(item) && !isTimedVisit(item);
 }
 
+export function sortScheduleItems(items) {
+  return [...items].sort((a, b) => {
+    const timeSort = (isTimedVisit(a) ? a.start_time : "99:99").localeCompare(isTimedVisit(b) ? b.start_time : "99:99");
+    const orderSort = Number(a.sort_order || 0) - Number(b.sort_order || 0);
+    return timeSort || orderSort;
+  });
+}
+
 export function buildTimelineVisitDisplayOrder(items = []) {
   const visits = items.filter((item) => !isTransportationCard(item));
   const timedVisits = visits.filter(isTimedVisit).sort(compareTimedVisits);
