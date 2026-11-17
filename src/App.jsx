@@ -166,6 +166,7 @@ import {
 } from "./components/timeline/TimelineFormFields.jsx";
 import TripDateRangeSelector from "./components/trip/TripDateRangeSelector.jsx";
 import { HeaderMemberPresencePreview, TripDateChangePreview, TripHeaderIcon } from "./components/trip/TripHeaderParts.jsx";
+import useTripHeaderDestinationEditor from "./components/trip/useTripHeaderDestinationEditor.js";
 import useTripHeaderTitleEditor from "./components/trip/useTripHeaderTitleEditor.js";
 import TripDialog from "./components/trip/TripDialog.jsx";
 import TripImportPreviewDialog from "./components/trip-import/TripImportPreviewDialog.jsx";
@@ -5598,11 +5599,6 @@ function TripHeader({
   const [developerEndDateDraft, setDeveloperEndDateDraft] = useState("");
   const [developerToolsError, setDeveloperToolsError] = useState("");
   const [isApplyingDeveloperDates, setIsApplyingDeveloperDates] = useState(false);
-  const [isDestinationPopoverOpen, setIsDestinationPopoverOpen] = useState(false);
-  const [countryDraft, setCountryDraft] = useState("");
-  const [cityDraft, setCityDraft] = useState("");
-  const [destinationError, setDestinationError] = useState("");
-  const [isSavingDestination, setIsSavingDestination] = useState(false);
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [startDateDraft, setStartDateDraft] = useState("");
   const [endDateDraft, setEndDateDraft] = useState("");
@@ -5619,15 +5615,10 @@ function TripHeader({
   const menuRef = useRef(null);
   const developerStartDateRef = useRef(null);
   const developerDateSaveRef = useRef(false);
-  const destinationPopoverRef = useRef(null);
-  const destinationButtonRef = useRef(null);
-  const countryInputRef = useRef(null);
-  const cityInputRef = useRef(null);
   const datePopoverRef = useRef(null);
   const dateButtonRef = useRef(null);
   const dateDialogRef = useRef(null);
   const startDateTextInputRef = useRef(null);
-  const destinationSaveRef = useRef(false);
   const dateSaveRef = useRef(false);
   const meta = useMemo(() => {
     const value = buildTripHeaderMeta(trip, members, days);
@@ -5736,34 +5727,31 @@ function TripHeader({
     titleInputRef,
   } = useTripHeaderTitleEditor({ title: trip?.title, canEditTitle, onUpdateTrip });
 
-  useEffect(() => {
-    if (!isDestinationPopoverOpen) return undefined;
-    requestAnimationFrame(() => {
-      countryInputRef.current?.focus();
-    });
-    function closeOnEscape(event) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeDestinationPopover();
-      }
-    }
-    function closeOnOutsidePointer(event) {
-      if (destinationPopoverRef.current && !destinationPopoverRef.current.contains(event.target)) {
-        closeDestinationPopover();
-      }
-    }
-    document.addEventListener("keydown", closeOnEscape);
-    document.addEventListener("pointerdown", closeOnOutsidePointer);
-    return () => {
-      document.removeEventListener("keydown", closeOnEscape);
-      document.removeEventListener("pointerdown", closeOnOutsidePointer);
-    };
-  }, [isDestinationPopoverOpen]);
-
-  useEffect(() => {
-    if (!isDestinationPopoverOpen) return;
-    closeDestinationPopover({ restoreFocus: false });
-  }, [activeSection, trip?.id]);
+  const {
+    beginDestinationEdit,
+    cityDraft,
+    cityInputRef,
+    closeDestinationPopover,
+    countryDraft,
+    countryInputRef,
+    destinationButtonRef,
+    destinationError,
+    destinationPopoverRef,
+    handleCityChange,
+    handleCountryChange,
+    handleDestinationKeyDown,
+    isDestinationPopoverOpen,
+    isSavingDestination,
+    saveDestinationDrafts,
+  } = useTripHeaderDestinationEditor({
+    trip,
+    activeSection,
+    canOpenDestinationPopover,
+    onUpdateTrip,
+    tripDestinationParts,
+    destinationPatchFromParts,
+    combineTripDestination,
+  });
 
   useEffect(() => {
     if (!isDeveloperToolsOpen) return;
@@ -5888,18 +5876,6 @@ function TripHeader({
     return true;
   }
 
-  function closeDestinationPopover({ restoreFocus = true } = {}) {
-    setIsDestinationPopoverOpen(false);
-    setDestinationError("");
-    setIsSavingDestination(false);
-    destinationSaveRef.current = false;
-    if (restoreFocus) {
-      requestAnimationFrame(() => {
-        destinationButtonRef.current?.focus();
-      });
-    }
-  }
-
   async function toggleDestinationPopover() {
     if (isDestinationPopoverOpen) {
       closeDestinationPopover();
@@ -5917,58 +5893,7 @@ function TripHeader({
       const canContinue = await saveTitleDraft();
       if (!canContinue) return;
     }
-    const { country, city } = tripDestinationParts(trip);
-    setCountryDraft(country);
-    setCityDraft(city);
-    setDestinationError("");
-    setIsDestinationPopoverOpen(true);
-  }
-
-  async function saveDestinationDrafts() {
-    if (!canOpenDestinationPopover || destinationSaveRef.current) return false;
-    const nextCountry = countryDraft.trim();
-    const nextCity = cityDraft.trim();
-    const patch = destinationPatchFromParts(nextCountry, nextCity);
-    const currentParts = tripDestinationParts(trip);
-    const currentDestination = combineTripDestination(currentParts.country, currentParts.city);
-    if (
-      patch.destination_country === (currentParts.country || null) &&
-      patch.destination_city === (currentParts.city || null) &&
-      patch.destination === currentDestination
-    ) {
-      closeDestinationPopover();
-      return true;
-    }
-    setDestinationError("");
-    destinationSaveRef.current = true;
-    setIsSavingDestination(true);
-    let result;
-    try {
-      result = await onUpdateTrip(patch);
-    } catch (error) {
-      result = { ok: false, error };
-    }
-    if (result?.ok === false) {
-      destinationSaveRef.current = false;
-      setIsSavingDestination(false);
-      setDestinationError("儲存失敗，請再試一次");
-      return false;
-    }
-    destinationSaveRef.current = false;
-    setIsSavingDestination(false);
-    closeDestinationPopover();
-    return true;
-  }
-
-  function handleDestinationKeyDown(event, field) {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (field === "country") {
-      cityInputRef.current?.focus();
-      return;
-    }
-    saveDestinationDrafts();
+    beginDestinationEdit();
   }
 
   function closeDatePopover({ restoreFocus = true } = {}) {
@@ -6329,10 +6254,7 @@ function TripHeader({
                                 aria-describedby={destinationError ? "trip-header-destination-error" : undefined}
                                 disabled={isSavingDestination}
                                 value={countryDraft}
-                                onChange={(event) => {
-                                  setCountryDraft(event.target.value);
-                                  if (destinationError) setDestinationError("");
-                                }}
+                                onChange={handleCountryChange}
                                 onKeyDown={(event) => handleDestinationKeyDown(event, "country")}
                               />
                             </label>
@@ -6346,10 +6268,7 @@ function TripHeader({
                                 aria-describedby={destinationError ? "trip-header-destination-error" : undefined}
                                 disabled={isSavingDestination}
                                 value={cityDraft}
-                                onChange={(event) => {
-                                  setCityDraft(event.target.value);
-                                  if (destinationError) setDestinationError("");
-                                }}
+                                onChange={handleCityChange}
                                 onKeyDown={(event) => handleDestinationKeyDown(event, "city")}
                               />
                             </label>
