@@ -25,7 +25,7 @@ import {
   startOfMonth,
 } from "./lib/tripDateUi.js";
 import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
-import {expenseFinancialSnapshot,expenseTimelineCosts,olderExpenseSnapshot} from './lib/expenseSnapshot.js';
+import {expenseFinancialSnapshot,expenseTimelineCosts,expenseTimelineCostsByItem,olderExpenseSnapshot} from './lib/expenseSnapshot.js';
 import {createDemoExpenseService} from './demo/expenseService.js';
 import {budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
@@ -1559,6 +1559,11 @@ export default function App() {
   const budgetSnapshot = canReadTrip(tripDataContext.key) && budgetSnapshotState
     && requestGuard.sameContext(budgetSnapshotState.context) ? budgetSnapshotState.data : null;
   const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks } = budgetSnapshot ?? emptyBudgetSnapshot();
+  const expenseGraph = budgetSnapshot?.expenseGraph;
+  const budgetsByItem = useMemo(
+    () => expenseTimelineCostsByItem(expenseGraph, itineraryBudgetLinks),
+    [expenseGraph, itineraryBudgetLinks],
+  );
   const budgetSnapshotRef = useRef({ context: tripDataContext, data: emptyBudgetSnapshot() });
   if (!requestGuard.sameContext(budgetSnapshotRef.current.context)) {
     budgetSnapshotRef.current = { context: tripDataContext, data: emptyBudgetSnapshot() };
@@ -5277,13 +5282,13 @@ export default function App() {
             onRefreshBudget={refreshBudget}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
+            budgetsByItem={budgetsByItem}
             canEditBudget={canEdit}
             canEdit={canEditActiveTripContent}
             dayItems={dayItems}
             days={days}
             isOwner={isOwner}
             items={items}
-            itineraryBudgetLinks={itineraryBudgetLinks}
             guideItems={guideItems}
             currentUserId={session.user.id}
             foreignCardSelection={foreignCardSelection}
@@ -7442,6 +7447,7 @@ function TripWorkspace(props) {
     budgetItems,
     budgetParticipants,
     budgetSnapshot,
+    budgetsByItem,
     onRefreshBudget,
     canEditBudget,
     canEdit,
@@ -7449,7 +7455,6 @@ function TripWorkspace(props) {
     days,
     isOwner,
     items,
-    itineraryBudgetLinks,
     guideItems,
     currentUserId,
     foreignCardSelection,
@@ -7527,17 +7532,6 @@ function TripWorkspace(props) {
     });
     return next;
   }, [alternatives]);
-  const budgetsByItem = useMemo(() => {
-    const native=props.budgetSnapshot?.expenseGraph;
-    const byId = new Map(native ? expenseTimelineCosts(native).map(item => [item.id, item]) : []);
-    const next = {};
-    itineraryBudgetLinks.forEach((link) => {
-      const budget = byId.get(link.budget_item_id);
-      if (!budget) return;
-      next[link.itinerary_item_id] = [...(next[link.itinerary_item_id] || []), budget];
-    });
-    return next;
-  }, [itineraryBudgetLinks, props.budgetSnapshot?.expenseGraph]);
   const itemsByDay = useMemo(
     () => days.map((_, index) => sortScheduleItems(items.filter((item) => item.day_index === index))),
     [days, items],
