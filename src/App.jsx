@@ -166,6 +166,7 @@ import {
 } from "./components/timeline/TimelineFormFields.jsx";
 import TripDateRangeSelector from "./components/trip/TripDateRangeSelector.jsx";
 import { HeaderMemberPresencePreview, TripDateChangePreview, TripHeaderIcon } from "./components/trip/TripHeaderParts.jsx";
+import useTripHeaderTitleEditor from "./components/trip/useTripHeaderTitleEditor.js";
 import TripDialog from "./components/trip/TripDialog.jsx";
 import TripImportPreviewDialog from "./components/trip-import/TripImportPreviewDialog.jsx";
 import AiTripExchangeDialog from "./components/trip-import/AiTripExchangeDialog.jsx";
@@ -5597,10 +5598,6 @@ function TripHeader({
   const [developerEndDateDraft, setDeveloperEndDateDraft] = useState("");
   const [developerToolsError, setDeveloperToolsError] = useState("");
   const [isApplyingDeveloperDates, setIsApplyingDeveloperDates] = useState(false);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState("");
-  const [titleError, setTitleError] = useState("");
-  const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isDestinationPopoverOpen, setIsDestinationPopoverOpen] = useState(false);
   const [countryDraft, setCountryDraft] = useState("");
   const [cityDraft, setCityDraft] = useState("");
@@ -5630,8 +5627,6 @@ function TripHeader({
   const dateButtonRef = useRef(null);
   const dateDialogRef = useRef(null);
   const startDateTextInputRef = useRef(null);
-  const titleInputRef = useRef(null);
-  const titleSaveRef = useRef(false);
   const destinationSaveRef = useRef(false);
   const dateSaveRef = useRef(false);
   const meta = useMemo(() => {
@@ -5728,13 +5723,18 @@ function TripHeader({
     };
   }, [isMoreOpen]);
 
-  useEffect(() => {
-    if (!isEditingTitle) return;
-    requestAnimationFrame(() => {
-      titleInputRef.current?.focus();
-      titleInputRef.current?.select();
-    });
-  }, [isEditingTitle]);
+  const {
+    beginTitleEdit,
+    handleTitleBlur,
+    handleTitleChange,
+    handleTitleKeyDown,
+    isEditingTitle,
+    isSavingTitle,
+    saveTitleDraft,
+    titleDraft,
+    titleError,
+    titleInputRef,
+  } = useTripHeaderTitleEditor({ title: trip?.title, canEditTitle, onUpdateTrip });
 
   useEffect(() => {
     if (!isDestinationPopoverOpen) return undefined;
@@ -6245,69 +6245,7 @@ function TripHeader({
     closeDestinationPopover({ restoreFocus: false });
     closeDatePopover({ restoreFocus: false });
     closeDeveloperTools();
-    setTitleDraft(trip?.title || "");
-    setTitleError("");
-    setIsEditingTitle(true);
-  }
-
-  function cancelTitleEdit() {
-    setTitleDraft(trip?.title || "");
-    setTitleError("");
-    setIsEditingTitle(false);
-    setIsSavingTitle(false);
-    titleSaveRef.current = false;
-  }
-
-  async function saveTitleDraft() {
-    if (!canEditTitle || titleSaveRef.current) return false;
-    const nextTitle = titleDraft.trim();
-    const currentTitle = String(trip?.title || "").trim();
-    if (!nextTitle) {
-      setTitleError("旅程名稱不能為空白");
-      return false;
-    }
-    if (nextTitle === currentTitle) {
-      setTitleError("");
-      setIsEditingTitle(false);
-      return true;
-    }
-    setTitleError("");
-    titleSaveRef.current = true;
-    setIsSavingTitle(true);
-    let result;
-    try {
-      result = await onUpdateTrip({ title: nextTitle });
-    } catch (error) {
-      result = { ok: false, error };
-    }
-    if (result?.ok === false) {
-      titleSaveRef.current = false;
-      setIsSavingTitle(false);
-      setTitleError("儲存失敗，請再試一次");
-      return false;
-    }
-    titleSaveRef.current = false;
-    setIsSavingTitle(false);
-    setIsEditingTitle(false);
-    setTitleDraft("");
-    return true;
-  }
-
-  function handleTitleKeyDown(event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      event.stopPropagation();
-      saveTitleDraft();
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      cancelTitleEdit();
-    }
-  }
-
-  function handleTitleBlur() {
-    saveTitleDraft();
+    beginTitleEdit();
   }
 
   return (
@@ -6326,10 +6264,7 @@ function TripHeader({
                   disabled={isSavingTitle}
                   value={titleDraft}
                   onBlur={handleTitleBlur}
-                  onChange={(event) => {
-                    setTitleDraft(event.target.value);
-                    if (titleError) setTitleError("");
-                  }}
+                  onChange={handleTitleChange}
                   onKeyDown={handleTitleKeyDown}
                 />
                 {titleError ? (
