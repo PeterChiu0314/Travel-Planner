@@ -4,6 +4,13 @@ import AccommodationPanel from "./components/AccommodationPanel.jsx";
 import ConflictNotice from "./components/ConflictNotice.jsx";
 import TodoGuidePanel from "./components/TodoGuidePanel.jsx";
 import {
+  deleteGuide as deleteFormalGuide,
+  deleteTodo as deleteFormalTodo,
+  saveGuide as saveFormalGuide,
+  saveTodo as saveFormalTodo,
+  toggleTodo as toggleFormalTodo,
+} from "./features/todo-guide/formalCommands.js";
+import {
   ActiveEditorGuardDialog,
   getDirtyActiveEditorGuards,
   requestActiveEditorGuardResolution,
@@ -4423,15 +4430,14 @@ export default function App() {
   async function saveGuide(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const nextPayload = {
-      trip_id: activeTrip.id,
-      title: payload.title.trim(),
-      description: payload.description.trim() || null,
-      url: payload.url.trim() || null,
-    };
-    const result = editingId
-      ? await updateWithConflictCheck("guide_items", nextPayload, editingId, meta)
-      : await supabase.from("guide_items").insert(nextPayload);
+    const result = await saveFormalGuide({
+      client: supabase,
+      tripId: activeTrip.id,
+      payload,
+      editingId,
+      meta,
+      updateWithConflictCheck,
+    });
     if (result.error) notify.error(result.error.message);
     else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
@@ -4440,7 +4446,7 @@ export default function App() {
 
   async function deleteGuide(guideId) {
     if (!activeTrip || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("guide_items").delete().eq("id", guideId);
+    const { error } = await deleteFormalGuide({ client: supabase, guideId });
     if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
@@ -4448,17 +4454,14 @@ export default function App() {
   async function saveTodo(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const nextPayload = {
-      trip_id: activeTrip.id,
-      title: payload.title.trim(),
-      description: payload.description.trim() || null,
-      due_date: payload.due_date || null,
-      assignee_id: payload.assignee_id || null,
-      guide_id: payload.guide_id || null,
-    };
-    const result = editingId
-      ? await updateWithConflictCheck("todo_items", nextPayload, editingId, meta)
-      : await supabase.from("todo_items").insert(nextPayload);
+    const result = await saveFormalTodo({
+      client: supabase,
+      tripId: activeTrip.id,
+      payload,
+      editingId,
+      meta,
+      updateWithConflictCheck,
+    });
     if (result.error) notify.error(result.error.message);
     else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
@@ -4467,14 +4470,14 @@ export default function App() {
 
   async function toggleTodo(todo) {
     if (!canEditActiveTripContent) return;
-    const { error } = await supabase.from("todo_items").update({ completed: !todo.completed }).eq("id", todo.id);
+    const { error } = await toggleFormalTodo({ client: supabase, todo });
     if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function deleteTodo(todoId) {
     if (!activeTrip || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("todo_items").delete().eq("id", todoId);
+    const { error } = await deleteFormalTodo({ client: supabase, todoId });
     if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
