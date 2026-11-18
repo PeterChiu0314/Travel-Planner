@@ -46,13 +46,13 @@ async function boot(page) {
     mock.client = {
       auth: { getSession: async () => ({ data: { session: session() } }), onAuthStateChange(callback) { callbacks.push(callback); return { data: { subscription: { unsubscribe() {} } } }; }, signOut: async () => { callbacks.forEach(c => c("SIGNED_OUT", null)); return {}; } },
       from(table) {
-        const filters = []; let columns = "", single = false;
+        const filters = [], orders = []; let columns = "", single = false;
         const query = {
-          select(value = "*") { columns = value; return this; }, eq(k, v) { filters.push([k, v]); return this; }, order() { return this; }, maybeSingle() { single = true; return this; }, in() { return this; },
+          select(value = "*") { columns = value; return this; }, eq(k, v) { filters.push([k, v]); return this; }, order(...args) { orders.push(args); return this; }, maybeSingle() { single = true; return this; }, in() { return this; },
           then(resolve, reject) {
             const user = actor;
             const tripId = filters.find(([k]) => k === "trip_id")?.[1];
-            mock.reads.push({ table, user, tripId });
+            mock.reads.push({ table, user, tripId, columns, filters, orders });
             let data = table === "trip_members" ? columns.includes("trips(") ? allMembers.map(m => ({ ...m, trips: m.trip_id === "other" ? otherTrip : trip })) : allMembers : rows[table] || [];
             data = data.filter(row => filters.every(([k, v]) => row[k] === v));
             if (table === "luggage_items") data = data.filter(row => row.owner_id === user);
@@ -84,14 +84,32 @@ async function boot(page) {
   await page.waitForTimeout(200);
 }
 
+function expectedLuggageRead(table, user) {
+  const filters = [["trip_id", "trip"]];
+  if (table === "luggage_items") filters.push(["owner_id", user]);
+  return { table, user, tripId: "trip", columns: "*", filters, orders: [["created_at"]] };
+}
+
 test.afterEach(async ({ page }) => { expect(page.qaErrors).toEqual([]); });
 
 test("real App rejects delayed A responses after switching to B in the same trip", async ({ page }) => {
   await boot(page);
-  await page.evaluate(() => { formalLuggageMock.holdA = true; window.dispatchEvent(new Event("focus")); });
+  await page.evaluate(() => { formalLuggageMock.reads = []; formalLuggageMock.emit("accommodations"); });
+  await expect.poll(() => page.evaluate(() => formalLuggageMock.reads), { message: "full trip load queries" }).toEqual(expect.arrayContaining([
+    expect.objectContaining({ table: "accommodations" }),
+    expectedLuggageRead("luggage_items", "A"),
+    expectedLuggageRead("shared_luggage_items", "A"),
+  ]));
+
+  await page.evaluate(() => { formalLuggageMock.reads = []; formalLuggageMock.holdA = true; window.dispatchEvent(new Event("focus")); });
   await expect.poll(() => page.evaluate(() => formalLuggageMock.pending.length)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => formalLuggageMock.reads), { message: "scoped refresh queries" }).toEqual(expect.arrayContaining([
+    expectedLuggageRead("luggage_items", "A"),
+    expectedLuggageRead("shared_luggage_items", "A"),
+  ]));
   await page.evaluate(() => formalLuggageMock.switchAccount("B"));
   await expect(page.getByRole("button", { name: "編輯：B private", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => formalLuggageMock.reads)).toContainEqual(expectedLuggageRead("luggage_items", "B"));
   await page.evaluate(() => formalLuggageMock.release());
   await expect(page.getByRole("button", { name: "編輯：A private", exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => Object.values(localStorage).filter(v => v.includes("A secret notes")))).toEqual([]);
@@ -110,7 +128,7 @@ test("real App private mutations read zero tables; shared event bursts read only
   });
   await expect(page.getByRole("button", { name: "編輯指派共用物品：Team updated", exact: true })).toBeVisible();
   await expect(page.locator("#lb-shared").getByRole("button", { name: "編輯：Team updated", exact: true })).toBeVisible();
-  expect(await page.evaluate(() => formalLuggageMock.reads.map(r => r.table))).toEqual(["shared_luggage_items"]);
+  expect(await page.evaluate(() => formalLuggageMock.reads)).toEqual([expectedLuggageRead("shared_luggage_items", "A")]);
 });
 
 test("older full loads cannot roll back a successful shared RPC or its offline snapshot", async ({ page }) => {

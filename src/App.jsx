@@ -40,7 +40,7 @@ import { createBudgetRefresh, emptyBudgetSnapshot, cachedExpenseGraph, nonFinanc
 import { getMapProviderConfig } from "./lib/mapProviderConfig.js";
 import { submitTimelineSchedule } from "./lib/timelineScheduleService.js";
 import { onPostgresChangesReady } from "./lib/realtimePostgresReadiness.js";
-import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
+import { createRequestGuard, createLuggageRefresh, readLuggageScope, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
 import { useSiteDialog } from "./components/SiteDialog.jsx";
 import { notify } from "./lib/notifications.js";
 import { createSyncNotifications } from "./lib/syncNotifications.js";
@@ -1641,9 +1641,7 @@ export default function App() {
       const [userId, tripId] = JSON.parse(key);
       const access = tripReadAccessRef.current;
       if (!canReadTrip(key)) return { data: [], feedbackCheckpoint };
-      let query = supabase.from(scope === "personal" ? "luggage_items" : "shared_luggage_items").select("*").eq("trip_id", tripId);
-      if (scope === "personal") query = query.eq("owner_id", userId);
-      const result = await query.order("created_at");
+      const result = await readLuggageScope(supabase, { scope, tripId, userId });
       return { ...(tripReadAccessRef.current === access && canReadTrip(key) ? result : { data: [] }), feedbackCheckpoint };
     },
     apply: (scope, rows) => {
@@ -2267,8 +2265,8 @@ export default function App() {
       supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
       supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
-      supabase.from("luggage_items").select("*").eq("trip_id", tripId).eq("owner_id", userId).order("created_at"),
-      supabase.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
+      readLuggageScope(supabase, { scope: "personal", tripId, userId }),
+      readLuggageScope(supabase, { scope: "shared", tripId }),
       supabase.from("attachments").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("trip_members").select("id,trip_id,user_id,role,status,created_at,display_name,email").eq("trip_id", tripId).order("created_at"),
