@@ -1,5 +1,9 @@
 import { isTransportationCard } from "./timelineTransportationRoles.js";
 
+export function googleMapsPointUrl(latitude, longitude) {
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+}
+
 function finiteNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(String(value).trim());

@@ -43,6 +43,17 @@ export function expenseFinancialSnapshot(data){
   items:data.itineraryItems||[],members:data.members||[],attachments:[],tripBudgetRates:data.rates,expenseGraph:data,expenseVerified:true};
 }
 export function expenseTimelineCosts(data){return expenseModels(data).flatMap(item=>{const bundle=item.payment_state==='paid'&&item.paid?item.paid:item.budget;return bundle?[{...bundle,expenseScope:item.payment_state==='paid'&&item.paid?'paid':'budget',id:item.id,title:item.title,category:item.category,payer_id:item.payer_id,trip_id:item.trip_id}]:[];});}
+export function expenseTimelineCostsByItem(expenseGraph, itineraryBudgetLinks) {
+  if (!expenseGraph) return {};
+  const costsById = new Map(expenseTimelineCosts(expenseGraph).map((expense) => [expense.id, expense]));
+  const costsByItem = {};
+  for (const { budget_item_id, itinerary_item_id } of itineraryBudgetLinks) {
+    const expense = costsById.get(budget_item_id);
+    if (!expense) continue;
+    (costsByItem[itinerary_item_id] ??= []).push(expense);
+  }
+  return costsByItem;
+}
 export const validExpenseSnapshot=(data,trip)=>data?.schemaVersion===1&&data.tripId===trip&&['items','participants','groups','links'].every(k=>Array.isArray(data[k]))
  &&new Set(data.items.map(i=>i.id)).size===data.items.length&&data.items.every(i=>i.trip_id===trip&&['draft','unpaid','paid'].includes(i.payment_state))
  &&data.participants.every(p=>data.items.some(i=>i.id===p.expense_id))&&data.groups.every(g=>data.items.some(i=>i.id===g.id)&&Number.isSafeInteger(g.revision));

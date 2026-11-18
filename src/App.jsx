@@ -25,7 +25,7 @@ import {
   startOfMonth,
 } from "./lib/tripDateUi.js";
 import ExpenseWorkspace from './components/budget/ExpenseWorkspace.jsx';
-import {expenseFinancialSnapshot,expenseTimelineCosts,olderExpenseSnapshot} from './lib/expenseSnapshot.js';
+import {expenseFinancialSnapshot,expenseTimelineCosts,expenseTimelineCostsByItem,olderExpenseSnapshot} from './lib/expenseSnapshot.js';
 import {createDemoExpenseService} from './demo/expenseService.js';
 import {budgetReceiptsDisabled,budgetReceiptUnavailableMessage,isBudgetReceiptTarget} from './lib/budgetReceiptConfig.js';
 import { readOfflineTrips, writeOfflineTrips, readOfflineTripData, writeOfflineTripData, updateOfflineSharedLuggage, updateOfflineBudget, clearOfflineAccount } from "./lib/offlineCache.js";
@@ -104,7 +104,7 @@ import {
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { resolveGoogleMapsShortUrl } from "./lib/googleMapsShortLinkResolver.js";
 import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "./lib/googleMapsNavigation.js";
-import { hasValidMapPoint, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
+import { googleMapsPointUrl, hasValidMapPoint, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import {
   applyTimelineSchedulePlanToItems,
@@ -151,6 +151,9 @@ import MembersInviteDialog from "./components/members/MembersInviteDialog.jsx";
 import SidebarAccountMenu from "./components/sidebar/SidebarAccountMenu.jsx";
 import SidebarTripSection from "./components/sidebar/SidebarTripSection.jsx";
 import DayTabs from "./components/timeline/DayTabs.jsx";
+import { buildExistingItemForm, buildNewTransportForm, buildNewVisitForm } from "./components/timeline/timelineEditorForm.js";
+import useTimelineMapPointPicker from "./components/timeline/useTimelineMapPointPicker.js";
+import useTimelineVisitDragSession from "./components/timeline/useTimelineVisitDragSession.js";
 import MultiDayTimelineColumns from "./components/timeline/MultiDayTimelineColumns.jsx";
 import TransportCategoryIcon from "./components/timeline/TransportCategoryIcon.jsx";
 import {
@@ -163,6 +166,8 @@ import {
 } from "./components/timeline/TimelineFormFields.jsx";
 import TripDateRangeSelector from "./components/trip/TripDateRangeSelector.jsx";
 import { HeaderMemberPresencePreview, TripDateChangePreview, TripHeaderIcon } from "./components/trip/TripHeaderParts.jsx";
+import useTripHeaderDestinationEditor from "./components/trip/useTripHeaderDestinationEditor.js";
+import useTripHeaderTitleEditor from "./components/trip/useTripHeaderTitleEditor.js";
 import TripDialog from "./components/trip/TripDialog.jsx";
 import TripImportPreviewDialog from "./components/trip-import/TripImportPreviewDialog.jsx";
 import AiTripExchangeDialog from "./components/trip-import/AiTripExchangeDialog.jsx";
@@ -506,10 +511,6 @@ function getDurationMinutes(startTime, endTime) {
   const end = timeToMinutes(endTime);
   if (start === null || end === null || end <= start) return "";
   return String(end - start);
-}
-
-function googleMapsPointUrl(latitude, longitude) {
-  return `https://www.google.com/maps?q=${latitude},${longitude}`;
 }
 
 function dateTimeLocalInput(date = new Date()) {
@@ -1558,6 +1559,11 @@ export default function App() {
   const budgetSnapshot = canReadTrip(tripDataContext.key) && budgetSnapshotState
     && requestGuard.sameContext(budgetSnapshotState.context) ? budgetSnapshotState.data : null;
   const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks } = budgetSnapshot ?? emptyBudgetSnapshot();
+  const expenseGraph = budgetSnapshot?.expenseGraph;
+  const budgetsByItem = useMemo(
+    () => expenseTimelineCostsByItem(expenseGraph, itineraryBudgetLinks),
+    [expenseGraph, itineraryBudgetLinks],
+  );
   const budgetSnapshotRef = useRef({ context: tripDataContext, data: emptyBudgetSnapshot() });
   if (!requestGuard.sameContext(budgetSnapshotRef.current.context)) {
     budgetSnapshotRef.current = { context: tripDataContext, data: emptyBudgetSnapshot() };
@@ -5276,13 +5282,13 @@ export default function App() {
             onRefreshBudget={refreshBudget}
             budgetItems={budgetItems}
             budgetParticipants={budgetParticipants}
+            budgetsByItem={budgetsByItem}
             canEditBudget={canEdit}
             canEdit={canEditActiveTripContent}
             dayItems={dayItems}
             days={days}
             isOwner={isOwner}
             items={items}
-            itineraryBudgetLinks={itineraryBudgetLinks}
             guideItems={guideItems}
             currentUserId={session.user.id}
             foreignCardSelection={foreignCardSelection}
@@ -5598,15 +5604,6 @@ function TripHeader({
   const [developerEndDateDraft, setDeveloperEndDateDraft] = useState("");
   const [developerToolsError, setDeveloperToolsError] = useState("");
   const [isApplyingDeveloperDates, setIsApplyingDeveloperDates] = useState(false);
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState("");
-  const [titleError, setTitleError] = useState("");
-  const [isSavingTitle, setIsSavingTitle] = useState(false);
-  const [isDestinationPopoverOpen, setIsDestinationPopoverOpen] = useState(false);
-  const [countryDraft, setCountryDraft] = useState("");
-  const [cityDraft, setCityDraft] = useState("");
-  const [destinationError, setDestinationError] = useState("");
-  const [isSavingDestination, setIsSavingDestination] = useState(false);
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [startDateDraft, setStartDateDraft] = useState("");
   const [endDateDraft, setEndDateDraft] = useState("");
@@ -5623,17 +5620,10 @@ function TripHeader({
   const menuRef = useRef(null);
   const developerStartDateRef = useRef(null);
   const developerDateSaveRef = useRef(false);
-  const destinationPopoverRef = useRef(null);
-  const destinationButtonRef = useRef(null);
-  const countryInputRef = useRef(null);
-  const cityInputRef = useRef(null);
   const datePopoverRef = useRef(null);
   const dateButtonRef = useRef(null);
   const dateDialogRef = useRef(null);
   const startDateTextInputRef = useRef(null);
-  const titleInputRef = useRef(null);
-  const titleSaveRef = useRef(false);
-  const destinationSaveRef = useRef(false);
   const dateSaveRef = useRef(false);
   const meta = useMemo(() => {
     const value = buildTripHeaderMeta(trip, members, days);
@@ -5729,42 +5719,44 @@ function TripHeader({
     };
   }, [isMoreOpen]);
 
-  useEffect(() => {
-    if (!isEditingTitle) return;
-    requestAnimationFrame(() => {
-      titleInputRef.current?.focus();
-      titleInputRef.current?.select();
-    });
-  }, [isEditingTitle]);
+  const {
+    beginTitleEdit,
+    handleTitleBlur,
+    handleTitleChange,
+    handleTitleKeyDown,
+    isEditingTitle,
+    isSavingTitle,
+    saveTitleDraft,
+    titleDraft,
+    titleError,
+    titleInputRef,
+  } = useTripHeaderTitleEditor({ title: trip?.title, canEditTitle, onUpdateTrip });
 
-  useEffect(() => {
-    if (!isDestinationPopoverOpen) return undefined;
-    requestAnimationFrame(() => {
-      countryInputRef.current?.focus();
-    });
-    function closeOnEscape(event) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeDestinationPopover();
-      }
-    }
-    function closeOnOutsidePointer(event) {
-      if (destinationPopoverRef.current && !destinationPopoverRef.current.contains(event.target)) {
-        closeDestinationPopover();
-      }
-    }
-    document.addEventListener("keydown", closeOnEscape);
-    document.addEventListener("pointerdown", closeOnOutsidePointer);
-    return () => {
-      document.removeEventListener("keydown", closeOnEscape);
-      document.removeEventListener("pointerdown", closeOnOutsidePointer);
-    };
-  }, [isDestinationPopoverOpen]);
-
-  useEffect(() => {
-    if (!isDestinationPopoverOpen) return;
-    closeDestinationPopover({ restoreFocus: false });
-  }, [activeSection, trip?.id]);
+  const {
+    beginDestinationEdit,
+    cityDraft,
+    cityInputRef,
+    closeDestinationPopover,
+    countryDraft,
+    countryInputRef,
+    destinationButtonRef,
+    destinationError,
+    destinationPopoverRef,
+    handleCityChange,
+    handleCountryChange,
+    handleDestinationKeyDown,
+    isDestinationPopoverOpen,
+    isSavingDestination,
+    saveDestinationDrafts,
+  } = useTripHeaderDestinationEditor({
+    trip,
+    activeSection,
+    canOpenDestinationPopover,
+    onUpdateTrip,
+    tripDestinationParts,
+    destinationPatchFromParts,
+    combineTripDestination,
+  });
 
   useEffect(() => {
     if (!isDeveloperToolsOpen) return;
@@ -5889,18 +5881,6 @@ function TripHeader({
     return true;
   }
 
-  function closeDestinationPopover({ restoreFocus = true } = {}) {
-    setIsDestinationPopoverOpen(false);
-    setDestinationError("");
-    setIsSavingDestination(false);
-    destinationSaveRef.current = false;
-    if (restoreFocus) {
-      requestAnimationFrame(() => {
-        destinationButtonRef.current?.focus();
-      });
-    }
-  }
-
   async function toggleDestinationPopover() {
     if (isDestinationPopoverOpen) {
       closeDestinationPopover();
@@ -5918,58 +5898,7 @@ function TripHeader({
       const canContinue = await saveTitleDraft();
       if (!canContinue) return;
     }
-    const { country, city } = tripDestinationParts(trip);
-    setCountryDraft(country);
-    setCityDraft(city);
-    setDestinationError("");
-    setIsDestinationPopoverOpen(true);
-  }
-
-  async function saveDestinationDrafts() {
-    if (!canOpenDestinationPopover || destinationSaveRef.current) return false;
-    const nextCountry = countryDraft.trim();
-    const nextCity = cityDraft.trim();
-    const patch = destinationPatchFromParts(nextCountry, nextCity);
-    const currentParts = tripDestinationParts(trip);
-    const currentDestination = combineTripDestination(currentParts.country, currentParts.city);
-    if (
-      patch.destination_country === (currentParts.country || null) &&
-      patch.destination_city === (currentParts.city || null) &&
-      patch.destination === currentDestination
-    ) {
-      closeDestinationPopover();
-      return true;
-    }
-    setDestinationError("");
-    destinationSaveRef.current = true;
-    setIsSavingDestination(true);
-    let result;
-    try {
-      result = await onUpdateTrip(patch);
-    } catch (error) {
-      result = { ok: false, error };
-    }
-    if (result?.ok === false) {
-      destinationSaveRef.current = false;
-      setIsSavingDestination(false);
-      setDestinationError("儲存失敗，請再試一次");
-      return false;
-    }
-    destinationSaveRef.current = false;
-    setIsSavingDestination(false);
-    closeDestinationPopover();
-    return true;
-  }
-
-  function handleDestinationKeyDown(event, field) {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (field === "country") {
-      cityInputRef.current?.focus();
-      return;
-    }
-    saveDestinationDrafts();
+    beginDestinationEdit();
   }
 
   function closeDatePopover({ restoreFocus = true } = {}) {
@@ -6246,69 +6175,7 @@ function TripHeader({
     closeDestinationPopover({ restoreFocus: false });
     closeDatePopover({ restoreFocus: false });
     closeDeveloperTools();
-    setTitleDraft(trip?.title || "");
-    setTitleError("");
-    setIsEditingTitle(true);
-  }
-
-  function cancelTitleEdit() {
-    setTitleDraft(trip?.title || "");
-    setTitleError("");
-    setIsEditingTitle(false);
-    setIsSavingTitle(false);
-    titleSaveRef.current = false;
-  }
-
-  async function saveTitleDraft() {
-    if (!canEditTitle || titleSaveRef.current) return false;
-    const nextTitle = titleDraft.trim();
-    const currentTitle = String(trip?.title || "").trim();
-    if (!nextTitle) {
-      setTitleError("旅程名稱不能為空白");
-      return false;
-    }
-    if (nextTitle === currentTitle) {
-      setTitleError("");
-      setIsEditingTitle(false);
-      return true;
-    }
-    setTitleError("");
-    titleSaveRef.current = true;
-    setIsSavingTitle(true);
-    let result;
-    try {
-      result = await onUpdateTrip({ title: nextTitle });
-    } catch (error) {
-      result = { ok: false, error };
-    }
-    if (result?.ok === false) {
-      titleSaveRef.current = false;
-      setIsSavingTitle(false);
-      setTitleError("儲存失敗，請再試一次");
-      return false;
-    }
-    titleSaveRef.current = false;
-    setIsSavingTitle(false);
-    setIsEditingTitle(false);
-    setTitleDraft("");
-    return true;
-  }
-
-  function handleTitleKeyDown(event) {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      event.stopPropagation();
-      saveTitleDraft();
-    }
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      cancelTitleEdit();
-    }
-  }
-
-  function handleTitleBlur() {
-    saveTitleDraft();
+    beginTitleEdit();
   }
 
   return (
@@ -6327,10 +6194,7 @@ function TripHeader({
                   disabled={isSavingTitle}
                   value={titleDraft}
                   onBlur={handleTitleBlur}
-                  onChange={(event) => {
-                    setTitleDraft(event.target.value);
-                    if (titleError) setTitleError("");
-                  }}
+                  onChange={handleTitleChange}
                   onKeyDown={handleTitleKeyDown}
                 />
                 {titleError ? (
@@ -6395,10 +6259,7 @@ function TripHeader({
                                 aria-describedby={destinationError ? "trip-header-destination-error" : undefined}
                                 disabled={isSavingDestination}
                                 value={countryDraft}
-                                onChange={(event) => {
-                                  setCountryDraft(event.target.value);
-                                  if (destinationError) setDestinationError("");
-                                }}
+                                onChange={handleCountryChange}
                                 onKeyDown={(event) => handleDestinationKeyDown(event, "country")}
                               />
                             </label>
@@ -6412,10 +6273,7 @@ function TripHeader({
                                 aria-describedby={destinationError ? "trip-header-destination-error" : undefined}
                                 disabled={isSavingDestination}
                                 value={cityDraft}
-                                onChange={(event) => {
-                                  setCityDraft(event.target.value);
-                                  if (destinationError) setDestinationError("");
-                                }}
+                                onChange={handleCityChange}
                                 onKeyDown={(event) => handleDestinationKeyDown(event, "city")}
                               />
                             </label>
@@ -7589,6 +7447,7 @@ function TripWorkspace(props) {
     budgetItems,
     budgetParticipants,
     budgetSnapshot,
+    budgetsByItem,
     onRefreshBudget,
     canEditBudget,
     canEdit,
@@ -7596,7 +7455,6 @@ function TripWorkspace(props) {
     days,
     isOwner,
     items,
-    itineraryBudgetLinks,
     guideItems,
     currentUserId,
     foreignCardSelection,
@@ -7665,15 +7523,6 @@ function TripWorkspace(props) {
   const isLuggageMode = activeSection === "luggage";
   const isSettlementMode = activeSection === "settlement";
   const [focusedItemId, setFocusedItemId] = useState(null);
-  const [mapPickingMode, setMapPickingMode] = useState(null);
-  const [mapPointPickFeedback, setMapPointPickFeedback] = useState("");
-  const [pickedMapPoint, setPickedMapPoint] = useState(null);
-  const [mapPointEditorState, setMapPointEditorState] = useState({ canPick: false, isOpen: false });
-  const [isMapSearchReplaceActive, setIsMapSearchReplaceActive] = useState(false);
-  const [isMapAddLocationActive, setIsMapAddLocationActive] = useState(false);
-  const [isMapAddLocationPending, setIsMapAddLocationPending] = useState(false);
-  const [mapAddLocationRequestId, setMapAddLocationRequestId] = useState(0);
-  const mapAddLocationPendingRef = useRef(false);
   const sidePanelsRef = useRef(null);
   const { isMapClosing, isRouteCollapsed, isRouteLayoutCollapsed, openRouteMap, toggleRouteMap } = useTimelineMapTransition();
   const alternativesByItem = useMemo(() => {
@@ -7683,183 +7532,29 @@ function TripWorkspace(props) {
     });
     return next;
   }, [alternatives]);
-  const budgetsByItem = useMemo(() => {
-    const native=props.budgetSnapshot?.expenseGraph;
-    const byId = new Map(native ? expenseTimelineCosts(native).map(item => [item.id, item]) : []);
-    const next = {};
-    itineraryBudgetLinks.forEach((link) => {
-      const budget = byId.get(link.budget_item_id);
-      if (!budget) return;
-      next[link.itinerary_item_id] = [...(next[link.itinerary_item_id] || []), budget];
-    });
-    return next;
-  }, [itineraryBudgetLinks, props.budgetSnapshot?.expenseGraph]);
   const itemsByDay = useMemo(
     () => days.map((_, index) => sortScheduleItems(items.filter((item) => item.day_index === index))),
     [days, items],
   );
   const dayBoardNavigation = useDayBoardNavigation(activeDay, isRouteLayoutCollapsed);
 
-  function startMapPointPick(mode = "editor") {
-    setMapPointPickFeedback("picking");
-    setMapPickingMode(mode === "map-add" ? "map-add" : "editor");
-  }
-
-  function cancelMapPointPick() {
-    setMapPickingMode(null);
-    setMapPointPickFeedback("");
-  }
-
-  function startMapSearchReplace() {
-    if (isRouteLayoutCollapsed || !mapPointEditorState.canPick) return;
-    cancelMapPointPick();
-    setIsMapSearchReplaceActive(true);
-  }
-
-  function cancelMapSearchReplace() {
-    setIsMapSearchReplaceActive(false);
-  }
-
-  const activateMapAddLocation = useCallback(() => {
-    if (!mapAddLocationPendingRef.current) return;
-    mapAddLocationPendingRef.current = false;
-    setIsMapAddLocationPending(false);
-    setIsMapAddLocationActive(true);
-    setMapAddLocationRequestId((current) => current + 1);
-  }, []);
-
-  function startMapAddLocation() {
-    cancelMapPointPick();
-    cancelMapSearchReplace();
-    setPickedMapPoint(null);
-    mapAddLocationPendingRef.current = true;
-    setIsMapAddLocationPending(true);
-    if (isRouteLayoutCollapsed || isMapClosing) {
-      openRouteMap();
-      return;
-    }
-    activateMapAddLocation();
-  }
-
-  function cancelMapAddLocation() {
-    mapAddLocationPendingRef.current = false;
-    setIsMapAddLocationPending(false);
-    setIsMapAddLocationActive(false);
-    setPickedMapPoint(null);
-    cancelMapPointPick();
-  }
-
-  function toggleRouteMapWithAddLocationCleanup() {
-    if (!isRouteCollapsed && (isMapAddLocationActive || isMapAddLocationPending)) cancelMapAddLocation();
-    toggleRouteMap();
-  }
-
-  function finishMapAddLocation() {
-    mapAddLocationPendingRef.current = false;
-    setIsMapAddLocationPending(false);
-    setIsMapAddLocationActive(false);
-  }
-
-  function pickMapPoint(point) {
-    if (!point) return;
-    setPickedMapPoint({ ...point, pickedAt: Date.now(), source: mapPickingMode || "editor" });
-    setMapPickingMode(null);
-    setMapPointPickFeedback("picked");
-    if (isMapAddLocationActive) finishMapAddLocation();
-    window.setTimeout(() => {
-      setMapPointPickFeedback((current) => (current === "picked" ? "" : current));
-    }, 1500);
-  }
-
-  function selectPlaceDetails(details) {
-    const latitude = Number(details?.latitude);
-    const longitude = Number(details?.longitude);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-    const isMapUrlPoint = details.source === "map-url";
-    setPickedMapPoint({
-      displayName: details.displayName || "",
-      googleMapsUri: isMapUrlPoint
-        ? details.googleMapsUri || googleMapsPointUrl(latitude, longitude)
-        : googleMapsPointUrl(latitude, longitude),
-      latitude,
-      longitude,
-      pickedAt: Date.now(),
-      placeId: details.id || "",
-      source: isMapUrlPoint || !isMapSearchReplaceActive ? "places-details" : "places-replace",
-    });
-    if (isMapAddLocationActive) finishMapAddLocation();
-  }
-
-  useLayoutEffect(() => {
-    if (!isMapAddLocationPending || isRouteLayoutCollapsed) return undefined;
-    const sidePanels = sidePanelsRef.current;
-    if (!sidePanels) return undefined;
-    const revealAnimations = typeof sidePanels.getAnimations === "function"
-      ? sidePanels.getAnimations().filter((animation) => animation.animationName === "timeline-map-reveal")
-      : [];
-    if (!revealAnimations.length) {
-      activateMapAddLocation();
-      return undefined;
-    }
-    let cancelled = false;
-    Promise.allSettled(revealAnimations.map((animation) => animation.finished)).then(() => {
-      if (!cancelled) activateMapAddLocation();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [activateMapAddLocation, isMapAddLocationPending, isRouteLayoutCollapsed]);
-
-  useEffect(() => {
-    cancelMapAddLocation();
-  }, [activeDay, activeTrip?.id, activeSection]);
-
-  useEffect(() => {
-    if (!mapPickingMode) return undefined;
-
-    function handleDocumentPointerDown(event) {
-      const target = event.target;
-      if (target?.closest?.(".google-map-surface") || target?.closest?.(".map-point-picker-button")) return;
-      if (target?.closest?.(".map-area-point-button")) return;
-      cancelMapPointPick();
-    }
-
-    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
-    return () => {
-      document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
-    };
-  }, [mapPickingMode]);
-
-  useEffect(() => {
-    if (isRouteLayoutCollapsed && mapPickingMode) cancelMapPointPick();
-    if (isRouteLayoutCollapsed && isMapSearchReplaceActive) cancelMapSearchReplace();
-  }, [isMapSearchReplaceActive, isRouteLayoutCollapsed, mapPickingMode]);
-
-  const mapPointPicker = {
-    canPickMapPoint: !isRouteLayoutCollapsed && canEdit && (!mapPointEditorState.isOpen || mapPointEditorState.canPick),
-    hasActiveMapPointEditor: mapPointEditorState.canPick,
-    isPickingMapPoint: Boolean(mapPickingMode),
-    isMapSearchReplaceActive,
-    isMapAddLocationActive,
-    mapAddLocationRequestId,
-    mapPickingMode,
-    mapPointPickFeedback,
-    pickedMapPoint,
-    previewMapPoint: mapPointEditorState.previewMapPoint || null,
-    onCancelMapPointPick: cancelMapPointPick,
-    onCancelMapAddLocation: cancelMapAddLocation,
-    onCancelMapSearchReplace: cancelMapSearchReplace,
-    onMapPointEditorActiveChange: setMapPointEditorState,
-    onPickMapPoint: pickMapPoint,
-    onSelectPlaceDetails: selectPlaceDetails,
-    onStartMapAddLocation: getMapProviderConfig({
+  const { mapPointPicker, toggleRouteMapWithAddLocationCleanup } = useTimelineMapPointPicker({
+    activeDay,
+    activeTripId: activeTrip?.id,
+    activeSection,
+    canEdit,
+    canLoadRealMap: getMapProviderConfig({
       providerId: import.meta.env.VITE_MAP_PROVIDER,
       apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
       enableRealMap: true,
-    }).canLoadRealMap ? startMapAddLocation : undefined,
-    onStartMapSearchReplace: startMapSearchReplace,
-    onStartMapPointPick: startMapPointPick,
-  };
+    }).canLoadRealMap,
+    isMapClosing,
+    isRouteCollapsed,
+    isRouteLayoutCollapsed,
+    openRouteMap,
+    sidePanelsRef,
+    toggleRouteMap,
+  });
 
   function selectTimelineDay(dayIndex) {
     if (Number(dayIndex) !== Number(activeDay)) setFocusedItemId(null);
@@ -8286,9 +7981,6 @@ function ItineraryTimeline({
   const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
-  const [draggedVisitId, setDraggedVisitId] = useState(null);
-  const [dragOverlaySize, setDragOverlaySize] = useState(null);
-  const [dragTarget, setDragTarget] = useState(null);
   const [reorderPreview, setReorderPreview] = useState(null);
   const [isReorderingDestination, setIsReorderingDestination] = useState(false);
   const [isReorderingUntimed, setIsReorderingUntimed] = useState(false);
@@ -8364,7 +8056,16 @@ function ItineraryTimeline({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const lastDndOverIdRef = useRef(null);
+  const {
+    clearVisitDrag,
+    draggedVisitId,
+    dragOverlaySize,
+    dragTarget,
+    lastDndOverIdRef,
+    setDraggedVisitId,
+    setDragOverlaySize,
+    setDragTarget,
+  } = useTimelineVisitDragSession({ activeDay, tripId: activeTrip?.id, onClearDragPresence });
   const activeDayColumnRef = useRef(null);
   const activeTimelineListRef = useRef(null);
   const newVisitEditorRef = useRef(null);
@@ -8387,22 +8088,6 @@ function ItineraryTimeline({
     },
     [dragOverlaySize?.height],
   );
-
-  useEffect(() => {
-    clearVisitDrag("scope-change");
-  }, [activeDay, activeTrip?.id]);
-
-  useEffect(() => {
-    if (!draggedVisitId) return undefined;
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") clearVisitDrag("escape");
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      lastDndOverIdRef.current = null;
-    };
-  }, [draggedVisitId]);
 
   function canDragReorderVisit(item) {
     return (
@@ -8577,14 +8262,6 @@ function ItineraryTimeline({
     }
     event.dataTransfer.dropEffect = "move";
     setDragTarget({ disabled: false, itemId: item.id, placement });
-  }
-
-  function clearVisitDrag(reason = "manual") {
-    setDraggedVisitId(null);
-    setDragOverlaySize(null);
-    setDragTarget(null);
-    lastDndOverIdRef.current = null;
-    if (typeof onClearDragPresence === "function") onClearDragPresence(reason);
   }
 
   async function commitVisitDrop(sourceItemId, targetItem, placement) {
@@ -8851,32 +8528,6 @@ function ItineraryTimeline({
     setIsOpen(true);
   }, [activeTrip?.id, currentUserId, dayItems, isOpen, restoreDrafts]);
 
-  function buildNewVisitForm(initialPoint = null) {
-    const lastItem = sortedVisitItems(dayItems).at(-1);
-    const defaultStartTime = lastItem?.end_time ? formatTimeDisplay(lastItem.end_time) : "";
-    const defaultStartMinutes = timeToMinutes(defaultStartTime);
-    const defaultEndTime = defaultStartMinutes === null
-      ? ""
-      : minutesToTimeValue(defaultStartMinutes + defaultVisitDurationMinutes);
-    const latitude = Number(initialPoint?.latitude);
-    const longitude = Number(initialPoint?.longitude);
-    const hasPoint = Number.isFinite(latitude) && Number.isFinite(longitude);
-    const placeName = String(initialPoint?.displayName || initialPoint?.title || initialPoint?.location_name || "").trim();
-    return {
-      ...emptyItemForm,
-      start_time: defaultStartTime,
-      end_time: defaultEndTime,
-      title: placeName,
-      location: placeName,
-      location_name: placeName,
-      latitude: hasPoint ? latitude : null,
-      longitude: hasPoint ? longitude : null,
-      map_url: hasPoint
-        ? String(initialPoint?.googleMapsUri || "").trim() || googleMapsPointUrl(latitude, longitude)
-        : "",
-    };
-  }
-
   async function openNewItem(initialPoint = null) {
     if (foreignSameDayDragActive) {
       setFixedNotice(foreignDragReadOnlyMessage);
@@ -8894,7 +8545,12 @@ function ItineraryTimeline({
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeEditor(true);
     }
-    const nextForm = buildNewVisitForm(initialPoint);
+    const nextForm = buildNewVisitForm({
+      defaultForm: emptyItemForm,
+      defaultVisitDurationMinutes,
+      initialPoint,
+      lastItem: sortedVisitItems(dayItems).at(-1),
+    });
     flushDraft();
     replaceForm(nextForm);
     setFormSeed(nextForm);
@@ -8929,21 +8585,13 @@ function ItineraryTimeline({
       if (!canContinue) return;
       if (!hasUnsavedChanges) await closeEditor(true);
     }
-    const nextForm = {
-      ...emptyItemForm,
-      item_type: "transport",
-      type: "transport",
-      start_time: "",
-      transport_category: defaultTransportCategory,
-      transport_name: "",
-      transport_duration_minutes: "",
-      transport_note: "",
-      transportation_note: "",
-      from_item_id: previousItem?.id || null,
-      to_item_id: nextItem?.id || null,
-      ...buildTransportPairSnapshot(previousItem, nextItem),
-      title: "",
-    };
+    const nextForm = buildNewTransportForm({
+      defaultForm: emptyItemForm,
+      defaultTransportCategory,
+      previousItem,
+      nextItem,
+      pairSnapshot: buildTransportPairSnapshot(previousItem, nextItem),
+    });
     flushDraft();
     replaceForm(nextForm);
     setFormSeed(nextForm);
@@ -8990,42 +8638,7 @@ function ItineraryTimeline({
       lockedItem = lockResult.data || item;
     }
     const existingAlternative = (alternativesByItem[item.id] || [])[0] || null;
-    const nextForm = {
-      item_type: item.item_type || "visit",
-      type: item.type,
-      start_time: formatTimeDisplay(item.start_time),
-      end_time: formatTimeDisplay(item.end_time),
-      title: item.title,
-      location: item.location_name || item.location || "",
-      location_name: item.location_name || item.location || "",
-      address: item.address || "",
-      map_url: item.map_url || "",
-      latitude: item.latitude ?? null,
-      longitude: item.longitude ?? null,
-      note: item.description || item.note || "",
-      description: item.description || item.note || "",
-      transportation_note: item.transportation_note || "",
-      transport_category: item.transport_category || defaultTransportCategory,
-      transport_name: transportNameValue(item),
-      transport_duration_minutes: item.transport_duration_minutes || "",
-      transport_note: item.transport_note || item.transportation_note || item.description || item.note || "",
-      from_item_id: item.from_item_id || null,
-      to_item_id: item.to_item_id || null,
-      from_snapshot_start_time: item.from_snapshot_start_time || null,
-      from_snapshot_end_time: item.from_snapshot_end_time || null,
-      from_snapshot_destination: item.from_snapshot_destination || null,
-      to_snapshot_start_time: item.to_snapshot_start_time || null,
-      to_snapshot_end_time: item.to_snapshot_end_time || null,
-      to_snapshot_destination: item.to_snapshot_destination || null,
-      is_fixed: Boolean(item.is_fixed),
-      fixed_at: item.fixed_at || null,
-      fixed_by: item.fixed_by || null,
-      cost: item.cost || 0,
-      alternative_id: existingAlternative?.id || null,
-      alternative_draft: existingAlternative ? alternativeToForm(existingAlternative) : null,
-      alternative_deleted: false,
-      alternative_map_url_baseline: existingAlternative?.map_url || "",
-    };
+    const nextForm = buildExistingItemForm({ item, existingAlternative, defaultTransportCategory });
     flushDraft();
     replaceForm(nextForm);
     setFormSeed(nextForm);
@@ -9641,20 +9254,6 @@ function ItineraryTimeline({
 
   function visitDestination(item) {
     return item?.location_name || item?.location || item?.title || "未命名行程";
-  }
-
-  function alternativeToForm(alternative = {}) {
-    return {
-      type: alternative.type || "attraction",
-      cost: alternative.cost || 0,
-      location_name: alternative.location_name || alternative.title || "",
-      description: alternative.description || "",
-      address: alternative.address || "",
-      map_url: alternative.map_url || "",
-      latitude: alternative.latitude ?? null,
-      longitude: alternative.longitude ?? null,
-      transportation_note: alternative.transportation_note || "",
-    };
   }
 
   function emptyAlternativeForm(item) {

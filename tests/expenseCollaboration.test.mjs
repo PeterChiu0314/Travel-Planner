@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {ran
 import {reviewFixture} from './helpers/expenseReviewFixture.js';
 import {primaryBudgetCollaborators} from '../src/lib/budgetCollaboration.js';
 import {withoutBudgetMetadata} from '../src/lib/budgetMetadataService.js';
-import {expenseFinancialSnapshot,expenseTimelineCosts} from '../src/lib/expenseSnapshot.js';
+import {expenseFinancialSnapshot,expenseTimelineCosts,expenseTimelineCostsByItem} from '../src/lib/expenseSnapshot.js';
 import {createExpenseEditor} from '../src/lib/expenseEditor.js';
 const select=(f,sid,activity,id=f.id,action='select',actor=f.A)=>f.rpc('update_expense_selection',{p_trip_id:f.trip,p_session_id:sid,p_kind:'expense',p_id:id,p_activity_id:activity,p_action:action},actor);
 const read=(f,actor=f.B,sid=uuid())=>f.rpc('read_expense_collaboration',{p_trip_id:f.trip,p_session_id:sid},actor);
@@ -37,6 +37,30 @@ test('expired hints disappear and cache cannot restore authority; suspension pre
 test('Timeline cost projection includes paid-only items and keeps cancellation distinct from budget',()=>{
  const base={id:'e',trip_id:'t',title:'Lunch',category:'餐飲',payment_state:'paid',budget:null,paid:{amount:800,twd_amount:800,currency:'TWD'}};
  const graph={items:[base],groups:[],participants:[],links:[]};assert.equal(expenseTimelineCosts(graph)[0].twd_amount,800);graph.items[0]={...base,payment_state:'unpaid'};assert.deepEqual(expenseTimelineCosts(graph),[]);graph.items[0]={...base,budget:{amount:1000,twd_amount:1000,currency:'TWD'}};assert.equal(expenseTimelineCosts(graph)[0].twd_amount,800);
+
+ const budget = { id: 'budget', trip_id: 't', title: 'Transit', category: 'Transit',
+   payment_state: 'unpaid', budget: { amount: 1000, twd_amount: 220, currency: 'JPY' }, paid: base.paid };
+ const cancelled = { ...base, id: 'cancelled', payment_state: 'unpaid' };
+ graph.items = [base, budget, cancelled];
+ const links = [
+   { budget_item_id: 'budget', itinerary_item_id: 'visit-a' },
+   { budget_item_id: 'missing', itinerary_item_id: 'visit-a' },
+   { budget_item_id: 'e', itinerary_item_id: 'visit-b' },
+   { budget_item_id: 'e', itinerary_item_id: 'visit-a' },
+   { budget_item_id: 'budget', itinerary_item_id: 'visit-a' },
+   { budget_item_id: 'cancelled', itinerary_item_id: 'visit-c' },
+ ];
+ const [paidCost, budgetCost] = expenseTimelineCosts(graph);
+ assert.equal(paidCost.expenseScope, 'paid');
+ assert.equal(paidCost.twd_amount, 800);
+ assert.equal(budgetCost.expenseScope, 'budget');
+ assert.equal(budgetCost.currency, 'JPY');
+ assert.equal(budgetCost.twd_amount, 220);
+ assert.deepEqual(expenseTimelineCostsByItem(graph, links), {
+   'visit-a': [budgetCost, paidCost, budgetCost],
+   'visit-b': [paidCost],
+ });
+ assert.deepEqual(expenseTimelineCostsByItem(undefined, links), {});
 });
 test('restored draft opened against an offline cache waits for the exact authoritative base without a false conflict',async()=>{
  const f=await reviewFixture();let c;try{const graph=await f.snapshot(),values=new Map([[`travel-planner-expense:${f.A}:${f.trip}:${f.id}:title`,JSON.stringify({base:0,value:'Recovered draft',request:null})]]);c=createExpenseEditor({service:f.service,actor:f.A,trip:f.trip,sessionId:uuid(),storage:{getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)}});
