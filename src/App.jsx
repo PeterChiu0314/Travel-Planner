@@ -4188,17 +4188,17 @@ export default function App() {
     if (!activeTrip || !plan?.ok || !operation || !itemUpdatedAtBaselines) return { ok: false };
     const sourceItems = items.filter((item) => Number(item.day_index) === Number(dayIndex));
     const result = await submitTimelineSchedule(supabase, {
-      confirmed_major_effect: confirmedMajorEffect,
-      expected_visit_ids: expectedVisitIds || sortedVisitItems(sourceItems).map((item) => item.id),
-      item_updated_at_baselines: itemUpdatedAtBaselines,
-      operation_intent: operation,
-      package_source_item_ids: packageSourceItemIds,
-      preview_result: plan,
-      slot_item_ids: slotItemIds,
-      target_day_index: dayIndex,
-      target_item_id: targetItemId,
-      target_payload: targetPayload,
-      target_trip_id: activeTrip.id,
+      confirmedMajorEffect,
+      expectedVisitIds: expectedVisitIds || sortedVisitItems(sourceItems).map((item) => item.id),
+      itemUpdatedAtBaselines,
+      operation,
+      packageSourceItemIds,
+      plan,
+      slotItemIds,
+      dayIndex,
+      targetItemId,
+      targetPayload,
+      tripId: activeTrip.id,
     }, () => requestGuard.sameContext(tripDataContext));
     if (result.blocked) return { ok: false, errorMessage: result.blocked };
     const responseStatus = result.data?.status || null;

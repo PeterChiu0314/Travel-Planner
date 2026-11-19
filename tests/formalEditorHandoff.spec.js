@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { boot, enableMetadata, expenseBackend } from "./helpers/expenseBackend.js";
 import { dragLuggage, returnLuggage } from "./helpers/luggageDrag.js";
 import { buildTimelineVisitDisplayOrder } from "../src/lib/timelineUntimedOrdering.js";
+import { attachTimelineScheduleSortOrders, planTimelineSchedule } from "../src/lib/timelineSchedulePlanner.js";
 
 const workspace = page => page.getByRole("region", { name: "支出工作區", includeHidden: true });
 const timeline = page => page.locator(".timeline .timeline-item:visible");
@@ -73,6 +74,28 @@ async function drag(page, source) {
   await page.mouse.up();
 }
 
+function expectReorderWireArgs(fixture, items, orderedVisitIds, { slotItemIds = null, packageSourceItemIds = null } = {}) {
+  const expectedVisitIds = buildTimelineVisitDisplayOrder(items).map(item => item.id);
+  const operation = { orderedVisitIds, type: "reorder" };
+  const plan = attachTimelineScheduleSortOrders({
+    items,
+    plan: planTimelineSchedule({ items, operation, orderedVisitIds: expectedVisitIds }),
+  });
+  expect(scheduleCalls(fixture)[0].args).toStrictEqual({
+    confirmed_major_effect: null,
+    expected_visit_ids: expectedVisitIds,
+    item_updated_at_baselines: Object.fromEntries(items.map(item => [item.id, item.updated_at])),
+    operation_intent: operation,
+    package_source_item_ids: packageSourceItemIds,
+    preview_result: plan,
+    slot_item_ids: slotItemIds,
+    target_day_index: 0,
+    target_item_id: null,
+    target_payload: null,
+    target_trip_id: fixture.trip,
+  });
+}
+
 for (const { title, order } of [
   { title: "Morning QA", order: ["Lunch QA", "Morning QA", "Untimed QA"] },
   { title: "Untimed QA", order: ["Morning QA", "Untimed QA", "Lunch QA"] },
@@ -81,6 +104,7 @@ for (const { title, order } of [
     const fixture = await expenseBackend({ timeline: true });
     try {
       await open(page, fixture);
+      const before = fixture.db.rows.itinerary_items;
       await navigation(page, "行程路線").click();
       await expect(workspace(page)).toBeHidden();
       await expect(workspace(page)).toBeAttached();
@@ -88,6 +112,10 @@ for (const { title, order } of [
       await drag(page, title);
       for (const [index, name] of order.entries()) await expect(timeline(page).nth(index)).toContainText(name);
       expect(scheduleCalls(fixture)).toHaveLength(1);
+      if (title === "Untimed QA") {
+        expect(scheduleCalls(fixture)[0].name).toBe("apply_timeline_schedule_operation_link_safe");
+        expectReorderWireArgs(fixture, before, order.map(name => before.find(item => item.title === name).id));
+      }
       const { rows } = await fixture.sql.query("select * from public.itinerary_items where trip_id=$1 and day_index=0", [fixture.trip]);
       expect(buildTimelineVisitDisplayOrder(rows).map(row => row.title)).toEqual(order);
       await page.reload();
@@ -107,10 +135,16 @@ test("timed swap persists and the native expense follows its original destinatio
   const fixture = await expenseBackend({ timeline: true });
   try {
     await open(page, fixture, { linked: true });
+    const before = fixture.db.rows.itinerary_items;
+    const [morning, lunch, untimed] = buildTimelineVisitDisplayOrder(before);
     await navigation(page, "行程路線").click();
     await drag(page, "Morning QA");
     await expect(timeline(page).first()).toContainText("Lunch QA");
     expect(scheduleCalls(fixture).map(call => call.name)).toEqual(["apply_timeline_schedule_operation_link_safe"]);
+    expectReorderWireArgs(fixture, before, [lunch.id, morning.id, untimed.id], {
+      slotItemIds: [morning.id, lunch.id],
+      packageSourceItemIds: [lunch.id, morning.id],
+    });
     await page.reload();
     await expect(workspace(page)).toBeVisible();
     await navigation(page, "行程路線").click();
@@ -129,12 +163,13 @@ test("schedule refusal or uncertain response never triggers a second write endpo
   const fixture = await expenseBackend({ timeline: true });
   const request = fixture.db.request.bind(fixture.db);
   const writes = [];
-  let failure = { code: "PGRST202" };
+  let response = { error: { code: "PGRST202" } };
   fixture.db.request = async call => {
-    if (call.name?.startsWith("apply_timeline_schedule_operation")) {
+    if (/^(apply_timeline_schedule_operation|reorder_itinerary_|swap_itinerary_)/.test(call.name || "")) {
       writes.push(call.name);
-      return { error: failure };
+      return response;
     }
+    if (call.table === "itinerary_items" && (call.patch || call.deleting)) writes.push(call.table);
     return request(call);
   };
   try {
@@ -146,11 +181,29 @@ test("schedule refusal or uncertain response never triggers a second write endpo
     expect(writes).toEqual(["apply_timeline_schedule_operation_link_safe"]);
     await expect(timeline(page).first()).toContainText("Morning QA");
 
-    failure = { message: "Failed to fetch" };
+    response = { error: { message: "Failed to fetch" } };
     await drag(page, "Morning QA");
-    await expect.poll(() => writes.length).toBe(2);
+    const notice = page.locator(".timeline-day-column.active").getByRole("alert");
+    await expect(notice).toContainText("Failed to fetch");
     await expect(timeline(page).first()).toContainText("Morning QA");
     expect(writes).toEqual(Array(2).fill("apply_timeline_schedule_operation_link_safe"));
+
+    const [morning, lunch, untimed] = buildTimelineVisitDisplayOrder(fixture.db.rows.itinerary_items);
+    response = {
+      data: {
+        ok: false,
+        status: "repreview_required",
+        preview: { ok: true, orderedVisitIds: [lunch.id, morning.id, untimed.id] },
+      },
+      error: null,
+    };
+    const itineraryReads = () => fixture.db.reads.filter(read => read.table === "itinerary_items").length;
+    const readsBeforeRepreview = itineraryReads();
+    await drag(page, "Morning QA");
+    await expect(notice).toContainText("此日行程已由其他成員更新，請重新載入最新資料後再試。");
+    expect(itineraryReads()).toBeGreaterThan(readsBeforeRepreview);
+    await expect(timeline(page).first()).toContainText("Morning QA");
+    expect(writes).toEqual(Array(3).fill("apply_timeline_schedule_operation_link_safe"));
     const after = await fixture.snapshot();
     expect(after.itineraryItems).toEqual(before.itineraryItems);
     expect(after.links).toEqual(before.links);
