@@ -654,11 +654,13 @@ test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () =
 
 test("Phase 5.3 destination editor save keeps validated hidden map coordinates in payload", () => {
   const appSource = readRepoFile("src/App.jsx");
+  const formSource = readRepoFile("src/components/timeline/timelineEditorForm.js");
 
   expect(appSource).toContain("submittedForm.latitude = mapUrlValidation.point.latitude");
   expect(appSource).toContain("submittedForm.longitude = mapUrlValidation.point.longitude");
-  expect(appSource).toContain("latitude: itemSubmittedForm.latitude ?? null");
-  expect(appSource).toContain("longitude: itemSubmittedForm.longitude ?? null");
+  expect(appSource).toContain("buildTimelineItemSubmission({ itemSubmittedForm, currentPairSnapshot, defaultTransportCategory })");
+  expect(formSource).toContain("latitude: itemSubmittedForm.latitude ?? null");
+  expect(formSource).toContain("longitude: itemSubmittedForm.longitude ?? null");
 });
 
 test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker styling", () => {

@@ -159,6 +159,48 @@ test("timed swap persists and the native expense follows its original destinatio
   }
 });
 
+test("Formal visit editor submits normalized fields to the schedule RPC", async ({ page }) => {
+  const fixture = await expenseBackend({ timeline: true });
+  try {
+    await open(page, fixture);
+    const lunch = fixture.db.rows.itinerary_items.find(item => item.title === "Lunch QA");
+    await navigation(page, "行程路線").click();
+    const card = timeline(page).filter({ hasText: "Lunch QA" });
+    await card.click();
+    await card.getByTitle("編輯").click();
+    const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+    await form.locator('input[name="location_name"]').fill("  Updated Lunch QA  ");
+    const time = form.locator('.timeline-segmented-time-field[data-name="start_time"]');
+    await time.locator(".timeline-time-menu-toggle").click();
+    await time.getByRole("option", { name: "10:05", exact: true }).click();
+    await form.getByRole("button", { name: "儲存", exact: true }).click();
+
+    await expect(form).toHaveCount(0);
+    const [call] = scheduleCalls(fixture);
+    expect(scheduleCalls(fixture)).toHaveLength(1);
+    expect(call.name).toBe("apply_timeline_schedule_operation_link_safe");
+    expect(call.args.target_item_id).toBe(lunch.id);
+    expect(call.args.target_payload).toMatchObject({
+      title: "Updated Lunch QA",
+      location: "Updated Lunch QA",
+      location_name: "Updated Lunch QA",
+      start_time: "10:05",
+      end_time: "11:05",
+      latitude: null,
+      longitude: null,
+      map_url: null,
+      cost: 0,
+    });
+    const alternativeDraftKeys = ["alternative_deleted", "alternative_draft", "alternative_id", "alternative_map_url_baseline"];
+    expect(Object.keys(call.args.target_payload).filter(key => alternativeDraftKeys.includes(key))).toEqual([]);
+    await expect(timeline(page).filter({ hasText: "Updated Lunch QA" })).toBeVisible();
+    expect(page.qaErrors).toEqual([]);
+  } finally {
+    await page.close();
+    await fixture.close();
+  }
+});
+
 test("schedule refusal or uncertain response never triggers a second write endpoint", async ({ page }) => {
   const fixture = await expenseBackend({ timeline: true });
   const request = fixture.db.request.bind(fixture.db);

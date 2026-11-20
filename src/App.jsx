@@ -111,7 +111,7 @@ import {
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { resolveGoogleMapsShortUrl } from "./lib/googleMapsShortLinkResolver.js";
 import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "./lib/googleMapsNavigation.js";
-import { googleMapsPointUrl, hasValidMapPoint, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
+import { googleMapsPointUrl, hasValidMapPoint, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import {
   applyTimelineSchedulePlanToItems,
@@ -158,7 +158,13 @@ import MembersInviteDialog from "./components/members/MembersInviteDialog.jsx";
 import SidebarAccountMenu from "./components/sidebar/SidebarAccountMenu.jsx";
 import SidebarTripSection from "./components/sidebar/SidebarTripSection.jsx";
 import DayTabs from "./components/timeline/DayTabs.jsx";
-import { buildExistingItemForm, buildNewTransportForm, buildNewVisitForm } from "./components/timeline/timelineEditorForm.js";
+import {
+  buildExistingItemForm,
+  buildNewTransportForm,
+  buildNewVisitForm,
+  buildTimelineItemSubmission,
+  normalizeTimelineItemPayload,
+} from "./components/timeline/timelineEditorForm.js";
 import useTimelineMapPointPicker from "./components/timeline/useTimelineMapPointPicker.js";
 import useTimelineVisitDragSession from "./components/timeline/useTimelineVisitDragSession.js";
 import MultiDayTimelineColumns from "./components/timeline/MultiDayTimelineColumns.jsx";
@@ -4230,7 +4236,7 @@ export default function App() {
       notify.error(errorMessage);
       return { ok: false, errorMessage };
     }
-    const normalizedPayload = normalizeItemPayload(payload);
+    const normalizedPayload = normalizeTimelineItemPayload(payload, defaultTransportCategory);
     if (
       isTransportationCard(normalizedPayload) &&
       (!normalizedPayload.from_item_id || !normalizedPayload.to_item_id)
@@ -5429,83 +5435,6 @@ export default function App() {
       <ActiveEditorGuardDialog />
     </Shell>
   );
-}
-
-function normalizeItemPayload(payload) {
-  if (payload.item_type === "transport") {
-    const transportName = transportNameValue(payload);
-    const transportNote = String(payload.transport_note || payload.transportation_note || payload.description || payload.note || "").trim();
-    const durationMinutes = Number(payload.transport_duration_minutes || 0);
-    return {
-      ...payload,
-      item_type: "transport",
-      type: "transport",
-      title: transportName,
-      location: null,
-      location_name: null,
-      note: transportNote || null,
-      description: transportNote || null,
-      transportation_note: transportNote || null,
-      transport_category: payload.transport_category || defaultTransportCategory,
-      transport_name: transportName,
-      transport_duration_minutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? Math.round(durationMinutes) : null,
-      transport_note: transportNote || null,
-      from_item_id: payload.from_item_id || null,
-      to_item_id: payload.to_item_id || null,
-      transport_role: "normal_pair",
-      from_snapshot_start_time: payload.from_snapshot_start_time || null,
-      from_snapshot_end_time: payload.from_snapshot_end_time || null,
-      from_snapshot_destination: payload.from_snapshot_destination || null,
-      to_snapshot_start_time: payload.to_snapshot_start_time || null,
-      to_snapshot_end_time: payload.to_snapshot_end_time || null,
-      to_snapshot_destination: payload.to_snapshot_destination || null,
-      start_time: payload.start_time || null,
-      end_time: null,
-      is_fixed: false,
-      fixed_at: null,
-      fixed_by: null,
-      address: null,
-      map_url: null,
-      latitude: null,
-      longitude: null,
-    };
-  }
-  const locationName = payload.location_name || payload.location;
-  const description = payload.description || payload.note;
-  const hasCompleteTime = Boolean(payload.start_time) && Boolean(payload.end_time);
-  const mapPointFields = normalizeMapPointFields(payload);
-  return {
-    ...payload,
-    item_type: payload.item_type || "visit",
-    title: locationName || payload.title,
-    location: locationName,
-    location_name: locationName,
-    note: description,
-    description,
-    start_time: hasCompleteTime ? payload.start_time : null,
-    end_time: hasCompleteTime ? payload.end_time : null,
-    is_fixed: hasCompleteTime ? Boolean(payload.is_fixed) : false,
-    fixed_at: hasCompleteTime && payload.is_fixed ? payload.fixed_at || null : null,
-    fixed_by: hasCompleteTime && payload.is_fixed ? payload.fixed_by || null : null,
-    address: payload.address || null,
-    map_url: payload.map_url || null,
-    latitude: mapPointFields.latitude,
-    longitude: mapPointFields.longitude,
-    transportation_note: payload.transportation_note || null,
-    transport_category: null,
-    transport_name: null,
-    transport_duration_minutes: null,
-    transport_note: null,
-    from_item_id: null,
-    to_item_id: null,
-    transport_role: null,
-    from_snapshot_start_time: null,
-    from_snapshot_end_time: null,
-    from_snapshot_destination: null,
-    to_snapshot_start_time: null,
-    to_snapshot_end_time: null,
-    to_snapshot_destination: null,
-  };
 }
 
 function isInvalidTimeRange(startTime, endTime) {
@@ -6736,7 +6665,7 @@ function DemoApp({ initialSection }) {
   }
 
   function saveTimelineItem(payload, editingId, meta = {}) {
-    const nextPayload = normalizeItemPayload(payload);
+    const nextPayload = normalizeTimelineItemPayload(payload, defaultTransportCategory);
     if (!nextPayload.title.trim()) return { ok: false };
     if (nextPayload.item_type !== "transport" && Boolean(nextPayload.start_time) !== Boolean(nextPayload.end_time)) {
       return { ok: false, errorMessage: "開始與結束時間必須同時設定，或同時清除。" };
@@ -6984,7 +6913,7 @@ function DemoApp({ initialSection }) {
       transportation_note: item.transportation_note || null,
       updated_at: new Date().toISOString(),
     };
-    const nextPayload = normalizeItemPayload({
+    const nextPayload = normalizeTimelineItemPayload({
       ...item,
       title: alternative.title,
       type: alternative.type || item.type,
@@ -7000,7 +6929,7 @@ function DemoApp({ initialSection }) {
       description: alternative.description || "",
       transportation_note: alternative.transportation_note || "",
       cost: alternative.cost || 0,
-    });
+    }, defaultTransportCategory);
     if (nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time)) return { ok: false };
     setTimelineItems((current) =>
       current.map((currentItem) => (currentItem.id === item.id ? { ...currentItem, ...nextPayload, updated_at: new Date().toISOString() } : currentItem)),
@@ -8952,30 +8881,7 @@ function ItineraryTimeline({
       ...itemSubmittedForm
     } = submittedForm;
     const result = await onSaveItem(
-      {
-        ...itemSubmittedForm,
-        title:
-          itemSubmittedForm.item_type === "transport"
-            ? itemSubmittedForm.transport_name.trim()
-            : (itemSubmittedForm.location_name || itemSubmittedForm.location || itemSubmittedForm.title).trim(),
-        location: (itemSubmittedForm.location_name || itemSubmittedForm.location).trim(),
-        location_name: (itemSubmittedForm.location_name || itemSubmittedForm.location).trim(),
-        address: itemSubmittedForm.address.trim(),
-        map_url: itemSubmittedForm.map_url.trim(),
-        latitude: itemSubmittedForm.latitude ?? null,
-        longitude: itemSubmittedForm.longitude ?? null,
-        note: (itemSubmittedForm.description || itemSubmittedForm.note).trim(),
-        description: (itemSubmittedForm.description || itemSubmittedForm.note).trim(),
-        transportation_note: itemSubmittedForm.transportation_note.trim(),
-        transport_category: itemSubmittedForm.transport_category || defaultTransportCategory,
-        transport_name: itemSubmittedForm.transport_name.trim(),
-        transport_duration_minutes: Number(itemSubmittedForm.transport_duration_minutes || 0),
-        transport_note: itemSubmittedForm.transport_note.trim(),
-        from_item_id: itemSubmittedForm.from_item_id,
-        to_item_id: itemSubmittedForm.to_item_id,
-        ...currentPairSnapshot,
-        cost: Number(itemSubmittedForm.cost || 0),
-      },
+      buildTimelineItemSubmission({ itemSubmittedForm, currentPairSnapshot, defaultTransportCategory }),
       editingId,
       {
         baseUpdatedAt,
