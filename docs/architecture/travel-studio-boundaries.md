@@ -7,13 +7,13 @@
 | Owner | 責任與接點 |
 | --- | --- |
 | App／`src/app` | 管理 session、active trip/day、membership／權限與 account/trip scope。透過 RequestGuard 與 generation 擋晚到回應，管理跨工作區 Guard、訂閱與清理、refresh、快取與畫面狀態的交接。 |
-| Timeline | Editor 管表單、draft、lock、地圖驗證、planner input 與確認。[`timelineEditorForm.js`](../../src/components/timeline/timelineEditorForm.js) 提供初始值、`buildTimelineItemSubmission` 與獨立的 `normalizeTimelineItemPayload`。[`submitTimelineSchedule`](../../src/lib/timelineScheduleService.js) 管 Formal 排程 RPC wire contract，App 管送出時機、Guard、錯誤及刷新。 |
+| Timeline | Editor 管表單、draft、lock、地圖驗證、planner input 與確認。[交通配對](../../src/lib/timelineTransportPairs.js) 供 Editor、Formal 保存與 Demo 使用，定義端點快照、重新確認條件，以及相鄰、被未排時景點隔開或已失效的交通卡分類。[`timelineEditorForm.js`](../../src/components/timeline/timelineEditorForm.js) 提供初始值、`buildTimelineItemSubmission` 與獨立的 `normalizeTimelineItemPayload`。[`submitTimelineSchedule`](../../src/lib/timelineScheduleService.js) 管 Formal 排程 RPC wire contract，App 管送出時機、Guard、錯誤及刷新。 |
 | Luggage | [`readLuggageScope`](../../src/lib/luggageSync.js) 定義 personal 的 trip + owner、shared 的 trip 與共同查詢投影／順序。App 管接收資料的 scope token、訂閱與刷新。既有 [offline envelope](../../src/lib/offlineCache.js) 只容許 shared 行李離線快取，personal 留在目前登入範圍的記憶體。 |
 | Todo／Guide | [`formalCommands.js`](../../src/features/todo-guide/formalCommands.js) 管五個寫入 command 與行資料映射。App 供應旅程及版本衝突檢查，維持鎖釋放、錯誤、通知與刷新。 |
 | Budget／Expense | Formal 的唯一財務權威是 Native Expense graph。[`ExpenseWorkspace`](../../src/components/budget/ExpenseWorkspace.jsx) 與 [Expense API](../../src/lib/expenseTransport.js) 管編輯和 lease。Timeline、Settlement、Stays 消費 graph 投影。離線 cache 只供顯示，寫入須由已驗證的來源與現有 lease 流程授權。 |
 | Map／Route | [Google provider](../../src/components/map/providers/GoogleMapProvider.lazy.jsx) 管點位操作、拖曳與 preview。[`routeOverrides.js`](../../src/lib/routeOverrides.js) 管 segment key、鄰接及節點純轉換。App 管 route 父表／節點 REST、回讀與回復、Broadcast／Realtime，以及 Timeline 端點座標或鄰接變更後的失效處理。 |
 | Trip／Members | Trip/Members 定義日期、身分、角色的操作。App 管准入、確認、Guard 與刷新。日期變更、旅程刪除與成員異動的跨域一致性由既有資料庫原子交易維持，例如 `apply_trip_date_change`、`delete_trip_with_expenses` 與成員異動觸發器。 |
-| Stays | [`AccommodationPanel`](../../src/components/AccommodationPanel.jsx) 管住宿表單，由 App 接線至住宿 CRUD。住宿可保存自己的 `expense_id` 關聯，支出候選與名稱只讀 Expense graph。 |
+| Stays | [`AccommodationPanel`](../../src/components/AccommodationPanel.jsx) 管住宿表單，由 App 檢查 scope、權限、版本衝突及刷新。[Formal Stays](../../src/features/stays/formalStays.js) 持有旅程查詢與排序、欄位映射及新增／修改／刪除接點。Demo 維持記憶體保存。住宿可保存自己的 `expense_id` 關聯，支出候選與名稱只讀 Expense graph。 |
 
 ## 依賴與變更護欄
 
@@ -28,7 +28,7 @@
 | --- | --- |
 | 新增 Timeline visit／transport 欄位 | 先檢查 Editor 輸入與 `timelineEditorForm.js` 的初始值、提交、正規化。只有欄位影響時間規則時才改 planner。若需持久化新欄位，另核對一般 CRUD 與 link-safe RPC 的 `target_payload`／SQL 對應。App 保留呼叫與 Guard。 |
 | 改 Budget 計算或付款 | 先找 Expense 功能與純投影或 group 模組。若改 canonical 金額、付款、分攤或驗證，同步評估後端交易及權限。App 傳遞 scope、快照與刷新，消費者讀權威投影。 |
-| 改 Map 路線點位 | 點位互動與 preview 放 Google provider。段與節點的純資料規則放 `routeOverrides.js`。持久化、跨人同步與 Timeline 失效由現有 App 接點協調。資料格式或 RLS 變動另案。 |
+| 改 Map 路線點位 | 點位互動與 preview 放 Google provider。Timeline 交通卡的端點快照與過期判定放 timelineTransportPairs.js。段與節點的純資料規則放 `routeOverrides.js`。持久化、跨人同步與 Timeline 失效由現有 App 接點協調。資料格式或 RLS 變動另案。 |
 | 改旅程日期或成員 | Trip/Members 管輸入和操作契約。App 協調確認、作用域、草稿與刷新。日期縮短、Expense link 和成員離開造成的跨表異動由既有 SQL/RPC 或觸發器維持原子性。 |
 
 ## Phase 2B 跨功能耦合

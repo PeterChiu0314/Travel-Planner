@@ -121,11 +121,11 @@ import {
   timelineScheduleOperationTypes,
 } from "./lib/timelineSchedulePlanner.js";
 import {
-  isEstablishedTransportPair,
   isTransportationCard,
-  normalizeTransportSnapshotTime,
   transportPairKey,
 } from "./lib/timelineTransportationRoles.js";
+import { buildTransportPairSnapshot, buildTransportPairState, transportPairNeedsReview, visitSnapshotDestination } from "./lib/timelineTransportPairs.js";
+import { deleteTripStay, readTripStays, saveTripStay } from "./features/stays/formalStays.js";
 import { buildRoutePanelStops } from "./lib/timelineMapMarkers.js";
 import { timelineTypeColors, timelineTypeLabels as typeLabels } from "./lib/timelineTypeStyles.js";
 import {
@@ -620,89 +620,6 @@ function timelineScheduleUpdatedAtBaselines(items = [], overrides = {}) {
 
 function isEffectiveFixedVisit(item) {
   return Boolean(item?.is_fixed) && isTimedVisit(item);
-}
-
-function visitSnapshotDestination(item) {
-  return item?.location_name || item?.location || item?.title || "";
-}
-
-function buildTransportPairSnapshot(fromItem, toItem) {
-  return {
-    from_snapshot_start_time: normalizeTransportSnapshotTime(fromItem?.start_time),
-    from_snapshot_end_time: normalizeTransportSnapshotTime(fromItem?.end_time),
-    from_snapshot_destination: visitSnapshotDestination(fromItem) || null,
-    to_snapshot_start_time: normalizeTransportSnapshotTime(toItem?.start_time),
-    to_snapshot_end_time: normalizeTransportSnapshotTime(toItem?.end_time),
-    to_snapshot_destination: visitSnapshotDestination(toItem) || null,
-  };
-}
-
-function transportSnapshotMatchesVisit(transportItem, prefix, visitItem) {
-  return (
-    normalizeTransportSnapshotTime(transportItem?.[`${prefix}_snapshot_start_time`]) ===
-      normalizeTransportSnapshotTime(visitItem?.start_time) &&
-    normalizeTransportSnapshotTime(transportItem?.[`${prefix}_snapshot_end_time`]) ===
-      normalizeTransportSnapshotTime(visitItem?.end_time) &&
-    (transportItem?.[`${prefix}_snapshot_destination`] || null) === (visitSnapshotDestination(visitItem) || null)
-  );
-}
-
-function buildTransportPairState(items, visits) {
-  const adjacentKeys = new Set();
-  const visitIds = new Set(visits.map((item) => item.id));
-  visits.forEach((item, index) => {
-    const nextItem = visits[index + 1];
-    if (nextItem) adjacentKeys.add(transportPairKey(item.id, nextItem.id));
-  });
-
-  const adjacentTransportByPair = {};
-  const passiveUntimedTransportByFrom = {};
-  const invalidTransportItems = [];
-  const visitById = new Map(visits.map((item) => [item.id, item]));
-  const visitIndexById = new Map(visits.map((item, index) => [item.id, index]));
-  items
-    .filter((item) => isTransportationCard(item))
-    .forEach((item) => {
-      const hasPair = isEstablishedTransportPair(item) && item.from_item_id && item.to_item_id;
-      const pairKey = hasPair ? transportPairKey(item.from_item_id, item.to_item_id) : "";
-      const pairExists = hasPair && visitIds.has(item.from_item_id) && visitIds.has(item.to_item_id);
-      const pairIsAdjacent = pairExists && adjacentKeys.has(pairKey);
-      const fromVisit = visitById.get(item.from_item_id) || null;
-      const toVisit = visitById.get(item.to_item_id) || null;
-      const fromIndex = visitIndexById.get(item.from_item_id);
-      const toIndex = visitIndexById.get(item.to_item_id);
-      const blockedByUntimed =
-        Number.isInteger(fromIndex) &&
-        Number.isInteger(toIndex) &&
-        toIndex > fromIndex + 1 &&
-        visits.slice(fromIndex + 1, toIndex).some(isUntimedVisit);
-      const hasPassiveUntimedEndpoint =
-        Boolean(fromVisit) &&
-        hasPair &&
-        Boolean(toVisit) &&
-        (!isTimedVisit(fromVisit) || !isTimedVisit(toVisit) || blockedByUntimed);
-
-      if (hasPassiveUntimedEndpoint) {
-        passiveUntimedTransportByFrom[item.from_item_id] = [
-          ...(passiveUntimedTransportByFrom[item.from_item_id] || []),
-          item,
-        ];
-        return;
-      }
-
-      if (pairIsAdjacent) {
-        if (!adjacentTransportByPair[pairKey]) adjacentTransportByPair[pairKey] = item;
-        return;
-      }
-
-      invalidTransportItems.push(item);
-    });
-
-  return { adjacentTransportByPair, invalidTransportItems, passiveUntimedTransportByFrom };
-}
-
-function transportPairNeedsReview(transportItem, fromItem, toItem) {
-  return !transportSnapshotMatchesVisit(transportItem, "from", fromItem) || !transportSnapshotMatchesVisit(transportItem, "to", toItem);
 }
 
 function safeFileName(name) {
@@ -2268,7 +2185,7 @@ export default function App() {
       attachmentsResult, packResult, membersResult] = await Promise.all([
       supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
       supabase.from("itinerary_alternatives").select("*"),
-      supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
+      readTripStays(supabase, tripId),
       supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
       readLuggageScope(supabase, { scope: "personal", tripId, userId }),
@@ -4397,27 +4314,9 @@ export default function App() {
   async function saveAccommodation(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const safeCheckOut =
-      payload.check_out_date && payload.check_out_date < payload.check_in_date
-        ? payload.check_in_date
-        : payload.check_out_date;
-    const nextPayload = {
-      trip_id: activeTrip.id,
-      name: payload.name.trim(),
-      check_in_date: payload.check_in_date || activeTrip.start_date,
-      check_out_date: safeCheckOut || payload.check_in_date || activeTrip.start_date,
-      check_in_time: payload.check_in_time || null,
-      check_out_time: payload.check_out_time || null,
-      address: payload.address.trim() || null,
-      map_url: payload.map_url.trim() || null,
-      booking_code: payload.booking_code.trim() || null,
-      payment_status: payload.payment_status || "unpaid",
-      expense_id: payload.expense_id || null,
-      custom_notes: payload.custom_notes.trim() || null,
-    };
-    const result = editingId
-      ? await updateWithConflictCheck("accommodations", nextPayload, editingId, meta)
-      : await supabase.from("accommodations").insert(nextPayload);
+    const result = await saveTripStay({
+      client: supabase, trip: activeTrip, payload, editingId, meta, updateWithConflictCheck,
+    });
     if (result.error) notify.error(result.error.message);
     else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
@@ -4426,7 +4325,7 @@ export default function App() {
 
   async function deleteAccommodation(accommodationId) {
     if (!activeTrip || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("accommodations").delete().eq("id", accommodationId);
+    const { error } = await deleteTripStay(supabase, accommodationId);
     if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
