@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { backend, boot } from "./helpers/formalBudgetMock.js";
+import { getDraftKey } from "../src/lib/draftAutosave.js";
 
 test("Formal Header saves edits and requires separate confirmation and save for shortening", async ({ page }) => {
   const db = backend();
@@ -93,5 +94,84 @@ test("Formal Header saves edits and requires separate confirmation and save for 
   expect(dateCalls).toEqual([{
     trip_id: trip.id, new_start_date: "2090-04-05", new_end_date: "2090-04-09", confirm_timeline_removal: true,
   }]);
+  expect(page.qaErrors).toEqual([]);
+});
+
+test("Formal date changes isolate Timeline drafts and clear only removed cards after success", async ({ page }) => {
+  const db = backend();
+  const [trip, otherTrip] = db.trips;
+  db.rows.trips = db.trips;
+  db.rows.itinerary_items = [
+    { id: "tail-visit", trip_id: trip.id, day_index: 5, date: "2090-04-10", item_type: "visit", title: "Tail visit" },
+    { id: "keep-visit", trip_id: trip.id, day_index: 0, date: "2090-04-05", item_type: "visit", title: "Keep visit" },
+  ];
+
+  const removed = getDraftKey({ userId: "A", tripId: trip.id, entityType: "itinerary_item", entityId: "tail-visit" });
+  const retained = getDraftKey({ userId: "A", tripId: trip.id, entityType: "itinerary_item", entityId: "keep-visit" });
+  const protectedKeys = [
+    getDraftKey({ userId: "A", tripId: otherTrip.id, entityType: "itinerary_item", entityId: "tail-visit" }),
+    getDraftKey({ userId: "B", tripId: trip.id, entityType: "itinerary_item", entityId: "tail-visit" }),
+    getDraftKey({ userId: "A", tripId: trip.id, entityType: "todo_item", entityId: "tail-visit" }),
+    getDraftKey({ userId: "A", tripId: trip.id, entityType: "itinerary_item", entityId: "new" }),
+  ];
+  const writeDrafts = (keys, savedAt) => page.evaluate(({ keys, savedAt }) => {
+    for (const key of keys) localStorage.setItem(key, JSON.stringify({ form: { title: key }, savedAt }));
+  }, { keys, savedAt });
+  const readDrafts = keys => page.evaluate(keys => keys.map(key => JSON.parse(localStorage.getItem(key))?.form.title ?? null), keys);
+  const discardRemovedDraft = () => page.evaluate(key => localStorage.removeItem(key), removed);
+
+  const dateCalls = [];
+  let failShortening = true;
+  const request = db.request.bind(db);
+  db.request = async call => {
+    if (call.name !== "apply_trip_date_change") return request(call);
+    dateCalls.push(call.args);
+    const shortening = call.args.confirm_timeline_removal;
+    // Simulate a draft persisted by another tab after the save passed admission.
+    await writeDrafts(shortening && !failShortening ? [removed, retained] : [removed], "2090-04-01T00:00:00Z");
+    if (shortening && failShortening) return { data: null, error: { message: "Date change failed" } };
+    trip.end_date = call.args.new_end_date;
+    if (shortening) db.rows.itinerary_items = db.rows.itinerary_items.filter(item => item.id !== "tail-visit");
+    return { data: { ok: true }, error: null };
+  };
+  await boot(page, db, "A", { waitForBudget: false });
+  await writeDrafts(protectedKeys, "2090-04-02T00:00:00Z");
+
+  const dateTrigger = page.getByTitle("編輯旅程日期", { exact: true });
+  const dialog = page.getByRole("dialog", { name: "編輯旅程日期" });
+  const save = dialog.getByRole("button", { name: "儲存", exact: true });
+  const editEnd = async endDate => {
+    await dateTrigger.click();
+    const end = dialog.getByRole("textbox", { name: "結束日期" });
+    await end.fill(endDate);
+    await end.press("Tab");
+  };
+
+  await editEnd("20900411");
+  await save.click();
+  await expect(dialog).toHaveCount(0);
+  expect(dateCalls.map(call => call.confirm_timeline_removal)).toEqual([false]);
+  expect(await readDrafts([removed, ...protectedKeys])).toEqual([removed, ...protectedKeys]);
+
+  await editEnd("20900409");
+  await dialog.getByRole("button", { name: "確認縮短旅程" }).click();
+  await save.click();
+  await expect(dialog.getByRole("alert")).toHaveText("目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。");
+  expect(dateCalls).toHaveLength(1);
+  expect(await readDrafts([removed])).toEqual([removed]);
+
+  await discardRemovedDraft();
+  await save.click();
+  await expect(dialog.getByRole("alert")).toHaveText("儲存失敗，請再試一次");
+  expect(dateCalls.map(call => call.confirm_timeline_removal)).toEqual([false, true]);
+  expect(await readDrafts([removed, ...protectedKeys])).toEqual([removed, ...protectedKeys]);
+
+  await discardRemovedDraft();
+  failShortening = false;
+  await save.click();
+  await expect(dialog).toHaveCount(0);
+  await expect(dateTrigger).toContainText("2090/04/09");
+  expect(dateCalls.map(call => call.confirm_timeline_removal)).toEqual([false, true, true]);
+  expect(await readDrafts([removed, retained, ...protectedKeys])).toEqual([null, retained, ...protectedKeys]);
   expect(page.qaErrors).toEqual([]);
 });

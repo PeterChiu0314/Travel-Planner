@@ -40,7 +40,7 @@ export function clearDraft(key) {
   }
 }
 
-export function loadLatestDraftForEntity({ entityType, tripId, userId }) {
+export function loadLatestDraftForEntity({ entityType, includeNew = true, tripId, userId }) {
   const prefix = [draftPrefix, userId || "anonymous", tripId || "no-trip", entityType, ""].join(":");
   let latest = null;
   try {
@@ -55,12 +55,14 @@ export function loadLatestDraftForEntity({ entityType, tripId, userId }) {
       ) {
         continue;
       }
+      const entityId = key.slice(prefix.length) || "new";
+      if (!includeNew && entityId === "new") continue;
       const draft = loadDraft(key);
       if (!draft?.form || !draft.savedAt) continue;
       if (!latest || new Date(draft.savedAt).getTime() > new Date(latest.draft.savedAt).getTime()) {
         latest = {
           draft,
-          entityId: key.slice(prefix.length) || "new",
+          entityId,
           key,
         };
       }

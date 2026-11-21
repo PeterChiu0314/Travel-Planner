@@ -104,7 +104,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { clearDraft, findLatestDraftTrip, getDraftKey, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
+import { clearDraft, findLatestDraftTrip, loadLatestDraftForEntity, useDraftAutosave } from "./lib/draftAutosave.js";
 import {
   planDestinationPackageReorder,
 } from "./lib/destinationPackages.js";
@@ -165,6 +165,7 @@ import {
   buildTimelineItemSubmission,
   normalizeTimelineItemPayload,
 } from "./components/timeline/timelineEditorForm.js";
+import { clearTimelineDraftsForItemIds, hasTimelineDraftForTrip, timelineDraftEntityType } from "./components/timeline/timelineDrafts.js";
 import useTimelineMapPointPicker from "./components/timeline/useTimelineMapPointPicker.js";
 import useTimelineVisitDragSession from "./components/timeline/useTimelineVisitDragSession.js";
 import MultiDayTimelineColumns from "./components/timeline/MultiDayTimelineColumns.jsx";
@@ -1305,7 +1306,7 @@ function createDemoTimelineItems() {
 }
 
 
-const activeEditDraftEntityTypes = ["itinerary_item", "budget_item", "accommodation", "todo_item"];
+const activeEditDraftEntityTypes = [timelineDraftEntityType, "budget_item", "accommodation", "todo_item"];
 const sessionContextStoragePrefix = "travel-planner-session-context";
 const sessionContextSections = new Set([...desktopNavItems, ...mobileNavItems].map((item) => item.id));
 const luggageTabs = new Set(["personal", "shared"]);
@@ -3986,10 +3987,8 @@ export default function App() {
       notify.error(message);
       return { ok: false, dirtyDraft: true, message };
     }
-    const latestTripDraft = session?.user?.id
-      ? findLatestDraftTrip({ entityTypes: ["itinerary_item"], userId: session.user.id })
-      : null;
-    if (latestTripDraft?.tripId === activeTrip.id) {
+    const draftScope = { tripId: activeTrip.id, userId: session?.user?.id };
+    if (hasTimelineDraftForTrip(draftScope)) {
       const message = "目前有未儲存的編輯內容，請先儲存或放棄後再修改旅程日期。";
       notify.error(message);
       return { ok: false, dirtyDraft: true, message };
@@ -4014,21 +4013,12 @@ export default function App() {
       new_start_date: startDate,
       new_end_date: endDate,
     });
-    if (error) {
-      notify.error(error.message);
+    if (error || data?.ok !== true) {
+      if (error) notify.error(error.message);
       return { ok: false, error };
     }
-    if (removedTimelineDraftIds.size && session?.user?.id) {
-      removedTimelineDraftIds.forEach((itemId) => {
-        clearDraft(
-          getDraftKey({
-            entityId: itemId,
-            entityType: "timeline",
-            tripId: activeTrip.id,
-            userId: session.user.id,
-          }),
-        );
-      });
+    if (removedTimelineDraftIds.size) {
+      clearTimelineDraftsForItemIds({ ...draftScope, itemIds: removedTimelineDraftIds });
     }
     setActiveDay((current) => Math.min(current, Math.max((preview.newDayCount || 1) - 1, 0)));
     await Promise.all([loadTrips(activeTrip.id), loadTripData(activeTrip.id)]);
@@ -7820,7 +7810,7 @@ function ItineraryTimeline({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
     editingId,
-    entityType: "itinerary_item",
+    entityType: timelineDraftEntityType,
     forceDirtyOnOpen: Boolean(restoredDraftKey),
     isOpen,
     serverUpdatedAt: baseUpdatedAt,
@@ -8328,7 +8318,7 @@ function ItineraryTimeline({
   useEffect(() => {
     if (!restoreDrafts || isOpen || !activeTrip?.id || !currentUserId) return;
     const latest = loadLatestDraftForEntity({
-      entityType: "itinerary_item",
+      entityType: timelineDraftEntityType,
       tripId: activeTrip.id,
       userId: currentUserId,
     });
