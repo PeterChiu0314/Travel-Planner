@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
@@ -17,7 +18,12 @@ const fiveMinuteCeilingHotfixMigration = readFileSync(
   "supabase/migrations/20260811133000_timeline_phase_6_restore_five_minute_ceiling.sql",
   "utf8",
 );
-const appSource = readFileSync("src/App.jsx", "utf8");
+const appSource = readOwnerSource(
+    "src/components/timeline/timelineItemRules.js",
+    "src/components/timeline/useTimelineEditor.jsx",
+    "src/components/timeline/useTimelineReorder.js",
+    "src/features/timeline/formalTimelineCommands.js",
+  );
 
 test("Phase 6 RPC recalculates from a locked full-Day revision instead of trusting preview output", () => {
   expect(plannerMigration).toContain("app_private.plan_timeline_schedule_snapshot");

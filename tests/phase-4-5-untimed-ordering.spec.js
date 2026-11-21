@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import {
@@ -7,7 +8,16 @@ import {
 } from "../src/lib/timelineUntimedOrdering.js";
 import { normalizeTransportRole, transportRoles } from "../src/lib/timelineTransportationRoles.js";
 
-const appSource = readFileSync("src/App.jsx", "utf8");
+const appSource = readOwnerSource(
+    "src/app/TripWorkspace.jsx",
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/timelineItemRules.js",
+    "src/components/timeline/useTimelineEditor.jsx",
+    "src/components/timeline/useTimelineReorder.js",
+    "src/demo/DemoApp.jsx",
+    "src/demo/timelineCommands.js",
+    "src/features/timeline/formalTimelineCommands.js",
+  );
 
 function visit(id, startTime, sortOrder, extra = {}) {
   return {
@@ -177,7 +187,8 @@ test("timed and untimed reorder delegate scheduling to the unified Planner", () 
   expect(appSource).toContain("planTimelineSchedule");
   expect(appSource).toContain("timelineScheduleOperation");
   expect(appSource).toContain("timelineSchedulePlan");
-  expect(appSource).toContain('supabase.rpc("apply_timeline_schedule_operation"');
+  expect(appSource).toContain("await submitTimelineSchedule(supabase, {");
+  expect(readOwnerSource("src/lib/timelineScheduleService.js")).toContain('client.rpc("apply_timeline_schedule_operation_link_safe"');
 });
 
 test("timed drag upward can land around a timed card before an untimed slot", () => {
@@ -315,7 +326,7 @@ test("formal untimed persistence is baseline-guarded by the unified Planner RPC"
   expect(appSource).not.toContain("suggestedStartTimeForUntimedAfterTailTransport");
   expect(appSource).toContain("function isEffectiveFixedVisit(item)");
   expect(appSource).toContain("if (!isTimedVisit(item))");
-  expect(appSource).toContain("is_fixed: hasCompleteTime ? Boolean(payload.is_fixed) : false");
+  expect(readOwnerSource("src/components/timeline/timelineEditorForm.js")).toContain("is_fixed: hasCompleteTime ? Boolean(payload.is_fixed) : false");
   expect(appSource).toContain('if (message.includes("fixed_boundary_crossed")) return "固定行程是排程邊界，無法跨越拖曳。";');
 });
 

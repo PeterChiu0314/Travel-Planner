@@ -168,6 +168,13 @@ export async function boot(page, db, actor = "A", { waitForBudget = true } = {})
       captureReload() { return channels.filter(c => !c.closed && c.name.startsWith("trip-")).at(-1).handlers.find(h => h.config.table === "trips").callback; },
       captureBudget() { return channels.filter(c => !c.closed && c.name.startsWith("trip-")).at(-1).handlers.find(h => h.config.table === "budget_items").callback; },
       status(status) { channels.filter(c=>!c.closed&&c.name.startsWith("trip-")).forEach(c=>c.statusCallback?.(status)); },
+      broadcast(event, payload) {
+        for (const channel of channels.filter(entry => !entry.closed)) {
+          for (const handler of channel.handlers.filter(entry => entry.type === "broadcast" && entry.config.event === event)) {
+            handler.callback({ payload });
+          }
+        }
+      },
       activeTripChannels() { return channels.filter(c=>!c.closed&&c.handlers.some(h=>h.type==="postgres_changes"&&h.config.table==="trips")).map(c=>c.name); },
       emit(table, payload={eventType:"UPDATE"}) { channels.filter(c => !c.closed).forEach(c => c.handlers.filter(h => h.type === "postgres_changes" && h.config.table === table && (h.config.event==="*"||h.config.event===payload.eventType)).forEach(h => h.callback(payload))); },
     };

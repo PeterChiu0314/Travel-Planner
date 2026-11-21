@@ -174,6 +174,9 @@ test("late trip A callback cannot invalidate trip B's pending full load", async 
     formalLuggageMock.hold = { user: "A", tripId: "other" };
   });
   await page.getByRole("button", { name: "Other QA", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => formalLuggageMock.pending.length)).toBeGreaterThan(0);
+  await expect(page.getByRole("button", { name: "編輯：A private", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "編輯：A other private", exact: true })).toHaveCount(0);
   await expectObsoleteCallbackIgnored(page);
   await expect(page.getByRole("button", { name: "編輯：A other private", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "編輯：A private", exact: true })).toHaveCount(0);

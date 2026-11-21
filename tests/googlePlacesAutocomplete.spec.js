@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -16,7 +17,10 @@ function readRepoFile(filePath) {
 }
 
 test("Dayboard add waits for a ready Map and enters the shared add-location flow", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/app/TripWorkspace.jsx",
+    "src/components/timeline/ItineraryTimeline.jsx",
+  );
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
@@ -36,7 +40,7 @@ test("Dayboard add waits for a ready Map and enters the shared add-location flow
 });
 
 test("add-location cancellation and all point sources keep the existing confirmation handoff", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/useTimelineEditor.jsx");
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
 
@@ -53,7 +57,7 @@ test("add-location cancellation and all point sources keep the existing confirma
 });
 
 test("custom Map points open a coordinate-backed new editor with an immediate draft marker", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/useTimelineEditor.jsx");
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
 
@@ -67,14 +71,14 @@ test("custom Map points open a coordinate-backed new editor with an immediate dr
 });
 
 test("new and existing visit editors share the same point editing section", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/timelineEditorFields.jsx");
 
   expect(appSource).toContain('const isMapPointBodyVisible = isAlternativeEditor || isMapPointExpanded');
   expect(appSource).toContain('<div className={`visit-map-point-section${isMapPointBodyVisible ? " expanded" : ""}${isAlternativeEditor ? " always-expanded" : ""}`}>');
   expect(appSource).not.toContain('editingId || !useEditLocks ? <div className={`visit-map-point-section');
   expect(appSource).toContain("更改地點");
   expect(appSource).toContain("搜尋替換");
-  expect(appSource).toMatch(/const nextForm = buildNewVisitForm\(\{[\s\S]*?initialPoint,[\s\S]*?lastItem: sortedVisitItems\(dayItems\)\.at\(-1\)/);
+  expect(readOwnerSource("src/components/timeline/useTimelineEditor.jsx")).toMatch(/const nextForm = buildNewVisitForm\(\{[\s\S]*?initialPoint,[\s\S]*?lastItem: sortedVisitItems\(dayItems\)\.at\(-1\)/);
 });
 
 test("Phase 5.6b normalizes Places autocomplete predictions without Place Details", () => {
@@ -234,7 +238,10 @@ test("Phase 5.6c hotfix uses coordinate map URLs for editor validation", () => {
 test("Phase 5.6c autocomplete source fetches details before opening the add editor", () => {
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/components/timeline/timelineEditorFields.jsx",
+    "src/components/timeline/useTimelineEditor.jsx",
+  );
   const editorFormSource = readRepoFile("src/components/timeline/timelineEditorForm.js");
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
@@ -390,7 +397,7 @@ test("Map search handles Google Maps URLs without Places requests", () => {
 
 test("Phase 5.6d places details show a map preview before opening the add editor", () => {
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/useTimelineEditor.jsx");
   const editorFormSource = readRepoFile("src/components/timeline/timelineEditorForm.js");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
   const stylesSource = readRepoFile("src/styles.css");

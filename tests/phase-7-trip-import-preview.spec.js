@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { parseUnifiedTripJsonText } from "../src/lib/unifiedTripJsonImport.js";
@@ -73,7 +74,7 @@ test("preview board uses the existing Google Maps loader without route or photo 
 
 test("blocking import errors use a compact details-only dialog", () => {
   const source = readFileSync(new URL("../src/components/trip-import/TripImportPreviewDialog.jsx", import.meta.url), "utf8");
-  const appSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const appSource = readOwnerSource("src/features/trip-import/exchangeCommands.js");
   expect(source).toContain("無法匯入這份旅程");
   expect(source).toContain("查看細節（{blockingIssues.length}）");
   expect(source).toContain('!hasBlockingError && trip ? (');

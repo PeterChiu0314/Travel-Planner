@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { buildAiItineraryCreatePrompt, buildAiItineraryUsageInstructions, buildBlankAiItineraryTemplate } from "../src/lib/aiItineraryAdapters.js";
@@ -243,11 +244,14 @@ test("Formal New Trip keeps the date picker and AI and JSON entry points connect
 });
 
 test("App auto-detects both JSON contracts before one atomic confirmation path", async ({ page }) => {
-  const source = readFileSync("src/App.jsx", "utf8");
+  const source = readOwnerSource(
+    "src/app/FormalWorkspace.jsx",
+    "src/features/trip-import/exchangeCommands.js",
+  );
   const tripDialogSource = readFileSync("src/components/trip/TripDialog.jsx", "utf8");
   const previewSource = readFileSync("src/components/trip-import/TripImportPreviewDialog.jsx", "utf8");
   const previewBody = source.match(/async function previewTripImport\(file\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function confirmTripImport/)?.[1] || "";
-  const confirmBody = source.match(/async function confirmTripImport\(\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function updateTrip/)?.[1] || "";
+  const confirmBody = source.match(/async function confirmTripImport\(\) \{([\s\S]*?)\r?\n  \}/)?.[1] || "";
 
   expect(previewBody).toContain("parseUnifiedTripJsonText(text)");
   expect(previewBody).toContain("sourceDocumentType: parsed.sourceDocumentType");
