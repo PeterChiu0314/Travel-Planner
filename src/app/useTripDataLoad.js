@@ -3,7 +3,6 @@ import { emptyBudgetSnapshot, cachedExpenseGraph, nonFinancialAttachments } from
 import { readLuggageScope } from "../lib/luggageSync.js";
 import { useCallback } from "react";
 import { supabase } from "../lib/supabase.js";
-import { isTransportationCard } from "../lib/timelineTransportationRoles.js";
 import { readTripStays } from "../features/stays/formalStays.js";
 
 export function useTripDataLoad({
@@ -15,11 +14,11 @@ export function useTripDataLoad({
     setLuggageItems,
     setSharedLuggageItems,
     setAttachments,
-    setRouteOverrides,
+    clearRouteOverrides,
     setPackItems,
     setMembers,
     syncFeedback,
-    routeOverrideCoordinateSnapshotRef,
+    invalidateChangedEndpoints,
     accountRef,
     requestGuard,
     tripDataContext,
@@ -53,7 +52,7 @@ export function useTripDataLoad({
       setLuggageItems([]);
       setSharedLuggageItems([]);
       setAttachments([]);
-      setRouteOverrides([]);
+      clearRouteOverrides();
       setPackItems([]);
       setMembers([]);
       return;
@@ -93,24 +92,7 @@ export function useTripDataLoad({
     const itemIds = new Set(nextItems.map(item => item.id));
     const nextAlternatives = (alternativesResult.data || []).filter(alternative => itemIds.has(alternative.itinerary_item_id));
 
-    // Apply itinerary-primary route invalidation in the same authoritative
-    // load that receives changed endpoint coordinates.  Waiting for a later
-    // route-override reload can race the writer's follow-up DELETE and read
-    // the old segment back into this client.
-    const previousCoordinateSnapshot = routeOverrideCoordinateSnapshotRef.current;
-    const changedRouteEndpointIds = nextItems.reduce((changedIds, item) => {
-      if (isTransportationCard(item) || !previousCoordinateSnapshot.has(item.id)) return changedIds;
-      const signature = `${item.latitude ?? ""}:${item.longitude ?? ""}`;
-      if (previousCoordinateSnapshot.get(item.id) !== signature) changedIds.push(item.id);
-      return changedIds;
-    }, []);
-    if (changedRouteEndpointIds.length) {
-      setRouteOverrides((current) => current.filter(
-        (override) =>
-          !changedRouteEndpointIds.includes(override.from_item_id) &&
-          !changedRouteEndpointIds.includes(override.to_item_id),
-      ));
-    }
+    invalidateChangedEndpoints(nextItems);
 
     setItems(nextItems);
     setAlternatives(nextAlternatives);
