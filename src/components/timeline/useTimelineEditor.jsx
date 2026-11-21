@@ -436,6 +436,7 @@ export function useTimelineEditor({
       if (!mapUrlValidation.ok) {
         setTimeError("");
         setMapUrlError(mapUrlValidation.errorMessage);
+        setIsMapPointExpanded(true);
         setForm(submittedForm);
         return false;
       }
