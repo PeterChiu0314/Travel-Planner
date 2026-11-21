@@ -3,16 +3,16 @@ import { useEffect } from "react";
 import { hasSupabaseConfig, supabase } from "../lib/supabase.js";
 
 export function useAccountSession({
-    setSession,
-    setAuthReady,
-    setTrips,
-    setActiveTripId,
-    accountRef,
-    requestGuard,
-    budgetRefreshRef,
-    luggageRefreshRef,
-    loadTripData,
-  }) {
+  setSession,
+  setAuthReady,
+  setTrips,
+  setActiveTripId,
+  accountRef,
+  requestGuard,
+  budgetRefreshRef,
+  luggageRefreshRef,
+  loadTripData,
+}) {
   useEffect(() => {
     if (!hasSupabaseConfig) {
       setAuthReady(true);

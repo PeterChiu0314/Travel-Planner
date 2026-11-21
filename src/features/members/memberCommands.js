@@ -4,13 +4,13 @@ import { luggageErrorMessage } from "../../lib/luggageService.js";
 import { supabase } from "../../lib/supabase.js";
 
 export function createMemberCommands({
-    session,
-    members,
-    activeTrip,
-    isTripDateLocked,
-    canInviteMembers,
-    loadTripData,
-  }) {
+  session,
+  members,
+  activeTrip,
+  isTripDateLocked,
+  canInviteMembers,
+  loadTripData,
+}) {
   async function approveMember(memberId) {
     if (!activeTrip || !canInviteMembers) return;
     const { error } = await supabase

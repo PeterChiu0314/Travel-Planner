@@ -10,17 +10,17 @@ import {
 import { supabase } from "../../lib/supabase.js";
 
 export function createLuggageCommands({
-    session,
-    setLuggageItems,
-    setSharedLuggageItems,
-    activeTrip,
-    requestGuard,
-    updateSharedCache,
-    refreshLuggage,
-    activeMembership,
-    rejectCrossTripSave,
-    isCurrentTripContext,
-  }) {
+  session,
+  setLuggageItems,
+  setSharedLuggageItems,
+  activeTrip,
+  requestGuard,
+  updateSharedCache,
+  refreshLuggage,
+  activeMembership,
+  rejectCrossTripSave,
+  isCurrentTripContext,
+}) {
   async function persistLuggage(scope, action, payload, itemId, meta = {}) {
     if (!activeTrip || !session?.user || activeMembership?.status !== "approved") return { ok: false, error: new Error("你不是此旅程的已核准成員。") };
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();

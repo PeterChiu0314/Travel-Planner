@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import {
@@ -19,7 +20,25 @@ const fixedAnchorContinuationMigration = readFileSync(
   "supabase/migrations/024_reorder_itinerary_fixed_anchor_continuation.sql",
   "utf8",
 );
-const appSource = readFileSync("src/App.jsx", "utf8");
+const appSource = readOwnerSource(
+    "src/app/FormalWorkspace.jsx",
+    "src/app/TripWorkspace.jsx",
+    "src/app/tripPresence.js",
+    "src/app/useTripPresence.js",
+    "src/components/map/useRouteWorkspace.js",
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/timelineEditorFields.jsx",
+    "src/components/timeline/timelinePresence.js",
+    "src/components/timeline/useTimelineEditor.jsx",
+    "src/components/timeline/useTimelineReorder.js",
+    "src/components/trip/TripHeader.jsx",
+    "src/demo/DemoApp.jsx",
+    "src/demo/timelineCommands.js",
+    "src/demo/timelineFixtures.js",
+    "src/demo/useDemoLuggage.js",
+    "src/features/timeline/formalTimelineCommands.js",
+    "src/features/timeline/useTimelinePresence.js",
+  );
 const dayTabsSource = readFileSync("src/components/timeline/DayTabs.jsx", "utf8");
 const multiDayColumnsSource = readFileSync("src/components/timeline/MultiDayTimelineColumns.jsx", "utf8");
 const tripHeaderPartsSource = readFileSync("src/components/trip/TripHeaderParts.jsx", "utf8");

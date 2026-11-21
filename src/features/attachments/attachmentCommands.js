@@ -4,13 +4,13 @@ import { supabase } from "../../lib/supabase.js";
 import { attachmentBucket, safeFileName } from "./attachmentFiles.js";
 
 export function createAttachmentCommands({
-    session,
-    activeTrip,
-    refreshBudget,
-    canEdit,
-    canEditActiveTripContent,
-    loadTripData,
-  }) {
+  session,
+  activeTrip,
+  refreshBudget,
+  canEdit,
+  canEditActiveTripContent,
+  loadTripData,
+}) {
   async function uploadAttachment(targetType, targetId, file, meta = {}) {
     if (budgetReceiptsDisabled && isBudgetReceiptTarget(targetType)) return { ok: false, error: new Error(budgetReceiptUnavailableMessage) };
     if (!activeTrip || !(targetType === "actual_expense" ? canEdit : canEditActiveTripContent) || !file) return;

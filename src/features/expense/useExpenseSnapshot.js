@@ -6,15 +6,14 @@ import { budgetAuthorityTimeoutMs } from "../../lib/budgetMetadataService.js";
 import { supabase } from "../../lib/supabase.js";
 
 export function useExpenseSnapshot({
-    setTrips,
-    syncFeedback,
-    requestGuard,
-    tripDataContext,
-    tripReadAccessRef,
-    canReadTrip,
-  }) {
+  setTrips,
+  syncFeedback,
+  requestGuard,
+  tripDataContext,
+  tripReadAccessRef,
+  canReadTrip,
+}) {
   const [budgetSnapshotState, setBudgetSnapshotState] = useState(null);
-
   const budgetSnapshot = canReadTrip(tripDataContext.key) && budgetSnapshotState
     && requestGuard.sameContext(budgetSnapshotState.context) ? budgetSnapshotState.data : null;
 

@@ -20,37 +20,27 @@ import {
 } from "../../components/timeline/timelinePresence.js";
 
 export function useTimelinePresence({
-    activeTripId,
-    activeDay,
-    items,
-    activeSection,
-    setTripPresenceSelectedItem,
-    timelineDragPresenceSessionIdRef,
-    activeMembership,
-    canEditActiveTripContent,
-    activeUserId,
-    timelineDragPresenceUserName,
-  }) {
+  activeTripId,
+  activeDay,
+  items,
+  activeSection,
+  setTripPresenceSelectedItem,
+  timelineDragPresenceSessionIdRef,
+  activeMembership,
+  canEditActiveTripContent,
+  activeUserId,
+  timelineDragPresenceUserName,
+}) {
   const [foreignDragPresence, setForeignDragPresence] = useState(null);
-
   const [foreignCardSelection, setForeignCardSelection] = useState(null);
-
   const timelineDragPresenceChannelRef = useRef(null);
-
   const timelineDragPresenceReadyRef = useRef(false);
-
   const timelineDragPresenceStatusRef = useRef("idle");
-
   const timelineDragPresenceReconnectRef = useRef(false);
-
   const itemsRef = useRef([]);
-
   const localCardSelectionRef = useRef(null);
-
   const localDragPresenceRef = useRef(null);
-
   const localDragStartedAtRef = useRef(null);
-
   const [timelineDragPresenceChannelVersion, setTimelineDragPresenceChannelVersion] = useState(0);
 
   useEffect(() => {

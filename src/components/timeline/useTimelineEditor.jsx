@@ -1,3 +1,4 @@
+import { timelineEditorFields } from "./timelineEditorFields.jsx";
 import { requestActiveEditorGuardResolution, requestActiveEditorHandoff, useActiveEditorGuard } from "../../app/activeEditorGuard.jsx";
 import { formatTimeDisplay } from "../../lib/displayFormat.js";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -35,67 +36,55 @@ import {
 } from "./timelineItemRules.js";
 
 export function useTimelineEditor({
-    activeTrip,
-    alternativesByItem,
-    currentUserId,
-    dayItems,
-    onDeleteAlternative,
-    onFocusItem,
-    onCancelMapPointPick,
-    onCancelMapSearchReplace,
-    onMapPointEditorActiveChange,
-    onStartMapPointPick,
-    onSaveAlternative,
-    onSaveItem,
-    activeDay,
-    disableDraftAutosave,
-    canPickMapPoint,
-    isPickingMapPoint,
-    isMapSearchReplaceActive,
-    pickedMapPoint,
-    foreignSameDayDragActive,
-    restoreDrafts,
-    useEditLocks,
-    setAlternativeErrorByItem,
-    setFixedNotice,
-    foreignDragReadOnlyMessage,
-    foreignDragSaveBlockedMessage,
-    visitItems,
-  }) {
+  onStartMapSearchReplace,
+  alternativeErrorByItem,
+  canMutateThisDay,
+  transportEndpointItems,
+  renderTransportNavigationControl,
+  activeTrip,
+  alternativesByItem,
+  currentUserId,
+  dayItems,
+  onDeleteAlternative,
+  onFocusItem,
+  onCancelMapPointPick,
+  onCancelMapSearchReplace,
+  onMapPointEditorActiveChange,
+  onStartMapPointPick,
+  onSaveAlternative,
+  onSaveItem,
+  activeDay,
+  disableDraftAutosave,
+  canPickMapPoint,
+  isPickingMapPoint,
+  isMapSearchReplaceActive,
+  pickedMapPoint,
+  foreignSameDayDragActive,
+  restoreDrafts,
+  useEditLocks,
+  setAlternativeErrorByItem,
+  setFixedNotice,
+  foreignDragReadOnlyMessage,
+  foreignDragSaveBlockedMessage,
+  visitItems,
+}) {
   const [isOpen, setIsOpen] = useState(false);
-
   const [editingId, setEditingId] = useState(null);
-
   const [formSeed, setFormSeed] = useState(emptyItemForm);
-
   const [baseUpdatedAt, setBaseUpdatedAt] = useState(null);
-
   const [editorTripId, setEditorTripId] = useState(null);
-
   const [insertionPair, setInsertionPair] = useState(null);
-
   const [restoredDraftKey, setRestoredDraftKey] = useState(null);
-
   const [conflict, setConflict] = useState(false);
-
   const [timeError, setTimeError] = useState("");
-
   const [mapUrlError, setMapUrlError] = useState("");
-
   const [isResolvingMapUrl, setIsResolvingMapUrl] = useState(false);
-
   const [isMapPointExpanded, setIsMapPointExpanded] = useState(false);
-
   const [durationInput, setDurationInput] = useState("");
-
   const [isAlternativeEditorOpen, setIsAlternativeEditorOpen] = useState(false);
-
   const [isAlternativeDeleteConfirmOpen, setIsAlternativeDeleteConfirmOpen] = useState(false);
-
   const [autoContinuationPrompt, setAutoContinuationPrompt] = useState(null);
-
   const [isSavingAutoContinuation, setIsSavingAutoContinuation] = useState(false);
-
   const { draftKey, flushDraft, form, hasUnsavedChanges, replaceForm, resetDraft, setForm } = useDraftAutosave({
     defaultForm: formSeed,
     disabled: disableDraftAutosave,
@@ -124,11 +113,8 @@ export function useTimelineEditor({
   useActiveEditorGuard(activeEditorGuardId, { tripId: editorTripId || activeTrip?.id, workspace: "timeline" }, activeEditorGuard);
 
   const newVisitEditorRef = useRef(null);
-
   const visitDurationRef = useRef(null);
-
   const mapUrlApplyRef = useRef(false);
-
   const lastAppliedMapPointPickRef = useRef(null);
 
   useEffect(() => {
@@ -972,10 +958,15 @@ export function useTimelineEditor({
     setIsAlternativeEditorOpen(false);
   }
 
-  return {
-    isOpen,
+  const { renderTransportEditorForm, renderVisitEditorForm } = timelineEditorFields({
+    onCancelMapPointPick,
+    onCancelMapSearchReplace,
+    onStartMapSearchReplace,
+    canPickMapPoint,
+    isPickingMapPoint,
+    isMapSearchReplaceActive,
+    foreignSameDayDragActive,
     editingId,
-    insertionPair,
     conflict,
     setConflict,
     timeError,
@@ -986,28 +977,21 @@ export function useTimelineEditor({
     setIsMapPointExpanded,
     durationInput,
     setDurationInput,
-    isAlternativeDeleteConfirmOpen,
     setIsAlternativeDeleteConfirmOpen,
-    autoContinuationPrompt,
-    isSavingAutoContinuation,
+    alternativeErrorByItem,
     form,
     setForm,
-    newVisitEditorRef,
+    canMutateThisDay,
+    foreignDragSaveBlockedMessage,
     visitDurationRef,
-    openNewItem,
-    openNewTransport,
-    openEditItem,
     closeEditor,
-    cancelAutoContinuation,
-    saveWithAutoContinuation,
     submit,
-    isTransportEditor,
     isAlternativeEditor,
     activeVisitForm,
     updateActiveVisitForm,
     alternativeDestination,
-    visitDestination,
-    resetAlternativeError,
+    transportEndpointItems,
+    renderTransportNavigationControl,
     toggleMapPointPick,
     updateVisitTime,
     commitDurationInput,
@@ -1015,6 +999,30 @@ export function useTimelineEditor({
     editorMapsUrl,
     openAlternativeEditor,
     returnToMainEditor,
+  });
+
+  return {
+    isOpen,
+    editingId,
+    insertionPair,
+    timeError,
+    isAlternativeDeleteConfirmOpen,
+    setIsAlternativeDeleteConfirmOpen,
+    autoContinuationPrompt,
+    isSavingAutoContinuation,
+    form,
+    newVisitEditorRef,
+    openNewItem,
+    openNewTransport,
+    openEditItem,
+    cancelAutoContinuation,
+    saveWithAutoContinuation,
+    isTransportEditor,
+    alternativeDestination,
+    visitDestination,
+    resetAlternativeError,
     stageAlternativeDeletion,
+    renderTransportEditorForm,
+    renderVisitEditorForm,
   };
 }

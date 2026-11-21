@@ -23,41 +23,37 @@ import {
 } from "./timelineItemRules.js";
 
 export function useTimelineReorder({
-    activeTrip,
-    currentUserId,
-    dayItems,
-    focusedItemId,
-    onClearDragPresence,
-    onClearCardSelection,
-    onPublishDragPresence,
-    onReorderDestinationPackages,
-    onReorderUntimedVisit,
-    activeDay,
-    foreignSameDayDragActive,
-    useEditLocks,
-    isOpen,
-    editingId,
-    setFixedNotice,
-    autoContinuationPrompt,
-    isSavingAutoContinuation,
-    canMutateThisDay,
-    foreignDragSaveBlockedMessage,
-    hasBlockingTimelineEditor,
-    newVisitEditorRef,
-    isTransportEditor,
-    visitItems,
-    visitItemIds,
-    timedVisitItems,
-    visitDestination,
-  }) {
+  activeTrip,
+  currentUserId,
+  dayItems,
+  focusedItemId,
+  onClearDragPresence,
+  onClearCardSelection,
+  onPublishDragPresence,
+  onReorderDestinationPackages,
+  onReorderUntimedVisit,
+  activeDay,
+  foreignSameDayDragActive,
+  useEditLocks,
+  isOpen,
+  editingId,
+  setFixedNotice,
+  autoContinuationPrompt,
+  isSavingAutoContinuation,
+  canMutateThisDay,
+  foreignDragSaveBlockedMessage,
+  hasBlockingTimelineEditor,
+  newVisitEditorRef,
+  isTransportEditor,
+  visitItems,
+  visitItemIds,
+  timedVisitItems,
+  visitDestination,
+}) {
   const [reorderPreview, setReorderPreview] = useState(null);
-
   const [isReorderingDestination, setIsReorderingDestination] = useState(false);
-
   const [isReorderingUntimed, setIsReorderingUntimed] = useState(false);
-
   const [untimedDropNotice, setUntimedDropNotice] = useState("");
-
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -75,9 +71,7 @@ export function useTimelineReorder({
   } = useTimelineVisitDragSession({ activeDay, tripId: activeTrip?.id, onClearDragPresence });
 
   const activeDayColumnRef = useRef(null);
-
   const activeTimelineListRef = useRef(null);
-
   const restrictTimelineDragToDayColumn = useCallback(
     ({ activeNodeRect, overlayNodeRect, transform }) => {
       const columnRect = activeDayColumnRef.current?.getBoundingClientRect();

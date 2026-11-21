@@ -61,14 +61,12 @@ export function FormalWorkspace() {
   const [activeDay, setActiveDay] = useState(0);
   const [items, setItems] = useState([]);
   const [alternatives, setAlternatives] = useState([]);
-
   const [accommodations, setAccommodations] = useState([]);
   const [guideItems, setGuideItems] = useState([]);
   const [todoItems, setTodoItems] = useState([]);
   const [luggageItems, setLuggageItems] = useState([]);
   const [sharedLuggageItems, setSharedLuggageItems] = useState([]);
   const [attachments, setAttachments] = useState([]);
-
   const [packItems, setPackItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -96,7 +94,6 @@ export function FormalWorkspace() {
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [shareLinks, setShareLinks] = useState([]);
-
   const [activeSection, setActiveSection] = useState("today");
   const navigationPending = useRef(false);
   async function navigateWithEditorHandoff(action) {
@@ -114,14 +111,11 @@ export function FormalWorkspace() {
     return section === activeSection || navigateWithEditorHandoff(() => setActiveSection(section));
   }
   const [luggageTab, setLuggageTab] = useState("personal");
-
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isVersionDialogOpen, setIsVersionDialogOpen] = useState(false);
   const [isSidebarTripMenuOpen, setIsSidebarTripMenuOpen] = useState(false);
-
   const restoredDayRef = useRef(null);
-
   const timelineDragPresenceSessionIdRef = useRef(
     `timeline-drag-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   );
@@ -629,7 +623,7 @@ export function FormalWorkspace() {
     return { ok: true, data: result.data };
   }
 
-  const { saveAccommodation, deleteAccommodation } = createStayActions({
+  const stayActions = createStayActions({
     activeTrip,
     canEditActiveTripContent,
     loadTripData,
@@ -638,13 +632,7 @@ export function FormalWorkspace() {
     updateWithConflictCheck,
   });
 
-  const {
-    saveGuide,
-    deleteGuide,
-    saveTodo,
-    toggleTodo,
-    deleteTodo,
-  } = createTodoGuideActions({
+  const todoGuideActions = createTodoGuideActions({
     activeTrip,
     canEditActiveTripContent,
     loadTripData,
@@ -653,17 +641,7 @@ export function FormalWorkspace() {
     updateWithConflictCheck,
   });
 
-  const {
-    saveLuggageItem,
-    toggleLuggageItem,
-    deleteLuggageItem,
-    saveSharedLuggageItem,
-    updateSharedLuggageItem,
-    deleteSharedLuggageItem,
-    assignTripLuggage,
-    privatizeTripLuggage,
-    reorderTripLuggage,
-  } = createLuggageCommands({
+  const luggageCommands = createLuggageCommands({
     session,
     setLuggageItems,
     setSharedLuggageItems,
@@ -676,7 +654,7 @@ export function FormalWorkspace() {
     isCurrentTripContext,
   });
 
-  const { uploadAttachment, openAttachment, deleteAttachment } = createAttachmentCommands({
+  const attachmentCommands = createAttachmentCommands({
     session,
     activeTrip,
     refreshBudget,
@@ -685,17 +663,7 @@ export function FormalWorkspace() {
     loadTripData,
   });
 
-  const {
-    saveItem,
-    saveAlternative,
-    deleteAlternative,
-    applyAlternative,
-    deleteItem,
-    toggleItemFixed,
-    confirmTransportWarning,
-    reorderDestinationPackages,
-    reorderUntimedVisit,
-  } = createTimelineCommands({
+  const timelineCommands = createTimelineCommands({
     session,
     activeDay,
     items,
@@ -712,15 +680,9 @@ export function FormalWorkspace() {
     updateWithConflictCheck,
   });
 
-  const { addPackItem, togglePackItem, deletePackItem } = createPackCommands({ activeTrip, canEditActiveTripContent, loadTripData });
+  const packCommands = createPackCommands({ activeTrip, canEditActiveTripContent, loadTripData });
 
-  const {
-    approveMember,
-    rejectMember,
-    createMemberInviteToken,
-    updateMemberRole,
-    removeMember,
-  } = createMemberCommands({
+  const memberCommands = createMemberCommands({
     session,
     members,
     activeTrip,
@@ -938,46 +900,20 @@ export function FormalWorkspace() {
             onActiveDay={setActiveDay}
             onRouteEditCollaborationEvent={onRouteEditCollaborationEvent}
             onRouteEditPresenceChange={onRouteEditPresenceChange}
-            onAddPackItem={addPackItem}
-            onApplyAlternative={applyAlternative}
-            onConfirmTransportWarning={confirmTransportWarning}
-            onApproveMember={approveMember}
-            onDeleteAlternative={deleteAlternative}
-            onDeleteAccommodation={deleteAccommodation}
-            onDeleteAttachment={deleteAttachment}
-            onDeleteGuide={deleteGuide}
-            onDeleteItem={deleteItem}
-            onDeleteLuggageItem={deleteLuggageItem}
-            onDeletePackItem={deletePackItem}
-            onDeleteSharedLuggageItem={deleteSharedLuggageItem}
-            onDeleteTodo={deleteTodo}
+            packCommands={packCommands}
+            memberCommands={memberCommands}
             onClearCardSelection={clearCardSelection}
             onClearDragPresence={clearDragPresence}
-            onRejectMember={rejectMember}
-            onReorderDestinationPackages={reorderDestinationPackages}
-            onReorderUntimedVisit={reorderUntimedVisit}
             onPublishDragPresence={publishDragPresence}
             onPublishCardSelection={publishCardSelection}
-            onSaveAlternative={saveAlternative}
-            onSaveAccommodation={saveAccommodation}
-            onSaveGuide={saveGuide}
-            onSaveItem={saveItem}
+            stayActions={stayActions}
+            todoGuideActions={todoGuideActions}
+            timelineCommands={timelineCommands}
             onSaveRouteOverride={saveRouteOverrideChange}
-            onSaveLuggageItem={saveLuggageItem}
-            onSaveSharedLuggageItem={saveSharedLuggageItem}
-            onAssignLuggage={assignTripLuggage}
-            onPrivatizeLuggage={privatizeTripLuggage}
-            onReorderLuggage={reorderTripLuggage}
-            onSaveTodo={saveTodo}
+            luggageCommands={luggageCommands}
             onLuggageTabChange={setLuggageTab}
             onSectionChange={changeTripSection}
-            onToggleLuggageItem={toggleLuggageItem}
-            onToggleTodo={toggleTodo}
-            onTogglePackItem={togglePackItem}
-            onToggleItemFixed={toggleItemFixed}
-            onUpdateSharedLuggageItem={updateSharedLuggageItem}
-            onOpenAttachment={openAttachment}
-            onUploadAttachment={uploadAttachment}
+            attachmentCommands={attachmentCommands}
           />
         ) : null}
       </main>
@@ -1035,12 +971,12 @@ export function FormalWorkspace() {
           currentUserId={session.user.id}
           isTripDateLocked={isTripDateLocked}
           members={members}
-          onApprove={approveMember}
+          onApprove={memberCommands.approveMember}
           onClose={() => setIsMembersDialogOpen(false)}
-          onCreateInvite={createMemberInviteToken}
-          onReject={rejectMember}
-          onRemoveMember={removeMember}
-          onUpdateRole={updateMemberRole}
+          onCreateInvite={memberCommands.createMemberInviteToken}
+          onReject={memberCommands.rejectMember}
+          onRemoveMember={memberCommands.removeMember}
+          onUpdateRole={memberCommands.updateMemberRole}
           trip={activeTrip}
         />
       ) : null}

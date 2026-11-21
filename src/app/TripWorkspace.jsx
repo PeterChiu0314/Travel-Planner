@@ -55,48 +55,22 @@ export function TripWorkspace(props) {
     todoItems,
     timelineDayTabPresenceByDay,
     onActiveDay,
-    onAddPackItem,
-    onApplyAlternative,
-    onConfirmTransportWarning,
-    onApproveMember,
-    onDeleteAlternative,
-    onDeleteAccommodation,
-    onDeleteAttachment,
-    onDeleteGuide,
-    onDeleteItem,
-    onDeleteLuggageItem,
-    onDeletePackItem,
-    onDeleteSharedLuggageItem,
-    onDeleteTodo,
+    packCommands,
+    timelineCommands,
+    memberCommands,
+    stayActions,
+    attachmentCommands,
+    todoGuideActions,
+    luggageCommands,
     onClearCardSelection,
     onClearDragPresence,
-    onRejectMember,
-    onReorderDestinationPackages,
-    onReorderUntimedVisit,
     onPublishDragPresence,
     onPublishCardSelection,
-    onSaveAlternative,
-    onSaveAccommodation,
-    onSaveGuide,
-    onSaveItem,
     onSaveRouteOverride,
     onRouteEditCollaborationEvent,
     onRouteEditPresenceChange,
-    onSaveLuggageItem,
-    onSaveSharedLuggageItem,
-    onAssignLuggage,
-    onPrivatizeLuggage,
-    onReorderLuggage,
-    onSaveTodo,
     onLuggageTabChange,
     onSectionChange,
-    onToggleLuggageItem,
-    onToggleTodo,
-    onTogglePackItem,
-    onToggleItemFixed,
-    onUpdateSharedLuggageItem,
-    onOpenAttachment,
-    onUploadAttachment,
   } = props;
   const isTodayMode = activeSection === "today";
   const isBudgetMode = activeSection === "budget";
@@ -208,11 +182,11 @@ export function TripWorkspace(props) {
           canEdit={canEdit}
           currentUserId={currentUserId}
           trip={activeTrip}
-          onDeleteAttachment={onDeleteAttachment}
-          onDelete={onDeleteAccommodation}
-          onOpenAttachment={onOpenAttachment}
-          onSave={onSaveAccommodation}
-          onUploadAttachment={onUploadAttachment}
+          onDeleteAttachment={attachmentCommands.deleteAttachment}
+          onDelete={stayActions.deleteAccommodation}
+          onOpenAttachment={attachmentCommands.openAttachment}
+          onSave={stayActions.saveAccommodation}
+          onUploadAttachment={attachmentCommands.uploadAttachment}
           restoreDrafts={isAccommodationMode}
         />
       </div>
@@ -225,11 +199,11 @@ export function TripWorkspace(props) {
           guideItems={guideItems}
           members={members}
           todoItems={todoItems}
-          onDeleteGuide={onDeleteGuide}
-          onDeleteTodo={onDeleteTodo}
-          onSaveGuide={onSaveGuide}
-          onSaveTodo={onSaveTodo}
-          onToggleTodo={onToggleTodo}
+          onDeleteGuide={todoGuideActions.deleteGuide}
+          onDeleteTodo={todoGuideActions.deleteTodo}
+          onSaveGuide={todoGuideActions.saveGuide}
+          onSaveTodo={todoGuideActions.saveTodo}
+          onToggleTodo={todoGuideActions.toggleTodo}
           restoreDrafts={isTodoMode}
         />
       </div>
@@ -245,16 +219,16 @@ export function TripWorkspace(props) {
           members={members}
           restoreDrafts={isLuggageMode}
           sharedLuggageItems={sharedLuggageItems}
-          onDeletePersonal={onDeleteLuggageItem}
-          onDeleteShared={onDeleteSharedLuggageItem}
-          onSavePersonal={onSaveLuggageItem}
-          onSaveShared={onSaveSharedLuggageItem}
-          onAssign={onAssignLuggage}
-          onPrivatize={onPrivatizeLuggage}
-          onReorder={onReorderLuggage}
+          onDeletePersonal={luggageCommands.deleteLuggageItem}
+          onDeleteShared={luggageCommands.deleteSharedLuggageItem}
+          onSavePersonal={luggageCommands.saveLuggageItem}
+          onSaveShared={luggageCommands.saveSharedLuggageItem}
+          onAssign={luggageCommands.assignTripLuggage}
+          onPrivatize={luggageCommands.privatizeTripLuggage}
+          onReorder={luggageCommands.reorderTripLuggage}
           onTabChange={onLuggageTabChange}
-          onTogglePersonal={onToggleLuggageItem}
-          onUpdateShared={onUpdateSharedLuggageItem}
+          onTogglePersonal={luggageCommands.toggleLuggageItem}
+          onUpdateShared={luggageCommands.updateSharedLuggageItem}
         />
       </div>
 
@@ -305,20 +279,20 @@ export function TripWorkspace(props) {
                 dayTitle={`DAY ${activeDay + 1}`}
                 focusedItemId={focusedItemId}
                 {...mapPointPicker}
-                onApplyAlternative={onApplyAlternative}
+                onApplyAlternative={timelineCommands.applyAlternative}
                 onClearDragPresence={onClearDragPresence}
-                onConfirmTransportWarning={onConfirmTransportWarning}
-                onDeleteAlternative={onDeleteAlternative}
-                onDeleteItem={onDeleteItem}
+                onConfirmTransportWarning={timelineCommands.confirmTransportWarning}
+                onDeleteAlternative={timelineCommands.deleteAlternative}
+                onDeleteItem={timelineCommands.deleteItem}
                 onClearCardSelection={onClearCardSelection}
                 onFocusItem={setFocusedItemId}
                 onPublishCardSelection={onPublishCardSelection}
                 onPublishDragPresence={onPublishDragPresence}
-                onReorderDestinationPackages={onReorderDestinationPackages}
-                onReorderUntimedVisit={onReorderUntimedVisit}
-                onSaveAlternative={onSaveAlternative}
-                onSaveItem={onSaveItem}
-                onToggleItemFixed={onToggleItemFixed}
+                onReorderDestinationPackages={timelineCommands.reorderDestinationPackages}
+                onReorderUntimedVisit={timelineCommands.reorderUntimedVisit}
+                onSaveAlternative={timelineCommands.saveAlternative}
+                onSaveItem={timelineCommands.saveItem}
+                onToggleItemFixed={timelineCommands.toggleItemFixed}
                 restoreDrafts={activeSection === "timeline"}
               />
               {isRouteLayoutCollapsed ? (

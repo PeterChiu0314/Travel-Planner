@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
@@ -5,7 +6,7 @@ const migration = readFileSync(
   "supabase/migrations/20260819125851_phase_7_import_trip_timeline_v1.sql",
   "utf8",
 );
-const appSource = readFileSync("src/App.jsx", "utf8");
+const appSource = readOwnerSource("src/features/trip-import/exchangeCommands.js");
 
 test("Phase 7 import is one authenticated security-invoker RPC transaction", () => {
   expect(migration).toContain("create or replace function public.import_trip_timeline_v1(payload jsonb)");
@@ -67,7 +68,7 @@ test("unified Formal and AI JSON import previews locally and performs no writes 
 
 test("Formal commit uses only the atomic import RPC and selects the returned Trip", () => {
   const commitBody = appSource.match(
-    /async function confirmTripImport\(\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function updateTrip/,
+    /async function confirmTripImport\(\) \{([\s\S]*?)\r?\n  \}/,
   );
   expect(commitBody).not.toBeNull();
   expect(commitBody[1]).toContain('supabase.rpc("import_trip_timeline_v1"');
@@ -80,7 +81,7 @@ test("Formal commit uses only the atomic import RPC and selects the returned Tri
 
 test("Formal export uses the versioned adapter instead of dumping database rows", () => {
   const exportBody = appSource.match(
-    /function exportTrip\(\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function selectTrip/,
+    /function exportTrip\(\) \{([\s\S]*?)\r?\n  \}/,
   );
   expect(exportBody).not.toBeNull();
   expect(exportBody[1]).toContain("serializeTripToJson");

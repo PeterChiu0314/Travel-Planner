@@ -18,34 +18,25 @@ import {
 import { timelineCollaboratorColorKey } from "../components/timeline/timelinePresence.js";
 
 export function useTripPresence({
-    activeTripId,
-    activeDay,
-    setActiveDay,
-    activeSection,
-    changeTripSection,
-    timelineDragPresenceSessionIdRef,
-    activeMembership,
-    activeUserId,
-    timelineDragPresenceUserName,
-  }) {
+  activeTripId,
+  activeDay,
+  setActiveDay,
+  activeSection,
+  changeTripSection,
+  timelineDragPresenceSessionIdRef,
+  activeMembership,
+  activeUserId,
+  timelineDragPresenceUserName,
+}) {
   const [remoteTripPresences, setRemoteTripPresences] = useState([]);
-
   const [tripPresenceSelectedItem, setTripPresenceSelectedItem] = useState(null);
-
   const tripPresenceChannelRef = useRef(null);
-
   const tripPresenceChannelKeyRef = useRef("");
-
   const tripPresenceReadyRef = useRef(false);
-
   const tripPresenceStatusRef = useRef("idle");
-
   const tripPresencePayloadRef = useRef(null);
-
   const tripPresenceReconnectRef = useRef(false);
-
   const [tripPresenceChannelVersion, setTripPresenceChannelVersion] = useState(0);
-
   const tripPresencePayload = useMemo(() => {
     const pageKey = tripPresencePageKey(activeSection);
     const selectedItem = pageKey === "timeline" ? tripPresenceSelectedItem : null;

@@ -28,65 +28,41 @@ import { timelineCollaboratorColorKey } from "../timeline/timelinePresence.js";
 import { sortedVisitItems } from "../timeline/timelineItemRules.js";
 
 export function useRouteWorkspace({
-    session,
-    activeTripId,
-    activeDay,
-    items,
-    activeTrip,
-    activeMembership,
-    canEditActiveTripContent,
-    activeUserId,
-    timelineDragPresenceUserName,
-    dayItems,
-  }) {
+  session,
+  activeTripId,
+  activeDay,
+  items,
+  activeTrip,
+  activeMembership,
+  canEditActiveTripContent,
+  activeUserId,
+  timelineDragPresenceUserName,
+  dayItems,
+}) {
   const [routeOverrides, setRouteOverrides] = useState([]);
-
   const [routeOverrideSaveError, setRouteOverrideSaveError] = useState("");
-
   const [routeEditLocalState, setRouteEditLocalState] = useState({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
-
   const [remoteRouteEditPresences, setRemoteRouteEditPresences] = useState([]);
-
   const [remoteRouteEditUpdates, setRemoteRouteEditUpdates] = useState({});
-
   const [remoteRouteEditNodeLocks, setRemoteRouteEditNodeLocks] = useState({});
-
   const routeOverrideCoordinateSnapshotRef = useRef(new Map());
-
   const routeEditPresenceChannelRef = useRef(null);
-
   const routeEditPresenceReadyRef = useRef(false);
-
   const routeEditPresenceStatusRef = useRef("idle");
-
   const routeEditChannelRecoveryRef = useRef(false);
-
   const routeEditChannelMetadataRef = useRef(new WeakMap());
-
   const routeEditChannelSequenceRef = useRef(0);
-
   const routeEditLocalStateRef = useRef({ isEditing: false, activeNodeId: null, activeSegmentKey: null });
-
   const routeEditSessionIdRef = useRef(`route-edit-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-
   const routeEditBroadcastRef = useRef({ activeDragId: null, eventVersion: 0, lastSentAt: 0, pendingEvent: null, pendingReplayEvent: null, sequence: 0, timerId: null });
-
   const routeEditRemoteMoveVersionRef = useRef(new Map());
-
   const routeEditRemoteUpdateReceiptRef = useRef(0);
-
   const routeEditRemoteNodeLockSeenAtRef = useRef(new Map());
-
   const routeOverrideLoadRequestRef = useRef(0);
-
   const routeOverrideLoadTargetRef = useRef({ dayIndex: null, tripId: null });
-
   const [routeEditChannelVersion, setRouteEditChannelVersion] = useState(0);
-
   const [routeEditChannelReady, setRouteEditChannelReady] = useState(false);
-
   const [routeEditRecoveryGeneration, setRouteEditRecoveryGeneration] = useState(0);
-
   const activeDayRouteStops = useMemo(
     () => buildRoutePanelStops(sortedVisitItems(dayItems), { requireLocation: true }),
     [dayItems],
@@ -434,7 +410,7 @@ export function useRouteWorkspace({
       dayIndex: Number.isInteger(Number(activeDay)) ? Number(activeDay) : null,
       tripId: activeTripId || null,
     };
-    if (!activeTripId ) {
+    if (!activeTripId) {
       setRouteOverrides([]);
       return;
     }
@@ -797,7 +773,7 @@ export function useRouteWorkspace({
   }, [activeDay, activeDayRouteSegmentKeys, activeTrip?.id, canEditActiveTripContent, routeOverrides]);
 
   useEffect(() => {
-    if (!activeTrip?.id ) {
+    if (!activeTrip?.id) {
       routeOverrideCoordinateSnapshotRef.current = new Map();
       return;
     }

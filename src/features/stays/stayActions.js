@@ -3,13 +3,13 @@ import { supabase } from "../../lib/supabase.js";
 import { deleteTripStay, saveTripStay } from "./formalStays.js";
 
 export function createStayActions({
-    activeTrip,
-    canEditActiveTripContent,
-    loadTripData,
-    rejectCrossTripSave,
-    isCurrentTripContext,
-    updateWithConflictCheck,
-  }) {
+  activeTrip,
+  canEditActiveTripContent,
+  loadTripData,
+  rejectCrossTripSave,
+  isCurrentTripContext,
+  updateWithConflictCheck,
+}) {
   async function saveAccommodation(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();

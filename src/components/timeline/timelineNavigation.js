@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export function useDayBoardNavigation(activeDay, isEnabled) {
   const boardRef = useRef(null);
   const [scrollState, setScrollState] = useState({ left: false, right: false });
-
   const updateScrollState = useCallback(() => {
     const board = boardRef.current;
     if (!board || !isEnabled) {

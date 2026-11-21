@@ -9,27 +9,27 @@ import { destinationPatchFromParts, destinationPatchFromText } from "../../compo
 import { buildTripDateChangePreview, timelineItemIdsRemovedByShortening } from "../../components/trip/tripDateChange.js";
 
 export function createTripCommands({
-    session,
-    activeTripId,
-    setActiveDay,
-    items,
-    setIsTripDialogOpen,
-    setTripCreating,
-    tripCreationInFlight,
-    tripForm,
-    setTripForm,
-    activeTrip,
-    accountRef,
-    requestGuard,
-    tripDataContext,
-    isOwner,
-    isTripDateLocked,
-    canManageActiveTrip,
-    canRenameActiveTrip,
-    tripDateChangePreviewData,
-    loadTrips,
-    loadTripData,
-  }) {
+  session,
+  activeTripId,
+  setActiveDay,
+  items,
+  setIsTripDialogOpen,
+  setTripCreating,
+  tripCreationInFlight,
+  tripForm,
+  setTripForm,
+  activeTrip,
+  accountRef,
+  requestGuard,
+  tripDataContext,
+  isOwner,
+  isTripDateLocked,
+  canManageActiveTrip,
+  canRenameActiveTrip,
+  tripDateChangePreviewData,
+  loadTrips,
+  loadTripData,
+}) {
   async function createTrip(event) {
     event.preventDefault();
     if (tripCreationInFlight.current) return;

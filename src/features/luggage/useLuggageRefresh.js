@@ -4,13 +4,13 @@ import { useCallback, useRef } from "react";
 import { supabase } from "../../lib/supabase.js";
 
 export function useLuggageRefresh({
-    setLuggageItems,
-    setSharedLuggageItems,
-    syncFeedback,
-    requestGuard,
-    tripReadAccessRef,
-    canReadTrip,
-  }) {
+  setLuggageItems,
+  setSharedLuggageItems,
+  syncFeedback,
+  requestGuard,
+  tripReadAccessRef,
+  canReadTrip,
+}) {
   const sharedSnapshotRef = useRef({ key: null, rows: [] });
 
   if (sharedSnapshotRef.current.key !== requestGuard.context().key) sharedSnapshotRef.current = { key: requestGuard.context().key, rows: [] };

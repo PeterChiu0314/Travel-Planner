@@ -23,14 +23,14 @@ import {
 import { demoId, demoSortOrderForNewTimelineItem } from "./timelineFixtures.js";
 
 export function createDemoTimelineCommands({
-    activeDay,
-    demoActiveTrip,
-    timelineItems,
-    setTimelineItems,
-    timelineAlternatives,
-    setTimelineAlternatives,
-    itineraryBudgetLinks,
-  }) {
+  activeDay,
+  demoActiveTrip,
+  timelineItems,
+  setTimelineItems,
+  timelineAlternatives,
+  setTimelineAlternatives,
+  itineraryBudgetLinks,
+}) {
   function saveTimelineItem(payload, editingId, meta = {}) {
     const nextPayload = normalizeTimelineItemPayload(payload, defaultTransportCategory);
     if (!nextPayload.title.trim()) return { ok: false };

@@ -22,21 +22,21 @@ import {
 } from "../../components/timeline/timelineItemRules.js";
 
 export function createTimelineCommands({
-    session,
-    activeDay,
-    items,
-    alternatives,
-    activeTrip,
-    requestGuard,
-    tripDataContext,
-    canEditActiveTripContent,
-    days,
-    dayItems,
-    loadTripData,
-    rejectCrossTripSave,
-    isCurrentTripContext,
-    updateWithConflictCheck,
-  }) {
+  session,
+  activeDay,
+  items,
+  alternatives,
+  activeTrip,
+  requestGuard,
+  tripDataContext,
+  canEditActiveTripContent,
+  days,
+  dayItems,
+  loadTripData,
+  rejectCrossTripSave,
+  isCurrentTripContext,
+  updateWithConflictCheck,
+}) {
   async function ensureItineraryItemEditable(itemId) {
     const localItem = items.find((item) => item.id === itemId);
     if (localItem && isTransportationCard(localItem)) return true;

@@ -9,13 +9,13 @@ import { notify } from "../../lib/notifications.js";
 import { supabase } from "../../lib/supabase.js";
 
 export function createTodoGuideActions({
-    activeTrip,
-    canEditActiveTripContent,
-    loadTripData,
-    rejectCrossTripSave,
-    isCurrentTripContext,
-    updateWithConflictCheck,
-  }) {
+  activeTrip,
+  canEditActiveTripContent,
+  loadTripData,
+  rejectCrossTripSave,
+  isCurrentTripContext,
+  updateWithConflictCheck,
+}) {
   async function saveGuide(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();

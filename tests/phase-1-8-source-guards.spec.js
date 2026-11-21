@@ -1,7 +1,17 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
-const appSource = readFileSync("src/App.jsx", "utf8");
+const appSource = readOwnerSource(
+    "src/app/FormalWorkspace.jsx",
+    "src/app/WorkspaceShell.jsx",
+    "src/app/navigation.js",
+    "src/components/VersionInfoDialog.jsx",
+    "src/demo/DemoApp.jsx",
+    "src/demo/timelineFixtures.js",
+    "src/features/members/memberCommands.js",
+    "src/features/timeline/formalTimelineCommands.js",
+  );
 const tripHeaderPartsSource = readFileSync("src/components/trip/TripHeaderParts.jsx", "utf8");
 const membersDialogSource = readFileSync("src/components/members/MembersInviteDialog.jsx", "utf8");
 const memberNameSource = readFileSync("src/lib/memberName.js", "utf8");

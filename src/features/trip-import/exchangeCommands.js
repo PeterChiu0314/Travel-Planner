@@ -7,16 +7,16 @@ import { aiItineraryBlankTemplateFileName, aiItineraryExchangeModes, buildBlankA
 import { timelineItemsInTripRange } from "../../components/trip/tripDateChange.js";
 
 export function createExchangeCommands({
-    setActiveDay,
-    items,
-    alternatives,
-    setIsTripDialogOpen,
-    tripImportState,
-    setTripImportState,
-    setAiExchangeState,
-    activeTrip,
-    loadTrips,
-  }) {
+  setActiveDay,
+  items,
+  alternatives,
+  setIsTripDialogOpen,
+  tripImportState,
+  setTripImportState,
+  setAiExchangeState,
+  activeTrip,
+  loadTrips,
+}) {
   async function previewTripImport(file) {
     if (!file) return;
     let text;

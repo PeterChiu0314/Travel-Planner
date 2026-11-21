@@ -4,19 +4,19 @@ import { useEffect } from "react";
 import { supabase } from "../lib/supabase.js";
 
 export function useTripSubscription({
-    session,
-    activeTripId,
-    activeDay,
-    syncFeedback,
-    tripRealtimeAttempt,
-    requestGuard,
-    tripDataContext,
-    budgetRefreshRef,
-    luggageRefreshRef,
-    loadTrips,
-    loadTripData,
-    loadRouteOverrides,
-  }) {
+  session,
+  activeTripId,
+  activeDay,
+  syncFeedback,
+  tripRealtimeAttempt,
+  requestGuard,
+  tripDataContext,
+  budgetRefreshRef,
+  luggageRefreshRef,
+  loadTrips,
+  loadTripData,
+  loadRouteOverrides,
+}) {
   useEffect(() => {
     if (!activeTripId || !session?.user) return undefined;
     let subscriptionActive = true;

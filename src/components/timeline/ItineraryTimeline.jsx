@@ -39,7 +39,6 @@ import { timelineCollaboratorColorKey } from "./timelinePresence.js";
 import { typeColors, defaultTransportCategory, sortedVisitItems, isEffectiveFixedVisit } from "./timelineItemRules.js";
 import { useTimelineEditor } from "./useTimelineEditor.jsx";
 import { useTimelineReorder } from "./useTimelineReorder.js";
-import { timelineEditorFields } from "./timelineEditorFields.jsx";
 
 const TimelineDragHandleContext = createContext(null);
 
@@ -179,11 +178,9 @@ export function ItineraryTimeline({
 
   const [expandedId, setExpandedId] = useState(null);
   const [alternativeFaceByItem, setAlternativeFaceByItem] = useState({});
-
   const [alternativeErrorByItem, setAlternativeErrorByItem] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fixedNotice, setFixedNotice] = useState("");
-
   const visitItems = useMemo(() => sortedVisitItems(dayItems), [dayItems]);
   const memberById = new Map((members || []).map((member) => [member.user_id, member]));
   const foreignDragMember = foreignDragPresence?.userId ? memberById.get(foreignDragPresence.userId) : null;
@@ -220,47 +217,31 @@ export function ItineraryTimeline({
     isOpen,
     editingId,
     insertionPair,
-    conflict,
-    setConflict,
     timeError,
-    mapUrlError,
-    setMapUrlError,
-    isResolvingMapUrl,
-    isMapPointExpanded,
-    setIsMapPointExpanded,
-    durationInput,
-    setDurationInput,
     isAlternativeDeleteConfirmOpen,
     setIsAlternativeDeleteConfirmOpen,
     autoContinuationPrompt,
     isSavingAutoContinuation,
     form,
-    setForm,
     newVisitEditorRef,
-    visitDurationRef,
     openNewItem,
     openNewTransport,
     openEditItem,
-    closeEditor,
     cancelAutoContinuation,
     saveWithAutoContinuation,
-    submit,
     isTransportEditor,
-    isAlternativeEditor,
-    activeVisitForm,
-    updateActiveVisitForm,
     alternativeDestination,
     visitDestination,
     resetAlternativeError,
-    toggleMapPointPick,
-    updateVisitTime,
-    commitDurationInput,
-    applyMapUrlDraft,
-    editorMapsUrl,
-    openAlternativeEditor,
-    returnToMainEditor,
     stageAlternativeDeletion,
+    renderTransportEditorForm,
+    renderVisitEditorForm,
   } = useTimelineEditor({
+    onStartMapSearchReplace,
+    alternativeErrorByItem,
+    canMutateThisDay,
+    transportEndpointItems,
+    renderTransportNavigationControl,
     activeTrip,
     alternativesByItem,
     currentUserId,
@@ -653,48 +634,6 @@ export function ItineraryTimeline({
     );
   }
 
-  const { renderTransportEditorForm, renderVisitEditorForm } = timelineEditorFields({
-    onCancelMapPointPick,
-    onCancelMapSearchReplace,
-    onStartMapSearchReplace,
-    canPickMapPoint,
-    isPickingMapPoint,
-    isMapSearchReplaceActive,
-    foreignSameDayDragActive,
-    editingId,
-    conflict,
-    setConflict,
-    timeError,
-    mapUrlError,
-    setMapUrlError,
-    isResolvingMapUrl,
-    isMapPointExpanded,
-    setIsMapPointExpanded,
-    durationInput,
-    setDurationInput,
-    setIsAlternativeDeleteConfirmOpen,
-    alternativeErrorByItem,
-    form,
-    setForm,
-    canMutateThisDay,
-    foreignDragSaveBlockedMessage,
-    visitDurationRef,
-    closeEditor,
-    submit,
-    isAlternativeEditor,
-    activeVisitForm,
-    updateActiveVisitForm,
-    alternativeDestination,
-    transportEndpointItems,
-    renderTransportNavigationControl,
-    toggleMapPointPick,
-    updateVisitTime,
-    commitDurationInput,
-    applyMapUrlDraft,
-    editorMapsUrl,
-    openAlternativeEditor,
-    returnToMainEditor,
-  });
   function renderAlternativeSummary(item, alternative, isAlternativeFace) {
     const alternativeError = alternativeErrorByItem[item.id];
     const relatedHeading = isAlternativeFace ? "原行程" : "備案";
