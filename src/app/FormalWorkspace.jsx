@@ -9,34 +9,10 @@ import {
 import { ActiveEditorGuardDialog, getDirtyActiveEditorGuards, requestActiveEditorHandoff } from "./activeEditorGuard.jsx";
 import { memberName } from "../lib/memberName.js";
 import { dateToInputValue, todayInput } from "../lib/displayFormat.js";
-import { expenseFinancialSnapshot, expenseTimelineCostsByItem, olderExpenseSnapshot } from "../lib/expenseSnapshot.js";
 import { budgetReceiptsDisabled, budgetReceiptUnavailableMessage, isBudgetReceiptTarget } from "../lib/budgetReceiptConfig.js";
-import {
-  readOfflineTrips,
-  writeOfflineTrips,
-  readOfflineTripData,
-  writeOfflineTripData,
-  updateOfflineSharedLuggage,
-  updateOfflineBudget,
-  clearOfflineAccount,
-} from "../lib/offlineCache.js";
-import {
-  createBudgetRefresh,
-  emptyBudgetSnapshot,
-  cachedExpenseGraph,
-  nonFinancialAttachments,
-  readBudgetSnapshot,
-} from "../lib/budgetSync.js";
+import { readOfflineTrips, writeOfflineTrips, clearOfflineAccount } from "../lib/offlineCache.js";
 import { submitTimelineSchedule } from "../lib/timelineScheduleService.js";
-import { onPostgresChangesReady } from "../lib/realtimePostgresReadiness.js";
-import {
-  createRequestGuard,
-  createLuggageRefresh,
-  readLuggageScope,
-  subscribeSharedLuggage,
-  applyLuggageMutation,
-  applyLuggageOrder,
-} from "../lib/luggageSync.js";
+import { createRequestGuard, applyLuggageMutation, applyLuggageOrder } from "../lib/luggageSync.js";
 import { notify } from "../lib/notifications.js";
 import { createSyncNotifications } from "../lib/syncNotifications.js";
 import {
@@ -54,17 +30,16 @@ import {
   luggageErrorMessage,
 } from "../lib/luggageService.js";
 import { timelineCardSelectionColor } from "../lib/collaboratorColors.js";
-import { budgetAuthorityTimeoutMs } from "../lib/budgetMetadataService.js";
 import { fetchBudgetQuote, getCachedBudgetQuote } from "../lib/tripBudgetRates.js";
 import { tripPresencePageKey } from "../lib/tripPresenceDisplay.js";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { findLatestDraftTrip } from "../lib/draftAutosave.js";
 import { releaseEditLock } from "../lib/editLocks.js";
-import { hasSupabaseConfig, supabase } from "../lib/supabase.js";
+import { supabase } from "../lib/supabase.js";
 import { attachTimelineScheduleSortOrders, planTimelineSchedule, timelineScheduleOperationTypes } from "../lib/timelineSchedulePlanner.js";
 import { isTransportationCard } from "../lib/timelineTransportationRoles.js";
 import { buildTransportPairSnapshot } from "../lib/timelineTransportPairs.js";
-import { deleteTripStay, readTripStays, saveTripStay } from "../features/stays/formalStays.js";
+import { deleteTripStay, saveTripStay } from "../features/stays/formalStays.js";
 import { buildRoutePanelStops } from "../lib/timelineMapMarkers.js";
 import { tripDays } from "../lib/timelineTime.js";
 import { transportCardTitle } from "../lib/timelineTransportCategories.js";
@@ -143,6 +118,11 @@ import { Shell, LoginView, EmptyState } from "./WorkspaceShell.jsx";
 import { TripHeader } from "../components/trip/TripHeader.jsx";
 import { TripWorkspace } from "./TripWorkspace.jsx";
 import { VersionInfoDialog } from "../components/VersionInfoDialog.jsx";
+import { useExpenseSnapshot } from "../features/expense/useExpenseSnapshot.js";
+import { useLuggageRefresh } from "../features/luggage/useLuggageRefresh.js";
+import { useTripSubscription } from "./useTripSubscription.js";
+import { useTripDataLoad } from "./useTripDataLoad.js";
+import { useAccountSession } from "./useAccountSession.js";
 
 export function FormalWorkspace() {
   const [session, setSession] = useState(null);
@@ -152,7 +132,7 @@ export function FormalWorkspace() {
   const [activeDay, setActiveDay] = useState(0);
   const [items, setItems] = useState([]);
   const [alternatives, setAlternatives] = useState([]);
-  const [budgetSnapshotState, setBudgetSnapshotState] = useState(null);
+
   const [accommodations, setAccommodations] = useState([]);
   const [guideItems, setGuideItems] = useState([]);
   const [todoItems, setTodoItems] = useState([]);
@@ -276,103 +256,36 @@ export function FormalWorkspace() {
   const membershipStatus = activeTrip?.membership?.status;
   if (tripReadAccessRef.current?.key !== tripDataContext.key || tripReadAccessRef.current?.status !== membershipStatus) tripReadAccessRef.current = { key: tripDataContext.key, status: membershipStatus };
   const canReadTrip = key => Boolean(key && tripReadAccessRef.current?.key === key && tripReadAccessRef.current?.status === "approved");
-  const budgetSnapshot = canReadTrip(tripDataContext.key) && budgetSnapshotState
-    && requestGuard.sameContext(budgetSnapshotState.context) ? budgetSnapshotState.data : null;
-  const { budgetItems, budgetParticipants, actualExpenses, actualParticipants, itineraryBudgetLinks } = budgetSnapshot ?? emptyBudgetSnapshot();
-  const expenseGraph = budgetSnapshot?.expenseGraph;
-  const budgetsByItem = useMemo(
-    () => expenseTimelineCostsByItem(expenseGraph, itineraryBudgetLinks),
-    [expenseGraph, itineraryBudgetLinks],
-  );
-  const budgetSnapshotRef = useRef({ context: tripDataContext, data: emptyBudgetSnapshot() });
-  if (!requestGuard.sameContext(budgetSnapshotRef.current.context)) {
-    budgetSnapshotRef.current = { context: tripDataContext, data: emptyBudgetSnapshot() };
-  }
-  function applyBudgetSnapshot(data, key, cache = true) {
-    const context = requestGuard.context();
-    if (context.key !== key) return;
-    if (olderExpenseSnapshot(budgetSnapshotRef.current.data.expenseGraph, data.expenseGraph)) return;
-    const verifiedAt = data.expenseVerified ? Date.now() : undefined;
-    const snapshot = { context, data, verifiedAt };
-    budgetSnapshotRef.current = snapshot;
-    setBudgetSnapshotState(snapshot);
-    if (key && cache) {
-      const [userId, tripId] = JSON.parse(key);
-      updateOfflineBudget(tripId, userId, cachedExpenseGraph(data.expenseGraph, tripId), localStorage, verifiedAt);
-    }
-    if (data.expenseVerified && data.tripBudgetRates) {
-      setTrips(current => current.map(t => t.id === data.tripId ? { ...t, budget_exchange_rates: data.tripBudgetRates } : t));
-    }
-  }
-  const budgetRefreshRef = useRef(null);
-  if (!budgetRefreshRef.current) budgetRefreshRef.current = createBudgetRefresh({
-    guard: requestGuard,
-    timeoutMs: budgetAuthorityTimeoutMs,
-    read: async key => {
-      const feedbackCheckpoint = syncFeedback.checkpoint();
-      const access = tripReadAccessRef.current;
-      if (!canReadTrip(key)) return { data: emptyBudgetSnapshot(), feedbackCheckpoint };
-      const result = await readBudgetSnapshot(supabase, JSON.parse(key)[1]);
-      return { ...(tripReadAccessRef.current === access && canReadTrip(key) ? result : { data: emptyBudgetSnapshot() }), feedbackCheckpoint };
-    },
-    apply: applyBudgetSnapshot,
-    onVerified: result => syncFeedback.verified("budget", result.feedbackCheckpoint),
-    onError: error => {
-      const { context, data } = budgetSnapshotRef.current;
-      const { key } = context;
-      if (!requestGuard.sameContext(context) || !canReadTrip(key)) return;
-      if (error.code === "42501") {
-        applyBudgetSnapshot({ ...emptyBudgetSnapshot(), expenseUnavailable: true }, key);
-      } else {
-        let visible = data;
-        if (!data.expenseGraph && !data.expenseUnavailable) {
-          const [userId, tripId] = JSON.parse(key);
-          const cached = readOfflineTripData(tripId, userId);
-          const graph = cachedExpenseGraph(cached?.expenseGraph ?? cached?.budgetSnapshot?.expenseGraph, tripId);
-          if (graph) visible = expenseFinancialSnapshot(graph);
-        }
-        applyBudgetSnapshot({ ...visible, expenseVerified: false, expenseUnavailable: true }, key, false);
-      }
-      syncFeedback.failure("budget", error.code === "PGRST202" ? "目前無法讀取支出，請稍後重試。" : error);
-    },
+  const {
+    budgetSnapshot,
+    budgetItems,
+    budgetParticipants,
+    actualExpenses,
+    actualParticipants,
+    itineraryBudgetLinks,
+    budgetsByItem,
+    budgetSnapshotRef,
+    applyBudgetSnapshot,
+    budgetRefreshRef,
+    refreshBudget,
+  } = useExpenseSnapshot({
+    setTrips,
+    syncFeedback,
+    requestGuard,
+    tripDataContext,
+    tripReadAccessRef,
+    canReadTrip,
   });
-  const refreshBudget = useCallback((tripId) => {
-    if (!requestGuard.sameContext(tripDataContext) || !tripDataContext.key || JSON.parse(tripDataContext.key)[1] !== tripId) return Promise.resolve({ ok: false, stale: true });
-    return budgetRefreshRef.current.committed();
-  }, [tripDataContext.key, tripDataContext.generation]);
-  const sharedSnapshotRef = useRef({ key: null, rows: [] });
-  if (sharedSnapshotRef.current.key !== requestGuard.context().key) sharedSnapshotRef.current = { key: requestGuard.context().key, rows: [] };
-  function updateSharedCache(tripId, userId, update) {
-    sharedSnapshotRef.current.rows = update(sharedSnapshotRef.current.rows);
-    updateOfflineSharedLuggage(tripId, userId, () => sharedSnapshotRef.current.rows);
-  }
-  const luggageRefreshRef = useRef(null);
-  if (!luggageRefreshRef.current) luggageRefreshRef.current = createLuggageRefresh({
-    guard: requestGuard,
-    read: async (scope, key) => {
-      const feedbackCheckpoint = syncFeedback.checkpoint();
-      const [userId, tripId] = JSON.parse(key);
-      const access = tripReadAccessRef.current;
-      if (!canReadTrip(key)) return { data: [], feedbackCheckpoint };
-      const result = await readLuggageScope(supabase, { scope, tripId, userId });
-      return { ...(tripReadAccessRef.current === access && canReadTrip(key) ? result : { data: [] }), feedbackCheckpoint };
-    },
-    apply: (scope, rows) => {
-      (scope === "personal" ? setLuggageItems : setSharedLuggageItems)(rows);
-      if (scope === "shared") {
-        const [userId, tripId] = JSON.parse(requestGuard.context().key);
-        sharedSnapshotRef.current.rows = rows;
-        updateOfflineSharedLuggage(tripId, userId, () => rows);
-      }
-    },
-    onError: (error, scope) => syncFeedback.failure(`luggage:${scope}`, error),
-    onVerified: (scope, result) => syncFeedback.verified(`luggage:${scope}`, result.feedbackCheckpoint),
+
+  const { sharedSnapshotRef, updateSharedCache, luggageRefreshRef, refreshLuggage } = useLuggageRefresh({
+    setLuggageItems,
+    setSharedLuggageItems,
+    syncFeedback,
+    requestGuard,
+    tripReadAccessRef,
+    canReadTrip,
   });
-  const refreshLuggage = useCallback((tripId, scopes = ["personal", "shared"]) => {
-    const key = requestGuard.context().key;
-    if (!key || JSON.parse(key)[1] !== tripId) return Promise.resolve();
-    return luggageRefreshRef.current.refresh(scopes);
-  }, [requestGuard]);
+
   const activeMembership = activeTrip?.membership;
   const isOwner = activeMembership?.role === "owner" && activeMembership?.status === "approved";
   const canEdit =
@@ -940,127 +853,31 @@ export function FormalWorkspace() {
     [activeTripId, session?.user],
   );
 
-  const loadTripData = useCallback(async (tripId) => {
-    const userId = accountRef.current.userId;
-    // A queued callback must belong to this context's generation before it can
-    // advance any scope. Comparing IDs alone would accept an A -> B -> A callback.
-    if (tripId) {
-      if (!userId || !requestGuard.sameContext(tripDataContext) || tripDataContext.key !== JSON.stringify([userId, tripId])) return;
-    } else if (requestGuard.context().key !== null) return;
-    // Auth resets the guard to null before clearing, even through an older closure.
-    const token = requestGuard.begin("trip");
-    const personalToken = requestGuard.begin("personal"), sharedToken = requestGuard.begin("shared");
-    const access = tripReadAccessRef.current;
-    if (!tripId || !canReadTrip(tripDataContext.key)) {
-      setItems([]);
-      setAlternatives([]);
-      applyBudgetSnapshot(emptyBudgetSnapshot(), token.key, false);
-      sharedSnapshotRef.current.rows = [];
-      setAccommodations([]);
-      setGuideItems([]);
-      setTodoItems([]);
-      setLuggageItems([]);
-      setSharedLuggageItems([]);
-      setAttachments([]);
-      setRouteOverrides([]);
-      setPackItems([]);
-      setMembers([]);
-      return;
-    }
-
-    // A financial read can fail or wait independently of the trip workspace.
-    void budgetRefreshRef.current.committed();
-    const feedbackCheckpoint = syncFeedback.checkpoint();
-    const [itemsResult, alternativesResult, accommodationsResult, guideResult, todoResult, luggageResult, sharedLuggageResult,
-      attachmentsResult, packResult, membersResult] = await Promise.all([
-      supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
-      supabase.from("itinerary_alternatives").select("*"),
-      readTripStays(supabase, tripId),
-      supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
-      supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
-      readLuggageScope(supabase, { scope: "personal", tripId, userId }),
-      readLuggageScope(supabase, { scope: "shared", tripId }),
-      supabase.from("attachments").select("*").eq("trip_id", tripId).order("created_at"),
-      supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
-      supabase.from("trip_members").select("id,trip_id,user_id,role,status,created_at,display_name,email").eq("trip_id", tripId).order("created_at"),
-    ]);
-    if (!requestGuard.valid(token) || tripReadAccessRef.current !== access || !canReadTrip(token.key)) return;
-    const error = itemsResult.error || alternativesResult.error || accommodationsResult.error || guideResult.error || todoResult.error
-      || luggageResult.error || sharedLuggageResult.error || attachmentsResult.error || packResult.error || membersResult.error;
-    if (error) {
-      const cached = readOfflineTripData(tripId, userId);
-      if (cached) {
-        setItems(cached.items || []); setAlternatives(cached.alternatives || []);
-        setAccommodations(cached.accommodations || []); setGuideItems(cached.guideItems || []); setTodoItems(cached.todoItems || []);
-        if (requestGuard.valid(sharedToken)) { sharedSnapshotRef.current.rows = cached.sharedLuggageItems || []; setSharedLuggageItems(sharedSnapshotRef.current.rows); }
-        setAttachments(nonFinancialAttachments(cached.attachments || [])); setPackItems(cached.packItems || []); setMembers(cached.members || []);
-        syncFeedback.failure("trip-data", error, { cached: true }); return { ok: false, error };
-      }
-      syncFeedback.failure("trip-data", error); return { ok: false, error };
-    }
-    const nextItems = itemsResult.data || [];
-    const itemIds = new Set(nextItems.map(item => item.id));
-    const nextAlternatives = (alternativesResult.data || []).filter(alternative => itemIds.has(alternative.itinerary_item_id));
-
-    // Apply itinerary-primary route invalidation in the same authoritative
-    // load that receives changed endpoint coordinates.  Waiting for a later
-    // route-override reload can race the writer's follow-up DELETE and read
-    // the old segment back into this client.
-    const previousCoordinateSnapshot = routeOverrideCoordinateSnapshotRef.current;
-    const changedRouteEndpointIds = nextItems.reduce((changedIds, item) => {
-      if (isTransportationCard(item) || !previousCoordinateSnapshot.has(item.id)) return changedIds;
-      const signature = `${item.latitude ?? ""}:${item.longitude ?? ""}`;
-      if (previousCoordinateSnapshot.get(item.id) !== signature) changedIds.push(item.id);
-      return changedIds;
-    }, []);
-    if (changedRouteEndpointIds.length) {
-      setRouteOverrides((current) => current.filter(
-        (override) =>
-          !changedRouteEndpointIds.includes(override.from_item_id) &&
-          !changedRouteEndpointIds.includes(override.to_item_id),
-      ));
-    }
-
-    setItems(nextItems);
-    setAlternatives(nextAlternatives);
-    setAccommodations(accommodationsResult.data || []);
-    setGuideItems(guideResult.data || []);
-    setTodoItems(todoResult.data || []);
-    if (requestGuard.valid(personalToken)) setLuggageItems(luggageResult.data || []);
-    if (requestGuard.valid(sharedToken)) {
-      sharedSnapshotRef.current.rows = sharedLuggageResult.data || [];
-      setSharedLuggageItems(sharedLuggageResult.data || []);
-    }
-    const nextAttachments = nonFinancialAttachments(attachmentsResult.data || []);
-    setAttachments(nextAttachments);
-    setPackItems(packResult.data || []);
-    setMembers(membersResult.data || []);
-    const { data: finance, verifiedAt } = budgetSnapshotRef.current;
-    // A successful core load can finish before the independent expense read.
-    // Keep its scoped cache until that read supplies a graph or clears access.
-    const prior = !finance.expenseVerified && (finance.expenseGraph || !finance.expenseUnavailable)
-      ? readOfflineTripData(tripId, userId) : null;
-    const expenseGraph = cachedExpenseGraph(finance.expenseVerified
-      ? finance.expenseGraph : prior?.expenseGraph ?? prior?.budgetSnapshot?.expenseGraph, tripId);
-    writeOfflineTripData(tripId, userId, {
-      expenseGraph,
-      expenseGraphCachedAt: expenseGraph ? verifiedAt ?? prior?.expenseGraphCachedAt : undefined,
-      items: nextItems,
-      alternatives: nextAlternatives,
-      accommodations: accommodationsResult.data || [],
-      guideItems: guideResult.data || [],
-      todoItems: todoResult.data || [],
-      luggageItems: luggageResult.data || [],
-      sharedLuggageItems: sharedSnapshotRef.current.rows,
-      attachments: nextAttachments,
-      packItems: packResult.data || [],
-      members: membersResult.data || [],
-    });
-    syncFeedback.verified(["trip-data", "connection", "action",
-      ...(requestGuard.valid(personalToken) ? ["luggage:personal"] : []),
-      ...(requestGuard.valid(sharedToken) ? ["luggage:shared"] : [])], feedbackCheckpoint);
-    return { ok: true };
-  }, [tripDataContext.key, tripDataContext.generation, activeMembership?.status]);
+  const { loadTripData } = useTripDataLoad({
+    setItems,
+    setAlternatives,
+    setAccommodations,
+    setGuideItems,
+    setTodoItems,
+    setLuggageItems,
+    setSharedLuggageItems,
+    setAttachments,
+    setRouteOverrides,
+    setPackItems,
+    setMembers,
+    syncFeedback,
+    routeOverrideCoordinateSnapshotRef,
+    accountRef,
+    requestGuard,
+    tripDataContext,
+    tripReadAccessRef,
+    canReadTrip,
+    budgetSnapshotRef,
+    applyBudgetSnapshot,
+    budgetRefreshRef,
+    sharedSnapshotRef,
+    activeMembership,
+  });
 
   useEffect(() => {
     if (!session?.user) return;
@@ -1168,37 +985,17 @@ export function FormalWorkspace() {
     if (!error) setShareLinks(data || []);
   }, []);
 
-  useEffect(() => {
-    if (!hasSupabaseConfig) {
-      setAuthReady(true);
-      return;
-    }
-
-    let alive = true, authEvent = 0;
-    function acceptSession(nextSession) {
-      if (!alive) return;
-      const nextId = nextSession?.user?.id || null, previous = accountRef.current;
-      if (previous.userId !== nextId) {
-        clearOfflineAccount(previous.userId);
-        accountRef.current = { userId: nextId, generation: previous.generation + 1 };
-        requestGuard.setContext(null);
-        luggageRefreshRef.current.cancel();
-        budgetRefreshRef.current.cancel();
-        setTrips([]); setActiveTripId(null);
-        void loadTripData(null);
-      }
-      setSession(nextSession);
-      setAuthReady(true);
-    }
-    supabase.auth.getSession().then(({ data }) => { if (!authEvent) acceptSession(data.session); });
-    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      authEvent++;
-      acceptSession(nextSession);
-      if (event === "SIGNED_OUT" || !nextSession) clearOfflineAccount(accountRef.current.userId);
-    });
-
-    return () => { alive = false; data.subscription.unsubscribe(); };
-  }, []);
+  useAccountSession({
+    setSession,
+    setAuthReady,
+    setTrips,
+    setActiveTripId,
+    accountRef,
+    requestGuard,
+    budgetRefreshRef,
+    luggageRefreshRef,
+    loadTripData,
+  });
 
   useEffect(() => {
     if (session?.user) loadTrips();
@@ -1668,85 +1465,20 @@ export function FormalWorkspace() {
     }
   }, [activeTripId, canOpenShareDialog, loadShareLinks]);
 
-  useEffect(() => {
-    if (!activeTripId || !session?.user) return undefined;
-    let subscriptionActive = true;
-    const invalidateBudget = () => { if (requestGuard.sameContext(tripDataContext)) budgetRefreshRef.current.schedule(); };
-    const channel = supabase
-      // A fresh topic avoids reusing the old channel while unsubscribe is in flight.
-      .channel(`trip-${activeTripId}${tripRealtimeAttempt ? `-retry-${tripRealtimeAttempt}` : ""}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "trips", filter: `id=eq.${activeTripId}` },
-        () => { invalidateBudget(); loadTrips(activeTripId); },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "itinerary_items", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "itinerary_route_overrides", filter: `trip_id=eq.${activeTripId}` },
-        () => loadRouteOverrides(activeTripId, activeDay),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "itinerary_alternatives" },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "accommodations", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "guide_items", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "todo_items", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "attachments", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "pack_items", filter: `trip_id=eq.${activeTripId}` },
-        () => loadTripData(activeTripId),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "trip_members", filter: `trip_id=eq.${activeTripId}` },
-        () => {
-          loadTrips(activeTripId);
-          loadTripData(activeTripId);
-        },
-      );
-    channel.on("postgres_changes", { event: "*", schema: "public", table: "expense_signals", filter: `trip_id=eq.${activeTripId}` }, invalidateBudget);
-    subscribeSharedLuggage(channel, activeTripId, luggageRefreshRef.current);
-    // JOIN can succeed before Postgres Changes is live. Re-read through the
-    // existing guarded/coalesced path when CDC becomes ready, including rejoin.
-    onPostgresChangesReady(channel, () => {
-      if (subscriptionActive && requestGuard.sameContext(tripDataContext)) invalidateBudget();
-    });
-    channel.subscribe(status => {
-      if (!subscriptionActive || !requestGuard.sameContext(tripDataContext)) return;
-      if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) syncFeedback.failure("realtime", "即時連線暫時中斷，資料同步尚未確認。");
-      if (status === "SUBSCRIBED" && syncFeedback.pending().includes("realtime")) {
-        // Existing subscription recovery already schedules these scoped reads.
-        for (const source of ["budget", "luggage:personal", "luggage:shared"]) syncFeedback.failure(source, "正在重新核對資料，請稍候。");
-        syncFeedback.verified("realtime");
-      }
-      if (status === "SUBSCRIBED") { luggageRefreshRef.current.schedule(["personal", "shared"]); invalidateBudget(); }
-    });
-    return () => { subscriptionActive = false; budgetRefreshRef.current.cancel(); luggageRefreshRef.current.cancel(); supabase.removeChannel(channel); };
-  }, [activeDay, activeTripId, loadRouteOverrides, loadTripData, loadTrips, session?.user, tripRealtimeAttempt]);
+  useTripSubscription({
+    session,
+    activeTripId,
+    activeDay,
+    syncFeedback,
+    tripRealtimeAttempt,
+    requestGuard,
+    tripDataContext,
+    budgetRefreshRef,
+    luggageRefreshRef,
+    loadTrips,
+    loadTripData,
+    loadRouteOverrides,
+  });
 
   useEffect(() => {
     if (!session?.user || !activeTripId || activeSection !== "luggage") return;
