@@ -4,6 +4,13 @@ import AccommodationPanel from "./components/AccommodationPanel.jsx";
 import ConflictNotice from "./components/ConflictNotice.jsx";
 import TodoGuidePanel from "./components/TodoGuidePanel.jsx";
 import {
+  deleteGuide as deleteFormalGuide,
+  deleteTodo as deleteFormalTodo,
+  saveGuide as saveFormalGuide,
+  saveTodo as saveFormalTodo,
+  toggleTodo as toggleFormalTodo,
+} from "./features/todo-guide/formalCommands.js";
+import {
   ActiveEditorGuardDialog,
   getDirtyActiveEditorGuards,
   requestActiveEditorGuardResolution,
@@ -33,7 +40,7 @@ import { createBudgetRefresh, emptyBudgetSnapshot, cachedExpenseGraph, nonFinanc
 import { getMapProviderConfig } from "./lib/mapProviderConfig.js";
 import { submitTimelineSchedule } from "./lib/timelineScheduleService.js";
 import { onPostgresChangesReady } from "./lib/realtimePostgresReadiness.js";
-import { createRequestGuard, createLuggageRefresh, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
+import { createRequestGuard, createLuggageRefresh, readLuggageScope, subscribeSharedLuggage, applyLuggageMutation, applyLuggageOrder } from "./lib/luggageSync.js";
 import { useSiteDialog } from "./components/SiteDialog.jsx";
 import { notify } from "./lib/notifications.js";
 import { createSyncNotifications } from "./lib/syncNotifications.js";
@@ -104,7 +111,7 @@ import {
 import { acquireEditLock, isLockedByAnotherUser, releaseEditLock } from "./lib/editLocks.js";
 import { resolveGoogleMapsShortUrl } from "./lib/googleMapsShortLinkResolver.js";
 import { buildGoogleMapsDirectionsUrl, travelModeForTransportCategory } from "./lib/googleMapsNavigation.js";
-import { googleMapsPointUrl, hasValidMapPoint, normalizeMapPointFields, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
+import { googleMapsPointUrl, hasValidMapPoint, resolveDestinationMapUrlPoint } from "./lib/mapPoint.js";
 import { hasSupabaseConfig, supabase } from "./lib/supabase.js";
 import {
   applyTimelineSchedulePlanToItems,
@@ -151,7 +158,13 @@ import MembersInviteDialog from "./components/members/MembersInviteDialog.jsx";
 import SidebarAccountMenu from "./components/sidebar/SidebarAccountMenu.jsx";
 import SidebarTripSection from "./components/sidebar/SidebarTripSection.jsx";
 import DayTabs from "./components/timeline/DayTabs.jsx";
-import { buildExistingItemForm, buildNewTransportForm, buildNewVisitForm } from "./components/timeline/timelineEditorForm.js";
+import {
+  buildExistingItemForm,
+  buildNewTransportForm,
+  buildNewVisitForm,
+  buildTimelineItemSubmission,
+  normalizeTimelineItemPayload,
+} from "./components/timeline/timelineEditorForm.js";
 import useTimelineMapPointPicker from "./components/timeline/useTimelineMapPointPicker.js";
 import useTimelineVisitDragSession from "./components/timeline/useTimelineVisitDragSession.js";
 import MultiDayTimelineColumns from "./components/timeline/MultiDayTimelineColumns.jsx";
@@ -1634,9 +1647,7 @@ export default function App() {
       const [userId, tripId] = JSON.parse(key);
       const access = tripReadAccessRef.current;
       if (!canReadTrip(key)) return { data: [], feedbackCheckpoint };
-      let query = supabase.from(scope === "personal" ? "luggage_items" : "shared_luggage_items").select("*").eq("trip_id", tripId);
-      if (scope === "personal") query = query.eq("owner_id", userId);
-      const result = await query.order("created_at");
+      const result = await readLuggageScope(supabase, { scope, tripId, userId });
       return { ...(tripReadAccessRef.current === access && canReadTrip(key) ? result : { data: [] }), feedbackCheckpoint };
     },
     apply: (scope, rows) => {
@@ -2260,8 +2271,8 @@ export default function App() {
       supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
       supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
-      supabase.from("luggage_items").select("*").eq("trip_id", tripId).eq("owner_id", userId).order("created_at"),
-      supabase.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at"),
+      readLuggageScope(supabase, { scope: "personal", tripId, userId }),
+      readLuggageScope(supabase, { scope: "shared", tripId }),
       supabase.from("attachments").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("trip_members").select("id,trip_id,user_id,role,status,created_at,display_name,email").eq("trip_id", tripId).order("created_at"),
@@ -4183,17 +4194,17 @@ export default function App() {
     if (!activeTrip || !plan?.ok || !operation || !itemUpdatedAtBaselines) return { ok: false };
     const sourceItems = items.filter((item) => Number(item.day_index) === Number(dayIndex));
     const result = await submitTimelineSchedule(supabase, {
-      confirmed_major_effect: confirmedMajorEffect,
-      expected_visit_ids: expectedVisitIds || sortedVisitItems(sourceItems).map((item) => item.id),
-      item_updated_at_baselines: itemUpdatedAtBaselines,
-      operation_intent: operation,
-      package_source_item_ids: packageSourceItemIds,
-      preview_result: plan,
-      slot_item_ids: slotItemIds,
-      target_day_index: dayIndex,
-      target_item_id: targetItemId,
-      target_payload: targetPayload,
-      target_trip_id: activeTrip.id,
+      confirmedMajorEffect,
+      expectedVisitIds: expectedVisitIds || sortedVisitItems(sourceItems).map((item) => item.id),
+      itemUpdatedAtBaselines,
+      operation,
+      packageSourceItemIds,
+      plan,
+      slotItemIds,
+      dayIndex,
+      targetItemId,
+      targetPayload,
+      tripId: activeTrip.id,
     }, () => requestGuard.sameContext(tripDataContext));
     if (result.blocked) return { ok: false, errorMessage: result.blocked };
     const responseStatus = result.data?.status || null;
@@ -4225,7 +4236,7 @@ export default function App() {
       notify.error(errorMessage);
       return { ok: false, errorMessage };
     }
-    const normalizedPayload = normalizeItemPayload(payload);
+    const normalizedPayload = normalizeTimelineItemPayload(payload, defaultTransportCategory);
     if (
       isTransportationCard(normalizedPayload) &&
       (!normalizedPayload.from_item_id || !normalizedPayload.to_item_id)
@@ -4423,15 +4434,14 @@ export default function App() {
   async function saveGuide(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const nextPayload = {
-      trip_id: activeTrip.id,
-      title: payload.title.trim(),
-      description: payload.description.trim() || null,
-      url: payload.url.trim() || null,
-    };
-    const result = editingId
-      ? await updateWithConflictCheck("guide_items", nextPayload, editingId, meta)
-      : await supabase.from("guide_items").insert(nextPayload);
+    const result = await saveFormalGuide({
+      client: supabase,
+      tripId: activeTrip.id,
+      payload,
+      editingId,
+      meta,
+      updateWithConflictCheck,
+    });
     if (result.error) notify.error(result.error.message);
     else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
@@ -4440,7 +4450,7 @@ export default function App() {
 
   async function deleteGuide(guideId) {
     if (!activeTrip || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("guide_items").delete().eq("id", guideId);
+    const { error } = await deleteFormalGuide({ client: supabase, guideId });
     if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
@@ -4448,17 +4458,14 @@ export default function App() {
   async function saveTodo(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const nextPayload = {
-      trip_id: activeTrip.id,
-      title: payload.title.trim(),
-      description: payload.description.trim() || null,
-      due_date: payload.due_date || null,
-      assignee_id: payload.assignee_id || null,
-      guide_id: payload.guide_id || null,
-    };
-    const result = editingId
-      ? await updateWithConflictCheck("todo_items", nextPayload, editingId, meta)
-      : await supabase.from("todo_items").insert(nextPayload);
+    const result = await saveFormalTodo({
+      client: supabase,
+      tripId: activeTrip.id,
+      payload,
+      editingId,
+      meta,
+      updateWithConflictCheck,
+    });
     if (result.error) notify.error(result.error.message);
     else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
@@ -4467,14 +4474,14 @@ export default function App() {
 
   async function toggleTodo(todo) {
     if (!canEditActiveTripContent) return;
-    const { error } = await supabase.from("todo_items").update({ completed: !todo.completed }).eq("id", todo.id);
+    const { error } = await toggleFormalTodo({ client: supabase, todo });
     if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
 
   async function deleteTodo(todoId) {
     if (!activeTrip || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("todo_items").delete().eq("id", todoId);
+    const { error } = await deleteFormalTodo({ client: supabase, todoId });
     if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
@@ -5428,83 +5435,6 @@ export default function App() {
       <ActiveEditorGuardDialog />
     </Shell>
   );
-}
-
-function normalizeItemPayload(payload) {
-  if (payload.item_type === "transport") {
-    const transportName = transportNameValue(payload);
-    const transportNote = String(payload.transport_note || payload.transportation_note || payload.description || payload.note || "").trim();
-    const durationMinutes = Number(payload.transport_duration_minutes || 0);
-    return {
-      ...payload,
-      item_type: "transport",
-      type: "transport",
-      title: transportName,
-      location: null,
-      location_name: null,
-      note: transportNote || null,
-      description: transportNote || null,
-      transportation_note: transportNote || null,
-      transport_category: payload.transport_category || defaultTransportCategory,
-      transport_name: transportName,
-      transport_duration_minutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? Math.round(durationMinutes) : null,
-      transport_note: transportNote || null,
-      from_item_id: payload.from_item_id || null,
-      to_item_id: payload.to_item_id || null,
-      transport_role: "normal_pair",
-      from_snapshot_start_time: payload.from_snapshot_start_time || null,
-      from_snapshot_end_time: payload.from_snapshot_end_time || null,
-      from_snapshot_destination: payload.from_snapshot_destination || null,
-      to_snapshot_start_time: payload.to_snapshot_start_time || null,
-      to_snapshot_end_time: payload.to_snapshot_end_time || null,
-      to_snapshot_destination: payload.to_snapshot_destination || null,
-      start_time: payload.start_time || null,
-      end_time: null,
-      is_fixed: false,
-      fixed_at: null,
-      fixed_by: null,
-      address: null,
-      map_url: null,
-      latitude: null,
-      longitude: null,
-    };
-  }
-  const locationName = payload.location_name || payload.location;
-  const description = payload.description || payload.note;
-  const hasCompleteTime = Boolean(payload.start_time) && Boolean(payload.end_time);
-  const mapPointFields = normalizeMapPointFields(payload);
-  return {
-    ...payload,
-    item_type: payload.item_type || "visit",
-    title: locationName || payload.title,
-    location: locationName,
-    location_name: locationName,
-    note: description,
-    description,
-    start_time: hasCompleteTime ? payload.start_time : null,
-    end_time: hasCompleteTime ? payload.end_time : null,
-    is_fixed: hasCompleteTime ? Boolean(payload.is_fixed) : false,
-    fixed_at: hasCompleteTime && payload.is_fixed ? payload.fixed_at || null : null,
-    fixed_by: hasCompleteTime && payload.is_fixed ? payload.fixed_by || null : null,
-    address: payload.address || null,
-    map_url: payload.map_url || null,
-    latitude: mapPointFields.latitude,
-    longitude: mapPointFields.longitude,
-    transportation_note: payload.transportation_note || null,
-    transport_category: null,
-    transport_name: null,
-    transport_duration_minutes: null,
-    transport_note: null,
-    from_item_id: null,
-    to_item_id: null,
-    transport_role: null,
-    from_snapshot_start_time: null,
-    from_snapshot_end_time: null,
-    from_snapshot_destination: null,
-    to_snapshot_start_time: null,
-    to_snapshot_end_time: null,
-    to_snapshot_destination: null,
-  };
 }
 
 function isInvalidTimeRange(startTime, endTime) {
@@ -6735,7 +6665,7 @@ function DemoApp({ initialSection }) {
   }
 
   function saveTimelineItem(payload, editingId, meta = {}) {
-    const nextPayload = normalizeItemPayload(payload);
+    const nextPayload = normalizeTimelineItemPayload(payload, defaultTransportCategory);
     if (!nextPayload.title.trim()) return { ok: false };
     if (nextPayload.item_type !== "transport" && Boolean(nextPayload.start_time) !== Boolean(nextPayload.end_time)) {
       return { ok: false, errorMessage: "開始與結束時間必須同時設定，或同時清除。" };
@@ -6983,7 +6913,7 @@ function DemoApp({ initialSection }) {
       transportation_note: item.transportation_note || null,
       updated_at: new Date().toISOString(),
     };
-    const nextPayload = normalizeItemPayload({
+    const nextPayload = normalizeTimelineItemPayload({
       ...item,
       title: alternative.title,
       type: alternative.type || item.type,
@@ -6999,7 +6929,7 @@ function DemoApp({ initialSection }) {
       description: alternative.description || "",
       transportation_note: alternative.transportation_note || "",
       cost: alternative.cost || 0,
-    });
+    }, defaultTransportCategory);
     if (nextPayload.item_type !== "transport" && isInvalidTimeRange(nextPayload.start_time, nextPayload.end_time)) return { ok: false };
     setTimelineItems((current) =>
       current.map((currentItem) => (currentItem.id === item.id ? { ...currentItem, ...nextPayload, updated_at: new Date().toISOString() } : currentItem)),
@@ -8951,30 +8881,7 @@ function ItineraryTimeline({
       ...itemSubmittedForm
     } = submittedForm;
     const result = await onSaveItem(
-      {
-        ...itemSubmittedForm,
-        title:
-          itemSubmittedForm.item_type === "transport"
-            ? itemSubmittedForm.transport_name.trim()
-            : (itemSubmittedForm.location_name || itemSubmittedForm.location || itemSubmittedForm.title).trim(),
-        location: (itemSubmittedForm.location_name || itemSubmittedForm.location).trim(),
-        location_name: (itemSubmittedForm.location_name || itemSubmittedForm.location).trim(),
-        address: itemSubmittedForm.address.trim(),
-        map_url: itemSubmittedForm.map_url.trim(),
-        latitude: itemSubmittedForm.latitude ?? null,
-        longitude: itemSubmittedForm.longitude ?? null,
-        note: (itemSubmittedForm.description || itemSubmittedForm.note).trim(),
-        description: (itemSubmittedForm.description || itemSubmittedForm.note).trim(),
-        transportation_note: itemSubmittedForm.transportation_note.trim(),
-        transport_category: itemSubmittedForm.transport_category || defaultTransportCategory,
-        transport_name: itemSubmittedForm.transport_name.trim(),
-        transport_duration_minutes: Number(itemSubmittedForm.transport_duration_minutes || 0),
-        transport_note: itemSubmittedForm.transport_note.trim(),
-        from_item_id: itemSubmittedForm.from_item_id,
-        to_item_id: itemSubmittedForm.to_item_id,
-        ...currentPairSnapshot,
-        cost: Number(itemSubmittedForm.cost || 0),
-      },
+      buildTimelineItemSubmission({ itemSubmittedForm, currentPairSnapshot, defaultTransportCategory }),
       editingId,
       {
         baseUpdatedAt,

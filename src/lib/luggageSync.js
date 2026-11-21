@@ -27,6 +27,17 @@ export function createRequestGuard() {
   };
 }
 
+export function readLuggageScope(client, { scope, tripId, userId }) {
+  if (scope === "personal") {
+    if (!userId) throw new Error("Personal luggage reads require a user ID.");
+    return client.from("luggage_items").select("*").eq("trip_id", tripId).eq("owner_id", userId).order("created_at");
+  }
+  if (scope === "shared") {
+    return client.from("shared_luggage_items").select("*").eq("trip_id", tripId).order("created_at");
+  }
+  throw new Error("Unsupported luggage read scope.");
+}
+
 export function createLuggageRefresh({ guard, read, apply, onError = () => {}, onVerified = () => {} }) {
   const work = new Map();
   let timer = null, scheduledContext = null;
