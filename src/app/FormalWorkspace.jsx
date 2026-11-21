@@ -140,6 +140,23 @@ export function FormalWorkspace() {
   const membershipStatus = activeTrip?.membership?.status;
   if (tripReadAccessRef.current?.key !== tripDataContext.key || tripReadAccessRef.current?.status !== membershipStatus) tripReadAccessRef.current = { key: tripDataContext.key, status: membershipStatus };
   const canReadTrip = key => Boolean(key && tripReadAccessRef.current?.key === key && tripReadAccessRef.current?.status === "approved");
+
+  // Reset the previous trip snapshot before any child can render it under the new trip.
+  const [tripRowsAccess, setTripRowsAccess] = useState(null);
+  if (tripRowsAccess !== tripReadAccessRef.current) {
+    setTripRowsAccess(tripReadAccessRef.current);
+    setItems([]);
+    setAlternatives([]);
+    setAccommodations([]);
+    setGuideItems([]);
+    setTodoItems([]);
+    setLuggageItems([]);
+    setSharedLuggageItems([]);
+    setAttachments([]);
+    setPackItems([]);
+    setMembers([]);
+    setShareLinks([]);
+  }
   const {
     budgetSnapshot,
     budgetItems,
@@ -416,10 +433,13 @@ export function FormalWorkspace() {
   }, [session?.user?.id, activeTripId, loadTrips, loadTripData, syncFeedback]);
 
   const loadShareLinks = useCallback(async (tripId) => {
+    const scope = requestGuard.context();
+    const access = tripReadAccessRef.current;
     if (!tripId) {
       setShareLinks([]);
       return;
     }
+    if (!canReadTrip(scope.key) || JSON.parse(scope.key)[1] !== tripId) return;
 
     const { data, error } = await supabase
       .from("share_links")
@@ -427,7 +447,7 @@ export function FormalWorkspace() {
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false });
 
-    if (!error) setShareLinks(data || []);
+    if (!error && requestGuard.sameContext(scope) && tripReadAccessRef.current === access) setShareLinks(data || []);
   }, []);
 
   useAccountSession({
