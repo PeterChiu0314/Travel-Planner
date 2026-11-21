@@ -125,6 +125,7 @@ import {
   transportPairKey,
 } from "./lib/timelineTransportationRoles.js";
 import { buildTransportPairSnapshot, buildTransportPairState, transportPairNeedsReview, visitSnapshotDestination } from "./lib/timelineTransportPairs.js";
+import { deleteTripStay, readTripStays, saveTripStay } from "./features/stays/formalStays.js";
 import { buildRoutePanelStops } from "./lib/timelineMapMarkers.js";
 import { timelineTypeColors, timelineTypeLabels as typeLabels } from "./lib/timelineTypeStyles.js";
 import {
@@ -2184,7 +2185,7 @@ export default function App() {
       attachmentsResult, packResult, membersResult] = await Promise.all([
       supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
       supabase.from("itinerary_alternatives").select("*"),
-      supabase.from("accommodations").select("*").eq("trip_id", tripId).order("check_in_date"),
+      readTripStays(supabase, tripId),
       supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
       supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
       readLuggageScope(supabase, { scope: "personal", tripId, userId }),
@@ -4313,27 +4314,9 @@ export default function App() {
   async function saveAccommodation(payload, editingId, meta = {}) {
     if (!activeTrip || !canEditActiveTripContent) return;
     if (!isCurrentTripContext(meta)) return rejectCrossTripSave();
-    const safeCheckOut =
-      payload.check_out_date && payload.check_out_date < payload.check_in_date
-        ? payload.check_in_date
-        : payload.check_out_date;
-    const nextPayload = {
-      trip_id: activeTrip.id,
-      name: payload.name.trim(),
-      check_in_date: payload.check_in_date || activeTrip.start_date,
-      check_out_date: safeCheckOut || payload.check_in_date || activeTrip.start_date,
-      check_in_time: payload.check_in_time || null,
-      check_out_time: payload.check_out_time || null,
-      address: payload.address.trim() || null,
-      map_url: payload.map_url.trim() || null,
-      booking_code: payload.booking_code.trim() || null,
-      payment_status: payload.payment_status || "unpaid",
-      expense_id: payload.expense_id || null,
-      custom_notes: payload.custom_notes.trim() || null,
-    };
-    const result = editingId
-      ? await updateWithConflictCheck("accommodations", nextPayload, editingId, meta)
-      : await supabase.from("accommodations").insert(nextPayload);
+    const result = await saveTripStay({
+      client: supabase, trip: activeTrip, payload, editingId, meta, updateWithConflictCheck,
+    });
     if (result.error) notify.error(result.error.message);
     else if (result.conflict) notify.warning("此資料在你編輯期間已被其他人更新。");
     else await loadTripData(activeTrip.id);
@@ -4342,7 +4325,7 @@ export default function App() {
 
   async function deleteAccommodation(accommodationId) {
     if (!activeTrip || !canEditActiveTripContent) return;
-    const { error } = await supabase.from("accommodations").delete().eq("id", accommodationId);
+    const { error } = await deleteTripStay(supabase, accommodationId);
     if (error) notify.error(error.message);
     else await loadTripData(activeTrip.id);
   }
