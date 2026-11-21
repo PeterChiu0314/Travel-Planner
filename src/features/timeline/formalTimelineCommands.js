@@ -422,3 +422,11 @@ export function createTimelineCommands({
     reorderUntimedVisit,
   };
 }
+
+export function readTimelineItems(client, tripId) {
+  return client.from("itinerary_items").select("*").eq("trip_id", tripId);
+}
+
+export function readTimelineAlternatives(client) {
+  return client.from("itinerary_alternatives").select("*");
+}

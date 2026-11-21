@@ -1,3 +1,8 @@
+import { readMembers } from "../features/members/memberCommands.js";
+import { readPackItems } from "../features/pack/packCommands.js";
+import { readAttachments } from "../features/attachments/attachmentCommands.js";
+import { readGuides, readTodos } from "../features/todo-guide/formalCommands.js";
+import { readTimelineItems, readTimelineAlternatives } from "../features/timeline/formalTimelineCommands.js";
 import { readOfflineTripData, writeOfflineTripData } from "../lib/offlineCache.js";
 import { emptyBudgetSnapshot, cachedExpenseGraph, nonFinancialAttachments } from "../lib/budgetSync.js";
 import { readLuggageScope } from "../lib/luggageSync.js";
@@ -63,16 +68,16 @@ export function useTripDataLoad({
     const feedbackCheckpoint = syncFeedback.checkpoint();
     const [itemsResult, alternativesResult, accommodationsResult, guideResult, todoResult, luggageResult, sharedLuggageResult,
       attachmentsResult, packResult, membersResult] = await Promise.all([
-      supabase.from("itinerary_items").select("*").eq("trip_id", tripId),
-      supabase.from("itinerary_alternatives").select("*"),
+      readTimelineItems(supabase, tripId),
+      readTimelineAlternatives(supabase),
       readTripStays(supabase, tripId),
-      supabase.from("guide_items").select("*").eq("trip_id", tripId).order("created_at"),
-      supabase.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false }),
+      readGuides(supabase, tripId),
+      readTodos(supabase, tripId),
       readLuggageScope(supabase, { scope: "personal", tripId, userId }),
       readLuggageScope(supabase, { scope: "shared", tripId }),
-      supabase.from("attachments").select("*").eq("trip_id", tripId).order("created_at"),
-      supabase.from("pack_items").select("*").eq("trip_id", tripId).order("created_at"),
-      supabase.from("trip_members").select("id,trip_id,user_id,role,status,created_at,display_name,email").eq("trip_id", tripId).order("created_at"),
+      readAttachments(supabase, tripId),
+      readPackItems(supabase, tripId),
+      readMembers(supabase, tripId),
     ]);
     if (!requestGuard.valid(token) || tripReadAccessRef.current !== access || !canReadTrip(token.key)) return;
     const error = itemsResult.error || alternativesResult.error || accommodationsResult.error || guideResult.error || todoResult.error

@@ -35,3 +35,11 @@ export function deleteTodo({ client, todoId }) {
 export function toggleTodo({ client, todo }) {
   return client.from("todo_items").update({ completed: !todo.completed }).eq("id", todo.id);
 }
+
+export function readGuides(client, tripId) {
+  return client.from("guide_items").select("*").eq("trip_id", tripId).order("created_at");
+}
+
+export function readTodos(client, tripId) {
+  return client.from("todo_items").select("*").eq("trip_id", tripId).order("due_date", { nullsFirst: false });
+}
