@@ -1,3 +1,4 @@
+import { requestWorkspaceConfirmation } from "../../app/activeEditorGuard.jsx";
 import { memberName } from "../../lib/memberName.js";
 import { notify } from "../../lib/notifications.js";
 import { luggageErrorMessage } from "../../lib/luggageService.js";
@@ -9,6 +10,8 @@ export function createMemberCommands({
   activeTrip,
   isTripDateLocked,
   canInviteMembers,
+  requestGuard,
+  tripDataContext,
   loadTripData,
 }) {
   async function approveMember(memberId) {
@@ -86,8 +89,11 @@ export function createMemberCommands({
     ) {
       return { ok: false };
     }
-    const ok = window.confirm(`移除「${memberName(targetMember)}」？`);
-    if (!ok) return { ok: false, cancelled: true };
+    const confirmed = await requestWorkspaceConfirmation({
+      title: `移除「${memberName(targetMember)}」？`,
+      confirmLabel: "確認移除",
+    });
+    if (!confirmed || !requestGuard.sameContext(tripDataContext)) return { ok: false, cancelled: true };
     const { error } = await supabase.from("trip_members").delete().eq("id", memberId).eq("trip_id", activeTrip.id);
     if (error) {
       notify.error(error.code === '55P03' ? '目前有支出或旅程資料正在更新，請稍後再移除成員。' : luggageErrorMessage(error));

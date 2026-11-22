@@ -1,5 +1,5 @@
 import { timelineEditorFields } from "./timelineEditorFields.jsx";
-import { requestActiveEditorGuardResolution, requestActiveEditorHandoff, useActiveEditorGuard } from "../../app/activeEditorGuard.jsx";
+import { requestActiveEditorDiscard, requestActiveEditorGuardResolution, requestActiveEditorHandoff, useActiveEditorGuard } from "../../app/activeEditorGuard.jsx";
 import { formatTimeDisplay } from "../../lib/displayFormat.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { clearDraft, loadLatestDraftForEntity, useDraftAutosave } from "../../lib/draftAutosave.js";
@@ -298,7 +298,10 @@ export function useTimelineEditor({
   }
 
   async function closeEditor(force = false) {
-    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (!force && hasUnsavedChanges) {
+      await requestActiveEditorDiscard({ tripId: editorTripId, onlyId: activeEditorGuardId });
+      return;
+    }
     if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "itinerary_items", userId: currentUserId });
     if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyItemForm);

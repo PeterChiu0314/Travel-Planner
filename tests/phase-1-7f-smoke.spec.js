@@ -1372,8 +1372,8 @@ test("demo unified time edit can be cancelled without saving", async ({ page }) 
   await expect(page.getByTestId("auto-continuation-dialog")).toHaveCount(0);
   await expect(form).toBeVisible();
   await expect(form.locator('input[name="start_time"]')).toHaveValue("02:30");
-  page.once("dialog", (dialog) => dialog.accept());
   await form.getByRole("button", { name: "取消", exact: true }).click();
+  await expect(form).toBeHidden();
   await expect(firstVisit.locator(".time-block")).toContainText("02:20");
   expect(supabaseRequests).toEqual([]);
   expect(failures).toEqual([]);

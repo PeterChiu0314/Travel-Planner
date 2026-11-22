@@ -1,4 +1,4 @@
-import { getDirtyActiveEditorGuards, requestActiveEditorHandoff } from "../../app/activeEditorGuard.jsx";
+import { getDirtyActiveEditorGuards, requestActiveEditorHandoff, requestWorkspaceConfirmation } from "../../app/activeEditorGuard.jsx";
 import { todayInput } from "../../lib/displayFormat.js";
 import { notify } from "../../lib/notifications.js";
 import { getCachedBudgetQuote } from "../../lib/tripBudgetRates.js";
@@ -194,8 +194,12 @@ export function createTripCommands({
 
   async function deleteTrip() {
     if (!activeTrip || !canManageActiveTrip) return;
-    const ok = window.confirm(`刪除「${activeTrip.title}」？`);
-    if (!ok) return;
+    const confirmed = await requestWorkspaceConfirmation({
+      title: `刪除「${activeTrip.title}」？`,
+      description: "刪除旅程後無法復原。",
+      confirmLabel: "確認刪除",
+    });
+    if (!confirmed || !requestGuard.sameContext(tripDataContext)) return;
     const { data, error } = await supabase.rpc("delete_trip_with_expenses", { p_trip_id: activeTrip.id });
     if (error || data !== activeTrip.id) notify.error(
       error?.code === "55P03" ? "此旅程有資料正在儲存，請稍後再試。"

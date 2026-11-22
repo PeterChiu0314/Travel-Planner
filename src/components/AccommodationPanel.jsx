@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  requestActiveEditorDiscard,
   requestActiveEditorGuardResolution,
   requestActiveEditorHandoff,
   useActiveEditorGuard,
@@ -250,7 +251,10 @@ export default function AccommodationPanel({
   }
 
   async function closeAccommodationForm(force = false) {
-    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (!force && hasUnsavedChanges) {
+      await requestActiveEditorDiscard({ tripId: editorTripId, onlyId: activeEditorGuardId });
+      return;
+    }
     if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "accommodations", userId: currentUserId });
     if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyAccommodationForm);

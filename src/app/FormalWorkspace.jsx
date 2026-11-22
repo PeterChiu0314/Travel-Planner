@@ -708,6 +708,8 @@ export function FormalWorkspace() {
     activeTrip,
     isTripDateLocked,
     canInviteMembers,
+    requestGuard,
+    tripDataContext,
     loadTripData,
   });
 

@@ -44,12 +44,28 @@ export function getDirtyActiveEditorGuards(options) {
     .filter(hasUnresolvedEdit);
 }
 
-function showActiveEditorPrompt(blockingGuard) {
+function showActiveEditorPrompt(content) {
   if (activeEditorPrompt) return Promise.resolve(null);
   return new Promise((resolve) => {
-    activeEditorPrompt = { resolve, blockingGuard };
+    activeEditorPrompt = { ...content, resolve };
     notifyActiveEditorListeners();
   });
+}
+
+export async function requestWorkspaceConfirmation(confirmation) {
+  return await showActiveEditorPrompt({ confirmation }) === "confirm";
+}
+
+export async function requestActiveEditorDiscard(options) {
+  const [entry] = getActiveEditorGuardEntries(options);
+  if (!entry || !await requestWorkspaceConfirmation({
+    title: "放棄尚未儲存的變更？",
+    confirmLabel: "放棄變更",
+  })) return;
+
+  const [key] = entry;
+  const current = getActiveEditorGuardEntries(options).find(([currentKey]) => currentKey === key);
+  await current?.[1].discard();
 }
 
 async function resolveActiveEditorGuards(options, resolved) {
@@ -63,7 +79,7 @@ async function resolveActiveEditorGuards(options, resolved) {
   if (!dirtyEntries.length) return true;
   const dirtyKeys = new Set(dirtyEntries.map(([key]) => key));
   const blockingGuard = dirtyEntries.find(([, guard]) => guard.readState?.().missingExpenseTitle)?.[1];
-  const choice = await showActiveEditorPrompt(blockingGuard);
+  const choice = await showActiveEditorPrompt({ blockingGuard });
   if (!choice) return false;
   for (const [key, guard] of getActiveEditorGuardEntries(options).filter(unresolved)) {
     if (!dirtyKeys.has(key)) return false;
@@ -102,11 +118,21 @@ export function useActiveEditorGuard(id, { tripId, workspace }, guard) {
 
 export function ActiveEditorGuardDialog() {
   const [prompt, setPrompt] = useState(activeEditorPrompt);
+  const cancelConfirmation = useRef(null);
 
   useEffect(() => {
     const listener = () => setPrompt(activeEditorPrompt);
     return subscribeToActiveEditors(listener);
   }, []);
+
+  useEffect(() => {
+    if (!prompt?.confirmation) return;
+    const previousFocus = document.activeElement;
+    cancelConfirmation.current?.focus();
+    return () => {
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [prompt]);
 
   useEffect(() => {
     function handleBeforeUnload(event) {
@@ -127,6 +153,34 @@ export function ActiveEditorGuardDialog() {
     notifyActiveEditorListeners();
     current?.resolve(choice);
     if (choice === null) current?.blockingGuard?.focusMissingExpenseTitle();
+  }
+
+  if (prompt.confirmation) {
+    const { title, description, confirmLabel } = prompt.confirmation;
+    function handleConfirmationKey(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        choose(null);
+      } else if (event.key === "Tab") {
+        const [cancel, confirm] = event.currentTarget.querySelectorAll("button");
+        if (event.shiftKey ? event.target === cancel : event.target === confirm) {
+          event.preventDefault();
+          (event.shiftKey ? confirm : cancel).focus();
+        }
+      }
+    }
+    return (
+      <div className="modal-backdrop">
+        <div className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="workspace-confirmation-title" onKeyDown={handleConfirmationKey}>
+          <h2 id="workspace-confirmation-title">{title}</h2>
+          {description ? <p>{description}</p> : null}
+          <div className="form-actions">
+            <button ref={cancelConfirmation} className="ghost-button" type="button" onClick={() => choose(null)}>取消</button>
+            <button className="primary-button compact" type="button" onClick={() => choose("confirm")}>{confirmLabel}</button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
