@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -260,7 +261,7 @@ test("Phase 4.9c adapter passes provider-neutral marker and focus input", () => 
 });
 
 test("Phase 5.1c keeps Google code isolated to the lazy provider and rejects unapproved map packages", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/ItineraryTimeline.jsx");
   const packageJson = readRepoFile("package.json");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
@@ -389,7 +390,7 @@ test("Phase 5.8b keeps the Map behind a full-height Dayboard glass panel", () =>
 });
 
 test("Phase 5.8 keeps Timeline card gaps compact and uses library transport icons", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/ItineraryTimeline.jsx");
   const stylesSource = readRepoFile("src/styles.css");
   const transportIconSource = readRepoFile("src/components/timeline/TransportCategoryIcon.jsx");
   const transportCategoriesSource = readRepoFile("src/lib/timelineTransportCategories.js");
@@ -442,7 +443,7 @@ test("Phase 5.2 map point warning overlays without resizing the map canvas", () 
 });
 
 test("Phase 5.2 map URL parsing is wired into hidden coordinate persistence only", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/timelineEditorForm.js", "src/components/timeline/timelineEditorFields.jsx");
 
   expect(appSource).toContain("normalizeMapPointFields(payload)");
   expect(appSource).toContain("latitude: mapPointFields.latitude");
@@ -452,7 +453,11 @@ test("Phase 5.2 map URL parsing is wired into hidden coordinate persistence only
 });
 
 test("Phase 5.9 destination editor keeps invalid Map URL feedback inside the expandable point section", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/timelineEditorFields.jsx",
+    "src/components/timeline/useTimelineEditor.jsx",
+  );
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
   const mapPointSource = readRepoFile("src/lib/mapPoint.js");
@@ -481,7 +486,7 @@ test("Phase 5.9 destination editor keeps invalid Map URL feedback inside the exp
 });
 
 test("Phase 5.2c Google Maps short-link resolver is edge-only and host-limited", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/useTimelineEditor.jsx");
   const mapPointSource = readRepoFile("src/lib/mapPoint.js");
   const resolverSource = readRepoFile("src/lib/googleMapsShortLinkResolver.js");
   const edgeFunctionSource = readRepoFile("supabase/functions/resolve-google-maps-url/index.ts");
@@ -507,7 +512,11 @@ test("Phase 5.2c Google Maps short-link resolver is edge-only and host-limited",
 });
 
 test("Phase 5.2 focused marker can scroll the active Timeline card without drag rewrites", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/useTimelineEditor.jsx",
+    "src/components/timeline/useTimelineReorder.js",
+  );
 
   expect(appSource).toContain("data-timeline-item-id={item.id}");
   expect(appSource).toContain("scrollIntoView({ block: \"nearest\", behavior: \"smooth\" })");
@@ -517,7 +526,10 @@ test("Phase 5.2 focused marker can scroll the active Timeline card without drag 
 });
 
 test("Phase 5.3 destination add editor renders after the timeline flow", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/timelineEditorFields.jsx",
+  );
   const addEditorRender = 'data-timeline-add-editor="true"';
 
   expect(appSource.indexOf(addEditorRender)).toBeGreaterThan(appSource.indexOf("</DndContext>"));
@@ -529,7 +541,11 @@ test("Phase 5.3 destination add editor renders after the timeline flow", () => {
 });
 
 test("Phase 5.3 hotfix scrolls and spaces the bottom add editor", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/useTimelineEditor.jsx",
+    "src/components/timeline/useTimelineReorder.js",
+  );
   const stylesSource = readRepoFile("src/styles.css");
 
   expect(appSource).toContain("newVisitEditorRef");
@@ -544,7 +560,11 @@ test("Phase 5.3 hotfix scrolls and spaces the bottom add editor", () => {
 });
 
 test("Phase 5.9 destination editor reuses the existing map point picker through a text action", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/components/timeline/timelineEditorFields.jsx",
+    "src/components/timeline/useTimelineEditor.jsx",
+    "src/demo/DemoApp.jsx",
+  );
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const stylesSource = readRepoFile("src/styles.css");
 
@@ -560,7 +580,11 @@ test("Phase 5.9 destination editor reuses the existing map point picker through 
 });
 
 test("Phase 5.9 visit editor uses compact linked time controls and a draft-only point workflow", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/timelineEditorFields.jsx",
+    "src/components/timeline/useTimelineEditor.jsx",
+  );
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const formFieldsSource = readRepoFile("src/components/timeline/TimelineFormFields.jsx");
   const timelineTimeSource = readRepoFile("src/lib/timelineTime.js");
@@ -622,7 +646,10 @@ test("Phase 5.9 visit editor uses compact linked time controls and a draft-only 
 });
 
 test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/components/timeline/timelineEditorFields.jsx",
+    "src/components/timeline/useTimelineEditor.jsx",
+  );
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
@@ -653,7 +680,7 @@ test("Phase 5.3 Formal Google map point picker stays lazy-provider scoped", () =
 });
 
 test("Phase 5.3 destination editor save keeps validated hidden map coordinates in payload", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/useTimelineEditor.jsx");
   const formSource = readRepoFile("src/components/timeline/timelineEditorForm.js");
 
   expect(appSource).toContain("submittedForm.latitude = mapUrlValidation.point.latitude");
@@ -664,7 +691,7 @@ test("Phase 5.3 destination editor save keeps validated hidden map coordinates i
 });
 
 test("Phase 5.3b Google marker focus pans with fixed zoom and focused marker styling", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/ItineraryTimeline.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
 
@@ -740,7 +767,7 @@ test("Phase 5.7b-1 Google provider exposes route edit mode skeleton only in Goog
 });
 
 test("Phase 5.5 Google map area custom point add flow stays provider scoped", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/useTimelineEditor.jsx");
   const editorFormSource = readRepoFile("src/components/timeline/timelineEditorForm.js");
   const pickerSource = readRepoFile("src/components/timeline/useTimelineMapPointPicker.js");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
@@ -776,7 +803,7 @@ test("Phase 5.5 Google map area custom point add flow stays provider scoped", ()
 });
 
 test("Phase 5.4 renders simple Google route lines and Timeline sequence badges", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/timeline/ItineraryTimeline.jsx");
   const markerSource = readRepoFile("src/lib/timelineMapMarkers.js");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
@@ -888,7 +915,11 @@ test("Phase 5.7b-2 Google route edit mode supports local segment custom points o
 });
 
 test("Phase 5.7b-3 persists route overrides with guarded cleanup and Google-only editing", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/app/FormalWorkspace.jsx",
+    "src/app/useTripSubscription.js",
+    "src/components/map/useRouteWorkspace.js",
+  );
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const staticProviderSource = readRepoFile("src/components/map/providers/StaticMapProvider.jsx");
@@ -925,7 +956,7 @@ test("Phase 5.7b-3 persists route overrides with guarded cleanup and Google-only
   expect(appSource).toContain("if (changedRouteEndpointIds.length)");
   expect(appSource).toContain("!changedRouteEndpointIds.includes(override.from_item_id)");
   expect(appSource).toContain("const routeOverrideLoadRequestRef = useRef(0)");
-  expect(appSource).toContain("const routeOverrideLoadTargetRef = useRef({ dayIndex: null, isDemoMode: false, tripId: null })");
+  expect(appSource).toContain("const routeOverrideLoadTargetRef = useRef({ dayIndex: null, tripId: null })");
   expect(appSource).toContain("const requestId = ++routeOverrideLoadRequestRef.current");
   expect(appSource).toContain("if (!isCurrentRouteOverrideRequest()) return []");
   expect(appSource).toContain('from("itinerary_route_overrides")');
@@ -957,7 +988,7 @@ test("Phase 5.7b-3 persists route overrides with guarded cleanup and Google-only
 });
 
 test("Phase 5.7b-3 keeps an override when a reordered day preserves its adjacent item IDs", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/components/map/useRouteWorkspace.js");
   const routeOverridesSource = readRepoFile("src/lib/routeOverrides.js");
   const reorderedItems = [{ id: "visit-d" }, { id: "visit-a" }, { id: "visit-b" }, { id: "visit-c" }];
   const validKeys = validRouteSegmentKeysFromItems(reorderedItems);
@@ -977,7 +1008,12 @@ test("Phase 5.7b-3 keeps an override when a reordered day preserves its adjacent
 });
 
 test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timeline lock", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/app/FormalWorkspace.jsx",
+    "src/app/TripWorkspace.jsx",
+    "src/components/map/routeCollaboration.js",
+    "src/components/map/useRouteWorkspace.js",
+  );
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
   const routeOverridesSource = readRepoFile("src/lib/routeOverrides.js");
@@ -1115,7 +1151,7 @@ test("Phase 5.7c-1 collaborates on Google route nodes without a same-day Timelin
 });
 
 test("Phase 5.1e Google map preserves user-adjusted viewport until the day or markers change", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource("src/app/TripWorkspace.jsx");
   const mapPanelSource = readRepoFile("src/components/map/MapPanel.jsx");
   const googleProviderSource = readRepoFile("src/components/map/providers/GoogleMapProvider.lazy.jsx");
 
@@ -1132,7 +1168,10 @@ test("Phase 5.1e Google map preserves user-adjusted viewport until the day or ma
 });
 
 test("Phase 5.1a wires Demo RoutePanel through explicit demo mode", () => {
-  const appSource = readRepoFile("src/App.jsx");
+  const appSource = readOwnerSource(
+    "src/app/TripWorkspace.jsx",
+    "src/demo/DemoApp.jsx",
+  );
   const routePanelSource = readRepoFile("src/components/map/RoutePanel.jsx");
 
   expect(appSource).toContain('mode="demo"');

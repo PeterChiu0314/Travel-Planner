@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Plus } from "lucide-react";
 import {
   requestActiveEditorGuardResolution,
+  requestActiveEditorDiscard,
   requestActiveEditorHandoff,
   useActiveEditorGuard,
 } from "../app/activeEditorGuard.jsx";
@@ -259,7 +260,10 @@ function TodoPanel({
   }
 
   async function closeTodoForm(force = false) {
-    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (!force && hasUnsavedChanges) {
+      await requestActiveEditorDiscard({ tripId: editorTripId, onlyId: activeEditorGuardId });
+      return;
+    }
     if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "todo_items", userId: currentUserId });
     if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyTodoForm);
@@ -523,7 +527,10 @@ function GuidePanel({ activeTrip, canEdit, currentUserId, guideItems, onDelete, 
   }
 
   async function closeGuideForm(force = false) {
-    if (!force && hasUnsavedChanges && !window.confirm("放棄尚未儲存的變更？")) return;
+    if (!force && hasUnsavedChanges) {
+      await requestActiveEditorDiscard({ tripId: editorTripId, onlyId: activeEditorGuardId });
+      return;
+    }
     if (useEditLocks && editingId) await releaseEditLock({ recordId: editingId, supabase, table: "guide_items", userId: currentUserId });
     if (!disableDraftAutosave) clearDraft(draftKey);
     resetDraft(emptyGuideForm);

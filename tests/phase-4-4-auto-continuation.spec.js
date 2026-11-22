@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import {
@@ -5,7 +6,13 @@ import {
   planTimelineSchedule,
 } from "../src/lib/timelineSchedulePlanner.js";
 
-const appSource = readFileSync("src/App.jsx", "utf8");
+const appSource = readOwnerSource(
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/timelineItemRules.js",
+    "src/components/timeline/useTimelineEditor.jsx",
+    "src/components/timeline/useTimelineReorder.js",
+    "src/features/timeline/formalTimelineCommands.js",
+  );
 
 function visit(id, startTime, endTime, sortOrder, extra = {}) {
   return {
@@ -65,7 +72,8 @@ test("Phase 6 fixed overflow converts only the non-fitting suffix", () => {
 });
 
 test("Formal App uses the authoritative unified RPC without client compensation", () => {
-  expect(appSource).toContain('supabase.rpc("apply_timeline_schedule_operation"');
+  expect(appSource).toContain("await submitTimelineSchedule(supabase, {");
+  expect(readOwnerSource("src/lib/timelineScheduleService.js")).toContain('client.rpc("apply_timeline_schedule_operation_link_safe"');
   expect(appSource).toContain("timelineScheduleUpdatedAtBaselines");
   expect(appSource).toContain("confirmedScheduleEffect");
   expect(appSource).not.toContain("rollbackItineraryTimeContinuation");

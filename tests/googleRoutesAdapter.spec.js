@@ -1,3 +1,4 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import {
@@ -13,7 +14,10 @@ const fromStationItem = { id: "from", latitude: 35.0116, longitude: 135.7681, pr
 const toShrineItem = { id: "to", latitude: 35.0037, longitude: 135.7786, placeId: "yasaka-shrine-place" };
 
 test("Phase 5.7a keeps transportation cards navigation-only in App UI", () => {
-  const appSource = readFileSync("src/App.jsx", "utf8");
+  const appSource = readOwnerSource(
+    "src/components/timeline/ItineraryTimeline.jsx",
+    "src/components/timeline/timelineEditorFields.jsx",
+  );
 
   expect(appSource).not.toContain("查詢交通");
   expect(appSource).not.toContain("fetchGoogleRoutesDuration");

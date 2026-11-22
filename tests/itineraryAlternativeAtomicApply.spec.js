@@ -1,9 +1,13 @@
+import { readOwnerSource } from "./helpers/readOwnerSource.js";
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const migrationPath = "supabase/migrations/20260811150000_atomic_apply_itinerary_alternative.sql";
 const migration = readFileSync(migrationPath, "utf8");
-const appSource = readFileSync("src/App.jsx", "utf8");
+const appSource = readOwnerSource(
+    "src/components/timeline/timelineItemRules.js",
+    "src/features/timeline/formalTimelineCommands.js",
+  );
 
 test("alternative apply RPC is atomic, permission checked, locked, and stale guarded", () => {
   expect(migration).toContain("app_private.apply_itinerary_alternative");
@@ -46,7 +50,7 @@ test("alternative apply preserves slot, schedule, transport, budget, and fixed f
 
 test("Formal alternative apply uses only the atomic RPC with both revision baselines", () => {
   const applyAlternativeBody = appSource.match(
-    /async function applyAlternative\(item, alternative\) \{([\s\S]*?)\r?\n  \}\r?\n\r?\n  async function saveBudget/,
+    /async function applyAlternative\(item, alternative\) \{([\s\S]*?)\r?\n  \}/,
   );
   expect(applyAlternativeBody).not.toBeNull();
   expect(applyAlternativeBody[1]).toContain('supabase.rpc("apply_itinerary_alternative"');

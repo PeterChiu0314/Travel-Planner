@@ -95,7 +95,7 @@ Important correction for future agents:
 
 Key files:
 
-- `src/App.jsx`: main app container, route branching, most UI components, production data callbacks, demo containers.
+- `src/App.jsx`: entry selection for Formal, Demo and public share.
 - `src/styles.css`: shared baseline styles and legacy page styling.
 - `src/components/budget/` and `src/components/workspace/`: scoped desktop workspace UI and CSS; shared by Formal and local Demo.
 - `src/lib/supabase.js`: Supabase client creation.
@@ -128,48 +128,7 @@ Protected rule:
 
 ### Container/View Pattern
 
-The project has begun moving toward container/view separation, but it is not fully separated yet.
-
-Formal production container responsibilities currently live mostly in `App`:
-
-- Session/auth state.
-- Trip list and active trip state.
-- Supabase reads/writes.
-- Realtime subscriptions.
-- Invite/share dialogs.
-- Attachments.
-- Permission gates (`isOwner`, `canEdit`, pending member state).
-
-View-ish components inside `src/App.jsx` include:
-
-- `TripWorkspace`
-- `TodayMode`
-- `ItineraryTimeline`
-- `RoutePanel`
-- `BudgetSummaryPanel`
-- `ExpenseWorkspace` (shared Formal/Demo Budget view under `src/components/budget/`)
-- `SettlementPanel`
-- `AccommodationPanel`
-- `TodoGuidePanel`
-- `TodoPanel`
-- `GuidePanel`
-- `LuggagePanel`
-- `PackList`
-- `MembersPanel`
-- `ShareView`
-
-Demo-specific components/containers:
-
-- `DemoApp`
-- Demo uses `LuggagePanel`, `AccommodationPanel`, `TodoGuidePanel` and `SettlementPanel` with local callbacks; disable draft autosave/edit locks and attachment infrastructure explicitly.
-- Demo mock data factories near the top of `src/App.jsx`.
-
-Direction:
-
-- Continue extracting reusable presentational views cautiously.
-- Formal containers should own Supabase, Realtime, draft, lock, and Storage.
-- Demo containers should own mock data and local state only.
-- Avoid duplicating UI in demo pages. Demo should reuse or closely mirror formal UI, with data/callbacks swapped.
+Use the [architecture ownership guide](docs/architecture/travel-studio-boundaries.md) to locate feature state, Formal and Demo commands, shared views and cross-workspace handoff. Formal and Demo reuse the same panels with separate data sources.
 
 ## 4. Data Flow
 
@@ -305,7 +264,7 @@ Trip date data flow:
 
 - The current Timeline model is still mixed: Day identity is derived from `day_index`, while `itinerary_items.date` is stored for compatibility and export/share consistency.
 - `trip_days` has not been introduced yet. Do not assume stable Day row identity exists.
-- Formal trip date changes must go through `updateTripDateRange()` in `src/App.jsx`.
+- Formal trip date changes must go through `updateTripDateRange()` in `src/features/trip/tripCommands.js`.
 - `updateTripDateRange()` must call the centralized `apply_trip_date_change` RPC for production data changes. Do not directly update `trips.start_date` / `trips.end_date` from a new frontend path.
 - `itinerary_items.date` must stay aligned with `trip.start_date + day_index`.
 - Shortening that removes Timeline data must require explicit confirmation and must happen transactionally through the RPC path.
@@ -629,7 +588,7 @@ Known issues / risks observed in the project history:
 - Luggage personal/shared forms have had state-contamination bugs before. Keep personal and shared state separate.
 - Demo and formal UI can drift if new UI is added only to one side.
 - Some terminal output on Windows may display Chinese as mojibake even when source/build is valid. Use build/browser verification instead of trusting PowerShell display alone.
-- Current `src/App.jsx` is large; unrelated edits can create regressions easily.
+- Keep feature changes in the owner named in the architecture guide.
 - Some legacy concepts still coexist: `pack_items` and newer `luggage_items/shared_luggage_items`.
 - There is no formal test suite yet. `npm run build` is necessary but not sufficient.
 

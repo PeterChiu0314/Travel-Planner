@@ -16,14 +16,18 @@ test("owner must confirm trip deletion and the confirmed request removes the nat
   try {
     await open(page, fixture, { linked: true });
     const deleteItem = page.getByRole("menuitem", { name: "刪除旅程", exact: true });
+    const confirmation = page.getByRole("dialog", { name: /^刪除「.+」？$/ });
     const requests = () => fixture.db.expenseCalls.filter(call => call.name === "delete_trip_with_expenses");
     await page.getByRole("button", { name: "更多操作", exact: true }).click();
-    page.once("dialog", dialog => void dialog.dismiss());
     await deleteItem.click();
+    await expect(confirmation.getByRole("button", { name: "取消", exact: true })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(confirmation).toBeHidden();
     expect(requests()).toHaveLength(0);
     await page.getByRole("button", { name: "更多操作", exact: true }).click();
-    page.once("dialog", dialog => void dialog.accept());
     await deleteItem.click();
+    expect(requests()).toHaveLength(0);
+    await confirmation.getByRole("button", { name: "確認刪除", exact: true }).click();
     await expect.poll(() => fixture.db.trips.length).toBe(0);
     expect(requests()).toHaveLength(1);
     expect(requests()[0].args).toEqual({ p_trip_id: fixture.trip });
@@ -159,7 +163,7 @@ test("timed swap persists and the native expense follows its original destinatio
   }
 });
 
-test("Formal visit editor submits normalized fields to the schedule RPC", async ({ page }) => {
+test("Formal visit editor confirms discard and submits normalized fields to the schedule RPC", async ({ page }) => {
   const fixture = await expenseBackend({ timeline: true });
   try {
     await open(page, fixture);
@@ -169,6 +173,17 @@ test("Formal visit editor submits normalized fields to the schedule RPC", async 
     await card.click();
     await card.getByTitle("編輯").click();
     const form = page.locator(".timeline-day-column.active .item-form:not(.transport-editor-form)");
+    const discardPrompt = page.getByRole("dialog", { name: "放棄尚未儲存的變更？", exact: true });
+    const cancelEdit = form.getByRole("button", { name: "取消", exact: true });
+    await form.locator('input[name="location_name"]').fill("Draft to discard");
+    await cancelEdit.click();
+    await discardPrompt.getByRole("button", { name: "取消", exact: true }).click();
+    await expect(form.locator('input[name="location_name"]')).toHaveValue("Draft to discard");
+    await cancelEdit.click();
+    await discardPrompt.getByRole("button", { name: "放棄變更", exact: true }).click();
+    await expect(form).toBeHidden();
+    expect(scheduleCalls(fixture)).toHaveLength(0);
+    await card.getByTitle("編輯").click();
     await form.locator('input[name="location_name"]').fill("  Updated Lunch QA  ");
     const time = form.locator('.timeline-segmented-time-field[data-name="start_time"]');
     await time.locator(".timeline-time-menu-toggle").click();
