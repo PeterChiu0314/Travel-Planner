@@ -11,3 +11,7 @@
 | JS/JSX | 從 main.jsx 追蹤相對 import（含地圖動態載入）後，再核對測試入口和檔案內容。MembersPanel.jsx、PackList.jsx 只有未匯出的區域函式，無模組層級副作用、匯入者或呼叫點。刪除兩檔與舊 PackList 專用樣式。保留 MembersInviteDialog 共用的成員樣式及正式打包資料流程。 |
 | 測試與相容程式 | BudgetWorkspace 是 budget-safety 測試入口，Google Routes adapter 也有獨立測試。保留這些模組和停用的收據流程。 |
 | 匯入提醒 | TripImportNotices 的提醒清單只渲染文字。移除 .trip-import-issues code。錯誤詳細資料在另一個容器實際渲染 code，保留其規則。 |
+
+## 驗證結果
+
+Vite build 與 diff check 通過。Chromium 的匯入預覽、提醒與設計色彩測試共 23 項通過。相同預覽對話框使用無座標旅程與一則提醒，在 1440、720、480、390px 寬度逐張比對基準與修改後的截圖，四張 PNG 內容完全相同。這批沒有資料讀寫變更。

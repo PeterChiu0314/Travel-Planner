@@ -2,7 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
-      "codex/issue30-phase3": false,
       "codex/timeline-phase-4-0-to-4-2": true
     }
   },

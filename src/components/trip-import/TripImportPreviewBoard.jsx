@@ -3,6 +3,7 @@ import { MapPin } from "lucide-react";
 import { loadGoogleMapsApi } from "../../lib/googleMapsLoader.js";
 import { buildTripPreviewRoute } from "../../lib/tripImportPreview.js";
 import { fetchWikimediaTripImage } from "../../lib/wikimediaTripImages.js";
+import "./trip-import-preview-board.css";
 
 function createPointOverlay(mapsNamespace, map, point) {
   class PointOverlay extends mapsNamespace.OverlayView {
