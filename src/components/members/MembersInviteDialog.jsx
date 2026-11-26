@@ -10,14 +10,19 @@ export default function MembersInviteDialog({
   onApprove,
   onClose,
   onCreateInvite,
+  onReadInvite,
+  trip,
   onReject,
   onRemoveMember,
   onUpdateRole,
 }) {
-  const [token, setToken] = useState("");
+  const [invite, setInvite] = useState(null);
+  const [readAttempt, setReadAttempt] = useState(0);
+  const [readFailed, setReadFailed] = useState(false);
+  const tripId = trip?.id;
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(canManageMembers);
   const [openRoleMenuMemberId, setOpenRoleMenuMemberId] = useState(null);
   const approvedMembers = members.filter((member) => member.status === "approved");
   const pendingMembers = canManageMembers ? members.filter((member) => member.status === "pending") : [];
@@ -57,32 +62,60 @@ export default function MembersInviteDialog({
     onRemoveMember(member.id);
   }
 
+  useEffect(() => {
+    if (!canManageMembers) return;
+    let active = true;
+    setBusy(true);
+    setReadFailed(false);
+    setError("");
+    onReadInvite(tripId).then((current) => {
+      if (active) setInvite(current);
+    }).catch(() => {
+      if (active) {
+        setReadFailed(true);
+        setError("無法讀取邀請連結。");
+      }
+    }).finally(() => { if (active) setBusy(false); });
+    return () => { active = false; };
+  }, [canManageMembers, tripId, onReadInvite, readAttempt]);
+
+  useEffect(() => {
+    if (!invite) return;
+    const timeout = setTimeout(() => {
+      setInvite(null);
+      setCopied(false);
+      setBusy(true);
+      setReadAttempt((value) => value + 1);
+    }, Date.parse(invite.expires_at) - Date.parse(invite.server_time));
+    return () => clearTimeout(timeout);
+  }, [invite]);
+
   async function createInvite() {
     if (!canManageMembers || busy) return;
     setBusy(true);
     setError("");
-    let nextToken = token;
-    if (!nextToken && typeof onCreateInvite === "function") {
-      const result = await onCreateInvite();
-      if (!result?.ok) {
-        setBusy(false);
-        setError(result?.message || "無法產生邀請連結。");
-        return;
-      }
-      nextToken = result.token;
-      setToken(nextToken);
-    }
-    const url = `${window.location.origin}?invite=${nextToken}`;
+    setCopied(false);
     try {
-      await navigator.clipboard.writeText(url);
+      setInvite(await onCreateInvite(invite?.token));
+    } catch {
+      setInvite(null);
+      setReadFailed(true);
+      setError("無法確認邀請連結，請重新讀取。");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inviteUrl = invite ? `${window.location.origin}?invite=${invite.token}` : "";
+  async function copyInvite() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
+      setError("");
     } catch {
       setError("無法複製邀請連結，請手動複製網址。");
     }
-    setBusy(false);
   }
-
-  const inviteUrl = token ? `${window.location.origin}?invite=${token}` : "";
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -208,11 +241,21 @@ export default function MembersInviteDialog({
             </div>
           </div>
           <p>{hasOnlyOneApprovedMember ? "邀請朋友一起規劃這趟旅程。" : "朋友使用連結登入後會送出加入申請，核准後即可共同編輯。"}</p>
-          {inviteUrl ? <input readOnly value={inviteUrl} /> : null}
+          {inviteUrl ? (
+            <>
+              <input aria-label="有效邀請連結" readOnly value={inviteUrl} />
+              <p>有效至 <time dateTime={invite.expires_at}>{new Date(invite.expires_at).toLocaleString("zh-TW")}</time></p>
+              <button className="primary-button compact" type="button" disabled={busy} onClick={copyInvite}>複製連結</button>
+            </>
+          ) : null}
           {copied ? <div className="notice">邀請連結已複製。</div> : null}
-          <button className="primary-button compact" type="button" disabled={!canManageMembers || busy} onClick={createInvite}>
-            {busy ? "產生中..." : "產生並複製連結"}
-          </button>
+          {readFailed ? (
+            <button className="ghost-button" type="button" onClick={() => setReadAttempt((value) => value + 1)}>重新讀取</button>
+          ) : (
+            <button className={invite ? "ghost-button" : "primary-button compact"} type="button" disabled={!canManageMembers || busy} onClick={createInvite}>
+              {busy ? "處理中…" : invite ? "重新產生邀請連結" : "建立邀請連結"}
+            </button>
+          )}
         </section>
 
         <section className="members-dialog-section">

@@ -32,24 +32,15 @@ export function createMemberCommands({
     else await loadTripData(activeTrip.id);
   }
 
-  async function createMemberInviteToken() {
+  async function createMemberInviteToken(previousToken = null) {
     if (!activeTrip || !canInviteMembers) {
       const message = isTripDateLocked
         ? "旅程已進入結算階段，無法邀請或管理成員。"
         : "You do not have permission to invite members.";
       notify.error(message);
-      return { ok: false, message };
+      throw new Error(message);
     }
-    const token = crypto.randomUUID();
-    const { error } = await supabase.from("trip_invites").insert({
-      trip_id: activeTrip.id,
-      token,
-    });
-    if (error) {
-      notify.error(error.message);
-      return { ok: false, error, message: error.message };
-    }
-    return { ok: true, token };
+    return fetchMemberInvite(activeTrip.id, previousToken ? "rotate" : "create", previousToken);
   }
 
   async function updateMemberRole(memberId, nextRole) {
@@ -114,4 +105,14 @@ export function createMemberCommands({
 
 export function readMembers(client, tripId) {
   return client.from("trip_members").select("id,trip_id,user_id,role,status,created_at,display_name,email").eq("trip_id", tripId).order("created_at");
+}
+
+export async function fetchMemberInvite(tripId, action = "read", previousToken = null) {
+  const { data, error } = await supabase.rpc("manage_trip_invite", {
+    p_trip_id: tripId,
+    p_action: action,
+    p_previous_token: previousToken,
+  });
+  if (error) throw error;
+  return data;
 }

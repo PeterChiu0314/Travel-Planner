@@ -44,7 +44,7 @@ test("phase 1.8 editor share dialog can copy active links but cannot manage them
 test("phase 1.8 member mutations keep owner-only lock and trip boundary", () => {
   expect(appSource).toContain("if (!activeTrip || !canInviteMembers) return;");
   expect(appSource).toContain("if (!activeTrip || !canInviteMembers) return { ok: false };");
-  expect(appSource).toMatch(/async function createMemberInviteToken\(\)\s*\{\s*if \(!activeTrip \|\| !canInviteMembers\) \{\s*const message = isTripDateLocked\s*\? "旅程已進入結算階段，無法邀請或管理成員。"/);
+  expect(appSource).toMatch(/async function createMemberInviteToken\(previousToken = null\)\s*\{\s*if \(!activeTrip \|\| !canInviteMembers\) \{\s*const message = isTripDateLocked\s*\? "旅程已進入結算階段，無法邀請或管理成員。"/);
   expect(appSource).toContain(".update({ status: \"approved\" })");
   expect(appSource).toContain(".update({ role: nextRole })");
   expect(appSource).toContain(".delete().eq(\"id\", memberId).eq(\"trip_id\", activeTrip.id)");

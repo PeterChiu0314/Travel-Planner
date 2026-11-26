@@ -8,9 +8,12 @@ test("Formal member dialog preserves invite reuse and read-only member roles", a
     { id: "pending", trip_id: "trip", user_id: "D", role: "editor", status: "pending", display_name: "Pending QA" },
   );
   const invites = [];
-  await page.exposeBinding("insertInvite", (_, row) => {
-    invites.push(row);
-    return { error: null };
+  await page.exposeBinding("inviteRpc", (_, { p_action, p_trip_id }) => {
+    expect(p_trip_id).toBe("trip");
+    if (p_action === "rotate" || (p_action === "create" && !invites.length)) {
+      invites.push({ token: crypto.randomUUID(), expires_at: new Date(Date.now() + 604800000).toISOString(), server_time: new Date().toISOString() });
+    }
+    return { data: invites.at(-1) || null, error: null };
   });
   await page.addInitScript(() => {
     window.copiedInvites = [];
@@ -19,20 +22,17 @@ test("Formal member dialog preserves invite reuse and read-only member roles", a
     });
   });
   await boot(page, db, "A", { waitForBudget: false });
-  await page.evaluate(() => {
+  const installInviteRpc = () => page.evaluate(() => {
     const client = window.budgetMock.client;
-    const from = client.from.bind(client);
-    client.from = (table) => {
-      const query = from(table);
-      if (table === "trip_invites") query.insert = (row) => window.insertInvite(row);
-      return query;
-    };
+    const rpc = client.rpc.bind(client);
+    client.rpc = (name, args) => name === "manage_trip_invite" ? window.inviteRpc(args) : rpc(name, args);
   });
 
+  await installInviteRpc();
   const openMembers = () => page.getByRole("button", { name: /^\d+ 位成員$/ }).click();
   const dialog = page.locator(".members-dialog");
   const closeMembers = () => dialog.getByRole("button", { name: "關閉", exact: true }).click();
-  const inviteButton = (dialog) => dialog.getByRole("button", { name: "產生並複製連結", exact: true });
+  const inviteButton = (dialog) => dialog.getByRole("button", { name: "建立邀請連結", exact: true });
   await openMembers();
   const roleTrigger = dialog.getByRole("button", { name: "B 角色操作", exact: true });
   await expect(dialog.getByRole("button", { name: "核准", exact: true })).toBeVisible();
@@ -45,18 +45,26 @@ test("Formal member dialog preserves invite reuse and read-only member roles", a
   await expect(dialog.getByRole("menu")).toHaveCount(0);
 
   await inviteButton(dialog).click();
-  await expect(dialog.getByText("邀請連結已複製。")).toBeVisible();
-  expect(invites).toEqual([{ trip_id: "trip", token: expect.any(String) }]);
   const url = `${new URL(page.url()).origin}?invite=${invites[0].token}`;
   await expect(dialog.getByRole("textbox")).toHaveValue(url);
-  await inviteButton(dialog).click();
-  await expect.poll(() => page.evaluate(() => window.copiedInvites)).toEqual([url, url]);
-  expect(invites).toHaveLength(1);
+  await expect(dialog.locator("time")).toHaveAttribute("datetime", invites[0].expires_at);
+  await dialog.getByRole("button", { name: "複製連結", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.copiedInvites)).toEqual([url]);
   await closeMembers();
   await openMembers();
-  await expect(dialog.getByRole("textbox")).toHaveCount(0);
+  await expect(dialog.getByRole("textbox")).toHaveValue(url);
   await expect(dialog.getByText("邀請連結已複製。")).toHaveCount(0);
   expect(invites).toHaveLength(1);
+  await dialog.getByRole("button", { name: "重新產生邀請連結" }).click();
+  await expect.poll(() => invites.length).toBe(2);
+  await expect(dialog.getByRole("textbox")).toHaveValue(`${new URL(page.url()).origin}?invite=${invites[1].token}`);
+  await closeMembers();
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^\d+ 位成員$/ })).toBeVisible();
+  await installInviteRpc();
+  await openMembers();
+  await expect(dialog.getByRole("textbox")).toHaveValue(`${new URL(page.url()).origin}?invite=${invites[1].token}`);
   await closeMembers();
 
   for (const [actor, role] of [["B", "編輯者"], ["C", "檢視者"]]) {
@@ -70,6 +78,6 @@ test("Formal member dialog preserves invite reuse and read-only member roles", a
     await expect(dialog.getByRole("textbox")).toHaveCount(0);
     await closeMembers();
   }
-  expect(invites).toHaveLength(1);
+  expect(invites).toHaveLength(2);
   expect(page.qaErrors).toEqual([]);
 });

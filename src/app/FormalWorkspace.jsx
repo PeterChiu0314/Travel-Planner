@@ -46,7 +46,7 @@ import { useTripPresence } from "./useTripPresence.js";
 import { useTimelinePresence } from "../features/timeline/useTimelinePresence.js";
 import { createTripCommands } from "../features/trip/tripCommands.js";
 import { createExchangeCommands } from "../features/trip-import/exchangeCommands.js";
-import { createMemberCommands } from "../features/members/memberCommands.js";
+import { createMemberCommands, fetchMemberInvite } from "../features/members/memberCommands.js";
 import { createAttachmentCommands } from "../features/attachments/attachmentCommands.js";
 import { createPackCommands } from "../features/pack/packCommands.js";
 import { createLuggageCommands } from "../features/luggage/luggageCommands.js";
@@ -988,6 +988,8 @@ export function FormalWorkspace() {
 
       {isMembersDialogOpen && activeTrip && canOpenMembersDialog ? (
         <MembersInviteDialog
+          key={JSON.stringify([activeTrip.id, session.user.id, canInviteMembers])}
+          onReadInvite={fetchMemberInvite}
           canManageMembers={canInviteMembers}
           currentRole={activeMembership?.role}
           currentUserId={session.user.id}

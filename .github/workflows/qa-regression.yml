@@ -54,8 +54,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Production build
         run: npm run build
-      - name: Budget ordering and itinerary links contracts
-        run: node --test tests/expenseOrdering.test.mjs tests/expenseLinks.test.mjs
+      - name: Budget and member invite contracts
+        run: node --test tests/expenseOrdering.test.mjs tests/expenseLinks.test.mjs tests/tripInviteLifecycle.test.mjs
       - name: Cross-workspace Playwright regression
         shell: bash
         run: |
